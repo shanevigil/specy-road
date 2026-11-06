@@ -90,27 +90,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: review-record-files-only-as-the-caller
-    node_id: M21.31
-    branch: feature/rm-review-record-files-only-as-the-caller
-    touch_zones:
-      - specy_road/review_caller.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_rejected.py
-      - specy_road/review_gate.py
-      - specy_road/orchestration_config.py
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - specy_road/bundled_scripts/role_prompt.py
-      - tests/test_review_record_caller.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - tests/conftest.py
-      - specy_road/review_answer.py
-      - tests/test_review_concurrent_writers.py
-      - tests/test_review_record_write.py
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-06T08:39:31+00:00'
