@@ -23,6 +23,19 @@
 - Other reads in this change: the tracked check (`git ls-files`) reads no file content. `render_digest`/`load_roadmap` read the graph, not the targets. `Mirror` and `_dry_run`'s scratch git do not read the generated files. No other instance found.
 - Merged `origin/WIP/improvements-0-3-1` first (it brings M21.17's writers-refuse-links-out work); `tests/test_writers_refuse_links_out.py` passes alongside.
 
+## Fix round 2 (gpt-6.1-sol-low, P2)
+
+**Class:** `_check`'s second value is "nothing is left for `specy-road digest`", and it was computed from `digest --check` alone. A state where regeneration never ran (validate failed) but the digest happened to be current dropped the next-step line, although A3 keeps it whenever validate fails.
+
+**Rule (one, in `_check`'s docstring):** the generated files are done only when validate passed (so they were regenerated), nothing was refused, and `digest --check` passes. `digest --check` still runs and prints when validate fails. Only the returned value changed (`valid and current and not refused`); `_check` gains no branch.
+
+## Probes (round 2)
+
+- Invalid graph with an already-current digest: `digest --check` prints OK, and the next-step line is kept with exit 1. The line was dropped before the fix (the `invalid-graph` row now writes a current digest and asserts both lines; it fails against 20bc1f17).
+- Invalid graph, current digest, tracked drifted `roadmap.md`: next-step line kept, `roadmap.md` not written, exit 1 (one-off probe; the same rule covers it).
+- Other readers of the value: only `run_upgrade`'s `== next` step. `_dry_run` ignores it (prints no next steps). The "Fix the validate errors" step is unchanged.
+- Merged `origin/WIP/improvements-0-3-1` first; no conflicts.
+
 ## Touch zones: final list
 
 The brief's seven zones, **plus a new module `specy_road/bundled_scripts/upgrade_generated.py`**. The new code pushed `upgrade.py` to 426 lines, over its 400-line cap. Following the prompt's file-limits rule, `regenerate()` and `scratch_environ()` moved into that module. Please add it to the touch zones. No other file outside the zones was edited.
@@ -50,8 +63,11 @@ The brief's seven zones, **plus a new module `specy_road/bundled_scripts/upgrade
 - `regenerate`: the boundary check moved before the read and the comparison became bytes; no new branch.
 - `_check`: `not resolves_outside(...)` short-circuits `cmd_digest` for a digest that is a link out; no new branch.
 
+### Fix round 2
+- `_check`: the returned "generated files done" is `valid and current and not refused`; no new branch.
+
 ### Tests
-- `tests/test_upgrade.py::test_upgrade_regenerates_the_drifted_generated_files`: the A4 table, 10 rows after fix round 1 (`tracked-roadmap-md-link-to-outside-file` and `non-utf8-digest` added; `link-to-outside-file` uses non-UTF-8 bytes). It replaces `test_a_missing_digest_is_a_next_step_not_a_failure`, whose expectation (a missing digest stays a next step) A3 changes; that expectation is now the invalid-graph and link rows.
+- `tests/test_upgrade.py::test_upgrade_regenerates_the_drifted_generated_files`: the A4 table, 10 rows after fix round 1 (fix round 2: the `invalid-graph` row starts from an already-current digest) (`tracked-roadmap-md-link-to-outside-file` and `non-utf8-digest` added; `link-to-outside-file` uses non-UTF-8 bytes). It replaces `test_a_missing_digest_is_a_next_step_not_a_failure`, whose expectation (a missing digest stays a next step) A3 changes; that expectation is now the invalid-graph and link rows.
 - `tests/test_upgrade.py` helpers `_finished_leaf`, `_hand_drifted_digest`, `_tracked_index`, `_untracked_index`, `_invalid_graph`, `_dangling_link_out`, `_link_to_outside_file`, `_tracked_index_link_to_outside_file`, `_non_utf8_digest`, `_state`, `_files`: row setups and the byte or link state each row asserts. `_finished_leaf` reuses `land` from `tests/test_digest_quality.py` and `commit`/`git` from `tests/test_history_walk.py`.
 - `tests/test_upgrade_preview.py::test_dry_run_never_touches_the_repository_a_git_variable_names`: the A2 table, one row per `_REPO_ENV` name. Each row checks HEAD, commit count, object count, index bytes, staged names and working files of a second repository.
 - `tests/test_upgrade_preview.py::_repo_state`: the snapshot that A2 compares.

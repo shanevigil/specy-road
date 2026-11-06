@@ -195,7 +195,12 @@ def _refresh(
 
 
 def _check(project: Path, tracked_in: Path, verb: str) -> tuple[bool, bool]:
-    """``(validate passed, digest current and nothing refused)``; each step prints its own detail."""
+    """``(validate passed, generated files done)``; each step prints its own detail.
+
+    The generated files are done only when validate passed (so they were
+    regenerated), nothing was refused, and ``digest --check`` passes; otherwise
+    ``specy-road digest`` stays a next step.
+    """
     _section("validate")
     try:
         validate_at(project)
@@ -210,7 +215,8 @@ def _check(project: Path, tracked_in: Path, verb: str) -> tuple[bool, bool]:
     ns = argparse.Namespace(output=DEFAULT_OUTPUT, check=True, repo_root=project)
     # A digest that is a link out is never read (regenerate printed its refusal): not current.
     outside = resolves_outside(project, project / DEFAULT_OUTPUT)
-    return valid, not outside and cmd_digest(ns) == 0 and not refused
+    current = not outside and cmd_digest(ns) == 0
+    return valid, valid and current and not refused
 
 
 def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:

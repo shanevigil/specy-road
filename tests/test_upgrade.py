@@ -104,6 +104,7 @@ def _invalid_graph(root: Path, outside: Path) -> None:
     doc = json.loads(chunk.read_text(encoding="utf-8"))
     doc["nodes"][1]["dependencies"] = ["M9.9"]
     chunk.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    (root / DIGEST).write_text(render_digest(root), encoding="utf-8")   # current: the next step stays anyway
 
 
 def _dangling_link_out(root: Path, outside: Path) -> None:
@@ -137,7 +138,7 @@ def _state(path: Path) -> object:
                  id="tracked-drifted-roadmap-md"),
     pytest.param(_untracked_index, False, {DIGEST}, [WROTE_DIGEST], [WROTE_INDEX, NEXT_DIGEST], 0,
                  id="untracked-roadmap-md"),
-    pytest.param(_invalid_graph, False, set(), [NEXT_DIGEST], [WROTE_DIGEST, "== generated files"], 1,
+    pytest.param(_invalid_graph, False, set(), ["OK: roadmap-context.md matches the roadmap.", NEXT_DIGEST], [WROTE_DIGEST, "== generated files"], 1,
                  id="invalid-graph"),
     pytest.param(_dangling_link_out, False, set(), [REFUSED_DIGEST, NEXT_DIGEST], [WROTE_DIGEST], 0,
                  id="dangling-link-out"),
