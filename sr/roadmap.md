@@ -83,9 +83,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.8.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
 | `M16.8.3` | After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims | task | Agentic-led | Not Started |
 | `M16.8.4` | End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 | task | Human-led | Not Started |
-| `M16.8.5` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
-| `M16.8.6` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Complete |
-| `M16.8.7` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Complete |
 | `M16.8.8` | Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships | task | — | Not Started |
 | `M16.8.9` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
 | `M17` | 0.3.2: PM GUI shows orchestration and worktree state | phase | Human-led | Not Started |
@@ -154,6 +151,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.10` | doctor works in a repo with no remote | task | — | Complete |
 | `M21.11` | Help text names installed commands | task | — | Complete |
 | `M21.12` | A review record is refused for joined observations only when one of them names a defect | task | — | Complete |
+| `M21.13` | move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit | task | Agentic-led | Complete |
+| `M21.14` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Complete |
+| `M21.15` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Complete |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |

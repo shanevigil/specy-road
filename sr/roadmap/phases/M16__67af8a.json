@@ -148,7 +148,7 @@
       "node_key": "15c488ad-2531-4d82-a3a9-363e626a3872",
       "parent_id": "M16.8",
       "planning_dir": "planning/M16.8.8_release-docs-0-3-1_15c488ad-2531-4d82-a3a9-363e626a3872.md",
-      "sibling_order": 7,
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships",
       "touch_zones": [

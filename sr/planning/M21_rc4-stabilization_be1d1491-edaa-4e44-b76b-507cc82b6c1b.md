@@ -6,7 +6,7 @@ Holds every rc4 fix filed after the maintainer's 2026-11-05 rule that new work n
 
 - Roadmap tooling (moved from M16's fix intake): chosen-id moves and GUI subtree-only renumbering, CLI indent/outdent/group, prose id rewrite, remove-node, batch apply, inherited-dependency cycle checks.
 - Steering-file protection (rc4 fix, maintainer 2026-11-05).
-- After they land: M16.8.5 (move-node subtree-only), M16.8.6 (finish inherited roadmap conflicts) and M16.8.7 (Cursor workers sandboxed) are re-homed here.
+- After they land: M21.13 (move-node subtree-only), M21.14 (finish inherited roadmap conflicts) and M21.15 (Cursor workers sandboxed) are re-homed here.
 
 ## References
 
