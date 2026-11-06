@@ -129,6 +129,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M19.16` | validate notices sheet acceptance that drifted from the node, and gate dependencies the gate never names | task | Agentic-led | Not Started |
 | `M19.17` | validate notices governance files that require a field validate strips, and names the replacement | task | Agentic-led | Not Started |
 | `M19.18` | A ratified scope boundary in the decisions ledger, with validate and digest notices for phases beyond it | task | Agentic-led | Not Started |
+| `M19.19` | Roadmap guide and template recommend one fixes milestone per release and themed milestones | task | — | Not Started |
 | `M20` | Agent safety and governance posture (after 0.3.1) | phase | — | Not Started |
 | `M20.1` | Posture advisor: plan the M20 leaves from the research | task | Human-led | Not Started |
 | `M20.2` | Probe each reviewer harness for instruction-file leakage into fresh sessions | task | Agentic-led | Not Started |
@@ -145,5 +146,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.10` | doctor works in a repo with no remote | task | — | Complete |
 | `M21.11` | Help text names installed commands | task | — | Complete |
 | `M21.12` | A review record is refused for joined observations only when one of them names a defect | task | — | Complete |
+| `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
+| `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
+| `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
+| `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Not Started |
+| `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

@@ -93,6 +93,11 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.10` doctor works in a repo with no remote `doctor-without-a-remote` — task — **Complete**
   - `M21.11` Help text names installed commands `help-names-installed-commands` — task — **Complete**
   - `M21.12` A review record is refused for joined observations only when one of them names a defect `joined-observations-need-a-defect` — task — **Complete**
+- `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
+  - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
+  - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
+  - `M22.3` Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node `decisions-follow-moves` — task — **Not Started**
+  - `M22.4` New planning sheets no longer write the node's display id into their body `sheet-body-without-display-id` — task — **Not Started**
 - `M17` 0.3.2: PM GUI shows orchestration and worktree state `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface `pm-gui-orchestration-plan` — gate — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
@@ -142,6 +147,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M19.16` validate notices sheet acceptance that drifted from the node, and gate dependencies the gate never names `sheet-acceptance-drift` — task — **Not Started**
   - `M19.17` validate notices governance files that require a field validate strips, and names the replacement `governance-deprecated-fields` — task — **Not Started**
   - `M19.18` A ratified scope boundary in the decisions ledger, with validate and digest notices for phases beyond it `scope-boundary` — task — **Not Started**
+  - `M19.19` Roadmap guide and template recommend one fixes milestone per release and themed milestones `milestone-conventions-guide` — task — **Not Started**
 - `M20` Agent safety and governance posture (after 0.3.1) `agent-safety-posture` — phase — **Not Started**
   - `M20.1` Posture advisor: plan the M20 leaves from the research `plan-m20-from-research` — task — **Not Started**
   - `M20.2` Probe each reviewer harness for instruction-file leakage into fresh sessions `fresh-reviewer-leak-probe` — task — **Not Started**
