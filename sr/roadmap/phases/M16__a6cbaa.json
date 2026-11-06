@@ -266,7 +266,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.2_outline-group-cli_f533afb6-f6fb-4394-9beb-d8a5c49ed95d.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "CLI indent, outdent and group-nodes re-level siblings in one transaction validated once",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_move_node.py",

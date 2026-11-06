@@ -34,6 +34,15 @@ class MoveOutlineBody(BaseModel):
     renumber_outline: bool = False
 
 
+class GroupOutlineBody(BaseModel):
+    """`group-nodes`: an unknown ``type`` is refused by validation (400), like the rest."""
+
+    into_new: str
+    title: str
+    node_ids: list[str]
+    type: str = "milestone"
+
+
 class OutlineShiftBody(BaseModel):
     """Optional body for indent / outdent; an omitted body means the defaults."""
 

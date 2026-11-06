@@ -105,22 +105,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: outline-group-cli
-    node_id: M21.2
-    branch: feature/rm-outline-group-cli
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_move_node.py
-      - specy_road/bundled_scripts/roadmap_outline_ops.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/gui_app_routes_nodes.py
-      - specy_road/gui_app_models.py
-      - docs/roadmap-authoring.md
-      - tests/
-      - specy_road/bundled_scripts/roadmap_outline_group.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
   - codename: delegated-reviewer-always-runs-a-named-model
     node_id: M15.31
     branch: feature/rm-delegated-reviewer-always-runs-a-named-model
