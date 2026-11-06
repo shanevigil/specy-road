@@ -11,6 +11,7 @@ whose review loop is not converging and has no root-cause analysis for it is
 ``escalated`` (exit 1), with the trigger named (``review_rca``).
 With ``policy.max_fix_rounds`` set, a leaf that spent that many blocking rounds is ``fix_round_budget_spent``
 (exit 1) with its next command; ``review defer`` applies an RCA's deferral (:mod:`review_defer`, human-only).
+``review accept-policy`` accepts a review policy change made since the claim (:mod:`review_policy_pin`, human-only).
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``. It refuses an approve whose
@@ -48,6 +49,7 @@ from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
 from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
+from specy_road.review_policy_pin import add_parser as add_accept_policy_parser
 from specy_road.orphaned_claims import orphaned_claims, report_lines
 from specy_road.review_run_status import (extend_handoff_refused, print_refused_list, refused_by_model,
                                           review_list_payload, unreadable_rejected_lines)
@@ -368,6 +370,7 @@ def build_parser() -> argparse.ArgumentParser:
         sp.set_defaults(func=fn)
     add_delegate_parser(rsub)
     add_defer_parser(rsub)
+    add_accept_policy_parser(rsub)
     add_ready_parser(sub)
     return p
 

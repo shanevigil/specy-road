@@ -19,6 +19,7 @@ from specy_road.git_workflow_config import (
 from specy_road.finish_implementation_check import implementation_or_exit
 from specy_road.finish_task_gates import human_acceptance_or_exit
 from specy_road.planning_scaffold_check import scaffold_planning_or_exit
+from specy_road.review_policy_pin import pin_holds_or_exit
 from specy_road.review_gate import gate_holds_at_head_or_exit, review_required, trial_merge_or_exit
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
@@ -137,6 +138,7 @@ def _validate_export_digest() -> None:
 
 def _impl_review_or_exit(entry: dict, node: dict) -> None:
     node_id = node["id"]
+    pin_holds_or_exit(ROOT, node)   # before the switch: turning it off after the claim is a policy change too
     if not review_required(ROOT):
         return
     if entry.get("implementation_review") == "approved":
