@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from specy_road.bundled_scripts.role_prompt_cli import reviewer_command
 from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_files import reviews_dir
@@ -28,12 +29,18 @@ class _Harness:
         if prof is not None and not prof.ok:
             raise HarnessSetupError(f"profile for {entry.get('id')!r}: " + "; ".join(prof.errors))
         self.cli = (entry.get("channels") or {}).get("cli")
-        if not self.cli and self.harness == "generic" and prof is not None:
-            self.cli = prof.cli()
         if prof is not None:
             self.api_id = harness_model(entry, prof.api_id)
         else:
             self.api_id = harness_model(entry)   # no profile: the roster id, as worker delegate passes
+        if not chore:   # M21.21: refused as `prompt --channel cli` refuses it, before preflight and the RUN record;
+            # no model at all is refused later unless routing: dynamic accepts the harness's default
+            checked = entry if self.api_id else {**entry, "harness_model": "-"}
+            _, _, err = reviewer_command(prof, checked, self.api_id or "")
+            if err:
+                raise HarnessSetupError(err)
+        elif not self.cli and self.harness == "generic" and prof is not None:
+            self.cli = prof.cli()   # a chore reviewer keeps its documented launch
         self.effort = prof.effort("reviewer") if prof is not None else None
         self.mode = prof.launch_mode() if prof is not None else "full"
         self.repo_root, self.node_id, self.cwd, self.model = repo_root, node_id, cwd, str(entry.get("id"))

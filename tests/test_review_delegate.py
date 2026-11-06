@@ -174,6 +174,13 @@ def test_refusals(tmp_path: Path, capsys) -> None:
     repo, _spec = delegate_repo(tmp_path)
     assert _run("review", "delegate", "M1.1", "--model", "nobody", "--repo-root", str(repo)) == 1
     assert "not in the roster" in capsys.readouterr().err
+    # M21.21: a generic entry with no channels.cli is refused as `prompt --channel cli` refuses it, before --resume
+    assert _run("review", "delegate", "M1.1", "--model", "plain", "--resume", "--repo-root", str(repo)) == 1
+    assert "a generic reviewer needs a roster channels.cli" in capsys.readouterr().err
+    (tmp_path / "gen").mkdir()
+    repo, _spec = delegate_repo(tmp_path / "gen", delegate_roster("{fake} {prompt}").replace(
+        "{id: plain, family: openai, roles: [reviewer]}", "{id: plain, family: openai, roles: [reviewer], "
+        "channels: {cli: 'true {prompt}'}}"))
     assert _run("review", "delegate", "M1.1", "--model", "plain", "--resume", "--repo-root", str(repo)) == 2
     assert "unsupported by generic: resume" in capsys.readouterr().err
 
