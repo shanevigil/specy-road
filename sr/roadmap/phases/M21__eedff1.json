@@ -401,7 +401,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.40_upgrade-scratch-git-env-sterile_74c3d924-fc2e-4170-a786-caed84beca86.md",
       "sibling_order": 38,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade's scratch git drops every GIT_ variable, runs no hook, and times out",
       "touch_zones": [
         "specy_road/ignore_report.py",
