@@ -17,8 +17,8 @@ Milestone numbers are not release order; dependencies are. (Maintainer ruling, 2
 
 ## Approach
 
-- **Two lanes.** Frontend leaves (M17.2-M17.5) start as soon as the maintainer clears the M17.1 design gate: they build against a mock snapshot under gui/pm-gantt/src/fixtures/ whose required fields mirror M16.3.1's v1 field list, and test only pure view-model code with vitest. Backend leaves wait for M16's code chain: M17.6 (snapshot schema 2: the optional fields the panels need) on M16.3.1, M17.7 (`GET /api/orchestration`) on M16.3.7 and M17.6. M17.8 joins the lanes (docs, CHANGELOG, live wiring); M17.9 is the coordinator's GUI acceptance run on the agentic sandbox.
-- **One read path.** The GUI reads only `specy_road.orchestration`'s snapshot (`orchestration.state.snapshot(repo_root)`, v1 fixture tests/fixtures/orchestration_snapshot_v1.json committed by M16.3.1). It imports no worker_* or gui_app_routes_workers internals; a field the GUI needs that the snapshot lacks is a snapshot change with a new schema number (M17.6), not a side import.
+- **Two lanes.** Frontend leaves (M17.2-M17.5) start as soon as the maintainer clears the M17.1 design gate: they build against a mock snapshot under gui/pm-gantt/src/fixtures/ whose required fields mirror M16.3.1's v1 field list, and test only pure view-model code with vitest. Backend leaves wait for M16's code chain: M17.6 (snapshot schema 2: the optional fields the panels need) on M16.3.1, M17.7 (`GET /api/orchestration`) on M16.3.7 and M17.6. Frontend order is M17.2, M17.3, M17.4, M17.5 (M17.5 after M17.4: both edit the view model). M17.8 joins the lanes (docs, CHANGELOG, live wiring) after M16.6.1; M17.9 is the coordinator's GUI acceptance run on the agentic sandbox.
+- **One read path.** The GUI reads only `specy_road.orchestration`'s snapshot (`orchestration.state.snapshot(repo_root)`, v1 fixture tests/fixtures/orchestration_snapshot_v1.json committed by M16.3.1). It imports no worker_* or gui_app_routes_workers internals; a field the GUI needs that the snapshot lacks is a snapshot change with a new schema number (M17.6), not a side import. The route serves the snapshot unchanged; display ids come from the outline the GUI already loads.
 - **Compatibility.** Every existing `/api/` route keeps its response shape; the new route is additive; schema 2 only adds optional fields; a GUI served by an older server (404 on `/api/orchestration`) looks exactly as it does today. Contract tests (M17.7) tie the GUI mock, the server fixture and the route together.
 - **Read-only first.** No mutating action in 0.3.1 unless the maintainer names one at M17.1; it would then be its own leaf calling the CLI's existing command.
 - **Docs.** This phase owns docs/pm-gui.md's existing sections (M16.6.1 only appends brainstorm and LLM-review sections).
@@ -35,6 +35,24 @@ Milestone numbers are not release order; dependencies are. (Maintainer ruling, 2
 - [ ] M17.7 — `GET /api/orchestration` and contract tests (backend, after M16.3.7)
 - [ ] M17.8 — Docs, CHANGELOG and live wiring
 - [ ] M17.9 — GUI acceptance on the agentic sandbox (coordinator)
+
+## Plan review (2026-11-05)
+
+Critiques: sr/work/plan-reviews/m17-plan/critique-grok.md (G1-G26) and critique-sol.md (R1-R16), lenses item logic, testability, GUI/API, security, alignment; both returned block. Per-leaf decision tables are on each leaf sheet. No leaf added or removed; dependency changes: M17.5 -> M17.4 (was M17.3), M17.8 + M16.6.1.
+
+| Area | Findings | Decision |
+|---|---|---|
+| Contract types and vocabulary | G3, G5, G11, G12, G13, G15, G17, R2, R9 | Accepted: outline join, gate.state = `handoff status` label, integer counters, null as "—", flags verbatim, full v2 fixture, exported key-path lists, formatRelativeAge, listed test rows |
+| Blocked badge source | G4, R8 | Adapted: optional ready.blocked_on plus gate.state; count from gate.blocks or blocked_on |
+| Freshness | G6, R5 | Accepted: fresh_for_head only |
+| Drawer interfaces | G7, G8, G16, R3, R4, R6, R7 | Accepted / adapted: initialWorkerId, filterLeafId, injected-fetch loader rows and a source-import check; no DOM test library |
+| Route shape | G2, R12, R13 | G2 accepted (snapshot unchanged), R12 rejected (duplicate contract), R13 accepted |
+| Security (snapshot and route) | G19, G20, R10, R11, G23 + planner | Accepted: field-local unknown for malformed bytes, fsmonitor/hooks disabled with no optional locks, POST 403 under --read-only, loopback CORS unchanged, no secret, env value or config-dir path in the body |
+| Ordering and zones | G1, G9, G10, G14, G18, R1 | Accepted |
+| Sandbox leaf | G21, G22, G24, R14, R15 | G21 deferred to question 7; the rest accepted or adapted |
+| Alignment | G25, G26, R16 | Accepted: M16 phase, M16.8 and M16.3.1 sheets now say M17 is 0.3.1, parallel with M16 |
+
+Open product questions (1-8) are listed in M17.1's sheet with the default each leaf assumes.
 
 ## References
 

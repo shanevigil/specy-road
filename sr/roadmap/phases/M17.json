@@ -15,8 +15,9 @@
     },
     {
       "acceptance": [
-        "human: the maintainer has approved the information design in this sheet (the drawer, the leaf detail and the outline badge: which fields, in what order, which show first, how unknown and missing values look) or recorded the changes in this sheet before M17.2 starts",
-        "human: the maintainer has confirmed that M17 is read-only in 0.3.1 (no GUI action stops or messages a worker, prunes a worktree, releases a claim or records a review), or named the one mutating action wanted, which the planner then files as its own M17 leaf that calls the CLI's existing command"
+        "human: this sheet records the maintainer's dated approval of the final information design (the drawer, the leaf detail and the outline badge: which fields, in what order, which show first, how unknown and missing values look) before M17.2 starts",
+        "human: the maintainer has confirmed that M17 is read-only in 0.3.1 (no GUI action stops or messages a worker, prunes a worktree, releases a claim or records a review), or named the one mutating action wanted, which the planner then files as its own M17 leaf that calls the CLI's existing command",
+        "human: this sheet's Open questions section records a dated answer to questions 1-6 before M17.2 starts and to questions 7-8 before M17.8 starts, or the maintainer's note that the default written into the leaves stands"
       ],
       "codename": "pm-gui-orchestration-plan",
       "dependencies": [],
@@ -28,16 +29,18 @@
       "sibling_order": 1,
       "status": "Not Started",
       "title": "Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1",
-      "touch_zones": [],
+      "touch_zones": [
+        "sr/planning/M17.1_pm-gui-orchestration-plan_6074421f-382e-452e-9cdb-9ad693eddc64.md"
+      ],
       "type": "gate"
     },
     {
       "acceptance": [
-        "gui/pm-gantt/src/orchestrationSnapshot.ts declares the snapshot type: its required fields are exactly M16.3.1's v1 list (schema; per leaf key the claim {codename, branch, registered_at}, workers {id, harness, model, status, pid_alive, started_at, ended_at}, worktrees {path, branch, dirty} and reviews {model, verdict, commit, fresh_for_head}; leafless workers) with status in claimed, running, exited_ok, exited_failed, abandoned, unknown; the schema 2 additions are optional fields (worker account, last_activity, flags; worktree ahead, behind; per leaf ready {commit, model, at}, gate {state, approvals, blocks, fresh_for_head}, holds) and this sheet lists them for M17.6",
-        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json covers every status value, a leaf with two worktrees, a leafless worker, an `unknown` field, a stale review (fresh_for_head false), a READY with a blocking review, a held leaf and a worker flagged stalled and steering_changed; a vitest test fails when the mock has a key the type does not declare or lacks a required one",
-        "A pure view model in the same module (no React, no fetch) groups leaves in outline id order then leafless workers, picks one leaf badge with the precedence in M17.1's sheet, formats ages from an injected clock, and renders `unknown` as \"unknown\" and an absent optional field as \"—\", never as false, 0 or clean; table-driven vitest tests over the mock cover each rule",
-        "No component, route or existing type changes; `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes",
-        "Estimated net line change (informational, not a gate): frontend about +350 (module, tests and mock)"
+        "gui/pm-gantt/src/orchestrationSnapshot.ts declares the snapshot type: its required fields are exactly M16.3.1's v1 list (schema; per leaf key the claim {codename, branch, registered_at}, workers {id, harness, model, status, pid_alive, started_at, ended_at}, worktrees {path, branch, dirty} and reviews {model, verdict, commit, fresh_for_head}; leafless workers) with status in claimed, running, exited_ok, exited_failed, abandoned, unknown; the schema 2 additions are optional: worker account (string or null), last_activity, flags (string list); worktree ahead, behind (integer or \"unknown\"); per leaf ready {commit, model, at, blocked_on? [{acceptance, reason}]}, gate {state (a `handoff status` label), approvals (integer), blocks (integer), fresh_for_head}, holds (gate id list); the module exports `requiredKeys` and `optionalKeys` (key paths) and this sheet lists them for M17.6",
+        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json covers every status value, a leaf with two worktrees, a leafless worker, an `unknown` field, a null account, a stale review (fresh_for_head false), gate states blocked and executor_blocked (a READY with blocked_on), a held leaf and a worker whose flags are stalled and steering_changed; a vitest test fails when a mock key path is in neither `requiredKeys` nor `optionalKeys` or a `requiredKeys` path is missing",
+        "`buildOrchestrationView(snapshot, outline, now)` in the same module (no React, no fetch) joins each leaf key to the outline's `node_key` for display id, title and order (outline order, then keys absent from the outline by key, then leafless workers); picks one leaf badge with M17.1's precedence, where blocked means gate.state blocked or executor_blocked with count gate.blocks or the number of ready.blocked_on entries; formats ages with `formatRelativeAge` (lastWorked.ts) from `now`; renders `unknown` as \"unknown\" and an absent or null optional field as \"—\", never as false, 0 or clean",
+        "Table-driven vitest rows with a fixed clock: each badge candidate alone, each adjacent precedence pair on one leaf, reversed worker order, numeric-looking display ids in outline order, a schema 1 snapshot (no optional fields), explicit unknown, null account, an empty snapshot and leafless workers only, each with its expected groups, badge and text; no component, route or existing type changes; `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes",
+        "Estimated net line change (informational, not a gate): frontend about +400 (module, tests and mock)"
       ],
       "codename": "gui-orch-view-model",
       "dependencies": [
@@ -60,11 +63,11 @@
     },
     {
       "acceptance": [
-        "A header button \"Orchestration\" opens a read-only drawer: one group per leaf with orchestration state in outline order (display id, title, leaf badge, claim codename, branch and registered age), then a \"No leaf\" group; each worker row shows id, harness / model, account, status, last activity age, started / ended and flag badges (failed, stalled, steering_changed, any other flag verbatim), all from M17.2's view model",
-        "api.ts gains `fetchOrchestration()` for `GET /api/orchestration`; when the server answers 404 the drawer says the server does not provide the orchestration snapshot yet; the mock renders only in a dev build (`import.meta.env.DEV`) with `?mock=orchestration`; no existing request in api.ts changes",
-        "Clicking a leaf id opens the existing edit modal for that node; clicking a worker opens the existing Workers drawer on that worker; the drawer reloads on open and on Refresh and adds no polling interval; it issues only GET requests (a vitest test or a tests/ grep asserts OrchestrationDrawer imports no mutation helper)",
+        "A header button \"Orchestration\" opens a read-only drawer: one group per leaf from M17.2's view model (display id, title, leaf badge, claim codename, branch and registered age), then a \"No leaf\" group; each worker row shows id, harness / model, account, status, last activity age, started / ended and one badge per `flags` entry, verbatim (exited_failed shows in the status column); an optional `filterLeafId` prop (null shows every group) shows only that leaf's group",
+        "api.ts gains `fetchOrchestration()` built on `loadOrchestration(fetchImpl)` in orchestrationSnapshot.ts; vitest rows with an injected fetch assert one GET to /api/orchestration per load, 404 -> unavailable (the drawer says the server does not provide the orchestration snapshot yet) and any other failure -> error; a vitest over OrchestrationDrawer.tsx's source fails on any import from api.ts other than `fetchOrchestration`; the mock renders only in a dev build (`import.meta.env.DEV`) with `?mock=orchestration`; no existing request in api.ts changes",
+        "Clicking a leaf id opens the existing edit modal for that node; clicking a worker opens the existing Workers drawer on that worker through a new optional WorkersDrawer prop `initialWorkerId`, selected through createWorkerSelection on open (without it the current newest-worker default stays; workerSelection tests gain both rows); the drawer reloads on open and on Refresh and adds no polling interval unless M17.1 records one (question 5)",
         "App.tsx grows only by the button, the open state and the lazy mount (under 30 lines); `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes",
-        "Estimated net line change (informational, not a gate): frontend about +250"
+        "Estimated net line change (informational, not a gate): frontend about +280"
       ],
       "codename": "gui-orch-drawer",
       "dependencies": [
@@ -85,15 +88,19 @@
         "gui/pm-gantt/src/api.ts",
         "gui/pm-gantt/src/App.tsx",
         "gui/pm-gantt/src/App.css",
-        "specy_road/pm_gantt_static/"
+        "specy_road/pm_gantt_static/",
+        "gui/pm-gantt/src/components/WorkersDrawer.tsx",
+        "gui/pm-gantt/src/workerSelection.ts",
+        "gui/pm-gantt/src/workerSelection.test.ts",
+        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "LeafOrchestrationDetail shows for one leaf: the claim; each worktree (path, branch, dirty yes / no / unknown, ahead and behind the integration branch or \"—\"); the newest READY (short commit, model, age); each review record (model, verdict, commit, fresh for HEAD); the gate summary (state, approvals, blocks, fresh for HEAD); and holds (gate ids the leaf waits on)",
-        "A review whose fresh_for_head is false, or whose commit differs from the READY commit, is marked stale; blocking verdicts list first; fields a schema 1 server omits show \"—\"; view-model tests cover each rule",
-        "The detail shows in the Orchestration drawer for a selected leaf and as a collapsed read-only \"Orchestration\" section in the existing edit modal for leaf nodes; the edit modal's save paths and their tests are unchanged",
+        "LeafOrchestrationDetail shows for one leaf: the claim; each worktree (path, branch, dirty yes / no / unknown, ahead and behind the integration branch or \"—\"); the newest READY (short commit, model, age) and its blocked_on entries as plain-text `A<n>: <reason>` lines; each review record (model, verdict, commit, fresh for HEAD); the gate summary (state, approvals, blocks, fresh for HEAD); and holds (gate ids)",
+        "Review freshness follows the snapshot's fresh_for_head only (\"unknown\" stays unknown; READY.commit is shown separately and never compared); blocking verdicts list first; fields a schema 1 server omits, or null, show \"—\"; view-model rows cover a fresh carried approval whose commit differs from READY.commit (not stale), a stale review, an unknown one and a schema 1 leaf",
+        "The detail shows in the Orchestration drawer for a selected leaf and, unless M17.1 records otherwise (question 6), as a collapsed read-only \"Orchestration\" section in the existing edit modal for leaf nodes; the edit modal's save paths and their tests are unchanged",
         "`cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes",
         "Estimated net line change (informational, not a gate): frontend about +250"
       ],
@@ -122,15 +129,15 @@
     },
     {
       "acceptance": [
-        "When the snapshot is available each leaf row shows at most one badge chosen by the view model (blocked / held, exited_failed, stalled, running, READY awaiting review, approved, claimed, abandoned, unknown), with a hover listing claim, workers, worktree count, READY and review summary; a row with no orchestration state shows nothing new",
-        "A held leaf's hover names the gate ids from the snapshot's holds (\"—\" when the server sends none); a leaf with a blocking review or a READY `blocked_on` shows \"blocked\" with the count",
-        "Clicking the badge opens the Orchestration drawer filtered to that leaf; the snapshot loads once per roadmap refresh with no new polling interval; when `GET /api/orchestration` answers 404 the outline renders exactly as before (existing outline and gantt tests unchanged)",
+        "When the snapshot is available each leaf row's existing Task cell shows at most one badge chosen by the view model (blocked / held, exited_failed, stalled, running, READY awaiting review, approved, claimed, abandoned, unknown), with a hover listing claim, workers, worktree count, READY and review summary; no column is added (`TABLE_COLS` stays 6) and a row with no orchestration state shows nothing new",
+        "A held leaf's hover names the gate ids from the snapshot's holds (\"—\" when the server sends none); a blocked leaf shows \"blocked\" with the count (gate.blocks, or the number of ready.blocked_on entries for executor_blocked); view-model rows for snapshot present, snapshot unavailable (404) and no state assert badge text, hover text and the leaf key a click passes",
+        "Clicking the badge opens the Orchestration drawer with M17.3's `filterLeafId` set to that leaf key (passed from App.tsx); the snapshot loads once per roadmap refresh with no new polling interval unless M17.1 records one (question 5); when `GET /api/orchestration` answers 404 the outline renders exactly as before (existing outline, tableCols and gantt tests unchanged)",
         "App.tsx grows by under 20 lines; `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes",
-        "Estimated net line change (informational, not a gate): frontend about +150"
+        "Estimated net line change (informational, not a gate): frontend about +170"
       ],
       "codename": "gui-orch-outline-badges",
       "dependencies": [
-        "299b0942-b9da-4784-ab34-f25701ee0e27"
+        "fad930e4-76ee-407d-9ee4-a4d8a07d64c1"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M17.5",
@@ -152,10 +159,10 @@
     },
     {
       "acceptance": [
-        "`orchestration.state.snapshot(repo_root)` returns `schema: 2`: every v1 field keeps its name, type and value; it adds per worker `account` (the record's billing route or roster account label, else null), `last_activity` (the newer of the last event time and last_output_at) and `flags`; per worktree `ahead` and `behind` against the local integration ref; per leaf `ready` {commit, model, at} from the newest valid READY for the registered branch, `gate` {state, approvals, blocks, fresh_for_head} and `holds` (open gate ids the leaf depends on, as list-gates reports); tests/fixtures/orchestration_snapshot_v2.json lists exactly these fields and they equal the optional fields of gui/pm-gantt/src/orchestrationSnapshot.ts",
-        "The builder stays read-only: it writes nothing, runs no stall sweep, ack or fetch, and uses local refs only; an unreadable source sets only its own fields to `unknown` (tests: an unreadable READY, a missing integration ref, a corrupt worker record)",
-        "The gate summary calls the review gate's existing public function rather than re-implementing it, and the layering gate stays green; `worker list`, `orchestrate plan` and doctor output are unchanged (M16.3.1's parity rows stay green); docs/orchestration.md documents schema 2",
-        "Estimated net line change (informational, not a gate): package about +150, tests about +200"
+        "`orchestration.state.snapshot(repo_root)` returns `schema: 2`: every v1 field keeps its name, type and value; it adds per worker `account` (a label per M17.1 question 3, default the roster account label, else null; never a path, credential or environment value), `last_activity` (the newer of the last event time and last_output_at) and `flags` (the record's flags verbatim); per worktree `ahead` and `behind` (integers against the local integration ref, else \"unknown\"); per leaf `ready` {commit, model, at (the file's mtime, ISO UTC), blocked_on (the READY's entries while it is current at the commit under review, else absent)} from the READY latest_ready selects for the registered branch, `gate` {state (the label `handoff status` reports), approvals and blocks (integers: counted approvals and counted blocking records), fresh_for_head} and `holds` (per M17.1 question 4, default the open gate ids the leaf depends on, as list-gates reports); tests/fixtures/orchestration_snapshot_v2.json is a full schema 2 snapshot whose key paths are exactly orchestrationSnapshot.ts's `requiredKeys` plus `optionalKeys` (a name change edits the TypeScript and the mock here, and `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` then passes)",
+        "Read-only and total: the builder writes nothing, runs no stall sweep, ack, fetch, check or harness command, and every git call passes `-c core.fsmonitor=false -c core.hooksPath=/dev/null` with GIT_OPTIONAL_LOCKS=0; a non-UTF-8, non-mapping or schema-invalid READY, review or worker record sets only that source's fields to `unknown` and keeps readable siblings; tests through snapshot(): one byte fixture per malformed class, a missing integration ref, and a worktree whose core.fsmonitor names a sentinel-writing script (the sentinel stays absent and `git status --porcelain` of the main checkout is unchanged)",
+        "The gate summary calls the review gate's existing public function (no re-implementation); a table through snapshot() covers passed gate, counted block, stale-only review, insufficient approvals, executor blocker, policy error, absent READY and unreadable READY, asserting each leaf's full ready and gate values; a seeded secret environment value and config-dir path appear in no snapshot string; the layering gate, M16.3.1's parity rows and `worker list`, `orchestrate plan` and doctor output stay unchanged; docs/orchestration.md documents schema 2",
+        "Estimated net line change (informational, not a gate): package about +180, tests about +280"
       ],
       "codename": "orch-snapshot-schema-2",
       "dependencies": [
@@ -174,17 +181,20 @@
         "specy_road/orchestration/state.py",
         "tests/fixtures/orchestration_snapshot_v2.json",
         "docs/orchestration.md",
-        "tests/"
+        "tests/",
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "`GET /api/orchestration` returns `orchestration.state.snapshot(repo_root)` for the main worktree (like `/api/workers`) plus the display id for each leaf key; the handler imports only `specy_road.orchestration` (the layering gate stays green) and lives in the gui_app module M16.3.7 folded",
-        "It works under `specy-road gui --read-only`; every existing `/api/` route keeps its response shape (existing GUI tests unchanged, including tests/test_gui_outline_contract.py and tests/test_gui_app_workers.py); this is the only route added",
-        "A contract test fails when the response's keys differ from tests/fixtures/orchestration_snapshot_v2.json, or when gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json has a key the fixture lacks or lacks a required one",
-        "Tests over fixture repos: no orchestration state (200, empty), a claim with a running worker and a READY, an unreadable worker record (200, that worker's fields `unknown`)",
-        "Estimated net line change (informational, not a gate): package about +40, tests about +150"
+        "`GET /api/orchestration` returns `orchestration.state.snapshot(<main project root>)` unchanged, with no added keys (display ids come from the GUI's outline, M17.2); the handler imports only `specy_road.orchestration` (the layering gate stays green), lives in the gui_app module M16.3.7 folded, and leaves the app's loopback-only CORS setting unchanged",
+        "It works under `specy-road gui --read-only`, where `POST /api/orchestration` answers 403; every existing `/api/` route keeps its response shape (existing GUI tests unchanged, including tests/test_gui_outline_contract.py and tests/test_gui_app_workers.py); this is the only route added",
+        "A contract test fails when a response key path is not in tests/fixtures/orchestration_snapshot_v2.json, or when gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json has a key path the fixture lacks or lacks a required one",
+        "Table-driven tests over fixture repos: no orchestration state (200, empty); a claim with a running worker and a READY; a non-UTF-8 worker record and READY (200, only those fields `unknown`); served from a linked worktree with divergent local state (reads the main worktree's claims, READY and workers); a nested project root (serves that project, not the enclosing repository's roadmap); a seeded secret environment value and CLAUDE_CONFIG_DIR path appear nowhere in the body",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +200"
       ],
       "codename": "gui-api-orchestration",
       "dependencies": [
@@ -218,7 +228,8 @@
       "dependencies": [
         "fad930e4-76ee-407d-9ee4-a4d8a07d64c1",
         "6341c523-6051-4c9f-8cb7-74ab1a9eeed9",
-        "25c737eb-656b-487b-a238-b8e825a8e6d3"
+        "25c737eb-656b-487b-a238-b8e825a8e6d3",
+        "a0733044-eec3-4411-bec8-e6f31fac6456"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M17.8",
@@ -242,10 +253,10 @@
     {
       "acceptance": [
         "Run by the coordinator, not CI and not a worker: before the first sandbox call the coordinator asks the maintainer and records the approval (date) in tests/sandbox/pm_gui_orchestration/RESULTS.md",
-        "tests/sandbox/pm_gui_orchestration/ holds a setup script that builds the wheel (after `npm run build`), creates a fixture repo from tests/fixtures/specy_road_dogfood seeded with orchestration state (a claim with a running worker, a failed worker flagged stalled, a leaf with two worktrees one dirty, a READY with one approving and one stale review, a held leaf, a leafless worker) and starts `specy-road gui --read-only`; a browser test script for sbvm_run_browser_test; and CHECKLIST.md",
-        "The run uses the sandbox MCP tools (claim_workspace, vm_start, sbvm_exec to install the wheel and run setup, sbvm_run_browser_test, sbvm_screenshot) and covers each checklist item: drawer groups and flags, leaf detail (stale review, ahead/behind, holds), outline badge and its link, the 404 message against a server without the route, and a refused POST under --read-only",
-        "RESULTS.md records date, wheel version and commit, VM image, pass / fail per checklist item and screenshot names (screenshots stay under work/, gitignored); each defect is filed as a new M17 leaf (so the M16.8.9 gate waits for it), not fixed in this leaf",
-        "Estimated net line change (informational, not a gate): tests/sandbox about +250; package 0"
+        "tests/sandbox/pm_gui_orchestration/ holds a setup script that builds the wheel (after `npm run build`), creates a fixture repo from tests/fixtures/specy_road_dogfood seeded with orchestration state (a claim with a running worker whose pid is an inert child process the script supervises and kills on exit, success or failure; a failed worker flagged stalled; a leaf with two worktrees one dirty; a READY with one approving and one stale review; a held leaf; a leafless worker) and starts `specy-road gui --read-only`, waiting for an HTTP 200 rather than a fixed sleep; a browser test script for sbvm_run_browser_test; and CHECKLIST.md with the expected badge and detail values per item",
+        "The run uses the sandbox MCP tools (claim_workspace, vm_start, sbvm_exec to install the wheel and run setup, sbvm_run_browser_test, sbvm_screenshot) and covers each checklist item: drawer groups and flags, leaf detail (stale review, ahead/behind, holds), outline badge and its link, the 404 message (the browser script answers `GET /api/orchestration` with 404 by request interception, or a stub server in this directory does), and `POST /api/orchestration` answering 403 under --read-only",
+        "RESULTS.md records date, wheel version and commit, VM image, pass / fail per checklist item and screenshot names (screenshots stay under work/, gitignored), and lists each defect for the coordinator to file as a new M17 leaf in a separate roadmap operation; this leaf edits nothing outside its zone, and the M16.8.9 gate stays held until every filed leaf is Complete",
+        "Estimated net line change (informational, not a gate): tests/sandbox about +280; package 0"
       ],
       "codename": "gui-orch-sandbox-acceptance",
       "dependencies": [
