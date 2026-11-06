@@ -3,7 +3,7 @@
 After an RCA was accepted, ``worker delegate --rework`` used to send only the blocking reviews, one of which
 proposed the opposite design. :func:`governing_rca` finds the leaf's accepted ``RCA-<round>.md`` — valid
 under :func:`review_rca.loop_state`'s checks, and, for ``defer_findings``, with its marker in effect
-(:func:`review_deferral.deferral_in_effect`, the rule the gate and :mod:`review_next_step` apply) — when it
+(:func:`review_deferral.rca_deferral`, the rule the gate and :mod:`review_next_step` apply) — when it
 was filed after at least one carried blocking review. :func:`rca_lines` renders its design and required changes first, with the sentence that overrules a
 contradicting review fix; :func:`filed` marks each review as filed before or after it.
 

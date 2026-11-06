@@ -51,8 +51,8 @@ NOTES_RULES_LINES = [
     f"'{NOT_A_DEFECT} <reason>'. Write that phrase as plain text outside backticks, and let the reason name no "
     "defect.",
     "- `A1: pass` followed by more words is an observation, so it needs that phrase too.",
-    "- Each clause, split on '. ', '; ' or a conjunction (and, but, while), is checked on its own: give each "
-    "observation its own line and its own reason.",
+    "- Each clause, split on '. ', '! ', '? ', '; ' or a conjunction (and, but, while, whereas, although, though, "
+    "yet, plus), is checked on its own: give each observation its own line and its own reason.",
     "- A comma list (\"no X, Y or Z were added\") is several observations: split it into separate lines, each with "
     "its own reason.",
     "- Evidence (commands and their results) goes in `commands_rerun`, not in the notes; fewer notes lines mean "
