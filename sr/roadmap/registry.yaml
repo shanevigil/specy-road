@@ -108,6 +108,33 @@ entries:
       - specy_road/bundled_scripts/do_next_task.py
       - tests/test_do_next_task_pickup.py
       - tests/test_enforced_rules_pointers.py
+      - specy_road/orchestration_config.py
+      - specy_road/review_policy_ref.py
     started: '2026-11-05'
+    owner: savigil
+    implementation_review: pending
+  - codename: refused-review-gets-one-repair-turn
+    node_id: M21.35
+    branch: feature/rm-refused-review-gets-one-repair-turn
+    touch_zones:
+      - specy_road/review_delegate.py
+      - specy_road/review_record_write.py
+      - specy_road/review_record_rules.py
+      - tests/review_delegate_helpers.py
+      - tests/test_review_delegate_repair.py
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: verify-normalizes-real-page-text
+    node_id: M21.36
+    branch: feature/rm-verify-normalizes-real-page-text
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_verify.py
+      - tests/test_brainstorm_verify.py
+      - docs/brainstorming.md
+      - CHANGELOG.md
+    started: '2026-11-06'
     owner: savigil
     implementation_review: pending
