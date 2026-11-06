@@ -22,6 +22,7 @@ Split from :mod:`specy_road.steering_paths` for the file limit.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 from specy_road.git_subprocess import run
@@ -112,17 +113,22 @@ def _includes(pairs: list[tuple[str, str]]) -> list[str]:
     return [v for k, v in pairs if k == "include.path" or (k.startswith("includeif.") and k.endswith(".path"))]
 
 
-def read_chain(path: Path, depth: int = 0) -> list[tuple[Path, bytes, list[tuple[str, str]]]]:
-    """``(file, bytes, pairs)`` for ``path`` and every file it includes, depth first; unreadable files are left out."""
+def read_chain(path: Path, read: Callable[[Path], bytes] = Path.read_bytes,
+               depth: int = 0) -> list[tuple[Path, bytes | Exception, list[tuple[str, str]]]]:
+    """``(file, bytes, pairs)`` for ``path`` and every file it includes, depth first. A file that does not exist
+    is left out, as git leaves out a missing include; one that cannot be read is listed with the exception in
+    place of its bytes (the caller reports it), and the rest of the chain is still read."""
     try:
-        data = path.read_bytes()
-    except OSError:
+        data = read(path)
+    except FileNotFoundError:
         return []
+    except Exception as e:  # noqa: BLE001 — reported by the caller, never fatal
+        return [(path, e, [])]
     pairs = parse_config(data.decode("utf-8", "replace"))
-    out = [(path, data, pairs)]
+    out: list[tuple[Path, bytes | Exception, list[tuple[str, str]]]] = [(path, data, pairs)]
     if depth < MAX_INCLUDE_DEPTH:
         for inc in _includes(pairs):
-            out += read_chain(path.parent / os.path.expanduser(inc), depth + 1)
+            out += read_chain(path.parent / os.path.expanduser(inc), read, depth + 1)
     return out
 
 

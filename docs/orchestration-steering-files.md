@@ -30,6 +30,14 @@ listed first in the table. It sets the sticky `steering_changed`
 flag (`worker status --json` `flags`, `handoff status --json` `workers[].flags`); `worker reconcile W` lists the
 findings and clears it.
 
+**An input that cannot be read.** One rule covers every class: each file and directory is listed, read, decoded,
+parsed and hashed on its own, and any failure there (invalid UTF-8, a permission error, a dangling link or a link
+loop, malformed YAML, a parsed file over 8 MiB, a file gone mid-read) is one `check_error` finding naming that path
+and its class. The comparison goes on for every other path, so their findings and the `steering_changed` flag are
+kept. A path that cannot be read is never reported as unchanged, and one in the git half (a config file, a hooks
+directory or a hook) counts as git steering not verified, so no post-turn git command runs. Only a path that does not
+exist is `absent`; a missing include is left out, as git leaves it out.
+
 **What git is asked, and when.** Git is asked only at the turn's start, before the executor acts, which hooks
 directory and config files it uses; after the turn those files and directories are compared from the filesystem.
 The text parser (`specy_road/git_config_text.py`: a byte-order mark, CRLF, quoting, escapes, comments and continued

@@ -7,6 +7,7 @@ listing by ``worker reconcile``, and finish's refusal paired with the Claude Cod
 
 from __future__ import annotations
 
+import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -23,7 +24,7 @@ from specy_road import worker_state as ws
 from specy_road import worker_turn_check as tc
 from specy_road.bundled_scripts import finish_task
 from specy_road.git_config_text import parse_config
-from specy_road.steering_paths import FLAG_STEERING
+from specy_road.steering_paths import FLAG_STEERING, real_path
 
 
 def _layout(tmp_path: Path) -> dict[str, Path]:
@@ -266,3 +267,61 @@ def test_a_custom_cli_argv_is_left_as_written(tmp_path: Path) -> None:
     launch = wa.adapter_for("claude-code").launch(repo / "p.md", repo, "m", "claude -p {prompt}",
                                                   node_id="M1.1", repo_root=repo)
     assert "--disallowedTools" not in launch.argv
+
+
+# --- one rule for an input that cannot be read ---------------------------------------------------------------
+
+
+def _unreadable_as(kind: str, path: Path, tmp: Path) -> None:
+    """Leave ``path`` unreadable in the way ``kind`` names."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.unlink(missing_ok=True)
+    if kind == "invalid_utf8":
+        path.write_bytes(b"version: 1\nentries: [\xff\xfe]\n")
+    elif kind == "malformed_yaml":
+        path.write_text("version: 1\nentries: [unclosed\n")
+    elif kind == "unreadable":
+        path.write_text("x\n")
+        path.chmod(0)
+    elif kind == "dangling_symlink":
+        path.symlink_to(tmp / "missing-target")
+    else:   # symlink_loop
+        path.symlink_to(path.name)
+
+
+def _where(p: dict[str, Path], where: str) -> tuple[Path, str, bool]:
+    """``(the path, its class, in the git half)``; a git config row is a file the common config includes."""
+    if where == "git_config":
+        config = p["repo"] / ".git" / "config"
+        config.write_text(config.read_text() + f"[include]\n\tpath = {p['tmp'] / 'extra.gitconfig'}\n")
+    return {"registry": (p["leaf"] / "roadmap" / "registry.yaml", "registry", False),
+            "harness_file": (p["leaf"] / ".claude" / "settings.json", "harness", False),
+            "git_config": (p["tmp"] / "extra.gitconfig", "git_config", True),
+            "hook": (p["repo"] / ".git" / "hooks" / "pre-commit", "git_hook", True),
+            "env_bin": (p["repo"] / ".venv" / "bin" / "tool", "env_bin", False)}[where]
+
+
+UNREADABLE_ROWS = [   # (failure kind, where): every combination where that kind is a failure to read there
+    *[(k, "registry") for k in ("invalid_utf8", "malformed_yaml", "unreadable", "dangling_symlink", "symlink_loop")],
+    *[(k, w) for w in ("harness_file", "hook", "env_bin") for k in ("unreadable", "dangling_symlink", "symlink_loop")],
+    ("unreadable", "git_config"), ("symlink_loop", "git_config"),   # a missing include is left out, as git does
+]
+
+
+@pytest.mark.parametrize(("kind", "where"), UNREADABLE_ROWS)
+def test_an_unreadable_steering_input_is_one_check_error_and_the_rest_is_still_compared(
+        tmp_path: Path, kind: str, where: str) -> None:
+    if kind == "unreadable" and os.geteuid() == 0:
+        pytest.skip("root reads a mode-000 file")
+    p = _layout(tmp_path)
+    path, cls, git_half = _where(p, where)
+    _unreadable_as(kind, path, tmp_path)
+    rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
+    found = _turn(p["repo"], rec, lambda: _write(p["leaf"] / ".cursor" / "hooks.json", "{}\n"))   # an unrelated change
+    expected = {"env_bin": ".venv/bin/tool"}.get(where) or (
+        path.relative_to(p["leaf"]).as_posix() if path.is_relative_to(p["leaf"]) else str(real_path(path)))
+    [error] = [f for f in found if f["kind"] == "check_error" and f.get("path") == expected]
+    assert error["class"] == cls
+    [other] = [f for f in found if f["kind"] == "steering_file" and f["path"] == ".cursor/hooks.json"]
+    assert other["class"] == "harness" and FLAG_STEERING in ws.load_record(p["repo"], rec.worker_id).flags
+    assert ("git_probes_skipped" in {f["kind"] for f in found}) is git_half   # unverified git steering: no git command

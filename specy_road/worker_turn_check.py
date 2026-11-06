@@ -36,7 +36,8 @@ from specy_road.git_changed_paths import branch_commit_paths
 from specy_road.git_subprocess import git_text, head_sha, run
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import project_prefix, rebase_to_project
-from specy_road.steering_paths import FLAG_STEERING, SteeringWatch
+from specy_road import steering_paths as sp
+from specy_road.steering_paths import ABSENT, CLASSES, ERROR, FLAG_STEERING, Snapshot, real_path, resolved_path
 from specy_road.worker_adapter_base import Parsed
 from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_state import WorkerError, WorkerRecord, add_flag, append_event, clear_flag, mutate, status_entries
@@ -80,6 +81,119 @@ def git_state(worktree: Path) -> GitState:
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _git_config_side(value: str, mine: dict[str, str], keys: list[str]) -> str:
+    return value + "".join(f";{k}={mine.get(k, 'unset')}" for k in keys)
+
+
+def steering_changes(before: Snapshot, after: Snapshot) -> list[dict[str, Any]]:
+    """One finding per entry that changed or could not be read at either end (steering_paths' one rule): a
+    ``steering_file`` finding (a missing entry is ``absent``), or a ``check_error`` naming the path and class."""
+    out = []
+    for key in sorted(before.keys() | after.keys()):
+        b, a = before.get(key), after.get(key)
+        bv, av = (b.value if b else ABSENT), (a.value if a else ABSENT)
+        e = a or b
+        if ERROR in (bv[:len(ERROR)], av[:len(ERROR)]):
+            out.append(steering_error(e.path, e.cls, av if av.startswith(ERROR) else bv))
+        elif bv != av and e.cls == "git_config":
+            bd, ad = dict(b.values if b else ()), dict(a.values if a else ())
+            keys = sorted(k for k in bd.keys() | ad.keys() if bd.get(k) != ad.get(k))
+            out.append(steering_finding(e.path, e.cls, _git_config_side(bv, bd, keys), _git_config_side(av, ad, keys)))
+        elif bv != av:
+            out.append(steering_finding(e.path, e.cls, bv, av))
+    return out
+
+
+def steering_finding(path: str, cls: str, before: str, after: str) -> dict[str, Any]:
+    return {"kind": "steering_file", "path": path, "class": cls, "before": before, "after": after,
+            "summary": f"steering file {path} ({cls}) changed: {before[:24]} -> {after[:24]}"}
+
+
+def steering_error(path: str, cls: str, error: str) -> dict[str, Any]:
+    return {"kind": "check_error", "path": path, "class": cls, "error": error.removeprefix(ERROR),
+            "summary": f"steering file {path} ({cls}) not checked: {error.removeprefix(ERROR)[:120]}"}
+
+
+def _links(top: Path, dirty: dict[str, str] | None) -> dict[str, str] | None:
+    """``{path: link text}`` for the symlinks among a checkout's porcelain entries (``dirty``, or read here);
+    ``None`` when git cannot list them."""
+    if dirty is None:
+        entries = status_entries(top)
+        if entries is None:
+            return None
+        dirty = {p: "" for _xy, p in entries}
+    out = {}
+    for p in dirty:
+        try:
+            out[p] = os.readlink(top / p)
+        except OSError:   # not a link (or gone)
+            continue
+    return out
+
+
+class SteeringWatch:
+    """One turn's steering snapshot (:mod:`specy_road.steering_paths`), taken at the turn's start;
+    :meth:`git_changes` before any post-turn git command, :meth:`rest_changes` after the git probes (or with
+    ``git_ok=False`` when they were skipped)."""
+
+    def __init__(self, repo_root: Path, worktree: Path, node_id: str, worktree_dirty: dict[str, str] | None) -> None:
+        self.scope = sp.scope_for(repo_root, worktree, node_id)
+        self.git = sp.git_snapshot(self.scope)
+        self.files = sp.file_snapshot(self.scope)
+        sp.blobs(self.files, self.scope)
+        self.links, self.link_errors = self._porcelain_links(worktree_dirty)
+
+    def _porcelain_links(self, worktree_dirty: dict[str, str] | None) -> tuple[dict[str, str], list[dict[str, Any]]]:
+        """The links among both checkouts' porcelain, and a ``check_error`` per checkout git could not list."""
+        out: dict[str, str] = {}
+        errors = []
+        for top, dirty in zip(self.scope.tops, (worktree_dirty, None)):
+            links = _links(top, dirty)
+            if links is None:
+                errors.append(steering_error(str(top), "symlink", f"{ERROR}git status could not list {top}"))
+            out.update({str(top / p): t for p, t in (links or {}).items()})
+        return out, errors
+
+    def git_changes(self) -> list[dict[str, Any]]:
+        return steering_changes(self.git, sp.git_snapshot(self.scope))
+
+    def rest_changes(self, worktree_dirty: dict[str, str] | None, *, git_ok: bool) -> list[dict[str, Any]]:
+        """The non-git classes; with ``git_ok`` also the policy blobs and new or retargeted symlinks leaving the
+        worker's git root (both need git). ``worktree_dirty`` is the worktree's porcelain after the turn."""
+        after = sp.file_snapshot(self.scope)
+        before = {k: v for k, v in self.files.items() if git_ok or v.cls != "policy_blob"}
+        if git_ok:
+            sp.blobs(after, self.scope)
+        out = steering_changes(before, after)
+        if git_ok:
+            links, errors = self._porcelain_links(worktree_dirty)
+            out += {e["path"]: e for e in (*self.link_errors, *errors)}.values()   # unlisted at either end
+            for path, target in sorted(links.items()):
+                old = self.links.get(path)
+                if old != target and not resolved_path(Path(path)).is_relative_to(self.scope.w_top):
+                    out.append(steering_finding(self.scope.display(real_path(Path(path))), "symlink",
+                                                f"link:{old}" if old is not None else ABSENT, f"link:{target}"))
+        return out
+
+    def merged(self, found: list[dict[str, Any]], steer: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """``found`` plus ``steer`` with one finding per path: of several findings for one path (two detectors
+        reach it, e.g. a harness file that is also a new escaping symlink) the first class in
+        :data:`~specy_road.steering_paths.CLASSES` order is kept, and every steering path is dropped from the
+        ``porcelain`` and ``committed_outside_zones`` findings."""
+        one: dict[str, dict[str, Any]] = {}
+        for f in sorted(steer, key=lambda f: CLASSES.index(f["class"])):
+            one.setdefault(f["path"], f)
+        out = []
+        for f in found:
+            if f["kind"] not in ("porcelain", "committed_outside_zones") or "paths" not in f:
+                out.append(f)
+                continue
+            keep = [p for p in f["paths"] if self.scope.display(real_path(self.scope.w_top / p)) not in one]
+            if keep:
+                out.append({**f, "paths": keep, "summary": f["summary"].split(": ", 1)[0] + ": " + ", ".join(keep[:10])})
+        return out + sorted(one.values(), key=lambda f: f["path"])
 
 
 class TurnWatch:
@@ -240,7 +354,7 @@ def _turn_findings(repo_root: Path, rec: WorkerRecord, watch: TurnWatch) -> list
         return found
     after = None
     if steer:
-        found.append({"kind": "git_probes_skipped", "summary": "git steering changed: post-turn git probes skipped"})
+        found.append({"kind": "git_probes_skipped", "summary": "git steering changed or unreadable: post-turn git probes skipped"})
     else:
         try:
             after = git_state(Path(rec.worktree))
