@@ -104,17 +104,6 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: verify-normalizes-real-page-text
-    node_id: M21.36
-    branch: feature/rm-verify-normalizes-real-page-text
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_verify.py
-      - tests/test_brainstorm_verify.py
-      - docs/brainstorming.md
-      - CHANGELOG.md
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: pending
   - codename: review-record-files-only-as-the-caller
     node_id: M21.31
     branch: feature/rm-review-record-files-only-as-the-caller
@@ -131,6 +120,28 @@ entries:
       - docs/orchestration-review.md
       - CHANGELOG.md
       - specy_road/bundled_scripts/role_prompt_rca.py
+      - tests/conftest.py
+      - specy_road/review_answer.py
+      - tests/test_review_concurrent_writers.py
+      - tests/test_review_record_write.py
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: session-end-only-your-own
+    node_id: M21.32
+    branch: feature/rm-session-end-only-your-own
+    touch_zones:
+      - specy_road/bundled_scripts/session_cli.py
+      - specy_road/session_presence.py
+      - specy_road/tool_call_guard.py
+      - tests/test_session_end_others.py
+      - tests/test_session_presence.py
+      - docs/orchestration.md
+      - specy_road/templates/specyrd/agents-rules.md
+      - specy_road/templates/specyrd/agents-md-block.md
+      - CHANGELOG.md
+      - tests/test_enforced_rules_pointers.py
+      - suggested_prompts/bootstrap-agents-md.md
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending

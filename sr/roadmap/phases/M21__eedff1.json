@@ -125,7 +125,11 @@
         "tests/test_review_record_caller.py",
         "docs/orchestration-review.md",
         "CHANGELOG.md",
-        "specy_road/bundled_scripts/role_prompt_rca.py"
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "tests/conftest.py",
+        "specy_road/review_answer.py",
+        "tests/test_review_concurrent_writers.py",
+        "tests/test_review_record_write.py"
       ],
       "type": "task"
     },
@@ -157,7 +161,9 @@
         "docs/orchestration.md",
         "specy_road/templates/specyrd/agents-rules.md",
         "specy_road/templates/specyrd/agents-md-block.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_enforced_rules_pointers.py",
+        "suggested_prompts/bootstrap-agents-md.md"
       ],
       "type": "task"
     },
@@ -250,7 +256,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.36_verify-normalizes-real-page-text_e08489cb-8a8e-497f-8a0e-79c5eb67f39d.md",
       "sibling_order": 34,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_verify.py",
