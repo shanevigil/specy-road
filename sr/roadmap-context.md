@@ -129,7 +129,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.40` upgrade's scratch git drops every GIT_ variable, runs no hook, and times out `upgrade-scratch-git-env-sterile` — task — **Not Started**
   - `M21.41` The notes rules name every clause break the checker uses; rework docstring and verify tests fixed `notes-rules-name-every-clause-break` — task — **Complete**
   - `M21.42` review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it `parse-failure-gets-repair-turn` — task — **Complete**
-  - `M21.43` digest refuses cleanly when the roadmap manifest is missing, like export --check `digest-check-no-manifest-clean-error` — task — **Not Started**
+  - `M21.43` digest refuses cleanly when the roadmap manifest is missing, like export --check `digest-check-no-manifest-clean-error` — task — **Complete**
   - `M21.44` A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk `guidance-bypass-model-excluded-under-signed-reviews` — task — **Not Started**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
@@ -292,7 +292,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.37` on `feature/rm-safe-write-rule-setup-writers` since 2026-11-06
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
-- `M21.43` on `feature/rm-digest-check-no-manifest-clean-error` since 2026-11-06
 - `M21.44` on `feature/rm-guidance-bypass-model-excluded-under-signed-reviews` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
@@ -304,9 +303,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | --- | --- | --- | --- | --- | --- | --- |
 | `docs` **flagged** | 32 | 0 | 2.53 | 56% | 27 | 3 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 47 | 0 | 2.51 | 53% | 35 | 5 |
-| `tests` **flagged** | 49 | 0 | 2.49 | 53% | 35 | 5 |
-| `CHANGELOG.md` | 28 | 0 | 1.93 | 36% | 22 | 1 |
+| `specy_road` **flagged** | 47 | 0 | 2.49 | 51% | 35 | 5 |
+| `tests` **flagged** | 49 | 0 | 2.47 | 51% | 35 | 5 |
+| `CHANGELOG.md` | 29 | 0 | 1.90 | 34% | 22 | 1 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
 

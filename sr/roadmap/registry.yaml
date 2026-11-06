@@ -141,16 +141,6 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: digest-check-no-manifest-clean-error
-    node_id: M21.43
-    branch: feature/rm-digest-check-no-manifest-clean-error
-    touch_zones:
-      - specy_road/bundled_scripts/digest_cli.py
-      - tests/test_digest.py
-      - CHANGELOG.md
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: pending
   - codename: guidance-bypass-model-excluded-under-signed-reviews
     node_id: M21.44
     branch: feature/rm-guidance-bypass-model-excluded-under-signed-reviews

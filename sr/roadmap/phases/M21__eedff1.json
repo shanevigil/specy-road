@@ -455,7 +455,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.43_digest-check-no-manifest-clean-error_dc4d8f5d-b3cc-4224-b456-4991ab6b3909.md",
       "sibling_order": 41,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "digest refuses cleanly when the roadmap manifest is missing, like export --check",
       "touch_zones": [
         "specy_road/bundled_scripts/digest_cli.py",
