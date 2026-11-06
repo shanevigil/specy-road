@@ -17,7 +17,7 @@
       ],
       "planning_dir": "planning/M21.42_parse-failure-gets-repair-turn_f4abbcaf-6a04-44f7-a505-8b0694560f41.md",
       "sibling_order": 40,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it",
       "touch_zones": [
         "specy_road/review_delegate.py",
