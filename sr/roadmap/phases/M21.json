@@ -411,7 +411,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.25_reviewer-answer-after-prose_39a3fef3-50cc-4432-9f79-10af517ad1f3.md",
       "sibling_order": 23,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate reads a reviewer's answer when narration precedes its final JSON object",
       "touch_zones": [
         "specy_road/review_answer.py",
