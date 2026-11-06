@@ -417,7 +417,10 @@
         "specy_road/review_answer.py",
         "tests/test_review_answer.py",
         "docs/orchestration-reviewer-output.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_review_record_write.py",
+        "tests/test_review_record_write_closure.py",
+        "tests/test_review_delegate.py"
       ],
       "type": "task"
     },
