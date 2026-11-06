@@ -308,11 +308,11 @@
     },
     {
       "acceptance": [
-        "With refs/remotes/<remote>/HEAD missing, integration_name uses the integration_branch HEAD's config names only when refs/remotes/<remote>/<name> exists, its own committed git-workflow.yaml names <name> and the same remote, and no other ref under refs/remotes/<remote>/ has a committed config naming itself; where then reads '(roadmap/git-workflow.yaml at <remote>/<name>; <remote>/HEAD not set)'. A candidate whose committed config is malformed or not a mapping, or a failed ref enumeration, fails closed (it is never read as not naming itself)",
-        "Otherwise it fails closed as today. The error suggests `git remote set-head <remote> <name>` (noting --auto fails when the remote's HEAD is unborn) only when exactly one ref under refs/remotes/<remote>/, other than one whose tip is HEAD's commit, has a readable committed git-workflow.yaml whose integration_branch names itself (an empty or missing value does not count as main); with none or several it names no branch and says to run set-head with the remote's real default branch",
-        "tests/test_review_policy_ref_no_remote_head.py: the rc4 setup (git init --bare remote with an unborn HEAD, main pushed, no set-head) reads policy from origin/main with no config error; a pushed feature commit naming itself fails closed and its hint does not name the feature branch; a branch naming one that does not name itself fails closed; a candidate with malformed YAML and one with non-mapping YAML fail closed with a configuration error and no traceback; with origin/HEAD set nothing changes (existing tests pass)",
-        "docs/orchestration.md's policy-source paragraph states the fallback and its condition; CHANGELOG [Unreleased] Fixed. Out of scope: running set-head for the user, repos without a remote",
-        "Estimated net line change (informational, not a gate): package about +30, tests about +100, docs about +3"
+        "With refs/remotes/<remote>/HEAD missing, integration_name fails closed as today, whatever any branch's committed config says: there is no automatic fallback (maintainer 2026-11-06; uniqueness of a self-naming branch is no trust anchor, since a secondary remote or a narrow fetch can leave the branch under review as the only match)",
+        "The error prints the exact command to run: `git remote set-head <remote> <name>`, noting that --auto fails when the remote's HEAD is unborn. It names a branch only when exactly one ref under refs/remotes/<remote>/, other than one whose tip is HEAD's commit, has a readable committed git-workflow.yaml whose integration_branch names itself (an empty or missing value does not count as main); with none or several it names no branch and says to run set-head with the remote's real default branch. The suggestion is text for the developer: the gate never trusts it. A malformed or non-mapping candidate config, or a failed ref enumeration, is never read as naming itself and gives no traceback",
+        "tests/test_review_policy_ref_no_remote_head.py: the rc4 setup (git init --bare remote with an unborn HEAD, main pushed, no set-head) fails closed with a hint naming main, and after running that hint's command reads policy from origin/main with no config error; a pushed feature commit naming itself fails closed and its hint does not name the feature branch; a candidate with malformed YAML and one with non-mapping YAML fail closed and the hint names no branch, no traceback; with origin/HEAD set nothing changes (existing tests pass)",
+        "docs/orchestration.md's policy-source paragraph states that the gate needs <remote>/HEAD, gives the set-head command and the --auto caveat; CHANGELOG [Unreleased] Fixed. Out of scope: running set-head for the user, repos without a remote",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +70, docs about +3"
       ],
       "codename": "gate-without-remote-head",
       "dependencies": [],
@@ -322,7 +322,7 @@
       "planning_dir": "planning/M22.12_gate-without-remote-head_4dfa0dbd-5b47-4b91-abc3-953669d35a8a.md",
       "sibling_order": 11,
       "status": "Not Started",
-      "title": "The review gate finds the integration branch when refs/remotes/<remote>/HEAD is missing, without trusting the branch under review",
+      "title": "The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing",
       "touch_zones": [
         "specy_road/review_policy_ref.py",
         "tests/test_review_policy_ref_no_remote_head.py",
