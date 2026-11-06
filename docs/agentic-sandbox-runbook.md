@@ -29,6 +29,7 @@
 - hook-mode grind and the gate → "7. Grind and unattended loops"
 - what must be green before §A → "8. Close-out"
 - replaying `docs/context-regressions.yaml` on a harness or model upgrade, and its format → "9. Context regressions"; the opt-in context-feedback block and its triage rule → "10. Context feedback (pilot)"
+- claiming, renewing and releasing a sandbox guest over MCP → "11. Driving a guest over MCP"
 
 **Related:** [`release-runbook.md`](release-runbook.md), [`orchestration-workers.md`](orchestration-workers.md), [`brainstorming.md`](brainstorming.md), [`orchestration.md`](orchestration.md).
 
@@ -398,3 +399,58 @@ prompt then asks for three lines at the end of the summary, `missing:` / `wrong:
 prompt line or naming the turn, or `none`. Copy them into the evidence file with the prompt's `sha256`. **Triage rule:**
 act on an item only when it quotes a line or names a turn **and** recurs in another run or reproduces against the brief
 and the transcript; record offered / cited / reproduced per run. Hit rate and shipping decision: [`design-notes/context-feedback-pilot.md`](design-notes/context-feedback-pilot.md).
+
+## 11. Driving a guest over MCP
+
+For a run that reaches its guests only through the sandbox's MCP tools. The
+sandbox's own tool contract is the authority, and its `get_changelog` lists
+what changed; read each tool's schema before calling it.
+
+**When this applies:** once the sandbox has claim holders, leases and chunked
+push. A `claim_workspace` that returns `holder_secret` tells you it does.
+Without one, none of the holder or lease rules below apply yet.
+
+- **Keep the holder secret.** The first `claim_workspace` returns
+  `holder_secret` once. Keep it for the whole run, one per workspace and
+  role, and out of reports and guest commands. Pass `client_label` so other
+  clients can see who holds the pin.
+- **Do not share by accident.** Re-claim only with your own secret. `pin_held`
+  means someone else holds that workspace, so record the holders and use
+  another path. `join=true` shares their guest, so use it only when that is
+  the intent.
+- **Keep the guest active.** Only successful tool calls on a slot count as
+  activity: a job running in the guest does not. A guest with no calls is
+  paused or stopped after the idle window (30 minutes by default;
+  `vm_idle_status` gives `action_at_iso`), so during long jobs poll with
+  `sbvm_exec` at least every 25 minutes.
+- **A lease expiry is data loss.** `expires_at` comes back on each claim, and
+  the default lease is 24 hours (`null` means none applies). A successful call
+  on the slot renews it. When it passes, the guest is stopped and reset and
+  the pin is released, with no notice. Fetch results before any wait that
+  could reach `expires_at`.
+- **Spot a silent expiry.** After an expiry, a re-claim can look like success
+  on a clean guest. Only a claim that creates a holder returns `holder_secret`,
+  so a re-claim that returns a new one means your work is gone. Compare `sbvm`
+  as well.
+- **Release.** Fetch what you need, `vm_stop`, then `release_workspace` with
+  the secret. `holder_required` means the pin stays. `detached: true` with
+  `released: false` means another client still holds it and the guest was not
+  reset. `reset_failed` means `ok: false`, yet the pin is gone: confirm with
+  `list_workspace_pins` and record it. That slot then refuses claims with
+  `slot_dirty`, so use another.
+- **Unexpected refusals.** `release_in_progress` or `pin_held` on a slot you
+  believe is yours, when you have not just released it, can mean the lease ran
+  out: treat that guest's work as lost and redo the step on a new claim. If
+  your own release raised an error, repeat the same release to finish it.
+- **A killed run.** Look for its secret in the run's transcript first, since
+  it arrives as a tool result, and treat that transcript as sensitive until
+  the pin ends. Without the secret, the pin ends only when the lease runs out
+  or an operator reclaims it. Joining does not help, because releasing only
+  detaches the joined holder. Successful calls that name the slot renew the
+  lease, so leave it alone while waiting.
+- **Older pins.** Pins from before holders have none, need no secret and never
+  expire, so a release wipes them unchecked. Name the slots a run must leave
+  alone.
+- **Large files.** Without the upload URL, use `sbvm_push_begin`,
+  `sbvm_push_chunk` and `sbvm_push_commit`, and check the returned `sha256`.
+  The bytes pass through the agent's context, so keep this to modest files.
