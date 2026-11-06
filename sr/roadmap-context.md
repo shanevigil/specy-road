@@ -86,7 +86,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.8.8` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
     - `M16.8.9` Gate: ready to tag 0.3.1 `ready-to-tag-0-3-1` — gate — **Not Started**
     - `M16.8.10` Gate: 0.3.1 tagged `v0-3-1-tagged` — gate — **Not Started**
-- `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **In Progress**
+- `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **Not Started**
   - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
   - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Complete**
   - `M21.3` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Complete**
@@ -101,6 +101,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.13` move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit `move-node-keeps-other-ids` — task — **Complete**
   - `M21.14` finish resolves roadmap chunk conflicts the branch only inherited `finish-resolves-inherited-roadmap-conflicts` — task — **Complete**
   - `M21.15` Cursor workers launch sandboxed without --force unless the roster opts in `cursor-workers-no-force-by-default` — task — **Complete**
+  - `M21.16` upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files `upgrade-scratch-git-and-regen` — task — **Not Started**
+  - `M21.17` Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet `writers-refuse-links-out` — task — **Not Started**
+  - `M21.18` A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA `deferral-bound-to-its-decision` — task — **Not Started**
+  - `M21.19` apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file `apply-dry-run-rebases-links` — task — **Not Started**
+  - `M21.20` PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set `gui-publish-regenerates-and-needs-a-remote` — task — **Not Started**
+  - `M21.21` review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only `review-delegate-validates-reviewer-command` — task — **Not Started**
+  - `M21.22` Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper `rc4-small-code-fixes` — task — **Not Started**
+  - `M21.23` rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry `rc4-docs-corrections` — task — **Not Started**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Not Started**
   - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
@@ -110,6 +118,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.6` A queued worker message that cannot be delivered flags the worker and goes out with its next turn `queued-message-undelivered` — task — **Not Started**
   - `M22.7` ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading `ready-changelog-reminder` — task — **Not Started**
   - `M22.8` init project ends with the next steps: set the integration branch, commit the scaffold, validate `init-next-steps` — task — **Not Started**
+  - `M22.9` Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME `local-roster-and-codex-reviewer-isolation` — task — **Not Started**
+  - `M22.10` reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping `finish-keeps-local-claim-and-landing` — task — **Not Started**
+  - `M22.11` Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout `reports-say-what-happened` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Not Started**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**

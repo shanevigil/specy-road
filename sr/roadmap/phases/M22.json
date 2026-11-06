@@ -212,6 +212,96 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "merge_local_roster refuses a local roster_add entry with a non-empty preflight, channels.cli_resume or harness_bin unless allow_local_cli: true, with the same message shape as channels.cli naming the field; tests/test_roster_worktree_dry_run.py has one refusal case per field and keeps its positive opt-in case",
+        "Codex reviewer_launch passes CODEX_MEMORY_OFF on fresh and resumed turns, -m on resume as worker resume does, and CODEX_HOME set to profile_home(model) on a fresh turn and to the session's home (else profile_home) on resume; tests/test_harness_launch.py asserts both argv shapes and the env",
+        "docs/orchestration-roster.md lists every field that needs allow_local_cli; docs/orchestration-reviewer-output.md's Codex reviewer line names the isolated home and memory-off; CHANGELOG [Unreleased] Fixed. Out of scope: committed roster entries, Claude and Cursor reviewers",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +50, docs about +3"
+      ],
+      "codename": "local-roster-and-codex-reviewer-isolation",
+      "dependencies": [],
+      "id": "M22.9",
+      "node_key": "d340dc53-ba74-45b4-a5c4-9f778862e8f0",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.9_local-roster-and-codex-reviewer-isolation_d340dc53-ba74-45b4-a5c4-9f778862e8f0.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME",
+      "touch_zones": [
+        "specy_road/roster_local.py",
+        "specy_road/worker_adapter_codex.py",
+        "tests/test_roster_worktree_dry_run.py",
+        "tests/test_harness_launch.py",
+        "docs/orchestration-roster.md",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When reconcile-branch keeps the leaf's row and the integration ref's registry lacks the leaf's codename, the merged registry is the integration registry plus the leaf's row from HEAD; tests/test_reconcile_branch.py: after a --local pickup and an independent commit on the remote integration branch, the row is still there after reconcile-branch and finish finds it",
+        "When the integration merge (and in push mode the push) succeeded and only the final checkout of the feature branch fails, finish reports the landing as done with one warning naming the checkout command, and does not run undo_bookkeeping; tests/test_finish_merge_failure_undo.py with a post-checkout hook that exits 1 on the feature branch, for land: local and push: integration has the completion, the feature branch keeps its bookkeeping commit, no run-finish-again advice",
+        "docs/git-workflow-parallel-prs.md and docs/git-workflow.md each gain one line; CHANGELOG [Unreleased] Fixed. Out of scope: PR mode, nested repos, other registry rows",
+        "Estimated net line change (informational, not a gate): package about +30, tests about +90, docs about +2"
+      ],
+      "codename": "finish-keeps-local-claim-and-landing",
+      "dependencies": [],
+      "id": "M22.10",
+      "node_key": "24a67d66-529a-40ca-a500-759cedaacb12",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.10_finish-keeps-local-claim-and-landing_24a67d66-529a-40ca-a500-759cedaacb12.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping",
+      "touch_zones": [
+        "specy_road/reconcile_branch.py",
+        "specy_road/finish_pr_merge.py",
+        "specy_road/finish_modes.py",
+        "specy_road/finish_land_local.py",
+        "specy_road/finish_land_integration.py",
+        "tests/test_reconcile_branch.py",
+        "tests/test_finish_merge_failure_undo.py",
+        "docs/git-workflow-parallel-prs.md",
+        "docs/git-workflow.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When leaf_tally raises, tally_trailers prints one stderr line and returns a trailer parse_tally reads as unreadable, and area_quality shows that leaf as untallied instead of dropping it; mark-implementation-reviewed still closes; tests/test_review_tally.py and tests/test_digest_quality.py cover it",
+        "rename-refs protects backtick and tilde fences, closing only on the same character at least as long as the opening; tests/test_rename_refs.py adds a tilde block, a four-backtick block holding a three-backtick line and an unclosed tilde fence; docs/roadmap-authoring.md's rename-refs paragraph states the rule",
+        "A real upgrade takes its ignore observations from the checkout around the actual .gitignore write, so a tracked file a new rule matches is reported as still tracked with the untrack command; --dry-run labels the mirror-derived notice with ignore_report's estimate header; tested through run_upgrade",
+        "CHANGELOG [Unreleased] Fixed. Out of scope: refusing the gate on a tally failure, other Markdown constructs, the scratch-git environment (M21.16)",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +90, docs about +1"
+      ],
+      "codename": "reports-say-what-happened",
+      "dependencies": [
+        "8177b36c-9fac-49f6-9017-a21798bb3630"
+      ],
+      "id": "M22.11",
+      "node_key": "1d5c3b8f-8179-40d8-a04a-262e6f8765d9",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.11_reports-say-what-happened_1d5c3b8f-8179-40d8-a04a-262e6f8765d9.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout",
+      "touch_zones": [
+        "specy_road/review_tally.py",
+        "tests/test_review_tally.py",
+        "tests/test_digest_quality.py",
+        "specy_road/bundled_scripts/planning_rename.py",
+        "tests/test_rename_refs.py",
+        "docs/roadmap-authoring.md",
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/bundled_scripts/upgrade_plan.py",
+        "tests/test_upgrade_preview.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
