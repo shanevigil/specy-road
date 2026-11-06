@@ -49,7 +49,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.44_guidance-bypass-model-excluded-under-signed-reviews_14485811-9209-468d-bd05-0f5156228e8a.md",
       "sibling_order": 42,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk",
       "touch_zones": [
         "specy_road/model_profiles.py",
