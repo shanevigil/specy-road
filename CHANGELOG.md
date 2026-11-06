@@ -13,6 +13,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `review record` and the human approval of `mark-implementation-reviewed` take
+  the leaf's review lock: they wait up to 10 seconds for another filing and
+  refuse, writing nothing, while a `review delegate` or `prompt --channel cli
+  --run` on the same leaf is running, so another filing no longer voids that
+  reviewer's run as a review failure.
 - Security: no writer follows a symlink out of the directory it owns.
   `init project` treats a dangling `roadmap.md` or `roadmap-context.md` link
   as present (skipped without `--force`), and with `--force` lists a link out

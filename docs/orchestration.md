@@ -294,7 +294,7 @@ specy-road review record M1.2 --model claude-opus-5-5 --verdict block --file not
   `mark-implementation-reviewed`, so an agent cannot file one.
 
 It sets `family` from the roster; a `family` written in the file is ignored. When policy
-requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive. It overwrites `REVIEW-<model>.md` each round and keeps a copy of every record it files under `history/`, the round history escalation counts from.
+requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive. It overwrites `REVIEW-<model>.md` each round and keeps a copy of every record it files under `history/`, the round history escalation counts from. A filing (`review record`, and the human approval of `mark-implementation-reviewed`) takes the leaf's review lock: it waits up to 10 seconds for another filing, and while a `review delegate` or `prompt --channel cli --run` on the same leaf holds the lock it exits 1, writing nothing, so it never voids that reviewer's run; file again when the run ends (`review list <ID>`).
 
 `handoff status` and `review list` report, per leaf, its review rounds (distinct reviewed commits) and the time from its first review to the latest (`n/a` with a single review). Two or more review rounds per leaf are normal under a two-family policy: the second family often blocks on something the first passed, and each fix is a new commit to review. Escalation (`escalate_review_rounds`, default 5) is what marks a loop that is not converging.
 
