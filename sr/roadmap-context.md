@@ -112,7 +112,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.24` review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error `claude-reviewer-schema-and-error` — task — **Complete**
   - `M21.25` review delegate reads a reviewer's answer when narration precedes its final JSON object `reviewer-answer-after-prose` — task — **Not Started**
   - `M21.26` The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model `gate-excludes-ready-authors` — task — **Complete**
-  - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Not Started**
+  - `M21.27` review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer `filings-take-the-review-lock` — task — **Complete**
   - `M21.28` finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree `finish-validates-before-bookkeeping` — task — **Not Started**
   - `M21.29` worker terminate also ends processes the harness started in their own session `terminate-ends-escaped-descendants` — task — **Not Started**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
@@ -263,7 +263,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.25` on `feature/rm-reviewer-answer-after-prose` since 2026-11-05
-- `M21.27` on `feature/rm-filings-take-the-review-lock` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
 - `M21.29` on `feature/rm-terminate-ends-escaped-descendants` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
@@ -274,11 +273,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 29 | 1 | 3.93 | 68% | 34 | 4 |
+| `docs` **flagged** | 28 | 4 | 4.33 | 75% | 32 | 4 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 48 | 2 | 3.65 | 65% | 50 | 7 |
-| `tests` **flagged** | 49 | 2 | 3.64 | 66% | 50 | 7 |
-| `CHANGELOG.md` | 16 | 0 | 1.75 | 25% | 16 | 0 |
+| `specy_road` **flagged** | 48 | 8 | 3.98 | 70% | 43 | 7 |
+| `tests` **flagged** | 49 | 8 | 3.95 | 71% | 43 | 7 |
+| `CHANGELOG.md` | 10 | 0 | 1.90 | 20% | 9 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 | `suggested_prompts` | 1 | 0 | 1.00 | 0% | 0 | 0 |

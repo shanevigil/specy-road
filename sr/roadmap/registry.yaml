@@ -90,24 +90,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: filings-take-the-review-lock
-    node_id: M21.27
-    branch: feature/rm-filings-take-the-review-lock
-    touch_zones:
-      - specy_road/review_record_write.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate_ready.py
-      - tests/test_review_concurrent_writers.py
-      - docs/orchestration.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/review_lock.py
-      - tests/test_review_file_case.py
-      - tests/test_review_rejected_m15_33.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-06T05:27:54+00:00'
   - codename: finish-validates-before-bookkeeping
     node_id: M21.28
     branch: feature/rm-finish-validates-before-bookkeeping
