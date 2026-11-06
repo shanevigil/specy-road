@@ -104,6 +104,11 @@ GATE_CASES = [
     ("quoted dates hash equal", TWO_FAMILIES,
      (ORCH, TWO_FAMILIES.replace("2026-01-01", "'2026-01-01'").replace("2026-12-31", "'2026-12-31'")), None),
     ("policy file no longer parses", TWO_FAMILIES, (ORCH, "roster: [\n"), "cannot be checked"),
+    ("policy is not a mapping", TWO_FAMILIES, (ORCH, "version: 1\npolicy: 1\n"), "policy is not a mapping"),
+    ("roster is not a list of mappings", TWO_FAMILIES, (ORCH, "version: 1\nroster: [1]\n"),
+     "roster is not a list of mappings"),
+    ("one line per change", TWO_FAMILIES, (ORCH, CR1_ROSTER.replace("reviewers_required: 2", "reviewers_required: 1")),
+     '-> ["executor","reviewer"]\n      policy.reviewers_required 2 -> 1\n'),
 ]
 
 

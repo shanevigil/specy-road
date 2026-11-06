@@ -283,14 +283,16 @@ def test_registration_commit_message_ci_skip_toggle() -> None:
                          ids=["no commit to pin", "pinned", "policy does not parse"])
 def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, tmp_path, orchestration) -> None:
     """The subject is unchanged; a committed policy adds the pin trailer (M21.30), and one that does not parse
-    refuses the claim before any registry write."""
+    refuses the claim before any registry write. With a committed policy git runs for real, and the claim is read
+    back from git."""
     _git_init(tmp_path)
     if orchestration is not None:
         (tmp_path / "roadmap").mkdir(parents=True)
         (tmp_path / "roadmap" / "orchestration.yaml").write_text(orchestration, encoding="utf-8")
+        for key, value in (("user.name", "T"), ("user.email", "t@e")):
+            subprocess.run(["git", "config", key, value], cwd=tmp_path, check=True)
         subprocess.run(["git", "add", "roadmap"], cwd=tmp_path, check=True)
-        subprocess.run(["git", "-c", "user.name=T", "-c", "user.email=t@e", "commit", "-qm", "policy"],
-                       cwd=tmp_path, check=True)
+        subprocess.run(["git", "commit", "-qm", "policy"], cwd=tmp_path, check=True)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
@@ -308,7 +310,8 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
     monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
-    monkeypatch.setattr(dnt, "git_run", fake_git)
+    if orchestration is None:   # no commit to read back: the message is checked as handed to git
+        monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(
@@ -327,6 +330,7 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
     (tmp_path / "work" / "brief-M9.1.md").write_text("x", encoding="utf-8")
 
     argv = ["--no-ci-skip-in-message", "--repo-root", str(tmp_path)]
+    claimed_at = _git_log(tmp_path).split(" ")[0] if orchestration is not None else None
     if orchestration == "roster: [\n":
         log_before = _git_log(tmp_path)
         with pytest.raises(SystemExit) as e:
@@ -337,11 +341,12 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
         return
     dnt.main(argv)
 
-    assert calls[1][0] == "commit"
     subject = "chore(rm-pickup-git): register as in-progress"
     if orchestration is None:
+        assert calls[1][0] == "commit"
         assert calls[1][2] == subject
     else:
-        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True, capture_output=True,
-                              text=True).stdout.strip()
-        assert calls[1][2] == f"{subject}\n\n" + f"Review-policy: sha256:{policy_digest(tmp_path, head)[0]} at {head}"
+        claim = subprocess.run(["git", "log", "-1", "--format=%B", f"--grep={subject}", "--fixed-strings"],
+                               cwd=tmp_path, check=True, capture_output=True, text=True).stdout.strip()
+        trailer = f"Review-policy: sha256:{policy_digest(tmp_path, claimed_at)[0]} at {claimed_at}"
+        assert claim == f"{subject}\n\n{trailer}"

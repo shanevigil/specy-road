@@ -64,9 +64,17 @@ def _yaml_at(root: Path, ref: str, rel: str) -> dict[str, Any]:
 
 
 def policy_parts(root: Path, ref: str) -> dict[str, Any]:
+    """The hashed keys at ``ref``. One shape rule, checked here so every reader (claim, gate, finish, accept-policy)
+    gets it: ``roster`` is null or a list of mappings and ``policy`` is null or a mapping; anything else raises
+    :class:`PolicyUnreadable`. ``substitutions`` and the review switch are hashed and compared as written, whatever
+    their shape (their change lines need no structure)."""
     orch, flow = _yaml_at(root, ref, ORCHESTRATION_REL), _yaml_at(root, ref, WORKFLOW_REL)
-    return {"roster": orch.get("roster"), "substitutions": orch.get("substitutions"),
-            "policy": orch.get("policy"), SWITCH: flow.get(SWITCH)}
+    roster, policy = orch.get("roster"), orch.get("policy")
+    if not (roster is None or isinstance(roster, list) and all(isinstance(e, dict) for e in roster)):
+        raise PolicyUnreadable(f"{ORCHESTRATION_REL} at {ref}: roster is not a list of mappings")
+    if not (policy is None or isinstance(policy, dict)):
+        raise PolicyUnreadable(f"{ORCHESTRATION_REL} at {ref}: policy is not a mapping")
+    return {"roster": roster, "substitutions": orch.get("substitutions"), "policy": policy, SWITCH: flow.get(SWITCH)}
 
 
 def _encode(value: Any) -> str:
@@ -120,8 +128,8 @@ def change_lines(root: Path, pinned_commit: str, ref: str) -> list[str]:
     """One line per change from the policy at ``pinned_commit`` to the policy at ``ref``."""
     old, new = policy_parts(root, pinned_commit), policy_parts(root, ref)
     out: list[str] = []
-    before = {str(e.get("id")): e for e in old["roster"] or [] if isinstance(e, dict)}
-    after = {str(e.get("id")): e for e in new["roster"] or [] if isinstance(e, dict)}
+    before = {str(e.get("id")): e for e in old["roster"] or []}
+    after = {str(e.get("id")): e for e in new["roster"] or []}
     for rid in sorted(before.keys() | after.keys()):
         if rid not in after:
             out.append(f"roster {rid} removed: {_encode(before[rid])}")
@@ -165,15 +173,15 @@ def read_acceptance(root: Path, node_id: str) -> tuple[dict[str, Any] | None, st
     return data, None
 
 
-def _pin_state(root: Path, node: dict[str, Any], commit: str) -> tuple[str, str, str, str] | None:
-    """``(ref, pinned sha256, pinned commit, current sha256)`` when the policy changed since the claim, else
-    ``None``; raises :class:`PolicyUnreadable`."""
+def _pin_state(root: Path, node: dict[str, Any], commit: str) -> tuple[str, str, str, str, list[str]] | None:
+    """``(ref, pinned sha256, pinned commit, current sha256, change lines)`` when the policy changed since the claim,
+    else ``None``. Every read of committed policy happens here, so :class:`PolicyUnreadable` has one boundary."""
     ref, _err = policy_source(root)   # an unreadable source is the gate's config error already
     pin = pin_of(root, node["codename"], commit) if ref and node.get("codename") else None
     if pin is None:
         return None
     current, _ = policy_digest(root, ref)
-    return None if current == pin[0] else (ref, pin[0], pin[1], current)
+    return None if current == pin[0] else (ref, pin[0], pin[1], current, change_lines(root, pin[1], ref))
 
 
 def pin_problem(root: Path, node: dict[str, Any], commit: str) -> str | None:
@@ -194,12 +202,13 @@ def pin_problem(root: Path, node: dict[str, Any], commit: str) -> str | None:
         return f"review policy pin of {nid} cannot be checked: {e}"
     if state is None:
         return None
-    ref, pinned, at, current = state
+    ref, pinned, at, current, lines = state
     if accepted and accepted["pinned_sha256"] == pinned and accepted["accepted_sha256"] == current:
         return None
-    lines = "; ".join(change_lines(root, at, ref))
-    return (f"review policy changed on {ref} since {nid} was claimed ({at[:12]}): {lines}; a human accepts "
-            f"it with `specy-road review accept-policy {nid}` in a terminal, or re-claims the leaf")
+    return (f"review policy changed on {ref} since {nid} was claimed ({at[:12]}):"
+            + "".join(f"\n      {line}" for line in lines)   # one line per change (A2)
+            + f"\n    a human accepts it with `specy-road review accept-policy {nid}` in a terminal, "
+            "or re-claims the leaf")
 
 
 def pin_holds_or_exit(root: Path, node: dict[str, Any]) -> None:
@@ -229,9 +238,9 @@ def cmd_accept_policy(ns: argparse.Namespace) -> int:
     if state is None:
         print(f"{ns.node_id}: the review policy is unchanged since the claim (or not pinned); nothing to accept")
         return 0
-    ref, pinned, at, current = state
+    ref, pinned, at, current, lines = state
     print(f"review policy changed on {ref} since {ns.node_id} was claimed ({at[:12]}):")
-    for line in change_lines(root, at, ref):
+    for line in lines:
         print(f"  - {line}")
     if input(f"Type {ns.node_id} to accept this policy for {ns.node_id}: ").strip() != ns.node_id:
         print("not accepted; nothing was written", file=sys.stderr)

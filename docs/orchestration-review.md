@@ -60,13 +60,15 @@ The policy that judges a leaf is the one in force when it was claimed. Pickup's
 `require_implementation_review_before_finish` in `roadmap/git-workflow.yaml`,
 as committed at the integration branch commit the claim was made on (no
 toolkit defaults, no `orchestration.local.yaml` overlay). A policy file that is
-present but does not parse refuses the claim before any registry write.
+present but does not parse refuses the claim before any registry write; so does
+a `roster` that is not a list of mappings or a `policy` that is not a mapping,
+and at the gate and finish either is a problem, never a pass.
 
 When the policy on the integration branch differs from the pin, the gate is
 not met (`handoff status`, `review list`, `mark-implementation-reviewed`) and
 `finish-this-task` refuses before any bookkeeping — before it reads the review
 switch, so turning `require_implementation_review_before_finish` off after
-the claim does not skip review. The problem lists each change (a roster entry
+the claim does not skip review. The problem lists each change on its own line (a roster entry
 added or removed, every changed property of a kept entry including
 `public_key`, `substitutions changed`, each `policy.<key>`, the review
 switch). A human accepts it with `specy-road review accept-policy <NODE_ID>`,
