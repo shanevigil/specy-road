@@ -43,6 +43,50 @@ Branch `feature/rm-safe-write-rule-setup-writers`, base `e3246433`, implementati
 2. **Ignore-file blocks report a refusal and do not raise.** `tests/test_m13_7_gitignore_symlinks.py` (outside the zones) calls `apply_and_report` with a top-level `.gitignore` symlink and expects it to return. Strict mode therefore returns `refused: <why>` and writes nothing. `init project` gets its `error:` and exit 1 from the `_scaffold` pre-check. `specyrd init` and `refresh-stubs` report the outcome line, and `refresh-stubs` also exits 1.
 3. **`run_upgrade` returns 1 on a refusal rather than raising.** `tests/test_upgrade_preview.py::test_dry_run_never_writes_through_a_link_into_the_checkout` calls `run_upgrade` directly and expects an exit code.
 
+## Fix round 1 (review `gpt-6.1-sol-low` at `14c0c8da`)
+
+Merged `origin/WIP/improvements-0-3-1` first (`825298ac`). Fix commit: `2337de03`.
+
+- **R3: refusal after an earlier change. Fixed.** `restore_archive` now builds one view of the restore before changing anything.
+  - Shallow record: `_shallow_view` checks the chunk before reading it.
+  - Deep record: `_deep_view` checks the capsule, then reads it without writing. From it, it derives the shallow record `undeepen_archive` will write (`roadmap/archive/chunks/<id>.json` and the planning `stored` paths) and the paths it removes (capsule and reference).
+  - `_preflight` then checks every path: touched files, target chunks, `stored`/`origin`, manifest, ledger, and the archive and planning directories. It runs before `undeepen_archive`.
+  - An unreadable capsule gives no view, and `undeepen_archive` refuses with its own message before changing anything.
+- **R4: cleanup that follows a link. Fixed.** `_prune_empty_archive` walks `roadmap/archive` with `os.walk` and `lstat`. Anything but the ledger and real directories, including a symlink of any kind, keeps the whole directory. Only real directories are `rmdir`ed, and the ledger is removed with `safe_write.remove`.
+- **R2: containment against the wrong root, and equality excluded. Fixed.** `digest` computes containment with `Path.is_relative_to` (which includes equality) against the resolved checkout (`git_root`, else the project). Every path at or under it goes through `safe_write.write` with the checkout as root, so `-o <checkout>` is refused as a directory with exit 1. The bounded rule is stated in `-o`'s help: compared lexically with the resolved checkout. An absolute path outside the checkout is written as given.
+- **R3, same class elsewhere: refresh-schemas. Fixed.** It checked each destination just before copying it. It now checks all of them before the first copy.
+- **R1: not done. It needs changes outside the touch zones**, so this part of the leaf stops here. Applying the rule from `repo_root` in `refresh_stubs._write_if_changed`, and exiting 1 on a stub linked out, contradicts three files outside the zones:
+  - `tests/test_prerelease_files.py::test_managed_writes_refuse_a_symlink_out_of_the_repo`: the `refresh` rows for `.agents/skills`, `.agents/skills/specyrd-validate/SKILL.md` and `.claude/skills` assert `returncode == 0` and the old `refused: a symlink leads outside the repository` text.
+  - `tests/test_m13_7_notices.py`: `test_a_symlinked_skills_dir_reports_each_skill_once_with_the_link` and `test_a_reverse_symlinked_skills_dir_reports_each_skill_once_and_runs_agree` require writes through an in-repo symlinked `.agents/skills` or `.claude/skills` directory, a supported M13.7 layout.
+  - `specy_road/specyrd_skills.py`: `specyrd init` writes the same `SKILL.md` files through `resolves_outside`, so refresh-stubs alone would disagree with init.
+
+  To finish R1, add these three paths to the zones, together with the decision to drop the M13.7 symlinked-skills-directory layout. Then: route the write branch through `safe_write.write(repo_root, ...)`, delete the `resolves_outside` branch and its exception in `refresh_stubs.main`, and change those expectations to `error:` with exit 1.
+
+## Probes
+
+- R2, containment by string prefix or against the project instead of the checkout: searched the diff for `startswith` / `is_relative_to` / `relpath` containment checks.
+  - `digest_cli`: fixed.
+  - `safe_write._locate`: `relpath` with an empty-parts result, so equality is handled; the root then fails the final-kind check.
+  - `upgrade_plan.refused_changes`: checks against `plan.checkout` (resolved); correct.
+  - `init_project` and `refresh_schemas`: own the project root by design (their files live under it); correct.
+- R2, output equal to the root: `test_digest_checks_an_absolute_output_against_the_checkout[checkout]` gives exit 1 with `is a directory`.
+- R2, nested project with an absolute `-o` under a linked checkout directory: the `[checkout-sibling-link]` row is refused, outside unchanged.
+- R3, a mutation before a later refusal, writer by writer:
+  - archive restore, shallow and deep: fixed. New deep rows (`phases-linked`, `origin-linked`, `unpack-linked`) fail at `14c0c8da` and pass now.
+  - refresh-schemas: fixed. The stale-earlier-schema rows fail at `14c0c8da` and pass now.
+  - init: `_scaffold` checks before the first write; already so.
+  - specyrd init: manifest check first; already so.
+  - upgrade: `apply_plan` checks everything first; already so.
+  - `_prune`: checks all orphans before any delete; already so.
+  - `regenerate` and `regenerate_generated_files`: per-file refusal is the documented design (they report and go on).
+- R3, `refresh-stubs --prune` from the CLI: the stub refresh runs before the prune check, so a refused prune leaves the refreshed stubs (the same writes as a run without `--prune`) and deletes nothing. Under `upgrade` it runs in the mirror and nothing is applied. Left as is.
+- R4, cleanup that lists or removes through a link:
+  - `_prune_empty_archive`: fixed. The regression test fails at `14c0c8da`.
+  - `shutil.rmtree(archive_planning_dir)`: its directory is checked as a real directory, and `rmtree` unlinks inner links without following them.
+  - `refresh_stubs._prune`: `rmtree` only for an lstat real directory, `prune_empty` stops at links.
+  - `upgrade_plan.apply_plan` `rmdir`/`unlink`: targets are checked by the rule first.
+- Full suite after the fixes: 5980 passed. `ruff check specy_road tests scripts` and `specy-road file-limits`: pass.
+
 ## Touch zones
 
 All edits are inside the listed zones. No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
@@ -81,4 +125,10 @@ All edits are inside the listed zones. No file outside them needed changing, and
   - archive restore: chunk out, linked `roadmap/phases`, linked origin, linked stored, a second move unsafe.
 - `tests/test_writers_refuse_links_out.py`: the generated-file `link_in` rows (init --force, regenerate_generated_files, finish) now expect a refusal, and the expected text is the rule's sentence (A5).
 - `tests/test_upgrade.py`: `REFUSED_DIGEST` and `REFUSED_INDEX` match the new `refused <rel> (<rule message>)` line prefix.
+- Fix round 1:
+  - `archive_restore._shallow_view`, `_deep_view` and `_check`: one view and check of every restore path before the first change, deep records included (R3).
+  - `_prune_empty_archive`: rewritten to walk by `lstat` (R4).
+  - `digest_cli`: checkout containment via `git_root` and `is_relative_to` (R2).
+  - `refresh_schemas`: a separate check pass before the copy pass (R3 class).
+  - Tests: `test_digest_checks_an_absolute_output_against_the_checkout` (2 rows); deep rows in `test_archive_restore_refuses_before_the_first_change` and the `_unpack_linked` layout; `test_restoring_the_last_record_keeps_an_unrelated_linked_directory`; the stale-earlier-schema setup in `test_schema_refresh_and_upgrade_refuse_a_linked_schema`.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
