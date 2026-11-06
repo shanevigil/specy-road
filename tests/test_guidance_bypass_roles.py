@@ -1,7 +1,7 @@
 """M21.44: a model whose profile records guidance bypass (composer-2.5) is kept out of the executor and reviewer roles
 while ``policy.signed_reviews`` is on, unless its committed roster entry sets ``allow_guidance_bypass_model: true``.
 
-Public CLI only: ``orchestrate plan``, ``worker delegate``, ``review delegate``, ``prompt``, ``handoff status``,
+Public CLI only (plus the three-argument contract of ``guidance_bypass_refusal`` A2 names): ``orchestrate plan``, ``worker delegate``, ``review delegate``, ``prompt``, ``handoff status``,
 ``review record``, ``validate``, ``doctor`` and ``models show``, on temp repos whose roster and profiles are committed
 on the integration branch (``dev``). A fake harness touches ``HARNESS-RAN`` and the roster ``preflight`` touches
 ``PREFLIGHT-RAN``, so a refusal is shown to have launched nothing.
@@ -25,6 +25,7 @@ from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
 from specy_road import cli
 from specy_road.bundled_scripts import chore_cli, models_cli, orchestrate_cli, role_prompt
 from specy_road.model_profiles import bundled_profiles_root
+from specy_road.orchestrate_plan import guidance_bypass_refusal
 
 BUNDLED = bundled_profiles_root() / "model-profiles" / "cursor-composer"
 COMPOSER = "model-profiles/cursor-composer/composer-2.5.md"
@@ -98,7 +99,7 @@ def main_exit(main, *args: str) -> int:
     return 0
 
 
-def plan(tmp_path: Path, orchestration: str, capfd) -> dict:
+def plan(tmp_path: Path, orchestration: str, capfd, worktree_roster: str | None = None) -> dict:
     """``orchestrate plan --json``'s assignment for M1.1, unclaimed in a repo of its own (the planner skips claims)."""
     repo = guidance_repo(tmp_path / "plan", orchestration)
     (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
@@ -106,7 +107,11 @@ def plan(tmp_path: Path, orchestration: str, capfd) -> dict:
     chunk.write_text(chunk.read_text().replace('"status": "In Progress"', '"status": "Not Started"'))
     on_dev(repo, "ready")
     capfd.readouterr()
-    main_exit(orchestrate_cli.main, "orchestrate", "plan", "--json", "--repo-root", str(repo))
+    if worktree_roster is not None:   # uncommitted: read only by the --roster-from-worktree dry run
+        (repo / "roadmap" / "orchestration.yaml").write_text(
+            worktree_roster.replace("{harness}", f"{sys.executable} {tmp_path / 'plan' / 'harness.py'}"))
+    main_exit(orchestrate_cli.main, "orchestrate", "plan", "--json", "--repo-root", str(repo),
+              *(["--roster-from-worktree"] if worktree_roster is not None else []))
     return json.loads(capfd.readouterr().out)["batches"][0][0]
 
 
@@ -226,14 +231,15 @@ def test_flag_only_on_the_bundled_profile_still_flags(tmp_path: Path, capfd) -> 
 @pytest.mark.parametrize("change", ["removed", "malformed"])
 def test_a_branch_or_drifted_copy_never_clears_a_committed_flag(tmp_path: Path, capfd, how: str,
                                                                  change: str) -> None:
-    """A model no bundled profile names, flagged only in the profile committed on ``dev``."""
+    """A model no bundled profile names, flagged only in the profile committed on ``dev``, in a file whose name is
+    not its api_id: the drifted copy's refusal carries no front matter, so only the committed copy names the model."""
     key, pub = make_key(tmp_path, "my-model")
     text = (BUNDLED / "composer-2.5.md").read_text().replace("composer-2.5", "my-model")
     repo = guidance_repo(tmp_path, roster(rid="my-model", key=pub), profile=text)
-    git(repo, "mv", COMPOSER, "model-profiles/cursor-composer/my-model.md")
+    git(repo, "mv", COMPOSER, "model-profiles/cursor-composer/custom-worker.md")
     on_dev(repo, "rename the profile")
     copy = unflagged(text) if change == "removed" else text.replace("  harness: cursor\n", "  harness: vscode\n")
-    (repo / "model-profiles" / "cursor-composer" / "my-model.md").write_text(copy)
+    (repo / "model-profiles" / "cursor-composer" / "custom-worker.md").write_text(copy)
     if how == "feature branch":
         git(repo, "commit", "-qam", "drop the flag on the leaf branch")
     sign_approval(repo, key, "my-model")
@@ -254,6 +260,36 @@ def test_every_model_an_entry_launches_is_matched(tmp_path: Path, capfd, extra: 
     assert prompt(repo, "executor", model=rid) == 1
     err = capfd.readouterr().err
     assert EXCLUDED in err and f"{rid} (model composer-2.5" in err
+
+
+def test_an_uncommitted_opt_in_does_not_admit_the_model(tmp_path: Path, capfd) -> None:
+    """The dry run reads the working tree's roster, but the opt-in counts only on the committed one."""
+    a = plan(tmp_path, roster(), capfd, worktree_roster=roster(opt_in=True))
+    assert a["executor"] == "sol" and any(EXCLUDED in n for n in a["notes"])
+
+
+def test_an_unreadable_integration_branch_profile_refuses(tmp_path: Path, capfd) -> None:
+    """A git read that fails is a refusal, never a missing flag."""
+    text = (BUNDLED / "composer-2.5.md").read_text().replace("composer-2.5", "my-model")
+    repo = guidance_repo(tmp_path, roster(rid="my-model"), profile=text)
+    blob = git(repo, "rev-parse", f"dev:{COMPOSER}")
+    (repo / ".git" / "objects" / blob[:2] / blob[2:]).unlink()   # a loose object: the fixture never packs
+    assert prompt(repo, "executor", model="sol") == 1
+    err = capfd.readouterr().err
+    assert f"cannot read {COMPOSER} on the integration branch" in err and launched(tmp_path) == (False, False)
+
+
+def test_the_refusal_needs_only_config_entry_and_profile() -> None:
+    """A2's three-argument form, with no repository: the bundled flags and the profile's own decide, and ``config``
+    stands for the committed roster."""
+    def config(opt_in: bool) -> dict:
+        return {"policy": {"signed_reviews": True},
+                "roster": [{"id": "w", "allow_guidance_bypass_model": True}] if opt_in else []}
+    flagged, plain = {"id": "w", "harness_model": "composer-2.5"}, {"id": "w", "harness_model": "composer-2"}
+    assert guidance_bypass_refusal(config(False), plain, None) is None
+    assert EXCLUDED in guidance_bypass_refusal(config(False), flagged, None)
+    assert guidance_bypass_refusal(config(True), flagged, None) is None
+    assert guidance_bypass_refusal({"policy": {}, "roster": []}, flagged, None) is None
 
 
 def test_composer_2_is_not_flagged(tmp_path: Path, capfd) -> None:

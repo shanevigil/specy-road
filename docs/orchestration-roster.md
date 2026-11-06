@@ -147,7 +147,10 @@ about that model, not about the Cursor harness, and `composer-2` is not flagged.
 While `policy.signed_reviews` is on, an entry is flagged when any model it can launch (its profile's
 `api_id` or alias, `harness_model`, or a literal `--model` / `-m` in `channels.cli` or `cli_resume`)
 matches a flagged profile on the integration branch or in the bundled set; a project or branch copy
-without the field does not clear it. A flagged entry is excluded from the executor and reviewer roles
+without the field does not clear it, and the committed copy of the entry's profile names its model even
+when the working tree's copy differs. A git or file read that fails while reading those profiles
+refuses the entry rather than reading as "not flagged"; a committed profile whose front matter does not
+parse flags nothing and is refused as an invalid profile wherever it is routed. A flagged entry is excluded from the executor and reviewer roles
 and stays eligible as coordinator. `validate` and `doctor` print one warning per flagged executor or
 reviewer entry:
 
@@ -166,7 +169,8 @@ To use it anyway, at your own risk, set the opt-in on its entry in the committed
 ```
 
 Only the committed `roadmap/orchestration.yaml` on the integration branch counts (a `roster_add`
-entry is refused); protect that file with a code owner, since an executor that can push there could
+entry is refused, and `orchestrate plan --roster-from-worktree` ignores an uncommitted opt-in);
+protect that file with a code owner, since an executor that can push there could
 set it. `validate` and `doctor` then print `warning: <id> (model <api_id>) opted in at its own risk`,
 `orchestrate plan` adds the same warning to its notes, and every executor or reviewer launch prints it
 once. With `signed_reviews` off none of this applies.

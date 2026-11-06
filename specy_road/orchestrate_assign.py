@@ -14,8 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.model_profiles import Profile
-from specy_road.orchestration_config import active_substitutions, harness_model, roster_entry
-from specy_road.orchestration_pinned import guidance_flags, pinned_config, pinned_profile_for_entry
+from specy_road.orchestration_config import active_substitutions, harness_model
+from specy_road.orchestration_pinned import (
+    GuidanceSource, bundled_flags, flags_of, guidance_source, pinned_config, pinned_profile_for_entry,
+)
 from specy_road.roster_local import GUIDANCE_OPT_IN
 from specy_road.review_strong import applicable_items, item_label
 from specy_road.review_tally import quality_review
@@ -102,53 +104,62 @@ def unavailable_prompt_error(model: str, entry: dict[str, Any]) -> str:
     return f"{model!r} is unavailable ({unavailability_reason(entry) or 'availability'})"
 
 
-def _launch_models(entry: dict[str, Any], profile: Profile | None) -> list[str]:
-    """Every model the entry can launch: the routed profile's ``api_id`` (or the alias it matched), the id a default
-    command passes (:func:`harness_model`: ``harness_model``, else that ``api_id``, else the roster id), and the literal
-    ``--model`` / ``-m`` of ``channels.cli`` / ``cli_resume`` (read, never run)."""
+def _launch_models(entry: dict[str, Any], *profiles: Profile | None) -> list[str]:
+    """Every model the entry can launch, for each copy of its profile given: the profile's ``api_id`` (or the alias the
+    entry's id matches), the id a default command passes (:func:`harness_model`: ``harness_model``, else that
+    ``api_id``, else the roster id), and the literal ``--model`` / ``-m`` of ``channels.cli`` / ``cli_resume`` (read,
+    never run)."""
     channels = entry.get("channels") if isinstance(entry.get("channels"), dict) else {}
-    names = [profile.api_id, str(profile.data.get("api_id") or "")] if profile is not None else []
-    names += [harness_model(entry, profile.api_id if profile is not None else None) or "",
-              *(command_model(str(channels[k])) or "" for k in ("cli", "cli_resume") if channels.get(k))]
+    names = [command_model(str(channels[k])) or "" for k in ("cli", "cli_resume") if channels.get(k)]
+    copies = [p.for_id(entry.get("id")) or p for p in profiles if p is not None]
+    for prof in copies:
+        names += [prof.api_id, str(prof.data.get("api_id") or "")]
+    names += [harness_model(entry, prof.api_id) or "" for prof in copies] or [harness_model(entry) or ""]
     return [n for n in dict.fromkeys(names) if n]
 
 
+def _source(config: dict[str, Any], profile: Profile | None, repo_root: Path | None) -> GuidanceSource:
+    """:func:`guidance_source` of ``repo_root``; without one (no integration branch to read), the bundled flags and
+    ``profile``'s own, with ``config`` taken as the committed roster."""
+    if repo_root is not None:
+        return guidance_source(repo_root)
+    roster = config.get("roster") or []
+    return GuidanceSource(Path("."), {**flags_of([profile] if profile is not None else []), **bundled_flags()}, {},
+                          frozenset(str(e.get("id")) for e in roster if e.get(GUIDANCE_OPT_IN) is True))
+
+
 def _guidance_hit(config: dict[str, Any], entry: dict[str, Any], profile: Profile | None,
-                  repo_root: Path | None) -> tuple[str, dict[str, Any] | None, str | None] | None:
-    """``(model, record, error)`` when ``policy.signed_reviews`` is on and a model the entry can launch is flagged
-    (:func:`~specy_road.orchestration_pinned.guidance_flags`), or the flags cannot be read (``error``); else ``None``."""
-    if not (config.get("policy") or {}).get("signed_reviews") or entry.get("family") == "human":
+                  repo_root: Path | None) -> tuple[str, dict[str, Any] | None, str | None, bool] | None:
+    """``(model, record, error, opted_in)`` when signed reviews are on (in ``config`` or on the integration branch,
+    whichever turns them on) and a model the entry launches, by its routed profile or that profile's committed copy,
+    is flagged; or when the integration branch cannot be read while ``config`` has them on (``error``). The opt-in
+    is the committed roster's, never ``config``'s. ``None`` otherwise, and for a human entry."""
+    if entry.get("family") == "human":
         return None
-    names = _launch_models(entry, profile)
-    if not names:
+    src = _source(config, profile, repo_root)
+    if not ((config.get("policy") or {}).get("signed_reviews") or src.signed):
         return None
-    flags, err = guidance_flags(repo_root) if repo_root is not None else ({}, "no repository to read profiles from")
-    if err:
-        return names[0], None, err
-    return next(((n, flags[n], None) for n in names if n in flags), None)
-
-
-def _opted_in(config: dict[str, Any], entry: dict[str, Any]) -> bool:
-    """The roster entry with this id sets the opt-in (``roster_add`` entries cannot: :mod:`specy_road.roster_local`)."""
-    return (roster_entry(config, str(entry.get("id"))) or {}).get(GUIDANCE_OPT_IN) is True
+    names = _launch_models(entry, profile, src.committed(profile))
+    if src.error:
+        return (names[0], None, src.error, False) if names else None
+    return next(((n, src.flags[n], None, str(entry.get("id")) in src.opt_ins) for n in names if n in src.flags), None)
 
 
 def guidance_bypass_refusal(config: dict[str, Any], entry: dict[str, Any], profile: Profile | None,
                             repo_root: Path | None = None) -> str | None:
     """Why ``entry`` may not take the executor or reviewer role (``rca`` is a reviewer's; never the coordinator's):
-    ``policy.signed_reviews`` is on, a model it launches has a profile recording guidance bypass, and its roster
+    signed reviews are on, a model it launches has a profile recording guidance bypass, and its committed roster
     entry does not set :data:`GUIDANCE_OPT_IN`. ``None`` otherwise, and for an entry with no model (a human).
-    ``repo_root``: where the integration branch's profiles are read (M21.44)."""
+    ``repo_root``: read the flags, opt-ins and policy from its integration branch (every toolkit caller passes it);
+    without it, the bundled flags and ``profile``'s own decide, with ``config`` as the committed roster (M21.44)."""
     hit = _guidance_hit(config, entry, profile, repo_root)
-    if hit is None:
+    if hit is None or hit[3]:
         return None
-    model, record, err = hit
+    model, record, err, _opted = hit
     head = f"{entry.get('id')} (model {model})"
     if err:
         return (f"{head} cannot be checked for recorded guidance bypass while policy.signed_reviews is on: {err}; "
                 "nothing is launched or counted until the integration branch's model profiles can be read")
-    if _opted_in(config, entry):
-        return None
     return (f"{head} is excluded from executor and reviewer roles while policy.signed_reviews is on: its profile "
             f"records guidance bypass observed ({record.get('date')}, {record.get('harness')}: "
             f"{str(record.get('evidence') or '').strip()}). Set {GUIDANCE_OPT_IN}: true on its roster entry to use "
@@ -167,9 +178,9 @@ def guidance_bypass_warning(config: dict[str, Any], entry: dict[str, Any], profi
                             repo_root: Path | None = None) -> str | None:
     """The line an executor or reviewer launch prints, once, for an opted-in flagged entry; else ``None``."""
     hit = _guidance_hit(config, entry, profile, repo_root)
-    if hit is None or hit[2] or not _opted_in(config, entry):
+    if hit is None or hit[2] or not hit[3]:
         return None
-    model, record, _err = hit
+    model, record, _err, _opted = hit
     return (f"warning: {entry.get('id')} (model {model}) opted in at its own risk: its profile records guidance "
             f"bypass observed ({record.get('date')}, {record.get('harness')})")
 
@@ -178,7 +189,7 @@ def guidance_bypass_lines(repo_root: Path) -> list[str]:
     """``validate`` / ``doctor``: one warning per executor or reviewer entry of the pinned roster that a model it
     launches is flagged for, while signed reviews are on. An unreadable roster is left to the other checks."""
     config, err = pinned_config(repo_root)
-    if err or not (config.get("policy") or {}).get("signed_reviews"):
+    if err:
         return []
     out = []
     for entry in config.get("roster") or []:
@@ -188,7 +199,7 @@ def guidance_bypass_lines(repo_root: Path) -> list[str]:
         if hit is None or hit[2]:
             continue
         head = f"warning: {entry.get('id')} (model {hit[0]})"
-        out.append(f"{head} opted in at its own risk" if _opted_in(config, entry) else
+        out.append(f"{head} opted in at its own risk" if hit[3] else
                    f"{head} is excluded: set {GUIDANCE_OPT_IN}: true on its roster entry to use it at your own risk")
     return out
 
