@@ -293,6 +293,7 @@ Do not pick these up.
 - `M21.37` on `feature/rm-safe-write-rule-setup-writers` since 2026-11-06
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
 - `M21.43` on `feature/rm-digest-check-no-manifest-clean-error` since 2026-11-06
+- `M21.44` on `feature/rm-guidance-bypass-model-excluded-under-signed-reviews` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
