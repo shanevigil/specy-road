@@ -124,7 +124,7 @@
 - `pin_of` git reads: undecodable log or commit body now raises instead of reading as "no registration commit"/"no trailer".
 - Other parse sites in the leaf: none (`_SCHEMA` is the bundled schema; `git_text` remains only for `git config user.*` in `_user`, where a failure falls back to the login name).
 
-## Fix round 4 (coordinator: one rule for unreadable input) — BLOCKED on one cell outside the zones
+## Fix round 4 (coordinator: one rule for unreadable input)
 
 - **Rule (module docstring, `_unreadable_as`, `UNREADABLE`).** Two input boundaries: the committed policy (git read,
   decode, YAML load, shape check, digest, change lines — `_yaml_at`, `policy_digest`, `_pin_state`) and
@@ -143,35 +143,34 @@
   from rounds 2–3 (parse error, impossible date, non-UTF-8, policy/roster shape; malformed/date/non-UTF-8
   acceptance) are removed — covered by the table. Schema-invalid, other-node, digest-mismatch and second-edit rows stay.
 
-### Blocker: `deeply nested input in committed policy` (1 of 16 cells fails)
+### Readers outside the pin module (coordinator-approved zones)
 
-The pin boundary converts it (`policy_digest` → `PolicyUnreadable: ... RecursionError ...`, probed). But the gate
-reads the same committed file earlier through code outside this leaf's zones, which lets `RecursionError` escape:
-
-- `specy_road/orchestration_config.py` `parse_orchestration_text` (via `effective_config`, called first in
-  `evaluate_gate`) — traceback from the gate, mark-implementation-reviewed and finish.
-- `specy_road/review_policy_ref.py` `committed_yaml` (catches `yaml.YAMLError, ValueError` only) — same for a deeply
-  nested committed `git-workflow.yaml`, via `policy_source` / `review_required`.
-
-Needed: widen those two except clauses to the same rule (add `RecursionError`, or reuse `UNREADABLE`), i.e. add both
-paths to the zones; or the coordinator drops/defers that cell. I did not edit either file and did not write a READY.
+The table's `deeply nested input in committed policy` cell first failed outside the pin boundary: the gate reads the
+same committed files earlier through `orchestration_config.parse_orchestration_text` (via `effective_config` in
+`evaluate_gate`) and `review_policy_ref.committed_yaml` (via `policy_source` / `review_required`), which let
+`RecursionError` escape. With the coordinator's approval both files were added to the zones, and only their except
+clauses were widened to the same tuple as `review_policy_pin.UNREADABLE`, written out literally with a comment
+naming it: `review_policy_pin` imports `review_policy_ref`, so importing the tuple would be circular. Deep nesting
+now takes each reader's existing path (the configuration error; `committed_yaml`'s `{}`), never a traceback.
 
 ## Probes (fix round 4)
 
 - All 8 kinds × acceptance file: gate problem, finish/mark exit 1, no traceback (table, pass).
 - 7 of 8 kinds × committed policy: gate problem, finish/mark/accept-policy/claim exit 1, no traceback (table, pass).
 - Deep nesting × committed policy, pin boundary alone: `PolicyUnreadable` (probe script).
-- Deep nesting × committed policy, `effective_config`: uncaught `RecursionError` (probe; outside zones).
-- Deep nesting × committed `git-workflow.yaml`, `committed_yaml`: uncaught `RecursionError` (probe; outside zones).
+- Deep nesting × committed policy, `effective_config`: uncaught `RecursionError` before the widening; now the existing configuration error (table cell passes).
+- Deep nesting × committed `git-workflow.yaml`, `committed_yaml`: uncaught `RecursionError` before the widening; now `{}` as for any unparsable copy.
+- Full table after widening: 16/16 cells pass.
 - Mixed-type keys (`policy: {1: a, b: c}`): `json.dumps(sort_keys=True)` `TypeError` inside the digest → `PolicyUnreadable` (table, pass).
 - Other parse sites in the leaf: `_SCHEMA` (bundled, read inside the acceptance boundary); `git_text` only in `_user`.
 
 ## Final touch zones
 
-As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other path changed.
+As listed in the brief plus `tests/test_enforced_rules_pointers.py` (budgets), and `specy_road/orchestration_config.py` and `specy_road/review_policy_ref.py` (one except clause each, fix round 4). No other path changed.
 
 ## Verification
 
+- Fix round 4: targeted (plus tests/test_orchestration_config.py) 189 passed; unreadable-input table 16/16; full suite 5731 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
 - Fix round 3: targeted 163 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
 - Fix round 2: targeted 159 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
 - Fix round 1: targeted 156 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
@@ -183,6 +182,7 @@ As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other pa
 ## Added
 
 - `specy_road/review_policy_pin.py`: `policy_parts`/`policy_digest` — the A1 digest, one helper for any ref.
+- Widened except clauses in `orchestration_config.parse_orchestration_text` and `review_policy_ref.committed_yaml` (fix round 4) — same tuple, so no reader of the committed policy tracebacks.
 - `_unreadable_as` + `UNREADABLE` (fix round 4) — the module's one rule for unreadable input at both boundaries.
 - `_git_read` (fix round 3; round 3's `load_yaml` removed in round 4) — one parse rule and one git-read rule, so no unreadable input crashes or reads as absent.
 - `_yaml_at` + `PolicyUnreadable` — strict read (committed_yaml returns `{}` on a parse error, which must never hash as empty).
