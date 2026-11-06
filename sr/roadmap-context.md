@@ -126,7 +126,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.37` One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout `safe-write-rule-setup-writers` — task — **Not Started**
   - `M21.38` Review writers and the review lock refuse any symlink on the path from the project root `review-writers-refuse-links` — task — **Not Started**
   - `M21.39` Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path `ops-writers-refuse-links` — task — **Not Started**
-  - `M21.40` upgrade's scratch git drops every GIT_ variable, runs no hook, and times out `upgrade-scratch-git-env-sterile` — task — **Not Started**
+  - `M21.40` upgrade's scratch git drops every GIT_ variable, runs no hook, and times out `upgrade-scratch-git-env-sterile` — task — **Complete**
   - `M21.41` The notes rules name every clause break the checker uses; rework docstring and verify tests fixed `notes-rules-name-every-clause-break` — task — **Complete**
   - `M21.42` review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it `parse-failure-gets-repair-turn` — task — **Complete**
   - `M21.43` digest refuses cleanly when the roadmap manifest is missing, like export --check `digest-check-no-manifest-clean-error` — task — **Complete**
@@ -143,7 +143,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.9` Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME `local-roster-and-codex-reviewer-isolation` — task — **Not Started**
   - `M22.10` reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping `finish-keeps-local-claim-and-landing` — task — **Not Started**
   - `M22.11` Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout `reports-say-what-happened` — task — **Not Started**
-  - `M22.12` The review gate finds the integration branch when refs/remotes/<remote>/HEAD is missing, without trusting the branch under review `gate-without-remote-head` — task — **Not Started**
+  - `M22.12` The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing `gate-without-remote-head` — task — **Not Started**
   - `M22.13` Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone `worker-cost-and-stale-presence` — task — **Not Started**
   - `M22.14` Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch `deps-ids-briefs-and-landed-branch` — task — **Not Started**
   - `M22.15` The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows `sandbox-runbook-rc4-drift` — task — **Not Started**
@@ -292,7 +292,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.37` on `feature/rm-safe-write-rule-setup-writers` since 2026-11-06
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
-- `M21.40` on `feature/rm-upgrade-scratch-git-env-sterile` since 2026-11-06
 - `M21.44` on `feature/rm-guidance-bypass-model-excluded-under-signed-reviews` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
@@ -302,11 +301,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 32 | 0 | 2.53 | 56% | 27 | 3 |
+| `docs` **flagged** | 32 | 0 | 2.50 | 56% | 26 | 3 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 47 | 0 | 2.49 | 51% | 35 | 5 |
-| `tests` **flagged** | 49 | 0 | 2.47 | 51% | 35 | 5 |
-| `CHANGELOG.md` | 29 | 0 | 1.90 | 34% | 22 | 1 |
+| `specy_road` **flagged** | 47 | 0 | 2.47 | 51% | 34 | 5 |
+| `tests` **flagged** | 49 | 0 | 2.45 | 51% | 34 | 5 |
+| `CHANGELOG.md` | 30 | 0 | 1.90 | 37% | 22 | 1 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
 

@@ -191,7 +191,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.37` | One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout | task | — | Not Started |
 | `M21.38` | Review writers and the review lock refuse any symlink on the path from the project root | task | — | Not Started |
 | `M21.39` | Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path | task | — | Not Started |
-| `M21.40` | upgrade's scratch git drops every GIT_ variable, runs no hook, and times out | task | — | Not Started |
+| `M21.40` | upgrade's scratch git drops every GIT_ variable, runs no hook, and times out | task | — | Complete |
 | `M21.41` | The notes rules name every clause break the checker uses; rework docstring and verify tests fixed | task | — | Complete |
 | `M21.42` | review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it | task | — | Complete |
 | `M21.43` | digest refuses cleanly when the roadmap manifest is missing, like export --check | task | — | Complete |
@@ -208,7 +208,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.9` | Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME | task | — | Not Started |
 | `M22.10` | reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping | task | — | Not Started |
 | `M22.11` | Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout | task | — | Not Started |
-| `M22.12` | The review gate finds the integration branch when refs/remotes/<remote>/HEAD is missing, without trusting the branch under review | task | — | Not Started |
+| `M22.12` | The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing | task | — | Not Started |
 | `M22.13` | Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone | task | — | Not Started |
 | `M22.14` | Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch | task | — | Not Started |
 | `M22.15` | The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows | task | — | Not Started |
