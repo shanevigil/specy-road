@@ -300,9 +300,8 @@ def _print_cursor_force(root: Path) -> None:
     """Advisory: one line per roster ``cursor`` entry that launches with ``--force`` (the roster launches read).
     An unreadable roster is left to ``validate`` and ``orchestrate plan``."""
     config, err = pinned_config(root)
-    for line in [] if err else force_warnings(config.get("roster") or []):
-        print(line, file=sys.stderr)
-    for line in guidance_bypass_lines(root):   # M21.44: excluded or opted-in guidance-bypass models
+    # M21.44: then each excluded or opted-in guidance-bypass model
+    for line in ([] if err else force_warnings(config.get("roster") or [])) + guidance_bypass_lines(root):
         print(line, file=sys.stderr)
 
 

@@ -207,6 +207,12 @@ def _guidance_check(repo_root: Path, entry: dict[str, Any], prof) -> str | None:
     return guidance_bypass_warning(config, entry, prof, repo_root)
 
 
+def _warn(line: str | None) -> None:
+    """Print a launch's warning on stderr, when it has one."""
+    if line:
+        print(line, file=sys.stderr)
+
+
 def _launch_checks(repo_root: Path, entry: dict[str, Any], harness: str, node: dict[str, Any], model: str, *,
                    resuming: bool = False) -> None:
     """Every refusal a launch or resume makes from the roster entry, the leaf, the profile and the environment
@@ -222,8 +228,7 @@ def _launch_checks(repo_root: Path, entry: dict[str, Any], harness: str, node: d
         raise WorkerError(f"profile for {entry.get('id')!r}: " + "; ".join(prof.errors))
     _auth_preflight(repo_root, entry, harness, resuming=resuming)
     _preflight(entry, repo_root)
-    if warning:   # once per launch, after every refusal
-        print(warning, file=sys.stderr)
+    _warn(warning)   # once per launch, after every refusal
 
 
 def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:

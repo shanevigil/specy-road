@@ -98,9 +98,9 @@ def _roster_reason(repo_root: Path, config: dict[str, Any], node: dict[str, Any]
         return f"not a reviewer role (roles: {', '.join(entry.get('roles') or []) or 'none'}) and no active substitution"
     if not may_handle(entry, node_sensitivity(node)):
         return f"{node['id']} is {node_sensitivity(node)!r}; it may process only {entry_may_process(entry)}"
-    if config["policy"].get("signed_reviews") and not entry.get("public_key"):
-        return "policy requires signed reviews and its roster entry has no public_key"
-    if why := guidance_problem(repo_root, config, entry):
+    no_key = config["policy"].get("signed_reviews") and not entry.get("public_key")
+    if why := ("policy requires signed reviews and its roster entry has no public_key" if no_key
+               else guidance_problem(repo_root, config, entry)):
         return why
     if model not in counting and not is_available(entry):
         return f"unavailable ({unavailability_reason(entry) or 'availability'})"

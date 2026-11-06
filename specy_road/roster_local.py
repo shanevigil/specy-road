@@ -60,6 +60,17 @@ def load_local_roster(repo_root: Path) -> tuple[list[dict[str, Any]], bool, str 
     return entries, allow, None
 
 
+def _never_local(entry: dict[str, Any], rid: str, committed: set[str]) -> str | None:
+    """What no local entry may do, ``allow_local_cli`` or not: override a committed id, or set the opt-in."""
+    if rid in committed:
+        return ("is already a roster entry; a local entry never overrides one "
+                "(set its availability under roster: instead, or pick another id)")
+    if GUIDANCE_OPT_IN in entry:
+        return (f"sets {GUIDANCE_OPT_IN}, which counts only on the committed roster "
+                "(roadmap/orchestration.yaml on the integration branch); remove it here")
+    return None
+
+
 def merge_local_roster(repo_root: Path, config: dict[str, Any],
                        profile_for: Callable[[dict[str, Any]], Profile | None]) -> str | None:
     """Append this clone's ``roster_add`` entries to ``config['roster']`` (in place), or say why not.
@@ -73,12 +84,8 @@ def merge_local_roster(repo_root: Path, config: dict[str, Any],
     committed = {str(e.get("id")) for e in config.get("roster") or []}
     for i, entry in enumerate(entries):
         rid = str(entry["id"])
-        if rid in committed:
-            return (f"{where}/{i}: {rid!r} is already a roster entry; a local entry never overrides one "
-                    "(set its availability under roster: instead, or pick another id)")
-        if GUIDANCE_OPT_IN in entry:
-            return (f"{where}/{i}: {rid!r} sets {GUIDANCE_OPT_IN}, which counts only on the committed roster "
-                    "(roadmap/orchestration.yaml on the integration branch); remove it here")
+        if why := _never_local(entry, rid, committed):
+            return f"{where}/{i}: {rid!r} {why}"
         if allow:
             continue
         if (entry.get("channels") or {}).get("cli"):

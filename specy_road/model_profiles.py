@@ -205,8 +205,6 @@ def _structure_errors(data: dict[str, Any], name: str) -> list[str]:  # noqa: C9
         out.append("`cost_usd_per_mtok` must be a mapping")
     if "researched" in data and _as_date(data["researched"]) is None:
         out.append(f"`researched` is not a calendar date (YYYY-MM-DD): {data['researched']!r}")
-    if GUIDANCE_BYPASS_KEY in data and (why := _guidance_bypass_error(data[GUIDANCE_BYPASS_KEY])):
-        out.append(f"`{GUIDANCE_BYPASS_KEY}` {why}")
     return out
 
 
@@ -239,7 +237,9 @@ def parse_profile(path: Path, text: str) -> Profile:
     errors = [f"missing `{k}`" for k in _REQUIRED if k not in data]
     if data.get("profile_schema") != PROFILE_SCHEMA:
         errors.append(f"profile_schema is {data.get('profile_schema')!r}, expected {PROFILE_SCHEMA}")
-    return Profile(path, data, _sections(body), errors + _structure_errors(data, path.stem))
+    why = _guidance_bypass_error(data[GUIDANCE_BYPASS_KEY]) if GUIDANCE_BYPASS_KEY in data else None
+    errors += _structure_errors(data, path.stem) + ([f"`{GUIDANCE_BYPASS_KEY}` {why}"] if why else [])
+    return Profile(path, data, _sections(body), errors)
 
 
 def load_profile(path: Path) -> Profile:

@@ -192,3 +192,25 @@ refusal, the warning and the validate/doctor lines all read its result.
   - `test_the_refusal_needs_only_config_entry_and_profile` (R4);
   - the drift test extended to a profile file not named after its `api_id` (R1);
   - a `worktree_roster` parameter on the `plan` helper.
+
+## Post-fix refactor (coordinator precheck)
+
+These changes refactor without changing behaviour. No function in the diff is more complex than it was at the merge base, measured with `ruff --ignore-noqa --select C901`. Every new function is at 10 or below, and the diff adds no `noqa: C901`.
+
+- `role_prompt.build_prompt`: the `# noqa: C901` that my inserted `role_check` displaced is removed. The function went from 21 (without the waiver) to 7, through three cohesive helpers:
+  - `_target_node`: resolves the target and node.
+  - `_leaf_check`: the executor class check, then sensitivity.
+  - `_role_lines`: each role's preamble, with the reviewer's packet.
+  The checks run in the same order and produce the same messages as before.
+- `model_profiles._structure_errors` is back to 14 (its merge-base value). `parse_profile` now adds the `guidance_bypass_observed` error after the structure errors.
+- Each of these had gained +1 complexity and is back to its merge-base value:
+  - `doctor._print_cursor_force`: one loop over cursor-force lines plus guidance lines.
+  - `models_cli.cmd_show`: one loop over stale and guidance lines.
+  - `role_prompt._run`: the new `_launch_warning` helper.
+  - `orchestrate_plan.build_orchestration_plan`: the new `_candidate` helper.
+  - `review_eligible._roster_reason`: the no-key reason or the guidance problem, in one condition.
+  - `roster_local.merge_local_roster`: the new `_never_local` helper, for an id collision or the opt-in.
+  - `roster_profile_check.report_roster_profiles`: one warning loop.
+  - `worker_ops_launch._launch_checks`: the new `_warn` helper.
+- Added helpers, each with complexity of 6 or less: `_target_node`, `_leaf_check`, `_role_lines`, `_launch_warning`, `_candidate`, `_never_local`, `_warn`. They keep the functions above at or below their merge-base complexity.
+- Checks after the refactor: `ruff check specy_road tests scripts` and `specy-road file-limits` are clean, and the full suite (`pytest -n 4`) passes with 5927 tests.
