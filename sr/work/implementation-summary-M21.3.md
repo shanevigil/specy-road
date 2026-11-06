@@ -81,6 +81,7 @@ The listed zones plus `specy_road/bundled_scripts/roadmap_move_id_forms.py` (sin
 
 ## Verification
 
+- **A3 GUI gate:** the authoritative results for `tests/test_gui_outline_contract.py`, `tests/test_gui_app*.py` and `tests/test_roadmap_gui_*.py` are the ones `specy-road ready` recorded in `sr/work/reviews/M21.3/READY-claude-opus-5.5.md`. They were run outside any sandbox, because the Codex reviewer sandbox cannot complete TestClient requests (see Fix round 2). The same READY records the targeted pytest, `python scripts/check_clones.py`, `ruff check specy_road tests scripts` and `specy-road file-limits`.
 - Round 0: `pytest -n 4`: 5378 passed. Round 1: targeted run, 930 passed (see Probes).
 - `specy-road file-limits` (sr/ config and `--repo-root .`): OK.
 - Dogfood fixture `validate`, `export --check` and `digest --check`: OK.
