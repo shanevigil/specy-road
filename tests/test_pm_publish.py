@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import shutil
 import sys
@@ -292,26 +293,30 @@ def test_publish_refuses_invalid_graph(dogfood_repo: Path, breaker, cause: str) 
     assert _state(dogfood_repo) == before
 
 
-@pytest.mark.parametrize("outside_exists", [False, True])
-def test_publish_refuses_generated_link_out(
-    dogfood_repo: Path, outside_exists: bool
-) -> None:
-    outside = dogfood_repo.parent / "outside.md"
-    if outside_exists:
-        outside.write_text("someone else's file\n", encoding="utf-8")
-    ctx = dogfood_repo / "roadmap-context.md"
-    ctx.unlink()
-    ctx.symlink_to(outside)
+@pytest.mark.parametrize(
+    ("name", "layout"),
+    [("roadmap-context.md", "dangling_out"), ("roadmap-context.md", "link_out"), ("roadmap.md", "link_in")],
+)
+def test_publish_refuses_a_linked_generated_file(dogfood_repo: Path, name: str, layout: str) -> None:
+    """M21.17 link out; M21.39: any link (in-repo, dangling) is refused with finish's sentence, nothing written."""
+    link = dogfood_repo / name
+    target = dogfood_repo / "payload.md" if layout == "link_in" else dogfood_repo.parent / "outside.md"
+    if layout != "dangling_out":
+        target.write_text("someone else's file\n", encoding="utf-8")
+    link.unlink()
+    link.symlink_to("payload.md" if layout == "link_in" else target)
+    if layout == "link_in":   # committed, so Publish's scope check passes and the link is what refuses
+        _git(dogfood_repo, "add", "payload.md", name)
+        _git(dogfood_repo, "commit", "-m", f"{name} links to payload.md")
     _edit_m0(dogfood_repo, '"title": "Foundation — architecture and contracts"',
              '"title": "Foundation — renamed for publish"')
     before = _state(dogfood_repo)
     r = _post_publish(dogfood_repo)
     assert r.status_code == 400, r.text
-    assert "roadmap-context.md" in r.json()["detail"]
-    assert _git_out(dogfood_repo, "rev-parse", "HEAD") == before[0]
-    assert _git_out(dogfood_repo, "ls-files", "--stage") == before[1]
-    assert (dogfood_repo / "roadmap.md").read_bytes() == before[2]
-    if outside_exists:
-        assert outside.read_bytes() == b"someone else's file\n"
+    assert f"{name} is a symlink (to {os.readlink(link)}), not a regular file" in r.json()["detail"]
+    assert _state(dogfood_repo) == before   # HEAD, index and both files' bytes
+    assert link.is_symlink()
+    if layout == "dangling_out":
+        assert not target.exists()
     else:
-        assert not outside.exists()
+        assert target.read_bytes() == b"someone else's file\n"

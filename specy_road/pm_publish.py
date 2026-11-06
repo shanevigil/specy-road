@@ -262,7 +262,8 @@ def _regenerate_for_publish(repo_root: Path) -> None:
     """Validate the graph, then re-render ``roadmap.md`` and ``roadmap-context.md``.
 
     Raises ``ValueError`` before writing anything when the graph does not load or
-    validate, or when a generated file is a link out of the project (M21.17).
+    validate, or when a generated file is any symlink, in the repository or out of it
+    (M21.39: finish's ``irregular_destination`` sentence).
     """
     # Imported here: roadmap_crud_ops pulls in the whole roadmap toolchain.
     from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise

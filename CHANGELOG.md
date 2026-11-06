@@ -32,6 +32,14 @@ body. Keep section bodies focused; link to PRs for detail.
   stub or skill file linked out of the repository was a `refused` report line with
   exit 0 and is now `error:` with exit 1. `AGENTS.md`/`CLAUDE.md` aliases and the
   `.claude/skills/` links are unchanged.
+- **Security:** Publish, finish's landing and reviews copy, the pickup hint and the brainstorm lock follow the
+  same safe-write rule. GUI Publish refuses (HTTP 400, nothing written) an in-repo or dangling symlink at
+  `roadmap.md` or `roadmap-context.md`, with finish's sentence; the landing merge writes both files through the
+  rule. Finish walks the untracked summary's copy from the main checkout's project root, so a symlinked `work`,
+  `work/reviews` or `work/reviews/<node>` (also from a linked worktree) refuses finish before any write. A
+  symlinked `.specyrd` or `.specyrd/cache` is refused where the cache directory is made; the pickup hint
+  marker is checked with `lstat`, so a link there (live or dangling) is a one-line warning and is never read as
+  "already shown" or written through; `brainstorm` reports a linked lock as an error with exit 1.
 - The notes rules in the reviewer and repair-turn prompts name every clause break `review record` checks: `'. '`,
   `'! '`, `'? '`, `'; '` and all eight conjunctions (and, but, while, whereas, although, though, yet, plus). The
   check itself is unchanged. The `rework_rca` docstring now names `review_deferral.rca_deferral`, and two brainstorm

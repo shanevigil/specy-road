@@ -6,6 +6,7 @@ import os
 import sys
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.git_workflow_config import ON_COMPLETE_MODES, resolve_on_complete
 from specy_road.history_cache import ensure_cache_dir
 from specy_road.on_complete_session import on_complete_session_path
@@ -105,15 +106,21 @@ def print_orchestration_hint(repo_root: Path | None = None) -> None:
     Suppressed inside a running loop, which exports ``SPECY_ROAD_GRIND_SESSION``:
     advertising the loop to itself once per cycle is the flood this is trying not
     to become.
+
+    The marker is best effort: a symlink on its path (live or dangling) is never
+    read as "already shown" or written through; one warning line, and the hint.
     """
     if os.environ.get("SPECY_ROAD_GRIND_SESSION"):
         return
     if repo_root is not None:
         marker = _orchestration_hint_marker(repo_root)
-        if marker.is_file():
-            return
-        ensure_cache_dir(marker.parent)
-        marker.write_text("shown\n", encoding="utf-8")
+        try:
+            if safe_write.check(repo_root, marker).is_file():   # lstat walk: a link refuses
+                return
+            ensure_cache_dir(marker.parent)
+            safe_write.write(repo_root, marker, "shown\n")
+        except safe_write.SafeWriteError as e:
+            print(f"warning: pickup hint marker not recorded: {e}", file=sys.stderr)
     print()
     print("Running more than one leaf? specy-road grind-session drives this loop:")
     print("  specy-road grind-session --plan            # ready/blocked leaves + waves")

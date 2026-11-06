@@ -29,6 +29,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from specy_road import safe_write
+
 # Bump to invalidate every existing cache. There is deliberately no migration
 # code: a mismatch rebuilds from git, which is always authoritative.
 CACHE_VERSION = 1
@@ -44,11 +46,17 @@ def cache_path(root: Path) -> Path:
 
 
 def ensure_cache_dir(cache_dir: Path) -> None:
-    """Create ``cache_dir`` with a ``.gitignore`` of ``*`` in it; raises ``OSError``."""
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    """Create ``cache_dir`` with a ``.gitignore`` of ``*`` in it; raises ``OSError``.
+
+    ``cache_dir`` is ``<root>/.specyrd/cache``; the safe-write rule walks it from
+    that root, so a symlinked ``.specyrd``, ``cache`` or ``.gitignore`` raises
+    :class:`~specy_road.safe_write.SafeWriteError` (an ``OSError``).
+    """
+    root = cache_dir.parents[1]
+    safe_write.mkdirs(root, cache_dir)
     ignore = cache_dir / ".gitignore"
-    if not ignore.is_file():
-        ignore.write_text("# Written by specy-road: everything here is derived.\n*\n", encoding="utf-8")
+    if not safe_write.check(root, ignore).is_file():
+        safe_write.write(root, ignore, "# Written by specy-road: everything here is derived.\n*\n")
 
 
 def load_cache(root: Path) -> dict[str, Any] | None:

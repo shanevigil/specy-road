@@ -216,3 +216,40 @@ def test_failure_before_the_commit_restores_the_tree(
     assert "[ok] bookkeeping committed" not in out
     assert wrote is None or wrote in out, out
     assert _state(repo) == before
+
+
+def _entries(d: Path) -> dict[str, object]:
+    """Every path under directory ``d`` and its :func:`_entry`."""
+    return {p.relative_to(d).as_posix(): _entry(p) for p in sorted(d.rglob("*"))}
+
+
+@pytest.mark.parametrize(
+    ("linked", "from_worktree"),
+    [("work/reviews", False), ("work/reviews", True), ("work/reviews/M1.1", False), ("work", True)],
+    ids=["reviews-main", "reviews-from-worktree", "node", "work-from-worktree"],
+)
+def test_finish_refuses_a_linked_reviews_base(tmp_path: Path, monkeypatch, linked: str, from_worktree: bool) -> None:
+    """M21.39: the untracked summary's copy is walked from the main checkout's project root: exit 1, nothing changed."""
+    main = _repo(tmp_path, monkeypatch)
+    repo = main
+    if from_worktree:
+        git(main, "checkout", "-q", "dev")
+        repo = tmp_path / "lane"
+        git(main, "worktree", "add", "-q", str(repo), "feature/rm-thing")
+    (repo / SUMMARY).write_text("# summary M1.1, never committed\n")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "theirs.md").write_text("# not the project's\n")
+    link = main / linked
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(outside, target_is_directory=True)
+    before, main_before, outside_before = _state(repo), _state(main), _entries(outside)
+
+    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert f"{link} is a symlink (to {outside}), not a directory" in result.stderr, result.stderr
+    assert "finish-this-task: nothing was changed" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert (_state(repo), _state(main), _entries(outside)) == (before, main_before, outside_before)
+    assert link.is_symlink()
