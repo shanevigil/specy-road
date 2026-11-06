@@ -270,6 +270,7 @@ Do not pick these up.
 - `M21.25` on `feature/rm-reviewer-answer-after-prose` since 2026-11-05
 - `M21.28` on `feature/rm-finish-validates-before-bookkeeping` since 2026-11-05
 - `M21.33` on `feature/rm-brainstorm-start-is-the-first-call-alone` since 2026-11-05
+- `M21.34` on `feature/rm-cr2-case-fits-the-todo-app` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
