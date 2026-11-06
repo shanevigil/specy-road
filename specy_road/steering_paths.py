@@ -35,6 +35,7 @@ import hashlib
 import json
 import os
 import stat
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,8 +43,8 @@ from typing import Any
 
 import yaml
 
-from specy_road.git_config_text import git_reads, read_chain
-from specy_road.git_subprocess import run
+from specy_road.git_config_text import git_reads, read_chain, watched_values
+from specy_road.git_subprocess import DEFAULT_TIMEOUT, run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.review_files import READY_PREFIX, REVIEWS_REL
 from specy_road.runtime_paths import prefix_within
@@ -64,8 +65,6 @@ HARNESS_DIRS = (".claude", ".codex", ".cursor")
 CLAUDE_ALWAYS_DENIED = (".claude/settings.json", ".claude/settings.local.json")
 #: More direct children than this in a hooks directory are recorded as the one marker ``capped``.
 HOOKS_CAP = 200
-#: git config keys whose values a ``git_config`` finding reports (plus every ``includeIf.<cond>.path``).
-GIT_CONFIG_KEYS = ("core.hookspath", "core.fsmonitor", "core.sshcommand", "include.path")
 ABSENT = "absent"
 #: The prefix of a value that could not be read (:func:`guarded`).
 ERROR = "error:"
@@ -161,19 +160,6 @@ def _gitdirs(top: Path) -> tuple[Path, Path] | None:
     commondir = gitdir / "commondir"
     common = resolved_path(gitdir / parse_bytes(commondir).decode("utf-8").strip()) if commondir.exists() else gitdir
     return gitdir, common
-
-
-def _watched(key: str) -> bool:
-    return key in GIT_CONFIG_KEYS or (key.startswith("includeif.") and key.endswith(".path"))
-
-
-def watched_values(pairs: list[tuple[str, str]]) -> dict[str, str]:
-    """The watched keys among a config file's ``(key, value)`` pairs, as a finding shows them: ``{key: v1,v2}``."""
-    out: dict[str, list[str]] = {}
-    for k, v in pairs:
-        if _watched(k):
-            out.setdefault(k, []).append(v)
-    return {k: ",".join(v) for k, v in out.items()}
 
 
 @dataclass(frozen=True)
@@ -371,10 +357,21 @@ def _env_bin(snap: Snapshot, scope: Scope) -> None:
             _add(snap, scope, k, "env_bin", name=scope.display(named / k.name)) for k in kids])
 
 
+def _blob_sha(oid: str, cwd: Path) -> str:
+    """SHA-256 of a blob's raw bytes from the object store (``git cat-file blob``, read as bytes: no decoding,
+    no newline normalization); unreadable under the one rule when git cannot give them."""
+    try:
+        r = subprocess.run(["git", "cat-file", "blob", oid], cwd=cwd, capture_output=True, timeout=DEFAULT_TIMEOUT,
+                           check=False)
+    except (OSError, subprocess.SubprocessError) as e:
+        return _error(e)
+    return _sha(r.stdout) if r.returncode == 0 else f"{ERROR}git cat-file blob {oid}: {os.fsdecode(r.stderr).strip()}"
+
+
 def blobs(snap: Snapshot, scope: Scope) -> None:
-    """The policy files as committed at the local integration branch tip (no fetch), byte-exact: each one's blob
-    object id from ``git ls-tree`` (the object store, no hook, no text decoding), so a newline-only commit shows.
-    No such branch: ``absent``; a tree git cannot list: unreadable (the one rule)."""
+    """The policy files as committed at the local integration branch tip (no fetch), byte-exact: ``git ls-tree``
+    names each one's blob (no hook), and its value is the SHA-256 of that blob's raw bytes, so a newline-only
+    commit shows. No such branch: ``absent``; a tree git cannot list: unreadable (the one rule)."""
     if not scope.integration_branch:
         return
     ref, paths = f"refs/heads/{scope.integration_branch}", [f"{scope.prefix}{rel}" for rel in POLICY_FILES]
@@ -383,7 +380,8 @@ def blobs(snap: Snapshot, scope: Scope) -> None:
     missing = not r.ok and not run(["show-ref", "--verify", "--quiet", ref], scope.m_top).ok
     for rel, path in zip(POLICY_FILES, paths):
         name = f"{scope.integration_branch}:{rel}"
-        value = (f"blob:{oids[path]}" if path in oids else ABSENT) if missing or r.ok else f"{ERROR}git ls-tree {ref}: {r.message}"
+        found = _blob_sha(oids[path], scope.m_top) if path in oids else ABSENT
+        value = found if missing or r.ok else f"{ERROR}git ls-tree {ref}: {r.message}"
         snap[f"blob:{name}"] = Entry(name, "policy_blob", value)
 
 

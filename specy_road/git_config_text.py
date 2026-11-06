@@ -31,6 +31,8 @@ from specy_road.runtime_paths import git_path
 #: git's own include depth limit.
 MAX_INCLUDE_DEPTH = 10
 _ESCAPES = {"n": "\n", "t": "\t", "b": "\b"}
+#: git config keys whose values a ``git_config`` steering finding reports (plus every ``includeIf.<cond>.path``).
+GIT_CONFIG_KEYS = ("core.hookspath", "core.fsmonitor", "core.sshcommand", "include.path")
 
 
 def _eol(text: str, i: int) -> int:
@@ -141,3 +143,16 @@ def git_reads(top: Path) -> tuple[list[Path], list[Path]]:
     origins = r.out.split("\0")[0::2] if r.ok else []
     files = [top / os.path.expanduser(o.removeprefix("file:")) for o in origins if o.startswith("file:")]
     return ([hooks] if hooks else []), list(dict.fromkeys(files))
+
+
+def _watched(key: str) -> bool:
+    return key in GIT_CONFIG_KEYS or (key.startswith("includeif.") and key.endswith(".path"))
+
+
+def watched_values(pairs: list[tuple[str, str]]) -> dict[str, str]:
+    """The watched keys among a config file's ``(key, value)`` pairs, as a finding shows them: ``{key: v1,v2}``."""
+    out: dict[str, list[str]] = {}
+    for k, v in pairs:
+        if _watched(k):
+            out.setdefault(k, []).append(v)
+    return {k: ",".join(v) for k, v in out.items()}

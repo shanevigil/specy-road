@@ -8,6 +8,7 @@ listing by ``worker reconcile``, and finish's refusal paired with the Claude Cod
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -115,6 +116,9 @@ def test_each_steering_class_is_exactly_one_steering_file_finding(tmp_path: Path
     found = _turn(p["repo"], rec, lambda: act(p))
     [steer] = [f for f in found if f["kind"] == "steering_file"]
     assert steer["class"] == cls and steer["path"].endswith(tail) and steer["before"] != steer["after"]
+    if cls == "policy_blob":   # SHA-256 over the raw committed bytes (A2), or absent for a file new on the branch
+        sides = [steer["before"], steer["after"]] if "crlf" in name else [v for v in (steer["before"], steer["after"]) if v != "absent"]
+        assert sides and all(re.fullmatch("[0-9a-f]{64}", v) for v in sides), steer
     named = [x for f in found if f["kind"] in ("porcelain", "committed_outside_zones") for x in f["paths"]]
     assert not [x for x in named if x.endswith(tail.rsplit("/", 1)[-1])], found   # replaced, not reported twice
     assert ("git_probes_skipped" in {f["kind"] for f in found}) == (cls == "git_hook")
