@@ -6,12 +6,14 @@ Coordinators could not tell a refused filing from a model that never started. Th
 
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from specy_road.managed_block import refused_link
 from specy_road.orphaned_claims import relative_age
 from specy_road.orchestration_config import substitute_for
 from specy_road.review_files import archive_review, list_reviews, render_front_matter, review_path, reviews_dir, write_review
@@ -36,6 +38,10 @@ def write_rejected(reviews: Path, model: str, commit: str, reason: str) -> Path:
     refused_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     body = reason if reason.endswith("\n") else reason + "\n"
     path = rejected_path(reviews, model)
+    why = refused_link(reviews, path, any_link=True)
+    if why:   # the refusal being recorded keeps its own error and exit code
+        print(f"error: {why}", file=sys.stderr)
+        return path
     path.write_text(render_front_matter({"commit": commit, "refused_at": refused_at}, body), encoding="utf-8")
     return path
 

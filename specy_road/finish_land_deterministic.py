@@ -46,6 +46,7 @@ from specy_road.finish_land_roadmap_graph import (
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
     gitignore_resolution_hint,
+    refused_generated_files,
     unstageable_generated_files,
 )
 from specy_road.git_subprocess import git_code, git_ok
@@ -163,6 +164,9 @@ def _regenerate_generated_files(repo: Path) -> list[str]:
     """
     if not _has_roadmap_graph(repo):
         return []
+    links_out = refused_generated_files(repo)   # both checked before either is written
+    if links_out:
+        raise DeterministicResolveError("; ".join(links_out.values()))
     try:
         reexport_roadmap_md(repo)
         (repo / DEFAULT_OUTPUT).write_text(render_digest(repo), encoding="utf-8")
