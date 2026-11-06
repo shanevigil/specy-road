@@ -103,7 +103,8 @@ entries:
       - CHANGELOG.md
     started: '2026-11-06'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-06T08:06:18+00:00'
   - codename: review-record-files-only-as-the-caller
     node_id: M21.31
     branch: feature/rm-review-record-files-only-as-the-caller
