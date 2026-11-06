@@ -42,9 +42,7 @@
         "Estimated net line change (informational, not a gate): package about +150, tests about +360, docs about +35"
       ],
       "codename": "guidance-bypass-model-excluded-under-signed-reviews",
-      "dependencies": [
-        "992a07fe-018e-4ff0-adc5-1675c130adb6"
-      ],
+      "dependencies": [],
       "execution_milestone": "Agentic-led",
       "id": "M21.44",
       "node_key": "14485811-9209-468d-bd05-0f5156228e8a",

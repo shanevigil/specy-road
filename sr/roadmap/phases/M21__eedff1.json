@@ -453,9 +453,7 @@
         "Estimated net line change (informational, not a gate): package about +5, tests about +20, docs about +1"
       ],
       "codename": "digest-check-no-manifest-clean-error",
-      "dependencies": [
-        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
-      ],
+      "dependencies": [],
       "id": "M21.43",
       "node_key": "dc4d8f5d-b3cc-4224-b456-4991ab6b3909",
       "parent_id": "M21",
