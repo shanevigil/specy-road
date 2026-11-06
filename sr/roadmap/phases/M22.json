@@ -467,6 +467,31 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "The reviewer prompt rendered for every channel (review delegate, prompt --role reviewer --channel cli/paste) tells the reviewer to list every required change it can find in one review, re-scan the diff for further instances of each defect class (other inputs, call sites, files) and any acceptance line not fully met before answering, and that a later round should find nothing it could have reported now",
+        "A test renders the reviewer prompt for each channel and asserts the instruction is present once; any prompt byte budget test is updated only by the instruction's size",
+        "docs/orchestration-reviewer-output.md states the expectation; CHANGELOG.md [Unreleased] records it",
+        "Estimated net line change (informational, not a gate): package about +6, tests about +20, docs about +4"
+      ],
+      "codename": "reviewer-lists-every-required-change",
+      "dependencies": [],
+      "id": "M22.18",
+      "node_key": "f6a968f0-f084-49e0-b5f1-c8132d45ea7f",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.18_reviewer-lists-every-required-change_f6a968f0-f084-49e0-b5f1-c8132d45ea7f.md",
+      "sibling_order": 17,
+      "status": "Not Started",
+      "title": "The reviewer prompt asks for every required change in one pass, not just the first",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/review_record_write.py",
+        "tests/test_role_prompt_reviewer.py",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
