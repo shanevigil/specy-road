@@ -38,6 +38,7 @@ Scripts may read the dashboard's state through these `GET` routes (all under `/a
 An unknown `/api/…` path returns a JSON `404` (`{"detail": "no API route …"}`), never the HTML shell.
 
 - **Safe saves:** `content_hash` is the sha256 of the file's bytes. Send it back as `X-Base-Content-Hash` on `PUT` to the same route; if the file changed on disk since, the save is refused with `409` and `detail.current_content` / `detail.content_hash`, and nothing is written. The UI sends it automatically and shows the conflict instead of overwriting. A `PUT` without the header writes unconditionally, as before.
+- **Publish** (`POST /api/publish`): regenerates `roadmap.md` and `roadmap-context.md` from the graph before committing, so the pushed commit passes `export --check` and `digest --check`. It refuses with `400`, before staging anything, when the graph does not validate or no git remote is configured (`/publish/status` then reports `blocked_reason: "no_remote"`).
 - **`specy-road gui --read-only`:** serves every `GET` and refuses every other method under `/api/` with `403`, including POSTs that only test settings. It does not switch off the opt-in background `git fetch` / integration auto-FF that `GET /api/roadmap` schedules (**Settings**; off by default).
 
 ## How to use it and install it
