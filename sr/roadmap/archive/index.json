@@ -3834,6 +3834,558 @@
           "node_key": "e008e1d8-42d1-4ee0-a067-1f24f880c5cf"
         }
       ]
+    },
+    {
+      "archive_id": "M15-94bbba0e-20261106",
+      "archived_at": "2026-11-06T00:24:28+00:00",
+      "bundle": null,
+      "chunk": "roadmap/archive/chunks/M15-94bbba0e-20261106.json",
+      "depth": "shallow",
+      "git": {
+        "closed_at": null,
+        "integration_branch": null,
+        "merge_commit": null,
+        "nearest_tag": null,
+        "rollup_branch": null,
+        "rollup_tip": null
+      },
+      "node_keys": [
+        "94bbba0e-94c4-4159-8636-0ea9c815ff0a",
+        "f11ae6a1-4e8d-43f8-9aed-391000c71679",
+        "4dafa22a-727f-4d5e-b954-f956227c150a",
+        "7e865197-c8d6-4ce4-a2d1-dc2b974a17d0",
+        "b1a7472a-784c-4b57-a15e-75d664b9e942",
+        "c80c3636-1dd9-4001-8520-f0c4e6402be4",
+        "4c08d324-6253-4875-ac9e-b0933d17f69c",
+        "5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9",
+        "2cebdd4b-b1e0-4a40-9b9b-8768fc530b26",
+        "d333b89b-eb44-4636-a350-284149c4a490",
+        "e6e3dd29-22ab-4b59-9ca3-2ecd479879d8",
+        "c740f23d-72c3-41de-88c6-0ee0a7663ce4",
+        "035cb961-9771-46ae-a5e5-a378ea914e01",
+        "86977bbe-582b-4434-8c5e-56ec9669a5a5",
+        "52977306-d74f-402c-bd68-2f53de204394",
+        "ff8e2df5-393e-4d32-8576-03103c4c052f",
+        "b502d0b5-af11-4b1e-802c-5283e4f7a506",
+        "28fd4390-9084-4f8d-9304-1f7d6e6a88c7",
+        "4bbfe087-bdb9-4cff-8e15-8cb0badedabc",
+        "4bd33f34-dd57-4ef9-a511-27051f646dd2",
+        "eb4e416f-8d09-49b7-9da4-c4b90bb83145",
+        "311116ea-4199-49bf-8858-11c48b99828c",
+        "95f40b2e-87e0-4c88-b013-78f2155376d6",
+        "677e99a0-3221-4d71-8874-ac9f8b9d5fa1",
+        "79ecc94e-bcc0-4d9a-8368-0c00503ea2f4",
+        "57bf9ac4-77f6-4b66-8ddb-fd478d67e060",
+        "858543e9-c22b-4224-ac40-964bfef8d0ec",
+        "33917212-11fd-4aee-bea6-37b23ae674ab",
+        "01a5074d-8815-4453-a0f6-be3e91893885",
+        "47ae3067-efce-47c2-a2dc-f7860e87266c",
+        "78805bfe-0798-47a0-8ace-cdc0caebd261"
+      ],
+      "nodes_summary": [
+        {
+          "id": "M15",
+          "node_key": "94bbba0e-94c4-4159-8636-0ea9c815ff0a",
+          "status": "Not Started",
+          "title": "rc3 adopter feedback: install safety, multi-harness reviewers and parallel-grind friction",
+          "type": "phase"
+        },
+        {
+          "id": "M15.1",
+          "node_key": "f11ae6a1-4e8d-43f8-9aed-391000c71679",
+          "status": "Complete",
+          "title": "RC install docs cover extras and the direct wheel URL, and each RC announcement carries the filled-in command",
+          "type": "task"
+        },
+        {
+          "id": "M15.2",
+          "node_key": "4dafa22a-727f-4d5e-b954-f956227c150a",
+          "status": "Complete",
+          "title": "A Claude Code reviewer works on a subscription login: bare only with an API key, explicit mode otherwise, checked before launch",
+          "type": "task"
+        },
+        {
+          "id": "M15.3",
+          "node_key": "7e865197-c8d6-4ce4-a2d1-dc2b974a17d0",
+          "status": "Complete",
+          "title": "prompt --channel cli launches nothing without --run, and a run uses the rostered model in the leaf's worktree; a model the harness did not report as rostered is flagged",
+          "type": "task"
+        },
+        {
+          "id": "M15.4",
+          "node_key": "b1a7472a-784c-4b57-a15e-75d664b9e942",
+          "status": "Complete",
+          "title": "Parallel PR-mode leaves reconcile bookkeeping by rule, and pickup's register commit leaves the digest current",
+          "type": "task"
+        },
+        {
+          "id": "M15.6",
+          "node_key": "c80c3636-1dd9-4001-8520-f0c4e6402be4",
+          "status": "Complete",
+          "title": "The rework prompt carries the accepted root-cause analysis as the governing design, ahead of the reviews' suggested fixes",
+          "type": "task"
+        },
+        {
+          "id": "M15.8",
+          "node_key": "4c08d324-6253-4875-ac9e-b0933d17f69c",
+          "status": "Complete",
+          "title": "A promoted leaf is never stuck: promote's sheet says Approach is written before pickup, and author-approach prints the prompt to write it",
+          "type": "task"
+        },
+        {
+          "id": "M15.9",
+          "node_key": "5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9",
+          "status": "Complete",
+          "title": "Harness launches survive large prompts and a harness binary off PATH, for every role",
+          "type": "task"
+        },
+        {
+          "id": "M15.10",
+          "node_key": "2cebdd4b-b1e0-4a40-9b9b-8768fc530b26",
+          "status": "Complete",
+          "title": "Try a roster before it lands: a dry-run plan from the working tree and local roster entries, and models list shows the uncommitted roster diff",
+          "type": "task"
+        },
+        {
+          "id": "M15.11",
+          "node_key": "d333b89b-eb44-4636-a350-284149c4a490",
+          "status": "Complete",
+          "title": "A working roster in one command, profile values validated locally, consistent ids in docs, and plans that can spread executors",
+          "type": "task"
+        },
+        {
+          "id": "M15.12",
+          "node_key": "e6e3dd29-22ab-4b59-9ca3-2ecd479879d8",
+          "status": "Complete",
+          "title": "Shared documentation zones do not serialize grind-session batches",
+          "type": "task"
+        },
+        {
+          "id": "M15.13",
+          "node_key": "c740f23d-72c3-41de-88c6-0ee0a7663ce4",
+          "status": "Complete",
+          "title": "Worker loop friction: sync waits for the events that matter, tool-use noise collapses, rework after a completed worker, a READY-only resume, a quieter pickup",
+          "type": "task"
+        },
+        {
+          "id": "M15.15",
+          "node_key": "035cb961-9771-46ae-a5e5-a378ea914e01",
+          "status": "Complete",
+          "title": "upgrade ships the work/ templates every prompt references, and the .specyrd README matches upgrade's steps",
+          "type": "task"
+        },
+        {
+          "id": "M15.17",
+          "node_key": "86977bbe-582b-4434-8c5e-56ec9669a5a5",
+          "status": "Complete",
+          "title": "Review friction: delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions correctly, refusals quote the line, and superseded failed runs say so",
+          "type": "task"
+        },
+        {
+          "id": "M15.18",
+          "node_key": "52977306-d74f-402c-bd68-2f53de204394",
+          "status": "Complete",
+          "title": "planned_test_changes can be edited after pickup, and an unplanned test removal is a required reviewer check",
+          "type": "task"
+        },
+        {
+          "id": "M15.19",
+          "node_key": "ff8e2df5-393e-4d32-8576-03103c4c052f",
+          "status": "Complete",
+          "title": "Cursor worker cost is estimated when the harness reports a display name for the rostered model",
+          "type": "task"
+        },
+        {
+          "id": "M15.21",
+          "node_key": "b502d0b5-af11-4b1e-802c-5283e4f7a506",
+          "status": "Complete",
+          "title": "Linked worktrees: commands resolve the enclosing worktree, and env_setup handles symlinked environments",
+          "type": "task"
+        },
+        {
+          "id": "M15.22",
+          "node_key": "28fd4390-9084-4f8d-9304-1f7d6e6a88c7",
+          "status": "Complete",
+          "title": "Project preferences the workflow respects: local decisions, a PR body footer, the summary commit rule, and local landing for the root repository",
+          "type": "task"
+        },
+        {
+          "id": "M15.24",
+          "node_key": "4bbfe087-bdb9-4cff-8e15-8cb0badedabc",
+          "status": "Complete",
+          "title": "ready does not record false evidence: a passing run whose output shows a failed command is flagged, and --run-argv runs a command without a shell",
+          "type": "task"
+        },
+        {
+          "id": "M15.26",
+          "node_key": "4bd33f34-dd57-4ef9-a511-27051f646dd2",
+          "status": "Complete",
+          "title": "A claim left with no worker is never silent: finished workers free their max_workers slot, handoff status and doctor list orphaned claims, and a failed delegate says how to resolve its claim",
+          "type": "task"
+        },
+        {
+          "id": "M15.27",
+          "node_key": "eb4e416f-8d09-49b7-9da4-c4b90bb83145",
+          "status": "Complete",
+          "title": "worker usage counts every usage-bearing event of a long Cursor turn and marks a turn whose output tokens are implausibly low for its length",
+          "type": "task"
+        },
+        {
+          "id": "M15.31",
+          "node_key": "311116ea-4199-49bf-8858-11c48b99828c",
+          "status": "Complete",
+          "title": "A delegated reviewer always runs a named model: review delegate passes the roster id as worker delegate does, refuses a reviewer with no model, and files the model the harness reported",
+          "type": "task"
+        },
+        {
+          "id": "M15.32",
+          "node_key": "95f40b2e-87e0-4c88-b013-78f2155376d6",
+          "status": "Complete",
+          "title": "An implementation summary that finish archives to work/done/ is not measured by file-limits, so finish never lands a file-limits failure",
+          "type": "task"
+        },
+        {
+          "id": "M15.33",
+          "node_key": "677e99a0-3221-4d71-8874-ac9f8b9d5fa1",
+          "status": "Complete",
+          "title": "A refused review record leaves a trace: review record writes REJECTED-<model>.md, and review list and handoff status show it until a record is filed",
+          "type": "task"
+        },
+        {
+          "id": "M15.34",
+          "node_key": "79ecc94e-bcc0-4d9a-8368-0c00503ea2f4",
+          "status": "Complete",
+          "title": "The executor prompt states the test rules that the reviewer's excess checklist enforces",
+          "type": "task"
+        },
+        {
+          "id": "M15.35",
+          "node_key": "57bf9ac4-77f6-4b66-8ddb-fd478d67e060",
+          "status": "Complete",
+          "title": "The review packet never lists .git or a path under it as an uncommitted reference",
+          "type": "task"
+        },
+        {
+          "id": "M15.36",
+          "node_key": "858543e9-c22b-4224-ac40-964bfef8d0ec",
+          "status": "Complete",
+          "title": "Claude Code workers never depend on the -p default mode: auth preflight before launch, explicit mode",
+          "type": "task"
+        },
+        {
+          "id": "M15.37",
+          "node_key": "33917212-11fd-4aee-bea6-37b23ae674ab",
+          "status": "Complete",
+          "title": "Review notes: a part joined by a comma or 'and' is a second observation only when it names a defect",
+          "type": "task"
+        },
+        {
+          "id": "M15.38",
+          "node_key": "01a5074d-8815-4453-a0f6-be3e91893885",
+          "status": "Complete",
+          "title": "add-node caps a title-derived codename at 64 characters so the planning file name fits",
+          "type": "task"
+        },
+        {
+          "id": "M15.39",
+          "node_key": "47ae3067-efce-47c2-a2dc-f7860e87266c",
+          "status": "Complete",
+          "title": "A roadmap write that fails part-way restores every file it changed",
+          "type": "task"
+        },
+        {
+          "id": "M15.40",
+          "node_key": "78805bfe-0798-47a0-8ace-cdc0caebd261",
+          "status": "Complete",
+          "title": "finish-this-task: a failed merge landing reports after the land check output and undoes its bookkeeping commit",
+          "type": "task"
+        }
+      ],
+      "planning": [
+        {
+          "origin": "planning/M15_rc3-multi-harness-adoption-friction_94bbba0e-94c4-4159-8636-0ea9c815ff0a.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15_rc3-multi-harness-adoption-friction_94bbba0e-94c4-4159-8636-0ea9c815ff0a.md"
+        },
+        {
+          "origin": "planning/M15.1_rc-install-docs-cover-extras-and-direct-wheel-url_f11ae6a1-4e8d-43f8-9aed-391000c71679.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.1_rc-install-docs-cover-extras-and-direct-wheel-url_f11ae6a1-4e8d-43f8-9aed-391000c71679.md"
+        },
+        {
+          "origin": "planning/M15.2_claude-code-reviewer-works-on-a-subscription-login_4dafa22a-727f-4d5e-b954-f956227c150a.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.2_claude-code-reviewer-works-on-a-subscription-login_4dafa22a-727f-4d5e-b954-f956227c150a.md"
+        },
+        {
+          "origin": "planning/M15.3_prompt-channel-cli-launches-nothing-without-run_7e865197-c8d6-4ce4-a2d1-dc2b974a17d0.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.3_prompt-channel-cli-launches-nothing-without-run_7e865197-c8d6-4ce4-a2d1-dc2b974a17d0.md"
+        },
+        {
+          "origin": "planning/M15.4_parallel-pr-leaves-reconcile-bookkeeping-by-rule_b1a7472a-784c-4b57-a15e-75d664b9e942.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.4_parallel-pr-leaves-reconcile-bookkeeping-by-rule_b1a7472a-784c-4b57-a15e-75d664b9e942.md"
+        },
+        {
+          "origin": "planning/M15.6_rework-prompt-carries-the-accepted-rca_c80c3636-1dd9-4001-8520-f0c4e6402be4.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.6_rework-prompt-carries-the-accepted-rca_c80c3636-1dd9-4001-8520-f0c4e6402be4.md"
+        },
+        {
+          "origin": "planning/M15.8_promoted-leaf-is-never-stuck-on-an-empty-approach_4c08d324-6253-4875-ac9e-b0933d17f69c.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.8_promoted-leaf-is-never-stuck-on-an-empty-approach_4c08d324-6253-4875-ac9e-b0933d17f69c.md"
+        },
+        {
+          "origin": "planning/M15.9_harness-launches-survive-large-prompts-and-binaries-off-path_5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.9_harness-launches-survive-large-prompts-and-binaries-off-path_5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9.md"
+        },
+        {
+          "origin": "planning/M15.10_try-a-roster-before-it-lands_2cebdd4b-b1e0-4a40-9b9b-8768fc530b26.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.10_try-a-roster-before-it-lands_2cebdd4b-b1e0-4a40-9b9b-8768fc530b26.md"
+        },
+        {
+          "origin": "planning/M15.11_working-roster-in-one-command-and-validated-profiles_d333b89b-eb44-4636-a350-284149c4a490.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.11_working-roster-in-one-command-and-validated-profiles_d333b89b-eb44-4636-a350-284149c4a490.md"
+        },
+        {
+          "origin": "planning/M15.12_shared-doc-zones-do-not-serialize-batches_e6e3dd29-22ab-4b59-9ca3-2ecd479879d8.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.12_shared-doc-zones-do-not-serialize-batches_e6e3dd29-22ab-4b59-9ca3-2ecd479879d8.md"
+        },
+        {
+          "origin": "planning/M15.13_worker-loop-friction-sync-until-and-ready-only-resume_c740f23d-72c3-41de-88c6-0ee0a7663ce4.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.13_worker-loop-friction-sync-until-and-ready-only-resume_c740f23d-72c3-41de-88c6-0ee0a7663ce4.md"
+        },
+        {
+          "origin": "planning/M15.15_upgrade-ships-the-templates-prompts-reference_035cb961-9771-46ae-a5e5-a378ea914e01.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.15_upgrade-ships-the-templates-prompts-reference_035cb961-9771-46ae-a5e5-a378ea914e01.md"
+        },
+        {
+          "origin": "planning/M15.17_review-friction-packet-and-record_86977bbe-582b-4434-8c5e-56ec9669a5a5.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.17_review-friction-packet-and-record_86977bbe-582b-4434-8c5e-56ec9669a5a5.md"
+        },
+        {
+          "origin": "planning/M15.18_planned-test-changes-editable-and-removals-surfaced_52977306-d74f-402c-bd68-2f53de204394.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.18_planned-test-changes-editable-and-removals-surfaced_52977306-d74f-402c-bd68-2f53de204394.md"
+        },
+        {
+          "origin": "planning/M15.19_cursor-cost-with-display-name-models_ff8e2df5-393e-4d32-8576-03103c4c052f.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.19_cursor-cost-with-display-name-models_ff8e2df5-393e-4d32-8576-03103c4c052f.md"
+        },
+        {
+          "origin": "planning/M15.21_linked-worktrees-resolve-root-and-symlinked-envs_b502d0b5-af11-4b1e-802c-5283e4f7a506.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.21_linked-worktrees-resolve-root-and-symlinked-envs_b502d0b5-af11-4b1e-802c-5283e4f7a506.md"
+        },
+        {
+          "origin": "planning/M15.22_project-preferences-local-decisions-footer-summary-landing_28fd4390-9084-4f8d-9304-1f7d6e6a88c7.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.22_project-preferences-local-decisions-footer-summary-landing_28fd4390-9084-4f8d-9304-1f7d6e6a88c7.md"
+        },
+        {
+          "origin": "planning/M15.24_ready-flags-failure-tails-and-takes-argv_4bbfe087-bdb9-4cff-8e15-8cb0badedabc.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.24_ready-flags-failure-tails-and-takes-argv_4bbfe087-bdb9-4cff-8e15-8cb0badedabc.md"
+        },
+        {
+          "origin": "planning/M15.26_claims-with-no-worker-are-reported-and-never-hold-slots_4bd33f34-dd57-4ef9-a511-27051f646dd2.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.26_claims-with-no-worker-are-reported-and-never-hold-slots_4bd33f34-dd57-4ef9-a511-27051f646dd2.md"
+        },
+        {
+          "origin": "planning/M15.27_cursor-usage-sums-segments-and-flags-undercounts_eb4e416f-8d09-49b7-9da4-c4b90bb83145.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.27_cursor-usage-sums-segments-and-flags-undercounts_eb4e416f-8d09-49b7-9da4-c4b90bb83145.md"
+        },
+        {
+          "origin": "planning/M15.31_delegated-reviewer-always-runs-a-named-model_311116ea-4199-49bf-8858-11c48b99828c.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.31_delegated-reviewer-always-runs-a-named-model_311116ea-4199-49bf-8858-11c48b99828c.md"
+        },
+        {
+          "origin": "planning/M15.32_archived-summary-exempt-from-file-limits_95f40b2e-87e0-4c88-b013-78f2155376d6.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.32_archived-summary-exempt-from-file-limits_95f40b2e-87e0-4c88-b013-78f2155376d6.md"
+        },
+        {
+          "origin": "planning/M15.33_refused-review-record-leaves-a-trace_677e99a0-3221-4d71-8874-ac9f8b9d5fa1.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.33_refused-review-record-leaves-a-trace_677e99a0-3221-4d71-8874-ac9f8b9d5fa1.md"
+        },
+        {
+          "origin": "planning/M15.34_executor-prompt-states-the-test-rules_79ecc94e-bcc0-4d9a-8368-0c00503ea2f4.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.34_executor-prompt-states-the-test-rules_79ecc94e-bcc0-4d9a-8368-0c00503ea2f4.md"
+        },
+        {
+          "origin": "planning/M15.35_packet-never-lists-dot-git-as-uncommitted_57bf9ac4-77f6-4b66-8ddb-fd478d67e060.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.35_packet-never-lists-dot-git-as-uncommitted_57bf9ac4-77f6-4b66-8ddb-fd478d67e060.md"
+        },
+        {
+          "origin": "planning/M15.36_worker-launch-never-depends-on-claude-default-mode_858543e9-c22b-4224-ac40-964bfef8d0ec.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.36_worker-launch-never-depends-on-claude-default-mode_858543e9-c22b-4224-ac40-964bfef8d0ec.md"
+        },
+        {
+          "origin": "planning/M15.37_comma-or-and-part-counts-only-when-it-names-a-defect_33917212-11fd-4aee-bea6-37b23ae674ab.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.37_comma-or-and-part-counts-only-when-it-names-a-defect_33917212-11fd-4aee-bea6-37b23ae674ab.md"
+        },
+        {
+          "origin": "planning/M15.38_derived-codename-capped-so-planning-names-fit_01a5074d-8815-4453-a0f6-be3e91893885.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.38_derived-codename-capped-so-planning-names-fit_01a5074d-8815-4453-a0f6-be3e91893885.md"
+        },
+        {
+          "origin": "planning/M15.39_failed-roadmap-write-restores-every-file_47ae3067-efce-47c2-a2dc-f7860e87266c.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.39_failed-roadmap-write-restores-every-file_47ae3067-efce-47c2-a2dc-f7860e87266c.md"
+        },
+        {
+          "origin": "planning/M15.40_finish-merge-failure-reports-and-undoes-bookkeeping_78805bfe-0798-47a0-8ace-cdc0caebd261.md",
+          "stored": "roadmap/archive/planning/M15-94bbba0e-20261106/M15.40_finish-merge-failure-reports-and-undoes-bookkeeping_78805bfe-0798-47a0-8ace-cdc0caebd261.md"
+        }
+      ],
+      "root_node_id": "M15",
+      "root_node_key": "94bbba0e-94c4-4159-8636-0ea9c815ff0a",
+      "sources": [
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 0,
+          "node_key": "86977bbe-582b-4434-8c5e-56ec9669a5a5"
+        },
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 1,
+          "node_key": "52977306-d74f-402c-bd68-2f53de204394"
+        },
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 2,
+          "node_key": "ff8e2df5-393e-4d32-8576-03103c4c052f"
+        },
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 4,
+          "node_key": "b502d0b5-af11-4b1e-802c-5283e4f7a506"
+        },
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 5,
+          "node_key": "28fd4390-9084-4f8d-9304-1f7d6e6a88c7"
+        },
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 6,
+          "node_key": "f11ae6a1-4e8d-43f8-9aed-391000c71679"
+        },
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 7,
+          "node_key": "4bbfe087-bdb9-4cff-8e15-8cb0badedabc"
+        },
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 9,
+          "node_key": "4bd33f34-dd57-4ef9-a511-27051f646dd2"
+        },
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 10,
+          "node_key": "eb4e416f-8d09-49b7-9da4-c4b90bb83145"
+        },
+        {
+          "chunk": "phases/M15__86977b.json",
+          "index": 14,
+          "node_key": "5e31fbd5-36c8-4fd8-bc36-15cd9cc478f9"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 0,
+          "node_key": "94bbba0e-94c4-4159-8636-0ea9c815ff0a"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 1,
+          "node_key": "4dafa22a-727f-4d5e-b954-f956227c150a"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 2,
+          "node_key": "7e865197-c8d6-4ce4-a2d1-dc2b974a17d0"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 3,
+          "node_key": "b1a7472a-784c-4b57-a15e-75d664b9e942"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 5,
+          "node_key": "c80c3636-1dd9-4001-8520-f0c4e6402be4"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 7,
+          "node_key": "4c08d324-6253-4875-ac9e-b0933d17f69c"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 8,
+          "node_key": "2cebdd4b-b1e0-4a40-9b9b-8768fc530b26"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 9,
+          "node_key": "d333b89b-eb44-4636-a350-284149c4a490"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 10,
+          "node_key": "e6e3dd29-22ab-4b59-9ca3-2ecd479879d8"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 11,
+          "node_key": "c740f23d-72c3-41de-88c6-0ee0a7663ce4"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 13,
+          "node_key": "035cb961-9771-46ae-a5e5-a378ea914e01"
+        },
+        {
+          "chunk": "phases/M15.json",
+          "index": 15,
+          "node_key": "311116ea-4199-49bf-8858-11c48b99828c"
+        },
+        {
+          "chunk": "phases/M15__95f40b.json",
+          "index": 0,
+          "node_key": "95f40b2e-87e0-4c88-b013-78f2155376d6"
+        },
+        {
+          "chunk": "phases/M15__95f40b.json",
+          "index": 1,
+          "node_key": "677e99a0-3221-4d71-8874-ac9f8b9d5fa1"
+        },
+        {
+          "chunk": "phases/M15__95f40b.json",
+          "index": 2,
+          "node_key": "79ecc94e-bcc0-4d9a-8368-0c00503ea2f4"
+        },
+        {
+          "chunk": "phases/M15__95f40b.json",
+          "index": 3,
+          "node_key": "57bf9ac4-77f6-4b66-8ddb-fd478d67e060"
+        },
+        {
+          "chunk": "phases/M15__95f40b.json",
+          "index": 4,
+          "node_key": "858543e9-c22b-4224-ac40-964bfef8d0ec"
+        },
+        {
+          "chunk": "phases/M15__95f40b.json",
+          "index": 5,
+          "node_key": "33917212-11fd-4aee-bea6-37b23ae674ab"
+        },
+        {
+          "chunk": "phases/M15__95f40b.json",
+          "index": 6,
+          "node_key": "01a5074d-8815-4453-a0f6-be3e91893885"
+        },
+        {
+          "chunk": "phases/M15__95f40b.json",
+          "index": 7,
+          "node_key": "47ae3067-efce-47c2-a2dc-f7860e87266c"
+        },
+        {
+          "chunk": "phases/M15__95f40b.json",
+          "index": 8,
+          "node_key": "78805bfe-0798-47a0-8ace-cdc0caebd261"
+        }
+      ]
     }
   ],
   "version": 1
