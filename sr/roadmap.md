@@ -163,13 +163,19 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.14` | finish resolves roadmap chunk conflicts the branch only inherited | task | Agentic-led | Complete |
 | `M21.15` | Cursor workers launch sandboxed without --force unless the roster opts in | task | Agentic-led | Complete |
 | `M21.16` | upgrade --dry-run never touches the real repo under GIT_DIR, and a real upgrade regenerates drifted generated files | task | — | Not Started |
-| `M21.17` | Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet | task | — | Not Started |
+| `M21.17` | Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet | task | — | Complete |
 | `M21.18` | A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA | task | — | Not Started |
 | `M21.19` | apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file | task | — | Not Started |
 | `M21.20` | PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set | task | — | Not Started |
 | `M21.21` | review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only | task | — | Not Started |
-| `M21.22` | Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper | task | — | Not Started |
+| `M21.22` | Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper | task | — | Complete |
 | `M21.23` | rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry | task | — | Not Started |
+| `M21.24` | review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error | task | — | Not Started |
+| `M21.25` | review delegate reads a reviewer's answer when narration precedes its final JSON object | task | — | Not Started |
+| `M21.26` | The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model | task | — | Not Started |
+| `M21.27` | review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer | task | — | Not Started |
+| `M21.28` | finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree | task | — | Not Started |
+| `M21.29` | worker terminate also ends processes the harness started in their own session | task | — | Not Started |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
@@ -182,5 +188,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.9` | Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME | task | — | Not Started |
 | `M22.10` | reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping | task | — | Not Started |
 | `M22.11` | Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout | task | — | Not Started |
+| `M22.12` | The review gate finds the integration branch when refs/remotes/<remote>/HEAD is missing, without trusting the branch under review | task | — | Not Started |
+| `M22.13` | Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone | task | — | Not Started |
+| `M22.14` | Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch | task | — | Not Started |
+| `M22.15` | The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

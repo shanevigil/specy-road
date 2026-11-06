@@ -165,7 +165,8 @@
         "tests/test_upgrade_preview.py",
         "tests/test_upgrade.py",
         "docs/install-and-usage.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/upgrade_generated.py"
       ],
       "type": "task"
     },
@@ -184,7 +185,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.17_writers-refuse-links-out_9a8c1f33-60ef-461f-8980-e2c3f7558e2d.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet",
       "touch_zones": [
         "specy_road/managed_block.py",
@@ -327,7 +328,7 @@
       ],
       "planning_dir": "planning/M21.22_rc4-small-code-fixes_2f2d9e86-82cc-4f64-8926-2e57a9749d38.md",
       "sibling_order": 20,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper",
       "touch_zones": [
         "specy_road/worker_adapters.py",
@@ -366,6 +367,114 @@
         "docs/orchestration-review.md",
         "suggested_prompts/bootstrap-agents-md.md",
         "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "ClaudeCode.reviewer_launch passes --json-schema as the schema file's object less its top-level $schema key (every other key and value unchanged), for review delegate and prompt --role reviewer --channel cli --run alike; review-output.schema.json on disk keeps $schema for Codex and agy; no claude-code executor launch passes --json-schema",
+        "When a reviewer turn fails with no parsed error, the CLI reason after 'harness exited <code>: ' and RUN-<model>.json attempts[].error are the same text: the last non-blank line of that turn's log span, cut to 200 characters; 'no error text' appears only when the span has no non-blank line",
+        "tests/test_review_delegate_claude_schema.py: the launch argv's --json-schema value parses to a dict without $schema that equals the file's schema less that key; a fake-claude table (exit 1) asserts the CLI reason and attempts[].error against the same expected text for: `Error: --json-schema is not a valid JSON Schema: …` on stderr; that line followed by more than 20 blank lines; a line over 200 characters (cut to 200); a silent exit ('no error text'); the executor launch argv has no --json-schema",
+        "docs/orchestration-reviewer-output.md's Claude Code row says the inline schema omits $schema (Claude Code 2.1.318 rejects the draft 2020-12 reference); CHANGELOG [Unreleased] Fixed. Out of scope: Codex/agy schema files, Cursor (M21.25), reviewer-command validation (M21.21)",
+        "Estimated net line change (informational, not a gate): package about +12, tests about +100, docs about +2"
+      ],
+      "codename": "claude-reviewer-schema-and-error",
+      "dependencies": [],
+      "id": "M21.24",
+      "node_key": "4b5ad55d-b776-4380-b12b-1fedd636c687",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.24_claude-reviewer-schema-and-error_4b5ad55d-b776-4380-b12b-1fedd636c687.md",
+      "sibling_order": 22,
+      "status": "Not Started",
+      "title": "review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error",
+      "touch_zones": [
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/review_delegate.py",
+        "tests/test_review_delegate_claude_schema.py",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "For a text terminal message (Cursor's result text, a Claude result without structured_output, Codex's agent_message or -o file), the text is scanned left to right for complete JSON values, skipping each value's interior: a '{' that starts no JSON value is prose and passed over, a '{' whose decode fails only because the text ends is refused, and the answer is the last top-level object, which must be followed only by whitespace; an object nested in another value is never the answer; depth and size use loads_untrusted's limits or an equal guard; the generic/agy envelope path is unchanged",
+        "That object alone must still pass drop_nulls and output_schema; a refusal is a Rerun (never an exception) with the rerun prefix naming its cause: 'the final message holds no JSON object', 'the final message does not end with a JSON object', 'the final message ends inside an unfinished JSON object', excessive nesting, or the existing schema-mismatch reason for an invalid last object (an earlier valid object is never used instead)",
+        "tests/test_review_answer.py parametrizes final_answer over Cursor result text, Claude result text without structured_output, Codex agent_message and the Codex -o file: prose then a valid object (the rc4 Cursor shape) files; JSON only; JSON plus trailing whitespace; two valid objects gives the last; an unfinished outer container holding a valid inner object, excessive nesting, object plus trailing prose, prose plus a truncated object, and a valid object then a schema-invalid last object are each a Rerun naming its cause",
+        "Existing text-path rows are retargeted (claude-code 'prose before the object' files, 'two objects' gives the schema reason, 'fenced object' and the claude/cursor/codex 'non-JSON' rows give the new reasons); envelope-path rows (generic 'prose then object', plain-text wrappers) keep their reasons; the reviewer prompt's 'exactly one JSON object' instruction and review record's input rule are unchanged; docs/orchestration-reviewer-output.md replaces the bullets calling prose around JSON and two objects a rerun with: for a text message, text before the final object is ignored and nothing may follow it; CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +25, tests about +110, docs about +3"
+      ],
+      "codename": "reviewer-answer-after-prose",
+      "dependencies": [],
+      "id": "M21.25",
+      "node_key": "39a3fef3-50cc-4432-9f79-10af517ad1f3",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.25_reviewer-answer-after-prose_39a3fef3-50cc-4432-9f79-10af517ad1f3.md",
+      "sibling_order": 23,
+      "status": "Not Started",
+      "title": "review delegate reads a reviewer's answer when narration precedes its final JSON object",
+      "touch_zones": [
+        "specy_road/review_answer.py",
+        "tests/test_review_answer.py",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "One helper (review_eligible's writers: every model that filed a valid READY for the leaf on its branch, as executor or fix author) is used by evaluate_gate, handoff status and review delegate; evaluate_gate puts any record whose model id equals a writer in ineligible with '<model> wrote <READY file> on this leaf; the executor never reviews its own leaf', whatever its authored_fix, verdict or signature",
+        "The exclusion is by exact model id: another model of the executor's family counts as today, judged against other reviewers by reviewers_distinct_families; a leaf with no READY is judged exactly as today",
+        "review delegate --model <writer> exits non-zero naming the READY file before any packet write, lock, harness start or RUN-<model>.json",
+        "tests/test_review_gate_ready_author.py: the rc4 shape (executor X with READY-X.md; approvals from X and from another family; reviewers_required 2, distinct families) is not met and mark-implementation-reviewed writes no trailer for X; X's signed approval and X's block are each in ineligible with the sentence above, and the gate's blocks do not contain X; another model of X's family counts (2/2 with distinct families off); a fix author is excluded; no READY leaves the gate unchanged; the delegate refusal writes nothing",
+        "docs/orchestration.md (gate rules) and docs/grind-session.md:409 say the gate excludes READY authors by model id and that READY authorship is cooperative attestation; CHANGELOG [Unreleased] Fixed (security).",
+        "Estimated net line change (informational, not a gate): package about +25, tests about +140, docs about +4"
+      ],
+      "codename": "gate-excludes-ready-authors",
+      "dependencies": [],
+      "id": "M21.26",
+      "node_key": "cec33876-599c-4516-abe7-3ec445eb8a2a",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.26_gate-excludes-ready-authors_cec33876-599c-4516-abe7-3ec445eb8a2a.md",
+      "sibling_order": 24,
+      "status": "Not Started",
+      "title": "The review gate never counts a record from a model that wrote a READY on the leaf, and review delegate refuses that model",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/review_eligible.py",
+        "specy_road/review_delegate.py",
+        "tests/test_review_gate_ready_author.py",
+        "docs/orchestration.md",
+        "docs/grind-session.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review_run_lock gains an optional wait in seconds (default 0 keeps today's immediate ReviewRunBusy); the review record argparse handler (not cmd_review_record, which file_review calls inside the run's own lock) and write_human_approval take the leaf's lock with a FILING_WAIT module constant (10 s) around everything they write under work/reviews/<ID>/; the handler resolves the node id against the graph before any mkdir or lock file, so an unknown, absolute or '..' id exits 1 with today's unknown-node error and creates nothing",
+        "While a review delegate or prompt --channel cli --run holds the lock, review record and mark-implementation-reviewed's human approval each exit 1 with 'a reviewer run on <ID> holds work/reviews/<ID>/; nothing was written', no traceback, the hand-off directory's bytes unchanged; the run's own filing (file_review) still files and its write check is unchanged",
+        "tests/test_review_concurrent_writers.py: a delegate whose fake harness writes a ready file then waits on a release file; during it, review record for another model (FILING_WAIT patched to 0) and the human approval are refused as above; released, the delegate's run is complete and its record filed; review record then succeeds; review_run_lock(wait=short) held by a second process succeeds when released within the wait and raises ReviewRunBusy past it; two review record calls for two models started together both file; absolute and '..' node ids create nothing",
+        "docs/orchestration.md's review record section says a filing waits for, then refuses during, a reviewer run on the same leaf; CHANGELOG [Unreleased] Fixed. Out of scope: two delegated reviewers of one leaf at once (still refused), the tripwire's file list",
+        "Estimated net line change (informational, not a gate): package about +30, tests about +150, docs about +2"
+      ],
+      "codename": "filings-take-the-review-lock",
+      "dependencies": [],
+      "id": "M21.27",
+      "node_key": "2f0e89a6-4b5f-4efd-9320-c0438d82ee5a",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.27_filings-take-the-review-lock_2f0e89a6-4b5f-4efd-9320-c0438d82ee5a.md",
+      "sibling_order": 25,
+      "status": "Not Started",
+      "title": "review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer",
+      "touch_zones": [
+        "specy_road/review_record_write.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate_ready.py",
+        "tests/test_review_concurrent_writers.py",
+        "docs/orchestration.md",
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py"
       ],
       "type": "task"
     }
