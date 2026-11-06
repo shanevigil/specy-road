@@ -25,10 +25,32 @@
   `orchestration.schema.json`. `PASTED_LINES` gains the human-terminal sentence; `reviewer_preamble` unchanged.
   `review_answer.FILLED_BY_SPECY_ROAD` gains `human_filed`, so the reviewer output schema does not offer it
   (coordinator-approved zone).
-- **A4** `tests/test_review_record_caller.py` (marked `real_review_caller`) covers the table. Deviation: the
-  `review delegate` row uses the existing fake reviewer, a claude-code entry (`opus`), from a process with the
-  Cursor marker, not a codex entry; it shows the same thing (delegate files through `file_review` and counts).
+- **A4** `tests/test_review_record_caller.py` (marked `real_review_caller`) covers the table, including
+  `review delegate` of the codex reviewer `gpt-6.1-sol` from a process with the Cursor marker (a fake `codex` on
+  PATH), which files and counts.
 - **A5** `docs/orchestration-review.md` "Who may file a review record"; CHANGELOG `[Unreleased]` Fixed (security).
+
+## Fix round 1 (block by gpt-6.1-sol-low at 843f6e36)
+
+- **Class: a worker record that fails to load in a way `load_record` does not wrap** (invalid UTF-8 raised
+  `UnicodeDecodeError`). The rule is now one clause: `caller` turns *any* failure to load the record named by
+  `SPECY_ROAD_WORKER_ID` into `CallerError` (exit 1, no traceback, nothing written), so no shape of a bad record
+  can reach a traceback. Docstring and docs state it.
+- **Class: `--human-filed` text that is not one clean line.** The same audit found U+2028, NUL and an undecodable
+  argv byte (a lone surrogate) accepted. One rule replaces the `\n`/`\r` test: non-blank, `text.splitlines() ==
+  [text]`, and `text.isprintable()`. Limit: a tab is refused too (not printable). Docs and `--help` say "printable".
+- **A4 delegate row** now uses a codex roster entry, as the brief's table says.
+
+## Probes
+
+- Worker record with bytes `\xff\xfe` (CLI subprocess): before, a `UnicodeDecodeError` traceback; now exit 1, message, review tree unchanged (test row).
+- Worker record YAML with an unhashable complex key: exit 1, no traceback (already wrapped by `load_record`; test row added).
+- Worker record that is a self-referencing YAML alias, and one that is a directory: exit 1, no traceback (probe only).
+- Invalid id `../w-1`, missing record, non-mapping record: exit 1 (existing rows).
+- `--human-filed` with U+2028, NUL or an undecodable argv byte: before, accepted and filed; now exit 1, nothing written (test rows; red at the previous `review_caller.py`, 4 rows, green now).
+- `--human-filed` "me\n", "me\r…", empty, whitespace: exit 1 (rows).
+- `orchestration.yaml` with invalid UTF-8 at the integration branch, under a harness marker: no traceback; the caller check skips the unreadable config and the existing "not in the roster" refusal applies.
+- Other undecodable input reaching the change: markers are compared as strings (no decoding); `--model` is matched against the roster only. Nothing else.
 
 ## Final touch zones
 
@@ -38,15 +60,15 @@ changed (its line stays plain).
 
 ## Verification
 
-`pytest -n 6 -q`: 5792 passed, both with `CLAUDECODE=1` (this harness) and without it (as CI). `ruff check specy_road
-tests` and `specy-road file-limits` pass. Merged `origin/WIP/improvements-0-3-1` before the final run.
+`pytest -n 6 -q`: 5818 passed after fix round 1 (5792 at round 0, both with `CLAUDECODE=1`, this harness, and without it, as CI). `ruff check specy_road
+tests` and `specy-road file-limits` pass. Merged `origin/WIP/improvements-0-3-1` before each final run.
 
 ## Added
 
 - `specy_road/review_caller.py` `HARNESS_MARKERS`: one confirmed marker per harness (A1).
-- `review_caller.CallerError`: an unresolvable `SPECY_ROAD_WORKER_ID` becomes exit 1 without a traceback (A1).
+- `review_caller.CallerError`: a `SPECY_ROAD_WORKER_ID` whose record fails to load for any reason becomes exit 1 without a traceback (A1; fix round 1 widened it from `WorkerError`).
 - `review_caller.caller`: worker id ahead of markers; two markers are unidentified (A1).
-- `review_caller._attestation_problem`: missing, empty, whitespace or multiline `--human-filed` (A2).
+- `review_caller._attestation_problem`: one rule for `--human-filed`: present, non-blank, one line by `splitlines`, printable (A2; fix round 1).
 - `review_caller.refusal`: the worker / harness / unidentified checks and the ignored-flag note (A2).
 - Guard in `cmd_review_record_locked` calling `refusal` before the lock (A2).
 - `--human-filed` argument on `review record` (A2).
@@ -62,7 +84,9 @@ tests` and `specy-road file-limits` pass. Merged `origin/WIP/improvements-0-3-1`
 - `tests/test_review_record_caller.py`: refusal rows (Cursor→claude-code, Cursor→codex, worker mismatch, worker with
   inherited marker, two markers, no marker) with an unchanged review tree; bad worker id/record rows; attestation
   rows; matching harness with and without the flag; a worker's own model; hand-filed counted only with the policy;
-  signed hand-filed counted; delegate from a Cursor-marked process; rendered paste prompt (A4).
+  signed hand-filed counted; delegate of a codex reviewer from a Cursor-marked process (a `FAKE_CODEX` script on
+  PATH); rendered paste prompt (A4). Fix round 1 added parametrize rows: invalid-UTF-8 and complex-key worker
+  records; trailing-newline, CR, U+2028, NUL and undecodable-byte attestations.
 - `tests/test_review_concurrent_writers.py`: the two subprocess filings pass `--human-filed` (they run unidentified).
 - `tests/test_review_record_write.py`: `human_filed` added to the filled-field list.
 - Mocks: none beyond the conftest `refusal` patch.
