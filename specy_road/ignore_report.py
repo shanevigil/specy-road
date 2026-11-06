@@ -72,10 +72,15 @@ def attempt(fn: Callable[[], T]) -> T | str:
         return str(e) or type(e).__name__
 
 
+def scratch_git_env() -> dict[str, str]:
+    """``os.environ`` without :data:`_REPO_ENV`: the environment for every git call in a scratch repository."""
+    return {k: v for k, v in os.environ.items() if k not in _REPO_ENV}
+
+
 def _git(args: list[str], cwd: Path, *, stdin: bytes | None = None, ok: tuple[int, ...] = (0,)) -> bytes:
     """Raw stdout bytes of ``git <args>``; :class:`IgnoreCheckSkipped` on any other exit."""
-    env = {k: v for k, v in os.environ.items() if k not in _REPO_ENV}
-    r = subprocess.run(["git", *args], cwd=cwd, input=stdin, capture_output=True, check=False, timeout=60, env=env)
+    r = subprocess.run(["git", *args], cwd=cwd, input=stdin, capture_output=True, check=False, timeout=60,
+                       env=scratch_git_env())
     if r.returncode not in ok:
         lines = os.fsdecode(r.stderr).strip().splitlines()
         command = next(a for i, a in enumerate(args) if not a.startswith("-") and (i == 0 or args[i - 1] != "-c"))

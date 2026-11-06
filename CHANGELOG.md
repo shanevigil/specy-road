@@ -13,6 +13,19 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road upgrade --dry-run` no longer commits into the caller's
+  repository when `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`,
+  `GIT_COMMON_DIR` or `GIT_OBJECT_DIRECTORY` is set (inside a git hook, for
+  example): every git call in its temporary copy, and the copy's `validate`,
+  runs without them, and a copy whose own `.git` was not created fails without
+  validating.
+- `specy-road upgrade` now regenerates what `digest --check` would fail on:
+  when `validate` passes it writes `roadmap-context.md` when missing or drifted
+  (a finished leaf's "Quality by area" section, for example) and `roadmap.md`
+  when it is tracked and drifted, prints a `wrote` line for each (`would write`
+  with `--dry-run`), and refuses a path that is a symlink out of the project.
+  An untracked `roadmap.md` is left alone; an invalid graph regenerates nothing
+  and keeps the `specy-road digest` next step.
 - `specy-road doctor` no longer fails in a repo with no remote. When the
   resolved remote (`--remote`, `SPECY_ROAD_REMOTE`, `roadmap/git-workflow.yaml`,
   else `origin`) is not configured, it says so in one line, skips the fetch and

@@ -8,6 +8,7 @@ project file pushed over its cap with no word from upgrade.
 from __future__ import annotations
 
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -198,3 +199,59 @@ def test_a_dry_run_that_touches_the_checkout_fails_as_a_bug(
 
     err = capsys.readouterr().err
     assert "error: dry run modified" in err and "vision.md" in err and "this is a bug" in err
+
+
+def _repo_state(repo: Path) -> tuple:
+    """HEAD, commit count, object count, index bytes and working files of ``repo``."""
+    objects = dict(line.split(": ") for line in _git(repo, "count-objects", "-v").splitlines())
+    return (_git(repo, "rev-parse", "HEAD"), _git(repo, "rev-list", "--count", "HEAD"),
+            int(objects["count"]) + int(objects["in-pack"]), (repo / ".git" / "index").read_bytes(),
+            _git(repo, "diff", "--cached", "--name-only"), _snapshot(repo))
+
+
+@pytest.mark.parametrize("env", [
+    {"GIT_DIR": ".git", "GIT_WORK_TREE": "."},
+    {"GIT_INDEX_FILE": ".git/index"},
+    {"GIT_COMMON_DIR": ".git"},
+    {"GIT_OBJECT_DIRECTORY": ".git/objects"},
+], ids=lambda env: "+".join(env))
+def test_dry_run_never_touches_the_repository_a_git_variable_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, env: dict[str, str]
+) -> None:
+    """rc4 F1: inside a git hook the scratch copy's git add/commit landed in the caller's repository."""
+    root = old_repo(tmp_path / "project")
+    other = tmp_path / "other"
+    other.mkdir()
+    _git(other, "init", "-q")
+    (other / "theirs.txt").write_text("their file\n", encoding="utf-8")
+    _git(other, "add", "-A")
+    _git(other, "commit", "-qm", "their commit")
+    before = _repo_state(other)
+
+    with monkeypatch.context() as m:
+        for name, rel in env.items():
+            m.setenv(name, str(other / rel))
+        assert run_upgrade(root, dry_run=True) == 0
+
+    assert _repo_state(other) == before
+
+
+def test_a_dry_run_whose_copy_has_no_git_validates_nothing(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """M21.16 A1: with no scratch .git, git add/commit would find whatever repository is above the copy."""
+    root = old_repo(tmp_path)
+    build = upgrade.Mirror.build
+
+    def build_without_git(self):
+        copy = build(self)
+        shutil.rmtree(copy.repo / ".git")
+        return copy
+
+    monkeypatch.setattr(upgrade.Mirror, "build", build_without_git)
+    validated: list[Path] = []
+    monkeypatch.setattr(upgrade, "validate_at", validated.append)
+
+    assert run_upgrade(root, dry_run=True) == 2
+
+    assert not validated and "git init failed in the temporary copy" in capsys.readouterr().err
