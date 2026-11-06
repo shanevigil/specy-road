@@ -241,42 +241,67 @@ def _link_chunk_dir(repo: Path) -> None:
     phases.symlink_to((repo / "roadmap" / "storage").resolve(), target_is_directory=True)
 
 
-def _link_planning_sheet_outside_graph(repo: Path) -> None:
-    sheet = repo / "planning" / "M99.2_two_10000000-0000-4000-8000-000000009903.md"
-    kept = repo / "docs" / sheet.name
-    kept.parent.mkdir()
-    kept.write_bytes(sheet.read_bytes())
+_SHEET_M99_2 = "M99.2_two_10000000-0000-4000-8000-000000009903.md"
+
+
+def _link_sheet_to(repo: Path, target: Path) -> None:
+    sheet = repo / "planning" / _SHEET_M99_2
+    target.parent.mkdir(exist_ok=True)
+    target.write_bytes(sheet.read_bytes())
     sheet.unlink()
-    sheet.symlink_to(kept.resolve())
+    sheet.symlink_to(target.resolve())
+
+
+def _link_planning_sheet_outside_graph(repo: Path) -> None:
+    _link_sheet_to(repo, repo / "docs" / _SHEET_M99_2)
+
+
+def _claim_and_link_sheet_outside_repo(repo: Path) -> None:
+    write_registry_claim(repo, "M99.2", "two", "feature/rm-two", "Pat")
+    _link_sheet_to(repo, repo.parent / "outside" / _SHEET_M99_2)
 
 
 @pytest.mark.parametrize(
-    ("link_layout", "exit_code"),
+    ("link_layout", "exit_code", "stderr_needle"),
     [
-        (_link_chunk_file, 0),
-        (_link_chunk_dir, 0),
-        (_link_planning_sheet_outside_graph, 1),
+        (_link_chunk_file, 0, ""),
+        (_link_chunk_dir, 0, ""),
+        (_link_planning_sheet_outside_graph, 1, ""),
+        (
+            _claim_and_link_sheet_outside_repo,
+            1,
+            "registry claim codename 'two', branch 'feature/rm-two'",
+        ),
     ],
-    ids=["absolute-chunk-file", "absolute-chunk-dir", "planning-sheet-outside-graph"],
+    ids=[
+        "absolute-chunk-file",
+        "absolute-chunk-dir",
+        "planning-sheet-outside-graph",
+        "claimed-sheet-outside-repo",
+    ],
 )
 def test_dry_run_agrees_with_removal_on_in_repo_symlinks(
-    tmp_path: Path, link_layout, exit_code: int
+    tmp_path: Path, link_layout, exit_code: int, stderr_needle: str
 ) -> None:
-    crud_fixture_repo(tmp_path)
-    link_layout(tmp_path)
-    before = _tree_bytes(tmp_path)
-    argv = ["--repo-root", str(tmp_path), "remove-node", "M99.2"]
-    r = run_crud(tmp_path, *argv, "--dry-run")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    crud_fixture_repo(repo)
+    link_layout(repo)
+    before = _tree_bytes(repo)
+    argv = ["--repo-root", str(repo), "remove-node", "M99.2"]
+    r = run_crud(repo, *argv, "--dry-run")
     assert r.returncode == exit_code, r.stderr + r.stdout
+    assert stderr_needle in r.stderr
     assert ("would remove node M99.2" in r.stdout) == (exit_code == 0)
-    assert _tree_bytes(tmp_path) == before
-    assert any(n["id"] == "M99.2" for n in load_roadmap(tmp_path)["nodes"])
-    r = run_crud(tmp_path, *argv)
+    assert _tree_bytes(repo) == before
+    assert any(n["id"] == "M99.2" for n in load_roadmap(repo)["nodes"])
+    r = run_crud(repo, *argv)
     assert r.returncode == exit_code, r.stderr + r.stdout
-    removed = not any(n["id"] == "M99.2" for n in load_roadmap(tmp_path)["nodes"])
+    assert stderr_needle in r.stderr
+    removed = not any(n["id"] == "M99.2" for n in load_roadmap(repo)["nodes"])
     assert removed == (exit_code == 0)
     if exit_code:
-        assert _tree_bytes(tmp_path) == before
+        assert _tree_bytes(repo) == before
 
 
 def test_archive_hard_remove_refuses_registry_claim(tmp_path: Path) -> None:

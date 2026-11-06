@@ -158,9 +158,6 @@ def _commit_remove(root: Path, node_id: str) -> Path | None:
     idx = node_index_in_chunk(nodes, node_id)
     if idx is None:
         raise ValueError(f"node {node_id!r} not found")
-    blockers = remove_node_blockers(root, node_id)
-    if blockers:
-        raise ValueError("\n".join(blockers))
     removed = nodes[idx]
     sheet = planning_sheet_delete_plan(root, removed.get("planning_dir"))
     nodes_after = list(nodes)
@@ -176,7 +173,9 @@ def _commit_remove(root: Path, node_id: str) -> Path | None:
 def remove_roadmap_node(root: Path, node_id: str, *, dry_run: bool = False) -> None:
     """Remove a never-started leaf and its planning sheet when nothing blocks it.
 
-    Eligibility is checked on the live graph with no self-heal pass. Real removal
+    Eligibility is checked first, on the live graph with no self-heal pass,
+    before any chunk or planning-sheet path is resolved or anything is copied,
+    so every blocker is reported in both modes whatever the layout. Real removal
     commits through :class:`~specy_road.bundled_scripts.roadmap_chunk_atomic.AtomicWritePlan`.
     ``--dry-run`` rehearses the same commit on :func:`rehearsal_root` so the live
     tree is not written or unlinked; graph-tree symlinks into the repo are rebased
@@ -185,27 +184,17 @@ def remove_roadmap_node(root: Path, node_id: str, *, dry_run: bool = False) -> N
     Raises ``ValueError`` if not found, not removable, or if the resulting graph
     fails validation.
     """
-    if dry_run:
-        sheet = planning_sheet_delete_plan(
-            root,
-            next(
-                (
-                    n.get("planning_dir")
-                    for n in load_roadmap(root)["nodes"]
-                    if n.get("id") == node_id
-                ),
-                None,
-            ),
-        )
-        with rehearsal_root(root) as scratch:
-            _commit_remove(scratch, node_id)
-        print(f"would remove node {node_id}")
-        if sheet is not None:
-            print(f"planning sheet: {sheet.relative_to(root).as_posix()}")
-        else:
-            print("planning sheet: (none)")
+    blockers = remove_node_blockers(root, node_id)
+    if blockers:
+        raise ValueError("\n".join(blockers))
+    if not dry_run:
+        _commit_remove(root, node_id)
         return
-    _commit_remove(root, node_id)
+    with rehearsal_root(root) as scratch:
+        sheet = _commit_remove(scratch, node_id)
+        shown = sheet.relative_to(scratch.resolve()).as_posix() if sheet else "(none)"
+    print(f"would remove node {node_id}")
+    print(f"planning sheet: {shown}")
 
 
 def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
