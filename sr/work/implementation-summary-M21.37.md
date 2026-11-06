@@ -230,7 +230,7 @@ WIP merge: already up to date. Fix commit: see the commit after `b25f3c86` (`fix
 
 ## Fix round 6 (coordinator; review `gpt-6.1-sol-low` at `591a4781`)
 
-WIP merge: already up to date. Fix commit: `75fe2a5e` (the summary commit follows it). The maintainer's skills-link decision stands; this round only makes every entry point apply it to the same link shape.
+WIP merge: already up to date. Fix commit: `42796a63`. The maintainer's skills-link decision stands; this round only makes every entry point apply it to the same link shape.
 
 - **The class: the upgrade mirror showed a link in a different shape from the checkout.**
   - `Mirror.build` rewrote an absolute link text to `to_sandbox(realpath(src))`, and rewrote a relative one that resolved elsewhere to its resolved target.
