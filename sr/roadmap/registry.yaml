@@ -126,12 +126,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: cr2-case-fits-the-todo-app
-    node_id: M21.34
-    branch: feature/rm-cr2-case-fits-the-todo-app
-    touch_zones:
-      - docs/context-regressions.yaml
-      - tests/test_context_regressions.py
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
