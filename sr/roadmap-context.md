@@ -84,7 +84,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
   - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Complete**
   - `M21.3` Opt-in rewrite of prose id references after a move, and a standalone rename-refs `rewrite-id-refs` — task — **Not Started**
-  - `M21.4` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Not Started**
+  - `M21.4` remove-node deletes an empty never-started node and names every blocker otherwise `remove-node` — task — **Complete**
   - `M21.5` apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once `apply-restructure-ops` — task — **Not Started**
   - `M21.6` validate and add-dependency catch cycles made through inherited group dependencies `inherited-dep-cycles` — task — **Complete**
   - `M21.7` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
@@ -215,7 +215,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.3` on `feature/rm-rewrite-id-refs` since 2026-11-05
-- `M21.4` on `feature/rm-remove-node` since 2026-11-05
 - `M21.7` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
@@ -224,13 +223,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 28 | 9 | 4.68 | 79% | 30 | 3 |
-| `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 49 | 15 | 4.21 | 74% | 39 | 6 |
-| `tests` **flagged** | 50 | 15 | 4.17 | 74% | 39 | 6 |
-| `CHANGELOG.md` | 6 | 0 | 2.50 | 33% | 6 | 0 |
-| `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
+| `docs` **flagged** | 27 | 14 | 5.46 | 85% | 19 | 3 |
+| `planning` **flagged** | 1 | 0 | 3.00 | 100% | 0 | 0 |
+| `specy_road` **flagged** | 48 | 22 | 4.69 | 81% | 28 | 6 |
+| `tests` **flagged** | 50 | 23 | 4.63 | 81% | 28 | 6 |
+| `README.md` | 1 | 1 | — | — | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
+| `suggested_prompts` | 1 | 1 | — | — | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
