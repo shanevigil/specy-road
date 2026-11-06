@@ -54,12 +54,14 @@ def _repo(tmp_path: Path, monkeypatch) -> Path:
 
 
 def _state(repo: Path) -> tuple[dict[str, bytes], str, str]:
-    """Worktree bytes of every tracked or untracked, not ignored, path; the index; HEAD.
+    """Worktree bytes of every tracked or untracked path, plus ignored ones under ``work/``; the index; HEAD.
 
-    Ignored paths are left out: the commands finish runs refresh the derived
-    ``.specyrd/cache/``, which is no bookkeeping.
+    Other ignored paths are left out: the commands finish runs refresh the
+    derived ``.specyrd/cache/``, which is no bookkeeping. ``work/reviews/`` is
+    ignored and is where cleanup keeps a copy of an untracked summary.
     """
     names = git(repo, "ls-files", "-co", "--exclude-standard").splitlines()
+    names += git(repo, "ls-files", "-oi", "--exclude-standard", "--", "work").splitlines()
     files = {n: (repo / n).read_bytes() if (repo / n).exists() else None for n in sorted(set(names))}
     return files, git(repo, "ls-files", "-s"), git(repo, "rev-parse", "HEAD")
 
@@ -88,18 +90,33 @@ def test_rc4_configuration_is_refused_before_any_write(tmp_path: Path, monkeypat
     assert any(e.get("codename") == "thing" for e in reg["entries"])
 
 
+COMMIT_REFUSED = "`git commit -m chore(rm-thing): complete, deregister` exited 1"
+SUMMARY = "work/implementation-summary-M1.1.md"
+
+
 @pytest.mark.parametrize(
-    ("inject", "named"),
+    ("inject", "named", "summary"),
     [
-        ("validate", "`specy-road validate --repo-root"),
-        ("digest", "`specy-road digest --repo-root"),
-        ("registry", "registry.yaml"),
-        ("commit", "`git commit -m chore(rm-thing): complete, deregister` exited 1"),
+        ("validate", "`specy-road validate --repo-root", None),
+        ("digest", "`specy-road digest --repo-root", None),
+        ("registry", "registry.yaml", None),
+        # A tracked summary is moved over an existing work/done/ copy with other bytes.
+        ("commit", COMMIT_REFUSED, "tracked"),
+        # An untracked summary is copied into work/reviews/M1.1/, absent before.
+        ("commit", COMMIT_REFUSED, "untracked"),
     ],
 )
-def test_failure_before_the_commit_restores_the_tree(tmp_path: Path, monkeypatch, inject: str, named: str) -> None:
+def test_failure_before_the_commit_restores_the_tree(
+    tmp_path: Path, monkeypatch, inject: str, named: str, summary: str | None,
+) -> None:
     """A3/A4: each refusal restores worktree bytes, index and HEAD, and reports cleanly."""
     repo = _repo(tmp_path, monkeypatch)
+    if summary == "tracked":
+        commit_file(repo, SUMMARY, "# summary M1.1\n", "summary")
+        (repo / "work" / "done").mkdir()
+        (repo / "work" / "done" / "implementation-summary-M1.1.md").write_text("# an older archive\n")
+    elif summary == "untracked":
+        (repo / SUMMARY).write_text("# summary M1.1, never committed\n")
     if inject == "commit":
         hook = Path(git(repo, "rev-parse", "--git-path", "hooks/pre-commit"))
         hook = hook if hook.is_absolute() else repo / hook
@@ -122,4 +139,6 @@ def test_failure_before_the_commit_restores_the_tree(tmp_path: Path, monkeypatch
     assert "could not restore" not in result.stderr, out
     assert "Traceback" not in result.stderr, out
     assert "[ok] bookkeeping committed" not in out
+    if summary is not None:   # cleanup wrote the destination before the commit was refused
+        assert {"tracked": "[ok] archived", "untracked": "kept a copy at"}[summary] in out, out
     assert _state(repo) == before

@@ -30,11 +30,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import build_node_chunk_map
-from specy_road.finish_work_artifacts import cleanup_paths
+from specy_road.finish_work_artifacts import archived_implementation_summary_rel, cleanup_paths
 from specy_road.generated_files import GENERATED_COMMITTED
 from specy_road.git_subprocess import git_code, git_ok
 from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.registry_yaml import REGISTRY_REL
+from specy_road.review_files import reviews_dir
 
 
 def one_line(text: str) -> str:
@@ -234,17 +235,26 @@ def pre_commit_paths(repo: Path, node_id: str, sess_path: Path | None) -> list[s
     """Every path finish may create, overwrite, move or remove before its bookkeeping commit.
 
     Every roadmap chunk (the leaf's and any rolled-up ancestor's), the registry,
-    the generated files, the PR-body snapshot, and the cleanup and worker-log paths.
+    the generated files, the PR-body snapshot, the cleanup and worker-log paths,
+    and both places cleanup writes a summary to: ``work/done/`` (a tracked one is
+    moved there) and the reviews directory (an untracked one is copied there).
+    The reviews directory is the main checkout's, so from a linked worktree its
+    path is relative with ``../`` and outside this worktree's index.
     """
     root = repo.resolve()
     chunks = sorted({p.relative_to(root).as_posix() for p in build_node_chunk_map(root).values()})
+    kept = reviews_dir(root, node_id) / Path(f"work/implementation-summary-{node_id}.md").name
     rels = [*chunks, REGISTRY_REL.as_posix(), *GENERATED_COMMITTED, f"work/pr-body-{node_id}.md",
-            *_cleanup_and_log_paths(root, node_id, sess_path)]
+            *_cleanup_and_log_paths(root, node_id, sess_path),
+            archived_implementation_summary_rel(node_id), Path(os.path.relpath(kept, root)).as_posix()]
     return list(dict.fromkeys(rels))
 
 
 def snapshot_pre_commit(repo: Path, rels: list[str]) -> PreCommitSnapshot:
-    """Record ``rels``' worktree bytes (or absence) and index entries; a directory is skipped."""
+    """Record ``rels``' worktree bytes (or absence), and index entries for those inside the worktree.
+
+    A directory is skipped; a path starting ``../`` (outside the worktree) has no index entry to record.
+    """
     root = repo.resolve()
     snap = PreCommitSnapshot(prefix=git_ok(["rev-parse", "--show-prefix"], root)[1],
                              head=git_ok(["rev-parse", "HEAD"], root)[1])
@@ -252,9 +262,10 @@ def snapshot_pre_commit(repo: Path, rels: list[str]) -> PreCommitSnapshot:
         state = _path_state(root / rel)
         if state is not None:
             snap.files[rel] = state
-            snap.index[rel] = []
-    if snap.files:
-        out = subprocess.run(["git", "--literal-pathspecs", "ls-files", "-s", "-z", "--full-name", "--", *snap.files],
+            if not rel.startswith("../"):
+                snap.index[rel] = []
+    if snap.index:
+        out = subprocess.run(["git", "--literal-pathspecs", "ls-files", "-s", "-z", "--full-name", "--", *snap.index],
                              cwd=root, capture_output=True, text=True, check=True).stdout
         for record in filter(None, out.split("\0")):
             rel = record.split("\t", 1)[1].removeprefix(snap.prefix)
@@ -267,7 +278,7 @@ def restore_pre_commit(repo: Path, snap: PreCommitSnapshot) -> dict[str, str]:
     """Put every snapshotted path's index entries and bytes back; return ``{path: why}`` for each that failed."""
     root = repo.resolve()
     failed: dict[str, str] = {}
-    records = [f"0 {'0' * 40}\t{snap.prefix}{rel}" for rel in snap.files]
+    records = [f"0 {'0' * 40}\t{snap.prefix}{rel}" for rel in snap.index]
     records += [r for rels in snap.index.values() for r in rels]
     try:
         res = subprocess.run(["git", "update-index", "-z", "--index-info"], cwd=root, check=False,
