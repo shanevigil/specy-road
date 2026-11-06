@@ -16,9 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import os
-import shutil
 import sys
-import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -28,8 +26,6 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load
 from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
-
-_GRAPH_TOPS = frozenset({"roadmap", "planning"})
 
 
 def remove_node_blockers(root: Path, node_id: str) -> list[str]:
@@ -77,11 +73,11 @@ def planning_sheet_delete_plan(root: Path, planning_dir: object) -> Path | None:
     return path if path.is_file() else None
 
 
-def _scratch_target(resolved: Path, scratch: Path, live: Path) -> Path | None:
-    """Scratch copy of live graph-tree path ``resolved``, or ``None`` outside the graph trees."""
-    for top in _GRAPH_TOPS:
+def _scratch_target(resolved: Path, scratch: Path, tops: dict[str, Path]) -> Path | None:
+    """Scratch copy of live path ``resolved`` in a copied top, or ``None`` outside them."""
+    for name, live_top in tops.items():
         try:
-            return scratch / top / resolved.relative_to((live / top).resolve())
+            return scratch / name / resolved.relative_to(live_top)
         except ValueError:
             continue
     return None
@@ -90,26 +86,32 @@ def _scratch_target(resolved: Path, scratch: Path, live: Path) -> Path | None:
 def _rebase_graph_symlinks(scratch: Path, live: Path) -> None:
     """Point symlinks in the copied graph trees at their scratch counterparts.
 
+    The copied trees are the top-level folders the scratch root holds as real
+    directories (``roadmap/``, ``planning/`` and every planning sheet's top).
     ``copytree(..., symlinks=True)`` keeps links resolving into the live repo, so
     rehearsal would read (and could write) live files, or reject them as outside
-    ``roadmap/``. Each link, file or directory, into a live graph tree is
+    ``roadmap/``. Each link, file or directory, into a live copied tree is
     re-pointed at the same path in the scratch copy, so the layout matches what
     real removal sees. Other links are kept: they resolve outside the scratch
     root, which every chunk lookup, sheet lookup and write rejects, just as live
     removal refuses (or fails validation on) them.
     """
     scratch = scratch.resolve()
-    live = live.resolve()
-    for top in _GRAPH_TOPS:
-        for dirpath, dirnames, filenames in os.walk(scratch / top):
-            for name in (*dirnames, *filenames):
-                link = Path(dirpath) / name
+    tops = {
+        e.name: (live / e.name).resolve()
+        for e in scratch.iterdir()
+        if e.is_dir() and not e.is_symlink()
+    }
+    for name in tops:
+        for dirpath, dirnames, filenames in os.walk(scratch / name):
+            for entry in (*dirnames, *filenames):
+                link = Path(dirpath) / entry
                 if not link.is_symlink():
                     continue
                 resolved = link.resolve()
                 if resolved == scratch or scratch in resolved.parents:
                     continue
-                dst = _scratch_target(resolved, scratch, live)
+                dst = _scratch_target(resolved, scratch, tops)
                 if dst is not None:
                     link.unlink()
                     link.symlink_to(dst, target_is_directory=resolved.is_dir())
@@ -119,28 +121,15 @@ def _rebase_graph_symlinks(scratch: Path, live: Path) -> None:
 def rehearsal_root(root: Path) -> Iterator[Path]:
     """Throwaway project root for ``--dry-run``: graph trees copied, the rest linked.
 
-    The live ``root`` is never written. Graph-tree symlinks into the repo are
-    rebased onto the scratch copy so rehearsal matches real removal on the same
-    layout (see :func:`_rebase_graph_symlinks`).
+    Built by ``apply --dry-run``'s scratch root (same copy/link rule). The live
+    ``root`` is never written. Symlinks in the copied trees that point into the
+    repo are rebased onto the scratch copy so rehearsal matches real removal on
+    the same layout (see :func:`_rebase_graph_symlinks`).
     """
-    with tempfile.TemporaryDirectory(prefix="specy-road-remove-") as tmp:
-        scratch = Path(tmp)
-        live = root.resolve()
-        for entry in live.iterdir():
-            if entry.name == ".git":
-                continue
-            dst = scratch / entry.name
-            if entry.name not in _GRAPH_TOPS:
-                try:
-                    dst.symlink_to(entry, target_is_directory=entry.is_dir())
-                    continue
-                except OSError:
-                    pass
-            if entry.is_dir():
-                shutil.copytree(entry, dst, symlinks=True)
-            elif entry.is_file():
-                shutil.copy2(entry, dst)
-        _rebase_graph_symlinks(scratch, live)
+    from specy_road.bundled_scripts.roadmap_crud_dependency_ops import _scratch_root
+
+    with _scratch_root(root) as scratch:
+        _rebase_graph_symlinks(scratch, root.resolve())
         yield scratch
 
 

@@ -37,6 +37,12 @@ Merge-induced: `specy_road/cli.py` went to 401/400 lines after the merge (WIP br
 - **R1 (Sol):** already addressed in `013a0525`: `remove_roadmap_node` checks every blocker on the live graph before any planning-sheet or chunk resolution, in both modes; the public CLI case `claimed-sheet-outside-repo` (claimed M99.2 whose sheet symlink escapes the repo) asserts dry-run and real removal both exit 1 naming the claim, tree unchanged. No further code change this round.
 - **R2 (Sol, environmental):** the GUI results for A3 are the ones specy-road recorded in `READY-claude-opus-5.5.md` for this commit, from the `--run` of `tests/test_gui_outline_contract.py tests/test_gui_app.py tests/test_gui_app_mutations.py tests/test_gui_app_routes_nodes_errors.py tests/test_gui_archive_routes.py tests/test_gui_node_write_slot.py`, run outside the reviewer sandbox.
 
+## Coordinator round: clone gate (on `a6185d4d`)
+
+- **Finding:** `scripts/check_clones.py` reported a new 7-line clone: the scratch-copy loop in `rehearsal_root` duplicated `roadmap_crud_dependency_ops._scratch_root` (`apply --dry-run`).
+- **Fix:** `rehearsal_root` now builds its scratch root with `_scratch_root` (imported locally, to avoid the `roadmap_crud_ops` import cycle; `roadmap_crud_dependency_ops.py` unchanged, clone baseline unchanged), then calls `_rebase_graph_symlinks`. The underscore import is the one the coordinator asked for (product-to-product, no test touches it). `_scratch_root` copies `roadmap/`, `planning/` and every planning sheet's top folder, so `_rebase_graph_symlinks` now rebases links in whichever top-level folders the scratch root holds as real directories, instead of a fixed `roadmap`/`planning` pair. Dropped the now-unused `shutil`, `tempfile` and `_GRAPH_TOPS`.
+- **Probes:** `python scripts/check_clones.py`: 9 current, 9 baselined, 0 new. `tests/test_lean_gates.py` + remove-node/CLI-help/crud tests: 163 passed. GUI six-file set: 99 passed. Tests importing `roadmap_crud_dependency_ops` / `apply`: 31 passed (rehearsal shares their helper, unchanged). `ruff`, `file-limits`: OK. All four symlink-layout cases of `test_dry_run_agrees_with_removal_on_in_repo_symlinks` still pass.
+
 ## Touch zones (final list)
 
 Brief zones; `tests/test_roadmap_crud.py` / `tests/test_generate_brief.py` for registry helper only.
@@ -107,6 +113,8 @@ Fix round 3:
 Fix round 5 test additions:
 - `claimed-sheet-outside-repo` case of `test_dry_run_agrees_with_removal_on_in_repo_symlinks` (+ `_claim_and_link_sheet_outside_repo`, shared `_link_sheet_to`, `_SHEET_M99_2`): R1 regression; the test now builds the repo in `tmp_path/repo` so the escape target sits outside it.
 - No new helpers or branches in product code; the blocker check moved from `_commit_remove` to the top of `remove_roadmap_node`, and dry-run's sheet pre-resolution was removed.
+
+Clone-gate round: no helpers, branches or tests added; `rehearsal_root`'s own copy loop was removed in favour of `roadmap_crud_dependency_ops._scratch_root`.
 
 ### Mocks
 - none
