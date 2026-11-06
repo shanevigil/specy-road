@@ -106,7 +106,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.18` A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA `deferral-bound-to-its-decision` — task — **Not Started**
   - `M21.19` apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file `apply-dry-run-rebases-links` — task — **Not Started**
   - `M21.20` PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set `gui-publish-regenerates-and-needs-a-remote` — task — **Not Started**
-  - `M21.21` review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only `review-delegate-validates-reviewer-command` — task — **Not Started**
+  - `M21.21` review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only `review-delegate-validates-reviewer-command` — task — **Complete**
   - `M21.22` Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper `rc4-small-code-fixes` — task — **Not Started**
   - `M21.23` rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry `rc4-docs-corrections` — task — **Not Started**
   - `M21.24` review delegate runs a Claude Code reviewer: the inline --json-schema carries no $schema, and a failed run names the harness's error `claude-reviewer-schema-and-error` — task — **Not Started**
@@ -266,7 +266,6 @@ Do not pick these up.
 - `M21.18` on `feature/rm-deferral-bound-to-its-decision` since 2026-11-05
 - `M21.19` on `feature/rm-apply-dry-run-rebases-links` since 2026-11-05
 - `M21.20` on `feature/rm-gui-publish-regenerates-and-needs-a-remote` since 2026-11-05
-- `M21.21` on `feature/rm-review-delegate-validates-reviewer-command` since 2026-11-05
 - `M21.22` on `feature/rm-rc4-small-code-fixes` since 2026-11-05
 - `M21.23` on `feature/rm-rc4-docs-corrections` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
@@ -279,9 +278,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | --- | --- | --- | --- | --- | --- | --- |
 | `docs` **flagged** | 29 | 7 | 4.64 | 82% | 31 | 4 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 49 | 11 | 4.13 | 74% | 40 | 7 |
-| `tests` **flagged** | 50 | 11 | 4.10 | 74% | 40 | 7 |
-| `CHANGELOG.md` | 7 | 0 | 2.29 | 29% | 6 | 0 |
+| `specy_road` **flagged** | 49 | 12 | 4.22 | 76% | 40 | 7 |
+| `tests` **flagged** | 50 | 12 | 4.18 | 76% | 40 | 7 |
+| `CHANGELOG.md` | 6 | 0 | 2.50 | 33% | 6 | 0 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `roadmap-context.md` | 1 | 1 | — | — | 0 | 0 |
 
