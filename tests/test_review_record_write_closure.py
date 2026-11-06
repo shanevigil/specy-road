@@ -139,5 +139,5 @@ def test_a_retried_codex_turn_never_files_the_failed_fresh_turns_answer_file(tmp
     argvs = [json.loads(line) for line in calls.read_text().splitlines()]
     assert [a for a in argvs if "-o" in a] and [a for a in argvs if a[:2] == ["exec", "resume"]]   # by argv
     assert [a["capacity"] for a in run["attempts"]] == [True, False]
-    assert run["outcome"] == "rerun" and "not one complete JSON object" in run["reason"]
+    assert run["outcome"] == "rerun" and "the final message holds no JSON object" in run["reason"]
     assert not rf.review_path(repo, "M1.1", "sol").exists()

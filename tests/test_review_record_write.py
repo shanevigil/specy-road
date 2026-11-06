@@ -103,23 +103,28 @@ def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:
 
 # --- A3: missing or malformed output is a rerun request (end to end; the per-row table is test_review_answer) --------
 
-NOT_ONE = "is not one complete JSON object"
+UNFINISHED = "the final message ends inside an unfinished JSON object"
+SCHEMA = "does not match the review output schema"
 CUT = "is not one JSON object (a cut-off or stray line)"
 
 
 @pytest.mark.parametrize("raw,why", [
-    ('{"verdict": "approve", "commit": ', NOT_ONE),
-    ('{"verdict": "approve"}', "does not match the review output schema"),
-    ("Verdict:\nVERDICT", NOT_ONE),                       # prose before the object
-    ("```json\nVERDICT\n```", NOT_ONE),                  # a fenced object
-    ("VERDICT\n{}", NOT_ONE),                             # two objects
-    ("[\nVERDICT\n]", NOT_ONE),                          # inside an array
-    ('{"wrapper": "draft", "review":\nVERDICT', NOT_ONE),  # nested in an unterminated outer object
+    ('{"verdict": "approve", "commit": ', UNFINISHED),
+    ('{"verdict": "approve"}', SCHEMA),
+    ("Verdict:\nVERDICT", None),                          # prose before the object: the object is filed (M21.25)
+    ("```json\nVERDICT\n```", "the final message does not end with a JSON object"),   # a fenced object
+    ("VERDICT\n{}", SCHEMA),                              # two objects: the last is the answer
+    ("[\nVERDICT\n]", "the final message holds no JSON object"),                      # inside an array
+    ('{"wrapper": "draft", "review":\nVERDICT', UNFINISHED),  # nested in an unterminated outer object
 ])
-def test_malformed_output_is_a_rerun_request_never_a_verdict(tmp_path: Path, raw: str, why: str) -> None:
+def test_malformed_output_is_a_rerun_request_never_a_verdict(tmp_path: Path, raw: str, why: str | None) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {"raw": raw.replace("VERDICT", json.dumps(verdict_step(repo)["answer"]))})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+    if why is None:
+        assert run["state"] == "complete" and run["outcome"] == "recorded", run["reason"]
+        assert _record(repo).exists()
+        return
     assert run["state"] == "incomplete" and run["outcome"] == "rerun"
     assert run["reason"].startswith("rerun requested: ") and why in run["reason"]
     assert not _record(repo).exists()

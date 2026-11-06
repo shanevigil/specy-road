@@ -80,7 +80,7 @@ def test_unrostered_model_with_missing_notes_writes_no_marker(tmp_path: Path) ->
     assert run_review_cli("review", "record", "M1.1", "--model", "ghost", "--verdict", "approve",
                           "--file", str(missing), "--repo-root", str(repo)) == 1
     assert not rejected_path(reviews, "ghost").exists()
-    assert not reviews.is_dir()
+    assert not list(reviews.glob("REVIEW-*"))   # the leaf's review lock file (M21.27) may be there; no record is
 
 
 def test_handoff_status_and_list_show_refused_text_and_json(tmp_path: Path, capsys) -> None:

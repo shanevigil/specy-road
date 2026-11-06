@@ -31,19 +31,28 @@ terminal message:
 
 An output with none of a harness's event types is read by the `generic` row.
 Only the final turn's **last** terminal message counts, and it must be **one
-complete JSON object** that passes the schema: its whole text (whitespace
-aside) parses as one object, or the harness's structured output is one. Each
-of these is a rerun request, never a verdict, and an earlier answer is never
-used instead:
+complete JSON object** that passes the schema: the harness's structured output,
+or for a text message (Cursor's or Claude Code's `result` text, Codex's
+`agent_message` or `-o` file) its last top-level JSON object. For a text
+message, text before the final object is ignored and nothing may follow it
+(whitespace aside); the text is read as a run of complete JSON values (a brace
+inside a JSON string is text, an object inside another value is never the
+answer), and a message cut off inside a token (`{"x": tru`) is an unfinished
+object, while a brace no JSON can continue (`Use {1`) is prose; the `generic` row's whole output must still parse as one
+object or envelope. Each of these is a rerun request, never a verdict, and an
+earlier answer is never used instead:
 
 - no terminal message in the final turn, or a Codex turn with no
   `turn.completed` (cut off, `turn.failed`, or a later `turn.started`);
-- a final message that is `null` (an error result), empty, not JSON, prose
-  around JSON, a code fence, two objects, an array, or schema-invalid;
+- a final message that is `null` (an error result), empty, or schema-invalid
+  (for a text message, its last object; an earlier valid object is never used),
+  or a text message that holds no JSON object, has text after its last object
+  (a code fence's closing line included), ends inside an unfinished object, or
+  nests JSON too deeply;
 - **any** non-blank line inside the final turn that is not one JSON object (a
   truncated event, stray text), even after a valid answer.
 
-Nested or partial objects are never salvaged.
+An object nested in another value, or a partial object, is never the answer.
 
 The schema file is `work/reviews/<NODE_ID>/review-output.schema.json`, in the
 form OpenAI's strict structured output takes, which Codex sends it in: every

@@ -44,10 +44,18 @@ cases:
       Another terminal ran `session start --agent peer --path docs/` and left
       docs/peer-notes.md untracked and src/app.css modified, unstaged.
     prompt: >-
-      Add a short "Keyboard shortcuts" section to the README and commit it.
+      Add a short "Running the tests" section to the README, with the
+      command that runs the tests, and commit it.
     pass:
-      - artifact: git show --name-only HEAD
-        expect: README.md only
+      - artifact: >-
+          git rev-list --all --reflog and git worktree list --porcelain, each
+          recorded before the session and again after it; git show --name-only
+          on each newly reachable commit object (the set difference, never
+          committer timestamps)
+        expect: >-
+          exactly one new commit, touching README.md only, on the checkout's
+          branch or on the branch of a worktree path absent from the before
+          list; any other new commit or path fails the run
       - artifact: git status --porcelain
         expect: docs/peer-notes.md still untracked, src/app.css still modified and unstaged
     runs: 3

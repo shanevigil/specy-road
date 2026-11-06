@@ -1,6 +1,7 @@
 """M8.3 A3 (strict, rescope 2026-11-04): one case per row of :data:`specy_road.review_answer.TURNS` and shape.
 
-Only the final turn's last terminal message counts, and it must be one complete JSON object that passes the schema.
+Only the final turn's last terminal message counts, and it must be one complete JSON object that passes the schema
+(a text message: its last top-level object, which must end it, M21.25).
 Missing, empty, null, non-JSON or schema-invalid, or any unparseable line inside the final turn, is a rerun request;
 an earlier answer is never used and nothing is salvaged. Sol's F2 (a truncated trailing result line) and F3 (Codex
 ``turn.started`` after a completed turn) are rows.
@@ -50,6 +51,8 @@ def agy(structured: object, **extra: object) -> str:
 
 NO_FINAL, NULL, EMPTY = "ends without a final message", "carries no answer", "the final message is empty"
 NOT_ONE, SCHEMA = "is not one complete JSON object", "does not match the review output schema"
+NO_OBJECT, NOT_LAST = "the final message holds no JSON object", "the final message does not end with a JSON object"
+UNFINISHED, DEEP = "the final message ends inside an unfinished JSON object", "the final message nests JSON too deeply"
 CUT, OPEN = "is not one JSON object (a cut-off or stray line)", "the final turn did not complete"
 TRUNCATED_RESULT = '{"type":"result","result":'
 
@@ -61,10 +64,10 @@ CASES = [
     ("claude-code", "null", claude({"result": None}), None, NULL),
     ("claude-code", "error result", claude({"result": VT, "is_error": True}), None, NULL),
     ("claude-code", "empty", claude({"result": "  \n"}), None, EMPTY),
-    ("claude-code", "non-JSON", claude({"result": "All good, approve."}), None, NOT_ONE),
-    ("claude-code", "prose before the object", claude({"result": "Verdict:\n" + VT}), None, NOT_ONE),
-    ("claude-code", "fenced object", claude({"result": "```json\n" + VT + "\n```"}), None, NOT_ONE),
-    ("claude-code", "two objects", claude({"result": VT + "\n{}"}), None, NOT_ONE),
+    ("claude-code", "non-JSON", claude({"result": "All good, approve."}), None, NO_OBJECT),
+    ("claude-code", "prose before the object", claude({"result": "Verdict:\n" + VT}), None, V),
+    ("claude-code", "fenced object", claude({"result": "```json\n" + VT + "\n```"}), None, NOT_LAST),
+    ("claude-code", "two objects", claude({"result": VT + "\n{}"}), None, SCHEMA),
     ("claude-code", "nested: no salvage", claude({"result": json.dumps({"review": V})}), None, SCHEMA),
     ("claude-code", "schema-invalid", claude({"structured_output": BAD}), None, SCHEMA),
     ("claude-code", "multiple: valid then null", claude({"result": VT}, {"result": None}), None, NULL),
@@ -82,8 +85,8 @@ CASES = [
     ("codex", "missing: no message in the turn", codex(), None, NO_FINAL),
     ("codex", "null", codex(None), None, NULL),
     ("codex", "empty", codex(""), None, EMPTY),
-    ("codex", "empty -o file falls to the message", codex("not json"), "", NOT_ONE),
-    ("codex", "non-JSON", codex("approve"), None, NOT_ONE),
+    ("codex", "empty -o file falls to the message", codex("not json"), "", NO_OBJECT),
+    ("codex", "non-JSON", codex("approve"), None, NO_OBJECT),
     ("codex", "schema-invalid", codex(json.dumps(BAD)), None, SCHEMA),
     ("codex", "multiple: valid then null message", codex(VT, None), None, NULL),
     ("codex", "multiple: valid turn then null turn", codex(VT) + "\n" + codex(None), None, NULL),
@@ -99,9 +102,10 @@ CASES = [
     ("cursor", "null", claude({"result": None}), None, NULL),
     ("cursor", "error result", claude({"result": VT, "is_error": True}), None, NULL),
     ("cursor", "empty", claude({"result": ""}), None, EMPTY),
-    ("cursor", "non-JSON", claude({"result": "approve"}), None, NOT_ONE),
+    ("cursor", "non-JSON", claude({"result": "approve"}), None, NO_OBJECT),
     ("cursor", "schema-invalid", claude({"result": json.dumps(BAD)}), None, SCHEMA),
-    ("cursor", "structured_output is not Cursor's", claude({"structured_output": V, "result": "ok"}), None, NOT_ONE),
+    ("cursor", "structured_output is not Cursor's", claude({"structured_output": V, "result": "ok"}), None,
+     NO_OBJECT),
     ("cursor", "multiple: valid then error", claude({"result": VT}, {"result": "x", "is_error": True}), None, NULL),
     ("cursor", "valid then a truncated result line", claude({"result": VT}) + "\n" + TRUNCATED_RESULT, None, CUT),
     ("cursor", "plain-text wrapper", VT, None, V),
@@ -141,3 +145,53 @@ def test_the_answer_file_counts_only_for_a_turn_that_completed(tmp_path: Path) -
     out.write_text(VT)                                         # a stale or partial -o file
     assert isinstance(final_answer(ADAPTERS["codex"], codex("draft", end=None), out), Rerun)
     assert isinstance(final_answer(ADAPTERS["codex"], codex(VT, end="turn.failed"), out), Rerun)
+
+
+# M21.25: a text terminal message's answer is its last top-level object, which must end it.
+TEXT_PATHS = {
+    "cursor result text": ("cursor", lambda t: (claude({"result": t}), None)),
+    "claude result text": ("claude-code", lambda t: (claude({"result": t}), None)),
+    "codex agent_message": ("codex", lambda t: (codex(t), None)),
+    "codex -o file": ("codex", lambda t: (codex("see -o"), t)),
+}
+NARRATION = "Reading the reviewer prompt\u2026\n\n\nRunning precondition checks\u2026\n\n\n"
+DEEP_TEXT = "Done.\n" + '{"a":' * 100_000 + "1" + "}" * 100_000
+TEXT_SHAPES = [
+    ("prose then a valid object (rc4 Cursor)", NARRATION + VT, V),
+    ("JSON only", VT, V),
+    ("JSON plus trailing whitespace", VT + "\n\n  \t", V),
+    ("two valid objects gives the last", json.dumps({**V, "verdict": "x"}) + "\n" + VT, V),
+    ("prose with a stray brace, then the object", "Checked {a, b} and [1/3].\n" + VT, V),
+    ("unfinished outer container around a valid object", '{"x": ' + VT, UNFINISHED),
+    ("unfinished outer array around a valid object", "[" + VT, UNFINISHED),
+    ("an object only inside an array", json.dumps([V]), NO_OBJECT),
+    ("excessive nesting", DEEP_TEXT, DEEP),
+    ("object plus trailing prose", VT + "\nLet me know if you need more.", NOT_LAST),
+    ("prose plus a truncated object", NARRATION + VT[:-20], UNFINISHED),
+    *[(f"cut inside a token ({tail!r}){after}", prefix + '{"x": ' + tail, UNFINISHED)
+      for tail in ("tru", "nul", "fals", "-", "1.", "1e+", '"ab', '"\\', '"\\u12')
+      for after, prefix in (("", ""), (", after a valid object", VT + "\n"))],
+    ("a bad escape is not a cut", VT + '\n{"x": "\\uZZ', NOT_LAST),
+    ("no JSON completes the prefix: prose", "Use {1", NO_OBJECT),
+    *[(f"no JSON completes {tail!r} after a valid object", VT + "\n" + tail, NOT_LAST)
+      for tail in ("Use {1", '{"x": 1.e', '{"x": tru ', '[1 2')],
+    ("a JSON string holding braces", json.dumps("{}"), NO_OBJECT),
+    ("quoted braces in prose, then the object", 'Checked "{x}" and "[y".\n' + VT, V),
+    ("valid object then a schema-invalid last object", VT + "\n" + json.dumps(BAD), SCHEMA),
+]
+
+
+@pytest.mark.parametrize("path", TEXT_PATHS)
+@pytest.mark.parametrize("shape,text,expected", TEXT_SHAPES, ids=[t[0] for t in TEXT_SHAPES])
+def test_a_text_message_answers_with_its_final_object(tmp_path: Path, path: str, shape: str, text: str,
+                                                      expected: object) -> None:
+    harness, build = TEXT_PATHS[path]
+    output, saved = build(text)
+    out = tmp_path / "answer.json"
+    if saved is not None:
+        out.write_text(saved)
+    got = final_answer(ADAPTERS[harness], output, out)
+    if expected == V:
+        assert got == V, got
+    else:
+        assert isinstance(got, Rerun) and got.reason.startswith("rerun requested: ") and str(expected) in got.reason, got
