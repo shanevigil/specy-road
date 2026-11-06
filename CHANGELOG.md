@@ -229,6 +229,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- The `specyrd-brainstorm` skill (description and first paragraph, in every
+  harness's rendered copy) and `suggested_prompts/brainstorm-roadmap.md` Phase 1
+  say to make `specy-road brainstorm start` the next tool call after reading the
+  skill, alone in its tool-call batch with no parallel read or search, then read
+  the prompt file it names. The old "not even in the same step" wording, which
+  Cursor read as the turn, is gone. Wording only; the CLI does not enforce it.
+
 - The toolkit's file cap (`constraints/file-limits.yaml`) went from 400 to
   1000 lines per file, with a 750-line hard alert that warns and fails only
   under `specy-road file-limits --strict-hard-alerts`. The per-file overrides
