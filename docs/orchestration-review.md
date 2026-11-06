@@ -51,6 +51,39 @@ it as an `error:` and exits 1, both naming the two settings and the fix: set
 for you; whether a project reviews is its own decision, and a project that does
 not can delete `roadmap/orchestration.yaml`.
 
+## Review policy pinned at claim
+
+The policy that judges a leaf is the one in force when it was claimed. Pickup's
+`chore(rm-<codename>): register as in-progress` commit carries a trailer
+`Review-policy: sha256:<hex> at <commit>`: the digest of `roster`,
+`substitutions` and `policy` in `roadmap/orchestration.yaml` and
+`require_implementation_review_before_finish` in `roadmap/git-workflow.yaml`,
+as committed at the integration branch commit the claim was made on (no
+toolkit defaults, no `orchestration.local.yaml` overlay). A policy file that is
+present but does not parse refuses the claim before any registry write.
+
+When the policy on the integration branch differs from the pin, the gate is
+not met (`handoff status`, `review list`, `mark-implementation-reviewed`) and
+`finish-this-task` refuses before any bookkeeping — before it reads the review
+switch, so turning `require_implementation_review_before_finish` off after
+the claim does not skip review. The problem lists each change (a roster entry
+added or removed, every changed property of a kept entry including
+`public_key`, `substitutions changed`, each `policy.<key>`, the review
+switch). A human accepts it with `specy-road review accept-policy <NODE_ID>`,
+which needs a terminal, prints the changes, asks for the node id typed back and
+writes `work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml`
+(`schemas/policy-acceptance.schema.json`); or the leaf is claimed again. An
+acceptance counts only for its node and the two digests it names, so a later
+change needs a new one; an invalid file is a gate problem, never an
+acceptance. A trailer that does not parse is a gate problem; a registration
+commit with no trailer (a claim made before this rule) is judged as before.
+
+Like READY files, the pin and the acceptance are honour-system: an agent set on
+forging them can (another commit with the registration subject, a hand-written
+acceptance). The rule stops the CR1 regression, an executor that rosters a
+reviewer or turns the gate off on the integration branch after its claim;
+M22.5's steering guard is the broader protection.
+
 ## What a reviewer probes
 
 An evaluation of reviewer effectiveness on the 0.3.1 line found that the approving reviewer had usually seen the issues the second reviewer blocked on, and excused them: it re-ran only the executor's own tests, read loose acceptance text in the leaf's favour, and filed real defects as "advisory" or "non-blocking". So every reviewer prompt (`specy-road prompt --role reviewer`, and `review delegate`) tells the reviewer to:

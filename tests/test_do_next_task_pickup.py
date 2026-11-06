@@ -17,6 +17,7 @@ from specy_road.bundled_scripts.registration_pickup_commit import (
     REGISTRATION_COMMIT_CI_SKIP_SUFFIX,
     registration_commit_message,
 )
+from specy_road.review_policy_pin import policy_digest
 
 
 def _pickup_test_node() -> dict:
@@ -273,14 +274,24 @@ def test_registration_commit_message_ci_skip_toggle() -> None:
     )
 
 
-def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+@pytest.mark.parametrize("orchestration", [None, "version: 1\nroster: []\n", "roster: [\n"],
+                         ids=["no commit to pin", "pinned", "policy does not parse"])
+def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, tmp_path, orchestration) -> None:
+    """The subject is unchanged; a committed policy adds the pin trailer (M21.30), and one that does not parse
+    refuses the claim before any registry write."""
     _git_init(tmp_path)
+    if orchestration is not None:
+        (tmp_path / "roadmap").mkdir(parents=True)
+        (tmp_path / "roadmap" / "orchestration.yaml").write_text(orchestration, encoding="utf-8")
+        subprocess.run(["git", "add", "roadmap"], cwd=tmp_path, check=True)
+        subprocess.run(["git", "-c", "user.name=T", "-c", "user.email=t@e", "commit", "-qm", "policy"],
+                       cwd=tmp_path, check=True)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
         calls.append(list(args))
 
-    (tmp_path / "roadmap").mkdir(parents=True)
+    (tmp_path / "roadmap").mkdir(parents=True, exist_ok=True)
     (tmp_path / "roadmap" / "registry.yaml").write_text(
         "version: 1\nentries: []\n",
         encoding="utf-8",
@@ -310,13 +321,20 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
     (tmp_path / "work").mkdir(parents=True)
     (tmp_path / "work" / "brief-M9.1.md").write_text("x", encoding="utf-8")
 
-    dnt.main(
-        [
-            "--no-ci-skip-in-message",
-            "--repo-root",
-            str(tmp_path),
-        ],
-    )
+    argv = ["--no-ci-skip-in-message", "--repo-root", str(tmp_path)]
+    if orchestration == "roster: [\n":
+        with pytest.raises(SystemExit) as e:
+            dnt.main(argv)
+        assert e.value.code == 1 and calls == []
+        assert (tmp_path / "roadmap" / "registry.yaml").read_text() == "version: 1\nentries: []\n"
+        return
+    dnt.main(argv)
 
     assert calls[1][0] == "commit"
-    assert calls[1][2] == "chore(rm-pickup-git): register as in-progress"
+    subject = "chore(rm-pickup-git): register as in-progress"
+    if orchestration is None:
+        assert calls[1][2] == subject
+    else:
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True, capture_output=True,
+                              text=True).stdout.strip()
+        assert calls[1][2] == f"{subject}\n\n" + f"Review-policy: sha256:{policy_digest(tmp_path, head)[0]} at {head}"

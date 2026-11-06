@@ -28,7 +28,7 @@ finding the node did not declare in ``planned_test_changes`` on the integration 
 (:mod:`specy_road.integrity_gate`). Each ``policy.strong_review`` item the leaf's touch zones meet needs one counted
 approval from its ``require_one_of`` (:mod:`specy_road.review_strong`). An approval naming ``delta_from`` (a delta
 review) must also meet :func:`delta_problem`. A block a human-applied deferral names (reviewer and commit) does not
-count (:func:`specy_road.review_deferral.apply_deferrals`).
+count (:func:`specy_road.review_deferral.apply_deferrals`). A policy change since the claim: :mod:`review_policy_pin`.
 """
 
 from __future__ import annotations
@@ -61,6 +61,7 @@ from specy_road.review_bookkeeping import CARRY_NOTE, count_at_later_commit, onl
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
                                      list_review_history, list_reviews, review_semantic_errors, reviews_dir,
                                      verifier_gate_problems)
+from specy_road.review_policy_pin import pin_problem
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_resumed_delta import FRESH_SESSION, fresh_only_note, fresh_session_problem
 from specy_road.review_strong import human_closes_strong, strong_problem, touch_zones, unmet_strong
@@ -122,6 +123,7 @@ class GateResult:
     config_error: str | None = None
     bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict)
     strong_unmet: list[tuple[int, dict[str, Any]]] = field(default_factory=list)   # unmet policy.strong_review items
+    policy_pin: str | None = None   # the policy changed since the claim and no human accepted it (review_policy_pin)
 
     @property
     def approval_count(self) -> int:
@@ -129,7 +131,7 @@ class GateResult:
 
     @property
     def passed(self) -> bool:
-        return (self.config_error is None and self.commit is not None and not self.blocks
+        return (self.config_error is None and self.commit is not None and not self.blocks and not self.policy_pin
                 and not self.verifier_problems and not self.strong_unmet and self.approval_count >= self.required)
 
     def summary(self) -> str:
@@ -155,7 +157,7 @@ class GateResult:
             unit = "distinct-family approvals" if self.distinct_families else "approvals"
             out.append(f"need {self.required} {unit} at this commit, have {self.approval_count}")
         out.extend(self.verifier_problems + [strong_problem(i, item) for i, item in self.strong_unmet])
-        return out
+        return out + ([self.policy_pin] if self.policy_pin else [])
 
 
 def _signature_problem(config: dict[str, Any], model: str, review: ReviewFile) -> str | None:
@@ -343,6 +345,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
         result.verifier_problems += executor_blocked_gate_problems(ready)
     result.verifier_problems += integrity_gate_problems(repo_root, policy, node["id"], result.commit, ref)
     result.strong_unmet = unmet_strong(repo_root, node, policy, result.approvals, result.commit)
+    result.policy_pin = pin_problem(repo_root, node, result.commit) if result.commit else None
     return result
 
 
@@ -355,7 +358,8 @@ def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, 
     approval still missing, and — under ``signed_reviews`` — a key was given and
     the roster has its public key. An unmet ``strong_review`` item must list the human.
     """
-    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems or not human_closes_strong(gate):
+    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems or gate.policy_pin or \
+            not human_closes_strong(gate):
         return False
     config = gate.config
     if not is_rostered_reviewer(config, HUMAN) or not may_handle(roster_entry(config, HUMAN), node_sensitivity(node)):

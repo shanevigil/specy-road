@@ -13,6 +13,22 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- **Security:** a leaf's review policy is pinned at claim. Pickup's
+  registration commit (`--local` too) keeps its subject and gains a
+  `Review-policy: sha256:<hex> at <commit>` trailer: the digest of the roster,
+  substitutions and policy in `roadmap/orchestration.yaml` and the review switch
+  in `roadmap/git-workflow.yaml` at the integration branch commit claimed from.
+  A policy file that does not parse refuses the claim before any registry
+  write. When the integration branch's policy differs, the gate is not met
+  (`mark-implementation-reviewed --yes` refuses) and `finish-this-task` refuses
+  before any bookkeeping, before it reads the review switch, with one line per
+  change, until a human runs `specy-road review accept-policy <NODE_ID>` in a
+  terminal (`work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml`, checked against the
+  new `policy-acceptance.schema.json`) or the leaf is re-claimed. A claim made
+  before this change has no trailer and is judged as before. Pin and acceptance
+  are honour-system, like READY files. The agent rules now say an executor
+  never edits these files or the roster to get past the gate, and never files a
+  review under any model id but its own.
 - `finish-this-task` runs `validate` before its first bookkeeping write, so an
   invalid configuration (for example `policy.reviewers_required: 1` with
   `require_implementation_review_before_finish: false`) is refused with
