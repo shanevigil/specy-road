@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
 from specy_road.orchestrate_plan import is_available
-from specy_road.review_deferral import marker_path
+from specy_road.review_deferral import rca_deferral
 from specy_road.review_files import HUMAN, PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 
 if TYPE_CHECKING:
@@ -149,10 +149,11 @@ def facts(repo_root: Path, config: dict[str, Any], loop: LoopState, node_id: str
     rca, refused = NO_RCA, None
     if record is not None and record.data["recommended_action"]["type"] != "defer_findings":
         rca = NON_DEFER
-    elif record is not None and marker_path(repo_root, node_id, record.path.name).exists():
+    elif record is not None and (not_in_effect := rca_deferral(repo_root, node_id, record.path.name)) == []:
         rca = DEFER_APPLIED
-    elif record is not None:
-        rca, refused = DEFER_UNAPPLIED, applicable_record(repo_root, node_id, str(record.path))[1]
+    elif record is not None:   # no marker, or one not in effect (its problems join the refusal)
+        why = [applicable_record(repo_root, node_id, str(record.path))[1], *(not_in_effect or [])]
+        rca, refused = DEFER_UNAPPLIED, "; ".join(w for w in why if w) or None
     ready = latest_ready(repo_root, node_id) if budget is not None else None
     agent = ready.data.get("agent") if ready else None
     reviewers = set(_available(config, "reviewer"))
