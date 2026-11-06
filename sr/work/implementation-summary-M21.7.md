@@ -139,6 +139,55 @@ The `origin/WIP/improvements-0-3-1` merge went in first, with no conflicts.
 - Other places that read through or record links: the git config chain and the registry read file contents, which already follow links. The `env_setup.link` venv write-through case (A5) still passes under the single rule. `worker_turn_check._content` (porcelain, not steering) is unchanged: steering paths found in porcelain are replaced by their `steering_file` finding.
 - Targeted tests: 187 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK (`steering_paths.py` at 400 lines after shortening `_value`'s own new docstring).
 
+## Fix round 5 (coordinator, final; Sol's round-4 R1 folded in)
+
+The `origin/WIP/improvements-0-3-1` merge went in first, with no conflicts.
+
+**The class.** One input makes the steering check abort, or quietly skip part of its work. Sol's round-4 R1 (invalid UTF-8 in `registry.yaml` aborts `file_snapshot` and drops the findings already collected) is the fourth instance, after CRLF parsing, an unavailable snapshot and symlinked hooks.
+
+The audit found two shapes still live:
+- **Abort:** the registry decode, `load_git_workflow_config` raising inside `scope_for`, and the `.git` file decode.
+- **Quiet skip (fail open):** `except OSError: return` on hooks and bin listings, `read_chain` dropping unreadable config, `os.walk` without `onerror`, and a YAML error treated as "no rows".
+
+**The one rule** (module docstring of `steering_paths.py`, and docs/orchestration-steering-files.md "An input that cannot be read"):
+- Every per-file and per-directory step (list, read, decode, parse, hash) runs on its own, through `guarded` / `unreadable`, or through `_add`'s guarded value.
+- Any exception there records that path and its class with an `error:` value, and the snapshot goes on.
+- `worker_turn_check.steering_changes` reports such a path as one `check_error` finding with `path`, `class` and `error`, never as unchanged.
+- In the git half that finding makes `_turn_findings` skip every post-turn git command, as a change does.
+- Only a path that does not exist is `absent`. A missing include, including a dangling one, is left out, as git does.
+- Dangling links and link loops are unreadable: `_value` stats through the link.
+- Parsed files over 8 MiB (`MAX_PARSE_BYTES`) are unreadable. Hashing is streamed (`hashlib.file_digest`), so size never fails a hash.
+
+Where it applies:
+- `scope_for` guards the workflow file: unreadable, it is a scope problem that every snapshot reports (`policy_tree`), and the classes that need it go without.
+- `read_chain` returns the exception in place of a file's bytes.
+- Walks pass `onerror`, and an unlistable directory is recorded.
+- The porcelain-link step reports a checkout git could not list.
+
+Collected findings and the sticky `steering_changed` flag are never discarded.
+
+**Layout.** `SteeringWatch`, the comparison (`steering_changes`, `steering_finding`, `steering_error`), `_links` and `merged` moved from `steering_paths.py` to `worker_turn_check.py`, which is in the zones, so `steering_paths.py` stays under 400 lines. `real_path`, `resolved_path` and `blobs` became public, because `worker_turn_check` uses them.
+
+## Probes (round 5)
+
+- The table test `test_an_unreadable_steering_input_is_one_check_error_and_the_rest_is_still_compared` (16 rows, listed below), run against the round-4 code (848ce88c) in a scratch worktree: all 16 fail there and pass now.
+- Shapes outside the table, by probe script, each with an unrelated harness change in the same turn. Each gave one `check_error` for that path and class, the unrelated `steering_file` finding, and the flag:
+  - invalid UTF-8 in the main `roadmap/git-workflow.yaml` (`scope_for`'s read): `policy_tree`;
+  - a 9 MiB `registry.yaml`: `registry`;
+  - an unlistable `.claude/hooks/` directory: `harness`;
+  - an unlistable `.git/hooks/` directory: `git_hook`, plus `git_probes_skipped`.
+- Every remaining `except` in the steering code: `guarded`, `_add`, `scope_for`, `read_chain`, `_links` (readlink: "not a link") and `_turn_findings`. None returns silently except `FileNotFoundError` in `read_chain` (a missing file, as git) and `_links` on a non-link.
+- Combinations left out of the table, because the kind is not a failure there:
+  - invalid UTF-8 or malformed YAML in a hashed (not parsed) harness file, hook or bin entry: it is bytes, and a change to them is a `steering_file`;
+  - a dangling include: git leaves it out too.
+- Existing tests unchanged and passing. None is superseded exactly: the round-3 "snapshot unavailable" case covers a whole-snapshot failure, which the per-path rule does not reach.
+- Full suite: 5,342 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
+
+The 16 table rows:
+- `registry`: invalid UTF-8, malformed YAML, unreadable, dangling link, link loop.
+- harness file, hook and env bin: unreadable, dangling link, link loop.
+- git config include: unreadable, link loop.
+
 ## Added
 
 - `specy_road/steering_paths.py`: the list, `Scope` and snapshots per class, `changes`, `SteeringWatch` with `git_changes`, `rest_changes` and `without_steering_paths`, and `config_values`, a no-git config reader. Required by A1 and A2.
@@ -154,4 +203,5 @@ The `origin/WIP/improvements-0-3-1` merge went in first, with no conflicts.
 - Fix round 2: no new helpers. The leading-BOM strip in `parse_config` and the superset in `git_snapshot` replace the earlier "hooksPath else defaults" choice. The round-1 test `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` became `test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_reads`, with five shapes and git deciding the directory in use.
 - Fix round 3: `git_config_text.git_reads` (git, at turn start only) and `Scope.git_known` (R1); `steering_paths._resolved`, which never raises; the CRLF line in `parse_config`. Tests: the `crlf_continuation` shape in `HOOKS_CONFIGS`, and the fsmonitor test parametrized over `snapshot` (`taken` / `unavailable`; the latter makes the public `steering_paths.file_snapshot` raise with monkeypatch, R2).
 - Fix round 4: no new helper. `_value` now carries the link-resolution rule and `_env_bin`'s copy of it was removed. Test: the `unchanged_symlink_written_through` shape in `HOOKS_CONFIGS`, with `DEFAULT_HOOKS` naming the two shapes where git uses the default directory.
+- Fix round 5: `steering_paths.guarded`, `unreadable`, `_error`, `_walk`, `_list`, `parse_bytes`, `_digest`, `_config_file`, `_git_top`, `_registry_rows`, `Scope.problems`, `ERROR` and `MAX_PARSE_BYTES` (the one rule). `read_chain` gained a `read` parameter and returns exceptions. `worker_turn_check.steering_error` and `SteeringWatch.link_errors`. Test: the 16-row table (`UNREADABLE_ROWS`, with `_unreadable_as` and `_where` helpers).
 - `tests/test_finish_work_cleanup._config_on_dev`: keeps the changed test under the 80-line function cap, which the fixture fix above would otherwise have exceeded.
