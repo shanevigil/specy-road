@@ -365,7 +365,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.5_apply-restructure-ops_c44976af-41a0-4627-8789-16dcf49dd12b.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
