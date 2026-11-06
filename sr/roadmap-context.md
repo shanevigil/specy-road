@@ -206,6 +206,12 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-05 `M17.5` stopped depending on `M17.3 PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags`
+- 2026-11-05 `M19` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
+- 2026-11-05 `M18` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
+- 2026-11-05 `M20` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
+- 2026-11-05 `M17.1` stopped depending on `M16.3.1 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
+- 2026-11-05 `M17.1` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-05 `M16.60` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
 - 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
 - 2026-11-05 `M16.18` stopped depending on `M16.5.4 One check_assignment decides eligibility for every launch and for the gate`
@@ -225,13 +231,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.33` stopped depending on `M16.5.1 Worker runtime moves into orchestration/workers with import-path edits only`
 - 2026-11-05 `M16.33` stopped depending on `M16.5.9 Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings`
 - 2026-11-05 `M16.9` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
-- 2026-11-05 `M16.13` stopped depending on `M16.4.1 doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases`
-- 2026-11-05 `M16.3` stopped depending on `M16.1.1 Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs`
-- 2026-11-05 `M16.11` stopped depending on `M16.2.9 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
-- 2026-11-05 `M16.18` stopped depending on `M16.3.1 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
-- 2026-11-05 `M16.32` stopped depending on `M16.4.3 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
-- 2026-11-05 `M16.32` stopped depending on `M16.1.5 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer`
-- _…and 35 earlier — `specy-road history --json`_
+- _…and 41 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
