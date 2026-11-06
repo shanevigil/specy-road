@@ -204,6 +204,30 @@ Merged `origin/WIP/improvements-0-3-1` (`163ca582` and after). That merge added 
 - An ignore file refused for a link (strict managed block) under upgrade is a `refused:` outcome, so it is an `error`. That is the same class, and ignore files are not on the maintainer's report-line list.
 - Full suite: 6001 passed. `ruff check specy_road tests scripts`: pass. `specy-road file-limits`: pass.
 
+## Fix round 5 (review `gpt-6.1-sol-low` at `b25f3c86`)
+
+WIP merge: already up to date. Fix commit: see the commit after `b25f3c86` (`fix(M21.37): a skill link's relative target ...`).
+
+- **R1, the class: a relative path computed from a path's logical location (before the skills-link swap) but used at its relocated location.**
+  - `ensure_link` wrote `link_target(agent, name)`, which counts `..` from `.claude/skills`' logical depth, into the directory `skill_path` relocated the link to. Through a `.claude/skills` alias at another depth the link pointed nowhere.
+  - Now `canonical` and `link` are both located by the skills-link rule, and the text is `os.path.relpath(canonical, link.parent)`, from where the link really lands.
+  - The default layout gets the same text (`../../.agents/skills/<name>`), so `test_specyrd_skills`' `link_target` assertion still holds. `link_target` is kept as the default-layout text, and its docstring now says so.
+  - The UNCHANGED comparison uses `canonical.resolve()`.
+- **Test:** `test_skill_links_resolve_through_a_skills_directory_alias_at_another_depth` runs `specyrd init`, then `refresh-stubs` remaking a deleted link. It has two rows, `.claude/skills` and `.agents/skills`, each aliased to `tools/deep/skills` (depth 3).
+  - The `.claude/skills` row fails on `b25f3c86` and passes now.
+  - The `.agents/skills` row passes on both, because the link sits in the real `.claude/skills` and its text goes through the alias. It is kept as coverage of the other clause.
+
+### Probes (fix round 5)
+
+- Other relative text built from a logical path and used after `skill_path` relocates it: `grep` for `link_target`, `os.symlink`, `relpath` and `readlink` in the leaf's writers.
+  - `specyrd_skills.ensure_link`: fixed (the only writer of link text).
+  - `install_stubs` and `refresh_stubs._write_if_changed`: write content to the absolute relocated path; no relative text.
+  - The copy fallback in `ensure_link`: absolute `link / "SKILL.md"`.
+  - `upgrade_plan.Mirror`: copies existing link text with the structure preserved, so an alias keeps its depth in the mirror.
+- Readers that take the logical path: `mirrored_copies` and `_is_disposable_copy` read through an in-repo alias, and compare `resolve()`d paths, which is depth-independent. Report text (`refresh_stubs_report.resolve_linked`) only displays. None writes.
+- Complexity against `e3246433`: `ensure_link` is no higher; it is the same branches with one more call inside the existing `try`.
+- Full suite: 6003 passed. `ruff check specy_road tests scripts`: pass. `specy-road file-limits`: pass.
+
 ## Touch zones
 
 All edits are inside the listed zones. No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
@@ -260,4 +284,5 @@ All edits are inside the listed zones. No file outside them needed changing, and
   - Extractions to stay within the complexity rule: `upgrade._declined`, `refresh_stubs._exit_on_rule_refusals`, `digest_cli._write_output`, and `managed_block._read`, `_plain_write` and `_strict_write`.
   - `upgrade_plan`: `check_changes`, `Mirror.real_text`, `_named_in_checkout`.
   - Tests: in `test_m13_7_notices`, `test_only_an_in_repo_skills_directory_link_is_written_through` replaces the two tests whose expectations the decision reverses. The `test_prerelease_files` refresh and specyrd rows expect exit 1. The `test_upgrade_plan_parity` canonical-skill row and `test_sol_f2` expect exit 1 and the refusal line. The digest checkout test now goes through `main`.
+- Fix round 5: in `ensure_link`, the relocated-link `relpath` target (R1). Test: `test_skill_links_resolve_through_a_skills_directory_alias_at_another_depth` (2 rows).
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
