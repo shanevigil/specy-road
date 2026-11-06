@@ -129,19 +129,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: rc4-docs-corrections
-    node_id: M21.23
-    branch: feature/rm-rc4-docs-corrections
-    touch_zones:
-      - docs/install-and-usage.md
-      - docs/orchestration-models.md
-      - docs/orchestration-workers.md
-      - docs/orchestration-review.md
-      - suggested_prompts/bootstrap-agents-md.md
-      - CHANGELOG.md
-    started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
   - codename: gui-publish-regenerates-and-needs-a-remote
     node_id: M21.20
     branch: feature/rm-gui-publish-regenerates-and-needs-a-remote

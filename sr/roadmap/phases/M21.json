@@ -358,7 +358,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.23_rc4-docs-corrections_34ff10c4-8ed1-4a28-85e6-2b6a469d4993.md",
       "sibling_order": 21,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry",
       "touch_zones": [
         "docs/install-and-usage.md",
