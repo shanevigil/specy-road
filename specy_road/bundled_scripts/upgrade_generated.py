@@ -34,8 +34,9 @@ def regenerate(project: Path, tracked_in: Path, verb: str) -> bool:
     """Write each drifted generated file into ``project``: the digest, and ``roadmap.md`` if ``tracked_in`` tracks it.
 
     ``tracked_in`` is the checkout's project: a dry run renders and writes into its
-    copy, whose single commit tracks everything. Returns whether a write was
-    refused for a path that leads out of the project.
+    copy, whose single commit tracks everything. A path that leads out of the
+    project is refused before it is read; the rest are compared as bytes, so a
+    file that is not UTF-8 is drifted, not an error. Returns whether a path was refused.
     """
     tracked = subprocess.run(["git", "ls-files", "--error-unmatch", "roadmap.md"], cwd=tracked_in,
                              capture_output=True, check=False).returncode == 0
@@ -45,13 +46,13 @@ def regenerate(project: Path, tracked_in: Path, verb: str) -> bool:
     refused = wrote = False
     for rel, body, command in files:
         path = project / rel
-        if path.is_file() and path.read_text(encoding="utf-8") == body:
+        if resolves_outside(project, path):   # checked before any read: a link out is never opened
+            print(f"refused {rel} (a symlink leads outside the project)")
+            refused = wrote = True
+            continue
+        if path.is_file() and path.read_bytes() == body.encode("utf-8"):
             continue
         wrote = True
-        if resolves_outside(project, path):
-            print(f"refused {rel} (a symlink leads outside the project)")
-            refused = True
-            continue
         path.write_text(body, encoding="utf-8")
         print(f"{verb} {rel} ({command})")
     if not wrote:

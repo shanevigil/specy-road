@@ -8,6 +8,21 @@
 - **Dry run.** The same comparison runs on the copy and writes into the copy only, with `would write` wording. The tracked check reads the real checkout, because the copy's single commit tracks everything. **Limitation:** the copy has no git history, so the history-derived digest sections (Quality by area) render empty there. A dry run on a checkout whose committed digest carries such a section reports `would write roadmap-context.md`, and the copy's `digest --check` reports drift. The copy's `digest --check` already had that property before this leaf. Rendering from the real checkout instead was tried and rejected: `render_digest` saves `.specyrd/cache/roadmap-history.json` into the checkout, which the dry-run guard (correctly) flags. The A4 dry-run row therefore uses a hand-drifted digest.
 - Docstring step 5 and the trailing paragraph of `upgrade.py`, the upgrade paragraph in `docs/install-and-usage.md`, and two `[Unreleased] Fixed` bullets in `CHANGELOG.md`. `UPGRADE_STEP_LABELS` is unchanged; step 5's first line keeps the ``validate``, then ``digest --check`` shape the parser reads.
 
+## Fix round 1 (gpt-6.1-sol-low, P2)
+
+**Class:** upgrade read a generated file before checking the project boundary. A link out was opened, and a target that is not UTF-8 raised `UnicodeDecodeError` before the refusal printed. The related inside-project case is a non-UTF-8 generated file, which also raised instead of being treated as drifted.
+
+**Rule (one, in `regenerate`'s docstring):** a generated path that leads out of the project is refused before it is read; anything else is compared as bytes. `regenerate` now checks `resolves_outside` first. A link out is refused even when its target's bytes happen to match. It compares `read_bytes()` with the UTF-8 render. `_check` applies the same boundary to `digest --check`: an outside digest is reported not current and `cmd_digest` (which uses `read_text`) is never called on it. That holds when validate failed and nothing was regenerated, too. This is folded into the return expression, so `_check` gains no branch.
+
+## Probes
+
+- `regenerate`, tracked `roadmap.md` linked to an outside file with bytes `ff fe 00`: refused, outside bytes kept, digest written. Was `UnicodeDecodeError` (new row `tracked-roadmap-md-link-to-outside-file`; fails before the fix).
+- `regenerate` and `_check`'s `digest --check`, `roadmap-context.md` linked to an outside `ff fe 00` file: refused, `cmd_digest` not reached, outside bytes kept. Was `UnicodeDecodeError` (existing `link-to-outside-file` row now uses those bytes; fails before the fix).
+- `regenerate`, a non-UTF-8 `roadmap-context.md` inside the project: rewritten, `digest --check` OK. Was `UnicodeDecodeError` (new row `non-utf8-digest`; fails before the fix).
+- `_dry_run`, both generated files linked to outside `ff fe 00` files: exit 0, two `refused` lines, outside bytes unchanged (one-off probe, not a test). The copy maps links out to its sandbox outside, so the same rule refuses them.
+- Other reads in this change: the tracked check (`git ls-files`) reads no file content. `render_digest`/`load_roadmap` read the graph, not the targets. `Mirror` and `_dry_run`'s scratch git do not read the generated files. No other instance found.
+- Merged `origin/WIP/improvements-0-3-1` first (it brings M21.17's writers-refuse-links-out work); `tests/test_writers_refuse_links_out.py` passes alongside.
+
 ## Touch zones: final list
 
 The brief's seven zones, **plus a new module `specy_road/bundled_scripts/upgrade_generated.py`**. The new code pushed `upgrade.py` to 426 lines, over its 400-line cap. Following the prompt's file-limits rule, `regenerate()` and `scratch_environ()` moved into that module. Please add it to the touch zones. No other file outside the zones was edited.
@@ -31,9 +46,13 @@ The brief's seven zones, **plus a new module `specy_road/bundled_scripts/upgrade
 - `monkeypatch.setattr(upgrade.Mirror, "build", …)` wrapping the real build and deleting `.git`: the only way to reach the no-`.git` guard without breaking git itself.
 - `monkeypatch.setattr(upgrade, "validate_at", validated.append)`: records that nothing was validated (same pattern as the existing preview tests).
 
+### Fix round 1
+- `regenerate`: the boundary check moved before the read and the comparison became bytes; no new branch.
+- `_check`: `not resolves_outside(...)` short-circuits `cmd_digest` for a digest that is a link out; no new branch.
+
 ### Tests
-- `tests/test_upgrade.py::test_upgrade_regenerates_the_drifted_generated_files`: the A4 table with 8 rows. It replaces `test_a_missing_digest_is_a_next_step_not_a_failure`, whose expectation (a missing digest stays a next step) A3 changes; that expectation is now the invalid-graph and link rows.
-- `tests/test_upgrade.py` helpers `_finished_leaf`, `_hand_drifted_digest`, `_tracked_index`, `_untracked_index`, `_invalid_graph`, `_dangling_link_out`, `_link_to_outside_file`, `_state`, `_files`: row setups and the byte or link state each row asserts. `_finished_leaf` reuses `land` from `tests/test_digest_quality.py` and `commit`/`git` from `tests/test_history_walk.py`.
+- `tests/test_upgrade.py::test_upgrade_regenerates_the_drifted_generated_files`: the A4 table, 10 rows after fix round 1 (`tracked-roadmap-md-link-to-outside-file` and `non-utf8-digest` added; `link-to-outside-file` uses non-UTF-8 bytes). It replaces `test_a_missing_digest_is_a_next_step_not_a_failure`, whose expectation (a missing digest stays a next step) A3 changes; that expectation is now the invalid-graph and link rows.
+- `tests/test_upgrade.py` helpers `_finished_leaf`, `_hand_drifted_digest`, `_tracked_index`, `_untracked_index`, `_invalid_graph`, `_dangling_link_out`, `_link_to_outside_file`, `_tracked_index_link_to_outside_file`, `_non_utf8_digest`, `_state`, `_files`: row setups and the byte or link state each row asserts. `_finished_leaf` reuses `land` from `tests/test_digest_quality.py` and `commit`/`git` from `tests/test_history_walk.py`.
 - `tests/test_upgrade_preview.py::test_dry_run_never_touches_the_repository_a_git_variable_names`: the A2 table, one row per `_REPO_ENV` name. Each row checks HEAD, commit count, object count, index bytes, staged names and working files of a second repository.
 - `tests/test_upgrade_preview.py::_repo_state`: the snapshot that A2 compares.
 - `tests/test_upgrade_preview.py::test_a_dry_run_whose_copy_has_no_git_validates_nothing`: the A1 no-`.git` guard, a distinct regression not covered by either table.

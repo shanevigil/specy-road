@@ -69,6 +69,7 @@ def test_no_roster_upgrade_writes_only_the_readme_and_names_profiles_all_on_ever
 DIGEST, INDEX = "roadmap-context.md", "roadmap.md"
 WROTE_DIGEST, WROTE_INDEX = "wrote roadmap-context.md (specy-road digest)", "wrote roadmap.md (specy-road export)"
 REFUSED_DIGEST = "refused roadmap-context.md (a symlink leads outside the project)"
+REFUSED_INDEX = "refused roadmap.md (a symlink leads outside the project)"
 NEXT_DIGEST = "Run specy-road digest (and specy-road export if roadmap.md is tracked), then commit them. Not specy-road sync"
 
 
@@ -110,8 +111,19 @@ def _dangling_link_out(root: Path, outside: Path) -> None:
 
 
 def _link_to_outside_file(root: Path, outside: Path) -> None:
-    (outside / "digest.md").write_text("their digest\n", encoding="utf-8")
+    """Not UTF-8, so reading it before the boundary check would raise instead of refusing."""
+    (outside / "digest.md").write_bytes(b"\xff\xfe\x00")
     (root / DIGEST).symlink_to(outside / "digest.md")
+
+
+def _tracked_index_link_to_outside_file(root: Path, outside: Path) -> None:
+    (outside / "index.md").write_bytes(b"\xff\xfe\x00")
+    (root / INDEX).symlink_to(outside / "index.md")
+    git(root, "add", INDEX)
+
+
+def _non_utf8_digest(root: Path, outside: Path) -> None:
+    (root / DIGEST).write_bytes(b"\xff\xfe\x00")
 
 
 def _state(path: Path) -> object:
@@ -131,6 +143,9 @@ def _state(path: Path) -> object:
                  id="dangling-link-out"),
     pytest.param(_link_to_outside_file, False, set(), [REFUSED_DIGEST, NEXT_DIGEST], [WROTE_DIGEST], 0,
                  id="link-to-outside-file"),
+    pytest.param(_tracked_index_link_to_outside_file, False, {DIGEST}, [WROTE_DIGEST, REFUSED_INDEX, NEXT_DIGEST],
+                 [WROTE_INDEX], 0, id="tracked-roadmap-md-link-to-outside-file"),
+    pytest.param(_non_utf8_digest, False, {DIGEST}, [WROTE_DIGEST], [NEXT_DIGEST], 0, id="non-utf8-digest"),
     pytest.param(_hand_drifted_digest, True, set(), ["would write roadmap-context.md (specy-road digest)"],
                  [WROTE_DIGEST], 0, id="dry-run-drifted-digest"),
 ])

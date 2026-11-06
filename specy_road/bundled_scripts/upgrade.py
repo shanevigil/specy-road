@@ -208,7 +208,9 @@ def _check(project: Path, tracked_in: Path, verb: str) -> tuple[bool, bool]:
         refused = regenerate(project, tracked_in, verb)
     _section("digest --check")
     ns = argparse.Namespace(output=DEFAULT_OUTPUT, check=True, repo_root=project)
-    return valid, cmd_digest(ns) == 0 and not refused
+    # A digest that is a link out is never read (regenerate printed its refusal): not current.
+    outside = resolves_outside(project, project / DEFAULT_OUTPUT)
+    return valid, not outside and cmd_digest(ns) == 0 and not refused
 
 
 def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
