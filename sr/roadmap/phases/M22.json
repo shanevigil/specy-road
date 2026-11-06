@@ -131,6 +131,87 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the wrapper's delivery of a queued_message fails (deliver_queued_message: any exception from _send, including a lease the remote rejects or cannot take, a refused launch check, Unsupported and OSError), the record keeps the full queued text, gains the sticky flag message_undelivered (FLAG_UNDELIVERED in worker_state.py; added with a description to the flags enum in schemas/worker-record.schema.json) and logs one error event naming the cause as today; the wrapper's exit path and exit code are unchanged. A terminated worker keeps today's behaviour (text dropped, no flag)",
+        "The flag shows wherever flags show today, with no new field: worker list and worker status text ([message_undelivered] beside the existing queued: line) and --json flags, worker sync, and handoff status --json workers[].flags",
+        "The next turn that worker message or worker resume (either variant) launches on that worker sends the stored text first, a blank line, then its own prompt, in one prompt file; queued_message and message_undelivered are cleared only after spawn succeeds, so a turn refused again (lease, usage limit, slot, launch checks) keeps both; terminate drops the text and clears the flag; a message sent while a turn runs still queues (appended) as today. No new CLI option",
+        "tests/test_worker_queue_message.py: delivery after a fake turn with acquire_lease raising the remote's rejection leaves queued_message equal to the text, the flag in worker list --json, worker status --json and handoff status --json workers[].flags, and one error event; an Unsupported and an OSError from _send do the same (text kept); then worker message W --text B writes one prompt holding the stored text then B and clears both; a resume while the lease is still rejected keeps both; terminate clears both. docs/orchestration-workers.md (flags, queued_message and message rows) and a CHANGELOG [Unreleased] Fixed entry. Out of scope: retry loops or timers, a --retry option, lease failures outside queued delivery, the text handoff status renderer",
+        "Estimated net line change (informational, not a gate): package about +25, schema +1, tests about +80, docs about +3"
+      ],
+      "codename": "queued-message-undelivered",
+      "dependencies": [],
+      "id": "M22.6",
+      "node_key": "968d2065-95f2-4d33-8926-045da3b65990",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.6_queued-message-undelivered_968d2065-95f2-4d33-8926-045da3b65990.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "A queued worker message that cannot be delivered flags the worker and goes out with its next turn",
+      "touch_zones": [
+        "specy_road/worker_runner.py",
+        "specy_road/worker_ops_message.py",
+        "specy_road/worker_ops_lifecycle.py",
+        "specy_road/worker_state.py",
+        "specy_road/schemas/worker-record.schema.json",
+        "tests/test_worker_queue_message.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "After ready writes READY (exit 0; next to the existing trial-merge warning in review_ready_merge.cmd_ready) it prints one stderr warning that names `## [Unreleased]` in CHANGELOG.md, up to three of the product paths, and how to exempt the leaf, when CHANGELOG.md at the git root at HEAD has that heading, the merge-base...HEAD diff has a product path, and the section under that heading (up to the next `## ` heading) at HEAD has no non-blank line absent from the same section at the merge base. ready's exit code, the READY file and every refusal are unchanged; a git error reading either side gives no warning",
+        "A product path is a changed path other than CHANGELOG.md, anything under tests/, and project bookkeeping: in a nested layout every path under the project directory (sr/ in this repo), otherwise the paths is_trial_merge_bookkeeping names. A leaf whose acceptance lines or planning sheet contain `no CHANGELOG entry` (case-insensitive) is exempt; a repository with no CHANGELOG.md or no `## [Unreleased]` heading gets no warning",
+        "The decision is one pure function in a new specy_road/changelog_check.py (changed paths, project prefix, CHANGELOG text at base and HEAD, exemption text -> warning line or None). tests/test_ready_changelog_warning.py drives it from one table: package change with no entry (warns, names the section), with an added entry (silent), only an existing entry edited (warns), a line added under a version heading only (warns), docs-only (warns), tests-only, sr/-only nested and roadmap/planning-only unnested (silent), acceptance and sheet exemptions, no CHANGELOG.md, no heading (silent); plus one ready CLI case each that warns and stays silent, both exit 0 with READY written",
+        "docs/orchestration-review.md's ready paragraph says what the reminder checks and how to exempt a leaf; CHANGELOG [Unreleased] Added entry. Out of scope: finish-this-task, the review packet, handoff status, a config switch, refusing, judging the entry's wording",
+        "Estimated net line change (informational, not a gate): package about +45, tests about +90, docs about +2"
+      ],
+      "codename": "ready-changelog-reminder",
+      "dependencies": [],
+      "id": "M22.7",
+      "node_key": "3d3ddc19-998c-4d9e-9e79-bc5afa51e7ef",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.7_ready-changelog-reminder_3d3ddc19-998c-4d9e-9e79-bc5afa51e7ef.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading",
+      "touch_zones": [
+        "specy_road/changelog_check.py",
+        "specy_road/review_ready_merge.py",
+        "tests/test_ready_changelog_warning.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A successful real init project run ends stdout, after the Initialized (and Recorded project_root) lines, with a `Next steps:` block of three numbered lines: set integration_branch and remote in <prefix>roadmap/git-workflow.yaml (the prefix the wrote lines use, sr/ in a nested layout); `git add -A && git commit -m \"specy-road init\"`; `specy-road validate`. Outside a git repository a `git init` step comes first",
+        "--dry-run prints no block, nor does a refused run (existing manifest without --force, missing template, bad --profiles); exit codes and every wrote, skipped and dry-run line are unchanged",
+        "tests/test_init_project_reports.py checks the block's exact lines as the last stdout lines in a repository, the sr/ prefix in a nested layout, the git init step outside a repository, and no block for --dry-run and for a refusal; its existing listing comparisons pass unchanged; tests/test_init_project.py's subprocess run asserts the block",
+        "docs/install-and-usage.md's new-project line says init prints these steps; CHANGELOG [Unreleased] Added entry. Out of scope: running git or validate, init gui, specyrd init, upgrade",
+        "Estimated net line change (informational, not a gate): package about +12, tests about +40, docs about +1"
+      ],
+      "codename": "init-next-steps",
+      "dependencies": [],
+      "id": "M22.8",
+      "node_key": "658d419c-acd2-4f8b-916e-ad673f082a75",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.8_init-next-steps_658d419c-acd2-4f8b-916e-ad673f082a75.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "init project ends with the next steps: set the integration branch, commit the scaffold, validate",
+      "touch_zones": [
+        "specy_road/init_project.py",
+        "tests/test_init_project_reports.py",
+        "tests/test_init_project.py",
+        "docs/install-and-usage.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
