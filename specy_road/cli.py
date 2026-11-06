@@ -52,7 +52,7 @@ _SCRIPTS = {
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
     "author-approach": "author_approach.py",
-    "move-node": "roadmap_move_node.py",
+    "move-node": "roadmap_move_node.py", "rename-refs": "planning_rename.py",
     "doctor": "doctor.py",
 }
 
@@ -78,6 +78,7 @@ _FORWARDED = {
     "lessons": "lessons_cli.py",
     "branches": "branches_cli.py",
     "worktree": "worktree_cli.py",
+    **dict.fromkeys(("indent", "outdent", "group-nodes"), "roadmap_outline_group.py"),
 }
 
 _CRUD_COMMANDS = (
@@ -86,7 +87,7 @@ _CRUD_COMMANDS = (
     "add-node",
     "edit-node",
     "set-gate-status",
-    "archive-node",
+    "archive-node", "remove-node",
     "list-dependencies",
     "set-dependencies",
     "add-dependency",

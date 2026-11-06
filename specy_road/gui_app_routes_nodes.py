@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, roadmap_dir
 from specy_road.bundled_scripts.roadmap_crud_ops import (
@@ -16,6 +16,7 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
+from specy_road.bundled_scripts.roadmap_outline_group import group_nodes
 from specy_road.bundled_scripts.roadmap_outline_ops import (
     apply_indent,
     apply_outdent,
@@ -27,6 +28,7 @@ from specy_road.bundled_scripts.roadmap_outline_renumber import check_chosen_chi
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import (
     AddNodeBody,
+    GroupOutlineBody,
     MoveOutlineBody,
     OutlineShiftBody,
     PatchBody,
@@ -245,10 +247,40 @@ def _api_outline_move(
             new_id=body.new_id,
             fill_gaps=body.fill_gaps,
             renumber_outline=body.renumber_outline,
+            rewrite_refs=body.rewrite_refs,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": "true"}
+
+
+async def _raw_body(request: Request) -> bytes:
+    return await request.body()
+
+
+def _api_outline_group(
+    raw: bytes = Depends(_raw_body),
+    _pm: None = Depends(require_pm_gui_write_header),
+) -> dict[str, Any]:
+    """Every refusal is a 400 with a detail. The route parses the raw request bytes
+    itself (FastAPI never sees a body to answer 422 for), so bytes that are not JSON,
+    a body of the wrong shape (a pydantic ``ValidationError`` is a ``ValueError``)
+    and whatever ``group_nodes`` refuses all reach the same ``except``.
+    """
+    root = get_repo_root()
+    try:
+        body = GroupOutlineBody.model_validate_json(raw)
+        id_map = group_nodes(
+            root,
+            body.into_new,
+            body.title,
+            body.node_ids,
+            node_type=body.type,
+            rewrite_refs=body.rewrite_refs,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": "true", "id_map": id_map}
 
 
 def _api_indent(
@@ -258,12 +290,17 @@ def _api_indent(
 ) -> dict[str, Any]:
     root = get_repo_root()
     _pm_milestone_lock_guard(root, node_id)
-    renumber = body.renumber_outline if body is not None else False
+    body = body or OutlineShiftBody()
     try:
-        changed = apply_indent(root, node_id, renumber_outline=renumber)
+        id_map = apply_indent(
+            root,
+            node_id,
+            renumber_outline=body.renumber_outline,
+            rewrite_refs=body.rewrite_refs,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": True, "changed": changed}
+    return {"ok": True, "changed": id_map is not None}
 
 
 def _api_outdent(
@@ -273,12 +310,17 @@ def _api_outdent(
 ) -> dict[str, Any]:
     root = get_repo_root()
     _pm_milestone_lock_guard(root, node_id)
-    renumber = body.renumber_outline if body is not None else False
+    body = body or OutlineShiftBody()
     try:
-        changed = apply_outdent(root, node_id, renumber_outline=renumber)
+        id_map = apply_outdent(
+            root,
+            node_id,
+            renumber_outline=body.renumber_outline,
+            rewrite_refs=body.rewrite_refs,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": True, "changed": changed}
+    return {"ok": True, "changed": id_map is not None}
 
 
 def register_node_mutations(api: APIRouter) -> None:
@@ -292,6 +334,7 @@ def register_node_mutations(api: APIRouter) -> None:
     api.add_api_route("/nodes/{node_id}", _api_delete_node, methods=["DELETE"])
     api.add_api_route("/outline/reorder", _api_reorder, methods=["POST"])
     api.add_api_route("/outline/move", _api_outline_move, methods=["POST"])
+    api.add_api_route("/outline/group", _api_outline_group, methods=["POST"])
     api.add_api_route("/nodes/{node_id}/indent", _api_indent, methods=["POST"])
     api.add_api_route("/nodes/{node_id}/outdent", _api_outdent, methods=["POST"])
 

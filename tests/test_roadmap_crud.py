@@ -237,7 +237,7 @@ def test_list_nodes_cli(tmp_path: Path) -> None:
     assert "M99.1" in r.stdout
 
 
-def _write_registry_claim(tmp_path: Path, node_id: str, codename: str, branch: str, owner: str) -> None:
+def write_registry_claim(tmp_path: Path, node_id: str, codename: str, branch: str, owner: str) -> None:
     (tmp_path / "roadmap" / "registry.yaml").write_text(
         f"""version: 1
 entries:
@@ -252,7 +252,7 @@ entries:
 
 def test_list_nodes_marks_a_claimed_leaf_in_the_table_and_json(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
-    _write_registry_claim(
+    write_registry_claim(
         tmp_path,
         "M99.1",
         "one",

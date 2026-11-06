@@ -266,7 +266,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.2_outline-group-cli_f533afb6-f6fb-4394-9beb-d8a5c49ed95d.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "CLI indent, outdent and group-nodes re-level siblings in one transaction validated once",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_move_node.py",
@@ -298,7 +298,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.3_rewrite-id-refs_e08a12a0-17fd-4251-b596-5a46e1e9335d.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Opt-in rewrite of prose id references after a move, and a standalone rename-refs",
       "touch_zones": [
         "specy_road/bundled_scripts/planning_rename.py",
@@ -309,7 +309,10 @@
         "specy_road/gui_app_routes_nodes.py",
         "specy_road/gui_app_models.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/roadmap_outline_group.py",
+        "specy_road/bundled_scripts/roadmap_id_rewrite_staging.py",
+        "specy_road/bundled_scripts/roadmap_move_id_forms.py"
       ],
       "type": "task"
     },
@@ -330,7 +333,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.4_remove-node_f8ad690d-5f67-4493-bd07-62324d09cdb2.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "remove-node deletes an empty never-started node and names every blocker otherwise",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_delete.py",
