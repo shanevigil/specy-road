@@ -267,6 +267,7 @@ Do not pick these up.
 - `M21.20` on `feature/rm-gui-publish-regenerates-and-needs-a-remote` since 2026-11-05
 - `M21.21` on `feature/rm-review-delegate-validates-reviewer-command` since 2026-11-05
 - `M21.24` on `feature/rm-claude-reviewer-schema-and-error` since 2026-11-05
+- `M21.27` on `feature/rm-filings-take-the-review-lock` since 2026-11-05
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
