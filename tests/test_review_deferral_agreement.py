@@ -10,15 +10,13 @@ import yaml
 
 from tests.review_repo_helpers import NODE, git, make_review_repo
 from tests.test_review_defer import (BUDGET, ROSTER, _block_round, _item, _record, _run, _two_fail_round,
-                                     _write_rca, human)  # noqa: F401 — human is a fixture
+                                     _write_rca, bound_ledger, human)  # noqa: F401 — human is a fixture
 
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 
-LEDGER = {"version": 1, "entries": [{
-    "id": "D9", "node": "M1.1", "kind": "decision", "summary": "s", "why_now": "w",
-    "options": [{"label": "a", "effect": "b"}], "recommendation": "a", "recommendation_reason": "r",
-    "default_if_unanswered": "a", "asked": "2026-11-04", "status": "closed", "answer": "x", "closed": "2026-11-04"}]}
+#: A closed decision as ``review defer`` records one (for a malformed marker, it changes nothing).
+LEDGER = bound_ledger("RCA-2.md", [{k: v for k, v in _item("0" * 40).items()}])
 
 
 def _case(repo: Path, case: str) -> tuple[int, list[dict]]:
@@ -64,12 +62,12 @@ def test_review_defer_and_the_gate_agree(tmp_path: Path, capsys, human, case: st
     forged = make_review_repo(tmp_path / "gate", orchestration=ROSTER + BUDGET)
     covers, items = _case(forged, case)
     _write_rca(forged, _record(covers, items))
-    (forged / "roadmap" / "decisions.yaml").write_text(yaml.safe_dump(LEDGER))
     commits = {x["commit"]: git(forged, "rev-parse", x["commit"]) for x in items if x["reviewer"] == "opus"}
+    deferred = [{k: x[k] for k in ("reviewer", "finding", "category", "acceptance_id", "input_class")}
+                | {"commit": commits.get(x["commit"], x["commit"])} for x in items]
+    (forged / "roadmap" / "decisions.yaml").write_text(yaml.safe_dump(bound_ledger(f"RCA-{covers}.md", deferred)))
     (reviews_dir(forged, "M1.1") / f"DEFERRAL-{covers}.yaml").write_text(yaml.safe_dump({
-        "node_id": "M1.1", "rca": f"RCA-{covers}.md", "round": covers, "decision": "D9",
-        "deferred": [{k: x[k] for k in ("reviewer", "finding", "category", "acceptance_id", "input_class")}
-                     | {"commit": commits.get(x["commit"], x["commit"])} for x in items]}))
+        "node_id": "M1.1", "rca": f"RCA-{covers}.md", "round": covers, "decision": "D9", "deferred": deferred}))
     head = git(forged, "rev-parse", "HEAD")
     gate_ok = "opus" not in [b.model for b in evaluate_gate(forged, NODE, head).blocks]
     assert (defer_ok, gate_ok) == ((case == "eligible"),) * 2, capsys.readouterr().err

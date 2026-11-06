@@ -155,9 +155,11 @@ current CLI legitimately produces (for example `type: gate` nodes, or the
 is reported as such, because it is an untracked file to add. The command
 touches `schemas/` and nothing else.
 
-**`refresh-profiles` — `model-profiles/`.** Copies the profiles this version
-ships that you lack, and never overwrites one you have (`--force PATH` takes
-the toolkit's copy of one profile).
+**`refresh-profiles` — `model-profiles/`.** By default copies the missing
+profiles that a roster entry in `roadmap/orchestration.yaml` names;
+`--profiles all` copies every missing profile this version ships, and `--only`
+adds one. It never overwrites one you have (`--force PATH` takes the toolkit's
+copy of one profile).
 
 **`refresh-stubs` — the skills from `specyrd init`, and the managed blocks.**
 One skill per command under `.agents/skills/<name>/SKILL.md`, read natively by

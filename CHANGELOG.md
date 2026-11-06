@@ -42,6 +42,16 @@ body. Keep section bodies focused; link to PRs for detail.
 - The `on_complete` description in `git-workflow.schema.json` and step 7 of the
   `specyrd-finish` stub no longer say `merge` / `auto` always push: they land
   per `land` (`push` pushes; `local` fetches and pushes nothing).
+- `apply --dry-run` no longer moves or changes a live file. Its scratch copy
+  now rebases links in the copied graph trees onto the copy, as `remove-node
+  --dry-run` already did, so an `archive` entry whose planning sheet is an
+  absolute link into the repo moves the copy's sheet, not the live one, and an
+  in-repo absolute chunk-directory link rehearses as the real apply runs.
+  `archive` (and an `apply` `archive` entry) refuses, before writing or moving
+  anything, a planning sheet, archive chunk, archive index or stored-sheet path
+  that resolves outside the repo, naming the path, and archiving a sheet
+  reached through a link removes the link it would leave dangling.
+
 - `specy-road doctor` no longer fails in a repo with no remote. When the
   resolved remote (`--remote`, `SPECY_ROAD_REMOTE`, `roadmap/git-workflow.yaml`,
   else `origin`) is not configured, it says so in one line, skips the fetch and
@@ -84,6 +94,27 @@ body. Keep section bodies focused; link to PRs for detail.
   `validate` no longer reports the starter's `my-executor` placeholder, and an
   unmatched roster id is offered a closest profile only when a name of that
   profile has a similarity ratio of at least 0.6.
+- Security: a review deferral now counts only when its marker is bound to the
+  decision `review defer` recorded for it. Before, a hand-written
+  `DEFERRAL-*.yaml` citing any closed decision on the leaf removed a counted
+  block, and `handoff status` and `worker delegate --rework` called a deferral
+  applied when its marker file merely existed. Now the gate, the next step and
+  the rework's governing design all ask one check (`deferral_in_effect`): the
+  RCA the marker names is valid, recommends `defer_findings` at the marker's
+  round and defers exactly its items; the decision is closed, on the leaf and
+  worded as `review defer` words it, and its answer now names each item's
+  reviewer, full commit, finding, category, acceptance id and input class; the
+  items still qualify. A marker that fails any of these resolves nothing, and
+  `handoff status` names why. Deferrals recorded in the old answer format stop
+  counting (the block stays); run `review defer` again on a fresh record.
+- Doc corrections: `refresh-profiles` is described as copying by default only
+  the missing profiles a roster entry names (`--profiles all` copies every
+  missing one, `--only` adds one); the Cursor sandbox note no longer cites a
+  private roster or decision; the bootstrap prompt gives the exact managed-block
+  markers (`<!-- >>> specy-road managed block — do not edit inside <<< -->` and
+  `<!-- >>> end specy-road managed block <<< -->`); and `review delegate`'s
+  launch step says a `claude-code` reviewer runs bare or explicit, not always
+  bare.
 
 ### Added
 
@@ -153,6 +184,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- The toolkit's file cap (`constraints/file-limits.yaml`) went from 400 to
+  1000 lines per file, with a 750-line hard alert that warns and fails only
+  under `specy-road file-limits --strict-hard-alerts`. The per-file overrides
+  that existed only to sit above 400 lines were dropped; the
+  `set_gate_status_fixture` function override and the 1100-line override for
+  the verbatim orchestration proposal stay.
 - Cursor workers launch and resume with `--trust --sandbox enabled` instead of
   `--force --trust`: `--force` force-allowed every command not explicitly
   denied. A roster entry opts back in with `cursor_force: true` (boolean,
