@@ -147,7 +147,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M20` | Agent safety and governance posture (after 0.3.1) | phase | — | Not Started |
 | `M20.1` | Posture advisor: plan the M20 leaves from the research | task | Human-led | Not Started |
 | `M20.2` | Probe each reviewer harness for instruction-file leakage into fresh sessions | task | Agentic-led | Not Started |
-| `M21` | rc4 stabilization: fixes filed after the themed-milestone rule | phase | — | In Progress |
+| `M21` | rc4 stabilization: fixes filed after the themed-milestone rule | phase | — | Not Started |
 | `M21.1` | move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree | task | Agentic-led | Complete |
 | `M21.2` | CLI indent, outdent and group-nodes re-level siblings in one transaction validated once | task | Agentic-led | Complete |
 | `M21.3` | Opt-in rewrite of prose id references after a move, and a standalone rename-refs | task | Agentic-led | Complete |
@@ -183,6 +183,12 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.34` | Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch | task | — | Complete |
 | `M21.35` | review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules | task | — | Complete |
 | `M21.36` | brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens | task | — | Complete |
+| `M21.37` | One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout | task | — | Not Started |
+| `M21.38` | Review writers and the review lock refuse any symlink on the path from the project root | task | — | Not Started |
+| `M21.39` | Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path | task | — | Not Started |
+| `M21.40` | upgrade's scratch git drops every GIT_ variable, runs no hook, and times out | task | — | Not Started |
+| `M21.41` | The notes rules name every clause break the checker uses; rework docstring and verify tests fixed | task | — | Not Started |
+| `M21.42` | review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it | task | — | Not Started |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
@@ -202,5 +208,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.16` | Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends | task | — | Not Started |
 | `M22.17` | brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist | task | — | Not Started |
 | `M22.18` | The reviewer prompt asks for every required change in one pass, not just the first | task | — | Not Started |
+| `M22.19` | Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names | task | — | Not Started |
+| `M22.20` | worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging | task | — | Not Started |
+| `M22.21` | Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback, descriptor-anchored writes | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

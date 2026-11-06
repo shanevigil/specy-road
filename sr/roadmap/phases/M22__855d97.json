@@ -1,0 +1,109 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "READY authors and reviewer model ids are compared after one normalization in review_eligible (case-folded, a roster harness or profile alias mapped to the roster api_id), so a READY naming a case variant or an alias of the executor's model still excludes the executor's own review; an id matching two roster entries keeps the gate closed with a problem naming both. Authenticating authorship stays out of scope (honour-system, docs/orchestration-review.md)",
+        "read_acceptance does its presence check (lstat) inside the unreadable boundary: an unreadable parent (PermissionError) or a dangling POLICY-ACCEPTED.yaml link is an invalid-acceptance gate problem, not a traceback or absence; the caller check opens work/.workers/<id>.yaml with O_NONBLOCK and requires a regular file by fstat, refusing a FIFO or other non-regular record with CallerError at once",
+        "write_rejected and write_human_approval share write_review's case-variant unlink, so the stored names are REJECTED-<model>.md and REVIEW-human.md; unreadable_rejected_lines matches REJECTED-*.md case-insensitively",
+        "Tests: READY with a case variant and with a roster alias -> executor's review excluded; ambiguous alias -> gate closed; PermissionError on the acceptance parent (stubbed) and a dangling acceptance link -> gate and finish refuse cleanly; a FIFO worker record (POSIX, CLI under a 5 s timeout) -> refused at once, nothing written; an existing rejected-<model>.md / review-human.md (case-insensitive volume simulated as tests/test_review_file_case.py does) -> canonical names, listing finds them. docs/orchestration-review.md and CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +45, tests about +130, docs about +4"
+      ],
+      "codename": "review-inputs-identity-and-unreadable",
+      "dependencies": [
+        "992a07fe-018e-4ff0-adc5-1675c130adb6"
+      ],
+      "id": "M22.19",
+      "node_key": "855d9738-4b87-480b-8404-d6a1aa85c714",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.19_review-inputs-identity-and-unreadable_855d9738-4b87-480b-8404-d6a1aa85c714.md",
+      "sibling_order": 18,
+      "status": "Not Started",
+      "title": "Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names",
+      "touch_zones": [
+        "specy_road/review_eligible.py",
+        "specy_road/review_gate.py",
+        "specy_road/review_policy_pin.py",
+        "specy_road/review_caller.py",
+        "specy_road/worker_state.py",
+        "specy_road/review_rejected.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/review_files.py",
+        "tests/test_review_eligible.py",
+        "tests/test_review_gate_ready_author.py",
+        "tests/test_review_policy_pin.py",
+        "tests/test_review_record_caller.py",
+        "tests/test_review_file_case.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "terminate signals the snapshotted escaped descendants on the same SIGTERM/SIGKILL schedule as the group (not after the group grace); zombie (Z-state) entries do not count as survivors; a failed ps inventory is recorded on the worker record and the next terminate repeats the descendant pass instead of marking the worker terminated",
+        "finish's pre-commit restore writes a temp file and os.replace without unlinking first (on failure the previous bytes stay and the temp path is printed); snapshots keep regular-file mode bits and the restore applies them; the index restore refuses to discard staging that changed since the snapshot, keeping both versions and naming them",
+        "Tests: escaped child forked during the group grace -> signalled with the group, no survivor; a subreaper keeping an escaped zombie -> terminate succeeds; ps failing on the first terminate -> the second signals the escaped descendants; restore write raising OSError (stubbed) -> previous bytes still there; executable and 0600 cleanup files after a failing pre-commit hook -> modes restored; an unrelated path staged during the hook -> kept or saved and named. docs/orchestration-workers.md terminate paragraph and CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +50, tests about +150, docs about +3"
+      ],
+      "codename": "terminate-and-finish-rollback-robustness",
+      "dependencies": [
+        "f6a94a57-91ff-449b-997e-af12dedd41ee"
+      ],
+      "id": "M22.20",
+      "node_key": "17405142-e2fa-4516-83e2-e536820d1ec2",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.20_terminate-and-finish-rollback-robustness_17405142-e2fa-4516-83e2-e536820d1ec2.md",
+      "sibling_order": 19,
+      "status": "Not Started",
+      "title": "worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging",
+      "touch_zones": [
+        "specy_road/worker_process.py",
+        "specy_road/finish_bookkeeping_undo.py",
+        "tests/test_worker_terminate_descendants.py",
+        "tests/test_finish_config_preflight.py",
+        "tests/test_finish_merge_failure_undo.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "brainstorm verify drops a bracket only when it is a citation marker on the page and absent from the quote; a quote that keeps a bracket must match it exactly (page [43] vs quote [44], [a] vs [b] -> not-found), while a page [43] against a quote without it still matches and the typographic folds stay",
+        "upgrade --dry-run renders the digest with the live checkout's history as a read-only input (no writable link into live .git), so on the finished-leaf fixture with a current digest containing Quality by area the dry run predicts no digest write and the real upgrade writes none",
+        "apply's rollback snapshot (roadmap_crud_dependency_ops _restore) keeps entry type and link text: archiving an in-repo linked sheet, then a refused edit of missing M404 in the same batch, restores the symlink (is_symlink, readlink, target bytes and location)",
+        "safe_write traverses by directory descriptor (os.open with O_NOFOLLOW per component, os.replace with dir fds; M21.37's re-check kept where dir_fd is unsupported) and archive moves use the path as spelled under that traversal, not an earlier resolve(); deterministic tests swap a destination or a parent for a link between the walk and the replace for generated files, the managed block and archive moves -> refused, outside unchanged. docs/brainstorming.md verify paragraph and CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +80, tests about +170, docs about +3"
+      ],
+      "codename": "preview-rollback-fidelity",
+      "dependencies": [
+        "1a086436-279e-481f-bbd1-e222b218c1e6",
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
+        "74c3d924-fc2e-4170-a786-caed84beca86"
+      ],
+      "id": "M22.21",
+      "node_key": "5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.21_preview-rollback-fidelity_5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c.md",
+      "sibling_order": 20,
+      "status": "Not Started",
+      "title": "Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback, descriptor-anchored writes",
+      "touch_zones": [
+        "specy_road/bundled_scripts/brainstorm_verify.py",
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/bundled_scripts/upgrade_generated.py",
+        "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
+        "specy_road/safe_write.py",
+        "specy_road/managed_block.py",
+        "specy_road/archive_ops.py",
+        "tests/test_brainstorm_verify.py",
+        "tests/test_upgrade_preview.py",
+        "tests/test_roadmap_apply.py",
+        "tests/test_safe_write.py",
+        "docs/brainstorming.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    }
+  ]
+}
