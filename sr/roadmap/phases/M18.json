@@ -18,7 +18,7 @@
       "acceptance": [
         "The reviewer prompt gains a section 'Code quality: structure' with exactly four checklist rows: small single-purpose functions; clear module boundaries; explicit dependencies (no hidden module globals, clock or git calls where a parameter would do); intent-explaining docstrings and comments kept",
         "On a fix round the prompt adds a section 'Fix-round degradation' listing exactly four signals to check in the delta: an added special-case branch, a duplicated rule, a stripped comment or docstring, a new noqa or lint waiver; it tells the reviewer that a required_change must fix the class (one rule or table) rather than patch the instance",
-        "The reviewer prompt asks the reviewer to cite the complexity delta that M16.22 puts in the packet, and to block on growth only when the review policy says so; no new record-refusal rule is added and the record schema is unchanged",
+        "The reviewer prompt asks the reviewer to cite the complexity delta that M16.5.14 puts in the packet, and to block on growth only when the review policy says so; no new record-refusal rule is added and the record schema is unchanged",
         "Tests pin the text of both prompt sections (first round without the degradation section, fix round with it) and one packet row showing a complexity delta the prompt cites"
       ],
       "codename": "review-code-quality",

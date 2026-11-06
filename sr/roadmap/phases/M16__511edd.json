@@ -4,7 +4,7 @@
       "acceptance": [
         "`milestone start`, `milestone status` and `milestone pr` run start-milestone-session, reconcile-milestone-status and open-milestone-pr with the same flags and output; `planning scaffold` and `planning approach` run scaffold-planning and author-approach; `archive --hard-remove` runs archive-node, and archive's restore and removal behaviour is unchanged",
         "Each old name works for one release with one deprecation line, is hidden from top-level help and is a row of tests/parity/command_map.yaml",
-        "The canonical command count — distinct registered top-level names minus the names tests/parity/command_map.yaml classifies as retired top-level aliases (subcommand and flag rows do not count) — is at most 56, and the test prints the name set: 68 minus the 14 names that M16.11, M16.12, M16.13 and this leaf retire (registry-prune, branches, refresh-stubs, refresh-schemas, refresh-profiles, handoff, review-packet, lessons, start-milestone-session, reconcile-milestone-status, open-milestone-pr, scaffold-planning, author-approach, archive-node) plus the 2 new groups (milestone, planning); the renames update to self-update and session to presence are net zero",
+        "The canonical command count — distinct registered top-level names minus the names tests/parity/command_map.yaml classifies as retired top-level aliases (subcommand and flag rows do not count) — is at most 56, and the test prints the name set: 68 minus the 14 names that M16.4.1, M16.4.2, M16.4.3 and this leaf retire (registry-prune, branches, refresh-stubs, refresh-schemas, refresh-profiles, handoff, review-packet, lessons, start-milestone-session, reconcile-milestone-status, open-milestone-pr, scaffold-planning, author-approach, archive-node) plus the 2 new groups (milestone, planning); the renames update to self-update and session to presence are net zero",
         "Docs, templates, skills and stubs, and suggested_prompts use the new names; the stale-command check passes; goldens differ only for map rows",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
         "Estimated net line change (informational, not a gate): package about -70"
@@ -14,11 +14,11 @@
         "ca41116c-978b-4215-a69e-2f52400009fa"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.45",
+      "id": "M16.4.4",
       "node_key": "511edd44-2972-41b1-8639-3e686acdf63a",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.45_milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node_511edd44-2972-41b1-8639-3e686acdf63a.md",
-      "sibling_order": 46,
+      "parent_id": "M16.4",
+      "planning_dir": "planning/M16.4.4_milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node_511edd44-2972-41b1-8639-3e686acdf63a.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "milestone and planning command groups, and archive --hard-remove replaces archive-node",
       "touch_zones": [
@@ -43,9 +43,9 @@
     {
       "acceptance": [
         "A `checks:` entry with `zones:` runs at ready and land when a path in the leaf's diff against its merge base matches one of its globs, and is otherwise skipped with the skip recorded; paths are POSIX and relative to the git root, matched with fnmatchcase, with deleted paths and both sides of a rename included; the command runs from the configured project root",
-        "Every entry with `zones:` blocks land (no opt-out field in M16); its fields and defaults extend the `checks:` schema table M16.14 committed, in this leaf's first commit; a result records the entry name, a fingerprint of its command and config, the stage, the commit, the result and the skip reason, is stored with ready's evidence and counts only for that commit; land refuses when a zoned entry's result for the commit to land is missing or failed",
-        "A table test covers matching zone pass, matching zone fail, no matching zone, stale result and missing result, and the M16.1 decision table gains these rows",
-        "A repo without zone entries behaves as before: parity harness and the M16.14 migration table unchanged",
+        "Every entry with `zones:` blocks land (no opt-out field in M16); its fields and defaults extend the `checks:` schema table M16.4.5 committed, in this leaf's first commit; a result records the entry name, a fingerprint of its command and config, the stage, the commit, the result and the skip reason, is stored with ready's evidence and counts only for that commit; land refuses when a zoned entry's result for the commit to land is missing or failed",
+        "A table test covers matching zone pass, matching zone fail, no matching zone, stale result and missing result, and the M16.1.2 decision table gains these rows",
+        "A repo without zone entries behaves as before: parity harness and the M16.4.5 migration table unchanged",
         "Estimated net line change (informational, not a gate): package about +80 (named new behaviour)"
       ],
       "codename": "checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose",
@@ -53,11 +53,11 @@
         "74ac34a2-084a-4dd3-84ec-ac37b20dd983"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.52",
+      "id": "M16.4.6",
       "node_key": "449eeb3e-1874-4b25-841c-2b1fed8e2363",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.52_checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose_449eeb3e-1874-4b25-841c-2b1fed8e2363.md",
-      "sibling_order": 47,
+      "parent_id": "M16.4",
+      "planning_dir": "planning/M16.4.6_checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose_449eeb3e-1874-4b25-841c-2b1fed8e2363.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose)",
       "touch_zones": [
@@ -84,11 +84,11 @@
         "51f22f17-0d11-4dc4-8709-d39d406991c5"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.46",
+      "id": "M16.5.2",
       "node_key": "d0c0d4f8-0294-4c8d-8d1d-e52dee8d3291",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.46_worker-ops-parts-and-the-worker-siblings-fold-into-their-parents-and-the-module-class-swap-goes_d0c0d4f8-0294-4c8d-8d1d-e52dee8d3291.md",
-      "sibling_order": 48,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.2_worker-ops-parts-and-the-worker-siblings-fold-into-their-parents-and-the-module-class-swap-goes_d0c0d4f8-0294-4c8d-8d1d-e52dee8d3291.md",
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes",
       "touch_zones": [
@@ -104,7 +104,7 @@
       "acceptance": [
         "Before the switch, tests/parity/eligibility/ holds a corpus over role (coordinator, executor, reviewer), roster membership, availability (available, paused_until, unavailable_until), sensitivity against may_process, executor class and family lock; each row is run through role_prompt, worker delegate, review delegate, review_eligible, the review gate and orchestrate assign, recording per caller the allow or refuse, the first refusal and its message at pickup",
         "`check_assignment(config, model, node, role, context)` replaces the checks in the six callers named in A1; for every row and caller it gives the same allow or refuse and the same first refusal, and the same message where a test asserted it at pickup; caller-specific defaults are passed in `context`, not re-derived",
-        "The review gate reads dependencies through `RoadmapIndex.unmet` (M16.5)",
+        "The review gate reads dependencies through `RoadmapIndex.unmet` (M16.2.4)",
         "Parity harness and decision table unchanged",
         "Estimated net line change (informational, not a gate): package about -120"
       ],
@@ -113,11 +113,11 @@
         "67af8a9a-a8ef-4724-9702-be691a497a55"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.47",
+      "id": "M16.5.4",
       "node_key": "e8394512-cb8d-4a53-9206-936dbe2a67d2",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.47_one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate_e8394512-cb8d-4a53-9206-936dbe2a67d2.md",
-      "sibling_order": 49,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.4_one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate_e8394512-cb8d-4a53-9206-936dbe2a67d2.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "One check_assignment decides eligibility for every launch and for the gate",
       "touch_zones": [
@@ -142,11 +142,11 @@
         "a536eb60-74a5-4a71-9556-d9cb752c881b"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.48",
+      "id": "M16.5.8",
       "node_key": "b198c24c-78e4-4336-8b94-1289d80826de",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.48_the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged_b198c24c-78e4-4336-8b94-1289d80826de.md",
-      "sibling_order": 50,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.8_the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged_b198c24c-78e4-4336-8b94-1289d80826de.md",
+      "sibling_order": 7,
       "status": "Not Started",
       "title": "The guard classifier becomes three rule tables with every verdict unchanged",
       "touch_zones": [
@@ -160,7 +160,7 @@
       "acceptance": [
         "The four `grind_session_*` keys (max_limit_waits, max_limit_wait_hours, limit_wait_grace_seconds, max_empty_retries) move under `grind:`; a migration table (absent, old form only, new form only, both) gives the same effective values, with the new form winning when both are present",
         "`upgrade` rewrites them; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release and prints one notice for the old form",
-        "Grind table (M16.19) and parity harness unchanged",
+        "Grind table (M16.5.9) and parity harness unchanged",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
         "Estimated net line change (informational, not a gate): package about 0 (migration code offsets the per-key readers)"
       ],
@@ -169,11 +169,11 @@
         "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.50",
+      "id": "M16.5.11",
       "node_key": "6434cf7b-842b-4532-96e3-1821655a5fb5",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.50_grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade_6434cf7b-842b-4532-96e3-1821655a5fb5.md",
-      "sibling_order": 52,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.11_grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade_6434cf7b-842b-4532-96e3-1821655a5fb5.md",
+      "sibling_order": 10,
       "status": "Not Started",
       "title": "Grind settings move under grind: in git-workflow.yaml, migrated by upgrade",
       "touch_zones": [
@@ -199,11 +199,11 @@
         "5fa51e45-9e09-4119-826d-43c6d304f243"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.51",
+      "id": "M16.5.13",
       "node_key": "93190765-913e-4da9-b5c5-70c258e2c285",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.51_the-review-packet-fragments-fold-into-review-packet_93190765-913e-4da9-b5c5-70c258e2c285.md",
-      "sibling_order": 53,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.13_the-review-packet-fragments-fold-into-review-packet_93190765-913e-4da9-b5c5-70c258e2c285.md",
+      "sibling_order": 12,
       "status": "Not Started",
       "title": "The review packet fragments fold into review_packet",
       "touch_zones": [
@@ -225,11 +225,11 @@
         "73c323a0-9890-48b5-b0fd-6d1f1232e08a"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.54",
+      "id": "M16.6.4",
       "node_key": "840167f3-ec33-428a-86cc-e6ea639f8d6b",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.54_tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support_840167f3-ec33-428a-86cc-e6ea639f8d6b.md",
-      "sibling_order": 54,
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.4_tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support_840167f3-ec33-428a-86cc-e6ea639f8d6b.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support",
       "touch_zones": [
@@ -253,11 +253,11 @@
         "33af9de4-c487-4e4e-ac48-253ffb8483f1"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.55",
+      "id": "M16.6.6",
       "node_key": "41b1d9c3-a6d6-4cc4-adf1-b365ed06b0f9",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.55_tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test_41b1d9c3-a6d6-4cc4-adf1-b365ed06b0f9.md",
-      "sibling_order": 55,
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.6_tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test_41b1d9c3-a6d6-4cc4-adf1-b365ed06b0f9.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "Tests: per-leaf and per-round test files fold into the file for the module or flow they test",
       "touch_zones": [
@@ -280,11 +280,11 @@
         "3c8001e2-d1c2-4365-a0f2-be80807504ee"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.56",
+      "id": "M16.7.2",
       "node_key": "e4706b28-6e79-40f8-9042-cb4e6cfff1e9",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.56_tests-apply-the-dedupe-worklist-for-review-gate_e4706b28-6e79-40f8-9042-cb4e6cfff1e9.md",
-      "sibling_order": 56,
+      "parent_id": "M16.7",
+      "planning_dir": "planning/M16.7.2_tests-apply-the-dedupe-worklist-for-review-gate_e4706b28-6e79-40f8-9042-cb4e6cfff1e9.md",
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "Tests: apply the dedupe worklist for review gate",
       "touch_zones": [
@@ -305,11 +305,11 @@
         "e4706b28-6e79-40f8-9042-cb4e6cfff1e9"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.57",
+      "id": "M16.7.3",
       "node_key": "21cc96e6-1e15-425e-a4b0-9c821fe30c55",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.57_tests-apply-the-dedupe-worklist-for-worker_21cc96e6-1e15-425e-a4b0-9c821fe30c55.md",
-      "sibling_order": 57,
+      "parent_id": "M16.7",
+      "planning_dir": "planning/M16.7.3_tests-apply-the-dedupe-worklist-for-worker_21cc96e6-1e15-425e-a4b0-9c821fe30c55.md",
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "Tests: apply the dedupe worklist for worker",
       "touch_zones": [
@@ -331,11 +331,11 @@
         "086cd41a-9d4b-4377-8ebd-ee563a0d20df"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.59",
+      "id": "M16.7.5",
       "node_key": "25cffd57-e38b-4ebf-a4c0-d2edea799baa",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.59_tests-apply-the-dedupe-worklist-for-the-rest_25cffd57-e38b-4ebf-a4c0-d2edea799baa.md",
-      "sibling_order": 59,
+      "parent_id": "M16.7",
+      "planning_dir": "planning/M16.7.5_tests-apply-the-dedupe-worklist-for-the-rest_25cffd57-e38b-4ebf-a4c0-d2edea799baa.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "Tests: apply the dedupe worklist for the rest",
       "touch_zones": [
@@ -356,11 +356,11 @@
         "2f89d103-fb28-4584-a17e-3364cc5b1a99"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.60",
+      "id": "M16.7.7",
       "node_key": "e99367d9-1efa-4aec-850b-bd88121d9757",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.60_tests-five-named-properties-replace-the-single-input-tests-they-cover_e99367d9-1efa-4aec-850b-bd88121d9757.md",
-      "sibling_order": 60,
+      "parent_id": "M16.7",
+      "planning_dir": "planning/M16.7.7_tests-five-named-properties-replace-the-single-input-tests-they-cover_e99367d9-1efa-4aec-850b-bd88121d9757.md",
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "Tests: five named properties replace the single-input tests they cover",
       "touch_zones": [
@@ -376,11 +376,11 @@
       "codename": "gate-the-release-that-shipped-the-m16-aliases-is-out-and-the-maintainer-closes-the-alias-window",
       "dependencies": [],
       "execution_milestone": "Human-led",
-      "id": "M16.61",
+      "id": "M16.8.2",
       "node_key": "ba91d59c-88b5-417e-893b-9948a9431ecb",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.61_gate-the-release-that-shipped-the-m16-aliases-is-out-and-the-maintainer-closes-the-alias-window_ba91d59c-88b5-417e-893b-9948a9431ecb.md",
-      "sibling_order": 61,
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.2_gate-the-release-that-shipped-the-m16-aliases-is-out-and-the-maintainer-closes-the-alias-window_ba91d59c-88b5-417e-893b-9948a9431ecb.md",
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window",
       "touch_zones": [],
@@ -388,7 +388,7 @@
     },
     {
       "acceptance": [
-        "Every row of tests/parity/command_map.yaml, the old config forms (baseline_cmd, land_check_cmd, verify_cmd, the review-before-finish switch, the four grind_session_* keys and the version-1 roster form with `pinned`) with their validate notices and dual-read paths (orchestration.schema.json then accepts only version 2), every re-export listed in M16.6's sheet, and the `[gui-next]` extra in pyproject.toml with its compatibility note (project.version untouched) are removed",
+        "Every row of tests/parity/command_map.yaml, the old config forms (baseline_cmd, land_check_cmd, verify_cmd, the review-before-finish switch, the four grind_session_* keys and the version-1 roster form with `pinned`) with their validate notices and dual-read paths (orchestration.schema.json then accepts only version 2), every re-export listed in M16.2.5's sheet, and the `[gui-next]` extra in pyproject.toml with its compatibility note (project.version untouched) are removed",
         "Normal config readers accept only the current forms; upgrade keeps its legacy-input migration parsers, and after this leaf the rc3- and rc5-shaped fixtures still migrate with upgrade",
         "A removed command name exits with code 2 and one stderr line naming its replacement (REPLACED_COMMANDS)",
         "Deprecated review policies are not removed here",
@@ -402,11 +402,11 @@
         "ed19381c-5265-4909-a70c-f9c5a9cf1853"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.62",
+      "id": "M16.8.3",
       "node_key": "d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.62_after-the-alias-window-delete-the-deprecated-command-aliases-config-form-fallbacks-and-re-export-shims_d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d.md",
-      "sibling_order": 62,
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.3_after-the-alias-window-delete-the-deprecated-command-aliases-config-form-fallbacks-and-re-export-shims_d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d.md",
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims",
       "touch_zones": [
@@ -434,11 +434,11 @@
         "c840cf76-95c4-4688-a587-3bc06824fad5"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.3",
+      "id": "M16.2.1",
       "node_key": "bdf86710-8da3-4c1b-a1db-c11e0a5c1613",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.3_delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step_bdf86710-8da3-4c1b-a1db-c11e0a5c1613.md",
-      "sibling_order": 3,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.1_delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step_bdf86710-8da3-4c1b-a1db-c11e0a5c1613.md",
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "Delete dead and unwired code from a decided list, and add vulture as an advisory CI step",
       "touch_zones": [
