@@ -52,9 +52,9 @@ from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, Rerun, drop_nulls, e
 from specy_road.review_files import render_front_matter, review_path
 from specy_road.review_model_check import Check, check_note, check_run, rostered
 from specy_road.integrity_removals import target_unplanned_removals
+from specy_road.review_lock import ReviewRunBusy, review_run_lock  # re-exported: the per-leaf lock (file limit)
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.review_write_check import (  # re-exported: the post-run write check lives there (file limit)
-    LOCK_NAME,
     OUTPUT_SCHEMA_NAME,
     Snapshot,
     append_log,
@@ -129,31 +129,6 @@ def schema_lines() -> list[str]:
             "packet's **Commit under review**, quoted; `notes` holds your Markdown notes. A field the schema does not "
             "require may be left out or `null`.", "",
             "```json", json.dumps(output_schema(), indent=2), "```", ""]
-
-
-class ReviewRunBusy(Exception):
-    def __init__(self, node_id: str) -> None:
-        super().__init__(f"another reviewer run of {node_id} is in progress; run its reviewers one after another")
-
-
-@contextlib.contextmanager
-def review_run_lock(reviews: Path) -> Iterator[None]:
-    """One reviewer run per leaf at a time: the hand-off directory is shared, so a second run's files would read
-    as the first run's writes. Raises :class:`ReviewRunBusy` at once rather than wait for a whole review."""
-    reviews.mkdir(parents=True, exist_ok=True)
-    with (reviews / LOCK_NAME).open("a+") as f:
-        try:
-            import fcntl   # POSIX; Windows has msvcrt
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except ImportError:
-            import msvcrt
-            try:
-                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
-            except OSError:
-                raise ReviewRunBusy(reviews.name) from None
-        except OSError:
-            raise ReviewRunBusy(reviews.name) from None
-        yield
 
 
 def reviewer_env(env: dict[str, str]) -> dict[str, str]:

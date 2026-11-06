@@ -38,6 +38,8 @@ from specy_road.review_files import (
     review_path, reviews_dir, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, trial_merge
+from specy_road import review_lock
+from specy_road.review_lock import ReviewRunBusy, filing_busy
 from specy_road.review_rejected import run_review_record
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
 from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
@@ -263,6 +265,19 @@ def cmd_review_record(ns: argparse.Namespace) -> int:
     return run_review_record(ns, resolve_repo_root(ns), _fail, _relabel_independence)
 
 
+def cmd_review_record_locked(ns: argparse.Namespace) -> int:
+    """``review record`` from the command line: waits for, then refuses during, a reviewer run on the leaf.
+    A run's own filing (``file_review``) calls :func:`cmd_review_record` inside the lock it holds."""
+    root = resolve_repo_root(ns)
+    if not any(n.get("id") == ns.node_id for n in load_roadmap(root)["nodes"]):   # before any mkdir or lock file
+        return _fail(f"unknown node id: {ns.node_id}")
+    try:
+        with review_lock.review_run_lock(reviews_dir(root, ns.node_id), wait=review_lock.FILING_WAIT):
+            return cmd_review_record(ns)
+    except ReviewRunBusy:
+        return _fail(f"{filing_busy(ns.node_id)} — file again when it ends (review list {ns.node_id})")
+
+
 def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget | None) -> int:
     reviews = list_reviews(root, ns.node_id)
     if not reviews:
@@ -339,7 +354,7 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
     rec.add_argument("--launch-mode", choices=REVIEW_LAUNCH_MODES, help="How your harness was started; stored on the record")
     add_repo_root_arg(rec)
-    rec.set_defaults(func=cmd_review_record)
+    rec.set_defaults(func=cmd_review_record_locked)
     for name, about, fn in (("list", "Print a node's filed review records and the gate evaluation; writes nothing", cmd_review_list),
                             ("check-pre-existing", "Re-run claimed pre-existing verifier failures twice on the integration tip",
                              cmd_check_pre_existing),

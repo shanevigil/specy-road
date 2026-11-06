@@ -468,7 +468,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.27_filings-take-the-review-lock_2f0e89a6-4b5f-4efd-9320-c0438d82ee5a.md",
       "sibling_order": 25,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review record and the human approval take the leaf's review lock, so another filing never voids a running reviewer",
       "touch_zones": [
         "specy_road/review_record_write.py",
