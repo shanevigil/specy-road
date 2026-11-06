@@ -28,6 +28,10 @@ body. Keep section bodies focused; link to PRs for detail.
   refusal even when `validate` passes. Behaviour change: an in-repo symlink at
   `roadmap.md` or `roadmap-context.md` was written through and is now refused.
   `AGENTS.md`/`CLAUDE.md` aliases and the `.claude/skills/` links are unchanged.
+- The notes rules in the reviewer and repair-turn prompts name every clause break `review record` checks: `'. '`,
+  `'! '`, `'? '`, `'; '` and all eight conjunctions (and, but, while, whereas, although, though, yet, plus). The
+  check itself is unchanged. The `rework_rca` docstring now names `review_deferral.rca_deferral`, and two brainstorm
+  verify tests patch `socket.getaddrinfo` instead of a private helper.
 - **Security:** `review record` files only under the caller's own model (CR1). A worker
   (`SPECY_ROAD_WORKER_ID`) files only as its model, and a harness (`CLAUDECODE`, `CODEX_THREAD_ID`,
   `CURSOR_AGENT`) only for a roster entry on that harness; anything else exits 1 before any write. An

@@ -1,0 +1,37 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "When the answer of a non-chore run whose last attempt exited 0 with no capacity reason becomes a Rerun (an empty final message, no JSON object, a fenced object or text after it, an unfinished object, nesting too deep, a stray or cut-off event line, no final message or no end event, a null result, or an object failing the output schema), review delegate runs M21.35's one repair phase with that reason; a capacity failure, a harness non-zero exit, an unreadable run log (UNREADABLE_ANSWER), a review failure (file_review's write check still runs first, so an unparseable answer that wrote a file is review_failure with no second launch) and a chore reviewer get no repair turn",
+        "RUN record: run['refusal'] holds the reason and run['refusal_kind'] is 'parse' or 'record' (a missing kind is 'record'); repair attempts are marked repair: true; a second failure of either kind, including after a resume, leaves the run incomplete, exit 1, with a reason naming both and no further turn. --resume of an incomplete run with a stored reason sends the repair pair for the stored kind, not RESUME_PROMPT. repair_prompt introduces a parse reason as specy-road's reading of the final message (not review record's output), asks for the whole JSON object as the final message with no fence and nothing after it, and omits the notes rules; the refusal wording is unchanged",
+        "Tests in tests/test_review_delegate_repair.py: fenced JSON, prose after the object, no JSON, an unfinished object and a schema-invalid object (the prompt fences the schema reason), each followed by a valid answer -> filed after one repair turn whose prompt contains the reason; parse twice, parse then refusal, and refusal then parse -> incomplete, exit 1, both reasons, no third turn, nothing filed; unparseable answer that writes a file -> review_failure, one launch; non-resumable harness -> one fresh launch with the full prompt plus the repair section; capacity error and non-zero exit -> no repair turn; --resume with a stored parse reason -> repair pair with the parse intro and without the review-record intro or notes rules; --resume of a stored refusal with no refusal_kind -> record prompt; a resumed parse repair that fails again -> incomplete, both reasons. The no-json case leaves test_no_repair_turn_unless_review_record_refused (renamed for its remaining cases). docs/orchestration-reviewer-output.md repair bullet and CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +140, docs about +3"
+      ],
+      "codename": "parse-failure-gets-repair-turn",
+      "dependencies": [],
+      "id": "M21.42",
+      "node_key": "f4abbcaf-6a04-44f7-a505-8b0694560f41",
+      "parent_id": "M21",
+      "planned_test_changes": [
+        "removed-test: tests/test_review_delegate_repair.py::test_no_repair_turn_unless_review_record_refused"
+      ],
+      "planning_dir": "planning/M21.42_parse-failure-gets-repair-turn_f4abbcaf-6a04-44f7-a505-8b0694560f41.md",
+      "sibling_order": 40,
+      "status": "Not Started",
+      "title": "review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it",
+      "touch_zones": [
+        "specy_road/review_delegate.py",
+        "specy_road/review_record_write.py",
+        "tests/test_review_delegate_repair.py",
+        "tests/review_delegate_helpers.py",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md",
+        "tests/test_headless_limits_denials.py",
+        "tests/test_review_attempt_span.py",
+        "tests/test_review_delegate.py",
+        "tests/test_review_record_write_closure.py"
+      ],
+      "type": "task"
+    }
+  ]
+}
