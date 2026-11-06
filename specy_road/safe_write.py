@@ -67,19 +67,36 @@ def _refusal(path: Path, kind: str, expected: str) -> SafeWriteError:
     return SafeWriteError(f"{path} is {kind}{link}, not {expected}")
 
 
-def _locate(root: Path, path: Path | str) -> tuple[Path, tuple[str, ...]]:
-    """``(resolved root, parts below it)`` for ``path``, taken lexically; ``..`` out of ``root`` is refused.
+def _below(anchor: Path, full: Path) -> tuple[str, ...] | None:
+    """The parts of ``full`` below ``anchor``, with ``.`` and ``..`` applied in order; ``None`` when it is not
+    spelled from ``anchor`` or a ``..`` climbs above it at any step (re-entering afterwards does not count)."""
+    head = len(anchor.parts)
+    if full.parts[:head] != anchor.parts:
+        return None
+    parts: list[str] = []
+    for name in full.parts[head:]:
+        if name == "..":
+            if not parts:
+                return None
+            parts.pop()
+        elif name != ".":
+            parts.append(name)
+    return tuple(parts)
 
-    A relative ``path`` is under ``root``. An absolute one may be spelled from
-    ``root`` as given or as resolved.
+
+def _locate(root: Path, path: Path | str) -> tuple[Path, tuple[str, ...]]:
+    """``(resolved root, parts below it)`` for ``path``, taken lexically.
+
+    A relative ``path`` is under ``root``; an absolute one must be spelled from
+    ``root`` as given, normalized or resolved. A ``..`` that climbs above the
+    root at any step is refused, even when a later part comes back in.
     """
     base = Path(root).resolve()
     full = Path(path) if Path(path).is_absolute() else Path(root, path)
-    norm = os.path.normpath(full)
-    for anchor in (os.path.normpath(Path(root).absolute()), str(base)):
-        rel = os.path.relpath(norm, anchor)
-        parts = () if rel == "." else Path(rel).parts
-        if not parts or parts[0] != "..":
+    full = full if full.is_absolute() else Path.cwd() / full
+    for anchor in (Path(root).absolute(), Path(os.path.normpath(Path(root).absolute())), base):
+        parts = _below(anchor, full)
+        if parts is not None:
             return base, parts
     raise SafeWriteError(f"{full} is outside {base}, not a path under it")
 

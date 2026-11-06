@@ -114,7 +114,11 @@ def test_dot_dot_out_of_the_root_is_refused(tmp_path: Path) -> None:
     with pytest.raises(SafeWriteError, match="is outside .*, not a path under it"):
         safe_write.write(root, root / ".." / "escaped", "x")
     assert not (tmp_path / "escaped").exists()
-    safe_write.write(root, "a/../b", "x")   # lexical, and still inside: fine
+    for reentering in ("../root/back", root / "a" / ".." / ".." / "root" / "back"):   # climbing above counts
+        with pytest.raises(SafeWriteError, match="is outside .*, not a path under it"):
+            safe_write.write(root, reentering, "x")
+    assert not (root / "back").exists()
+    safe_write.write(root, "a/../b", "x")   # lexical, and never above the root: fine
     assert (root / "b").read_text() == "x"
 
 

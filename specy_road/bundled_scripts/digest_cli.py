@@ -72,7 +72,7 @@ def cmd_digest(ns: argparse.Namespace) -> int:
         out.write_text(body, encoding="utf-8")
     else:
         try:   # the default, a relative -o, or an absolute one at or under the checkout: the safe-write rule
-            safe_write.write(checkout, dest, body)
+            safe_write.write(checkout, out, body)   # as given: a ".." above the checkout is refused
         except safe_write.SafeWriteError as e:
             print(f"error: {e}", file=sys.stderr)
             return 1

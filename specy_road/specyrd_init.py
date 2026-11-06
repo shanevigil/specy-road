@@ -12,7 +12,7 @@ from typing import Any
 
 from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report  # noqa: F401 — re-exported
-from specy_road.agent_ignores import apply_and_report
+from specy_road.agent_ignores import apply_and_report, check_ignore_files
 from specy_road.agents_md_block import apply_agents_and_report
 from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refresh_stubs
     SKILLS_REL,
@@ -193,10 +193,11 @@ def _save_manifest(repo_root: Path, data: dict[str, Any]) -> None:
     safe_write.write(repo_root, repo_root / ".specyrd" / "manifest.json", json.dumps(data, indent=2) + "\n")
 
 
-def _refuse_unsafe_manifest(repo_root: Path) -> None:
-    """Exit 1 naming ``.specyrd/manifest.json`` when the safe-write rule refuses it, before anything is written."""
+def _refuse_unsafe_paths(repo_root: Path) -> None:
+    """Exit 1 naming ``.specyrd/manifest.json`` or an ignore file the safe-write rule refuses, before anything is written."""
     try:
         safe_write.check(repo_root, repo_root / ".specyrd" / "manifest.json")
+        check_ignore_files(repo_root)
     except safe_write.SafeWriteError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
@@ -301,7 +302,7 @@ def run_init(
         rel_dest = AGENT_REL_DEST[agent]
         assert rel_dest is not None
     repo_root = resolve_repo_root(target)
-    _refuse_unsafe_manifest(repo_root)
+    _refuse_unsafe_paths(repo_root)
     if agent == "generic":
         rel_dest = _validate_generic_commands_dir(repo_root, rel_dest)
     written: list[str] = []

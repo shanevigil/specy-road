@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from specy_road import __version__, safe_write
-from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE, GITIGNORE, apply_and_report
+from specy_road.agent_ignores import apply_and_report, check_ignore_files
 from specy_road.agents_md_block import apply_agents_files
-from specy_road.generated_files import GENERATED_COMMITTED, refused_generated_files, regenerate_generated_files
+from specy_road.generated_files import GENERATED_COMMITTED, regenerate_generated_files
 from specy_road.harness_instruction_files import AGENTS_MD
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
 from specy_road.model_profiles import PROFILES_REL, load_profile
@@ -211,11 +211,9 @@ def _write_generated(
     if present and not force:
         skipped.extend(f"{prefix}{name}" for name in present)
         return
-    refused = refused_generated_files(dst)   # a symlink of any kind is never written through
-    if not dry_run:
+    if not dry_run:   # _scaffold checked both by the safe-write rule
         regenerate_generated_files(dst)
-    written.extend(f"{prefix}{name}" for name in GENERATED_COMMITTED if name not in refused)
-    skipped.extend(f"{prefix}{name} ({why})" for name, why in refused.items())
+    written.extend(f"{prefix}{name}" for name in GENERATED_COMMITTED)
 
 
 def _profile_selection(profiles: str) -> InitProfilesSelection:
@@ -232,9 +230,10 @@ def _scaffold(
 ) -> tuple[Path, str, list[str], list[str]]:
     """Write every path ``init project`` owns; ``(root, prefix, written, skipped)``.
 
-    The ignore files and ``.specyrd/manifest.json`` are checked by the
-    safe-write rule, and the template destinations by :func:`_copy_templates`,
-    before anything is written.
+    The ignore files, ``.specyrd/manifest.json`` and (with ``force``, which
+    rewrites them) the generated files are checked by the safe-write rule, and
+    the template destinations by :func:`_copy_templates`, before anything is
+    written.
     """
     # The ignore files live at the git root (dst itself outside a repository)
     # and name project paths with the prefix, so a nested project gets no
@@ -243,10 +242,11 @@ def _scaffold(
     top = git_root(next(p for p in (dst, *dst.parents) if p.is_dir()))   # dst may not exist yet
     root = top or dst
     prefix = prefix_within(top, dst) if top else ""
-    for name in (GITIGNORE, CURSOR_INDEXING_IGNORE):
-        safe_write.check(root, root / name)
+    check_ignore_files(root)
     if top is not None:
         safe_write.check(top, top / _MANIFEST)
+    for name in GENERATED_COMMITTED if force else ():   # without force a present one is skipped, not written
+        safe_write.check(dst, dst / name)
     written, skipped = _copy_templates(src, dst, prefix, selection, dry_run=dry_run, force=force)
     _apply_agents_md(dst, prefix, written, dry_run=dry_run)
     seed = "" if prefix else (src / _GITIGNORE).read_text(encoding="utf-8")

@@ -155,13 +155,17 @@ def test_apply_plan_writes_nothing_when_one_change_lands_outside(tmp_path: Path)
     assert _tree(checkout, outside) == before and not any(copy.iterdir())
 
 
-@pytest.mark.parametrize("layout", ["file-link-out", "specyrd-dir-link"])
-def test_specyrd_init_refuses_a_linked_manifest(tmp_path: Path, capsys, layout: str) -> None:
+@pytest.mark.parametrize("layout", ["file-link-out", "specyrd-dir-link", "gitignore-in-repo-link"])
+def test_specyrd_init_refuses_a_linked_manifest_or_ignore_file(tmp_path: Path, capsys, layout: str) -> None:
     repo, outside = _inited(tmp_path)
-    path = repo / ".specyrd" / "manifest.json" if layout == "file-link-out" else repo / ".specyrd"
+    path = {"file-link-out": repo / ".specyrd" / "manifest.json", "specyrd-dir-link": repo / ".specyrd",
+            "gitignore-in-repo-link": repo / ".gitignore"}[layout]
+    target = {"file-link-out": outside / "theirs.json", "specyrd-dir-link": outside / "specyrd",
+              "gitignore-in-repo-link": repo / "mine.txt"}[layout]
     if layout == "specyrd-dir-link":
         shutil.copytree(repo / ".specyrd", outside / "specyrd")
-    _relink(path, outside / ("theirs.json" if layout == "file-link-out" else "specyrd"))
+    (repo / "mine.txt").write_text("mine\n", encoding="utf-8")
+    _relink(path, target)
 
     _refused(lambda: run_init(target=repo, agent="cursor", dry_run=False, force=False, ai_commands_dir=None),
              capsys, path, repo, outside)

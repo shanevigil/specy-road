@@ -142,9 +142,9 @@ def test_writer_refuses_a_link_out_of_its_root(tmp_path: Path, capsys, writer: s
         assert isinstance(result, Exception) and named in str(result)
     elif writer == "regenerate_generated_files":
         assert result == [name] and named in out.err
-    elif writer == "init --force":
-        assert f"skipped (exists): {name} ({named})" in out.out
-        assert f"wrote {name}" not in out.out.splitlines()
+    elif writer == "init --force":   # checked before anything is written: exit 1, nothing reported as written
+        assert result == 1 and f"error: {named}" in out.err
+        assert not out.out.startswith("wrote")
     else:
         assert named in out.err
 

@@ -35,9 +35,10 @@ the checkout is never written, and the generated files it would write are
 listed as ``would write``. Every git call in the copy runs with the caller's
 ``GIT_DIR`` and related variables removed, so it never reaches the checkout's
 repository; a copy whose own ``.git`` was not created is not validated. A
-generated file whose path leads out of the project is refused, and ``digest``
+generated file with a symlink on its path is refused, and ``digest``
 stays a next step, as it does when ``validate`` fails (nothing is regenerated
-from an invalid graph). The exit code is ``validate``'s. Read validate's
+from an invalid graph). The exit code is 1 when ``validate`` fails or a write
+is refused (a generated file included), else 0. Read validate's
 notices for what the new version reports (held milestones among them).
 """
 
@@ -195,9 +196,10 @@ def _refresh(
     return _report_stubs_declined(project, checkout, preview=preview, prune=prune, declined_docs=declined_docs)
 
 
-def _check(project: Path, tracked_in: Path, verb: str) -> tuple[bool, bool]:
-    """``(validate passed, generated files done)``; each step prints its own detail.
+def _check(project: Path, tracked_in: Path, verb: str) -> tuple[str | None, bool]:
+    """``(what failed, as the first next step, or None; generated files done)``; each step prints its own detail.
 
+    A failed ``validate`` or a refused generated file fails the run (exit 1).
     The generated files are done only when validate passed (so they were
     regenerated), nothing was refused, and ``digest --check`` passes; otherwise
     ``specy-road digest`` stays a next step.
@@ -217,7 +219,11 @@ def _check(project: Path, tracked_in: Path, verb: str) -> tuple[bool, bool]:
     # A digest that is a link out is never read (regenerate printed its refusal): not current.
     outside = resolves_outside(project, project / DEFAULT_OUTPUT)
     current = not outside and cmd_digest(ns) == 0
-    return valid, valid and current and not refused
+    failed = (None if not refused else "Replace each generated file refused above with a regular file"
+              " (any symlink on its path is refused), then run specy-road digest.")
+    if not valid:
+        failed = "Fix the validate errors above; the refreshes are written either way."
+    return failed, valid and current and not refused
 
 
 def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
@@ -307,14 +313,15 @@ def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
         apply_plan(plan, copy.to_sandbox)
         copy_missing_work_templates(copy_project, existence_root=project)
         _report_line_caps(before, _capped_lines(copy_project))
-        valid, _digest_ok = _check(copy_project, project, "would write")
+        failed, _digest_ok = _check(copy_project, project, "would write")
     changed = plan.changed_since()
     if changed:
         print(f"error: dry run modified {', '.join(changed)} in {checkout}; this is a bug in specy-road upgrade,"
               " please report it", file=sys.stderr)
         return 2
-    print("\n(dry-run; no files written in the checkout. The exit code is validate's on the copy.)")
-    return 0 if valid else 1
+    print("\n(dry-run; no files written in the checkout. The exit code is 1 when validate fails on the copy"
+          " or a write is refused.)")
+    return 0 if failed is None else 1
 
 
 def _other_worktrees(checkout: Path) -> list[tuple[str, str]]:
@@ -355,18 +362,18 @@ def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = 
     except SafeWriteError as e:   # refused before the first write: nothing was applied
         print(f"error: {e}", file=sys.stderr)
         return 1
-    valid, digest_ok = _check(project, project, "wrote")
+    failed, digest_ok = _check(project, project, "wrote")
     _section("next")
     steps = list(CHECKLIST)
     if not digest_ok:
         steps.insert(1, "Run specy-road digest (and specy-road export if roadmap.md is tracked), then commit"
                         " them. Not specy-road sync: it also fast-forwards the integration branch.")
-    if not valid:
-        steps.insert(0, "Fix the validate errors above; the refreshes are written either way.")
+    if failed:
+        steps.insert(0, failed)
     for step in steps:
         print(f"- {step}")
     _print_other_worktrees(checkout)
-    return 0 if valid else 1
+    return 0 if failed is None else 1
 
 
 def main(argv: list[str] | None = None) -> None:
