@@ -159,7 +159,9 @@
         "docs/orchestration.md",
         "specy_road/templates/specyrd/agents-rules.md",
         "specy_road/templates/specyrd/agents-md-block.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_enforced_rules_pointers.py",
+        "suggested_prompts/bootstrap-agents-md.md"
       ],
       "type": "task"
     },
