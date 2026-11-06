@@ -20,6 +20,11 @@ from specy_road.bundled_scripts.registration_pickup_commit import (
 from specy_road.review_policy_pin import policy_digest
 
 
+def _git_log(root: Path) -> str:
+    return subprocess.run(["git", "log", "--format=%H %s"], cwd=root, check=True, capture_output=True,
+                          text=True).stdout
+
+
 def _pickup_test_node() -> dict:
     return {
         "id": "M9.1",
@@ -323,10 +328,12 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
 
     argv = ["--no-ci-skip-in-message", "--repo-root", str(tmp_path)]
     if orchestration == "roster: [\n":
+        log_before = _git_log(tmp_path)
         with pytest.raises(SystemExit) as e:
             dnt.main(argv)
-        assert e.value.code == 1 and calls == []
+        assert e.value.code == 1
         assert (tmp_path / "roadmap" / "registry.yaml").read_text() == "version: 1\nentries: []\n"
+        assert _git_log(tmp_path) == log_before and "register as in-progress" not in log_before
         return
     dnt.main(argv)
 

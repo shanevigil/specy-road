@@ -161,31 +161,41 @@ def _bad_digest(data: dict, key: str) -> dict:
     return {**data, key: "0" * 64}
 
 
-# (case, how the filed acceptance is changed, or a second policy edit after it)
+_CHANGED = "review policy changed on refs/heads/dev since M1.1 was claimed"
+_INVALID = "an invalid acceptance never counts"
+# (case, policy changed after the claim, how the filed acceptance is changed or None for a second policy edit,
+#  expected problem text). An invalid file is a problem whether or not the policy changed.
 ACCEPTANCE_CASES = [
-    ("malformed yaml", lambda d: "node_id: [\n"),
-    ("schema-invalid", lambda d: {**d, "extra": 1}),
-    ("another node", lambda d: {**d, "node_id": "M9.9"}),
-    ("pinned digest mismatch", lambda d: _bad_digest(d, "pinned_sha256")),
-    ("accepted digest mismatch", lambda d: _bad_digest(d, "accepted_sha256")),
-    ("second edit after acceptance", None),
+    ("malformed yaml", True, lambda d: "node_id: [\n", _INVALID),
+    ("malformed yaml, policy unchanged", False, lambda d: "node_id: [\n", _INVALID),
+    ("schema-invalid", True, lambda d: {**d, "extra": 1}, _INVALID),
+    ("schema-invalid, policy unchanged", False, lambda d: {**d, "extra": 1}, _INVALID),
+    ("another node", True, lambda d: {**d, "node_id": "M9.9"}, _INVALID),
+    ("another node, policy unchanged", False, lambda d: {**d, "node_id": "M9.9"}, _INVALID),
+    ("pinned digest mismatch", True, lambda d: _bad_digest(d, "pinned_sha256"), _CHANGED),
+    ("accepted digest mismatch", True, lambda d: _bad_digest(d, "accepted_sha256"), _CHANGED),
+    ("second edit after acceptance", True, None, _CHANGED),
 ]
 
 
-@pytest.mark.parametrize(("case", "change"), ACCEPTANCE_CASES, ids=[c[0] for c in ACCEPTANCE_CASES])
-def test_an_acceptance_counts_only_for_its_node_and_digests(tmp_path: Path, monkeypatch, case, change) -> None:
+@pytest.mark.parametrize(("case", "changed", "change", "problem"), ACCEPTANCE_CASES,
+                         ids=[c[0] for c in ACCEPTANCE_CASES])
+def test_an_acceptance_counts_only_for_its_node_and_digests(tmp_path: Path, monkeypatch, case, changed, change,
+                                                            problem) -> None:
     repo = _repo(tmp_path)
     _on_dev(repo, ORCH, CR1_ROSTER)
     _approve(repo)
     assert _accept(repo, monkeypatch, tty=True) == 0
     acceptance = reviews_dir(repo, "M1.1") / ACCEPTANCE_NAME
+    if not changed:   # the integration branch goes back to the pinned policy; the acceptance file stays
+        _on_dev(repo, ORCH, TWO_FAMILIES)
     if change is None:
         _on_dev(repo, ORCH, CR1_ROSTER.replace("reviewers_required: 2", "reviewers_required: 1"))
     else:
         new = change(yaml.safe_load(acceptance.read_text()))
         acceptance.write_text(new if isinstance(new, str) else yaml.safe_dump(new))
     gate = _gate(repo)
-    assert not gate.passed and "review policy changed on refs/heads/dev since M1.1 was claimed" in gate.policy_pin
+    assert not gate.passed and problem in gate.policy_pin
     before = _tree(repo)
     assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 1
     assert _tree(repo) == before

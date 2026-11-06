@@ -177,8 +177,17 @@ def _pin_state(root: Path, node: dict[str, Any], commit: str) -> tuple[str, str,
 
 
 def pin_problem(root: Path, node: dict[str, Any], commit: str) -> str | None:
-    """Why the policy that judges ``node`` at ``commit`` is not the one pinned at its claim, else ``None``."""
+    """Why the policy that judges ``node`` at ``commit`` is not the one pinned at its claim, else ``None``.
+
+    One rule for the acceptance file: when ``POLICY-ACCEPTED.yaml`` exists and is invalid it is a problem, whatever
+    the pin and the policy say, so an invalid file is never silently ignored; a valid one counts only for the
+    pinned and current digests it names.
+    """
     nid = node["id"]
+    accepted, invalid = read_acceptance(root, nid)
+    if invalid:
+        return (f"{invalid}; an invalid acceptance never counts: delete work/reviews/{nid}/{ACCEPTANCE_NAME}, "
+                f"and a human re-runs `specy-road review accept-policy {nid}` in a terminal if the policy changed")
     try:
         state = _pin_state(root, node, commit)
     except PolicyUnreadable as e:
@@ -186,12 +195,10 @@ def pin_problem(root: Path, node: dict[str, Any], commit: str) -> str | None:
     if state is None:
         return None
     ref, pinned, at, current = state
-    accepted, invalid = read_acceptance(root, nid)
     if accepted and accepted["pinned_sha256"] == pinned and accepted["accepted_sha256"] == current:
         return None
     lines = "; ".join(change_lines(root, at, ref))
-    note = f" ({invalid}; an invalid acceptance never counts)" if invalid else ""
-    return (f"review policy changed on {ref} since {nid} was claimed ({at[:12]}): {lines}{note}; a human accepts "
+    return (f"review policy changed on {ref} since {nid} was claimed ({at[:12]}): {lines}; a human accepts "
             f"it with `specy-road review accept-policy {nid}` in a terminal, or re-claims the leaf")
 
 
