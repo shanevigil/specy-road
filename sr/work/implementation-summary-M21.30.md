@@ -93,12 +93,44 @@
 - Two changes at once (roles + `policy.reviewers_required`): each on its own line in the gate problem; red-green failed before.
 - Other call-position asserts added by this leaf: the pinned pickup case now reads git; tests/test_review_policy_pin.py has none.
 
+## Fix round 3 (review at ce2a4def, gpt-6.1-sol-low)
+
+- **Class (R1, R2): a read or parse boundary that catches only some of the errors its input can raise, so an
+  unreadable input crashed — or, at the git boundary, read as absent and skipped the check.** One rule for each
+  boundary, used everywhere:
+  - `load_yaml` (public, docstring states the rule): UTF-8 decode then `yaml.safe_load`; `yaml.YAMLError`,
+    `ValueError` (covers `UnicodeDecodeError` and an impossible unquoted date such as `2026-99-99`) and
+    `RecursionError` all raise `PolicyUnreadable`. Committed policy (`_yaml_at`) and `POLICY-ACCEPTED.yaml`
+    (`read_acceptance`, now reading bytes) both go through it; the acceptance turns it into the invalid-acceptance
+    result.
+  - `_git_read`: git output is `None` only when git ran and exited non-zero (path or commit not there); output git
+    could not deliver or decode (`GitResult.failure`) raises `PolicyUnreadable`. Used by `_yaml_at` and both git
+    reads in `pin_of`. Found by the class audit: a committed policy with non-UTF-8 bytes used to be read as
+    *missing* (every key null), and an undecodable registration commit message as *no trailer* (judged as today) —
+    both fail-open.
+  - Limit (documented in the docstrings): the rule covers decode and YAML construction; it does not try to bound
+    resource use on hostile input beyond Python's recursion limit.
+
+## Probes (fix round 3)
+
+- Impossible unquoted date committed in substitutions after the claim: gate problem "cannot be checked"; red-green failed before (traceback).
+- Non-UTF-8 bytes in the committed policy after the claim: gate problem; red-green failed before (gate *passed*: read as absent).
+- Acceptance file with `at: 2026-99-99`: invalid-acceptance problem; red-green failed before (ValueError).
+- Acceptance file with non-UTF-8 bytes: invalid-acceptance problem; red-green failed before (UnicodeDecodeError).
+- Claim with an impossible date at HEAD: `pinned_message` exits 1, "nothing was registered" (probe script).
+- Claim with non-UTF-8 committed policy at HEAD: exits 1 naming the unreadable `git show` output (probe script).
+- `review accept-policy` with either bad policy: `_pin_state` raises `PolicyUnreadable` inside its handler — "nothing was written".
+- finish: `pin_holds_or_exit` → `pin_problem` → same boundary; exit 1, no traceback.
+- `pin_of` git reads: undecodable log or commit body now raises instead of reading as "no registration commit"/"no trailer".
+- Other parse sites in the leaf: none (`_SCHEMA` is the bundled schema; `git_text` remains only for `git config user.*` in `_user`, where a failure falls back to the login name).
+
 ## Final touch zones
 
 As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other path changed.
 
 ## Verification
 
+- Fix round 3: targeted 163 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
 - Fix round 2: targeted 159 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
 - Fix round 1: targeted 156 passed; `ruff check specy_road tests scripts` clean; file-limits OK.
 - `pytest -n 4` targeted (pin, pickup, rules budgets, AGENTS block, file limits, gate, mark-reviewed, delegate,
@@ -109,6 +141,7 @@ As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other pa
 ## Added
 
 - `specy_road/review_policy_pin.py`: `policy_parts`/`policy_digest` — the A1 digest, one helper for any ref.
+- `load_yaml` and `_git_read` (fix round 3) — one parse rule and one git-read rule, so no unreadable input crashes or reads as absent.
 - `_yaml_at` + `PolicyUnreadable` — strict read (committed_yaml returns `{}` on a parse error, which must never hash as empty).
 - `pinned_message` — the pickup call site's trailer; exits 1 on an unparsable policy before any registry write.
 - `pinned_message` no-HEAD guard — a repo with no commit has nothing to pin (keeps existing pickup tests exact).
@@ -130,6 +163,7 @@ As listed in the brief plus `tests/test_enforced_rules_pointers.py`. No other pa
 - `tests/test_do_next_task_pickup.py`: existing CI-skip-free pickup test parametrized over no commit / pinned /
   unparsable policy (exact trailer through `_finalize_pickup`; exit 1 with the registry and `git log` unchanged —
   fix round 1, R2; helper `_git_log` reads the real log).
+- Gate rows (fix round 3): impossible unquoted date, non-UTF-8 committed policy; acceptance rows: impossible date, non-UTF-8 bytes. `_on_dev` now commits bytes or text itself.
 - Gate table rows (fix round 2): policy not a mapping, roster not a list of mappings, one line per change.
 - Pickup test pinned case runs real git and reads the claim commit back (fix round 2, R3).
 - Acceptance table rows (fix round 1, R1): malformed, schema-invalid and other-node files with the policy unchanged.
