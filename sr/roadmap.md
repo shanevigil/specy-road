@@ -181,6 +181,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.32` | session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule | task | — | Not Started |
 | `M21.33` | The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy | task | — | Complete |
 | `M21.34` | Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch | task | — | Complete |
+| `M21.35` | review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules | task | — | Not Started |
+| `M21.36` | brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens | task | — | Not Started |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
@@ -197,5 +199,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.13` | Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone | task | — | Not Started |
 | `M22.14` | Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch | task | — | Not Started |
 | `M22.15` | The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows | task | — | Not Started |
+| `M22.16` | Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends | task | — | Not Started |
+| `M22.17` | brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
