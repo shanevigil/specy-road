@@ -105,7 +105,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.17` Writers refuse a symlinked target that leads out of the directory they own: init's generated files, review refusal and packet `writers-refuse-links-out` — task — **Complete**
   - `M21.18` A review deferral counts only when its marker is bound to the decision review defer recorded for it and its RCA `deferral-bound-to-its-decision` — task — **Not Started**
   - `M21.19` apply --dry-run rehearses on a scratch copy whose links are rebased, so no rehearsal can move or change a live file `apply-dry-run-rebases-links` — task — **Not Started**
-  - `M21.20` PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set `gui-publish-regenerates-and-needs-a-remote` — task — **Not Started**
+  - `M21.20` PM GUI Publish regenerates roadmap.md and roadmap-context.md before committing, and refuses before committing when no remote is set `gui-publish-regenerates-and-needs-a-remote` — task — **Complete**
   - `M21.21` review delegate validates the reviewer command as prompt --channel cli does, and the model check splits on newlines only `review-delegate-validates-reviewer-command` — task — **Not Started**
   - `M21.22` Small rc4 code fixes: adapter docstring, dead outline writers, pickup hint ignored, land: local wording, unused upgrade helper `rc4-small-code-fixes` — task — **Not Started**
   - `M21.23` rc4 doc corrections on WIP: refresh-profiles default, no private roster ids, exact managed-block markers, reviewer mode, file-cap CHANGELOG entry `rc4-docs-corrections` — task — **Not Started**
@@ -265,7 +265,6 @@ Do not pick these up.
 - `M21.16` on `feature/rm-upgrade-scratch-git-and-regen` since 2026-11-05
 - `M21.18` on `feature/rm-deferral-bound-to-its-decision` since 2026-11-05
 - `M21.19` on `feature/rm-apply-dry-run-rebases-links` since 2026-11-05
-- `M21.20` on `feature/rm-gui-publish-regenerates-and-needs-a-remote` since 2026-11-05
 - `M21.21` on `feature/rm-review-delegate-validates-reviewer-command` since 2026-11-05
 - `M21.22` on `feature/rm-rc4-small-code-fixes` since 2026-11-05
 - `M21.23` on `feature/rm-rc4-docs-corrections` since 2026-11-05
