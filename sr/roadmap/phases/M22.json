@@ -337,7 +337,9 @@
         "Estimated net line change (informational, not a gate): package about +30, tests about +100, docs about +3"
       ],
       "codename": "worker-cost-and-stale-presence",
-      "dependencies": [],
+      "dependencies": [
+        "218a29f0-6309-4fa6-b767-1c8a74e17046"
+      ],
       "id": "M22.13",
       "node_key": "99ad0839-6c85-4631-b67b-80ef2d3b3c57",
       "parent_id": "M22",
