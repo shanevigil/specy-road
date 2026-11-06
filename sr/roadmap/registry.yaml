@@ -140,6 +140,10 @@ entries:
       - tests/review_delegate_helpers.py
       - docs/orchestration-reviewer-output.md
       - CHANGELOG.md
+      - tests/test_headless_limits_denials.py
+      - tests/test_review_attempt_span.py
+      - tests/test_review_delegate.py
+      - tests/test_review_record_write_closure.py
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
