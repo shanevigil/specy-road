@@ -132,38 +132,6 @@ def test_a_generic_dir_with_parentheses_or_odd_characters_is_reported_whole(
         assert f"{verb} {rel_dir}/{name}" in out
 
 
-def _codex_skills_repo(tmp_path: Path, link_to: Path) -> tuple[Path, Path]:
-    """A codex pack whose ``.agents/skills`` is a symlink to ``link_to``; returns ``(repo, the link)``."""
-    repo = tmp_path / "repo"
-    (repo / ".agents").mkdir(parents=True)
-    (repo / ".agents" / "skills").symlink_to(link_to)
-    (repo / ".specyrd").mkdir()
-    (repo / ".specyrd" / "manifest.json").write_text(
-        json.dumps({"agents": {"codex": [".agents/skills/specyrd-brief/SKILL.md"]}}), encoding="utf-8")
-    return repo, repo / ".agents" / "skills"
-
-
-def _outward(tmp_path: Path) -> tuple[Path, Path]:
-    """The skills link leaves the repo (the skill folder there links back in: still refused)."""
-    (tmp_path / "outside").mkdir()
-    repo, link = _codex_skills_repo(tmp_path, tmp_path / "outside")
-    (repo / "real" / "brief").mkdir(parents=True)
-    (tmp_path / "outside" / "specyrd-brief").symlink_to(repo / "real" / "brief")
-    return repo, link
-
-
-def _chained(tmp_path: Path) -> tuple[Path, Path]:
-    """The skills link points at another link, which points at a real directory in the repo."""
-    repo, link = _codex_skills_repo(tmp_path, Path("..") / "hop")
-    (repo / "real").mkdir()
-    (repo / "hop").symlink_to("real")
-    return repo, link
-
-
-def _dangling(tmp_path: Path) -> tuple[Path, Path]:
-    return _codex_skills_repo(tmp_path, Path("..") / "missing")
-
-
 def _generic_linked_parent(tmp_path: Path) -> tuple[Path, Path]:
     """A stub under a linked directory that is not an agent skills directory."""
     repo = _generic_repo(tmp_path, "docs/team (commands)", link_to="actual")
@@ -171,13 +139,10 @@ def _generic_linked_parent(tmp_path: Path) -> tuple[Path, Path]:
 
 
 @pytest.mark.parametrize("dry_run", [True, False])
-@pytest.mark.parametrize("layout", [_outward, _chained, _dangling, _generic_linked_parent],
-                         ids=["outward-skills-link", "chained-skills-link", "dangling-skills-link",
-                              "generic-dir-linked"])
-def test_only_an_in_repo_skills_directory_link_is_written_through(
-        tmp_path: Path, capsys, layout, dry_run: bool) -> None:
-    """M21.37 skills-link rule: any other link on a stub's path is an error, exit 1, nothing written through it."""
-    repo, link = layout(tmp_path)
+def test_a_stub_under_a_linked_directory_that_is_not_a_skills_directory_is_refused(
+        tmp_path: Path, capsys, dry_run: bool) -> None:
+    """M21.37: only an agent skills directory may be a link; skills-link shapes are in test_setup_writers_refuse_links."""
+    repo, link = _generic_linked_parent(tmp_path)
     before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
 
     with pytest.raises(SystemExit) as e:

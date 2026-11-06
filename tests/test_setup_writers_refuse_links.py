@@ -245,25 +245,75 @@ def test_pickup_regenerates_only_tracked_files_and_refuses_a_link(tmp_path: Path
     assert _tree(repo, outside) == before
 
 
-@pytest.mark.parametrize("alias", [".claude/skills", ".agents/skills"])
-def test_skill_links_resolve_through_a_skills_directory_alias_at_another_depth(tmp_path: Path, alias: str) -> None:
-    """The skills-link rule: a link made in a relocated directory points at the canonical skill from where it lands."""
-    repo, _outside_dir = _inited(tmp_path)
-    real = repo / "tools" / "deep" / "skills"   # depth 3, not the alias's 2
-    real.mkdir(parents=True)
-    (repo / alias).parent.mkdir(parents=True, exist_ok=True)
-    (repo / alias).symlink_to(Path("..") / "tools" / "deep" / "skills")
+def _skills_link(repo: Path, outside: Path, shape: str) -> Path:
+    """The target to link a skills directory to, by ``shape``; the real directory sits at depth 3, not 2."""
+    tools = repo / "tools"
+    (tools / "hop").symlink_to("deep")
+    (repo / "alias").symlink_to("tools")
+    return {
+        "relative-in-repo": Path("..") / "tools" / "deep" / "skills",
+        "absolute-in-repo": tools / "deep" / "skills",
+        "relative-chained": Path("..") / "tools" / "hop" / "skills",
+        "absolute-chained": tools / "hop" / "skills",
+        "absolute-under-linked-ancestor": repo / "alias" / "deep" / "skills",
+        "outward": outside / "skills",
+        "dangling": repo / "missing",
+    }[shape]
 
+
+SKILLS_LINK_SHAPES = {   # shape -> allowed; the one table of skills-directory link shapes (M21.37 skills-link rule)
+    "relative-in-repo": True,
+    "absolute-in-repo": True,
+    "relative-chained": False,
+    "absolute-chained": False,
+    "absolute-under-linked-ancestor": False,
+    "outward": False,
+    "dangling": False,
+}
+SKILLS_RUNNERS = {
+    "refresh-stubs": lambda repo: refresh_stubs.main(["--repo-root", str(repo)]),
+    "upgrade": lambda repo: upgrade.main(["--repo-root", str(repo)]),
+    "upgrade --dry-run": lambda repo: upgrade.main(["--repo-root", str(repo), "--dry-run"]),
+}
+
+
+@pytest.mark.parametrize("runner", list(SKILLS_RUNNERS))
+@pytest.mark.parametrize("skills", [".agents/skills", ".claude/skills"])
+@pytest.mark.parametrize("shape", list(SKILLS_LINK_SHAPES))
+def test_every_entry_point_gives_the_same_skills_link_verdict(
+        tmp_path: Path, capsys, shape: str, skills: str, runner: str) -> None:
+    """refresh-stubs, upgrade and upgrade --dry-run: the same verdict and line for the same link, the upgrade's
+    mirror keeping the link's own shape; allowed links write skill links that resolve from where they land."""
+    repo, outside = _inited(tmp_path)
     run_init(target=repo, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None)
-    (repo / ".claude" / "skills" / "specyrd-brief").unlink()   # refresh-stubs must remake it the same way
-    refresh_stubs.main(["--repo-root", str(repo)])
+    (repo / "tools" / "deep").mkdir(parents=True)
+    shutil.copytree(repo / skills, outside / "skills", symlinks=True)
+    shutil.move(repo / skills, repo / "tools" / "deep" / "skills")
+    canonical = repo / ".agents" / "skills" / "specyrd-validate" / "SKILL.md"
+    target = _skills_link(repo, outside, shape)
+    (repo / skills).symlink_to(target)
+    if canonical.exists():
+        canonical.write_text("stale\n", encoding="utf-8")
+    capsys.readouterr()
+    before = _tree(repo / "tools", outside)
 
-    links = sorted((repo / ".claude" / "skills").iterdir())
-    assert links and (repo / alias).is_symlink()
-    for link in links:
-        assert link.is_symlink(), link
-        assert link.resolve() == (repo / ".agents" / "skills" / link.name).resolve()
-        assert (link / "SKILL.md").is_file()
+    try:
+        code = SKILLS_RUNNERS[runner](repo)
+    except SystemExit as e:
+        code = e.code
+    err = capsys.readouterr().err
+
+    if not SKILLS_LINK_SHAPES[shape]:
+        refusal = f"error: {repo / skills} is a symlink (to {target}), not a link to a real directory in the repository"
+        assert code == 1 and refusal in err.splitlines(), err
+        assert "Traceback" not in err and _tree(repo / "tools", outside) == before
+        return
+    assert code in (None, 0), err
+    if runner != "upgrade --dry-run":
+        assert canonical.read_text(encoding="utf-8") != "stale\n"
+        links = sorted((repo / ".claude" / "skills").iterdir())
+        assert links and all(link.resolve() == (repo / ".agents" / "skills" / link.name).resolve()
+                             and (link / "SKILL.md").is_file() for link in links)
 
 
 def test_refresh_stubs_refuses_a_linked_stub_and_still_makes_the_skill_links(tmp_path: Path, capsys) -> None:
