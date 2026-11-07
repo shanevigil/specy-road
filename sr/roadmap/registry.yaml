@@ -128,18 +128,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-lists-every-required-change
-    node_id: M22.18
-    branch: feature/rm-reviewer-lists-every-required-change
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/review_record_write.py
-      - tests/test_role_prompt_reviewer.py
-      - docs/orchestration-reviewer-output.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: sandbox-rc4-final-polish
     node_id: M22.22
     branch: feature/rm-sandbox-rc4-final-polish
@@ -168,6 +156,7 @@ entries:
       - tests/test_validate_touch_zones.py
       - docs/roadmap-authoring.md
       - CHANGELOG.md
+      - tests/move_node_helpers.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -182,6 +171,7 @@ entries:
       - tests/test_outline_group_cli.py
       - tests/test_brainstorm_promote_judgement.py
       - CHANGELOG.md
+      - tests/test_scaffold_planning.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -205,6 +195,46 @@ entries:
       - specy_road/archive_ops.py
       - tests/test_safe_write.py
       - tests/test_archive_ops.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: local-roster-and-codex-reviewer-isolation
+    node_id: M22.9
+    branch: feature/rm-local-roster-and-codex-reviewer-isolation
+    touch_zones:
+      - specy_road/roster_local.py
+      - specy_road/worker_adapter_codex.py
+      - tests/test_roster_worktree_dry_run.py
+      - tests/test_harness_launch.py
+      - docs/orchestration-roster.md
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+      - specy_road/review_record_write.py
+      - tests/test_review_record_write.py
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: accept-policy-for-all-open-claims
+    node_id: M22.34
+    branch: feature/rm-accept-policy-for-all-open-claims
+    touch_zones:
+      - specy_road/review_policy_pin.py
+      - specy_road/bundled_scripts/review_cli.py
+      - docs/orchestration-review.md
+      - tests/test_review_policy_pin.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: rc-publishes-wheel-url-and-project-urls
+    node_id: M22.36
+    branch: feature/rm-rc-publishes-wheel-url-and-project-urls
+    touch_zones:
+      - .github/workflows/release-publish.yml
+      - pyproject.toml
+      - README.md
+      - docs/install-release-candidates.md
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil

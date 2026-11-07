@@ -371,6 +371,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- The reviewer prompt (`review delegate`, and `prompt --role reviewer` on `--channel cli` and `paste`) tells the
+  reviewer to list every required change it can find in one review, re-scan the diff for further instances of each
+  defect class (other inputs, call sites, files) and any acceptance line not fully met, and that a later round
+  should find nothing it could have reported now.
 - **Security:** a model observed to bypass specy-road's guidance is excluded from the executor and reviewer roles
   while `policy.signed_reviews` is on (M21.44). A profile may record `guidance_bypass_observed: {date, harness,
   evidence}` (any other shape makes it invalid; `models show` prints it); the shipped **composer-2.5** profile does,
