@@ -8,14 +8,18 @@ time, which is late. These warnings catch them at `specy-road validate`.
 
 from __future__ import annotations
 
+import subprocess
 import time
 from pathlib import Path
 
 import pytest
 
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.validate_touch_zones import (
+    notice_stale_sheet_zones,
     warn_touch_zones_match_nothing,
 )
+from tests.move_node_helpers import NK_A1, base_fixture, run_cli
 
 
 def _node(**over) -> dict:
@@ -241,3 +245,75 @@ def test_a_misspelled_git_root_zone_still_warns(nested_project, capsys) -> None:
 
     assert "M1.1" in err
     assert "specy_road/typo.py" in err
+
+
+def _git(top: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+        cwd=top, check=True, capture_output=True,
+    )
+
+
+@pytest.mark.parametrize("staged", [False, True], ids=["unstaged", "staged"])
+@pytest.mark.parametrize("status", ["Not Started", "In Progress", "Complete"])
+def test_a_zone_naming_a_missing_planning_sheet_gets_a_stdout_notice(
+    tmp_path: Path, status: str, staged: bool
+) -> None:
+    """Only an absent literal sheet path, in either form, is noticed; --strict ignores it."""
+    top, project = tmp_path, tmp_path / "sr"
+    base_fixture(project)
+    current = f"planning/M1.1_alpha-work_{NK_A1}.md"
+    gone = f"planning/M9.9_old-name_{NK_A1}.md"
+    (project / gone).write_text("# old\n", encoding="utf-8")
+    (project / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\n"
+        "require_implementation_review_before_finish: false\n",
+        encoding="utf-8",
+    )
+    for doc in ("constitution/purpose.md", "constitution/principles.md", "docs/supply-chain-security.md"):
+        (project / doc).parent.mkdir(exist_ok=True)
+        (project / doc).write_text("# doc\n", encoding="utf-8")   # the AGENTS.md load order
+    _git(top, "init", "-q", "-b", "main")
+    assert run_cli(project, "refresh-stubs").returncode == 0  # no AGENTS.md warning under --strict
+    _git(top, "add", "-A")
+    _git(top, "commit", "-q", "-m", "init")
+    if staged:
+        _git(top, "rm", "-q", f"sr/{gone}")
+    else:
+        (project / gone).unlink()
+    zones = [gone, f"sr/{gone}", current, f"sr/{current}", "planning/*.md", "sr/planning/*.md"]
+    chunk = project / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n["id"] == "M1.1":
+            n.update(status=status, touch_zones=zones)
+        elif n["id"] == "M1" and status == "Complete":
+            n["status"] = status   # no stale-parent warning under --strict
+    write_json_chunk(chunk, nodes)
+
+    r = run_cli(project, "validate", "--strict")
+
+    notices = [ln for ln in r.stdout.splitlines() if "names a planning sheet" in ln]
+    assert notices == [
+        f"roadmap: notice — M1.1: touch zone {z!r} names a planning sheet that does not exist; "
+        f"M1.1's sheet is now {p + current!r} (specy-road edit-node M1.1 --set touch_zones=<paths>)"
+        for z, p in ((gone, ""), (f"sr/{gone}", "sr/"))
+    ]
+    assert "planning sheet" not in r.stderr
+    if status == "In Progress":   # keeps its existing stderr match-nothing warning
+        assert "match nothing in the working tree" in r.stderr
+    else:
+        assert r.returncode == 0, r.stderr
+
+
+def test_a_not_started_missing_non_sheet_zone_gets_no_new_notice(
+    tmp_path: Path, capsys
+) -> None:
+    nodes = [_node(status="Not Started", touch_zones=["src/feature/new_module.py"])]
+
+    warn_touch_zones_match_nothing(nodes, tmp_path)
+    notice_stale_sheet_zones(nodes, tmp_path)
+
+    out = capsys.readouterr()
+    assert out.out == ""
+    assert out.err == ""
