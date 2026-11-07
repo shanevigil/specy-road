@@ -60,18 +60,18 @@ def _apply_chunk_edits(root: Path, plan: ArchivePlan) -> bool:
 
 
 def _hold_planning_sheets(stack: contextlib.ExitStack, root: Path, plan: ArchivePlan) -> list[tuple[dict, Any]]:
-    """Walk to each planning sheet and its archived place before the archive changes anything; skip any
-    sheet that is already gone. Returns ``(move, rename)`` pairs; each rename runs later through the
-    directories held now (:func:`specy_road.safe_write.moving`: in-repo links followed as spelled, a link
-    out or a swap refused).
+    """Walk to each planning sheet and its archived place before the archive changes anything; skip a
+    sheet only when that held walk proves it gone. Returns ``(move, rename)`` pairs; each rename runs later
+    through the directories held now (:func:`specy_road.safe_write.moving`: in-repo links followed as
+    spelled, a link out or a swap refused).
     """
     from specy_road.archive_plan import planning_moves
 
-    return [
+    walked = [
         (move, stack.enter_context(safe_write.moving(root, root / move["origin"], root / move["stored"])))
         for move in planning_moves(plan)
-        if (root / move["origin"]).is_file()
     ]
+    return [(move, rename) for move, rename in walked if rename is not None]
 
 
 def _refuse_links_out(root: Path, plan: ArchivePlan) -> None:

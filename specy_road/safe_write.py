@@ -442,17 +442,27 @@ def moving(root: Path, src: Path | str, dst: Path | str):
     ``root`` is refused, and ``dst``'s missing parents are made. Every directory used stays open: a swap
     during the walk is refused when the walk ends, so a caller can walk before its first change, and one
     after it is refused when the function runs (it checks again first). The function renames through the
-    held directories, and when ``src`` is itself a link it then unlinks that entry. Without directory
-    descriptors (Windows), the names are resolved when the function runs and M21.37's re-check applies.
+    held directories, and when ``src`` is itself a link it then unlinks that entry.
+
+    ``None`` is yielded instead when the walk proves ``src`` absent (a directory or the file missing on its
+    way, links followed as above): only the held walk decides that, never a path checked beforehand, so a
+    swap cannot turn a sheet into a skip. Without directory descriptors (Windows), the names are resolved,
+    ``src`` is absent when it is not a file by path, and M21.37's re-check applies when the function runs.
     """
     base, sparts = _locate(root, src)
     if not _dir_fds():
-        yield lambda: _move_by_path(root, Path(src), Path(dst), base)
+        yield (lambda: _move_by_path(root, Path(src), Path(dst), base)) if Path(src).is_file() else None
         return
     with contextlib.ExitStack() as stack:
-        links = stack.enter_context(_held(base, sparts[:-1], False, follow=True))
-        origin = links[-1][0] / sparts[-1]
-        froms, source = _hold_file(stack, base, sparts, False)
+        try:
+            links = stack.enter_context(_held(base, sparts[:-1], False, follow=True))
+            origin = links[-1][0] / sparts[-1]
+            froms, source = _hold_file(stack, base, sparts, False)
+        except FileNotFoundError:   # a directory on the way, or a link's target, is missing
+            source = None
+        if source is None or _kind(source, FILE, froms[-1][1]) is None:
+            yield None
+            return
         tos, target = _hold_file(stack, base, _locate(root, dst, base)[1], True)
         checks = ((origin, links, _ENTRY), (source, froms, FILE), (target, tos, FILE))
 

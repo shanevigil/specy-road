@@ -193,6 +193,39 @@ def test_a_directory_swapped_for_a_link_before_a_sheet_moves_is_refused(
     assert shape == "sheet" or real(origin).is_symlink()
 
 
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("state", ["gone", "swapped-before-the-walk"])
+def test_a_sheet_is_skipped_only_when_the_held_walk_finds_it_gone(
+        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, state: str) -> None:
+    """A sheet that is really gone is skipped. One that only looks gone because ``planning`` was swapped for
+    a link out right after the archive's link pre-check resolved the sheet (before any walk) is refused,
+    and the roadmap is unchanged."""
+    [move] = planning_moves(plan_archive(repo, "M0.1"))
+    origin, outside, planning = repo / move["origin"], tmp_path / "outside", repo / "planning"
+    text = origin.read_bytes()
+    outside.mkdir()   # no sheet there: a path check would read the sheet as gone
+    before = _roadmap(repo)
+    if state == "gone":
+        origin.unlink()
+        assert archive_node(repo, "M0.1")["planning"] == []
+        return
+    resolve = Path.resolve
+
+    def racing_resolve(self, *args, **kwargs):
+        resolved = resolve(self, *args, **kwargs)
+        if self == origin and not planning.is_symlink():   # the pre-check is done: one swap
+            planning.rename(repo / "planning.real")
+            planning.symlink_to(outside)
+        return resolved
+
+    monkeypatch.setattr(Path, "resolve", racing_resolve)
+    with pytest.raises(SafeWriteError, match=f"^{planning} is a symlink \\(to {outside}\\), not a"):
+        archive_node(repo, "M0.1")
+    monkeypatch.undo()
+    assert _roadmap(repo) == before and not (repo / "roadmap" / "archive" / "chunks").exists()
+    assert not list(outside.iterdir()) and (repo / "planning.real" / origin.name).read_bytes() == text
+
+
 @pytest.mark.parametrize(
     "prepare,node_id",
     [
