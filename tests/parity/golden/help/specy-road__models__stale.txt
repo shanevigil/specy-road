@@ -1,0 +1,15 @@
+$ specy-road models stale --help
+exit: 0
+--- stdout ---
+usage: specy-road models stale [-h] [--max-age-days MAX_AGE_DAYS] [--today TODAY] [--json]
+                               [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --max-age-days MAX_AGE_DAYS
+  --today TODAY         YYYY-MM-DD, for reproducible checks
+  --json
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

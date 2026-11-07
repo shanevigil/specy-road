@@ -1,0 +1,15 @@
+$ specy-road worker timeline --help
+exit: 0
+--- stdout ---
+usage: specy-road worker timeline [-h] [--json] [--repo-root DIR] W|NODE_ID
+
+positional arguments:
+  W|NODE_ID
+
+options:
+  -h, --help       show this help message and exit
+  --json
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

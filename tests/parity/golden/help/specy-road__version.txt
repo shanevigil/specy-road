@@ -1,0 +1,5 @@
+$ specy-road version --help
+exit: 0
+--- stdout ---
+specy-road <VERSION>
+--- stderr ---

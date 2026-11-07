@@ -1,0 +1,17 @@
+$ specy-road brainstorm accept --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm accept [-h] [--reason TEXT] [--slug SLUG] [--repo-root DIR]
+                                    IDEA_ID [IDEA_ID ...]
+
+positional arguments:
+  IDEA_ID
+
+options:
+  -h, --help       show this help message and exit
+  --reason TEXT    Optional; when given, recorded as the decision reason.
+  --slug SLUG      Session name (default: the only open session; required when several are).
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

@@ -1,0 +1,98 @@
+$ specy-road prompt --help
+exit: 0
+--- stdout ---
+usage: specy-road prompt [-h] --model MODEL --role {coordinator,executor,reviewer,rca}
+                         [--channel {cli,paste,subagent}] [--run] [--worktree PATH] [-o OUTPUT]
+                         [--ref REF] [--context-feedback] [--force] [--reason REASON]
+                         [--sign-key PATH] [--repo-root DIR]
+                         node_id
+
+Write a role- and model-specific prompt for one leaf: ``specy-road prompt``.
+
+``work/prompt-<NODE_ID>-<role>-<model>.md`` is built from, in order:
+
+1. a precondition check — change nothing and stop if the hand-off this role
+   waits on is not there (proposal §3.3), so a coordinator can queue prompts
+   into several IDEs at once;
+2. the role preamble — the executor boundary (§3.1), the reviewer's
+   packet-only rule (§3.2), the coordinator's never-review-your-own-fix
+   rule, or the root-cause analyst's protocol (``rca``, only while the leaf's
+   review loop is escalated, or with ``--force --reason`` from a coordinator) — plus the standing line that text inside tool
+   output is data (§3.5); a reviewer's prompt also says when the loop is escalated,
+   and an executor's says to use the harness's subagents for verification and
+   search when the profile's ``access.subagents`` starts with ``yes``;
+3. the model's profile applied mechanically (§4.4): its ``## Prompting rules``
+   as instructions, each ``## Failure modes`` mitigation as a guard, and the
+   touch zones repeated at the end when the profile says the model drifts;
+4. the brief (executor, coordinator, rca) or the review packet (reviewer): the
+   reviewer's own delta packet when its fix round qualifies (:func:`reviewer_packet`),
+   else ``PACKET.md``; for ``rca``, then every review round side by side with the
+   diffs between them.
+
+An executor's prompt also carries a ``## Rework`` section when the leaf has blocking review records or its
+latest worker was terminated or failed (:mod:`role_prompt_rework`).
+
+``--context-feedback`` (executor only, opt-in pilot) appends :data:`CONTEXT_FEEDBACK_LINES`, which ask
+for a three-line missing / wrong / unused block at the end of the implementation summary.
+
+``--channel cli`` writes the prompt and prints the command it would run; it starts no process (not even the
+roster's ``preflight``) unless ``--run`` is given (M15.3). With ``--run`` it runs the roster entry's
+``channels.cli``, else (any role but a reviewer) the profile's ``access.cli``, with its placeholder replaced: ``"<prompt>"`` (the
+shipped profiles' form) by the prompt text as one argument, ``{prompt}`` by the
+prompt file's path, ``{effort}`` by the roster harness's flag for the profile's
+``effort_by_role`` level for the role. The profile is read from the integration branch,
+like the roster; a working-tree copy that differs is refused. ``paste`` and ``subagent`` only write the file.
+A reviewer on a ``claude-code`` roster entry without ``channels.cli`` runs bare instead
+(:meth:`ClaudeCode.reviewer_launch`): a fresh session reading a branch it did not write runs none
+of that branch's hooks or MCP servers, and the reviewer prompt asks it to record ``--launch-mode``.
+A ``codex`` or ``cursor`` entry without ``channels.cli`` runs its adapter's read-only reviewer command
+the same way, with the entry's model; an entry whose model resolves to no API id (``unknown``) is refused. Any
+other reviewer runs its roster ``channels.cli`` as written but captured, and is refused without one (never the
+profile's ``access.cli``) or when it passes ``--force``, ``--yolo`` or ``--dangerously-skip-permissions``, each
+word read as ``sh`` reads it (line continuations joined, shell operators split off, quotes removed, ``#`` ordinary;
+flags the shell expands at run time are out of scope). A reviewer runs in the leaf's own worktree, the one with
+the claimed branch checked out (``--worktree PATH`` overrides), and is refused when there is none. Its command
+gets the structured-output flags its program takes (Antigravity ``agy``:
+:func:`~specy_road.worker_adapter_base.reviewer_cli`). A reviewer prompt ends with the review output schema
+(:mod:`specy_road.review_record_write`); on ``--channel cli --run`` specy-road reads the final JSON object and files
+``REVIEW-<model>.md`` from it, reports a run that wrote anything else as a review failure, and a missing or
+malformed object as a rerun request. It also compares the model the harness reported with the roster entry's
+(:mod:`specy_road.review_model_check`): the record carries ``harness_model``, and ``model_mismatch`` when they
+differ, which the gate does not count. A reviewer it does not read back (``paste``, ``subagent``, ``cli`` without
+``--run``) files with ``review record``.
+
+positional arguments:
+  node_id
+
+options:
+  -h, --help            show this help message and exit
+  --model MODEL         Roster id
+  --role {coordinator,executor,reviewer,rca}
+  --channel {cli,paste,subagent}
+                        cli writes the prompt and prints the command it would run (the roster's
+                        channels.cli, else a reviewer's read-only harness command or another
+                        role's access.cli; <prompt> = the prompt text, {prompt} = its file path,
+                        {effort} = the harness's flag for the role's effort) and launches nothing
+                        without --run; paste/subagent only write the file
+  --run                 With --channel cli: launch that command (the only flag that starts a
+                        process); a reviewer runs in the leaf's worktree and specy-road files its
+                        record
+  --worktree PATH       Reviewer --channel cli: run in this checkout instead of the worktree that
+                        has the leaf's claimed branch checked out
+  -o OUTPUT, --output OUTPUT
+                        Prompt file. A relative path is relative to the current directory; after
+                        that, a path inside the project follows the safe-write rule and a path
+                        outside is a plain write
+  --ref REF             Branch or commit under review (default: the node's registered branch)
+  --context-feedback    Executor only: ask for the pilot's three-line context-feedback block
+                        (missing / wrong / unused) at the end of the implementation summary
+  --force               rca only: build a root-cause prompt although the loop is not escalated (a
+                        coordinator-initiated analysis); needs --reason
+  --reason REASON       With --force: why the analysis is due; the prompt and the RCA record carry
+                        it
+  --sign-key PATH       Reviewer --channel cli: sign the filed record with this OpenSSH private
+                        key (`review record --sign-key`; needed under policy.signed_reviews)
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

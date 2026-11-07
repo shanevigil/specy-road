@@ -1,0 +1,57 @@
+# Who may coordinate, execute, and review leaves, and what the implementation
+# review gate requires. See docs/orchestration.md.
+# A missing file means the policy below with a roster of only the human entry.
+# Starter written by `specy-road init project` or
+# `specy-road validate --generate-orchestration`: edit it, then commit it to the
+# integration branch (the gate reads the committed copy).
+
+version: 1
+# A review counts toward the gate only when its model is listed here with the
+# reviewer role (or is the substitute in an active substitution below).
+# Add each model you review with, e.g.:
+#   - id: claude-opus-5.5
+#     family: anthropic
+#     roles: [reviewer, executor]
+#     harness: claude-code               # what `worker delegate` launches it on
+#     public_key: ssh-ed25519 AAAA...   # for signed_reviews
+roster:
+  - id: human
+    family: human
+    roles: [coordinator, reviewer]
+  # The model that implements leaves. Rename id and family to the model you run
+  # (`specy-road models list` shows the shipped profiles); add `reviewer` to its
+  # roles, or add a second entry, to let a model review.
+  - id: my-executor
+    family: my-vendor
+    roles: [executor]
+policy:
+  # Approving review records at the branch HEAD that mark-implementation-reviewed
+  # needs. Raise to 2 and set reviewers_distinct_families: true for independent
+  # review by two model families.
+  reviewers_required: 1
+  reviewers_distinct_families: false
+  reviewer_fresh_session: true
+  # true: a review counts only when signed with the reviewer's key and the
+  # roster entry has its public_key (ssh-keygen -Y; see docs/orchestration.md).
+  signed_reviews: false
+  # true: an approval counts only when its commands_rerun lists a command the
+  # reviewer re-ran (the interactive human approval is exempt). A model: human
+  # record is trusted as written unless signed_reviews is on, so under unsigned
+  # policy this is cooperative attestation, not enforcement.
+  reviewer_reruns_required: false
+  # Most workers `specy-road worker delegate` keeps running at once.
+  max_workers: 2
+  # Escalate a leaf's review loop for root-cause analysis (`specy-road prompt
+  # <ID> --role rca`) after this many consecutive rounds blocking on one
+  # acceptance id, or this many rounds in total since the last analysis.
+  escalate_same_acceptance_blocks: 3
+  escalate_review_rounds: 5
+# Recorded decisions to let a named substitute review while the usual reviewer
+# is unavailable, e.g.:
+#   - slot: reviewer-openai
+#     use: gpt-6-astra
+#     scope: [M2.3, M2.5]
+#     decided: 2026-01-15
+#     expires_when: 'gpt-5.6-sol has capacity'
+#     expires: 2026-03-01
+substitutions: []

@@ -1,0 +1,17 @@
+$ specy-road worker terminate --help
+exit: 0
+--- stdout ---
+usage: specy-road worker terminate [-h] [--orphaned] [--json] [--op-id ID] [--repo-root DIR] [W]
+
+positional arguments:
+  W
+
+options:
+  -h, --help       show this help message and exit
+  --orphaned       Every idle/completed worker whose leaf is over
+  --json
+  --op-id ID       Idempotency key; a retry returns the first result (one W only)
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

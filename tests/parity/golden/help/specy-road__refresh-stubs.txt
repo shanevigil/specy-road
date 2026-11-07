@@ -1,0 +1,49 @@
+$ specy-road refresh-stubs --help
+exit: 0
+--- stdout ---
+usage: specy-road refresh-stubs [-h] [--repo-root DIR] [--dry-run] [--prune] [--diff]
+
+Refresh the specyrd-managed IDE stubs in a consumer repo from this version.
+
+``specyrd init`` copies the command stubs once and then skips anything that
+already exists, so after ``pip install -U specy-road`` a repo keeps stubs pinned
+to whatever version scaffolded them, and never sees the ones that shipped since.
+There was no command for this. ``specy-road update`` fast-forwards a git *clone*
+of the toolkit and says so; ``refresh-schemas`` covers ``schemas/`` and nothing
+else. That left ``init --force`` as the only apparent route, which is how a
+consumer's hand-authored ``CLAUDE.md`` came to be destroyed.
+
+This is the missing middle, and it is the same shape as ``refresh-schemas``: it
+rewrites exactly the paths ``.specyrd/manifest.json`` records as managed, adds
+stubs this version ships that the manifest predates, re-applies the managed
+blocks in the consumer-owned files, and touches nothing else. Idempotent, so it
+is safe to run on every upgrade.
+
+Orphans are **reported, not deleted**, unless ``--prune`` asks for it. Re-running
+``init`` with a narrower ``--role`` replaces the manifest's path list wholesale,
+leaving stubs on disk that dropped out of it; those are the consumer's to remove,
+and quietly deleting a file we no longer claim to manage is the mistake this
+command exists to undo. ``--prune`` deletes exactly the orphans listed, which are
+paths the manifest recorded as the kit's: in practice, the pre-0.3.0
+``*/commands/`` stubs that every upgrading repo otherwise removes by hand.
+
+Every write follows the safe-write rule from the repository root, with one
+exception: an agent skills directory may be a symlink to the other, with the
+exact text ``../.agents/skills`` (at ``.claude/skills``) or ``../.claude/skills``
+(at ``.agents/skills``) (``specyrd_skills.skill_path``). A stub, skill file, skill link or ignore file
+refused for a link prints ``error: <why>`` and the command exits 1; the rest
+is still written. ``AGENTS.md`` or ``CLAUDE.md`` linked out of the repository
+stays a ``refused`` report line.
+
+options:
+  -h, --help       show this help message and exit
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+  --dry-run        Print what would be written; do not modify files.
+  --prune          Delete stubs the manifest recorded that this version no longer installs (e.g.
+                   the pre-0.3.0 .cursor/commands/specyrd-*.md) and verbatim .cursor/.codex copies
+                   of the skills; with --dry-run, list them.
+  --diff           Print a unified diff of every stub, skill and managed block that would change;
+                   implies --dry-run.
+--- stderr ---

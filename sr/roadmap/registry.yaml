@@ -80,28 +80,7 @@ entries:
       - tests/test_upgrade_preview.py
       - docs/upgrading.md
       - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
-    node_id: M16.1.1
-    branch: feature/rm-parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
-    touch_zones:
-      - tests/parity/
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
-    node_id: M16.1.4
-    branch: feature/rm-constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
-    touch_zones:
-      - constitution/purpose.md
-      - constitution/principles.md
-      - docs/philosophy-and-scope.md
-      - AGENTS.md
-      - docs/toolkit-development.md
-      - sr/constitution/purpose.md
-      - sr/constitution/principles.md
+      - specy_road/sibling_repos.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -150,14 +129,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: parity-harness-a-review-gate-decision-table-covering-every-review-policy
-    node_id: M16.1.2
-    branch: feature/rm-parity-harness-a-review-gate-decision-table-covering-every-review-policy
-    touch_zones:
-      - tests/parity/review_gate/
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: worker-cost-and-stale-presence
     node_id: M22.13
     branch: feature/rm-worker-cost-and-stale-presence
@@ -170,6 +141,7 @@ entries:
       - CHANGELOG.md
       - specy_road/worker_adapter_base.py
       - specy_road/bundled_scripts/session_cli.py
+      - tests/test_session_overlap.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -203,6 +175,21 @@ entries:
       - tests/test_worker_sandbox.py
       - docs/orchestration-workers.md
       - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer
+    node_id: M16.1.5
+    branch: feature/rm-agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer
+    touch_zones:
+      - AGENTS.md
+      - CLAUDE.md
+      - docs/toolkit-development.md
+      - specy_road/templates/specyrd/agents-rules.md
+      - docs/context-regressions.yaml
+      - tests/test_agent_start_up_reading.py
+      - .cursor/rules/027-version-numbers-require-human.mdc
+      - .cursor/rules/030-git-workflow-management.mdc
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

@@ -1,0 +1,29 @@
+$ specy-road rebalance-chunks --help
+exit: 0
+--- stdout ---
+usage: specy-road rebalance-chunks [-h] [--repo-root DIR] [--dry-run] [--normalize]
+
+Power-user maintenance: re-pack roadmap chunks into balanced JSON files. Normal authoring never
+needs this command — :mod:`roadmap_chunk_router` auto-routes new nodes into the right chunk on
+every write. Use ``specy-road rebalance-chunks`` after a heavy manual edit, after restoring an old
+branch, or to consolidate fragmented part-files into one chunk per phase. Algorithm
+(deterministic): 1. Load merged nodes (already in outline order). 2. Group nodes by their phase
+ancestor (or "no phase" bucket). 3. For each group, in tree order, first-fit pack into chunks of
+``<= roadmap_json_chunk_max_lines``. 4. The first chunk per phase keeps the existing primary chunk
+path; overflow chunks use ``<phase_stem>__<6hex-of-first-node-key>.json``. 5. Build the new
+``manifest.json`` ``includes`` list in tree order. 6. Apply via :class:`AtomicWritePlan` so
+failure rolls back to the pre-call state. Idempotent: running on an already-balanced repo is a no-
+op. ``--normalize`` skips the re-pack: every included chunk is re-rendered in canonical form
+(sorted keys, ``{"nodes": [...]}``) with its nodes in the same chunk and the same order, and the
+manifest is left alone. It is the deliberate, one-time version of the rewrite the first edit of a
+hand-authored chunk does.
+
+options:
+  -h, --help       show this help message and exit
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+  --dry-run        Print the rebalance summary without writing.
+  --normalize      Rewrite every chunk in canonical key order without moving a node or touching
+                   the manifest; a no-op on already-canonical chunks.
+--- stderr ---

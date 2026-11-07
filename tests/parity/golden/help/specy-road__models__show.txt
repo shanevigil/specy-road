@@ -1,0 +1,16 @@
+$ specy-road models show --help
+exit: 0
+--- stdout ---
+usage: specy-road models show [-h] [--section SECTION] [--json] [--repo-root DIR] model
+
+positional arguments:
+  model              Roster id or profile api_id
+
+options:
+  -h, --help         show this help message and exit
+  --section SECTION  Body section to print (default: Prompting rules)
+  --json
+  --repo-root DIR    Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                     .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                     root, else the current directory).
+--- stderr ---

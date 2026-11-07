@@ -1,0 +1,8 @@
+$ specy-road validate --repo-root <ROOT>
+exit: 0
+--- stdout ---
+OK: roadmap and registry validate.
+--- stderr ---
+agents: warning — AGENTS.md has no specy-road section, so agents here miss the current coordination rules. Run: specy-road refresh-stubs (it needs no stub pack and touches only managed blocks and the files specy-road owns)
+warning: each of 3 open leaf/leaves (M2, M1, M0.2) has no acceptance criteria; with require_implementation_review_before_finish on, a review of it cannot attest per-criterion results
+  fix each with: specy-road edit-node <NODE_ID> --set acceptance=..., one --set per criterion

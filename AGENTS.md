@@ -26,7 +26,7 @@ The dogfood tree is a **test-fixture roadmap**, not the canonical product roadma
 
 **Toolkit branch base:** `dev` is the day-to-day integration branch. When maintainers are batching work on an active `WIP/improvements-x-y-z` line toward a release or release candidate, **create your short-lived topic branch from that WIP branch** (sync with `git fetch` first, check out the WIP, `git pull`, then `git checkout -b feature/<slug>` or equivalent)—not from `dev` in isolation, so the branch already contains WIP-only integration and docs. If there is no such active WIP for your change, branch from `dev`. The same policy is spelled out in [`docs/toolkit-development.md`](docs/toolkit-development.md#maintainer-workflow-vs-consumer-workflow), `CLAUDE.md` (Repository git workflow), and (for Cursor) [`.cursor/rules/030-git-workflow-management.mdc`](.cursor/rules/030-git-workflow-management.mdc).
 
-For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/git-workflow.md). A first-class roadmap for the toolkit itself is intentionally not defined here yet.
+For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/git-workflow.md). The toolkit's own product roadmap lives under `sr/` on the `WIP/improvements-x-y-z` line (`.specyrd/manifest.json` records `project_root: sr`); it is stripped before promotion and is not in the tree on `main`.
 
 If this repository ran **`specyrd init`**, you may have skills under `.agents/skills/<name>/SKILL.md` (with `.claude/skills/` symlinks for Claude Code, or a flat stub directory for `--ai generic`; `.cursor/commands/` and `.claude/commands/` only in repos initialised before 0.3.0) — they delegate to `specy-road` / bundled scripts.
 
