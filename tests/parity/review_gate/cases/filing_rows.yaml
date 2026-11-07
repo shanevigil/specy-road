@@ -1,0 +1,20 @@
+# `review record` filed from a reviewer's final message (M8.3's one-shot filing path), recorded at pickup.
+#
+# The final message is a Claude Code stream-json turn whose `result` text is `message`, with {answer} replaced by
+# the reviewer's JSON object (tests/review_repo_helpers.review_output: opus approves HEAD, notes "## Findings\n\nnone").
+# `notes` replaces the answer's notes. review_answer.final_answer reads it and review_record_write.file_review
+# files it; `state` is the outcome, then the gate is evaluated as in gate_rows.yaml.
+rows:
+  - id: clean-json
+    message: "{answer}"
+    expect: {state: recorded, passed: true, approvals: 1, problems: 0}
+  - id: narration-before-the-json
+    message: "Review done. Verdict below.\n{answer}"
+    expect: {state: recorded, passed: true, approvals: 1, problems: 0}
+  - id: narration-around-the-json
+    message: "Review done. Verdict below.\n{answer}\nThanks for reading."
+    expect: {state: rerun, passed: false, approvals: 0, problems: 1}
+  - id: notes-break-a-notes-rule
+    message: "{answer}"
+    notes: "## Findings\n\nThe parser now accepts CRLF input and the new test covers it."
+    expect: {state: rerun, passed: false, approvals: 0, problems: 1}

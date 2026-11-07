@@ -1,0 +1,30 @@
+# Every key of `policy` in specy_road/templates/project/schemas/orchestration.schema.json, classified at pickup.
+# A gate input changes what evaluate_gate returns for a leaf and has a row in gate_rows.yaml that sets it; a
+# non-gate setting is read elsewhere (the reader is named). The test fails on an unclassified schema key, a key
+# classified twice or no longer in the schema, and a gate input that no row sets.
+gate_inputs:
+  reviewers_required: GateResult.required
+  reviewers_distinct_families: GateResult.distinct_families and orchestration_routing.routing_problem
+  reviewer_fresh_session: review_resumed_delta.fresh_session_problem
+  signed_reviews: review_gate's signature check and orchestrate_plan.guidance_problem
+  count_human_filed_reviews: review_gate's signature check (an unsigned human_filed record)
+  reviewer_reruns_required: review_gate.rerun_problem
+  delta_review: review_gate.delta_problem
+  reviewer_resumed_delta: review_resumed_delta.fresh_session_problem
+  integrity_gate: integrity_gate.integrity_gate_problems
+  red_green: integrity_gate.integrity_gate_problems (red_green.red_green_problems)
+  ratchet_paths: integrity.compare_integrity, whose findings the integrity gate reports
+  strong_review: review_strong.unmet_strong
+non_gate:
+  max_workers: worker delegate's concurrency limit
+  escalate_same_acceptance_blocks: review loop escalation to root-cause analysis (handoff status)
+  escalate_review_rounds: review loop escalation to root-cause analysis (handoff status)
+  escalate_when_converging: review loop escalation to root-cause analysis (handoff status)
+  max_fix_rounds: the fix-round budget handoff status reports (review_next_step)
+  stall_after_seconds: worker sync and worker list stall flag
+  milestone_full_review: finish's milestone rollup and review_target's milestone state, not a leaf's gate
+  quality_window: the digest's quality-by-area section
+  quality_area_depth: the digest's quality-by-area section
+  quality_threshold: the digest's quality-by-area section and quality routing
+  quality_routing: orchestrate plan's reviewer routing
+  garden_cadence_days: validate's gardening-due warning
