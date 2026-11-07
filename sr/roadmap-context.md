@@ -166,6 +166,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.32` Claude Code launch and resume deny edits to steering files `steering-claude-launch-denies` — task — **Not Started**
   - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
   - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Not Started**
+  - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Not Started**
+  - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Not Started**
+  - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
