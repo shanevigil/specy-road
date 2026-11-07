@@ -309,6 +309,7 @@ Do not pick these up.
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
 - `M22.1` on `feature/rm-group-into-member-id` since 2026-11-06
 - `M22.10` on `feature/rm-finish-keeps-local-claim-and-landing` since 2026-11-07
+- `M22.15` on `feature/rm-sandbox-runbook-rc4-drift` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
 - `M22.8` on `feature/rm-init-next-steps` since 2026-11-07
