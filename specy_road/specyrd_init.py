@@ -197,11 +197,12 @@ def _save_manifest(repo_root: Path, data: dict[str, Any]) -> None:
 def _refuse_unsafe_paths(repo_root: Path, rel_dest: Path, files_to_install: tuple[str, ...], agent: str) -> None:
     """Exit 1 naming the first path the safe-write rule refuses, before anything is written.
 
-    ``.specyrd/manifest.json``, both ignore files, and every stub, canonical
-    skill file and skill link (the skills-link rule, :func:`check_install_paths`).
+    ``.specyrd/manifest.json``, ``.specyrd/README.md``, both ignore files, and every
+    stub, canonical skill file and skill link (the skills-link rule, :func:`check_install_paths`).
     """
     try:
-        safe_write.check(repo_root, repo_root / ".specyrd" / "manifest.json")
+        for name in ("manifest.json", "README.md"):
+            safe_write.check(repo_root, repo_root / ".specyrd" / name)
         check_ignore_files(repo_root)
         check_install_paths(repo_root, rel_dest, files_to_install, agent=agent)
     except safe_write.SafeWriteError as e:
@@ -244,8 +245,7 @@ def _write_readme_and_gui_stub(
         if dry_run:
             written.append(str(readme_rel))
         else:
-            readme_path.parent.mkdir(parents=True, exist_ok=True)
-            readme_path.write_text(readme_content, encoding="utf-8")
+            safe_write.write(repo_root, readme_path, readme_content)
             written.append(str(readme_rel))
 
     # Never overwritten, not even with --force: this file lives in $HOME rather

@@ -154,20 +154,27 @@ def test_apply_plan_writes_nothing_when_one_change_lands_outside(tmp_path: Path)
     assert _tree(checkout, outside) == before and not any(copy.iterdir())
 
 
-@pytest.mark.parametrize("layout", ["file-link-out", "specyrd-dir-link", "gitignore-in-repo-link"])
-def test_specyrd_init_refuses_a_linked_manifest_or_ignore_file(tmp_path: Path, capsys, layout: str) -> None:
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("layout", ["file-link-out", "specyrd-dir-link", "gitignore-in-repo-link",
+                                    "readme-link-out", "readme-dangling"])
+def test_specyrd_init_refuses_a_linked_manifest_or_ignore_file(tmp_path: Path, capsys, layout: str,
+                                                               force: bool) -> None:
     repo, outside = _inited(tmp_path)
+    readme = repo / ".specyrd" / "README.md"
     path = {"file-link-out": repo / ".specyrd" / "manifest.json", "specyrd-dir-link": repo / ".specyrd",
-            "gitignore-in-repo-link": repo / ".gitignore"}[layout]
+            "gitignore-in-repo-link": repo / ".gitignore", "readme-link-out": readme, "readme-dangling": readme}[layout]
     target = {"file-link-out": outside / "theirs.json", "specyrd-dir-link": outside / "specyrd",
-              "gitignore-in-repo-link": repo / "mine.txt"}[layout]
+              "gitignore-in-repo-link": repo / "mine.txt", "readme-link-out": outside / "theirs.json",
+              "readme-dangling": outside / "made.md"}[layout]
     if layout == "specyrd-dir-link":
         shutil.copytree(repo / ".specyrd", outside / "specyrd")
     (repo / "mine.txt").write_text("mine\n", encoding="utf-8")
+    path.parent.mkdir(exist_ok=True)
     _relink(path, target)
 
-    _refused(lambda: run_init(target=repo, agent="cursor", dry_run=False, force=False, ai_commands_dir=None),
+    _refused(lambda: run_init(target=repo, agent="cursor", dry_run=False, force=force, ai_commands_dir=None),
              capsys, path, repo, outside)
+    assert not (outside / "made.md").exists()
 
 
 GENERATED_LAYOUTS = {
