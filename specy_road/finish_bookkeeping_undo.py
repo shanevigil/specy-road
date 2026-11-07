@@ -23,7 +23,6 @@ and unstaged edits survive.
 from __future__ import annotations
 
 import os
-import stat
 import subprocess
 import sys
 import tempfile
@@ -32,6 +31,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
 from specy_road.finish_work_artifacts import archived_implementation_summary_rel, cleanup_paths
 from specy_road.generated_files import GENERATED_COMMITTED
@@ -284,50 +284,33 @@ def restore_pre_commit(repo: Path, snap: PreCommitSnapshot) -> dict[str, str]:
     return failed
 
 
-#: What a path is, by ``lstat`` mode; the first match names it.
-_KINDS = ((stat.S_ISLNK, "a symlink"), (stat.S_ISDIR, "a directory"), (stat.S_ISREG, "a regular file"),
-          (stat.S_ISFIFO, "a FIFO"), (stat.S_ISSOCK, "a socket"), (stat.S_ISCHR, "a device"), (stat.S_ISBLK, "a device"))
-
-
 def write_destinations(repo: Path, node_id: str) -> list[tuple[Path, str]]:
     """``(base, relative path)`` for every path finish writes, moves or copies into before its commit.
 
     Under the repo root: every manifest chunk (leaf and rolled-up ancestors), the registry, ``roadmap.md``,
     ``roadmap-context.md``, the PR-body file and a tracked summary's ``work/done/`` archive. Under the
-    reviews root (the main checkout's from a linked worktree): an untracked summary's copy.
+    main checkout's project root (this one, or the main one from a linked worktree): an untracked
+    summary's copy, ``work/reviews/<node>/<summary>``, so ``work`` and ``work/reviews`` are walked too.
     """
     root = repo.resolve()
     chunks = [Path("roadmap", inc).as_posix() for inc in manifest_includes(root) if isinstance(inc, str)]
     rels = [*chunks, REGISTRY_REL.as_posix(), *GENERATED_COMMITTED, f"work/pr-body-{node_id}.md",
             archived_implementation_summary_rel(node_id)]
+    summary = Path(archived_implementation_summary_rel(node_id)).name
     return [*((root, rel) for rel in rels if not os.path.normpath(rel).startswith("..")),
-            (reviews_root(root), f"{node_id}/{Path(archived_implementation_summary_rel(node_id)).name}")]
+            (reviews_root(root).parents[1], f"work/reviews/{node_id}/{summary}")]
 
 
 def irregular_destination(base: Path, rel: str) -> str | None:
     """``"<path> is <kind>, not <expected>"`` when ``rel`` under ``base`` cannot be written as a plain file.
 
-    One rule for every component, walked from ``base`` with ``lstat`` (never
-    following a link): each must be absent, which ends the walk since finish
-    creates it, or the expected kind, a directory on the way and a regular file
-    at the end. Anything else refuses: a symlink (to anywhere), a regular file
-    where a directory belongs, a directory, FIFO, socket or device at the end,
-    and a component ``lstat`` cannot read (its error is named).
+    The :mod:`specy_road.safe_write` walk from ``base`` with ``lstat``: each
+    component absent (finish creates it) or a real directory on the way and a
+    regular file at the end. A symlink (to anywhere), a regular file where a
+    directory belongs, a directory, FIFO, socket or device at the end, and a
+    component ``lstat`` cannot read (its error is named) all refuse.
     """
-    parts = Path(os.path.normpath(rel)).parts
-    for i in range(1, len(parts) + 1):
-        path, expected = base.joinpath(*parts[:i]), "a regular file" if i == len(parts) else "a directory"
-        try:
-            mode = os.lstat(path).st_mode
-        except FileNotFoundError:
-            return None
-        except OSError as e:
-            return f"{path} cannot be inspected ({e.strerror or e}), not {expected}"
-        kind = next((name for test, name in _KINDS if test(mode)), "an unknown file type")
-        if kind != expected:
-            link = f" (to {os.readlink(path)})" if kind == "a symlink" else ""
-            return f"{path} is {kind}{link}, not {expected}"
-    return None
+    return safe_write.refused(base, rel)
 
 
 def refuse_irregular_destinations_or_exit(repo: Path, node_id: str) -> None:
