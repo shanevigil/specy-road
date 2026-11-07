@@ -27,7 +27,10 @@ roster:
     roles: [executor]
     profile: model-profiles/anthropic-claude/claude-opus-5-5.md
     harness: cursor
+    harness_model: claude-opus-5-5-high
     billing_route: cursor_subscription
+    # Same --force opt-in as grok-4.7-exec (decision D8): Cursor's sandbox does not start on this host (AppArmor).
+    cursor_force: true
   - id: grok-4.7-high
     family: xai
     roles: [reviewer]
