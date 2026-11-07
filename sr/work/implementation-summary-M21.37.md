@@ -452,13 +452,41 @@ Commit `18fd2053`.
 - Deep restore: the capsule path, the unpacked chunk, `refs/<id>.json`, and `stored` and `origin` derived from the capsule all go through `_checked` before `undeepen_archive` runs. A `..` anywhere in them, or in the archive id, is refused before the first change.
 - Leaf tests plus the archive suites: 383 passed. Full suite (`pytest -n 4`): 6168 passed. `ruff check specy_road tests`: pass. `specy-road file-limits`: OK.
 
+### Caller audit (coordinator, round 11)
+
+Commit `9a2fcfbc` adds the rows. This table covers every caller of `safe_write.check`, `check_all` and `refused`, and of `managed_block.refused_link`, which is `refused` under another name, in `specy_road/` at this tip. The question for each is whether the path is used again, after the check, in a spelling other than the one checked. The two spellings can differ only when the raw path has a `..` after a symlinked component, so "fixed name" below means a constant or bundled name with no `..`.
+
+| Caller | What it uses after the check | Verdict |
+|---|---|---|
+| `archive_restore._checked` / `_preflight`, `_shallow_view` (chunk read), `_deep_view` (capsule read), `_write_back` (target chunks), `_restore_planning_sheets` (stored, origin), `restore_archive` (`src` unlink, planning dir `rmtree`) | Before: the raw join or `.resolve()` of the record's spelling, plus raw re-joins in `undeepen_archive` (capsule, chunk, refs, planning) and `archive_planning_dir`. Now: only the path `check` returned, and `_checked` refuses a `..` spelling, so the raw re-joins outside the zones name the same file. | **Fixed** (`18fd2053`). Rows: `origin-cancelled`, `chunk-cancelled`, `stored-cancelled` (shallow), `capsule-cancelled` (deep). All 4 fail with the `49e2481b` restore. |
+| `archive_restore._prune_empty_archive` | `root / roadmap/archive` (constant, checked as a directory in the preflight); `os.walk` entries, kept only when real directories by `lstat`; `safe_write.remove` for the ledger | Safe |
+| `restore_archive` → `_sync_includes`, `write_archive_index` | `manifest_path` / `archive_dir` (constant names; `resolve()` equals the lexical path because `roadmap/` and `roadmap/archive/` were checked as real directories) | Safe |
+| `refresh_stubs._prune` | the path `check` returned, for `rmtree`, `safe_write.remove` and `prune_empty` (orphans come from the manifest and may have `..`) | Safe |
+| `specyrd_hooks.merge_harness_hooks` | the returned `dest`, for the JSON read and `_write_json` (`safe_write.write`) | Safe |
+| `specyrd_hooks.install_pre_push_hook` | the returned `dest`, for its mode and `safe_write.write` | Safe |
+| `specyrd_skills.skill_path` (all branches) | returns the path `check` returned; `link.parent / allowed` is the fixed text whose `..` cancels `.claude` or `.agents`, which the line before verified to be a real directory | Safe |
+| `skill_path` callers: `check_install_paths`, `install_stubs`, `ensure_link`, `refresh_stubs._write_if_changed`, `refresh_stubs_report._refused` | the returned path for every write (`safe_write.write`) and link; the report's `resolve_linked` only reads raw paths for display | Safe |
+| `specyrd_skills.mirrored_copies` (`refused` on a mirror dir) | fixed `MIRROR_DIRS` and bundled skill names; it only lists the copies, and deleting them goes through `_prune` | Safe |
+| `init_project._copy_templates` | `out` from template enumeration (no `..`) for `lexists`; write through `safe_write.copy`, which walks again | Safe |
+| `init_project._scaffold` (manifest, generated files under `--force`) | fixed names; written later through `safe_write.write` | Safe |
+| `agent_ignores.check_ignore_files`, `managed_block._read` (strict) | fixed names at the git root; read raw (same file), written through `safe_write.write` | Safe |
+| `specyrd_init._refuse_unsafe_paths` | fixed `.specyrd` names and `hook_destinations` (constants); written through `safe_write.write` / `specyrd_hooks` | Safe |
+| `refresh_schemas.refresh_schemas` | `schemas/<bundled name>`, read raw for comparison (same file), written through `safe_write.copy` | Safe |
+| `upgrade_plan.check_changes` / `apply_plan` | `locate(e.target)`; every target is `Mirror.to_real` of an `os.walk` path (no `followlinks`, no `..`) or an `os.path.realpath` | Safe |
+| `upgrade._copy_load_order_docs` (`refused_link`) | `docs/<bundled rule path>`, written through `safe_write.copy` | Safe |
+| `upgrade` `digest --check` gate, `upgrade_generated.regenerate`, `generated_files.refused_generated_files` / `regenerate_generated_files` (`refused_link`) | fixed `roadmap.md` / digest names; read raw (same file), written through `safe_write.write` | Safe |
+| `review_rejected` and `review_delegate_packet` (`refused_link`) | review writers, outside the zones (M21.38) | Not audited here: M21.38 owns them |
+| `archive_ops` and `archive_deep` (archive, deepen) | not callers of the rule: they use `resolve()` and `resolves_outside`, outside the zones | Out of scope: not on the rule in this leaf. Restore no longer hands them a `..` spelling. |
+
+`history_cache.py` was not changed (M21.39).
+
 ## Touch zones
 
 All edits are inside the listed zones (`specy_road/specyrd_hooks.py` added in round 10). No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
 
 ## Verification
 
-- `pytest -n 4` full suite at `18fd2053`: 6168 passed.
+- `pytest -n 4` full suite at `9a2fcfbc`: 6171 passed.
 - `ruff check specy_road tests scripts`, `scripts/check_clones.py`, `scripts/check_test_private_imports.py` and `scripts/check_machine_paths.py`: pass.
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood` and `specy-road file-limits`: pass.
 
@@ -515,5 +543,5 @@ All edits are inside the listed zones (`specy_road/specyrd_hooks.py` added in ro
 - Fix round 9: the `.specyrd/README.md` check in `specyrd_init._refuse_unsafe_paths` and its `safe_write.write` (grok: a linked README was written through). Tests: the `readme-link-out` and `readme-dangling` layouts and the `force` parameter in `test_specyrd_init_refuses_a_linked_manifest_or_ignore_file` (7 more rows); no mock.
 - Fix round 10: `specyrd_hooks.hook_destinations`, used by the preflight; the `guard_hooks` and `pre_push` arguments of `specyrd_init._refuse_unsafe_paths`; the safe-write calls and the pre-check before the harness JSON is read in `specyrd_hooks`; the pre-push mode branch, so the file keeps its own mode or the umask's, plus execute bits. Test: `test_specyrd_init_refuses_a_linked_hook_destination` (10 rows); no mock.
 - Writer audit: the `manifest-link-out` and `specyrd-parent-link` rows in `INIT_LAYOUTS` (the init-project manifest class, final and parent; they pass on the current code, coverage only); no helper, no mock.
-- Fix round 11: `archive_restore._checked` (returns the checked path, used for every restore operation, and refuses a `..` spelling that a raw re-join elsewhere would read differently), replacing the old `_check` body; `safe_write.mkdirs` for the restore's parent directories. Test: the `origin-cancelled` layout in `test_archive_restore_refuses_before_the_first_change` (1 row, Sol's reproduction); no mock.
+- Fix round 11: `archive_restore._checked` (returns the checked path, used for every restore operation, and refuses a `..` spelling that a raw re-join elsewhere would read differently), replacing the old `_check` body; `safe_write.mkdirs` for the restore's parent directories. Tests: the `origin-cancelled` (Sol's reproduction), `chunk-cancelled`, `stored-cancelled` and `capsule-cancelled` (deep) layouts in `test_archive_restore_refuses_before_the_first_change`, plus their `_cancelled` setup helper (the coordinator's caller audit: one row per restore path the fix covers); no mock.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
