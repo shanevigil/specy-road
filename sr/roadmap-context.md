@@ -318,6 +318,7 @@ Do not pick these up.
 - `M22.16` on `feature/rm-reviewer-run-summary-and-process-tree` since 2026-11-07
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 - `M22.45` on `feature/rm-integration-refs-stay-put-during-a-turn` since 2026-11-07
+- `M22.46` on `feature/rm-sandboxed-workers-can-read-their-reviews` since 2026-11-07
 - `M22.6` on `feature/rm-queued-message-undelivered` since 2026-11-07
 
 ## Quality by area
