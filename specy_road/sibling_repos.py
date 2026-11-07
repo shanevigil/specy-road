@@ -61,7 +61,11 @@ def sibling_repos(project_root: Path) -> list[Sibling]:
             rel = c.relative_to(project_root).as_posix()
             if in_nested(f"{prefix}{rel}", configured):
                 continue
-            if (c / ".git").exists() and is_repo_top(c):
+            try:
+                has_git = (c / ".git").exists()
+            except OSError:
+                continue   # a directory that cannot be searched holds nothing walk can read
+            if has_git and is_repo_top(c):
                 if _untracked_by_root(project_root, rel):
                     status = git_text(["status", "--porcelain"], c)
                     found.append(Sibling(rel, git_text(["rev-parse", "HEAD"], c), bool(status) or status is None))

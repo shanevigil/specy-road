@@ -14,7 +14,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import traceback
 from pathlib import Path
 
 import pytest
@@ -769,26 +768,17 @@ def test_an_unsearchable_directory_is_left_out_of_the_mirror(
     _ListingTemp.listings, _ListingTemp.texts = [], []
     monkeypatch.setattr(upgrade.tempfile, "TemporaryDirectory", _ListingTemp)
     monkeypatch.setattr(upgrade_plan.tempfile, "TemporaryDirectory", _ListingTemp)
-    caught: PermissionError | None = None
     try:
-        code: int | None = run_upgrade(root, dry_run=dry_run)
-    except PermissionError as exc:
-        code, caught = None, exc
+        code = run_upgrade(root, dry_run=dry_run)
     finally:
         private.chmod(0o755)
 
+    assert code == 0
     assert _ListingTemp.listings
     for names, text in zip(_ListingTemp.listings, _ListingTemp.texts, strict=True):
         assert not _has(names, "private")
         assert "NOSEE" not in text
         assert _has(names, "private-link") and _has(names, "keep-me.txt")
-    # The copy leaves the directory out on both paths. A dry run validates that copy, so it finishes.
-    # A real run still reaches the checkout's own sibling walk, which is outside this leaf.
-    if dry_run:
-        assert code == 0 and caught is None
-    else:
-        assert caught is not None and "private/.git" in str(caught)
-        assert "upgrade_plan" not in "".join(traceback.format_tb(caught.__traceback__))
 
 
 def test_an_ignored_current_digest_is_not_predicted_as_a_rewrite(tmp_path: Path, capsys) -> None:
