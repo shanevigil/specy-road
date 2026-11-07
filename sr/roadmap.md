@@ -10,7 +10,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 |----|-------|------|------|--------|
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
 | `M16.1` | Freeze, rules, parity harness and baselines | milestone | — | Not Started |
-| `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
+| `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Complete |
 | `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Not Started |
 | `M16.1.3` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Not Started |
 | `M16.1.4` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Not Started |

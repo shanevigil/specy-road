@@ -10,7 +10,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 
 - `M16` lean core: harden and optimize code and docs, all delivered functionality kept `lean-core` — phase — **Not Started**
   - `M16.1` Freeze, rules, parity harness and baselines `freeze-rules-parity-harness-and-baselines` — milestone — **Not Started**
-    - `M16.1.1` Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs `parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` — task — **Not Started**
+    - `M16.1.1` Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs `parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` — task — **Complete**
     - `M16.1.2` Parity harness: a review-gate decision table covering every review policy `parity-harness-a-review-gate-decision-table-covering-every-review-policy` — task — **Not Started**
     - `M16.1.3` Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf `triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf` — task — **Not Started**
     - `M16.1.4` Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions `constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions` — task — **Not Started**
@@ -306,7 +306,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.1.1` on `feature/rm-parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` since 2026-11-07
 - `M16.1.2` on `feature/rm-parity-harness-a-review-gate-decision-table-covering-every-review-policy` since 2026-11-07
 - `M16.1.4` on `feature/rm-constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions` since 2026-11-07
 - `M17.11` on `feature/rm-gui-acceptance-editing` since 2026-11-07
@@ -328,15 +327,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 47 | 0 | 2.70 | 60% | 21 | 4 |
+| `CHANGELOG.md` **flagged** | 47 | 0 | 2.72 | 60% | 22 | 4 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 36 | 0 | 2.81 | 61% | 17 | 2 |
+| `docs` **flagged** | 37 | 0 | 2.78 | 59% | 18 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 46 | 0 | 2.72 | 59% | 21 | 4 |
-| `tests` **flagged** | 48 | 0 | 2.62 | 56% | 19 | 4 |
+| `specy_road` **flagged** | 46 | 0 | 2.74 | 59% | 22 | 4 |
+| `tests` **flagged** | 48 | 0 | 2.65 | 56% | 20 | 4 |
 | `suggested_prompts` | 2 | 0 | 1.00 | 0% | 3 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
