@@ -318,7 +318,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.45_integration-refs-stay-put-during-a-turn_49e7b2a8-6486-47cb-a9c7-ba757373b6c8.md",
       "sibling_order": 44,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A worker turn that moves the integration ref is flagged",
       "touch_zones": [
         "specy_road/worker_turn_check.py",
