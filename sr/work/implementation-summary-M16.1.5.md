@@ -2,7 +2,7 @@
 
 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer.
 
-Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `origin/WIP/improvements-0-3-1` (`b781d827`).
+Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `origin/WIP/improvements-0-3-1` (`b781d827`); fix round 2 after merging it again (`9c39ce3e`).
 
 ## Acceptance
 
@@ -54,6 +54,18 @@ Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `or
   - `docs/git-workflow.md:6`: still points at `CLAUDE.md` for the branch policy.
 - **A4 (not fixed: needs paths outside the touch zones).** Class: provenance comments kept in shipped block templates. Removing the 27 comments from `specy_road/templates/specyrd/agents-rules.md` breaks the parametrized `tests/test_agents_md_block.py::test_every_rule_in_a_block_template_is_followed_by_its_provenance`. It also empties `chore_garden`'s advisory-rule scan (`specy_road/bundled_scripts/chore_garden.py`, which reads `_RULE_TEMPLATES`). The same class reaches `agents-md-block.md` (8 comments) and `claude-md-block.md` (2). A design that removes the class for all three is to move the comments into a maintainer-only provenance file and point `chore_garden`, `agent_guide_block.strip_provenance`'s callers and that test at it. The coordinator needs to add these zones: `specy_road/bundled_scripts/chore_garden.py`, `specy_road/agent_guide_block.py`, `specy_road/agents_md_block.py`, `tests/test_agents_md_block.py`, `tests/test_chore_mode.py`, the two other block templates, and a new provenance file (e.g. `docs/design-notes/agent-rules-provenance.md`, which does not ship).
 
+## Fix round 2 (review by gpt-6.1-sol at `b1a38442`)
+
+- **A3 (fixed, in zone).** Class: a file every agent is told to read, but counted only when a harness happens to import it.
+  - **The gap:** `.specyrd/AGENTS.team.md` was counted only through `CLAUDE.md`'s `@` import. A consumer initialised without Claude Code (Codex or Cursor only) left it, and `.specyrd/AGENTS.md` itself, out of the total. The same held for `.specyrd/AGENTS.local.md`.
+  - **The rule now (stated in the test docstring):** the managed files the `AGENTS.md` stub tells every agent to read (`RULES_MD`, `TEAM_MD`, `LOCAL_MD`, the public constants in `harness_instruction_files`) are counted when present, whatever the harness imports.
+  - **Test change:** the existing test is parametrized with a third case, `consumer-no-claude` (`init project` only). It counts 150 lines; the claude-code consumer counts 161.
+  - **Limit:** a project's own files that its addenda point to are not followed. The budget covers what specy-road tells every agent to read, not what a project adds.
+- **A1 and A4 (still not fixed: the touch zones are unchanged).** The registry row on `origin/WIP/improvements-0-3-1` still lists the same eight zones. Every path both findings need is outside them, so this leaf stops there again; the full lists are under Fix round 1.
+  - **A1 needs:** `docs/contributor-guide.md`, `docs/release-runbook.md`, `docs/git-workflow.md`, `.cursor/rules/026-release-version-tag-sync.mdc`.
+  - **A4 needs:** `specy_road/bundled_scripts/chore_garden.py`, `specy_road/agent_guide_block.py`, `specy_road/agents_md_block.py`, `tests/test_agents_md_block.py`, `tests/test_chore_mode.py`, `specy_road/templates/specyrd/agents-md-block.md`, `specy_road/templates/specyrd/claude-md-block.md`, plus a new provenance file that does not ship.
+  - **Coordinator's choice:** add these zones (or split them into a follow-up leaf), or narrow A1 and A4. Editing them from here would break the executor rule against changes outside the zones.
+
 ## Probes
 
 - Digest in the consumer closure: now counted at 23 lines; total 161, under 400.
@@ -66,6 +78,10 @@ Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `or
   - In zone: `AGENTS.md` (canonical), 027 (link).
   - Outside zones: 026:8, `docs/release-runbook.md:9`.
   - `constitution/principles.md:7` and `docs/release-runbook.md:109` name the principle or link to it rather than restating the rule; I left them as they are.
+- Round 2, managed files: closure membership checked with and without `CLAUDE.md`. Both consumer cases now count `.specyrd/AGENTS.md` and `.specyrd/AGENTS.team.md`; `.specyrd/AGENTS.local.md` is counted when present (a fresh init creates none).
+- Round 2, toolkit root: there is no root `.specyrd/AGENTS.md` (only `sr/.specyrd/`), so no managed file is added; the total stays at 238.
+- Round 2, other files the rules tell agents to read: only the load order (already counted up to "By task") and the three managed files above. The rest are task-conditional (`docs/orchestration*.md`, brief) or generated per task (`work/brief-*`).
+- Round 2, zones: the registry row on `origin/WIP/improvements-0-3-1` is unchanged, so A1 and A4 are still outside this leaf.
 - Provenance comments by template: `agents-rules.md` 27, `agents-md-block.md` 8, `claude-md-block.md` 2, `agents-team.md` 0.
 - Readers of provenance comments: `agent_guide_block.py` (`PROVENANCE`, `strip_provenance`), `agents_md_block.py` (render), `chore_garden.py` (advisory-rule), and `tests/test_agents_md_block.py`, `tests/test_chore_mode.py`.
 

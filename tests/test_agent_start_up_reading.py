@@ -1,7 +1,9 @@
 """What an agent reads before it starts a task: the unconditional start-up closure stays within 400 lines.
 
 The closure is each file once per repo: the entry files (``AGENTS.md`` and ``CLAUDE.md``), the
-always-applied Cursor rules, the files ``CLAUDE.md`` imports (the managed rules in a consumer repo),
+always-applied Cursor rules, the files ``CLAUDE.md`` imports, the managed files the ``AGENTS.md`` stub
+tells every agent to read when present (``.specyrd/AGENTS.md`` and its team and local addenda, counted
+whatever the harness imports),
 and the load order up to its "By task" line, including the generated ``roadmap-context.md`` digest
 when that part names it (``load_order_paths`` leaves the digest out). The "By task" part is
 task-conditional and not counted. Run with ``-s`` to see the
@@ -17,7 +19,9 @@ import pytest
 
 from specy_road.agents_md_block import load_order_paths, render_rules
 from specy_road.digest import DEFAULT_OUTPUT as DIGEST
-from specy_road.harness_instruction_files import AGENTS_MD, RULES_MD, claude_imports, cursor_paths
+from specy_road.harness_instruction_files import (
+    AGENTS_MD, LOCAL_MD, RULES_MD, TEAM_MD, claude_imports, cursor_paths,
+)
 from specy_road.init_project import run_init_project
 from specy_road.specyrd_init import run_init
 from tests.helpers import REPO
@@ -27,10 +31,11 @@ CLAUDE_MD_ESTIMATE = 20
 CONDITIONAL = "By task"
 
 
-def _consumer(tmp_path: Path) -> Path:
+def _consumer(tmp_path: Path, *, claude: bool = True) -> Path:
     run_init_project(tmp_path)
-    run_init(target=tmp_path, agent="claude-code", dry_run=False, force=False,
-             ai_commands_dir=None, write_claude_md=True)
+    if claude:
+        run_init(target=tmp_path, agent="claude-code", dry_run=False, force=False,
+                 ai_commands_dir=None, write_claude_md=True)
     return tmp_path
 
 
@@ -47,9 +52,9 @@ def _lines(path: Path) -> int:
     return len(path.read_text(encoding="utf-8").splitlines())
 
 
-@pytest.mark.parametrize("repo", ["toolkit", "consumer"])
+@pytest.mark.parametrize("repo", ["toolkit", "consumer", "consumer-no-claude"])
 def test_start_up_reading_exists_and_stays_within_the_limit(repo: str, tmp_path: Path) -> None:
-    root = REPO if repo == "toolkit" else _consumer(tmp_path)
+    root = REPO if repo == "toolkit" else _consumer(tmp_path, claude=repo == "consumer")
     entries = cursor_paths(root, root)
     order = _always_load_order(root)
     assert order, f"{repo}: no unconditional load order found"
@@ -57,14 +62,17 @@ def test_start_up_reading_exists_and_stays_within_the_limit(repo: str, tmp_path:
     assert not missing, f"{repo}: the default load order names missing files {missing}"
     assert "docs/supply-chain-security.md" not in order, f"{repo}: the supply-chain doc is task-conditional"
 
-    closure = dict.fromkeys(p.resolve() for p in [*entries, *claude_imports(entries), *(root / r for r in order)])
+    managed = [root / rel for rel in (RULES_MD, TEAM_MD, LOCAL_MD) if (root / rel).is_file()]
+    closure = dict.fromkeys(p.resolve() for p in [*entries, *claude_imports(entries), *managed,
+                                                    *(root / r for r in order)])
     total = 0
     for path in closure:
         n = _lines(path)
         total += n
         print(f"{repo}: {n:4d} {path.relative_to(root.resolve())}")
     claude = root / "CLAUDE.md"
-    print(f"{repo}: total {total} lines (limit {START_UP_LIMIT}); CLAUDE.md {_lines(claude)} lines "
+    claude_size = f"{_lines(claude)} lines" if claude.is_file() else "absent"
+    print(f"{repo}: total {total} lines (limit {START_UP_LIMIT}); CLAUDE.md {claude_size} "
           f"(estimate about {CLAUDE_MD_ESTIMATE}, not enforced)")
     assert total <= START_UP_LIMIT, f"{repo}: start-up reading is {total} lines, over {START_UP_LIMIT}"
 
