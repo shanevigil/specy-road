@@ -165,6 +165,12 @@ def _is_person(entry: dict[str, Any], profile: Profile | None) -> bool:
             and not any(_channels(entry).get(k) for k in LAUNCH_CHANNELS))
 
 
+def _by_id(entry: dict[str, Any], src: GuidanceSource) -> Profile | None:
+    """The committed profile in ``src`` that answers to the entry's id: whether a human entry has a profile is read
+    from the same listing as the flags, never from a routing lookup that returns no profile when git fails."""
+    return next((p for p in src.profiles.values() if p.for_id(entry.get("id"))), None)
+
+
 def _source(config: dict[str, Any], profile: Profile | None, repo_root: Path | None) -> GuidanceSource:
     """:func:`guidance_source` of ``repo_root``; without one (no integration branch to read), the bundled flags and
     ``profile``'s own, with ``config`` taken as the committed roster."""
@@ -200,16 +206,22 @@ def _guidance_hit(config: dict[str, Any], entry: dict[str, Any], profile: Profil
     on) and a model the entry launches, by its routed profile or that profile's committed copy, is flagged, or a
     model flag it passes cannot be read (``field``); or when the integration branch cannot be read while ``config``
     has them on (``error``). The opt-in is the committed roster's, never ``config``'s. ``None`` otherwise, and for a
-    human entry that launches nothing (:func:`_is_person`)."""
-    if _is_person(entry, profile):
-        return None
+    human entry that launches nothing (:func:`_is_person`).
+
+    One bounded rule for the human exemption: it is decided only from a successful read of the integration branch.
+    A read that fails refuses every entry, a person included, since whether a committed profile answers to its id
+    is then unknown. A routed profile, or a committed one answering to the id (:func:`_by_id`), makes it a model
+    entry, and that profile's models are its launch names."""
     src = _source(config, profile, repo_root)
     if not ((config.get("policy") or {}).get("signed_reviews") or src.signed):
         return None
-    copies = (profile, src.committed(profile))
+    found = _by_id(entry, src)   # src.profiles is empty when the read failed
+    copies = (profile, src.committed(profile), found)
     names = _launch_models(entry, *copies)
     if src.error:
         return _Hit(f"model {names[0]}", None, src.error, False) if names else None
+    if _is_person(entry, profile or found):
+        return None
     opted = str(entry.get("id")) in src.opt_ins
     if hit := _flagged(names, src.flags):
         return _Hit(f"model {hit[0]}", hit[1], None, opted)

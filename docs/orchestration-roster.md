@@ -173,7 +173,9 @@ refused, and only the committed opt-in admits it. A `family: human` entry is exe
 launch configuration: one that sets `harness`, `harness_model`, `harness_bin`, `profile`,
 `channels.cli` or `channels.cli_resume`, or whose id finds a profile, is judged like a model entry,
 committed or `roster_add` alike (`channels.paste`, `channels.subagent` and `preflight` launch no
-model). The rule does not see a model chosen inside a script, wrapper or alias the command runs, by
+model). The exemption is decided only from a successful read of the integration branch's profiles:
+while that read fails, a human entry is refused like every other, since whether a profile answers to
+its id is unknown. The rule does not see a model chosen inside a script, wrapper or alias the command runs, by
 an environment variable, by a harness's own config file, or by a harness's default when no model is
 passed; nor an abbreviated long option (`--mod`). The coordinator role, how signatures are verified,
 and the roster schema are unchanged.

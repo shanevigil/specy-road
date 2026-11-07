@@ -276,19 +276,31 @@ def test_an_uncommitted_opt_in_does_not_admit_the_model(tmp_path: Path, capfd) -
     assert a["executor"] == "sol" and any(EXCLUDED in n for n in a["notes"])
 
 
-def test_an_unreadable_integration_branch_profile_refuses(tmp_path: Path, capfd) -> None:
-    """A git read that fails is a refusal, never a missing flag."""
+@pytest.mark.parametrize("unreadable, why", [
+    (COMPOSER, f"cannot read {COMPOSER} on the integration branch"),                  # a profile blob
+    ("model-profiles/cursor-composer", "cannot list model-profiles/ on the integration branch"),   # the listing
+])
+def test_an_unreadable_integration_branch_profile_refuses(tmp_path: Path, capfd, unreadable: str, why: str) -> None:
+    """A git read that fails is a refusal, never a missing flag, for every entry: a human entry whose id the
+    unreadable profile answers to (``my-model-fast``, its alias) and a person with no launch keys alike, since
+    whether a profile answers to a human's id is unknown until the read succeeds."""
     text = (BUNDLED / "composer-2.5.md").read_text().replace("composer-2.5", "my-model")
     human = "{id: human, family: human, roles: [coordinator, reviewer]"
-    repo = guidance_repo(tmp_path, roster(rid="my-model").replace(human, f"{human}, public_key: '{DUMMY_KEY}'"),
-                         profile=text)
-    blob = git(repo, "rev-parse", f"dev:{COMPOSER}")
-    (repo / ".git" / "objects" / blob[:2] / blob[2:]).unlink()   # a loose object: the fixture never packs
+    alias = f"  - {{id: my-model-fast, family: human, roles: [reviewer], public_key: '{DUMMY_KEY}'}}\n"
+    orchestration = roster(rid="my-model").replace(human, f"{human}, public_key: '{DUMMY_KEY}'").replace(
+        "policy:", alias + "policy:")
+    readable = guidance_repo(tmp_path / "read", orchestration, profile=text)   # its own repo: reads are cached
+    rows = {r["model"]: r for r in status(readable, capfd)["reviewer_eligibility"]}
+    assert rows["human"]["eligible"] and not rows["my-model-fast"]["eligible"]   # read: only a person is exempt
+    repo = guidance_repo(tmp_path, orchestration, profile=text)
+    obj = git(repo, "rev-parse", f"dev:{unreadable}")
+    (repo / ".git" / "objects" / obj[:2] / obj[2:]).unlink()   # a loose object: the fixture never packs
     assert prompt(repo, "executor", model="sol") == 1
     err = capfd.readouterr().err
-    assert f"cannot read {COMPOSER} on the integration branch" in err and launched(tmp_path) == (False, False)
+    assert why in err and launched(tmp_path) == (False, False)
     rows = {r["model"]: r for r in status(repo, capfd)["reviewer_eligibility"]}
-    assert rows["human"]["eligible"] and not rows["my-model"]["eligible"]   # a person with no launch keys is exempt
+    for rid in ("human", "my-model-fast", "my-model"):
+        assert not rows[rid]["eligible"] and f"{rid} (model " in rows[rid]["reason"] and why in rows[rid]["reason"]
 
 
 def test_composer_2_is_not_flagged(tmp_path: Path, capfd) -> None:
