@@ -109,7 +109,8 @@ entries:
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T20:31:52+00:00'
   - codename: upgrade-mirror-skips-ignored-files
     node_id: M22.35
     branch: feature/rm-upgrade-mirror-skips-ignored-files
