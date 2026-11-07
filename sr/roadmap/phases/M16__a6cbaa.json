@@ -414,41 +414,6 @@
     },
     {
       "acceptance": [
-        "specy_road/steering_paths.py holds the git-steering part of the steering list, documented in docs/orchestration-steering-files.md and docs/orchestration-workers.md, snapshotted for each worker turn from the filesystem only: the hooks directory (core.hooksPath when set, else <common-git-dir>/hooks and <worktree-gitdir>/hooks) as direct regular-file names with sha256, not recursive, and the bytes of the common config and config.worktree with the files they name by include.path or includeIf.*.path as specy_road/git_config_text.py reads them. Paths compare project-relative as zone_matches does, one real path stored once",
-        "A hooks directory with more than 200 direct children fails closed on every comparison, changed or not: one check_error naming that directory with class git_hook, and the git probes marked skipped; the listing stops reading after 201 entries. This replaces the single `capped` marker, which is the same before and after a hook is replaced in a directory that stays over the cap",
-        "close_turn compares that snapshot before any post-turn git command. On a change it records one steering_file finding per path (class git_hook or git_config; before and after a sha256, absent, or for git_config the digest with the changed values of core.hooksPath, core.fsmonitor, core.sshCommand, include.path and includeIf.*.path), replacing any porcelain or committed_outside_zones finding for that path; on an unreadable input, a special file or a timeout it records a check_error naming the path and class; either way it marks the git probes skipped and runs none of them. With no snapshot from the turn's start it fails closed the same way. It never aborts the turn and never passes silently",
-        "The post-turn inspection runs on worker_runner's finalization path before READY is parsed: the check runs before fresh_ready, and a READY that cannot be parsed (invalid UTF-8 included) is a completion error of the turn, not an exception, so the turn still ends with exactly one post_run_check holding the git-steering findings",
-        "A sticky worker flag steering_changed shows in worker status --json flags and handoff status --json workers[].flags; a clean turn leaves it set; worker reconcile <id> without --dismiss prints one path class before after line per steering_file finding recorded while it was set, then clears it",
-        "Tests in tests/test_steering_file_guard.py: a hook in the common git dir; core.fsmonitor set to a command that would create a sentinel file (git probes skipped, sentinel absent), with the snapshot taken and with git_snapshot raising; an unreadable config and an unreadable hook, each failing closed; a clean turn after a turn that added a hook (flag kept; reconcile lists that hook as git_hook and clears the flag); a hooks directory that starts with 201 entries and has one hook replaced while staying above 200, which flags the turn; and, through the public worker runner, a turn whose fake executor writes a READY containing byte FF and changes the common config, which ends with exactly one post_run_check holding the git_config finding and the sticky flag",
-        "The other classes are M22.30, finish's refusal is M22.31 and the Claude Code launch denies are M22.32; this branch holds none of their code. Ends with one full Sol sweep of the merged result; specy-road file-limits passes. Out of scope: OS isolation, signing, the M20 posture model and doctor probes, and restoring a changed file"
-      ],
-      "codename": "steering-file-guard",
-      "dependencies": [
-        "148aa830-5bad-4086-8d27-9c6748b58ed5"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M22.5",
-      "node_key": "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
-      "parent_id": "M22",
-      "planning_dir": "planning/M22.5_steering-file-guard_ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf.md",
-      "sibling_order": 4,
-      "status": "Not Started",
-      "title": "Executors cannot change the files that steer harnesses and specy-road unnoticed",
-      "touch_zones": [
-        "specy_road/steering_paths.py",
-        "specy_road/worker_turn_check.py",
-        "specy_road/worker_runner.py",
-        "specy_road/worker_reconcile.py",
-        "specy_road/git_config_text.py",
-        "specy_road/schemas/worker-record.schema.json",
-        "docs/orchestration-workers.md",
-        "docs/orchestration-steering-files.md",
-        "tests/test_steering_file_guard.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "Before the switch, a table in this sheet maps every flag and mode of refresh-stubs, refresh-schemas and refresh-profiles (including refresh-profiles' `--only API_ID` and its --check, --render and --capture modes) to an upgrade invocation; `upgrade --only stubs|schemas|profiles` selects a component, and profile selection uses a separate option the table names; each row gives the same files and output as the old invocation; the three commands stay as hidden one-release aliases with one deprecation line and are rows of tests/parity/command_map.yaml, which also lists upgrade's allowed help and report differences",
         "`upgrade` prints one report with four fixed sections (files added or changed, schema refreshes, profile refreshes, notices) built only from data the refresh steps compute at pickup; the before and after `upgrade --dry-run` outputs on the rc3-shaped fixture are committed, and the set of reported lines is the same, only headings and grouping differ",
         "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` a hidden one-release alias and a map row; the update scenarios (M16.1.10) pass under both names",

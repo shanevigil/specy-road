@@ -352,33 +352,6 @@
     },
     {
       "acceptance": [
-        "Starts from the integration branch with `git revert <R30>`, the commit id this leaf's planning sheet records under ## Source (the coordinator's split of feature/rm-steering-file-guard; the code comes from 80c56903). Conflicts are resolved in that commit by keeping every predecessor already on the integration branch (narrowed M22.5) and adding only this leaf's class; no file is taken from narrowed M22.5's version where a predecessor has changed it since. Reviewed on this leaf's own diff from its merge base",
-        "steering_paths.py adds the other classes to M22.5's list, snapshotted per worker in the worktree and the main checkout: harness config and hooks (.claude/settings*.json, .claude/hooks/**, .codex/**, .cursor/*.json, .cursor/hooks/**); roadmap/orchestration.yaml, roadmap/orchestration.local.yaml and roadmap/git-workflow.yaml in the tree (policy_tree) and as blobs at the local integration branch tip (policy_blob); roadmap/registry.yaml entries items whose node_id is another leaf (registry); work/reviews/ files except the leaf's own READY (review_file); root .bashrc, .bash_profile, .profile, .zshrc, .zshenv, .envrc (shell_startup); and for each env_setup.link target its bin/ entry names, types, link text and resolved regular-file sha256 (env_bin)",
-        "close_turn compares these after the git probes (when M22.5 skipped the probes, without policy_blob and symlink). Each change is one steering_file finding with path, class, before and after, replacing any porcelain or committed_outside_zones finding for that path; a path two classes reach is one finding, of the class listed first. A symlink finding is a porcelain entry in either checkout, new or retargeted during the turn, whose target resolves outside the worker's git root; there is no directory walk, and gitignored paths and links created then removed within a turn are out of scope, as the docs state. Each finding sets M22.5's sticky steering_changed flag; an unreadable input of these classes is one check_error naming the path and class, and the rest is still compared",
-        "Tests in tests/test_steering_file_guard.py: a fake executor turn yields exactly one steering_file finding, and no porcelain or committed_outside_zones finding for that path, for each of .claude/settings.json, .cursor/hooks.json, .envrc, a write through an unchanged linked .venv/bin/python symlink, a symlink whose target leaves the worktree, another leaf's registry entries item, a forged work/reviews REVIEW file, and roadmap/orchestration.yaml committed onto the local integration branch from a second worktree with no fetch; the unreadable-input rows for registry, harness and env_bin; a turn writing only its READY, its own registry entry and in-zone code is clean. Ends with one full Sol sweep of the merged result"
-      ],
-      "codename": "steering-detection-other-classes",
-      "dependencies": [
-        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
-      ],
-      "id": "M22.30",
-      "node_key": "37904d88-a256-4ae0-9abf-1c92de6bed7f",
-      "parent_id": "M22",
-      "planning_dir": "planning/M22.30_steering-detection-other-classes_37904d88-a256-4ae0-9abf-1c92de6bed7f.md",
-      "sibling_order": 29,
-      "status": "Not Started",
-      "title": "Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed",
-      "touch_zones": [
-        "specy_road/steering_paths.py",
-        "specy_road/worker_turn_check.py",
-        "docs/orchestration-workers.md",
-        "docs/orchestration-steering-files.md",
-        "tests/test_steering_file_guard.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "The code starts from R31 (the commit under ## Source), taken only as far as this leaf's class. The in-tree steering list lives in specy_road/steering_gate.py; there is no steering_paths.py. Everything predecessors landed stays. This is the merge-point check on every platform, with or without a sandbox",
         "finish-this-task refuses, before its bookkeeping commit, a leaf whose branch diff against the merge base changes an in-tree steering path (harness config and hooks, the three roadmap policy files, root shell startup files) unless a touch zone names that exact path (a directory or glob zone does not count); roadmap/registry.yaml is ignored. The message names each path and the next step: add that exact path to touch_zones with specy-road edit-node and get it reviewed, or revert it.",
         "Tests: in tests/test_steering_file_guard.py, with .claude/settings.json named exactly in zones the leaf lands, and without it finish refuses naming the path; tests/test_finish_merge_failure_undo.py and tests/test_finish_work_cleanup.py commit the integration config on the integration branch first, because a leaf's own change to it is a steering file. Ends with one full Sol sweep of the merged result",
@@ -404,35 +377,6 @@
         "tests/test_steering_file_guard.py",
         "tests/test_finish_merge_failure_undo.py",
         "tests/test_finish_work_cleanup.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "Starts from the integration branch with `git revert <R32>`, the commit id this leaf's planning sheet records under ## Source (the coordinator's split of feature/rm-steering-file-guard; the code comes from 80c56903). Conflicts are resolved in that commit by keeping every predecessor already on the integration branch (narrowed M22.5, M22.30, M22.14, M22.10, M22.20 and M22.31) and adding only this leaf's class; no file is taken from narrowed M22.5's version where a predecessor has changed it since. Reviewed on this leaf's own diff from its merge base; this leaf's own diff contains steering_gate.claude_denies",
-        "Claude Code launch and resume append --disallowedTools Edit(./<rel>) and Write(./<rel>) for each in-tree steering file present at launch plus .claude/settings.json, .claude/settings.local.json and the three roadmap policy files, skipping any path a touch zone names exactly, with no parent glob, so no rule matches an exempt path. New files, shell writes, the common git dir and the main checkout stay detection-only, and a channels.cli argv is unchanged. docs/orchestration-harness-launch.md states that Cursor already blocks .cursor/*.json, .vscode/** and .git/hooks/** and that Codex workspace-write refuses writes outside the workspace but allows in-tree steering files, neither argv changed; docs/orchestration-review.md 'What the gate cannot stop' states what this leaf adds and what stays with M20.",
-        "Tests in tests/test_steering_file_guard.py: with .claude/settings.json named exactly in zones no argv rule matches that path, and without it the argv denies it; a custom channels.cli argv is left as written. docs/orchestration-steering-files.md has its At launch paragraph. Ends with one full Sol sweep of the merged result"
-      ],
-      "codename": "steering-claude-launch-denies",
-      "dependencies": [
-        "37904d88-a256-4ae0-9abf-1c92de6bed7f",
-        "7765e73d-c0a5-475b-89bf-819992cf6ba4"
-      ],
-      "id": "M22.32",
-      "node_key": "1cfcf177-4014-4267-9000-d5b81d912f95",
-      "parent_id": "M22",
-      "planning_dir": "planning/M22.32_steering-claude-launch-denies_1cfcf177-4014-4267-9000-d5b81d912f95.md",
-      "sibling_order": 31,
-      "status": "Not Started",
-      "title": "Claude Code launch and resume deny edits to steering files",
-      "touch_zones": [
-        "specy_road/worker_adapter_claude.py",
-        "specy_road/steering_gate.py",
-        "specy_road/steering_paths.py",
-        "docs/orchestration-harness-launch.md",
-        "docs/orchestration-review.md",
-        "docs/orchestration-steering-files.md",
-        "tests/test_steering_file_guard.py"
       ],
       "type": "task"
     },
