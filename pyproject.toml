@@ -54,6 +54,14 @@ gui-next = [
 specy-road = "specy_road.cli:main"
 specyrd = "specy_road.specyrd_cli:main"
 
+[project.urls]
+Homepage = "https://github.com/shanevigil/specy-road"
+Documentation = "https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md"
+"Release candidates" = "https://github.com/shanevigil/specy-road/blob/main/docs/install-release-candidates.md"
+Repository = "https://github.com/shanevigil/specy-road"
+Changelog = "https://github.com/shanevigil/specy-road/blob/main/CHANGELOG.md"
+Issues = "https://github.com/shanevigil/specy-road/issues"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["specy_road*"]

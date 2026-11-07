@@ -9,6 +9,7 @@
 - An RC is one exact wheel from TestPyPI, sha256-checked against the RC announcement, with its dependencies and extras from PyPI only.
 - TestPyPI is never an index for extras or dependencies, whatever the flag or index strategy.
 - With an extra, install the checked local wheel (`"rc/<wheel>[gui]"`) or its direct URL (`"specy-road[gui] @ https://test-files.pythonhosted.org/.../<wheel>"`); uv tool does not check a `#sha256=` fragment, pip and pipx do.
+- Moving to a newer RC is a fresh install of the new URL, because `uv tool upgrade` stays on the URL pin.
 
 **Read further for:**
 - why TestPyPI is never an index → "Never an index"
@@ -75,10 +76,12 @@ curl -fsSL "$URL" | sha256sum                       # must equal $SHA
 uv tool install --force "specy-road[gui] @ $URL"
 ```
 
-TestPyPI does not let a file be replaced under the same name, so the bytes you checked are the bytes uv installs. uv tool keeps the URL in its receipt, unlike a local wheel path that later disappears, so the receipt keeps pointing at a file that exists. Checked with pipx 1.18 and uv 0.13.7; a wrong fragment made pipx fail with a hash mismatch, while uv tool installed anyway.
+TestPyPI does not let a file be replaced under the same name, so the bytes you checked are the bytes uv installs. uv tool keeps the URL in its receipt, unlike a local wheel path that later disappears, so the receipt keeps pointing at a file that exists. That receipt pins the URL, so `uv tool upgrade specy-road` stays on it: moving to a newer RC is a fresh install of the new URL. Checked with pipx 1.18 and uv 0.13.7; a wrong fragment made pipx fail with a hash mismatch, while uv tool installed anyway.
 
 ## After installing
 
 Confirm the result with `specy-road --version` ([Which install is running](install-and-usage.md#which-install-is-running)). Go back to a final release with `pipx install --force "specy-road[gui]"` or `uv tool install --force "specy-road[gui]"`.
+
+Moving to a newer RC is a fresh install of that release's wheel URL (`uv tool install --force "specy-road[gui] @ <new URL>"`, or the pip and pipx forms under [Direct wheel URL](#direct-wheel-url)). `uv tool upgrade` stays on the URL pin from this install and does not fetch the newer wheel.
 
 RCs are for evaluation: pin a final release for day-to-day work. `specy-road validate` warns once when the running version is not the one your repo pins (`"pin": "<version>"` in `.specyrd/manifest.json`, else the first `specy-road==<version>` line in a `requirements*.txt` at the checkout root), so an accidental upgrade is not mistaken for a deliberate one. Expect an RC to warn too that IDE stubs and JSON schemas were written by an older version: once your team accepts the new version, update the pin and run `specy-road upgrade`.

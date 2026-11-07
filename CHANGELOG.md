@@ -6,13 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 The release-publish workflow extracts the section for the release tag
-(matched by `## [vX.Y.Z]` heading) and uses it as the GitHub Release
+(matched by `## [vX.Y.Z]` heading), appends that release's wheel URL,
+sha256 and one install line, and uses the result as the GitHub Release
 body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
 ### Fixed
 
+- A published release's GitHub notes include the exact wheel URL (`files.pythonhosted.org` or `test-files.pythonhosted.org`), its sha256, and one ready-to-paste `pip install "specy-road @ <url>#sha256=<sha>"` line. The package metadata lists Project URLs, including the release-candidate install guide, and the README links a reader needs from the package page are absolute. The RC install guide says moving to a newer RC is a fresh install of the new URL, because `uv tool upgrade` stays on the URL pin.
 - `group-nodes --into-new NEW_ID` (and `POST /api/outline/group`) accepts a `NEW_ID` that one of the listed nodes
   holds, as in `group-nodes M1.1 M1.2 M1.3 --into-new M1.2`: that node leaves the id in the same transaction, so a
   regroup into the ids the flat nodes occupy no longer needs a temporary id and a second `move-node --id`. An id held by
