@@ -13,6 +13,8 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- The worker post-run check matches touch zones from either the git root or the project root in a nested layout, like
+  finish does, so a commit under an `sr/...` zone is no longer flagged `committed_outside_zones`.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.

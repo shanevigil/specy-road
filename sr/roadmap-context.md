@@ -157,7 +157,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.23` Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus `guidance-bypass-retest-cursor-grok-sol-opus` — task — **Not Started**
   - `M22.24` The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths `guidance-exclusion-closes-three-bypasses` — task — **Not Started**
   - `M22.25` Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment `upgrade-git-calls-share-one-environment` — task — **Not Started**
-  - `M22.26` The post-run zone check matches zones written from the git root `post-run-zone-check-git-root-zones` — task — **Not Started**
+  - `M22.26` The post-run zone check matches zones written from the git root `post-run-zone-check-git-root-zones` — task — **Complete**
   - `M22.27` The old-log review usage test asserts on the run, not on a substring `old-log-test-asserts-on-the-run` — task — **Not Started**
   - `M22.28` upgrade does not warn about itself, and export's drift line says how to fix it `upgrade-no-self-warning-export-drift-hint` — task — **Not Started**
   - `M22.29` safe_write and archive moves traverse by directory descriptor `safe-write-directory-descriptors` — task — **Not Started**
@@ -303,7 +303,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.37` on `feature/rm-safe-write-rule-setup-writers` since 2026-11-06
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
-- `M22.26` on `feature/rm-post-run-zone-check-git-root-zones` since 2026-11-06
 - `M22.27` on `feature/rm-old-log-test-asserts-on-the-run` since 2026-11-06
 - `M22.33` on `feature/rm-reviewer-resume-keeps-the-model` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
@@ -320,7 +319,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `specy_road` **flagged** | 47 | 0 | 2.49 | 53% | 39 | 5 |
 | `tests` **flagged** | 49 | 0 | 2.47 | 53% | 39 | 5 |
-| `CHANGELOG.md` | 31 | 0 | 1.94 | 39% | 27 | 1 |
+| `CHANGELOG.md` | 32 | 0 | 1.91 | 38% | 27 | 1 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
 
