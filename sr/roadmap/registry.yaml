@@ -121,3 +121,11 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
+  - codename: parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
+    node_id: M16.1.1
+    branch: feature/rm-parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
+    touch_zones:
+      - tests/parity/
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
