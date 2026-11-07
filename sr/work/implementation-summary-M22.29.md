@@ -50,17 +50,32 @@
   parent swapped after the target directory opens (the reviewer's timing). Each asserts the roadmap is
   byte-identical, no archive chunk exists, outside is unchanged, and the sheet and its link remain. All five fail
   at `84a5a37b`.
-- **Findings 3 and 4, write/copy metadata finishing by temp path: NOT DONE, blocked outside the touch zones.**
-  Anchoring `finish` to the held temp descriptor (`os.chmod(fd)`, `shutil.copystat(src, fd)`; verified to work
-  on Linux) breaks `tests/test_setup_writers_refuse_links.py::test_an_ignore_file_linked_right_before_replace_is_an_error`
-  (lines 436-443). Its `os.chmod` racer calls `Path(tmp).name` and `Path(tmp).parent` on the argument, so an int
-  raises `TypeError` in all 5 parametrized cases (reproduced). Using `os.fchmod` instead means that racer never
-  fires, and the test's `code == 1` assertion fails. Needed: add `tests/test_setup_writers_refuse_links.py` to
-  the touch zones so its racer can find the destination from the repo path (`repo / ".gitignore"`) instead of
-  the temp file's path. The behaviour the test checks stays the same. Then make the fd change and add the
-  reviewer's outside-matching-temp-name test. Per the leaf rules I stopped there and did not edit that file.
+- **Findings 3 and 4 (round 2):** at that time blocked outside the touch zones; resolved in round 3, below.
+
+## Fix round 3 (review `gpt-5.6-sol-high` at `a91a11b6`)
+
+- **Findings 1 to 3, `write`/`copy` metadata set by the temp file's path.** The class is any mode or times call
+  on the temp file that names it through the parent directory's path, which a swap after the walk redirects.
+  Fix: one rule in `_replace`. `finish` (chmod for `write`, `shutil.copystat` for `copy`) gets
+  `_anchored(parent_fd, name, fd)`: `/proc/self/fd/<held parent>/<temp name>` where `/proc` exists (Linux), so
+  the path resolves through the held directory descriptor and not the directory's path, and otherwise the temp
+  file's own descriptor. It runs while the temp file is still open and flushed, so closing it does not move the
+  times. This form also keeps the out-of-zone `tests/test_setup_writers_refuse_links.py` racer working, so no
+  file outside the zones changes: it receives a path whose parent is the held directory. The round-0
+  `except OSError` re-check around `finish` was only reachable through the path form and is removed.
+- **Test:** `test_a_parent_swapped_after_the_temp_file_leaves_outside_metadata_alone[write|copy]`. Right after
+  the temp file is created, a racer swaps the parent for a link out and plants a mode-`0666` file named like the
+  temp file there. Each case is refused, the planted file's mode, times and bytes are unchanged, and the real
+  directory has no temp file left. Both fail at `a91a11b6`.
 
 ## Probes
+
+- Round 3: the race above on Linux (`/proc` branch): refused, outside mode, times and bytes unchanged, no temp left (test).
+- Round 3: the same race with `/proc/self/fd` hidden (the descriptor branch): `write` and `copy` refused, outside metadata unchanged, no temp left (inline probe).
+- Round 3: descriptor branch without a race: `copy` keeps the source's mode `0640` and mtime, and `write(mode=0o604)` sets `0604` (inline probe).
+- Round 3: every mutating call in `safe_write.py` (grep of chmod, utime, unlink, rename, replace, mkdir, rmdir, open): in the descriptor path all go through a held descriptor. The only path-based ones are the root's own `mkdir(parents=True)` (the root is resolved once by design), the no-`dir_fd` fallback (M21.37), and `remove`, `prune_empty` and `open_lock` (unchanged, out of scope).
+- Round 3: `moving` (archive) sets no metadata, so this class does not reach it.
+- Round 3: `tests/test_setup_writers_refuse_links.py`'s `os.chmod` racer still swaps the destination through the held directory and is refused (5 cases pass); the full suite passes.
 
 - Round 2: linked sheet whose link loops (`a.md -> b.md -> a.md`): refused before any change (by `_refuse_links_out`'s resolve, as at base); no chunk written.
 - Round 2: sheet linked out of the repository: refused before any change by `_refuse_links_out`; the outside file is kept.
@@ -86,19 +101,19 @@
 
 - `os.supports_dir_fd` never lists `os.replace`, only `os.rename`; both use `renameat`. The availability check
   therefore tests `os.rename`.
-- `finish` (chmod or copystat on the temp file) still gets the temp file's **path**, because
-  `tests/test_setup_writers_refuse_links.py::test_an_ignore_file_linked_right_before_replace_is_an_error`
-  (outside the zones) reads `Path(tmp).parent` in its `os.chmod` wrapper. If `finish` fails because of a swap,
-  `_recheck` runs first so the error is the rule's refusal.
+- `finish` gets the temp file through the held directory (`/proc/self/fd/...`), or its own descriptor where
+  there is no `/proc`; see Fix round 3. On macOS `/proc` is absent, so the descriptor form is used; that branch
+  was probed on Linux by hiding `/proc`.
 - `remove`, `prune_empty` and `open_lock` are unchanged: neither the acceptance criterion nor the plan names them.
-- Net line change against base: package +228/-59, tests +164/-6, above A2's informational estimate. Most of the
+- Net line change against base: package +234/-59, tests +205/-6, above A2's informational estimate. Most of the
   difference is the Windows fallback kept beside the descriptor path in `_replace` and `move`.
-- Touch zones: no file outside them changed. Round 2 needs `tests/test_setup_writers_refuse_links.py` added (see
-  findings 3 and 4). Merged `origin/WIP/improvements-0-3-1` first in each round, with no conflicts.
+- Touch zones: no file outside them changed (round 3 removed the need to add
+  `tests/test_setup_writers_refuse_links.py`). Merged `origin/WIP/improvements-0-3-1` first in each round, with no conflicts.
 
 ## Verification
 
-- `python -m pytest -q -n 4` (full suite, after the merge and fix): 6287 passed.
+- `python -m pytest -q -n 4` (full suite, round 3, after the merge and fix): 6313 passed.
+- Round 3 targeted (408 passed): the round-2 list plus `tests/test_init_project.py`.
 - Round 2 targeted (403 passed): the list below plus `tests/test_history_cache.py`, `tests/test_generate_brief.py`, `tests/test_digest.py`.
 - Round 1 targeted: `tests/test_safe_write.py`, `tests/test_archive_ops.py`, the archive suites,
   `tests/test_setup_writers_refuse_links.py`, `tests/test_writers_refuse_links_out.py` and
@@ -117,7 +132,7 @@
 - `_recheck` `held` parameter and identity guard (`samestat` of `lstat(path)` and `fstat(fd)`): detects a directory swapped after the walk.
 - `_temp` `dir_fd` parameter and `O_NOFOLLOW`: the temp file is created in the held parent.
 - `_replace` descriptor branch: writes and replaces through the held parent; the old path-based branch is kept for no-`dir_fd` platforms.
-- `_replace` `except OSError` around `finish`: turns a chmod or copystat failure caused by a swap into the rule's refusal.
+- `safe_write._anchored`: the temp file as `finish` names it, through the held directory (`/proc/self/fd`) or its own descriptor (round 3; replaces the removed `except OSError` re-check around `finish`).
 - `mkdirs` descriptor branch: directories are created through the walk, not by path.
 - `safe_write.moving` (public context manager): walks to an archive move's source and destination now, following in-root links through held descriptors, and yields the rename; the M21.37 fallback without `dir_fd`.
 - `safe_write.MAX_LINKS`: the bound on links followed per step.
@@ -137,3 +152,4 @@
 - Test helper `_roadmap` (module-local): the roadmap part of the snapshot, for the "before any mutation" assertion.
 - Test `test_planning_sheets_move_out_of_the_flat_planning_dir`, parametrized `in-repo-link`, `link-chain`, `linked-dir`: in-repo linked sheets still move their final target (review finding 2).
 - Test helper `_link_sheet` (module-local): builds the three linked-sheet shapes.
+- Test `test_a_parent_swapped_after_the_temp_file_leaves_outside_metadata_alone` (`write`, `copy`): round-3 findings; a racer plants an outside file named like the temp file and checks its metadata is kept.
