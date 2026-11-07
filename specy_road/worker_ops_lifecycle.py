@@ -13,10 +13,12 @@ from specy_road.worker_ops_launch import _target, _worktree_for
 from specy_road.worker_process import kill_group, process_alive
 from specy_road.worker_sessions import check_session_id
 from specy_road.worker_state import (
+    FLAG_UNDELIVERED,
     WorkerError,
     WorkerRecord,
     active_for_node,
     append_event,
+    clear_flag,
     create_record,
     list_records,
     load_record,
@@ -50,6 +52,8 @@ def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:
     if rec.queued_message:
         mutate(repo_root, rec, lambda r: setattr(r, "queued_message", None))
         rec, summary = load_record(repo_root, rec.worker_id), f"{summary}; dropped queued follow-up"
+    if FLAG_UNDELIVERED in rec.flags:
+        clear_flag(repo_root, rec, FLAG_UNDELIVERED)
     set_state(repo_root, rec, "terminated", pid=None)
     append_event(repo_root, rec, "terminated", source="orchestrator", authority="orchestrator", summary=summary)
     return rec

@@ -48,6 +48,7 @@ FLAG_EXTERNAL = "possibly_modified_externally"
 FLAG_RECONCILE = "needs_reconcile"
 FLAG_ORPHAN = "wrapper_gone_harness_alive"   # the wrapper died; its harness or process group did not
 FLAG_STALLED = "stalled"   # running, and no stdout for policy.stall_after_seconds; the next output line clears it
+FLAG_UNDELIVERED = "message_undelivered"   # a queued follow-up could not be delivered; the next message or resume sends it
 MAILBOX_FLAG = "FLAG"   # work/.workers/FLAG: replaced by every append_event; `sync --wait` stats only this file
 _ID = re.compile(r"^w-[0-9]{4,}$")
 

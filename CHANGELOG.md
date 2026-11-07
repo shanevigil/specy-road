@@ -27,6 +27,7 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A queued worker message that cannot be delivered (a lease the remote rejects or cannot take, a harness that cannot resume, or a prompt file that cannot be written) stays on the record and the worker gains `message_undelivered`. The next `worker message` or `worker resume` sends that text, a blank line, then its own prompt, and clears both only after the turn starts. `terminate` drops the text and clears the flag. The wrapper's exit code is unchanged.
 - `set-dependencies --deps` and `edit-node --set dependencies=` accept a display id or a node_key
   (mixed in one value) and store the node_key. An unknown token is still refused with
   `dependency 'X' is neither a node id nor a node_key in the roadmap`.
