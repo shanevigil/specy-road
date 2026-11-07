@@ -164,6 +164,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.30` Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed `steering-detection-other-classes` — task — **Not Started**
   - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
   - `M22.32` Claude Code launch and resume deny edits to steering files `steering-claude-launch-denies` — task — **Not Started**
+  - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
