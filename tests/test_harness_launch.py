@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
 
 import pytest
@@ -73,6 +74,30 @@ def test_cursor_names_the_prompt_file_on_every_launch(prompt: Path, tmp_path: Pa
     assert cursor.resume("s-1", prompt, tmp_path, "m", None).argv[-1] == told
     ask = cursor.reviewer_launch(prompt, "m", tmp_path)
     assert ask.argv[-1] == told and ask.argv[ask.argv.index("--mode") + 1] == "ask" and ask.stdin is None
+
+
+# --- M22.33: a reviewer resume, the format-repair retry's included, runs on the model it was asked for -----------
+
+@pytest.mark.parametrize(("harness", "flag"), [("claude-code", "--model"), ("codex", "-m"), ("cursor", "--model")])
+def test_a_reviewer_resume_passes_the_requested_model(harness: str, flag: str, prompt: Path, tmp_path: Path,
+                                                      monkeypatch) -> None:
+    a = ADAPTERS[harness]
+    resumed = a.reviewer_launch(prompt, "m", tmp_path, session=("s-1", True)).argv
+    assert "s-1" in resumed and resumed[resumed.index(flag) + 1] == "m"
+    roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+              f"  - {{id: rev, family: other, roles: [reviewer], harness: {harness}}}\n")
+    repo = make_review_repo(tmp_path / "repo", orchestration=roster)
+    reviews_dir(repo, "M1.1").mkdir(parents=True, exist_ok=True)
+    (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n")
+    sid, seen = str(uuid.uuid4()), []
+    # a clean turn with an empty final message: one format-repair turn, which resumes the reported session
+    monkeypatch.setattr(review_delegate, "delegate_turn", lambda _a, _h, _log, _cwd, launch: seen.append(launch) or {
+        "session_id": sid, "exit": 0, "errors": [], "tail": [], "log_start": 0, "log_end": 0, "log_sha256": None})
+    run = review_delegate.delegate(repo, "M1.1", "rev", retries=0, sleep=lambda _s: None)
+    assert [at.get("repair", False) for at in run["attempts"]] == [False, True]
+    fresh, repair = (la.argv for la in seen)
+    assert sid in repair and sid not in fresh
+    assert fresh[fresh.index(flag) + 1] == repair[repair.index(flag) + 1] == "rev"
 
 
 # --- A2: an argument over the OS limit is refused before exec --------------------------------------------------------
