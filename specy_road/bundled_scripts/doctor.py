@@ -15,8 +15,10 @@ Four kinds, each its own section:
   (a review recipe's). ``--fix`` leaves a detached one with uncommitted changes, with commits
   no branch holds, or in a temporary directory another command may be using (:data:`TEMP_WORKTREES`).
 - registry rows on the integration branch whose branch is in neither this clone nor the remote
-  (advisory, as in ``registry-prune``: another clone's claim looks the same until its branch is
-  pushed), or whose leaf is Complete.
+  and whose leaf is not Complete (advisory: another clone's claim looks the same until its branch
+  is pushed; ``--fix`` leaves the row and names ``specy-road registry-prune --remove <CODENAME>``),
+  or whose leaf is Complete (``--fix`` removes it through ``registry-prune --remove``; the report
+  says the branch is listed above only when that branch is in this clone or on the remote).
 - stashes the toolkit pushed (``specy-road: …``; pickup and review used to stash ``work/``, and
   a failed restore left the entry behind).
 
@@ -27,7 +29,9 @@ A branch with no commit of its own is "no commits yet", never merged; a branch a
 open claim, open rollup or unfinished worker holds is "live", and ``--fix`` leaves
 it and its worktree (:mod:`specy_road.doctor_worktrees`).
 
-Nothing changes without ``--fix``, and ``--fix`` asks once per kind.
+Nothing changes without ``--fix``, and ``--fix`` asks once per kind. A registry row with no
+branch is listed and left unless its leaf is Complete; removing a row ``--fix`` leaves is
+``specy-road registry-prune --remove <CODENAME>``.
 
 With no such git remote there is nothing to compare against, which is not a failure: doctor says
 so in one line and lists only the stashes. A remote that is configured but cannot be fetched still
@@ -157,22 +161,37 @@ def _prune_row(ctx: _Ctx, codename: str) -> str | None:
     return (r.stderr or r.stdout).strip() if r.returncode else None
 
 
+# True when the branch is in this clone or on the remote, so the branch section lists it.
+_COMPLETE_REASON = {
+    True: "leaf Complete; {branch} is listed above",
+    False: "leaf Complete",
+}
+
+
 def _registry_findings(ctx: _Ctx) -> list[Finding]:
+    """Remove a Complete row. Say its branch is listed above only when that branch is in this
+    clone or on the remote. Any other row with no branch is advisory and ``--fix`` leaves it.
+    """
     reg = read_registry_at_ref(ctx.root, ctx.target, DEFAULT_TIMEOUT) or {}
     stale = {e["codename"] for e in detect_stale_claims(repo_root=ctx.root, reg=reg, remote=ctx.remote)}
     found = []
     for e in reg.get("entries") or []:
-        if e["codename"] in stale:
-            why = f"{e['branch']} is in neither this clone nor {ctx.remote}"
-        elif e["codename"] in ctx.complete:
-            why = f"leaf Complete; {e['branch']} is listed above"
+        codename = e["codename"]
+        if codename in ctx.complete:
+            why = _COMPLETE_REASON[codename not in stale].format(branch=e["branch"])
+            remove = partial(_prune_row, ctx, codename)
+            done = f"removed registry row {codename} on {ctx.target}"
+        elif codename in stale:
+            why = (
+                f"{e['branch']} is in neither this clone nor {ctx.remote} "
+                "(advisory: another clone's claim looks the same until it pushes its branch; "
+                "confirm that clone no longer holds the claim, then "
+                f"specy-road registry-prune --remove {codename}), so --fix leaves it"
+            )
+            remove, done = None, ""
         else:
             continue
-        found.append(Finding(
-            "registry", e["codename"], f"node {e['node_id']}: {why}",
-            partial(_prune_row, ctx, e["codename"]),
-            f"removed registry row {e['codename']} on {ctx.target}",
-        ))
+        found.append(Finding("registry", codename, f"node {e['node_id']}: {why}", remove, done))
     return found
 
 
@@ -211,7 +230,8 @@ def _sections(ctx: _Ctx) -> list[tuple[str, str, list[Finding]]]:
         ("worktree", "Worktrees whose branch is gone or merged, and detached worktrees:",
          worktree_findings(ctx, merged_local)),
         ("registry", (f"Registry rows on {ctx.target} with no branch (advisory: another clone's "
-                      "claim looks the same until it pushes its branch) or whose leaf is Complete:"),
+                      "claim looks the same until it pushes its branch; --fix leaves them — "
+                      "specy-road registry-prune --remove <CODENAME>) or whose leaf is Complete:"),
          _registry_findings(ctx)),
         _stash_section(ctx.root),
     ]
@@ -341,10 +361,15 @@ def build_parser() -> argparse.ArgumentParser:
         prog="specy-road doctor",
         description=(
             "After git fetch --prune, list feature/rm-* branches (local and remote) whose leaf is "
-            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, or claim gone — worktrees whose branch is gone or merged, other detached worktrees, registry rows with no branch or a Complete leaf, and stashes specy-road pushed; also nested-repo branches with commits no remote has. Dry-run unless --fix."
+            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, or claim gone — worktrees whose branch is gone or merged, other detached worktrees, registry rows with no branch (listed; --fix leaves a non-Complete one for registry-prune --remove) or a Complete leaf, and stashes specy-road pushed; also nested-repo branches with commits no remote has. Dry-run unless --fix."
         ),
     )
-    p.add_argument("--fix", action="store_true", help="Remove what is listed, asking once per kind, and report each action.")
+    p.add_argument(
+        "--fix", action="store_true",
+        help="Remove what is listed, asking once per kind, and report each action. "
+             "Leaves a registry row whose branch is in neither this clone nor the remote, "
+             "unless its leaf is Complete.",
+    )
     p.add_argument("--yes", action="store_true", help="With --fix, do not ask.")
     p.add_argument("--base", default=None, metavar="BRANCH",
                    help="Integration branch (default: roadmap/git-workflow.yaml, else main).")

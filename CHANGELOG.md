@@ -19,6 +19,14 @@ body. Keep section bodies focused; link to PRs for detail.
   when the profile lists every effort as an alias: `GPT-5.6 Sol 1M Medium` against `gpt-5.6-sol-high` is a mismatch
   in the review check and the worker note. A context size whose display name omits the effort word (`GPT-5.6 Sol 1M`,
   the medium name) does not match either. A request that names no effort still accepts the profile's aliases.
+- `specy-road doctor --fix` leaves a registry row whose branch is in neither this clone nor the
+  remote. The report calls that row advisory and says what to check: another clone's claim looks
+  the same until it pushes its branch, so confirm that clone no longer holds the claim, then
+  `specy-road registry-prune --remove <CODENAME>`. A row whose leaf is Complete is still removed,
+  including when its branch is gone, and the report says that branch is listed above only when
+  the branch is in this clone or on the remote.
+  The same rule is in `docs/git-workflow.md` (Finding leftovers: `doctor`), the `doctor` usage
+  line, and the finish stub.
 - PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
   list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the
   other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
