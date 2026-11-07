@@ -98,3 +98,35 @@ re-run the fix round. The two edits are:
   13 passed.
 - `ruff check specy_road tests scripts`: all checks passed.
 - `specy-road file-limits`: OK.
+
+## Fix round 2 (review `gpt-5.6-sol-high` at `fc481e53`): fixed
+
+`docs/orchestration-workers.md` is now in the zones. I merged `origin/WIP/improvements-0-3-1` first (no
+conflicts; the integration side's generated and registry files were kept as merged). Doc commit: see the commit
+that READY names.
+
+- **Class:** operator docs that describe the sandbox outbox and the harness state entries, left stale by A1 and
+  A3.
+- Cursor row of the harness state table: dropped `sandbox-policies/` from the read-only list. The row now
+  matches `HARNESS_STATE["cursor"]`.
+- Hand-off bullet: the outbox now starts with a copy of the regular files already in `work/reviews/<ID>/`
+  (REVIEW, notes and `history/`; links not copied). Only `READY-*` is moved back, and a new `REVIEW-` or an
+  edited copy of a record is discarded. I removed the sentence "nothing needs to be read from there": it is no
+  longer true.
+
+### Probes (round 2)
+
+- Every row of the harness state table against `HARNESS_STATE` (claude-code, cursor, codex): they match after
+  the edit.
+- `grep -rni outbox` over `docs/`, `README.md`, `suggested_prompts/`, `specy_road/templates/` and `CHANGELOG.md`,
+  excluding the unrelated ops outbox: only the Hand-off bullet (fixed) and the two CHANGELOG entries. The M22.44
+  entry only says READY-only delivery, which is still true.
+- `grep "nothing needs to be read"` / `policies` over `docs/` and `specy_road/`: no other stale claim.
+- Tests that read `docs/orchestration-workers.md` (`tests/test_worker_resume_permissions.py`): 57 passed.
+- `tests/test_worker_sandbox.py` with bwrap running (the `/var/tmp` redirect wrapper): 13 passed. Under plain
+  pytest: 5 passed, 8 skipped (`/var/tmp` is read-only in this session).
+- `ruff check specy_road tests scripts`: all checks passed. `specy-road file-limits`: OK.
+
+### Added (round 2)
+
+- none (doc text only)
