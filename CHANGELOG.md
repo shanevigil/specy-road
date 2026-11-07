@@ -291,6 +291,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road ready` warns on stderr when a branch changes a product file and
+  adds no line under `## [Unreleased]` in `CHANGELOG.md`. The exit code and the
+  READY file are unchanged. A leaf whose acceptance or planning sheet contains
+  `no CHANGELOG entry` is exempt.
 - `policy.red_green` in `roadmap/orchestration.yaml` (default false) and
   `specy-road review red-green <NODE_ID>`: each Python test function the leaf
   adds or changes runs with pytest by node id in a detached temporary worktree
