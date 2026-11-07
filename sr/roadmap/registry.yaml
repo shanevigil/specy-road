@@ -196,7 +196,8 @@ entries:
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T11:20:30+00:00'
   - codename: reports-say-what-happened
     node_id: M22.11
     branch: feature/rm-reports-say-what-happened
