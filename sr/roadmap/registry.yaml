@@ -167,6 +167,7 @@ entries:
       - README.md
       - docs/install-release-candidates.md
       - CHANGELOG.md
+      - tests/test_release_harness.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

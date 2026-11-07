@@ -47,7 +47,8 @@
         "pyproject.toml",
         "README.md",
         "docs/install-release-candidates.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_release_harness.py"
       ],
       "type": "task"
     },
