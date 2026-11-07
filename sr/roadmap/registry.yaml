@@ -156,6 +156,7 @@ entries:
       - specy_road/worker_sandbox.py
       - tests/test_worker_sandbox.py
       - CHANGELOG.md
+      - docs/orchestration-workers.md
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -170,6 +171,8 @@ entries:
       - tests/test_finish_merge_failure_undo.py
       - docs/orchestration-workers.md
       - CHANGELOG.md
+      - specy_road/worker_state.py
+      - specy_road/schemas/worker-record.schema.json
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
