@@ -86,40 +86,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: safe-write-rule-setup-writers
-    node_id: M21.37
-    branch: feature/rm-safe-write-rule-setup-writers
-    touch_zones:
-      - specy_road/safe_write.py
-      - specy_road/managed_block.py
-      - specy_road/init_project.py
-      - specy_road/specyrd_init.py
-      - specy_road/generated_files.py
-      - specy_road/archive_restore.py
-      - specy_road/bundled_scripts/refresh_schemas.py
-      - specy_road/bundled_scripts/upgrade_plan.py
-      - specy_road/bundled_scripts/upgrade_generated.py
-      - specy_road/bundled_scripts/export_roadmap_md.py
-      - specy_road/bundled_scripts/digest_cli.py
-      - specy_road/bundled_scripts/do_next_task_register.py
-      - specy_road/bundled_scripts/refresh_stubs.py
-      - tests/test_safe_write.py
-      - tests/test_setup_writers_refuse_links.py
-      - tests/test_writers_refuse_links_out.py
-      - tests/test_upgrade.py
-      - docs/install-and-usage.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/agent_ignores.py
-      - specy_road/specyrd_skills.py
-      - tests/test_prerelease_files.py
-      - tests/test_m13_7_notices.py
-      - tests/test_upgrade_plan_parity.py
-      - specy_road/bundled_scripts/refresh_stubs_report.py
-      - specy_road/specyrd_hooks.py
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: pending
   - codename: ops-writers-refuse-links
     node_id: M21.39
     branch: feature/rm-ops-writers-refuse-links
@@ -137,5 +103,126 @@ entries:
       - docs/dev-workflow.md
       - CHANGELOG.md
     started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: ready-changelog-reminder
+    node_id: M22.7
+    branch: feature/rm-ready-changelog-reminder
+    touch_zones:
+      - specy_road/changelog_check.py
+      - specy_road/review_ready_merge.py
+      - tests/test_ready_changelog_warning.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: verify-tells-a-blocking-404
+    node_id: M22.17
+    branch: feature/rm-verify-tells-a-blocking-404
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_verify.py
+      - tests/test_brainstorm_verify.py
+      - docs/brainstorming.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: sandbox-rc4-final-polish
+    node_id: M22.22
+    branch: feature/rm-sandbox-rc4-final-polish
+    touch_zones:
+      - gui/pm-gantt/src/components/MarkdownWorkspace.tsx
+      - gui/pm-gantt/src/components/ModalFrame.tsx
+      - gui/pm-gantt/src/components/EditModal.tsx
+      - gui/pm-gantt/src/components/PublishRoadmapModal.tsx
+      - gui/pm-gantt/src/planningSectionUtils.ts
+      - gui/pm-gantt/src/planningSectionUtils.test.ts
+      - gui/pm-gantt/src/markdownWorkspace.test.ts
+      - specy_road/pm_gantt_static/
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: move-rewrites-sheet-zones
+    node_id: M22.2
+    branch: feature/rm-move-rewrites-sheet-zones
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_id_rewrite_staging.py
+      - specy_road/bundled_scripts/roadmap_move_node.py
+      - specy_road/bundled_scripts/validate_touch_zones.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - tests/test_move_node_subtree.py
+      - tests/test_validate_touch_zones.py
+      - docs/roadmap-authoring.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: sheet-body-without-display-id
+    node_id: M22.4
+    branch: feature/rm-sheet-body-without-display-id
+    touch_zones:
+      - specy_road/templates/planning-node/feature-sheet.md.template
+      - specy_road/templates/planning-node/gate-sheet.md.template
+      - specy_road/bundled_scripts/planning_sheet_bootstrap.py
+      - tests/test_planning_sheet_bootstrap.py
+      - tests/test_outline_group_cli.py
+      - tests/test_brainstorm_promote_judgement.py
+      - CHANGELOG.md
+      - tests/test_scaffold_planning.py
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: upgrade-no-self-warning-export-drift-hint
+    node_id: M22.28
+    branch: feature/rm-upgrade-no-self-warning-export-drift-hint
+    touch_zones:
+      - specy_road/cli.py
+      - specy_road/bundled_scripts/export_roadmap_md.py
+      - tests/test_doctor_version_skew.py
+      - tests/test_export_roadmap_md.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: safe-write-directory-descriptors
+    node_id: M22.29
+    branch: feature/rm-safe-write-directory-descriptors
+    touch_zones:
+      - specy_road/safe_write.py
+      - specy_road/archive_ops.py
+      - tests/test_safe_write.py
+      - tests/test_archive_ops.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: local-roster-and-codex-reviewer-isolation
+    node_id: M22.9
+    branch: feature/rm-local-roster-and-codex-reviewer-isolation
+    touch_zones:
+      - specy_road/roster_local.py
+      - specy_road/worker_adapter_codex.py
+      - tests/test_roster_worktree_dry_run.py
+      - tests/test_harness_launch.py
+      - docs/orchestration-roster.md
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+      - specy_road/review_record_write.py
+      - tests/test_review_record_write.py
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: accept-policy-for-all-open-claims
+    node_id: M22.34
+    branch: feature/rm-accept-policy-for-all-open-claims
+    touch_zones:
+      - specy_road/review_policy_pin.py
+      - specy_road/bundled_scripts/review_cli.py
+      - docs/orchestration-review.md
+      - tests/test_review_policy_pin.py
+      - CHANGELOG.md
+    started: '2026-11-07'
     owner: savigil
     implementation_review: pending

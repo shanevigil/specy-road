@@ -64,10 +64,8 @@ Rating for each scenario: **PASS** (criteria met), **PASS-WITH-NOTE**
 In the Notes app:
 
 1. `specy-road init project` → `validate` and `file-limits` exit 0.
-   `export --check` and `digest --check` exit 1 with `missing …` because the
-   scaffold ships neither generated file (`roadmap.md`,
-   `roadmap-context.md`); run `specy-road export` and `specy-road digest`
-   once, then both exit 0. `roadmap/orchestration.yaml`, `model-profiles/`, the `AGENTS.md`
+   `export --check` and `digest --check` exit 0 right after init: it writes
+   `roadmap.md` and `roadmap-context.md`. `roadmap/orchestration.yaml`, `model-profiles/`, the `AGENTS.md`
    managed stub, `.specyrd/AGENTS.md` and `.specyrd/AGENTS.team.md` are present.
 2. `specyrd init --ai cursor`, `--ai claude-code`, `--ai codex`: one
    `.agents/skills/<name>/SKILL.md` per command; `.claude/skills/<name>` is a
@@ -117,8 +115,10 @@ has no host to open that PR on.
 6. Signed: generate an ed25519 key, put its public line on the reviewer's
    roster entry, set `policy.signed_reviews: true` on the integration
    branch. `review record` without `--sign-key` is refused; with it, the
-   gate passes; edit one byte of the record and the gate reports "does not
-   verify".
+   gate passes. Tamper, then restore the record (the gate is met again):
+   a front-matter value byte reports `signature does not verify for <model>`;
+   a notes-body byte reports `notes body does not match notes_sha256`;
+   a schema-breaking edit such as an `A1` value makes the record schema-invalid.
 7. Policy from the branch under review must not count: lower
    `reviewers_required` on the feature branch only; the gate still reads the
    integration branch's file.
@@ -165,10 +165,11 @@ rules change model behaviour, not a FAIL.
 
 ## 4. Models, prompts, plan
 
-1. `models list` shows each roster entry's profile scores (C/E/R) and a
-   `stale` flag (`--json` adds the profile path); the `researched` dates are
-   in `models show <id>` and `models stale`. `models stale` exits 1 with one
-   rostered profile's `researched` date set 200 days back, 0 otherwise.
+1. `models list` shows each roster entry's C/E/R scores and a trailing
+   `stale` marker on a stale profile's line (`--json` adds the profile path).
+   Check a rostered profile whose `researched` date is a fixed date more than
+   180 days ago: `models stale` lists the reasons and exits 1, and
+   `models show <id>` prints them. With no such profile, `models stale` exits 0.
 2. `prompt <ID> --model <id> --role executor --channel cli` runs the
    profile's `access.cli` on the real harness and the session completes the
    leaf's precondition check (it must not implement when the leaf is not
@@ -185,8 +186,9 @@ rules change model behaviour, not a FAIL.
 
 Roster three entries with `harness: claude-code`, `codex`, `cursor`,
 executor role, each with `profile:` pointing at its scaffolded profile as
-the roster guide recommends, `max_workers: 2`. Claim two leaves. From the
-coordinator chat (any harness):
+the roster guide recommends, `max_workers: 2`. Claim two leaves from one
+checkout: the second is `do-next-available-task --allow-second-claim`
+(exit 6 without it). From the coordinator chat (any harness):
 
 1. **Delegate returns first.** `worker delegate <ID1> --model <claude id>`
    prints a worker id in under two seconds; the chat stays usable; `worker
@@ -404,11 +406,15 @@ and the transcript; record offered / cited / reproduced per run. Hit rate and sh
 
 For a run that reaches its guests only through the sandbox's MCP tools. The
 sandbox's own tool contract is the authority, and its `get_changelog` lists
-what changed; read each tool's schema before calling it.
+what changed; read each tool's schema before calling it. The idle action and
+lease length are deployment settings, so trust the fields a call returns over
+the defaults named here.
 
-**When this applies:** once the sandbox has claim holders, leases and chunked
-push. A `claim_workspace` that returns `holder_secret` tells you it does.
-Without one, none of the holder or lease rules below apply yet.
+- **Start with the changelog.** Call `get_changelog`, passing `since` with the
+  `latest_date` from the last run, and record the new `latest_date` in the
+  evidence file. Stop and update the run's prompt if a new entry has
+  `action_required` true. Read `common_notes` from `list_sbvms` as well as each
+  row's notes.
 
 - **Keep the holder secret.** The first `claim_workspace` returns
   `holder_secret` once. Save it outside the agent's context as soon as it
@@ -420,29 +426,39 @@ Without one, none of the holder or lease rules below apply yet.
   another path. `join=true` shares their guest, so use it only when that is
   the intent.
 - **Keep the guest active.** Only successful tool calls on a slot count as
-  activity: a job running in the guest does not. A guest with no calls is
-  paused or stopped after the idle window (30 minutes by default;
-  `vm_idle_status` gives `action_at_iso`), so during long jobs poll with
-  `sbvm_exec` at least every 25 minutes.
+  activity: a job running in the guest does not, and a failed call does not.
+  After the idle window (30 minutes by default) the guest is paused or shut
+  down; a shutdown keeps the disk but kills running jobs. During long jobs call
+  a tool on the slot at least every 25 minutes; an `sbvm_exec` tailing the job's
+  log is the most useful. One `sbvm_exec` is capped at 1800 seconds by default,
+  so run longer jobs detached and poll them. Read `action_at_iso` from
+  `vm_idle_status`, but keep the guest active with another call.
 - **A lease expiry is data loss.** `expires_at` comes back on each claim, and
   the default lease is 24 hours (`null` means none applies). A successful call
-  on the slot renews it. When it passes, the guest is stopped and reset and
-  the pin is released, with no notice. Fetch results before any wait that
-  could reach `expires_at`.
+  on the slot renews it, so a claim's `expires_at` is only a lower bound. When
+  it passes, the guest is stopped and reset and the pin is released, with no
+  notice. Fetch results before any wait that could reach `expires_at`. After a
+  server restart, holder pins get at least an hour before expiry. Canary and
+  maintenance pins never lease.
 - **Spot a silent expiry.** After an expiry, a re-claim can look like success
   on a clean guest. Only a claim that creates a holder returns `holder_secret`,
-  so a re-claim that returns a new one means your work is gone. Compare `sbvm`
-  as well.
+  and an old secret passed after an expiry is ignored, not refused. So a
+  re-claim that returns any `holder_secret` you did not expect means your work
+  is gone, even on the same `sbvm`.
 - **Release.** Fetch what you need, `vm_stop`, then `release_workspace` with
   the secret. `holder_required` means the pin stays. `detached: true` with
   `released: false` means another client still holds it and the guest was not
   reset. `reset_failed` means `ok: false`, yet the pin is gone: confirm with
   `list_workspace_pins` and record it. That slot then refuses claims with
-  `slot_dirty`, so use another.
+  `slot_dirty`, so use another. `ok: true` with `released: false` and no
+  `detached` means no pin existed: if you expected one, its lease ran out, so
+  treat the work as lost, because this does not look like a failure. A running
+  guest is refused with `sbvm_still_running`.
 - **Unexpected refusals.** `release_in_progress` or `pin_held` on a slot you
   believe is yours, when you have not just released it, can mean the lease ran
-  out: treat that guest's work as lost and redo the step on a new claim. If
-  your own release raised an error, repeat the same release to finish it.
+  out: treat that guest's work as lost and redo the step on a new claim. During
+  a reset, any tool on that slot answers `release_in_progress`. If your own
+  release raised an error, repeat the same release to finish it.
 - **A killed run.** Look for its saved secret first, then in the run's
   transcript, since it arrives as a tool result, and treat that transcript as
   sensitive until the pin ends. With the secret, carry on or release as normal.
@@ -454,6 +470,20 @@ Without one, none of the holder or lease rules below apply yet.
 - **Older pins.** Pins from before holders have none, need no secret and never
   expire, so a release wipes them unchecked. Name the slots a run must leave
   alone.
-- **Large files.** Without the upload URL, use `sbvm_push_begin`,
-  `sbvm_push_chunk` and `sbvm_push_commit`, and check the returned `sha256`.
-  The bytes pass through the agent's context, so keep this to modest files.
+- **Pushing files.** Use `content_text` on `sbvm_push_artifact` for scripts and
+  config up to 1 MiB; it is written as UTF-8 exactly as given. Without the
+  upload URL, use `sbvm_push_begin`, `sbvm_push_chunk` and `sbvm_push_commit`
+  for binaries and larger files, and check the returned `sha256`. Limits are
+  64 MiB total and 1 MiB decoded per chunk, each offset must be exactly the next
+  byte (`offset_mismatch` otherwise), and a transfer expires 24 hours after
+  begin. The bytes pass through the agent's context, so keep this to modest
+  files. These tools refuse with `{error, hint}`, not `ok: false`, so check for
+  both shapes.
+- **Fetching files.** `guest_path` must be canonical: no `.` or `..` parts and
+  no repeated or trailing `/`, or the call fails with `invalid_parameter`. To
+  confirm an artifact without passing it through context, use `metadata_only`
+  and compare `size_bytes` and `sha256`; it takes files only and cannot be
+  combined with `out_path`.
+- **Failed browser tests.** Record `failures`, and check that `failures` plus
+  `failures_omitted` equals `failed`, so missing detail is visible.
+- **Inference through the guest proxy.** Set client timeouts above 600 seconds.

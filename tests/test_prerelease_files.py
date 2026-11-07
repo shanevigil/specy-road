@@ -78,7 +78,10 @@ def test_managed_writes_refuse_a_symlink_out_of_the_repo(tmp_path: Path, link: s
          "refresh": lambda: _cli(repo, "refresh-stubs"),
          "specyrd": lambda: _cli(repo, *specyrd, "--force", module="specy_road.specyrd_cli")}[command]()
 
-    assert r.returncode == 0, r.stderr
-    assert "refused: a symlink leads outside the repository" in r.stdout
+    if command == "init":   # AGENTS.md stays on resolves_outside: a report line
+        assert r.returncode == 0, r.stderr
+        assert "refused: a symlink leads outside the repository" in r.stdout
+    else:   # M21.37: a stub, skill file or skill link refused for a link is an error, exit 1
+        assert r.returncode == 1 and f"error: {dest} is a symlink" in r.stderr, r.stderr
     assert _snapshot(outside) == before
     assert not any(p.is_symlink() for p in outside.rglob("*"))

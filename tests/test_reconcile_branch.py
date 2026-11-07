@@ -15,8 +15,10 @@ from tests.review_repo_helpers import NODE, commit_file, git
 
 from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 from specy_road.digest import render_digest
+from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_deterministic import merge_feature_deterministically
 from specy_road.reconcile_branch import reconcile_branch
+from specy_road.registry_yaml import registry_path, write_registry
 
 LEAVES = (("M1.1", "one", "11111111-1111-5111-8111-111111111111"),
           ("M1.2", "two", "22222222-2222-5222-8222-222222222222"))
@@ -136,6 +138,57 @@ def test_reconcile_refuses_a_code_conflict_and_leaves_the_branch(tmp_path: Path,
     assert git(wt, "rev-parse", "origin/feature/rm-two") == head
     assert git(wt, "status", "--porcelain", "--untracked-files=no") == ""
     assert subprocess.run(["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"], cwd=wt).returncode != 0
+
+
+def _pushed_app(tmp_path: Path) -> Path:
+    """An ``init project`` checkout whose integration branch is on a bare origin."""
+    remote, app = tmp_path / "remote.git", tmp_path / "app"
+    git(tmp_path, "init", "-q", "--bare", str(remote))
+    git(tmp_path, "init", "-q", str(app))
+    r = subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", "init", "project", str(app)],
+        cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
+    )
+    assert r.returncode == 0, r.stderr
+    assert _cli(app, "export").returncode == 0 and _cli(app, "digest").returncode == 0
+    git(app, "config", "user.email", "t@e.com")
+    git(app, "config", "user.name", "T")
+    git(app, "checkout", "-q", "-b", "main")
+    git(app, "add", "-A")
+    git(app, "commit", "-qm", "init")
+    git(app, "remote", "add", "origin", str(remote))
+    git(app, "push", "-q", "-u", "origin", "main")
+    return app
+
+
+def test_reconcile_keeps_a_local_only_claim_when_the_remote_moves(tmp_path: Path, capsys) -> None:
+    """A1: a ``--local`` claim never pushed is still the row finish finds after the integration branch moves."""
+    app = _pushed_app(tmp_path)
+    picked = _cli(app, "do-next-available-task", "--local")
+    assert picked.returncode == 0, picked.stderr
+    branch = git(app, "branch", "--show-current")
+    codename = branch.removeprefix("feature/rm-")
+    head_rows = yaml.safe_load((app / "roadmap" / "registry.yaml").read_text(encoding="utf-8"))["entries"]
+    head_row = next(e for e in head_rows if e["codename"] == codename)
+    mover = tmp_path / "mover"
+    git(app, "worktree", "add", "-q", "--detach", str(mover), "origin/main")
+    other = {"codename": "other-lane", "node_id": "M1", "branch": "feature/rm-other-lane",
+             "implementation_review": "pending"}
+    write_registry(registry_path(mover), {"version": 1, "entries": [other]})
+    git(mover, "add", "roadmap/registry.yaml")
+    git(mover, "commit", "-qm", "another lane")
+    git(mover, "push", "-q", "origin", "HEAD:main")
+    git(app, "worktree", "remove", "--force", str(mover))
+    remote_rows = yaml.safe_load(git(tmp_path / "remote.git", "show", "main:roadmap/registry.yaml"))["entries"]
+    assert [e["codename"] for e in remote_rows] == ["other-lane"]
+
+    assert reconcile_branch(app, ib="main", remote="origin") == 0, capsys.readouterr().err
+
+    rows = yaml.safe_load((app / "roadmap" / "registry.yaml").read_text(encoding="utf-8"))["entries"]
+    assert rows == [other, head_row]
+    assert git(app, "rev-parse", "HEAD^2") == git(tmp_path / "remote.git", "rev-parse", "main")
+    found, _reg, entry, _nodes = resolve_feature_rm_registry_context(app, branch)
+    assert found == codename and entry == head_row
 
 
 def test_reconcile_keeps_the_row_of_a_leaf_that_has_not_finished(tmp_path: Path, capsys) -> None:

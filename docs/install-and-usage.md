@@ -7,7 +7,7 @@
 
 **Must know without reading on:**
 - Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui]`, `[gui-next]`, `[review]`); pipx and uv tool work too. An RC is one exact wheel from TestPyPI, sha256-checked, with dependencies from PyPI only; TestPyPI is never an index ([`install-release-candidates.md`](install-release-candidates.md)).
-- New project: `specy-road init project` (it also writes `roadmap.md` and `roadmap-context.md`), set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, make the first commit, then `specy-road validate`.
+- New project: `specy-road init project` (it also writes `roadmap.md` and `roadmap-context.md`) prints the next steps: set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, commit the scaffold, then `specy-road validate`.
 - After `pip install -U specy-road`: `specy-road upgrade --prune` (runs `refresh-schemas`, `refresh-profiles`, copies missing load-order docs, `refresh-stubs`, then `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
 - Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
@@ -138,13 +138,39 @@ order, then `validate` and `digest --check`, and ends with what is left for you:
 review the diff and commit the new untracked files. When `validate` passes it
 first writes `roadmap-context.md` if it is missing or out of date and
 `roadmap.md` if it is tracked and out of date, one `wrote` line each (`would
-write` in a dry run), and refuses a path that is a symlink out of the project;
+write` in a dry run), and refuses a path with any symlink on it (in the project or out of it);
 after a refusal, or when `validate` fails, it says to run `specy-road digest`
 instead (not `specy-road sync`, which also fast-forwards your integration
 branch from the remote). `--dry-run` runs its git calls in the temporary copy
 with every `GIT_` variable dropped, no global or system git config, no hooks
-and a timeout, so it is safe inside a git hook. It exits 1 when `validate`
-fails and 2 when a git call it depends on fails. Each refresh is also a command of its own; all three are
+and a timeout, so it is safe inside a git hook. It exits 2 when a git call it
+depends on fails, and 1 when `validate` fails, and also, even when `validate`
+passes, when a write is refused: before its first write, `upgrade` checks every
+path it would change, and one that leads out of the checkout, or a schema, stub
+directory or other path with any symlink on it, prints `error: <path> is a
+symlink (to <target>), not <kind>` and writes nothing (`--dry-run` included).
+`init project`, `refresh-schemas`, `refresh-stubs`, `specyrd init`, `export` and
+`digest` refuse the same way and exit 1 (`specyrd init` also for the files
+`--install-guard-hooks` and `--install-pre-push` write, checked before its first write):
+any symlink on the path they write,
+pointing out of the project or inside it, dangling or looping, is refused rather than
+followed. One exception: an agent skills directory itself may be a symlink to the other
+one, with exactly this link text: `.claude/skills -> ../.agents/skills` or
+`.agents/skills -> ../.claude/skills`, the other being a real directory; the
+stubs are written into that directory. Any other skills link is refused: an
+in-repository alias such as `.claude/skills -> ../tools/skills` (which earlier
+releases accepted), an absolute or chained link, one through another link, a
+dangling one, or one leaving the repository. Replace such a link with one of the
+two values above or a real directory. Any other link on a stub's path is refused
+too; the skill links made under
+`.claude/skills/` are made on purpose. A stub, skill file, skill link or ignore
+file refused this way prints `error:` and makes `refresh-stubs`, `upgrade` and
+`upgrade --dry-run` exit 1; that path is left as it is and everything else is
+still written. These stay report lines (`refused`, `skipped`) and do not change
+the exit code: `AGENTS.md` or `CLAUDE.md` linked out of the repository (the two
+may still link to each other), a shipped doc, a work template, and a model
+profile. An explicit absolute
+`digest -o` outside the checkout is written as given. Each refresh is also a command of its own; all three are
 idempotent, take `--dry-run`, and never touch the roadmap, planning sheets, or
 anything outside a managed block.
 

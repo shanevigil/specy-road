@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.bundled_scripts.do_next_task_pickup_helpers import register_and_commit
 from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
@@ -26,6 +27,7 @@ def regenerated_tracked_paths(root: Path) -> list[str]:
     A file git does not track is neither rendered nor added: the claim commit
     does not start tracking a file the project chose not to, and pickup does
     not leave a new untracked file behind for the next clean-tree check.
+    Each is written by the safe-write rule: a symlink at it raises ``SafeWriteError``.
     """
     if not _has_roadmap_graph(root):
         return []
@@ -34,7 +36,7 @@ def regenerated_tracked_paths(root: Path) -> list[str]:
     if "roadmap.md" in tracked:
         reexport_roadmap_md(root)
     if DEFAULT_OUTPUT in tracked:
-        (root / DEFAULT_OUTPUT).write_text(render_digest(root), encoding="utf-8")
+        safe_write.write(root, root / DEFAULT_OUTPUT, render_digest(root))
     return [n for n in tracked if git_code(["diff", "--quiet", "--", n], root)[0] == 1]
 
 

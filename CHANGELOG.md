@@ -13,11 +13,41 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `group-nodes --into-new NEW_ID` (and `POST /api/outline/group`) accepts a `NEW_ID` that one of the listed nodes
+  holds, as in `group-nodes M1.1 M1.2 M1.3 --into-new M1.2`: that node leaves the id in the same transaction, so a
+  regroup into the ids the flat nodes occupy no longer needs a temporary id and a second `move-node --id`. An id held by
+  any other node, a listed node's descendant included, is still refused.
+- `reconcile-branch` keeps a claim that exists only on the feature branch when the integration branch has moved, so finish still finds the row. A `git checkout` of the feature branch that fails after the merge (and, in push mode, the push) has succeeded is one warning naming that command: finish exits 0 and does not undo the bookkeeping commit. A checkout failure after a failed merge or push still undoes it.
 - The worker post-run check matches touch zones from either the git root or the project root in a nested layout, like
   finish does, so a commit under an `sr/...` zone is no longer flagged `committed_outside_zones`.
 - A Codex reviewer's resumed turn, the format-repair retry included, passes `-m` with the requested model, as the
   fresh turn does, so the retry no longer runs on Codex's configured default while its verdict is filed under the
   requested id. Claude Code and Cursor already passed their `--model` on a reviewer resume.
+- **Security:** one safe-write rule for the setup and upgrade writers
+  (`specy_road/safe_write.py`): before any mkdir, write or delete, every
+  directory from the project root down must be a real directory and the file a
+  regular one, so any symlink on the path is refused, dangling, out of the
+  project or **inside it**. `init project`, `refresh-schemas`, `specyrd init`
+  (`.specyrd/manifest.json`), `export`, `digest` (default and relative `-o`),
+  pickup's regeneration, `refresh-stubs` and `specyrd init` (stubs, skill
+  files and skill links; an agent skills directory may itself be a symlink only
+  as `.claude/skills -> ../.agents/skills` or `.agents/skills -> ../.claude/skills`,
+  any other link is refused), `--prune` (an
+  orphan under a linked directory), `.gitignore` and `.cursorindexingignore`,
+  the opt-in hook installs (`--install-guard-hooks`: the harness settings or hooks file and
+  `.specyrd/hooks/<agent>/README.md`; `--install-pre-push`: `.git/hooks/pre-push`, all checked before `specyrd init`'s
+  first write), and `restore-archive` (every path checked before its first change) refuse it,
+  naming `<path> is a symlink (to <target>), not <kind>`; the commands exit 1, a symlink loop on the path
+  (a link to itself, or the two skills directories linked to each other) included, without a traceback. `upgrade` checks every change before its first one, so a schema linked out
+  of the checkout no longer overwrites the outside file; it exits 1 on a
+  refusal (a generated file, stub, skill file or skill link) even when `validate`
+  passes, in a real run and in `--dry-run`. Behaviour changes: an in-repo symlink at
+  `roadmap.md` or `roadmap-context.md` was written through and is now refused; a
+  stub or skill file linked out of the repository was a `refused` report line with
+  exit 0 and is now `error:` with exit 1; a skills directory linked to an
+  in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
+  is now refused: replace it with one of the two links above or a real directory.
+  `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
@@ -266,6 +296,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road init project` ends a successful run with the next steps: set `integration_branch` and `remote` in
+  `roadmap/git-workflow.yaml` (with the project prefix in a nested layout), commit the scaffold, and
+  `specy-road validate` (`git init` first when the target is outside a repository). A `--dry-run` or a refused run
+  prints none.
 - `policy.red_green` in `roadmap/orchestration.yaml` (default false) and
   `specy-road review red-green <NODE_ID>`: each Python test function the leaf
   adds or changes runs with pytest by node id in a detached temporary worktree
@@ -332,6 +366,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- The reviewer prompt (`review delegate`, and `prompt --role reviewer` on `--channel cli` and `paste`) tells the
+  reviewer to list every required change it can find in one review, re-scan the diff for further instances of each
+  defect class (other inputs, call sites, files) and any acceptance line not fully met, and that a later round
+  should find nothing it could have reported now.
 - **Security:** a model observed to bypass specy-road's guidance is excluded from the executor and reviewer roles
   while `policy.signed_reviews` is on (M21.44). A profile may record `guidance_bypass_observed: {date, harness,
   evidence}` (any other shape makes it invalid; `models show` prints it); the shipped **composer-2.5** profile does,

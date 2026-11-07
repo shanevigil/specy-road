@@ -12,13 +12,17 @@ diff even when the subtree spanned several chunks or shared one with live work.
 
 from __future__ import annotations
 
+import json
+import os
 import shutil
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from specy_road import safe_write
 from specy_road.archive_index import (
-    archive_planning_dir,
+    ARCHIVE_DIRNAME,
+    INDEX_FILENAME,
     find_record,
     load_archive_index,
     write_archive_index,
@@ -66,30 +70,114 @@ def _group_placements(
     return dict(grouped)
 
 
+_ARCHIVE = Path("roadmap", ARCHIVE_DIRNAME)
+
+
+def _shallow_view(root: Path, archive_id: str, record: dict[str, Any]) -> tuple[dict, list[dict], list]:
+    """``(record, its nodes, paths it removes)`` for a shallow record; the chunk is checked before it is read."""
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
+
+    chunk_rel = record.get("chunk")
+    path = _checked(root, chunk_rel) if isinstance(chunk_rel, str) else None
+    if path is None or not path.is_file():
+        raise ValueError(
+            f"archive {archive_id} references chunk {chunk_rel!r}, which is "
+            "missing. The archive index and roadmap/archive/ are out of sync."
+        )
+    return record, load_json_chunk(path), [chunk_rel]
+
+
+def _deep_view(root: Path, archive_id: str, record: dict[str, Any]) -> tuple[dict, list[dict], list] | None:
+    """What ``undeepen_archive`` will make of a deep record, read without writing anything.
+
+    ``(the shallow record it writes, the capsule's nodes, the paths it writes or
+    removes)``: the capsule (checked before it is read), its reference file and
+    the unpacked chunk; the planning sheets are the record's ``stored`` paths.
+    ``None`` when the capsule cannot be read: ``undeepen_archive`` then refuses,
+    naming why, before it changes anything.
+    """
+    capsule = str((record.get("bundle") or {}).get("path") or "")
+    if not capsule:
+        return None
+    path = _checked(root, capsule)   # undeepen_archive joins it raw: _checked refuses a spelling that differs
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        nodes = list(data["nodes"])
+        sheets = [str(s.get("origin", "")).strip() for s in data.get("planning") or [] if isinstance(s, dict)]
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+    chunk = _ARCHIVE / "chunks" / f"{archive_id}.json"
+    planning = [{"origin": o, "stored": str(_ARCHIVE / "planning" / archive_id / Path(o).name)} for o in sheets if o]
+    touched = [capsule, _ARCHIVE / "refs" / f"{archive_id}.json", chunk]
+    return {**record, "chunk": str(chunk), "planning": planning}, nodes, touched
+
+
+def _checked(root: Path, rel, expected: str = safe_write.FILE) -> Path:
+    """``rel`` under ``root`` by the safe-write rule, lexically; a refusal is the archive commands' ``ValueError``.
+
+    The path returned is the one checked, and restore uses only it. A ``..``
+    in ``rel`` is refused too: the checked path would not be the one its raw
+    spelling reaches through a symlinked component (``planning/jump/../x.md``),
+    and ``undeepen_archive`` and ``archive_planning_dir`` join the raw spelling.
+    """
+    try:
+        path = safe_write.check(root, root / rel, expected)
+        if path != Path(root).resolve() / rel:
+            raise safe_write.SafeWriteError(f"{root / rel} has a '..' component, not a path spelled under {root}")
+    except safe_write.SafeWriteError as e:
+        raise ValueError(f"restore refused, nothing was changed: {e}") from e
+    return path
+
+
+def _check(root: Path, files: list, directories: tuple = ()) -> None:
+    """:func:`_checked` for each of ``files`` and ``directories``; the first refusal raises."""
+    for rel in files:
+        _checked(root, rel)
+    for rel in directories:
+        _checked(root, rel, safe_write.DIRECTORY)
+
+
+def _preflight(root: Path, archive_id: str, record: dict[str, Any],
+               grouped: dict[str, list[tuple[int, dict]]], touched: list) -> None:
+    """Check every path the restore touches by the safe-write rule, lexically from ``root``, before any mutation.
+
+    ``touched`` (the archived chunk, and for a deep record the capsule and its
+    reference), each target chunk, every planning sheet's ``stored`` and
+    ``origin``, the manifest, the ledger, and the archive and its planning
+    directories. A refusal raises ``ValueError`` naming the path, so nothing
+    has been unpacked, written, moved or unlinked.
+    """
+    files = [*touched, *(Path("roadmap", rel) for rel in grouped), Path("roadmap", "manifest.json"),
+             _ARCHIVE / INDEX_FILENAME]
+    for move in record.get("planning") or []:
+        if isinstance(move, dict):
+            files += [str(move.get("stored", "")), str(move.get("origin", ""))]
+    _check(root, files, (_ARCHIVE, _ARCHIVE / "planning" / archive_id))
+
+
 def _restore_planning_sheets(root: Path, record: dict[str, Any]) -> None:
     for move in record.get("planning") or []:
         if not isinstance(move, dict):
             continue
-        stored = (root / str(move.get("stored", ""))).resolve()
-        origin = (root / str(move.get("origin", ""))).resolve()
+        stored = _checked(root, str(move.get("stored", "")))
+        origin = _checked(root, str(move.get("origin", "")))
         if not stored.is_file():
             continue
-        origin.parent.mkdir(parents=True, exist_ok=True)
+        safe_write.mkdirs(root, origin.parent)
         shutil.move(str(stored), str(origin))
 
 
 def _write_back(root: Path, grouped: dict[str, list[tuple[int, dict]]]) -> list[str]:
     """Write each target chunk and return the ones needing a manifest include."""
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 
-    base = roadmap_dir(root)
     need_include: list[str] = []
     for rel, placements in sorted(grouped.items()):
-        target = (base / rel).resolve()
+        target = _checked(root, Path("roadmap", rel))
         existing = load_json_chunk(target) if target.is_file() else []
         if not target.is_file():
             need_include.append(rel)
-        target.parent.mkdir(parents=True, exist_ok=True)
+        safe_write.mkdirs(root, target.parent)
         write_json_chunk(target, _reinsert(existing, placements))
     return need_include
 
@@ -118,21 +206,22 @@ def _prune_empty_archive(root: Path, doc: dict[str, Any]) -> None:
     ledger behind means a user who changed their mind still has a stray file to
     explain in review — and, if it was already committed, a tracked file that
     no longer records anything.
-    """
-    from specy_road.archive_index import archive_dir, archive_index_path
 
+    Walked by ``lstat`` without following a link: anything under it but the
+    ledger and real directories (a file, or a symlink of any kind) keeps the
+    whole directory, and only real directories are removed.
+    """
     if doc.get("records"):
         return
-    base = archive_dir(root)
-    index = archive_index_path(root)
-    leftovers = [p for p in base.rglob("*") if p.is_file() and p != index]
-    if leftovers:
+    base = root / _ARCHIVE   # a real directory: the preflight checked it
+    index = base / INDEX_FILENAME
+    entries = [Path(dirpath, name) for dirpath, subdirs, names in os.walk(base) for name in subdirs + names]
+    dirs = [p for p in entries if p.is_dir() and not p.is_symlink()]
+    if set(entries) - set(dirs) - {index}:   # a file or a symlink of any kind keeps the archive
         return
-    index.unlink(missing_ok=True)
-    for d in sorted(base.rglob("*"), reverse=True):
-        if d.is_dir():
-            d.rmdir()
-    base.rmdir()
+    safe_write.remove(root, index)
+    for d in sorted(dirs, key=lambda p: -len(p.parts)) + [base]:
+        os.rmdir(d)
 
 
 def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
@@ -141,7 +230,6 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
     A deep archive must be unpacked to shallow first; this refuses rather than
     guessing, so the caller can surface the two-step nature of the operation.
     """
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
     from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 
     doc = load_archive_index(root)
@@ -150,7 +238,13 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
         raise ValueError(
             f"no archive with id {archive_id!r} (try: specy-road list-archives)"
         )
-    if record.get("depth") == "deep":
+    deep = record.get("depth") == "deep"
+    view = _deep_view(root, archive_id, record) if deep else _shallow_view(root, archive_id, record)
+    if view is not None:   # every path checked before the first change, a deep record's unpacking included
+        shallow, nodes, touched = view
+        grouped = _group_placements(shallow, nodes)
+        _preflight(root, archive_id, shallow, grouped, touched)
+    if deep:
         # Unpack first, then fall through to the ordinary shallow restore.
         # Making the caller run two commands buys nothing: the checksum guard
         # lives in undeepen_archive either way, and a refusal there aborts
@@ -160,19 +254,10 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
         undeepen_archive(root, archive_id)
         doc = load_archive_index(root)
         record = find_record(doc, archive_id)
-        if record is None:  # pragma: no cover - undeepen would have raised
+        if record is None or view is None:  # pragma: no cover - undeepen would have raised
             raise ValueError(f"archive {archive_id} vanished while unpacking")
 
-    chunk_rel = record.get("chunk")
-    if not isinstance(chunk_rel, str) or not (root / chunk_rel).is_file():
-        raise ValueError(
-            f"archive {archive_id} references chunk {chunk_rel!r}, which is "
-            "missing. The archive index and roadmap/archive/ are out of sync."
-        )
-
-    src = (root / chunk_rel).resolve()
-    nodes = load_json_chunk(src)
-    grouped = _group_placements(record, nodes)
+    src = _checked(root, record["chunk"])
     _sync_includes(root, _write_back(root, grouped))
     _restore_planning_sheets(root, record)
 
@@ -185,7 +270,7 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
     run_validate_raise(root)
 
     src.unlink(missing_ok=True)
-    shutil.rmtree(archive_planning_dir(root, archive_id), ignore_errors=True)
+    shutil.rmtree(_checked(root, _ARCHIVE / "planning" / archive_id, safe_write.DIRECTORY), ignore_errors=True)
 
     doc["records"] = [
         r for r in doc.get("records", []) if r.get("archive_id") != archive_id

@@ -28,7 +28,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.1_group-into-member-id_8b9893d1-675f-4d25-9d6a-a1f13e9f3f67.md",
       "sibling_order": 0,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "group-nodes accepts a new parent id held by one of the nodes it groups",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_outline_group.py",
@@ -131,7 +131,8 @@
         "tests/test_planning_sheet_bootstrap.py",
         "tests/test_outline_group_cli.py",
         "tests/test_brainstorm_promote_judgement.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_scaffold_planning.py"
       ],
       "type": "task"
     },
@@ -209,7 +210,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.8_init-next-steps_658d419c-acd2-4f8b-916e-ad673f082a75.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "init project ends with the next steps: set the integration branch, commit the scaffold, validate",
       "touch_zones": [
         "specy_road/init_project.py",
@@ -266,7 +267,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.10_finish-keeps-local-claim-and-landing_24a67d66-529a-40ca-a500-759cedaacb12.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping",
       "touch_zones": [
         "specy_road/reconcile_branch.py",
@@ -401,7 +402,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.15_sandbox-runbook-rc4-drift_d63c7276-a8d1-44cc-b9d7-d0f866c7e240.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows",
       "touch_zones": [
         "docs/agentic-sandbox-runbook.md"
@@ -480,7 +481,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.18_reviewer-lists-every-required-change_f6a968f0-f084-49e0-b5f1-c8132d45ea7f.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The reviewer prompt asks for every required change in one pass, not just the first",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt.py",

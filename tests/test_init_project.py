@@ -25,6 +25,17 @@ def test_init_project_scaffold_validates(tmp_path: Path) -> None:
         text=True,
     )
     assert "Initialized specy-road layout" in r.stdout
+    where = tmp_path.resolve()
+    block = [
+        f"Next steps (run from {where}):",
+        "  1. git init",
+        "  2. Set integration_branch and remote in roadmap/git-workflow.yaml",
+        '  3. git add -A && git commit -m "specy-road init"',
+        "  4. specy-road validate",
+    ]
+    lines = r.stdout.splitlines()
+    assert lines[-len(block):] == block
+    assert lines[-len(block) - 1] == f"Initialized specy-road layout under {where}"
     assert (tmp_path / "roadmap" / "manifest.json").is_file()
     assert (tmp_path / "AGENTS.md").is_file()
     assert (tmp_path / "research" / "README.md").is_file()
