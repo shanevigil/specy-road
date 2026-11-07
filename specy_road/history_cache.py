@@ -17,17 +17,25 @@ writes a ``.gitignore`` of ``*`` into it): the managed ``.gitignore`` block
 reaches only repos that ran ``refresh-stubs`` or ``init project``, and the
 first ``validate`` after an upgrade must not leave ``?? .specyrd/`` behind.
 
-Every failure here is silent by design. A read-only checkout, a missing
-directory, or a half-written file costs a rebuild, never a failed command.
+Every failure here costs a rebuild, never a failed command. One rule
+decides which are silent: a path the safe-write rule refuses
+(:class:`~specy_road.safe_write.SafeWriteError`: a symlink anywhere on the
+cache path, live or dangling; a non-directory where a directory belongs;
+anything but a regular file at the end; a component ``lstat`` cannot read) is
+one warning naming that path from :func:`save_cache`, so a planted link or a
+misplaced file is visible. Every other failure (a read-only checkout, a full
+disk, a half-written file) is silent by design. Either way the command
+carries on.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import tempfile
+import sys
 from pathlib import Path
 from typing import Any
+
+from specy_road import safe_write
 
 # Bump to invalidate every existing cache. There is deliberately no migration
 # code: a mismatch rebuilds from git, which is always authoritative.
@@ -44,11 +52,18 @@ def cache_path(root: Path) -> Path:
 
 
 def ensure_cache_dir(cache_dir: Path) -> None:
-    """Create ``cache_dir`` with a ``.gitignore`` of ``*`` in it; raises ``OSError``."""
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    """Create ``cache_dir`` with a ``.gitignore`` of ``*`` in it; raises ``OSError``.
+
+    ``cache_dir`` is ``<root>/.specyrd/cache``; the safe-write rule walks it from
+    that root, so any path it refuses (a symlinked ``.specyrd``, ``cache`` or
+    ``.gitignore`` among them) raises :class:`~specy_road.safe_write.SafeWriteError`
+    (an ``OSError``).
+    """
+    root = cache_dir.parents[1]
+    safe_write.mkdirs(root, cache_dir)
     ignore = cache_dir / ".gitignore"
-    if not ignore.is_file():
-        ignore.write_text("# Written by specy-road: everything here is derived.\n*\n", encoding="utf-8")
+    if not safe_write.check(root, ignore).is_file():
+        safe_write.write(root, ignore, "# Written by specy-road: everything here is derived.\n*\n")
 
 
 def load_cache(root: Path) -> dict[str, Any] | None:
@@ -76,22 +91,20 @@ def load_cache(root: Path) -> dict[str, Any] | None:
 def save_cache(root: Path, doc: dict[str, Any]) -> bool:
     """Write the cache atomically. ``False`` if it could not be written.
 
-    Temp file plus :func:`os.replace` in the same directory, so a reader either
-    sees the whole previous cache or the whole new one. Two processes racing
-    resolve to last-writer-wins, and since both computed the same thing from the
-    same history, either outcome is correct.
+    :func:`specy_road.safe_write.write` from ``root`` (temp file plus
+    :func:`os.replace` in the same directory), so a reader either sees the whole
+    previous cache or the whole new one. Two processes racing resolve to
+    last-writer-wins, and since both computed the same thing from the same
+    history, either outcome is correct. A safe-write refusal is a warning naming
+    the path on stderr; every other failure is silent (the module docstring).
     """
     path = cache_path(root)
     try:
         ensure_cache_dir(path.parent)
-        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".history-", suffix=".json")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(doc, f, ensure_ascii=False)
-            os.replace(tmp, path)
-        except BaseException:
-            Path(tmp).unlink(missing_ok=True)
-            raise
+        safe_write.write(root, path, json.dumps(doc, ensure_ascii=False))
+    except safe_write.SafeWriteError as e:
+        print(f"warning: history cache not written: {e}", file=sys.stderr)
+        return False
     except (OSError, ValueError, TypeError):
         return False
     return True

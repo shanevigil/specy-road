@@ -19,7 +19,9 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
     manifest_includes,
     roadmap_dir,
 )
-from specy_road.registry_yaml import registry_path
+from specy_road.decisions import decisions_path, load_checked_decisions
+from specy_road.registry_yaml import dump_registry_text, registry_path
+from specy_road.runtime_paths import project_prefix
 
 
 def _stage_merged_nodes(plan: AtomicWritePlan, root: Path, merged: list[dict]) -> None:
@@ -75,7 +77,30 @@ def _stage_planning_moves(
         stage_prose_refs(plan, root, nodes, prose_map)
 
 
-def _rewrite_touch_zones(items: list, renamed: dict[str, str]) -> bool:
+def sheet_path_map(root: Path, moves: list[tuple[str, str, str]]) -> dict[str, str]:
+    """Old -> new sheet path for each sheet move, in project and checkout form.
+
+    A zone may name a sheet relative to the project root (``planning/<file>``)
+    or to the git root (``sr/planning/<file>`` for a project at ``sr/``).
+    """
+    prefix = project_prefix(root)
+    out: dict[str, str] = {}
+    for _nk, old_rel, new_rel in moves:
+        out[old_rel] = new_rel
+        if prefix:
+            out[prefix + old_rel] = prefix + new_rel
+    return out
+
+
+def _rewrite_zone(zone: str, renamed: dict[str, str], sheets: dict[str, str]) -> str:
+    if zone in sheets:
+        return sheets[zone]
+    return "/".join(renamed.get(seg, seg) for seg in zone.split("/"))
+
+
+def _rewrite_touch_zones(
+    items: list, renamed: dict[str, str], sheets: dict[str, str] | None = None
+) -> bool:
     """Replace every touch-zone path segment equal to a renumbered display id.
 
     A zone such as ``docs/M1.2/`` names the node by position, so a renumber
@@ -83,15 +108,18 @@ def _rewrite_touch_zones(items: list, renamed: dict[str, str]) -> bool:
     segments match: ``M1.2`` in ``docs/M1.2.1/`` or ``M1.2-notes`` is left
     alone. Each segment is looked up once in the old -> new map, so chains
     (``M1.3`` -> ``M1.2`` -> ``M1.1``) resolve to the node the zone named.
+    A whole zone equal to a key of ``sheets`` (a renamed planning sheet, see
+    :func:`sheet_path_map`) becomes that sheet's new path instead.
     Returns whether anything changed.
     """
+    sheets = sheets or {}
     changed = False
     for item in items:
         zones = item.get("touch_zones") if isinstance(item, dict) else None
         if not isinstance(zones, list):
             continue
         new = [
-            "/".join(renamed.get(seg, seg) for seg in z.split("/")) if isinstance(z, str) else z
+            _rewrite_zone(z, renamed, sheets) if isinstance(z, str) else z
             for z in zones
         ]
         if new != zones:
@@ -104,19 +132,21 @@ def _stage_registry_ids(
     plan: AtomicWritePlan,
     root: Path,
     renamed: dict[str, str],
+    sheets: dict[str, str],
     *,
     claims_in_map_only: bool,
 ) -> None:
     """Stage the registry rewrite so claims still point at the moved nodes.
 
     A claim carries its own copy of the node's touch zones, which the finish
-    check reads first, so those segments are rewritten too. With
+    check reads first, so those segments, and zones naming a renamed sheet
+    (``sheets``), are rewritten too. With
     ``claims_in_map_only`` (a subtree move) only claims whose ``node_id`` is a
     renamed id are touched at all; another claim keeps its zones even when one
     names a moved id.
     """
     path = registry_path(root)
-    if not renamed or not path.is_file():
+    if not (renamed or sheets) or not path.is_file():
         return
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not isinstance(data.get("entries"), list):
@@ -127,7 +157,7 @@ def _stage_registry_ids(
         if not claims_in_map_only
         or (isinstance(e, dict) and e.get("node_id") in renamed)
     ]
-    changed = _rewrite_touch_zones(entries, renamed)
+    changed = _rewrite_touch_zones(entries, renamed, sheets)
     for entry in entries:
         if not isinstance(entry, dict):
             continue
@@ -142,3 +172,33 @@ def _stage_registry_ids(
                 data, default_flow_style=False, allow_unicode=True, sort_keys=False
             ),
         )
+
+
+def _stage_decision_ids(
+    plan: AtomicWritePlan, root: Path, renamed: dict[str, str]
+) -> None:
+    """Stage ``node`` rewrites in the tracked decision ledger.
+
+    Only when ``renamed`` is non-empty and the ledger exists. Every entry's
+    ``node`` is read before any entry is updated, then looked up once, so a
+    chain, a swap, or a YAML alias of the same mapping keeps the id that
+    entry had when loaded. The dump does not preserve anchors. The file is
+    staged only when an entry changed. A ledger that does not parse, fails
+    the decisions schema (including a falsy root, which is not treated as an
+    empty ledger), or cannot be read (not UTF-8, or ``OSError``) raises
+    ``ValueError`` naming it, before this plan stages anything else.
+    """
+    if not renamed:
+        return
+    doc = load_checked_decisions(root)
+    if doc is None:
+        return
+    original = [entry.get("node") for entry in doc["entries"]]
+    changed = False
+    for entry, node in zip(doc["entries"], original):
+        new = renamed.get(node)
+        if new is not None:
+            entry["node"] = new
+            changed = True
+    if changed:
+        plan.stage_text(decisions_path(root), dump_registry_text(doc))

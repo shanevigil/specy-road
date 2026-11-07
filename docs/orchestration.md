@@ -113,7 +113,9 @@ one, else the local branch — not from the branch under review, so a feature br
 own bar; the gate is also on when either that branch or the working tree sets
 `require_implementation_review_before_finish`. In a repo with remotes, the branch's name comes from
 `roadmap/git-workflow.yaml` as committed on the remote's default branch (`refs/remotes/<remote>/HEAD`,
-which `git clone` sets and `git remote set-head <remote> --auto` restores; it must exist), whose copy
+which the gate needs. `git clone` sets it; `git remote set-head <remote> <name>` restores it, and
+`<name>` is that remote's real default branch. `git remote set-head <remote> --auto` fails when the
+remote's HEAD is unborn), whose copy
 must also name the same remote as `HEAD`'s; in a repo with no remote, from the copy at `HEAD`. The
 working tree and `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` are ignored. The named branch
 must name itself in its own committed copy, and with remotes only `refs/remotes/<remote>/<branch>` is
@@ -144,6 +146,18 @@ a `senior` executor.
 
 Open questions for a person live in **`roadmap/decisions.yaml`** beside `registry.yaml`. The file is
 schema-validated (`schemas/decisions.schema.json`, copied by `init project` / `specy-road refresh-schemas`).
+An id-changing move rewrites `node` here for every entry whose `node` is an old id (any kind and
+status, one lookup of the node it had when loaded, so a chain, a swap, or a YAML alias of the
+same entry stays correct), in the same transaction as the chunks,
+planning sheets and registry. The file is written only when an entry changed; an absent file stays
+absent; a file that does not parse, is not UTF-8, cannot be opened, or fails the schema refuses
+the move before any write. A falsy root (empty text, `[]`, `{}`, `null`, `false`, or `0`) fails that
+schema and is not treated as an empty ledger.
+`specy-road validate` prints one stdout notice listing each open decision or human-action and each
+active preference whose `node` is a non-empty string naming no live node. Closed entries, expired
+preferences and entries with no `node` are omitted, and `--strict` does not count the notice. A
+missing ledger, one that is not valid UTF-8 or cannot be opened, or a schema-invalid ledger adds
+nothing.
 Each **open** entry carries:
 
 | Field | Meaning |

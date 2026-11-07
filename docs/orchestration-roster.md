@@ -48,7 +48,7 @@ whole entries for this clone only:
 ```yaml
 roster_add:
   - {id: local-qwen, family: qwen, roles: [executor], class: cheap}
-# allow_local_cli: true   # needed for an entry with channels.cli or a profile with access.cli
+# allow_local_cli: true   # channels.cli, cli_resume, preflight, harness_bin, cursor_force, or a profile access.cli
 ```
 
 - Each entry is checked against the roster entry schema. Added entries follow the
@@ -60,9 +60,10 @@ roster_add:
   already has is refused, and routing stops with that error until it is renamed
   or removed. Use `roster:` in the same file to change a committed entry's
   availability.
-- An added entry that would run a command on this clone, through
-  `channels.cli` or through a profile whose `access.cli` is set, is refused
-  unless the same file sets `allow_local_cli: true`.
+- An added entry that would run a command on this clone is refused unless the
+  same file sets `allow_local_cli: true`. That is a non-empty `channels.cli`,
+  `channels.cli_resume`, `preflight` or `harness_bin`, `cursor_force: true`, or
+  a profile whose `access.cli` is set.
 - The review gate reads only the committed roster, so a review by a local
   entry does not count toward it.
 - An added entry may not set `allow_guidance_bypass_model` (below): routing

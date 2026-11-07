@@ -28,8 +28,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from specy_road import git_subprocess, safe_write
-from specy_road.bundled_scripts.upgrade_generated import checked
-from specy_road.ignore_report import scratch_git_env
+from specy_road.bundled_scripts.upgrade_generated import checked, scratch_environ
+from specy_road.ignore_report import Match, print_matches, scratch_git_env
 
 State = tuple | None   # ("file", size, mtime_ns, mode) | ("link", text) | ("dir",) | ("other",) | None (absent)
 
@@ -286,11 +286,19 @@ def _named_in_checkout(e: OSError, real: Callable[[str], str]) -> OSError:
     return e
 
 
-def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dict[str, str]]) -> Plan:
+def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dict[str, str]],
+              *, defer_ignore: bool = False) -> Plan:
     """Run ``refresh(project, checkout)`` once, on a mirror; the plan is what it wrote and what it declined.
 
     ``refresh`` returns ``{checkout-relative path: refuse | error | skip | fail}``.
     Its output is printed with the mirror's paths given as the checkout's.
+    Only the refresh runs in the mirror's scratch environment (no ``GIT_``
+    variable, no global or system config). When it returns, that isolation is
+    the caller's again, before the plan is applied in the checkout.
+
+    The mirror's git index is empty, so its ignore note does not describe the
+    checkout. With ``defer_ignore`` that note is not printed (the caller reports
+    from the checkout around the write). Otherwise it is labelled an estimate.
     """
     checkout = checkout.resolve()
     with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-plan-") as tmp:
@@ -298,8 +306,21 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
         before = mirror.snapshot()
         out, err = io.StringIO(), io.StringIO()
         real = mirror.real_text
+        import specy_road.agent_ignores as agent_ignores
+
+        def notice(matches: list[Match] | str, *, estimated: bool) -> None:
+            """Label the mirror's note as an estimate. Its index is empty, whatever ``estimated`` the mirror passed."""
+            if not defer_ignore:
+                print_matches(matches, estimated=True)
+
+        saved_notice = agent_ignores.print_matches
+        agent_ignores.print_matches = notice
         try:
-            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            with (
+                contextlib.redirect_stdout(out),
+                contextlib.redirect_stderr(err),
+                scratch_environ(Path(tmp)),
+            ):
                 declined = refresh(mirror.to_sandbox(project.resolve()), mirror.repo)
         except (OSError, RuntimeError) as e:   # a symlink loop in the mirror is the checkout's: refused, named there
             refusal = safe_write.loop_refusal(e)
@@ -307,6 +328,7 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
                 raise
             raise _named_in_checkout(refusal or e, real) from e
         finally:
+            agent_ignores.print_matches = saved_notice
             for buf, stream in ((out, sys.stdout), (err, sys.stderr)):
                 stream.write(real(buf.getvalue()))
                 stream.flush()

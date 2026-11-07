@@ -20,7 +20,9 @@ from specy_road.bundled_scripts import role_prompt_cli
 from specy_road import review_delegate
 from specy_road.review_files import reviews_dir
 from specy_road.review_record_write import strict_schema
-from specy_road.worker_adapter_base import ARG_LIMIT, checked, file_instruction, oversized_arg
+from specy_road.worker_adapter_base import (ARG_LIMIT, CODEX_REVIEW_POLICY, checked, file_instruction,
+                                         oversized_arg)
+from specy_road.worker_adapter_codex import CODEX_MEMORY_OFF, profile_home
 from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported
 
 REAL_RESOLVE = hb.resolve   # taken at import, before conftest's autouse stub replaces it for each test
@@ -125,6 +127,27 @@ def test_a_reviewer_resume_passes_the_requested_model(harness: str, flag: str, p
     (fresh,), (repair,) = [c for c in argvs if not _resumes(c)], [c for c in argvs if _resumes(c)]
     assert run["session_id"] in repair   # the repair resumes the session the fresh turn reported
     assert fresh[fresh.index(flag) + 1] == repair[repair.index(flag) + 1] == "rev"
+
+
+def test_codex_reviewer_runs_memory_off_in_an_isolated_home(tmp_path: Path) -> None:
+    prompt = tmp_path / "p.md"
+    prompt.write_text("review it")
+    schema, out = tmp_path / "s.json", tmp_path / "out.json"
+    a = ADAPTERS["codex"]
+    fresh = a.reviewer_launch(prompt, "m", tmp_path, schema=schema, output=out)
+    assert fresh.argv == ["codex", "exec", "--json", "-m", "m", *CODEX_REVIEW_POLICY, *CODEX_MEMORY_OFF,
+                          "--output-schema", str(schema), "-o", str(out), "-"]
+    assert fresh.env == {"CODEX_HOME": str(profile_home("m"))}
+    resumed = a.reviewer_launch(prompt, "m", tmp_path, session=("s-1", True))
+    assert resumed.argv == ["codex", "exec", "resume", "--json", "-m", "m", *CODEX_REVIEW_POLICY, *CODEX_MEMORY_OFF,
+                            "s-1", "-"]
+    assert resumed.env == {"CODEX_HOME": str(profile_home("m"))}   # no rollout yet: the profile home
+    home = profile_home("other")
+    rollout = home / "sessions" / "2026" / "11" / "rollout-s-1.jsonl"
+    rollout.parent.mkdir(parents=True)
+    rollout.write_text("{}\n")
+    found = a.reviewer_launch(prompt, "m", tmp_path, session=("s-1", True))
+    assert found.argv == resumed.argv and found.env == {"CODEX_HOME": str(home)}
 
 
 # --- A2: an argument over the OS limit is refused before exec --------------------------------------------------------

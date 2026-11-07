@@ -83,6 +83,44 @@ function applyModalResize(
   return { left, top, width, height };
 }
 
+/** An open frame as the Escape decision sees it. */
+export type EscapeFrame = {
+  id: number;
+  zIndex: number;
+  /** Increases with each frame opened; breaks zIndex ties (later DOM paints in front). */
+  order: number;
+  closeOnEscape: boolean;
+  minimized: boolean;
+};
+
+/**
+ * The frame an Escape key press closes: the front-most frame that answers Escape and is
+ * not minimized (highest zIndex, then the latest opened), or null for another key.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- shared with tests
+export function escapeTargetFrame(
+  key: string,
+  frames: Iterable<EscapeFrame>,
+): number | null {
+  if (key !== "Escape") return null;
+  let front: EscapeFrame | null = null;
+  for (const f of frames) {
+    if (!f.closeOnEscape || f.minimized) continue;
+    if (
+      !front ||
+      f.zIndex > front.zIndex ||
+      (f.zIndex === front.zIndex && f.order > front.order)
+    ) {
+      front = f;
+    }
+  }
+  return front ? front.id : null;
+}
+
+/** Every mounted frame, so one key press closes only the front-most. */
+const openFrames = new Map<number, EscapeFrame>();
+let frameCount = 0;
+
 type Props = {
   title: ReactNode;
   /** Native tooltip on the title (e.g. full text when the bar is ellipsized). */
@@ -318,14 +356,27 @@ export function ModalFrame({
     return () => window.removeEventListener("resize", onWinResize);
   }, [reanchorOnResize, getDefaultRect, clampOpts, isMaximized, forcedRect, emitCommit]);
 
+  const [frameId] = useState(() => ++frameCount);
+  useEffect(() => {
+    openFrames.set(frameId, {
+      id: frameId,
+      zIndex,
+      order: frameId,
+      closeOnEscape,
+      minimized,
+    });
+  }, [frameId, zIndex, closeOnEscape, minimized]);
+  useEffect(() => () => void openFrames.delete(frameId), [frameId]);
+
   useEffect(() => {
     if (!closeOnEscape || minimized) return;
+    // Capture phase: a handler inside the dialog (the editor, an input) cannot swallow it.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (escapeTargetFrame(e.key, openFrames.values()) === frameId) onClose();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, closeOnEscape, minimized]);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [onClose, closeOnEscape, minimized, frameId]);
 
   const onTitlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {

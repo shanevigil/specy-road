@@ -11,19 +11,26 @@ from pathlib import Path
 import pytest
 import yaml
 
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.decisions import read_decisions, write_decisions
 from specy_road.history_events import RENUMBERED, diff_snapshots, snapshot
 from tests.move_node_helpers import (
+    base_fixture,
     NK_A2,
     NK_A21,
     NK_A22,
     NK_A24,
     NK_B4,
     ids_by_key,
+    commit_project,
+    git,
     nodes_by_key,
+    run_cli,
     run_move_node,
     set_zones,
     sheet_names,
+    tree_bytes,
     unchanged_except,
     wide_fixture,
 )
@@ -48,6 +55,7 @@ def test_moving_a_leaf_out_of_the_middle_of_a_milestone(
 
     r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.2.2", "--to-parent", "M2", *flags)
     assert r.returncode == 0, r.stderr
+    assert not (tmp_path / "roadmap" / "decisions.yaml").is_file()
 
     after = ids_by_key(tmp_path)
     assert {k: after[k] for k in expected} == expected
@@ -221,3 +229,223 @@ def test_a_subtree_move_rewrites_nothing_outside_the_subtree(tmp_path: Path) -> 
     assert after[NK_A24]["touch_zones"] == ["docs/M2.5.4/", "docs/M1.3/"]
     assert claims["inner-four"]["node_id"] == "M2.5.4"
     assert claims["inner-four"]["touch_zones"] == ["docs/M2.5.4/"]
+
+
+def test_a_move_rewrites_zones_naming_the_moved_sheet_in_both_forms(tmp_path: Path) -> None:
+    """A zone naming the node's own sheet follows the rename, as does a docs/<old id>/ zone."""
+    top, root = tmp_path, tmp_path / "sr"
+    wide_fixture(root)
+    old = f"planning/M1.2.2_inner-two_{NK_A22}.md"
+    set_zones(root, {"M1.2.2": [old, f"sr/{old}", "docs/M1.2.2/"]})
+    registry = root / "roadmap" / "registry.yaml"
+    data = yaml.safe_load(registry.read_text(encoding="utf-8"))
+    for entry in data["entries"]:
+        if entry["codename"] == "inner-two":
+            entry["touch_zones"] = [old, f"sr/{old}", "docs/M1.2.2/"]
+    registry.write_text(yaml.dump(data, sort_keys=False), encoding="utf-8")
+    commit_project(top, root)
+
+    r = run_move_node(root, "--repo-root", str(root), "M1.2.2", "--to-parent", "M2")
+    assert r.returncode == 0, r.stderr
+
+    new = f"planning/M2.5_inner-two_{NK_A22}.md"
+    expected = [new, f"sr/{new}", "docs/M2.5/"]
+    assert nodes_by_key(root)[NK_A22]["touch_zones"] == expected
+    claims = {e["codename"]: e for e in yaml.safe_load(registry.read_text(encoding="utf-8"))["entries"]}
+    assert claims["inner-two"]["touch_zones"] == expected
+    for _ in ("unstaged", "staged"):
+        v = run_cli(root, "validate")
+        assert v.returncode == 0, v.stderr
+        assert "names a planning sheet" not in v.stdout + v.stderr
+        git(top, "add", "-A")
+
+
+def _entry(eid: str, kind: str, node: str, *, status: str = "open", summary: str | None = None) -> dict:
+    entry: dict = {
+        "id": eid,
+        "kind": kind,
+        "summary": summary or eid,
+        "asked": "2020-01-01",
+        "status": status,
+        "node": node,
+    }
+    if kind != "preference":
+        entry.update(
+            why_now="why",
+            options=[{"label": "a", "effect": "b"}],
+            recommendation="a",
+            recommendation_reason="r",
+            default_if_unanswered="a",
+        )
+    if status == "closed":
+        entry.update(answer="a", closed="2020-01-02")
+    return entry
+
+
+def _nodes_of(root: Path) -> dict[str, dict]:
+    doc = read_decisions(root / "roadmap" / "decisions.yaml")
+    return {e["id"]: e for e in doc["entries"]}
+
+
+def test_a_move_rewrites_decision_nodes_on_moved_ids_only(tmp_path: Path) -> None:
+    """Open, closed and preference entries on moved ids follow; an unmoved id stays."""
+    wide_fixture(tmp_path)
+    write_decisions(tmp_path / "roadmap" / "decisions.yaml", {"version": 1, "entries": [
+        _entry("Dopen", "decision", "M1.2.2", summary="keep M1.2.2"),
+        _entry("Dclosed", "decision", "M1.2.4", status="closed", summary="keep M1.2.4"),
+        _entry("Pmove", "preference", "M1.2", summary="keep M1.2"),
+        _entry("Dstay", "decision", "M2.4", summary="keep M2.4"),
+    ]})
+
+    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.2", "--to-parent", "M2")
+    assert r.returncode == 0, r.stderr
+
+    by_id = _nodes_of(tmp_path)
+    assert {i: by_id[i]["node"] for i in by_id} == {
+        "Dopen": "M2.5.2", "Dclosed": "M2.5.4", "Pmove": "M2.5", "Dstay": "M2.4",
+    }
+    assert by_id["Dopen"]["summary"] == "keep M1.2.2"
+    assert by_id["Dclosed"]["summary"] == "keep M1.2.4"
+    assert by_id["Pmove"]["summary"] == "keep M1.2"
+
+
+def test_a_move_leaves_an_unmatched_ledger_byte_for_byte(tmp_path: Path) -> None:
+    wide_fixture(tmp_path)
+    path = tmp_path / "roadmap" / "decisions.yaml"
+    write_decisions(path, {"version": 1, "entries": [_entry("Dstay", "decision", "M2.4")]})
+    before = path.read_bytes()
+
+    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.2.2", "--to-parent", "M2")
+
+    assert r.returncode == 0, r.stderr
+    assert path.read_bytes() == before
+
+
+def test_renumber_outline_swaps_decision_nodes_in_one_lookup(tmp_path: Path) -> None:
+    """Each ledger node is replaced once, so a swap does not apply the map twice."""
+    base_fixture(tmp_path)
+    write_decisions(tmp_path / "roadmap" / "decisions.yaml", {"version": 1, "entries": [
+        _entry("Da", "decision", "M1", summary="was M1"),
+        _entry("Db", "decision", "M2", summary="was M2"),
+        _entry("Dc", "preference", "M1.1", summary="was M1.1"),
+        _entry("Dd", "preference", "M2.1", summary="was M2.1"),
+    ]})
+
+    r = run_move_node(
+        tmp_path, "--repo-root", str(tmp_path),
+        "M2", "--to-parent", "null", "--index", "0", "--renumber-outline",
+    )
+    assert r.returncode == 0, r.stderr
+
+    by_id = _nodes_of(tmp_path)
+    assert {i: by_id[i]["node"] for i in ("Da", "Db", "Dc", "Dd")} == {
+        "Da": "M2", "Db": "M1", "Dc": "M2.1", "Dd": "M1.1",
+    }
+    assert by_id["Da"]["summary"] == "was M1"
+    assert by_id["Dd"]["summary"] == "was M2.1"
+
+
+def test_a_renumber_outline_swap_rewrites_a_yaml_aliased_entry_once(tmp_path: Path) -> None:
+    """A YAML alias is the same mapping twice; the swap uses the node it had when loaded."""
+    base_fixture(tmp_path)
+    path = tmp_path / "roadmap" / "decisions.yaml"
+    path.write_text(
+        "version: 1\n"
+        "entries:\n"
+        "  - &from_m1\n"
+        "    id: Da\n"
+        "    kind: decision\n"
+        "    summary: was M1\n"
+        "    asked: '2020-01-01'\n"
+        "    status: open\n"
+        "    node: M1\n"
+        "    why_now: why\n"
+        "    options:\n"
+        "      - {label: a, effect: b}\n"
+        "    recommendation: a\n"
+        "    recommendation_reason: r\n"
+        "    default_if_unanswered: a\n"
+        "  - *from_m1\n"
+        "  - &from_m2\n"
+        "    id: Db\n"
+        "    kind: decision\n"
+        "    summary: was M2\n"
+        "    asked: '2020-01-01'\n"
+        "    status: open\n"
+        "    node: M2\n"
+        "    why_now: why\n"
+        "    options:\n"
+        "      - {label: a, effect: b}\n"
+        "    recommendation: a\n"
+        "    recommendation_reason: r\n"
+        "    default_if_unanswered: a\n"
+        "  - *from_m2\n",
+        encoding="utf-8",
+    )
+    loaded = read_decisions(path)
+    assert loaded["entries"][0] is loaded["entries"][1]
+    assert loaded["entries"][2] is loaded["entries"][3]
+
+    r = run_move_node(
+        tmp_path, "--repo-root", str(tmp_path),
+        "M2", "--to-parent", "null", "--index", "0", "--renumber-outline",
+    )
+    assert r.returncode == 0, r.stderr
+
+    entries = read_decisions(path)["entries"]
+    assert [e["node"] for e in entries] == ["M2", "M2", "M1", "M1"]
+    assert [e["id"] for e in entries] == ["Da", "Da", "Db", "Db"]
+    assert [e["summary"] for e in entries] == ["was M1", "was M1", "was M2", "was M2"]
+
+
+# Text that is not a decisions document. Falsy roots are the class read_decisions
+# would replace with an empty ledger before a schema check.
+_INVALID_LEDGER_TEXT = {
+    "yaml": "version: [\n",
+    "sequence": "- not-a-mapping\n",
+    "empty": "",
+    "empty_sequence": "[]\n",
+    "empty_mapping": "{}\n",
+    "null": "null\n",
+    "false": "false\n",
+    "zero": "0\n",
+}
+
+
+@pytest.mark.parametrize(
+    "kind",
+    ["validation", *_INVALID_LEDGER_TEXT, "utf8", "unreadable"],
+)
+def test_a_refused_move_leaves_the_tree_byte_for_byte_unchanged(tmp_path: Path, kind: str) -> None:
+    wide_fixture(tmp_path)
+    ledger = tmp_path / "roadmap" / "decisions.yaml"
+    if kind in _INVALID_LEDGER_TEXT:
+        ledger.write_text(_INVALID_LEDGER_TEXT[kind], encoding="utf-8")
+    elif kind == "utf8":
+        ledger.write_bytes(b"\xff\xfe not utf-8")
+    elif kind == "unreadable":
+        ledger.write_text("version: 1\nentries: []\n", encoding="utf-8")
+    else:
+        write_decisions(ledger, {"version": 1, "entries": [_entry("Dopen", "decision", "M1.2.2")]})
+        chunk = tmp_path / "roadmap" / "phases" / "T.json"
+        nodes = load_json_chunk(chunk)
+        title = next(n["title"] for n in nodes if n["id"] == "M1.1")
+        for n in nodes:
+            if n["id"] == "M1.3":
+                n["title"] = title
+        write_json_chunk(chunk, nodes)
+    before = tree_bytes(tmp_path)
+    if kind == "unreadable":
+        ledger.chmod(0)
+    try:
+        r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.2.2", "--to-parent", "M2")
+    finally:
+        if kind == "unreadable":
+            ledger.chmod(0o644)
+
+    assert r.returncode == 1
+    assert tree_bytes(tmp_path) == before
+    if kind == "validation":
+        assert "duplicate title" in r.stderr
+    else:
+        assert "roadmap/decisions.yaml" in r.stderr

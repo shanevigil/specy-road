@@ -274,6 +274,10 @@ def _section_quality(root: Path, nodes: list[dict[str, Any]]) -> list[str]:
         out.append(f"| `{a.area}`{flag} | {a.leaves} | {a.no_tally} | {mean} | {rate} | {a.integrity} | {a.rca} |")
     if len(areas) > _MAX_AREAS:
         out.append(f"\n_…and {len(areas) - _MAX_AREAS} more areas._")
+    unread = [a for a in areas if a.unreadable]
+    if unread:
+        detail = ", ".join(f"`{a.area}` {a.unreadable}" for a in unread)
+        out += ["", f"Unreadable tallies: {detail}. They stay in the leaf totals and are left out of the rates."]
     return [*out, "", "Leaves with no tally landed before tallies were recorded; they are left out of the rates.", ""]
 
 

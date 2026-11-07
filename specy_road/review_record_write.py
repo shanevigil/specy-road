@@ -332,8 +332,9 @@ def delegate_turn(adapter: Any, harness: str, log: Path, cwd: Path, launch: Any)
     """``review delegate``'s reviewer turn, run to its end: ``exit``, the reported ``session_id``, the ``errors`` it
     printed, the last lines (``tail``) and its log span (``log_start``, ``log_end``, ``log_sha256``: :func:`run_text`)."""
     out: dict[str, Any] = {"exit": None, "session_id": None, "errors": [], "tail": []}
-    # the role and the harness's avoid-list for installed guard hooks (M8.5, M11.62), no caches (M8.3)
-    env = reviewer_env(harness_env(os.environ, "reviewer", harness=harness))
+    # the role and the harness's avoid-list for installed guard hooks (M8.5, M11.62), the launch's own env
+    # (Codex: the isolated CODEX_HOME) over that, then no caches (M8.3), as run_logged does for prompt --run
+    env = reviewer_env({**harness_env(os.environ, "reviewer", harness=harness), **(launch.env or {})})
     with append_log(log) as raw:   # never through a symlink (review_write_check)
         raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")   # for people; never parsed
         span = SpanWriter(raw)   # the attempt's span: specy-road's own offsets and digest
