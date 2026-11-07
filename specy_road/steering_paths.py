@@ -1,16 +1,13 @@
 """Steering files: what an executor can write that trusted code outside it later reads or runs (M21.7).
 
 An unattended executor works in a linked worktree, and some files it can write are read or run later by
-something it does not control: the coordinator's harness (its config and hooks), git (hooks and
-``core.fsmonitor`` / ``core.hooksPath`` in the common git dir, which every worktree of the repository shares),
-the coordinator's shell (startup files, the interpreter ``env_setup.link`` shares), and the toolkit's own gate
-(``roadmap/orchestration.yaml`` and the other policy files, other leaves' registry rows, ``work/reviews/``).
-This module holds the one list (documented in docs/orchestration-steering-files.md, linked from
-docs/orchestration-workers.md) and the per-turn watch:
+something it does not control: git reads hooks and ``core.fsmonitor`` / ``core.hooksPath`` from the common git
+dir, which every worktree of the repository shares. This module holds the one list (documented in
+docs/orchestration-steering-files.md, linked from docs/orchestration-workers.md) and the per-turn watch:
 
-- the snapshots (:func:`git_snapshot`, :func:`file_snapshot`) that the post-run check
+- the snapshot (:func:`git_snapshot`) that the post-run check
   (:class:`~specy_road.worker_turn_check.SteeringWatch`) takes per worker turn, in the worktree and in the main
-  checkout, and compares as ``steering_file`` findings. The git half is read from the filesystem only, so it is
+  checkout, and compares as ``steering_file`` findings. It is read from the filesystem only, so it is
   compared before any post-turn git command runs.
 
 Detection only: nothing here restores a changed file. Paths compare project-relative, as ``zone_matches``
@@ -18,71 +15,37 @@ does, and one real path is stored once.
 
 **One rule for any input that cannot be read** (:func:`guarded`): every per-file and per-directory step (listing,
 reading, decoding, parsing, hashing) runs on its own, and any exception there (invalid UTF-8, a permission error,
-a dangling link or a link loop, malformed YAML, a file over :data:`MAX_PARSE_BYTES`, a file gone mid-read) records
+a dangling link or a link loop, a file over :data:`MAX_PARSE_BYTES`, a file gone mid-read) records
 that path and its class as unreadable (an ``error:`` value) and the snapshot goes on with every other path. The
-comparison reports each such path as a ``check_error`` finding (path and class) and never as unchanged; in the
-git half it counts as git steering not verified, so no post-turn git command runs. Only a path that does not
+comparison reports each such path as a ``check_error`` finding (path and class) and never as unchanged; it
+counts as git steering not verified, so no post-turn git command runs. Only a path that does not
 exist is ``absent``.
 """
 
 from __future__ import annotations
 
-import fnmatch
 import hashlib
-import json
 import os
 import stat
-import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
-
-import yaml
 
 from specy_road.git_config_text import git_reads, read_chain, watched_values
-from specy_road.git_subprocess import DEFAULT_TIMEOUT, run
-from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.review_files import READY_PREFIX, REVIEWS_REL
 from specy_road.runtime_paths import prefix_within
-from specy_road.worktree_env import env_setup_config, git_top, link_paths, main_project_root
+from specy_road.worktree_env import git_top, main_project_root
 
 #: The sticky worker flag a ``steering_file`` finding sets; only ``worker reconcile`` (without ``--dismiss``) clears it.
 FLAG_STEERING = "steering_changed"
 #: Every ``class`` a ``steering_file`` finding can carry.
-CLASSES = ("harness", "git_hook", "git_config", "policy_tree", "policy_blob", "registry", "review_file",
-           "shell_startup", "env_bin", "symlink")
-#: The toolkit's policy files, project-relative: checked in the tree and as blobs at the local integration branch tip.
-POLICY_FILES = ("roadmap/orchestration.yaml", "roadmap/orchestration.local.yaml", "roadmap/git-workflow.yaml")
-#: Shell startup files at a checkout's root (and its project root).
-SHELL_FILES = (".bashrc", ".bash_profile", ".profile", ".zshrc", ".zshenv", ".envrc")
-#: The harness config directories walked for :func:`in_tree_class`.
-HARNESS_DIRS = (".claude", ".codex", ".cursor")
+CLASSES = ("git_hook", "git_config")
 #: More direct children than this in a hooks directory are recorded as the one marker ``capped``.
 HOOKS_CAP = 200
 ABSENT = "absent"
 #: The prefix of a value that could not be read (:func:`guarded`).
 ERROR = "error:"
-#: Files this module parses (registry, git config) larger than this are unreadable, not parsed.
+#: Files this module parses (``.git`` files, git config) larger than this are unreadable, not parsed.
 MAX_PARSE_BYTES = 8 * 1024 * 1024
-
-
-def in_tree_class(rel: str, *, project: bool = True) -> str | None:
-    """The class of an in-tree steering path, or ``None``. ``rel`` is relative to a checkout's project root
-    (``project``) or to its git root, where only harness config and shell startup files count."""
-    parts = rel.split("/")
-    if project and rel in POLICY_FILES:
-        return "policy_tree"
-    if rel in SHELL_FILES:
-        return "shell_startup"
-    head, n = parts[0], len(parts)
-    if head == ".codex" and n > 1:
-        return "harness"
-    if head == ".claude" and ((n == 2 and fnmatch.fnmatch(parts[1], "settings*.json")) or (n > 2 and parts[1] == "hooks")):
-        return "harness"
-    if head == ".cursor" and ((n == 2 and parts[1].endswith(".json")) or (n > 2 and parts[1] == "hooks")):
-        return "harness"
-    return None
 
 
 def _sha(data: bytes) -> str:
@@ -136,7 +99,7 @@ class Entry:
     values: tuple[tuple[str, str], ...] = ()   # git_config only: the watched keys' values
 
 
-Snapshot = dict[str, Entry]   # keyed by the real path (or a synthetic key for registry rows and blobs)
+Snapshot = dict[str, Entry]   # keyed by the real path
 
 
 def _gitdirs(top: Path) -> tuple[Path, Path] | None:
@@ -158,16 +121,11 @@ def _gitdirs(top: Path) -> tuple[Path, Path] | None:
 @dataclass(frozen=True)
 class Scope:
     """Where one worker's steering files live: its worktree and the main checkout, the same project prefix."""
-    node_id: str
     prefix: str
     w_top: Path
     m_top: Path
-    integration_branch: str | None
-    links: tuple[str, ...]
     #: per checkout top, what git itself said it reads at the turn's start (:func:`git_reads`)
     git_known: dict[Path, tuple[list[Path], list[Path]]] = field(default_factory=dict, compare=False)
-    #: ``(path, class, error)`` per input the scope itself could not read (``roadmap/git-workflow.yaml``)
-    problems: tuple[tuple[Path, str, str], ...] = ()
 
     @property
     def tops(self) -> list[Path]:
@@ -185,19 +143,12 @@ def _error(e: BaseException) -> str:
     return f"{ERROR}{type(e).__name__}: {e}"
 
 
-def scope_for(repo_root: Path, worktree: Path, node_id: str) -> Scope:
-    """The worker's scope, taken at the turn's start: the only time git is asked what it reads. The workflow
-    file it reads (integration branch, ``env_setup.link``) is guarded too: unreadable, it is a problem of the
-    scope, which every snapshot reports, and the classes that need it go without."""
+def scope_for(repo_root: Path, worktree: Path) -> Scope:
+    """The worker's scope, taken at the turn's start: the only time git is asked what it reads."""
     m_root = resolved_path(main_project_root(Path(repo_root)))
     m_top, w_top = git_top(m_root), git_top(Path(worktree))
-    try:
-        ib, links, problems = (resolve_integration_defaults(m_root, explicit_base=None, explicit_remote=None)[0],
-                               tuple(link_paths(env_setup_config(m_root))), ())
-    except Exception as e:  # noqa: BLE001 — one rule: an unreadable input is reported, never fatal
-        ib, links, problems = None, (), ((m_root / "roadmap" / "git-workflow.yaml", "policy_tree", _error(e)),)
-    return Scope(node_id, prefix_within(m_top, m_root), w_top, m_top, ib, links,
-                 {top: git_reads(top) for top in dict.fromkeys((w_top, m_top))}, problems)
+    return Scope(prefix_within(m_top, m_root), w_top, m_top,
+                 {top: git_reads(top) for top in dict.fromkeys((w_top, m_top))})
 
 
 def guarded(snap: Snapshot, scope: Scope, path: Path, cls: str, step: Callable[[], None]) -> None:
@@ -215,7 +166,7 @@ def unreadable(snap: Snapshot, scope: Scope, path: Path, cls: str, e: BaseExcept
     snap[str(real)] = Entry(scope.display(real), cls, _error(e))
 
 
-def _add(snap: Snapshot, scope: Scope, path: Path, cls: str, value: str | None = None, name: str | None = None) -> None:
+def _add(snap: Snapshot, scope: Scope, path: Path, cls: str, value: str | None = None) -> None:
     """Record one path once (by its real path), its value read under the one rule: unreadable is an ``error:``."""
     real = real_path(path)
     if str(real) in snap:
@@ -224,39 +175,7 @@ def _add(snap: Snapshot, scope: Scope, path: Path, cls: str, value: str | None =
         value = value if value is not None else _value(path)
     except Exception as e:  # noqa: BLE001 — one rule: an unreadable input is reported, never fatal
         value = _error(e)
-    snap[str(real)] = Entry(name or scope.display(real), cls, value)
-
-
-def tree_files(root: Path, errors: list[OSError] | None = None) -> list[Path]:
-    """Files and links under ``root``, links not followed; a directory that cannot be listed goes to ``errors``."""
-    out = []
-    for d, dirs, files in os.walk(root, followlinks=False, onerror=errors.append if errors is not None else None):
-        out += [Path(d, f) for f in files]
-        out += [Path(d, x) for x in dirs if Path(d, x).is_symlink()]
-    return out
-
-
-def _walk(snap: Snapshot, scope: Scope, root: Path, cls: str) -> list[Path]:
-    """:func:`tree_files` with each directory it could not list recorded as unreadable for ``cls``."""
-    errors: list[OSError] = []
-    files = tree_files(root, errors)
-    for e in errors:
-        unreadable(snap, scope, Path(e.filename or root), cls, e)
-    return files
-
-
-def _tree(snap: Snapshot, scope: Scope) -> None:
-    """Harness config and hooks, shell startup files and the policy files, at each checkout's git root and
-    project root."""
-    for top in scope.tops:
-        for base, project in ((top, scope.prefix == ""), (top / scope.prefix, True)):
-            for name in (*SHELL_FILES, *(POLICY_FILES if project else ())):
-                if os.path.lexists(base / name):
-                    _add(snap, scope, base / name, in_tree_class(name, project=project) or "")
-            for d in HARNESS_DIRS:
-                for p in _walk(snap, scope, base / d, "harness") if (base / d).is_dir() or (base / d).is_symlink() else []:
-                    if cls := in_tree_class(p.relative_to(base).as_posix(), project=project):
-                        _add(snap, scope, p, cls)
+    snap[str(real)] = Entry(scope.display(real), cls, value)
 
 
 def _list(snap: Snapshot, scope: Scope, d: Path, cls: str, each: Callable[[list[Path]], None]) -> None:
@@ -310,79 +229,3 @@ def _git_top(snap: Snapshot, scope: Scope, top: Path) -> None:
         _config_file(snap, scope, top, start, hooks)
     for d in dict.fromkeys(resolved_path(h) for h in hooks):
         _hooks_dir(snap, scope, d)
-
-
-def _registry(snap: Snapshot, scope: Scope) -> None:
-    """Every ``entries`` item of another leaf, in each checkout's ``roadmap/registry.yaml``."""
-    for top in scope.tops:
-        path = real_path(top / scope.prefix / "roadmap" / "registry.yaml")
-        if os.path.lexists(path):
-            guarded(snap, scope, path, "registry", lambda path=path: _registry_rows(snap, scope, path))
-
-
-def _registry_rows(snap: Snapshot, scope: Scope, path: Path) -> None:
-    doc = yaml.safe_load(parse_bytes(path).decode("utf-8")) or {}
-    entries = doc.get("entries") if isinstance(doc, dict) else None
-    for item in entries if isinstance(entries, list) else []:   # any other shape: no rows to watch
-        if not isinstance(item, dict) or str(item.get("node_id")) == scope.node_id:
-            continue
-        key = f"{path}#{item.get('node_id')}#{item.get('codename')}"
-        snap.setdefault(key, Entry(f"{scope.display(path)}#{item.get('node_id')}", "registry",
-                                   _sha(json.dumps(item, sort_keys=True, default=str).encode())))
-
-
-def _reviews(snap: Snapshot, scope: Scope) -> None:
-    """Every file under each checkout's ``work/reviews/`` but the leaf's own READY."""
-    for top in scope.tops:
-        root = top / scope.prefix / REVIEWS_REL
-        for p in _walk(snap, scope, root, "review_file") if root.is_dir() else []:
-            rel = p.relative_to(root)
-            if not (rel.parts[:1] == (scope.node_id,) and len(rel.parts) == 2 and rel.name.startswith(READY_PREFIX)):
-                _add(snap, scope, p, "review_file")
-
-
-def _env_bin(snap: Snapshot, scope: Scope) -> None:
-    """Each ``env_setup.link`` path's ``bin/`` entries in each checkout (the worker's link and its main-checkout
-    source are one real directory): name, type, link text, resolved regular-file sha256."""
-    for top, rel in ((top, rel) for top in scope.tops for rel in scope.links):
-        named = top / scope.prefix / rel / "bin"
-        _list(snap, scope, resolved_path(top / scope.prefix / rel) / "bin", "env_bin", lambda kids, named=named: [
-            _add(snap, scope, k, "env_bin", name=scope.display(named / k.name)) for k in kids])
-
-
-def _blob_sha(oid: str, cwd: Path) -> str:
-    """SHA-256 of a blob's raw bytes from the object store (``git cat-file blob``, read as bytes: no decoding,
-    no newline normalization); unreadable under the one rule when git cannot give them."""
-    try:
-        r = subprocess.run(["git", "cat-file", "blob", oid], cwd=cwd, capture_output=True, timeout=DEFAULT_TIMEOUT,
-                           check=False)
-    except (OSError, subprocess.SubprocessError) as e:
-        return _error(e)
-    return _sha(r.stdout) if r.returncode == 0 else f"{ERROR}git cat-file blob {oid}: {os.fsdecode(r.stderr).strip()}"
-
-
-def blobs(snap: Snapshot, scope: Scope) -> None:
-    """The policy files as committed at the local integration branch tip (no fetch), byte-exact: ``git ls-tree``
-    names each one's blob (no hook), and its value is the SHA-256 of that blob's raw bytes, so a newline-only
-    commit shows. No such branch: ``absent``; a tree git cannot list: unreadable (the one rule)."""
-    if not scope.integration_branch:
-        return
-    ref, paths = f"refs/heads/{scope.integration_branch}", [f"{scope.prefix}{rel}" for rel in POLICY_FILES]
-    r = run(["ls-tree", "-z", "--full-tree", ref, "--", *paths], scope.m_top)
-    oids = {rec.split("\t", 1)[1]: rec.split()[2] for rec in (r.out if r.ok else "").split("\0") if "\t" in rec}
-    missing = not r.ok and not run(["show-ref", "--verify", "--quiet", ref], scope.m_top).ok
-    for rel, path in zip(POLICY_FILES, paths):
-        name = f"{scope.integration_branch}:{rel}"
-        found = _blob_sha(oids[path], scope.m_top) if path in oids else ABSENT
-        value = found if missing or r.ok else f"{ERROR}git ls-tree {ref}: {r.message}"
-        snap[f"blob:{name}"] = Entry(name, "policy_blob", value)
-
-
-def file_snapshot(scope: Scope) -> Snapshot:
-    """Everything but git steering that reading the filesystem answers, plus the scope's own problems."""
-    snap: Snapshot = {str(p): Entry(scope.display(real_path(p)), cls, err) for p, cls, err in scope.problems}
-    _tree(snap, scope)
-    _registry(snap, scope)
-    _reviews(snap, scope)
-    _env_bin(snap, scope)
-    return snap

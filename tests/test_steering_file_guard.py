@@ -1,20 +1,18 @@
-"""M21.7: executors cannot change the files that steer harnesses and specy-road unnoticed.
+"""M21.7: executors cannot change git steering unnoticed.
 
-One fake executor turn per steering class (a linked worktree, the main checkout beside it, ``.venv`` linked by
-``env_setup.link``, a second worktree holding the integration branch), the clean turn, and the sticky flag and its
-listing by ``worker reconcile``.
+Fake executor turns that change git hooks and config (a linked worktree, the main checkout beside it, ``.venv``
+linked by ``env_setup.link``, a second worktree holding the integration branch), the clean turn, and the sticky flag
+and its listing by ``worker reconcile``.
 """
 
 from __future__ import annotations
 
 import os
-import re
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-import yaml
 
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 
@@ -57,70 +55,6 @@ def _turn(repo: Path, rec: ws.WorkerRecord, act: Callable[[], None]) -> list[dic
 def _write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
-
-
-def _registry_add_other(leaf: Path) -> None:
-    path = leaf / "roadmap" / "registry.yaml"
-    doc = yaml.safe_load(path.read_text())
-    doc["entries"].append({"codename": "other", "node_id": "M1.2", "branch": "feature/rm-other", "touch_zones": ["lib"]})
-    path.write_text(yaml.safe_dump(doc))
-
-
-def _link(path: Path, target: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.symlink_to(target)
-
-
-def _commit_policy_from_second(second: Path, *, crlf_only: bool = False) -> None:
-    """A policy commit on the local integration branch from a second worktree: a roster, or ``crlf_only`` the
-    workflow file with every LF turned CRLF and nothing else."""
-    rel = "roadmap/git-workflow.yaml" if crlf_only else "roadmap/orchestration.yaml"
-    if crlf_only:
-        (second / rel).write_bytes((second / rel).read_bytes().replace(b"\n", b"\r\n"))
-    else:
-        _write(second / rel, "version: 1\n# the executor approves itself\n")
-    git(second, "add", rel)
-    git(second, "commit", "-qm", "policy")
-
-
-CASES = {   # name: (the turn, the finding's class, the end of its path)
-    "claude_settings": (lambda p: _write(p["leaf"] / ".claude" / "settings.json", "{}\n"), "harness", ".claude/settings.json"),
-    "cursor_hooks": (lambda p: _write(p["leaf"] / ".cursor" / "hooks.json", "{}\n"), "harness", ".cursor/hooks.json"),
-    "common_git_hook": (lambda p: _write(p["repo"] / ".git" / "hooks" / "pre-commit", "#!/bin/sh\n"), "git_hook",
-                        "/.git/hooks/pre-commit"),
-    "envrc": (lambda p: _write(p["leaf"] / ".envrc", "export X=1\n"), "shell_startup", ".envrc"),
-    "venv_write_through_link": (lambda p: (p["leaf"] / ".venv" / "bin" / "python").write_text("evil\n"), "env_bin",
-                                ".venv/bin/python"),
-    "symlink_leaving_worktree": (lambda p: (p["leaf"] / "leak").symlink_to(p["tmp"] / "base-python3"), "symlink", "leak"),
-    "other_leaf_registry_entry": (lambda p: _registry_add_other(p["leaf"]), "registry", "roadmap/registry.yaml#M1.2"),
-    "forged_review_in_worktree": (lambda p: _write(p["leaf"] / "work" / "reviews" / "M1.1" / "REVIEW-sol.md", "x\n"),
-                                  "review_file", "work/reviews/M1.1/REVIEW-sol.md"),
-    "escaping_symlink_at_harness_path": (lambda p: _link(p["leaf"] / ".claude" / "settings.json", p["tmp"] / "base-python3"),
-                                         "harness", ".claude/settings.json"),
-    "forged_review": (lambda p: _write(ws.reviews_root(p["repo"]) / "M1.1" / "REVIEW-sol.md", "verdict: approve\n"),
-                      "review_file", "work/reviews/M1.1/REVIEW-sol.md"),
-    "policy_blob_from_second_worktree": (lambda p: _commit_policy_from_second(p["second"]), "policy_blob",
-                                         "dev:roadmap/orchestration.yaml"),
-    "policy_blob_crlf_only_from_second_worktree": (lambda p: _commit_policy_from_second(p["second"], crlf_only=True),
-                                                   "policy_blob", "dev:roadmap/git-workflow.yaml"),
-}
-
-
-@pytest.mark.parametrize("name", sorted(CASES))
-def test_each_steering_class_is_exactly_one_steering_file_finding(tmp_path: Path, name: str) -> None:
-    act, cls, tail = CASES[name]
-    p = _layout(tmp_path)
-    rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
-    found = _turn(p["repo"], rec, lambda: act(p))
-    [steer] = [f for f in found if f["kind"] == "steering_file"]
-    assert steer["class"] == cls and steer["path"].endswith(tail) and steer["before"] != steer["after"]
-    if cls == "policy_blob":   # SHA-256 over the raw committed bytes (A2), or absent for a file new on the branch
-        sides = [steer["before"], steer["after"]] if "crlf" in name else [v for v in (steer["before"], steer["after"]) if v != "absent"]
-        assert sides and all(re.fullmatch("[0-9a-f]{64}", v) for v in sides), steer
-    named = [x for f in found if f["kind"] in ("porcelain", "committed_outside_zones") for x in f["paths"]]
-    assert not [x for x in named if x.endswith(tail.rsplit("/", 1)[-1])], found   # replaced, not reported twice
-    assert ("git_probes_skipped" in {f["kind"] for f in found}) == (cls == "git_hook")
-    assert FLAG_STEERING in ws.load_record(p["repo"], rec.worker_id).to_dict()["flags"]   # worker status --json
 
 
 HOOKS_CONFIGS = {   # name: (hooks directory name, text added to the common config, a BOM first); {d} that directory
@@ -183,7 +117,7 @@ def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
     if snapshot == "unavailable":
         def fail(_scope):
             raise OSError("the snapshot could not be taken")
-        monkeypatch.setattr(steering_paths, "file_snapshot", fail)
+        monkeypatch.setattr(steering_paths, "git_snapshot", fail)
     found = _turn(p["repo"], rec, lambda: git(p["leaf"], "config", "core.fsmonitor", f"touch {sentinel}"))
     assert not sentinel.exists()
     if snapshot == "unavailable":
@@ -202,7 +136,8 @@ def test_a_clean_turn_has_no_findings_and_leaves_the_flag_reconcile_lists_and_cl
     p = _layout(tmp_path)
     repo, leaf = p["repo"], p["leaf"]
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", leaf, branch="feature/rm-thing")
-    _turn(repo, rec, lambda: _write(leaf / ".claude" / "settings.json", "{}\n"))
+    hook = repo / ".git" / "hooks" / "pre-commit"
+    _turn(repo, rec, lambda: _write(hook, "#!/bin/sh\n"))
 
     def clean() -> None:   # its READY, its own registry entry, in-zone code
         for root in (ws.reviews_root(repo), leaf / "work" / "reviews"):   # either checkout's copy is its own READY
@@ -216,8 +151,8 @@ def test_a_clean_turn_has_no_findings_and_leaves_the_flag_reconcile_lists_and_cl
     after = ws.load_record(repo, rec.worker_id)
     assert FLAG_STEERING in after.flags and tc.FLAG_POST_RUN not in after.flags   # sticky across a clean turn
     o = {"worker_id": rec.worker_id, "delta": wrc.reconcile(repo, rec.worker_id)[1]}
-    steering = [ln.strip() for ln in wrc.reconcile_lines(o) if ln.strip().startswith(".claude/")]
-    assert len(steering) == 1 and steering[0].startswith(".claude/settings.json harness absent ")
+    steering = [ln.strip() for ln in wrc.reconcile_lines(o) if ln.strip().startswith(str(real_path(hook)))]
+    assert len(steering) == 1 and steering[0].startswith(f"{real_path(hook)} git_hook absent ")
     assert FLAG_STEERING not in ws.load_record(repo, rec.worker_id).flags
     assert wrc.reconcile(repo, rec.worker_id)[1]["steering"] == []
 
@@ -229,11 +164,7 @@ def _unreadable_as(kind: str, path: Path, tmp: Path) -> None:
     """Leave ``path`` unreadable in the way ``kind`` names."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.unlink(missing_ok=True)
-    if kind == "invalid_utf8":
-        path.write_bytes(b"version: 1\nentries: [\xff\xfe]\n")
-    elif kind == "malformed_yaml":
-        path.write_text("version: 1\nentries: [unclosed\n")
-    elif kind == "unreadable":
+    if kind == "unreadable":
         path.write_text("x\n")
         path.chmod(0)
     elif kind == "dangling_symlink":
@@ -242,21 +173,17 @@ def _unreadable_as(kind: str, path: Path, tmp: Path) -> None:
         path.symlink_to(path.name)
 
 
-def _where(p: dict[str, Path], where: str) -> tuple[Path, str, bool]:
-    """``(the path, its class, in the git half)``; a git config row is a file the common config includes."""
+def _where(p: dict[str, Path], where: str) -> tuple[Path, str]:
+    """``(the path, its class)``; a git config row is a file the common config includes."""
     if where == "git_config":
         config = p["repo"] / ".git" / "config"
         config.write_text(config.read_text() + f"[include]\n\tpath = {p['tmp'] / 'extra.gitconfig'}\n")
-    return {"registry": (p["leaf"] / "roadmap" / "registry.yaml", "registry", False),
-            "harness_file": (p["leaf"] / ".claude" / "settings.json", "harness", False),
-            "git_config": (p["tmp"] / "extra.gitconfig", "git_config", True),
-            "hook": (p["repo"] / ".git" / "hooks" / "pre-commit", "git_hook", True),
-            "env_bin": (p["repo"] / ".venv" / "bin" / "tool", "env_bin", False)}[where]
+    return {"git_config": (p["tmp"] / "extra.gitconfig", "git_config"),
+            "hook": (p["repo"] / ".git" / "hooks" / "pre-commit", "git_hook")}[where]
 
 
 UNREADABLE_ROWS = [   # (failure kind, where): every combination where that kind is a failure to read there
-    *[(k, "registry") for k in ("invalid_utf8", "malformed_yaml", "unreadable", "dangling_symlink", "symlink_loop")],
-    *[(k, w) for w in ("harness_file", "hook", "env_bin") for k in ("unreadable", "dangling_symlink", "symlink_loop")],
+    *[(k, "hook") for k in ("unreadable", "dangling_symlink", "symlink_loop")],
     ("unreadable", "git_config"), ("symlink_loop", "git_config"),   # a missing include is left out, as git does
 ]
 
@@ -267,14 +194,15 @@ def test_an_unreadable_steering_input_is_one_check_error_and_the_rest_is_still_c
     if kind == "unreadable" and os.geteuid() == 0:
         pytest.skip("root reads a mode-000 file")
     p = _layout(tmp_path)
-    path, cls, git_half = _where(p, where)
+    path, cls = _where(p, where)
     _unreadable_as(kind, path, tmp_path)
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
-    found = _turn(p["repo"], rec, lambda: _write(p["leaf"] / ".cursor" / "hooks.json", "{}\n"))   # an unrelated change
-    expected = {"env_bin": ".venv/bin/tool"}.get(where) or (
-        path.relative_to(p["leaf"]).as_posix() if path.is_relative_to(p["leaf"]) else str(real_path(path)))
-    [error] = [f for f in found if f["kind"] == "check_error" and f.get("path") == expected]
+    config = p["repo"] / ".git" / "config"
+    found = _turn(p["repo"], rec, lambda: config.write_text(config.read_text() + "[specy]\n\tturn = 1\n"))   # unrelated
+    [error] = [f for f in found if f["kind"] == "check_error" and f.get("path") == str(real_path(path))]
     assert error["class"] == cls
-    [other] = [f for f in found if f["kind"] == "steering_file" and f["path"] == ".cursor/hooks.json"]
-    assert other["class"] == "harness" and FLAG_STEERING in ws.load_record(p["repo"], rec.worker_id).flags
-    assert ("git_probes_skipped" in {f["kind"] for f in found}) is git_half   # unverified git steering: no git command
+    [other] = [f for f in found if f["kind"] == "steering_file"]
+    assert other["class"] == "git_config" and other["path"] == str(real_path(config))
+    assert FLAG_STEERING in ws.load_record(p["repo"], rec.worker_id).flags
+    assert "git_probes_skipped" in {f["kind"] for f in found}   # unverified git steering: no git command
+    assert not [f for f in found if f.get("class") == "harness"]
