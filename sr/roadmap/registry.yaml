@@ -96,3 +96,18 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
+  - codename: queued-message-undelivered
+    node_id: M22.6
+    branch: feature/rm-queued-message-undelivered
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_ops_message.py
+      - specy_road/worker_ops_lifecycle.py
+      - specy_road/worker_state.py
+      - specy_road/schemas/worker-record.schema.json
+      - tests/test_worker_queue_message.py
+      - docs/orchestration-workers.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
