@@ -312,6 +312,7 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.16` on `feature/rm-reviewer-run-summary-and-process-tree` since 2026-11-07
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
+- `M22.45` on `feature/rm-integration-refs-stay-put-during-a-turn` since 2026-11-07
 - `M22.6` on `feature/rm-queued-message-undelivered` since 2026-11-07
 
 ## Quality by area
