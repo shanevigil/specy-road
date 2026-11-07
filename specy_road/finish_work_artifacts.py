@@ -18,8 +18,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
-from specy_road.review_files import reviews_dir
+from specy_road.review_files import reviews_root
 
 
 def work_artifact_rel_paths(node_id: str) -> tuple[str, str, str]:
@@ -146,9 +147,8 @@ def _keep_untracked_summary(root_r: Path, node_id: str) -> None:
         print(f"[warn] {rel} is a symlink or resolves outside the repo; not copying "
               "it to work/reviews/", file=sys.stderr)
         return
-    dst = reviews_dir(root_r, node_id) / src.name
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, dst)
+    reviews = reviews_root(root_r)   # the main checkout's work/reviews, walked from its project root
+    dst = safe_write.copy(reviews.parents[1], src, reviews / node_id / src.name)
     print(f"[warn] {rel} was never committed; kept a copy at {dst} "
           "(commit the summary on the feature branch to keep it in history)")
 

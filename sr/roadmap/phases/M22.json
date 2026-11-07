@@ -133,7 +133,8 @@
         "tests/test_outline_group_cli.py",
         "tests/test_brainstorm_promote_judgement.py",
         "CHANGELOG.md",
-        "tests/test_scaffold_planning.py"
+        "tests/test_scaffold_planning.py",
+        "tests/test_author_approach.py"
       ],
       "type": "task"
     },
@@ -183,7 +184,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.7_ready-changelog-reminder_3d3ddc19-998c-4d9e-9e79-bc5afa51e7ef.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading",
       "touch_zones": [
         "specy_road/changelog_check.py",
@@ -239,7 +240,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.9_local-roster-and-codex-reviewer-isolation_d340dc53-ba74-45b4-a5c4-9f778862e8f0.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME",
       "touch_zones": [
         "specy_road/roster_local.py",
@@ -458,7 +459,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.17_verify-tells-a-blocking-404_f7c47911-9faa-4536-941b-a208aee3a459.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_verify.py",

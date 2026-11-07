@@ -7,6 +7,7 @@ branch the gate reads), as the CR1 executor did.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -18,9 +19,10 @@ from tests.test_review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed, review_cli
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
-from specy_road.review_policy_pin import ACCEPTANCE_NAME, pin_of, pinned_message, policy_digest
+from specy_road.review_policy_pin import ACCEPTANCE_NAME, pin_of, pin_problem, pinned_message, policy_digest
 
 ORCH = "roadmap/orchestration.yaml"
 WORKFLOW = "roadmap/git-workflow.yaml"
@@ -141,6 +143,9 @@ def test_cr1_change_refuses_mark_reviewed_and_finish_writing_nothing(tmp_path: P
     assert _exit(mark_implementation_reviewed.main, ["--yes", "--repo-root", str(repo)]) == 1
     err = "".join(capsys.readouterr())   # the gate's problems print to stdout, the refusal to stderr
     assert "review policy changed on refs/heads/dev since M1.1 was claimed" in err
+    assert "The review rules changed after this work started" in err
+    assert "specy_road.review_policy_pin" in err
+    assert err.index("The review rules changed after this work started") < err.index("roster composer.roles")
     assert "a human accepts it with `specy-road review accept-policy M1.1` in a terminal" in err
     assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 1
     assert "roster composer.roles" in capsys.readouterr().err
@@ -166,7 +171,11 @@ def test_accept_policy_needs_a_terminal_then_the_gate_passes(tmp_path: Path, mon
     assert _accept(repo, monkeypatch, tty=True, typed="M9.9") == 1
     assert not acceptance.exists()
     assert _accept(repo, monkeypatch, tty=True) == 0
-    assert "roster composer.roles" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "roster composer.roles" in out
+    assert "The review rules changed after this work started" in out
+    assert "specy_road.review_policy_pin" in out
+    assert out.index("The review rules changed after this work started") < out.index("roster composer.roles")
     assert yaml.safe_load(acceptance.read_text())["node_id"] == "M1.1"
     assert _gate(repo).passed
 
@@ -272,6 +281,90 @@ def test_registration_commit_trailer(tmp_path: Path, case, message, problem) -> 
     assert gate.passed is (problem is None), gate.problems()
     if problem:
         assert problem in gate.policy_pin
+
+
+def _add_claimed_leaf(repo: Path, node_id: str, codename: str, node_key: str) -> None:
+    """On ``dev``: add ``node_id``, pin the policy, then one commit on ``feature/rm-<codename>``."""
+    git(repo, "checkout", "-q", "dev")
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    doc = json.loads(chunk.read_text())
+    doc["nodes"].append({**NODE, "id": node_id, "codename": codename, "title": codename, "node_key": node_key,
+                         "sibling_order": len(doc["nodes"]) + 1,
+                         "planning_dir": f"planning/{node_id}_{codename}_{node_key}.md"})
+    chunk.write_text(json.dumps(doc), encoding="utf-8")
+    reg_path = repo / "roadmap" / "registry.yaml"
+    reg = yaml.safe_load(reg_path.read_text())
+    reg["entries"].append({"codename": codename, "node_id": node_id, "branch": f"feature/rm-{codename}",
+                           "touch_zones": ["src"], "implementation_review": "pending"})
+    reg_path.write_text(yaml.safe_dump(reg), encoding="utf-8")
+    git(repo, "add", "-A", "--", "roadmap/phases/M1.json", "roadmap/registry.yaml")
+    git(repo, "commit", "-qm", f"chore: add {node_id}")
+    message = pinned_message(repo, registration_commit_message(codename, include_ci_skip=True))
+    git(repo, "commit", "-q", "--allow-empty", "-m", message)
+    git(repo, "checkout", "-q", "-b", f"feature/rm-{codename}")
+    _write(repo / "src" / f"{codename}.py", "x\n")
+    git(repo, "add", f"src/{codename}.py")
+    git(repo, "commit", "-qm", f"impl {codename}")
+
+
+def _leaves_at_three_policies(tmp_path: Path) -> tuple[Path, dict[str, str]]:
+    """M1.1 pinned at the first policy, M1.2 and M1.4 at the second, M1.3 at the policy on ``dev`` now."""
+    repo = _repo(tmp_path)
+    _on_dev(repo, ORCH, CR1_ROSTER)
+    _add_claimed_leaf(repo, "M1.2", "other", "22222222-2222-5222-8222-222222222222")
+    _add_claimed_leaf(repo, "M1.4", "also", "44444444-4444-5444-8444-444444444444")
+    git(repo, "checkout", "-q", "dev")
+    _write(repo / ORCH, CR1_ROSTER.replace("reviewers_required: 2", "reviewers_required: 1"))
+    git(repo, "add", "-A", "--", ORCH)
+    git(repo, "commit", "-qm", "chore: edit orchestration")
+    _add_claimed_leaf(repo, "M1.3", "same", "33333333-3333-5333-8333-333333333333")
+    pins = {
+        "M1.1": pin_of(repo, "thing", "feature/rm-thing")[0],
+        "M1.2": pin_of(repo, "other", "feature/rm-other")[0],
+        "M1.4": pin_of(repo, "also", "feature/rm-also")[0],
+        "M1.3": pin_of(repo, "same", "feature/rm-same")[0],
+    }
+    return repo, pins
+
+
+def _run_review(monkeypatch, argv: list[str], *, tty: bool, typed: str = "") -> int:
+    monkeypatch.setattr("sys.stdin.isatty", lambda: tty)
+    monkeypatch.setattr("builtins.input", lambda _prompt="": typed)
+    return _exit(review_cli.main, argv)
+
+
+def test_accept_policy_all_open_groups_each_change_once(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo, pins = _leaves_at_three_policies(tmp_path)
+    current = policy_digest(repo, "dev")[0]
+    assert pins["M1.1"] != pins["M1.2"] == pins["M1.4"] != current == pins["M1.3"]
+    base = ["review", "accept-policy", "--repo-root", str(repo)]
+    assert _run_review(monkeypatch, [*base, "--all-open"], tty=False) == 1
+    assert "a human accepts a review policy change in a terminal; nothing was written" in capsys.readouterr().err
+    assert _run_review(monkeypatch, [*base, "M1.1", "--all-open"], tty=True) == 1
+    assert "not both and not neither" in capsys.readouterr().err
+    assert _run_review(monkeypatch, base, tty=True) == 1
+    assert "not both and not neither" in capsys.readouterr().err
+    assert _run_review(monkeypatch, [*base, "--all-open", "--ref", "dev"], tty=True) == 1
+    assert "--ref is for one node" in capsys.readouterr().err
+    assert _run_review(monkeypatch, [*base, "--all-open"], tty=True, typed="no") == 1
+    wrong = capsys.readouterr()
+    out = wrong.out
+    assert "The review rules changed after this work started" in out
+    assert "specy_road.review_policy_pin" in out
+    assert out.index("The review rules changed after this work started") < out.index("roster composer.roles")
+    assert out.count("roster composer.roles") == 1
+    assert out.count("policy.reviewers_required 2 -> 1") == 2
+    assert "M1.2, M1.4:" in out and "M1.3" not in out
+    assert "not accepted; nothing was written" in wrong.err
+    for nid in ("M1.1", "M1.2", "M1.3", "M1.4"):
+        assert not (reviews_dir(repo, nid) / ACCEPTANCE_NAME).exists()
+    assert _run_review(monkeypatch, [*base, "--all-open"], tty=True, typed="M1.1 M1.2 M1.4") == 0
+    for nid in ("M1.1", "M1.2", "M1.4"):
+        data = yaml.safe_load((reviews_dir(repo, nid) / ACCEPTANCE_NAME).read_text())
+        assert data["node_id"] == nid and data["pinned_sha256"] == pins[nid] and data["accepted_sha256"] == current
+    assert not (reviews_dir(repo, "M1.3") / ACCEPTANCE_NAME).exists()
+    nodes = {n["id"]: n for n in load_roadmap(repo)["nodes"]}
+    assert pin_problem(repo, nodes["M1.1"], "feature/rm-thing") is None
 
 
 def test_review_delegate_on_a_pinned_claim_is_unaffected(tmp_path: Path) -> None:

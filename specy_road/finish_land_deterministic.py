@@ -33,6 +33,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
@@ -164,12 +165,12 @@ def _regenerate_generated_files(repo: Path) -> list[str]:
     """
     if not _has_roadmap_graph(repo):
         return []
-    links_out = refused_generated_files(repo)   # both checked before either is written
-    if links_out:
-        raise DeterministicResolveError("; ".join(links_out.values()))
+    linked = refused_generated_files(repo)   # any symlink, in-repo too; both checked before either is written
+    if linked:
+        raise DeterministicResolveError("; ".join(linked.values()))
     try:
         reexport_roadmap_md(repo)
-        (repo / DEFAULT_OUTPUT).write_text(render_digest(repo), encoding="utf-8")
+        safe_write.write(repo, repo / DEFAULT_OUTPUT, render_digest(repo))
     except (Exception, SystemExit) as exc:
         raise DeterministicResolveError(
             f"could not regenerate {', '.join(GENERATED_COMMITTED)} from the "
@@ -245,9 +246,9 @@ def _reconcile_digest(repo: Path) -> bool:
         return False
     target = repo / DEFAULT_OUTPUT
     fresh = render_digest(repo)
-    if target.is_file() and target.read_text(encoding="utf-8") == fresh:
+    if safe_write.check(repo, target).is_file() and target.read_text(encoding="utf-8") == fresh:
         return False
-    target.write_text(fresh, encoding="utf-8")
+    safe_write.write(repo, target, fresh)
     if DEFAULT_OUTPUT in set(unstageable_generated_files(repo)):
         return False
     git_code(["add", "--", DEFAULT_OUTPUT], repo)
