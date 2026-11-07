@@ -56,7 +56,9 @@
       "title": "suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout",
       "touch_zones": [
         "suggested_prompts/",
-        "tests/test_suggested_prompts_commands.py"
+        "tests/test_suggested_prompts_commands.py",
+        "tests/test_lean_rules.py",
+        "tests/test_shared_checkout_guidance.py"
       ],
       "type": "task"
     },
@@ -84,7 +86,8 @@
       "touch_zones": [
         "scripts/lean_metrics.py",
         "constraints/lean-baseline.json",
-        "sr/planning/M16.8.1_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md"
+        "sr/planning/M16.8.1_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md",
+        "CHANGELOG.md"
       ],
       "type": "task"
     },

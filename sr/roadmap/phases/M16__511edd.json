@@ -67,7 +67,8 @@
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "docs/git-workflow.md",
         "tests/parity/review_gate/",
-        "tests/"
+        "tests/",
+        "specy_road/finish_land_local.py"
       ],
       "type": "task"
     },
@@ -130,7 +131,8 @@
         "specy_road/review_eligible.py",
         "specy_road/review_gate.py",
         "tests/parity/eligibility/",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py"
       ],
       "type": "task"
     },
@@ -188,7 +190,10 @@
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/grind-session.md",
         "tests/",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/grind_session_args.py",
+        "specy_road/orchestration/grind/grind_session_args.py",
+        "docs/git-workflow.md"
       ],
       "type": "task"
     },
@@ -454,7 +459,6 @@
         "specy_road/finish_land_integration.py",
         "specy_road/milestone_session.py",
         "specy_road/bundled_scripts/roadmap_gui_settings_tokens.py",
-        "specy_road/upgrade_templates.py",
         "specy_road/worker_adapter_parsers.py",
         "specy_road/registry_yaml.py",
         "specy_road/specyrd_hooks.py",

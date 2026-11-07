@@ -70,20 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: workers-run-in-a-sandbox
-    node_id: M22.44
-    branch: feature/rm-workers-run-in-a-sandbox
-    touch_zones:
-      - specy_road/worker_sandbox.py
-      - specy_road/worker_runner.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - specy_road/git_workflow_config.py
-      - tests/test_worker_sandbox.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: upgrade-mirror-skips-ignored-files
     node_id: M22.35
     branch: feature/rm-upgrade-mirror-skips-ignored-files
@@ -106,6 +92,31 @@ entries:
       - specy_road/worker_process.py
       - tests/test_review_run_lows_rc5.py
       - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: queued-message-undelivered
+    node_id: M22.6
+    branch: feature/rm-queued-message-undelivered
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_ops_message.py
+      - specy_road/worker_ops_lifecycle.py
+      - specy_road/worker_state.py
+      - specy_road/schemas/worker-record.schema.json
+      - tests/test_worker_queue_message.py
+      - docs/orchestration-workers.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: integration-refs-stay-put-during-a-turn
+    node_id: M22.45
+    branch: feature/rm-integration-refs-stay-put-during-a-turn
+    touch_zones:
+      - specy_road/worker_turn_check.py
+      - tests/test_worker_turn_check.py
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil

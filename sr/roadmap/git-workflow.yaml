@@ -30,3 +30,6 @@ land_check_cmd: python -m ruff check ../specy_road ../tests ../scripts && python
 # grind_session_max_limit_wait_hours: 6        # ceiling on any one wait
 # grind_session_limit_wait_grace_seconds: 120  # slack after the stated reset
 # grind_session_max_empty_retries: 2           # re-runs when it dies silently
+
+# Workers run read-only outside their worktree (M22.44). Maintainer approved option B on 2026-11-07.
+worker_sandbox: bwrap
