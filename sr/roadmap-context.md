@@ -164,7 +164,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.30` Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed `steering-detection-other-classes` — task — **Not Started**
   - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
   - `M22.32` Claude Code launch and resume deny edits to steering files `steering-claude-launch-denies` — task — **Not Started**
-  - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Not Started**
+  - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
   - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
@@ -304,7 +304,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.37` on `feature/rm-safe-write-rule-setup-writers` since 2026-11-06
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
-- `M22.33` on `feature/rm-reviewer-resume-keeps-the-model` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
@@ -313,13 +312,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 32 | 0 | 2.53 | 56% | 31 | 3 |
+| `docs` **flagged** | 31 | 0 | 2.45 | 55% | 30 | 2 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 46 | 0 | 2.50 | 52% | 39 | 5 |
-| `tests` **flagged** | 49 | 0 | 2.45 | 51% | 39 | 5 |
-| `CHANGELOG.md` | 32 | 0 | 1.91 | 38% | 27 | 1 |
+| `specy_road` **flagged** | 46 | 0 | 2.43 | 52% | 38 | 4 |
+| `tests` **flagged** | 49 | 0 | 2.39 | 51% | 38 | 4 |
+| `CHANGELOG.md` | 33 | 0 | 1.91 | 39% | 27 | 1 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
 

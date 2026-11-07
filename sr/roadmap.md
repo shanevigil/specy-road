@@ -229,7 +229,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.30` | Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed | task | — | Not Started |
 | `M22.31` | finish-this-task refuses a branch that changes a steering file no touch zone names | task | — | Not Started |
 | `M22.32` | Claude Code launch and resume deny edits to steering files | task | — | Not Started |
-| `M22.33` | A resumed review runs on the model it was asked for | task | — | Not Started |
+| `M22.33` | A resumed review runs on the model it was asked for | task | — | Complete |
 | `M22.34` | One accept-policy prompt covers every open claim | task | — | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
