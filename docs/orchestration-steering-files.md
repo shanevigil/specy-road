@@ -3,7 +3,11 @@
 Some files an executor can write are later read or run by trusted code outside it: git runs the hooks and reads
 the config in the common git dir, which every worktree of the repository shares. The one list is `specy_road/steering_paths.py`; the worker flags and the post-run check are in [orchestration-workers.md](orchestration-workers.md). For each worker
 turn it is snapshotted in the worker's worktree and in the main checkout (one real path is stored once: a config
-file by the file it resolves to, so one file reached by two names is one entry; paths are named project-relative in the worker's tree, as `zone_matches` compares them, and absolute elsewhere):
+file or hooks directory by the real path it resolves to, so one file reached by two names is one entry; paths are named project-relative in the worker's tree, as `zone_matches` compares them, and absolute elsewhere).
+**Links are entries of their own:** each name git reads a config file or hooks directory by that is not its real path
+(a symlink on the way, the name itself or a directory above it) is also recorded, as `link:<real path>`, so a link
+created, removed or retargeted is a `steering_file` finding for that name even when the real paths at each end hold
+the same bytes. A checkout's `.git` is recorded the same way, by the gitdir and common dir it leads to:
 
 | Class | What |
 |---|---|
@@ -19,7 +23,9 @@ finding (`path`, `class`, `before`, `after`: a sha256, `absent`, or for `git_con
 `;key=value` per changed watched key), which replaces any `porcelain` or `committed_outside_zones` mention of the
 same path. It sets the sticky `steering_changed` flag (`worker status --json` `flags`, `handoff status --json`
 `workers[].flags`); a clean turn leaves it set, and `worker reconcile W` (without `--dismiss`) prints one
-`path class before after` line per `steering_file` finding recorded while it was set, then clears it.
+`path class before after` line per `steering_file` finding recorded while it was set, then clears it. A backslash
+and any character that is not printable (a newline in a config value or a hook's name) are escaped in that line and
+in the finding's `summary`, so one finding is one line of output.
 
 **Runner order.** The wrapper runs this check before it reads the turn's READY. A READY that cannot be parsed
 (invalid UTF-8 included) is the turn's completion error (`exit 0; READY file invalid: ...`), not an exception, so
@@ -36,7 +42,8 @@ on for every other path, so their findings and the `steering_changed` flag are k
 never reported as unchanged, and it counts as git steering not verified, so no post-turn git command runs. With no
 snapshot from the turn's start (it could not be taken) or a comparison that fails, the check fails closed the same
 way: a `check_error` per class naming the worktree, and the git probes skipped. It never aborts the turn. Only a
-path that does not exist is `absent`. A config file that a readable config names but that does not exist (git
+path that does not exist is `absent`; a link that resolves to nothing (dangling, or a loop) where git would read a
+config file or hooks directory is a `check_error`, not `absent`. A config file that a readable config names but that does not exist (git
 leaves out a missing include) is recorded as `absent`, so its creation or deletion during the turn is a
 `steering_file` finding even when the file naming it is unchanged.
 

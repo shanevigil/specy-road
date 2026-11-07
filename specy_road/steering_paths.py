@@ -14,13 +14,18 @@ does, and one real path is stored once.
 
 **One rule for any input that cannot be read** (:func:`guarded`): every per-file and per-directory step (listing,
 reading, decoding, parsing, hashing) runs on its own, and any exception there (a permission error, a special file
-such as a FIFO, a dangling link or a link loop, a file over :data:`MAX_PARSE_BYTES`, a file gone mid-read, the
+such as a FIFO, a dangling link or a link loop where a file or directory is named, a file over :data:`MAX_PARSE_BYTES`, a file gone mid-read, the
 snapshot past :data:`SNAPSHOT_SECONDS`, a hooks directory over :data:`HOOKS_CAP` entries) records that path and its
 class as unreadable (an ``error:`` value) and the snapshot goes on with every other path. The comparison reports
 each such path as a ``check_error`` finding (path and class) and never as unchanged; it counts as git steering not
 verified, so no post-turn git command runs. Only a path that does not exist is ``absent``: a config file a read
 config names is recorded so, so its creation or deletion compares under an unchanged includer; an entry missing from
 one end altogether is compared only where what lists or includes it was read in full there (:func:`compared`).
+
+**Links are entries of their own** (:func:`_link`): a file or hooks directory is stored once, by the real path it
+resolves to, and each name git reads it by that is not that real path (a symlink on the way) is also recorded, as
+``link:<real path>``. A link created, removed or retargeted is therefore a change of that name, whatever the real
+paths at each end. The same holds for a checkout's ``.git``: its value names the gitdir and common dir it leads to.
 """
 
 from __future__ import annotations
@@ -95,6 +100,12 @@ def parse_bytes(path: Path) -> bytes:
     return data
 
 
+def one_line(text: str) -> str:
+    """``text`` as one line of text output: a backslash and every character that is not printable (a newline, a
+    line separator, a control character) escaped, so a value read from an executor's file cannot start a line."""
+    return "".join(c if c.isprintable() and c != "\\" else c.encode("unicode_escape").decode("ascii") for c in text)
+
+
 def resolved_path(path: Path) -> Path:
     """``path`` resolved without raising: a link loop or a missing part (an executor can make either) stays as named."""
     return Path(os.path.realpath(path))
@@ -136,7 +147,8 @@ def _gitdirs(top: Path) -> tuple[Path, Path]:
         raise ValueError("no gitdir: line")
     gitdir = resolved_path(top / line.removeprefix("gitdir:").strip())
     commondir = gitdir / "commondir"
-    common = resolved_path(gitdir / parse_bytes(commondir).decode("utf-8").strip()) if commondir.exists() else gitdir
+    common = resolved_path(gitdir / parse_bytes(commondir).decode("utf-8").strip()) if os.path.lexists(commondir) \
+        else gitdir   # a commondir that cannot be read (a dangling link included) raises, never reads as missing
     return gitdir, common
 
 
@@ -192,15 +204,33 @@ def _read(snap: Snapshot, key: str | None) -> bool:
 
 
 def compared(before: Snapshot, after: Snapshot, key: str) -> bool:
-    """Whether ``key`` compares as a steering file: not a container, and present at both ends or absent at one
-    where what lists it was read in full. Otherwise its absence is a gap in what that end could see (a hooks
-    directory unreadable or over the cap, a config file unreadable, a hooks directory no longer the one the
-    config names), not a change: that container's own ``check_error``, or the config change, reports it."""
+    """Whether ``key`` compares as a steering file: present at both ends, or (not a container) absent at one where
+    what lists it was read in full. Otherwise its absence is a gap in what that end could see (a hooks directory
+    unreadable or over the cap, a config file unreadable, a hooks directory no longer the one the config names),
+    not a change: that container's own ``check_error``, or the config change, reports it. A container present at
+    both ends compares by its value (a ``.git`` leading elsewhere)."""
     b, a = before.get(key), after.get(key)
     e = a or b
-    if e is None or any(x and x.value.startswith(READ) for x in (b, a)):
+    if e is None:
         return False
+    if any(x and x.value.startswith(READ) for x in (b, a)):
+        return b is not None and a is not None
     return (b is not None or _read(before, e.parent)) and (a is not None or _read(after, e.parent))
+
+
+def _link(snap: Snapshot, scope: Scope, name: Path, cls: str, parent: str,
+          values: tuple[tuple[str, str], ...] = ()) -> Path | None:
+    """The real path ``name`` resolves to. When that is not ``name`` itself (a symlink on the way), ``name`` is also
+    recorded, keyed by its normalized absolute path, as ``link:<real path>`` (with the watched ``values`` of what it
+    leads to), so creating, removing or retargeting the link compares. A link that resolves to nothing (dangling, or
+    a loop) is recorded as unreadable and ``None`` returned: the module's one rule."""
+    real, key = resolved_path(name), os.path.abspath(name)
+    if key == str(real):
+        return real
+    dangling = os.path.lexists(name) and not os.path.exists(name)
+    value = _error(FileNotFoundError(f"link does not resolve: {real}")) if dangling else f"link:{real}"
+    snap.setdefault(key, Entry(scope.display(Path(key)), cls, value, () if dangling else values, parent))
+    return None if dangling else real
 
 
 def _add_hook(snap: Snapshot, scope: Scope, path: Path, parent: str) -> None:
@@ -217,15 +247,18 @@ def _add_hook(snap: Snapshot, scope: Scope, path: Path, parent: str) -> None:
         snap[str(real)] = Entry(scope.display(real), "git_hook", value, parent=parent)
 
 
-def _hooks_dir(snap: Snapshot, scope: Scope, d: Path) -> None:
-    """Direct entries of hooks directory ``d``, not recursive; over :data:`HOOKS_CAP` the directory itself is
-    unreadable (so every comparison fails closed), and the listing stops after ``HOOKS_CAP + 1`` entries. A
-    directory that does not exist is read in full: empty."""
-    key = str(real_path(d))
+def _hooks_dir(snap: Snapshot, scope: Scope, name: Path, parent: str) -> None:
+    """Direct entries of the hooks directory ``name`` resolves to (:func:`_link`; listed once), not recursive; over
+    :data:`HOOKS_CAP` the directory itself is unreadable (so every comparison fails closed), and the listing stops
+    after ``HOOKS_CAP + 1`` entries. A directory that does not exist is read in full: empty."""
+    d = _link(snap, scope, name, "git_hook", parent)
+    if d is None or str(d) in snap:
+        return
+    key = str(d)
 
     def each() -> None:
         if not os.path.lexists(d):
-            snap[key] = Entry(scope.display(Path(key)), "git_hook", READ + ABSENT)
+            snap[key] = Entry(scope.display(Path(key)), "git_hook", READ + "dir")
             return
         with os.scandir(d) as it:
             names = [e.name for e in itertools.islice(it, HOOKS_CAP + 1)]
@@ -243,8 +276,11 @@ def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, dotgit: s
     file reached by two names is one entry); each ``core.hooksPath`` value goes to ``hooks`` with whether only an
     ``includeIf`` named it."""
     for f in read_chain(start, parse_bytes):
-        real = resolved_path(f.path)
         parent = str(resolved_path(f.parent)) if f.parent else dotgit
+        values = () if isinstance(f.data, Exception) else tuple(sorted(watched_values(f.pairs).items()))
+        real = _link(snap, scope, f.path, "git_config", parent, values)
+        if real is None:
+            continue
         if isinstance(f.data, FileNotFoundError):   # recorded, so its creation compares under an unchanged includer
             snap.setdefault(str(real), Entry(scope.display(real), "git_config", ABSENT, parent=parent))
             continue
@@ -252,7 +288,7 @@ def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, dotgit: s
             unreadable(snap, scope, real, "git_config", f.data)
             continue
         snap.setdefault(str(real), Entry(scope.display(real), "git_config", hashlib.sha256(f.data).hexdigest(),
-                                         tuple(sorted(watched_values(f.pairs).items())), parent))
+                                         values, parent))
         for k, v in f.pairs:
             if k == "core.hookspath" and v:
                 d = top / os.path.expanduser(v)
@@ -278,11 +314,11 @@ def git_snapshot(scope: Scope) -> Snapshot:
 
 def _git_top(snap: Snapshot, scope: Scope, top: Path) -> None:
     gitdir, common = _gitdirs(top)
-    dotgit = real_path(top / ".git")
-    snap[str(dotgit)] = Entry(scope.display(dotgit), "git_config", READ + "gitdir")
+    dotgit = real_path(top / ".git")   # where it leads is its value: a .git retargeted is a change of it
+    snap[str(dotgit)] = Entry(scope.display(dotgit), "git_config", f"{READ}gitdir {gitdir} common {common}")
     hooks: dict[Path, bool] = {}   # each core.hooksPath directory: whether only an includeIf named it
     for start in dict.fromkeys((common / "config", common / "config.worktree", gitdir / "config.worktree")):
         _config_file(snap, scope, top, start, str(dotgit), hooks)
     default = [common / "hooks", gitdir / "hooks"] if all(hooks.values()) else []
-    for d in dict.fromkeys(resolved_path(h) for h in [*hooks, *default]):
-        _hooks_dir(snap, scope, d)
+    for d in dict.fromkeys([*hooks, *default]):
+        _hooks_dir(snap, scope, d, str(dotgit))

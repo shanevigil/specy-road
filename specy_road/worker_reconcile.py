@@ -25,7 +25,7 @@ from specy_road.nested_repos import in_nested, nested_changes, nested_prefixes
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_target import ReviewTarget, ReviewTargetError, _registry_entry, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
-from specy_road.steering_paths import FLAG_STEERING
+from specy_road.steering_paths import FLAG_STEERING, one_line
 from specy_road.worker_lease import sync_leases
 from specy_road.worker_process import branch_mismatch
 from specy_road.worker_state import (
@@ -259,8 +259,9 @@ def reconcile_lines(o: dict[str, Any]) -> list[str]:
     lines += [f"  warning: untracked, outside touch zones: {p}" for p in d["untracked_outside_touch_zones"]]
     if d["contract_changed"]:
         lines.append("  the leaf's brief changed since delegation")
-    # One `path class before after` line per steering_file finding the cleared steering_changed flag stood for.
-    lines += ["  " + " ".join(shlex.quote(str(f.get(k))) for k in ("path", "class", "before", "after"))
+    # One `path class before after` line per steering_file finding the cleared steering_changed flag stood for:
+    # each field escaped to one line (a config value or file name can hold a newline).
+    lines += ["  " + " ".join(shlex.quote(one_line(str(f.get(k)))) for k in ("path", "class", "before", "after"))
               for f in d.get("steering") or []]
     return lines
 

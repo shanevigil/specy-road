@@ -113,11 +113,12 @@ def test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_read
     assert "git_probes_skipped" in {f["kind"] for f in found}
 
 
-@pytest.mark.parametrize("snapshot", ["taken", "unavailable", "include_created"])
+@pytest.mark.parametrize("snapshot", ["taken", "unavailable", "include_created", "include_link_created"])
 def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, snapshot: str) -> None:
     """With no steering snapshot from the turn's start (whatever failed), the check fails closed: no git probe. An
-    include the unchanged config already names, missing at the start and created by the turn, is a change too."""
+    include the unchanged config already names, missing at the start and created by the turn (as a file, or as a
+    link to a file holding the value), is a change too."""
     p = _layout(tmp_path)
     sentinel = tmp_path / "fsmonitor-ran"
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
@@ -126,10 +127,13 @@ def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
             raise OSError("the snapshot could not be taken")
         monkeypatch.setattr(steering_paths, "git_snapshot", fail)
     included = tmp_path / "later.gitconfig"
-    if snapshot == "include_created":
+    target = tmp_path / "target.gitconfig"
+    if snapshot in ("include_created", "include_link_created"):
         config = p["repo"] / ".git" / "config"
         config.write_text(config.read_text() + f"[include]\n\tpath = {included}\n")
-        act = lambda: included.write_text(f"[core]\n\tfsmonitor = touch {sentinel}\n")  # noqa: E731
+        made = included if snapshot == "include_created" else target
+        act = lambda: (made.write_text(f"[core]\n\tfsmonitor = touch {sentinel}\n"),  # noqa: E731
+                       made == target and included.symlink_to(target))
     else:
         act = lambda: git(p["leaf"], "config", "core.fsmonitor", f"touch {sentinel}")  # noqa: E731
     found = _turn(p["repo"], rec, act)
@@ -142,19 +146,25 @@ def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
     else:
         [steer] = [f for f in found if f["kind"] == "steering_file"]
         assert steer["class"] == "git_config"
-        assert steer["path"] == str(included.resolve()) if snapshot == "include_created" else steer["path"].endswith("/.git/config")
+        assert steer["path"] == str(real_path(included)) if snapshot != "taken" else steer["path"].endswith("/.git/config")
         assert "core.fsmonitor=unset" in steer["before"] and f"core.fsmonitor=touch {sentinel}" in steer["after"]
         assert "git_probes_skipped" in {f["kind"] for f in found}
     subprocess.run(["git", "status"], cwd=p["leaf"], capture_output=True, check=False)
     assert sentinel.exists()   # the scenario is real: the probe the check skipped would have run it
 
 
-def test_a_clean_turn_has_no_findings_and_leaves_the_flag_reconcile_lists_and_clears(tmp_path: Path) -> None:
+@pytest.mark.parametrize("first", ["hook", "config_value_with_newline"])
+def test_a_clean_turn_has_no_findings_and_leaves_the_flag_reconcile_lists_and_clears(tmp_path: Path, first: str) -> None:
+    """Reconcile lists the first turn's change as one line, also when the changed value holds a newline."""
     p = _layout(tmp_path)
     repo, leaf = p["repo"], p["leaf"]
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", leaf, branch="feature/rm-thing")
-    hook = repo / ".git" / "hooks" / "pre-commit"
-    _turn(repo, rec, lambda: _write(hook, "#!/bin/sh\n"))
+    if first == "hook":
+        hook, start = repo / ".git" / "hooks" / "pre-commit", "git_hook absent "
+        _turn(repo, rec, lambda: _write(hook, "#!/bin/sh\n"))
+    else:
+        hook, start = repo / ".git" / "config", "git_config "
+        _turn(repo, rec, lambda: hook.write_text(hook.read_text() + '[core]\n\tsshCommand = "ssh\\nevil"\n'))
 
     def clean() -> None:   # its READY, its own registry entry, in-zone code
         for root in (ws.reviews_root(repo), leaf / "work" / "reviews"):   # either checkout's copy is its own READY
@@ -168,8 +178,10 @@ def test_a_clean_turn_has_no_findings_and_leaves_the_flag_reconcile_lists_and_cl
     after = ws.load_record(repo, rec.worker_id)
     assert FLAG_STEERING in after.flags and tc.FLAG_POST_RUN not in after.flags   # sticky across a clean turn
     o = {"worker_id": rec.worker_id, "delta": wrc.reconcile(repo, rec.worker_id)[1]}
-    steering = [ln.strip() for ln in wrc.reconcile_lines(o) if ln.strip().startswith(str(real_path(hook)))]
-    assert len(steering) == 1 and steering[0].startswith(f"{real_path(hook)} git_hook absent ")
+    lines = "\n".join(wrc.reconcile_lines(o)).splitlines()   # physical lines, as printed
+    steering = [ln.strip() for ln in lines if ln.strip().startswith(str(real_path(hook)))]
+    assert len(steering) == 1 and steering[0].startswith(f"{real_path(hook)} {start}")
+    assert [ln.strip() for ln in lines if "evil" in ln] == ([] if first == "hook" else steering)
     assert FLAG_STEERING not in ws.load_record(repo, rec.worker_id).flags
     assert wrc.reconcile(repo, rec.worker_id)[1]["steering"] == []
 
@@ -203,7 +215,7 @@ def _where(p: dict[str, Path], where: str) -> tuple[Path, str]:
 
 UNREADABLE_ROWS = [   # (failure kind, where): every combination where that kind is a failure to read there
     *[(k, "hook") for k in ("unreadable", "fifo", "dangling_symlink", "symlink_loop")],
-    ("unreadable", "git_config"), ("symlink_loop", "git_config"),   # a missing include is left out, as git does
+    *[(k, "git_config") for k in ("unreadable", "dangling_symlink", "symlink_loop")],   # a missing include is absent
 ]
 
 
@@ -308,6 +320,19 @@ def _include_reached_by_two_names(p: dict[str, Path]) -> tuple[Callable[[], None
     return lambda: extra.write_text("[core]\n\tfsmonitor = true\n"), {("steering_file", extra)}
 
 
+def _hooks_link_retargeted(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[str, Path]]]:
+    config, link, a, b = (p["repo"] / ".git" / "config", *(p["tmp"] / n for n in ("hooks-link", "hooks-a", "hooks-b")))
+    for d in (a, b):
+        _write(d / "pre-commit", "#!/bin/sh\n")
+    link.symlink_to(a)
+    config.write_text(config.read_text() + f"[core]\n\thooksPath = {link}\n")
+
+    def act() -> None:
+        link.unlink()
+        link.symlink_to(b)
+    return act, {("steering_file", link)}
+
+
 def _include_deleted(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[str, Path]]]:
     config, extra = p["repo"] / ".git" / "config", p["tmp"] / "extra.gitconfig"
     extra.write_text("[specy]\n\tincluded = 1\n")
@@ -317,7 +342,8 @@ def _include_deleted(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[
 
 CONTAINER_ROWS = {"hooks_over_cap": _hooks_over_cap, "include_deleted": _include_deleted, "hooks_dir_becomes_fifo": _hooks_dir_becomes_fifo,
                   "including_config_unreadable": _including_config_unreadable,
-                  "include_reached_by_two_names": _include_reached_by_two_names}
+                  "include_reached_by_two_names": _include_reached_by_two_names,
+                  "hooks_link_retargeted": _hooks_link_retargeted}
 
 
 @pytest.mark.parametrize("name", sorted(CONTAINER_ROWS))
@@ -325,12 +351,12 @@ def test_a_container_one_end_could_not_list_is_its_one_finding_and_one_file_is_o
         tmp_path: Path, name: str) -> None:
     """A hooks directory over the cap or unreadable, or a config file unreadable, after the turn: one check_error for
     it, not its former entries reported gone; one included file reached by two names: one finding; an include
-    deleted under its unchanged config: one finding."""
+    deleted under its unchanged config: one finding; the hooks-directory link retargeted: one finding for the link."""
     if name == "including_config_unreadable" and os.geteuid() == 0:
         pytest.skip("root reads a mode-000 file")
     p = _layout(tmp_path)
     act, expected = CONTAINER_ROWS[name](p)
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
     found = _turn(p["repo"], rec, act)
-    assert {(f["kind"], f["path"]) for f in found if "path" in f} == {(k, str(path.resolve())) for k, path in expected}
+    assert {(f["kind"], f["path"]) for f in found if "path" in f} == {(k, str(real_path(path))) for k, path in expected}
     assert "git_probes_skipped" in {f["kind"] for f in found}

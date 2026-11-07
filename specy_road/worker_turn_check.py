@@ -118,12 +118,12 @@ PROBES_SKIPPED = {"kind": "git_probes_skipped",
 
 def steering_finding(path: str, cls: str, before: str, after: str) -> dict[str, Any]:
     return {"kind": "steering_file", "path": path, "class": cls, "before": before, "after": after,
-            "summary": f"steering file {path} ({cls}) changed: {before[:24]} -> {after[:24]}"}
+            "summary": sp.one_line(f"steering file {path} ({cls}) changed: {before[:24]} -> {after[:24]}")}
 
 
 def steering_error(path: str, cls: str, error: str) -> dict[str, Any]:
     return {"kind": "check_error", "path": path, "class": cls, "error": error.removeprefix(ERROR),
-            "summary": f"steering file {path} ({cls}) not checked: {error.removeprefix(ERROR)[:120]}"}
+            "summary": sp.one_line(f"steering file {path} ({cls}) not checked: {error.removeprefix(ERROR)[:120]}")}
 
 
 class SteeringWatch:
