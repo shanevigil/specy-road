@@ -134,7 +134,8 @@ entries:
       - specy_road/finish_milestone_rollout.py
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T19:05:23+00:00'
   - codename: review-writers-refuse-links
     node_id: M21.38
     branch: feature/rm-review-writers-refuse-links
