@@ -4,6 +4,8 @@
 set -u
 ID=$1; WT=$2
 . "$(dirname "$0")/env.sh"
+# Sol through Codex for 70% of leaves, Cursor for 30% (maintainer 2026-11-07); fixed per leaf so its rounds stay comparable.
+if [ "${R1:-}" = gpt-5.6-sol-high ] && [ $(( $(printf %s "$ID" | cksum | cut -d' ' -f1) % 10 )) -lt 7 ]; then R1=gpt-6.1-sol; fi
 S=$ROOT/sr/tools/specy-road; LOG=$ROOT/work/grind-logs; mkdir -p "$LOG"
 cd "$ROOT" || exit 2
 # One reviewer turn; since M8.3 a refused one-shot record ("rerun requested") gets one automatic retry.
