@@ -28,6 +28,11 @@ const SHEET = [
 
 const TIGHT = "## Intent\nOld intent.\n## Approach\n- a\n  b\n";
 
+const TABLE =
+  "## Intent\n\nOld.\n\n## Cases\n\n| Case | Expected |\n|---|---|\n| a | b |\n";
+const REFERENCE =
+  "## Intent\n\nOld.\n\nSee [roadmap][r].\n\n[r]: https://example.com/roadmap\n";
+
 const paragraph = (text: string): JSONContent => ({
   type: "paragraph",
   content: [{ type: "text", text }],
@@ -84,6 +89,18 @@ describe("planning-sheet save keeps untouched Markdown", () => {
       "",
       () => [paragraph("First")],
       "First",
+    ],
+    [
+      "an Intent edit keeps an untouched GFM table",
+      TABLE,
+      (n: JSONContent[]) => n.with(1, paragraph("New.")),
+      TABLE.replace("Old.", "New."),
+    ],
+    [
+      "an Intent edit keeps an untouched reference link and its definition",
+      REFERENCE,
+      (n: JSONContent[]) => n.with(1, paragraph("New.")),
+      REFERENCE.replace("Old.", "New."),
     ],
     [
       "a source separator that would merge blocks becomes a blank line",

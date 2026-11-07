@@ -121,33 +121,77 @@ export function toEditorBlocks<N, J>(
   }));
 }
 
-type SourcePiece = { body: string; sep: string };
+/** The non-empty top-level blocks `markdown` parses to, each serialized on its own. */
+function blocksOf<J>(codec: MarkdownCodec<J>, markdown: string): string[] {
+  return toEditorBlocks(codec, codec.parse(markdown).content ?? [], (n) => n)
+    .map((b) => b.markdown)
+    .filter((m) => m.trim());
+}
 
 /**
- * One piece per non-blank top-level token: its text, and the newlines after it.
+ * A top-level source token: its text, the newlines after it, and how many editor blocks it
+ * parses to on its own. A token with none (a GFM table, a link-reference definition) has no
+ * editor node, so nobody can edit it: it is always written back as it was.
+ */
+type SourcePiece = { body: string; sep: string; blocks: number };
+
+/**
+ * The source as leading blank lines plus one piece per non-blank top-level token.
  * Null when the tokens do not rebuild `source` exactly.
  */
-function sourcePieces(
+function sourcePieces<J>(
   source: string,
   tokens: MarkdownToken[],
-): SourcePiece[] | null {
+  codec: MarkdownCodec<J>,
+): { lead: string; pieces: SourcePiece[] } | null {
   if (tokens.map((t) => t.raw).join("") !== source) return null;
+  let lead = "";
   const pieces: SourcePiece[] = [];
   for (const t of tokens) {
+    const last = pieces[pieces.length - 1];
     if (t.type === "space") {
-      const last = pieces[pieces.length - 1];
-      if (!last) return null;
-      last.sep += t.raw;
+      if (last) last.sep += t.raw;
+      else lead += t.raw;
       continue;
     }
     const body = t.raw.replace(/\n+$/, "");
-    pieces.push({ body, sep: t.raw.slice(body.length) });
+    const blocks = blocksOf(codec, t.raw).length;
+    pieces.push({ body, sep: t.raw.slice(body.length), blocks });
   }
-  return pieces;
+  return { lead, pieces };
 }
 
 /** A block to write: the source piece it keeps (index) or, when edited, its new text. */
 type Placed = { piece?: number; text: string };
+
+/**
+ * Adds every source piece with no editor block to `placed`, in source order: right after the
+ * nearest earlier piece that has a block when that block is still written, else before the
+ * next kept piece that came after it in the source (or at the end).
+ */
+function withUneditable(pieces: SourcePiece[], placed: Placed[]): Placed[] {
+  const kept = new Set(placed.map((b) => b.piece));
+  const anchor = pieces.map((_, i) => {
+    let a = i - 1;
+    while (a >= 0 && pieces[a]!.blocks === 0) a--;
+    return a;
+  });
+  const pending = pieces.flatMap((p, i) => (p.blocks === 0 ? [i] : []));
+  const out: Placed[] = [];
+  const flush = (take: (i: number) => boolean) => {
+    for (const i of pending.filter(take)) out.push({ piece: i, text: "" });
+    pending.splice(0, pending.length, ...pending.filter((i) => !take(i)));
+  };
+  flush((i) => anchor[i] === -1);
+  for (const b of placed) {
+    const at = b.piece;
+    if (at !== undefined) flush((i) => i < at && !kept.has(anchor[i]));
+    out.push(b);
+    if (at !== undefined) flush((i) => anchor[i] === at);
+  }
+  flush(() => true);
+  return out;
+}
 
 /**
  * The separator between two written blocks. A pair that was adjacent in the source keeps
@@ -169,12 +213,12 @@ function junction(
 }
 
 function writeBlocks(
-  pieces: SourcePiece[],
+  { lead, pieces }: { lead: string; pieces: SourcePiece[] },
   placed: Placed[],
   fromSource: boolean,
 ): string {
   const ending = pieces[pieces.length - 1]?.sep ?? "";
-  return placed
+  return lead + placed
     .map((b, k) => {
       const body = b.piece === undefined ? b.text : pieces[b.piece]!.body;
       const next = placed[k + 1];
@@ -187,15 +231,20 @@ const sameList = <T>(a: readonly T[], b: readonly T[]) =>
   a.length === b.length && a.every((x, k) => x === b[k]);
 
 /**
- * Markdown to save after an edit. Rule: every top-level block whose editor node is unchanged
- * is written as its loaded `source` text; an edited or new block is written as the editor
- * serializes it; separators come from the source (see {@link junction}). The result must
- * parse back to the editor's blocks: if source separators would merge or split blocks, edited
- * junctions get a blank line instead, and if that also fails (or the source tokens cannot be
- * paired with the loaded blocks) the whole `serialized` document is returned. An unedited
- * document returns `source` unchanged. Empty blocks (the editor's trailing paragraph) are
- * ignored. `baseline` is the blocks right after `source` loaded, `next` the current ones,
- * `tokens` the editor's lexer output for `source`.
+ * Markdown to save after an edit. Rule: every source block the person did not touch is
+ * written as its loaded `source` text, and only edited or new blocks as the editor serializes
+ * them. A source block is untouched when its editor node is the same object as at load, or
+ * when it has no editor node at all (a GFM table, a link-reference definition: the editor
+ * cannot show it, so it cannot be edited; it keeps its place after the source block before
+ * it). Separators come from the source (see {@link junction}). The result must parse back to
+ * the editor's blocks: if source separators would merge or split blocks, edited junctions get
+ * a blank line instead. The whole `serialized` document is returned only when that also
+ * fails, or when the source tokens cannot be paired one-to-one with the loaded blocks (a
+ * token that parses to several blocks). An unedited document returns `source` unchanged.
+ * Empty blocks (the editor's trailing paragraph) are ignored. Limit: inline content the
+ * editor cannot hold is lost only inside a block the person edits. `baseline` is the blocks
+ * right after `source` loaded, `next` the current ones, `tokens` the editor's lexer output
+ * for `source`.
  */
 export function preserveUntouchedMarkdown<J>(input: {
   source: string;
@@ -209,20 +258,27 @@ export function preserveUntouchedMarkdown<J>(input: {
   const base = input.baseline.filter((b) => b.markdown.trim());
   const cur = input.next.filter((b) => b.markdown.trim());
   if (sameList(base.map((b) => b.node), cur.map((b) => b.node))) return source;
-  const pieces = sourcePieces(source, input.tokens);
-  if (!pieces || pieces.length !== base.length) return input.serialized;
-  const pieceOf = new Map(base.map((b, k) => [b.node, k]));
-  const placed = cur.map((b) => ({
-    piece: pieceOf.get(b.node),
-    text: b.markdown.replace(/\n+$/, ""),
-  }));
+  const src = sourcePieces(source, input.tokens, codec);
+  const shown = src?.pieces.flatMap((p, i) => (p.blocks ? [i] : [])) ?? [];
+  if (
+    !src ||
+    shown.length !== base.length ||
+    src.pieces.some((p) => p.blocks > 1)
+  ) {
+    return input.serialized;
+  }
+  const pieceOf = new Map(base.map((b, k) => [b.node, shown[k]]));
+  const placed = withUneditable(
+    src.pieces,
+    cur.map((b) => ({
+      piece: pieceOf.get(b.node),
+      text: b.markdown.replace(/\n+$/, ""),
+    })),
+  );
   const expected = cur.map((b) => b.markdown);
   for (const fromSource of [true, false]) {
-    const out = writeBlocks(pieces, placed, fromSource);
-    const back = toEditorBlocks(codec, codec.parse(out).content ?? [], (n) => n)
-      .map((b) => b.markdown)
-      .filter((m) => m.trim());
-    if (sameList(back, expected)) return out;
+    const out = writeBlocks(src, placed, fromSource);
+    if (sameList(blocksOf(codec, out), expected)) return out;
   }
   return input.serialized;
 }
