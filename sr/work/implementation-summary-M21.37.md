@@ -266,6 +266,37 @@ WIP merge: already up to date. Fix commit: `42796a63`. The maintainer's skills-l
 - Complexity against `e3246433`: no changed function higher. `Mirror.build` is the same count. `_ensure` is 3 (the content copy is `_place`).
 - `ruff check specy_road tests scripts`: pass. `specy-road file-limits`: pass.
 
+## Fix round 7 (review `gpt-6.1-sol-low` at `e3f70e09`; acceptance A1 skills-link text rule)
+
+- **The class behind R1 and R2:** the skills-link verdict depended on what a link's target *means*. That meaning came from lexical normalisation (R1: `../hop/../real`) or from content the upgrade mirror may lack (R2: a target in `.git`). Each round patched one instance. A1 now fixes the rule as a property of the link's own text, so this fix removes the class instead.
+- **The fix (`c2422f24`):** `specyrd_skills.skill_path` accepts a symlinked skills directory only when its raw `os.readlink` text is, byte for byte, `SKILLS_LINK_TEXT[skills]`:
+  - `../.agents/skills` at `.claude/skills`;
+  - `../.claude/skills` at `.agents/skills`.
+- **How it is checked:** `safe_write.refused` runs the `lstat` walk on the un-normalised join `link.parent / text`. A linked `.agents` or `.claude` is refused, and the other directory must be a real directory. `os.path.normpath` is gone. The verdict now depends only on that text and on the `lstat` kinds of two in-repo directories, and the mirror copies both exactly. So refresh-stubs, upgrade and `--dry-run` cannot disagree.
+- **R1:** `../tools/bounce/../skills` is refused everywhere: the text is wrong.
+- **R2:** `../.git/skills` is refused everywhere, consistently, for the same reason. The review asked for consistent *success* here, but A1 (maintainer, 2026-11-06) refuses every other skills-link text, so the consistent verdict is refusal. `Mirror._ensure`'s `.git` exclusion no longer affects any skills verdict and is unchanged.
+- **The refusal message** names both allowed values (A7): `<link> is a symlink (to <text>), not a real directory or a link to <allowed> (the skills directories may link only .agents/skills -> ../.claude/skills or .claude/skills -> ../.agents/skills)`.
+- **`ensure_link`:** the dynamic `os.path.relpath` target is gone. The link text is `link_target()` (A1). When one skills directory links to the other, the per-skill link's place is the canonical skill itself, and `ensure_link` returns `unchanged`. Before, a dry run reported `created` there, and a run without the canonical directory would have made a self-loop link.
+- **Docs:** `docs/install-and-usage.md`, CHANGELOG `[Unreleased]`, the `refresh_stubs` module docstring and upgrade's `_REFUSED_STEP` hint now name the two values. They tell an adopter with an alias such as `../tools/skills` to replace it with one of the two values or a real directory (A7).
+- **Tests:** the one shape table, `test_every_entry_point_gives_the_same_skills_link_verdict`, now has 10 shapes × both directories × 3 entry points = 60 rows.
+  - Allowed: `pair`, the exact relative text.
+  - Refused: `absolute-pair` (absolute text naming the right directory), `pair-under-linked-parent`, `relative-alias` (A7), `relative-chained`, `absolute-under-linked-ancestor`, `dotdot-through-link` (R1), `git-dir` (R2), `outward`, `dangling`.
+  - Refused rows require the exact `error:` line, exit 1, no traceback, and the link, the moved skills, `tools/` and the outside directory unchanged.
+  - Allowed rows require that a real run refreshes the stale canonical file and that every `.claude/skills/<name>` holds a `SKILL.md` resolving to `.agents/skills/<name>`. `--dry-run` leaves it stale.
+  - Red-green: with `specyrd_skills.py` from `e3f70e09`, all 18 `dotdot-through-link`, `git-dir` and `relative-alias` rows fail.
+  - Removed rows: `relative-in-repo` and `absolute-in-repo`, formerly allowed and reversed by A1 (the alias is now `relative-alias`, refused), and `absolute-chained` (covered by `relative-chained` and `absolute-under-linked-ancestor`).
+
+### Probes (fix round 7)
+
+- `skill_path`, the only place a skills link is interpreted (callers: `check_install_paths`, `install_stubs`, `ensure_link`, `refresh_stubs._write_if_changed`): exact-text check before any path use. Result: no normalisation left. `grep normpath|relpath` in `specyrd_skills.py`, `refresh_stubs.py` and `upgrade_plan.py`: none on a skills path.
+- `Mirror.build` copies relative link text verbatim. Result: `../.agents/skills` and `../.claude/skills` keep the same text and verdict in the mirror. The `pair` rows pass for upgrade and `--dry-run`.
+- `.git`-target class beyond skills: a skills link into `.git` is refused by text everywhere. Result: consistent.
+- `.git`-target class, steering files: `CLAUDE.md`/`AGENTS.md` linked into `.git` stay on `resolves_outside` (out of scope by A1). The mirror does not copy `.git` and its snapshot skips it, so upgrade would plan no write there where refresh-stubs writes into `.git`. Result: the upgrade side writes less, never outside the checkout; recorded, not changed.
+- `.claude/skills` with `.agents` itself a link: the canonical files are refused first by the plain rule (`.agents is a symlink`), and the per-skill links are skipped as declined. Result: exit 1, nothing written; the table's row asserts that line.
+- Cycle (`.claude/skills -> ../.agents/skills` and `.agents/skills -> ../.claude/skills`): `skill_path` refuses it (the other is not a real directory). But `refresh_stubs_report.resolve_linked` (`specy_road/bundled_scripts/refresh_stubs_report.py:53`, **outside the touch zones**) then raises `RuntimeError: Symlink loop` from `Path.resolve()` while printing the report. Result: a traceback for this layout, which predates this leaf. No row added; a follow-up needs that file in the zones.
+- `_prune` and `mirrored_copies` do not use the exception: an orphan or mirror under a linked skills directory is refused or skipped by the plain rule. Result: unchanged, stricter.
+- Full suite after the change: 6124 passed. `ruff check specy_road tests`: pass. `specy-road file-limits`: OK.
+
 ## Touch zones
 
 All edits are inside the listed zones. No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
@@ -324,4 +355,5 @@ All edits are inside the listed zones. No file outside them needed changing, and
   - Tests: in `test_m13_7_notices`, `test_only_an_in_repo_skills_directory_link_is_written_through` replaces the two tests whose expectations the decision reverses. The `test_prerelease_files` refresh and specyrd rows expect exit 1. The `test_upgrade_plan_parity` canonical-skill row and `test_sol_f2` expect exit 1 and the refusal line. The digest checkout test now goes through `main`.
 - Fix round 5: in `ensure_link`, the relocated-link `relpath` target (R1). Test: `test_skill_links_resolve_through_a_skills_directory_alias_at_another_depth` (2 rows).
 - Fix round 6: `upgrade_plan.Mirror` layout (`repo = to_sandbox(checkout)`), round-based link creation, `_ensure` and `_place` (the class). Test: `test_every_entry_point_gives_the_same_skills_link_verdict` (42 rows, the single shape table); removed the round-5 alias test and the m13_7 skills-shape rows it covers.
+- Fix round 7: `specyrd_skills.SKILLS_LINK_TEXT` (the two allowed link texts, replacing `SKILLS_DIRS`); in `skill_path`, the exact-text branch (A1, removes the R1/R2 class); in `ensure_link`, the `link == canonical` guard (one skills directory linked to the other: no self-loop link, and dry and real runs agree). Tests: the shape table's `pair`, `absolute-pair`, `pair-under-linked-parent`, `relative-alias`, `dotdot-through-link` (R1) and `git-dir` (R2) rows, and the `OTHER_SKILLS` helper map; no mock.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
