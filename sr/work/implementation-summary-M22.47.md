@@ -44,7 +44,7 @@ Script `sr/work/worker-logs/M22.47/smoke_cursor.py` (untracked): a throwaway rep
   worker's own `.cursor/cli-config.json` exists. `sha256sum ~/.cursor/cli-config.json` identical before and
   after (`375f1d55…c343`). Log: `sr/work/worker-logs/M22.47/smoke-cursor.log`.
 - **Base code (reverted for the run):** `Error: EBUSY: resource busy or locked, rename
-  '/home/savigil/.cursor/cli-config.json.<pid>.<uuid>.tmp' -> '/home/savigil/.cursor/cli-config.json'`,
+  '~/.cursor/cli-config.json.<pid>.<uuid>.tmp' -> '~/.cursor/cli-config.json'`,
   exit 1 — the 2026-11-07 failure, reproduced.
 - Cursor wrote nowhere else in home that the sandbox refused on this start (no "If this fails" path hit).
   Caveat: this session's home is read-only underneath, so auth.json's write-through could not be exercised; the
