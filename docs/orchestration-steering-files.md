@@ -7,33 +7,41 @@ named project-relative in the worker's tree, as `zone_matches` compares them, an
 
 | Class | What |
 |---|---|
-| `git_hook` | the hooks directories: the one git names at the turn's start (`rev-parse --git-path hooks`, asked before the executor acts), plus `<common-git-dir>/hooks`, `<worktree-gitdir>/hooks` and each `core.hooksPath` value read from the config files below (relative to the checkout); after the turn read from the filesystem only, direct regular-file names with sha256, not recursive, or the one marker `capped` past 200 children |
-| `git_config` | the bytes of every config file git names at the turn's start (`config --list --show-origin --includes`: global, system, the common `config`, `config.worktree` and their includes, conditions evaluated), plus the common `config`, `config.worktree` and every file they name by `include.path` or `includeIf.*.path` as `specy_road/git_config_text.py` reads them (conditions not evaluated, git's depth of 10); after the turn read from the filesystem only, no git command. The finding also names the changed values of `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.path` and `includeIf.*.path` |
+| `git_hook` | the hooks directories: each `core.hooksPath` value read from the config files below (relative to the checkout), and `<common-git-dir>/hooks` and `<worktree-gitdir>/hooks` as well, since an include's condition is not evaluated; direct entries only, not recursive: each regular file (a link followed) by name with its sha256, a subdirectory skipped. A hooks directory with more than 200 direct children is one `check_error` naming that directory on every comparison, changed or not (the listing stops reading after 201 entries) |
+| `git_config` | the bytes of the common `config` and `config.worktree` and every file they name by `include.path` or `includeIf.*.path` as `specy_road/git_config_text.py` reads them (conditions not evaluated, git's depth of 10). The finding also names the changed values of `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.path` and `includeIf.*.path` |
 
-**After each turn** the post-run check compares these from the filesystem, before any post-turn git
-command: on a change it records the finding and a `git_probes_skipped` finding and runs none of the git probes, so
-`git status` never runs under a `core.fsmonitor` or hook the turn changed. Otherwise the git probes run. Each change is one `steering_file` finding (`path`, `class`, `before`, `after`: a sha256,
-`link:<target>` (followed by `@<sha256>` when the link resolves to a regular file, so a write through an
-unchanged link changes it; a link to a directory is not walked), `absent`, or for `git_config` the digest followed by `;key=value` per changed watched key), which
-replaces any `porcelain` or `committed_outside_zones` mention of the same path. It sets the sticky `steering_changed`
-flag (`worker status --json` `flags`, `handoff status --json` `workers[].flags`); `worker reconcile W` lists the
-findings and clears it.
+Both are read from the filesystem only, at the turn's start and at its end; no git command is run for them.
 
-**An input that cannot be read.** One rule covers every class: each file and directory is listed, read, decoded,
-parsed and hashed on its own, and any failure there (invalid UTF-8, a permission error, a dangling link or a link
-loop, a parsed file over 8 MiB, a file gone mid-read) is one `check_error` finding naming that path
-and its class. The comparison goes on for every other path, so their findings and the `steering_changed` flag are
-kept. A path that cannot be read is never reported as unchanged, and it counts as git steering not verified, so no post-turn git command runs. Only a path that does not
-exist is `absent`; a missing include is left out, as git leaves it out.
+**After each turn** the post-run check compares this snapshot before any post-turn git command: on a change it
+records the finding and a `git_probes_skipped` finding and runs none of the git probes, so `git status` never runs
+under a `core.fsmonitor` or hook the turn changed. Otherwise the git probes run. Each change is one `steering_file`
+finding (`path`, `class`, `before`, `after`: a sha256, `absent`, or for `git_config` the digest followed by
+`;key=value` per changed watched key), which replaces any `porcelain` or `committed_outside_zones` mention of the
+same path. It sets the sticky `steering_changed` flag (`worker status --json` `flags`, `handoff status --json`
+`workers[].flags`); a clean turn leaves it set, and `worker reconcile W` (without `--dismiss`) prints one
+`path class before after` line per `steering_file` finding recorded while it was set, then clears it.
 
-**What git is asked, and when.** Git is asked only at the turn's start, before the executor acts, which hooks
-directory and config files it uses; after the turn those files and directories are compared from the filesystem.
-The text parser (`specy_road/git_config_text.py`: a byte-order mark, CRLF, quoting, escapes, comments and continued
-lines as git reads them) only adds candidates to what git named, so it does not decide coverage. Its limit: a hooks
-directory or config file git would use only because of a change made during the turn is not watched itself; the
-change that points git there is, by its file's digest. The check fails closed: with no snapshot from the turn's start
-(it could not be taken) or a git-steering comparison that fails, a `check_error` is recorded and no post-turn git
-command runs.
+**Runner order.** The wrapper runs this check before it reads the turn's READY. A READY that cannot be parsed
+(invalid UTF-8 included) is the turn's completion error (`exit 0; READY file invalid: ...`), not an exception, so
+the turn still ends with exactly one `post_run_check`.
+
+**An input that cannot be read.** One rule covers both classes: each file and directory is listed, read, decoded,
+parsed and hashed on its own, and any failure there (a permission error, a special file such as a FIFO, which is
+never opened for a blocking read, a dangling link or a link loop, a parsed file over 8 MiB, a file gone mid-read,
+the snapshot past its 30 s budget) is one `check_error` finding naming that path and its class. The comparison goes
+on for every other path, so their findings and the `steering_changed` flag are kept. A path that cannot be read is
+never reported as unchanged, and it counts as git steering not verified, so no post-turn git command runs. With no
+snapshot from the turn's start (it could not be taken) or a comparison that fails, the check fails closed the same
+way: a `check_error` per class naming the worktree, and the git probes skipped. It never aborts the turn. Only a
+path that does not exist is `absent`; a missing include is left out, as git leaves it out.
+
+**What the parser covers.** Git is never asked what it reads: the text parser (`specy_road/git_config_text.py`: a
+byte-order mark, CRLF, quoting, escapes, comments and continued lines as git reads them) decides which hooks
+directories and included files are watched. Its limit: a hooks directory or config file git would use only because
+of a change made during the turn is not watched itself; the change that points git there is, by its file's digest.
+Global and system config files are not watched.
 
 **Outside detection:** a change made and reverted within one turn is not seen. Nothing is restored: the check detects, and
-the human decides.
+the human decides. Harness config and hooks, the roadmap policy files, other leaves' registry entries,
+`work/reviews/` files, shell startup files, `env_bin` and symlinks are M22.30; finish's refusal is M22.31; the
+Claude Code launch denies are M22.32.

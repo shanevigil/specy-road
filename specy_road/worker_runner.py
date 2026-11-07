@@ -347,11 +347,20 @@ def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], be
         return code
     if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
         _append_usage(repo_root, rec, {})
-    ready = fresh_ready(repo_root, rec, before)
     watch.exited(code)   # the check runs before the exit event: a failed exit is one of its findings
-    paused = close_turn(repo_root, rec, watch)   # the post-run check (M8.2): a usage limit pauses, whatever the exit code
-    exit_event(repo_root, rec, code, ready, before_all=before_all, log=log_path(repo_root, rec.worker_id),
-               log_start=log_start)
+    # The post-run check (M8.2) runs before READY is read (M22.5): its git steering is compared first, and a READY
+    # that cannot be parsed must not cost the turn its check. A usage limit pauses, whatever the exit code.
+    paused = close_turn(repo_root, rec, watch)
+    try:
+        ready, unparsed = fresh_ready(repo_root, rec, before), None
+    except Exception as e:  # noqa: BLE001 — a READY the executor wrote (invalid UTF-8 included) is the turn's error
+        ready, unparsed = False, f"{type(e).__name__}: {e}"
+    if unparsed and code == 0:   # the completion summary would read that READY again
+        append_event(repo_root, rec, "completion", source="worker", summary=f"exit 0; READY file invalid: {unparsed}"[:500],
+                     detail={"exit": 0, "ready": False})
+    else:
+        exit_event(repo_root, rec, code, ready, before_all=before_all, log=log_path(repo_root, rec.worker_id),
+                   log_start=log_start)
     _exit_state(repo_root, rec, PAUSED_BY_LIMIT if paused   # a limit wins over READY and over the exit code
                 else ("completed" if ready else "idle") if code == 0 else "failed")
     return code

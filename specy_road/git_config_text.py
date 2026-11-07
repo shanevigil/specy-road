@@ -1,4 +1,4 @@
-"""git config files read as git reads them, without running git (M21.7).
+"""git config files read as git reads them, without running git (M22.5).
 
 The post-run check reads a worker's git config before any post-turn git command may run (a changed
 ``core.fsmonitor`` would run under it), so it parses the files itself. The rule is git-config(1)'s syntax: an optional
@@ -9,11 +9,9 @@ escapes ``"``, ``\\``, ``n``, ``t`` and ``b`` and joins a line it ends. ``includ
 ``includeIf.<condition>.path`` are followed, conditions not evaluated, to git's depth of 10; a relative path is
 relative to the including file, ``~`` is expanded. A malformed line is skipped, where git would refuse the file.
 
-The parser is not what decides coverage. At the turn's start, before the executor acts, :func:`git_reads` asks git
-itself which hooks directory it uses and which config files it reads (includes and their conditions evaluated);
-those are watched whatever this parser makes of the files. After the turn only files are read: each watched config
-file's change is reported by the digest of its bytes, and the parser only adds candidates (the default hooks
-directories, every ``core.hooksPath`` value and every include it finds). Its limit: a directory or file git would
+The parser decides coverage: only files are read, never git, so this is all the check knows of what git reads.
+Each watched config file's change is reported by the digest of its bytes, and the parser adds the hooks directories
+(every ``core.hooksPath`` value) and every include it finds. Its limit: a hooks directory or config file git would
 use only because of a change made during the turn is not watched itself; that change is, by its file's digest.
 
 Split from :mod:`specy_road.steering_paths` for the file limit.
@@ -25,8 +23,6 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 
-from specy_road.git_subprocess import run
-from specy_road.runtime_paths import git_path
 
 #: git's own include depth limit.
 MAX_INCLUDE_DEPTH = 10
@@ -132,17 +128,6 @@ def read_chain(path: Path, read: Callable[[Path], bytes] = Path.read_bytes,
         for inc in _includes(pairs):
             out += read_chain(path.parent / os.path.expanduser(inc), read, depth + 1)
     return out
-
-
-def git_reads(top: Path) -> tuple[list[Path], list[Path]]:
-    """``(hooks directories, config files)`` git uses in the checkout at ``top``, asked of git itself: run only
-    at a turn's start, before the executor acts (``rev-parse --git-path hooks``; ``config --list --show-origin
-    --includes``, whose origins are the files read, global and system ones included)."""
-    hooks = git_path(["rev-parse", "--path-format=absolute", "--git-path", "hooks"], top)
-    r = run(["config", "--list", "--show-origin", "--includes", "--name-only", "-z"], top)
-    origins = r.out.split("\0")[0::2] if r.ok else []
-    files = [top / os.path.expanduser(o.removeprefix("file:")) for o in origins if o.startswith("file:")]
-    return ([hooks] if hooks else []), list(dict.fromkeys(files))
 
 
 def _watched(key: str) -> bool:

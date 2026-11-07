@@ -1,37 +1,38 @@
-"""Steering files: what an executor can write that trusted code outside it later reads or runs (M21.7).
+"""Steering files: what an executor can write that trusted code outside it later reads or runs (M22.5).
 
 An unattended executor works in a linked worktree, and some files it can write are read or run later by
 something it does not control: git reads hooks and ``core.fsmonitor`` / ``core.hooksPath`` from the common git
-dir, which every worktree of the repository shares. This module holds the one list (documented in
-docs/orchestration-steering-files.md, linked from docs/orchestration-workers.md) and the per-turn watch:
-
-- the snapshot (:func:`git_snapshot`) that the post-run check
-  (:class:`~specy_road.worker_turn_check.SteeringWatch`) takes per worker turn, in the worktree and in the main
-  checkout, and compares as ``steering_file`` findings. It is read from the filesystem only, so it is
-  compared before any post-turn git command runs.
+dir, which every worktree of the repository shares. This module holds the git-steering part of the one list
+(documented in docs/orchestration-steering-files.md, linked from docs/orchestration-workers.md) and the per-turn
+snapshot (:func:`git_snapshot`) that the post-run check (:class:`~specy_road.worker_turn_check.SteeringWatch`)
+takes per worker turn, in the worktree and in the main checkout, and compares as ``steering_file`` findings. It is
+read from the filesystem only, at the turn's start and at its end, so it is compared before any post-turn git
+command runs.
 
 Detection only: nothing here restores a changed file. Paths compare project-relative, as ``zone_matches``
 does, and one real path is stored once.
 
 **One rule for any input that cannot be read** (:func:`guarded`): every per-file and per-directory step (listing,
-reading, decoding, parsing, hashing) runs on its own, and any exception there (invalid UTF-8, a permission error,
-a dangling link or a link loop, a file over :data:`MAX_PARSE_BYTES`, a file gone mid-read) records
-that path and its class as unreadable (an ``error:`` value) and the snapshot goes on with every other path. The
-comparison reports each such path as a ``check_error`` finding (path and class) and never as unchanged; it
-counts as git steering not verified, so no post-turn git command runs. Only a path that does not
-exist is ``absent``.
+reading, decoding, parsing, hashing) runs on its own, and any exception there (a permission error, a special file
+such as a FIFO, a dangling link or a link loop, a file over :data:`MAX_PARSE_BYTES`, a file gone mid-read, the
+snapshot past :data:`SNAPSHOT_SECONDS`, a hooks directory over :data:`HOOKS_CAP` entries) records that path and its
+class as unreadable (an ``error:`` value) and the snapshot goes on with every other path. The comparison reports
+each such path as a ``check_error`` finding (path and class) and never as unchanged; it counts as git steering not
+verified, so no post-turn git command runs. Only a path that does not exist is ``absent``.
 """
 
 from __future__ import annotations
 
 import hashlib
+import itertools
 import os
 import stat
+import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road.git_config_text import git_reads, read_chain, watched_values
+from specy_road.git_config_text import read_chain, watched_values
 from specy_road.runtime_paths import prefix_within
 from specy_road.worktree_env import git_top, main_project_root
 
@@ -39,28 +40,50 @@ from specy_road.worktree_env import git_top, main_project_root
 FLAG_STEERING = "steering_changed"
 #: Every ``class`` a ``steering_file`` finding can carry.
 CLASSES = ("git_hook", "git_config")
-#: More direct children than this in a hooks directory are recorded as the one marker ``capped``.
+#: A hooks directory with more direct children than this is unreadable on every comparison (fails closed); its
+#: listing stops after ``HOOKS_CAP + 1`` entries.
 HOOKS_CAP = 200
 ABSENT = "absent"
 #: The prefix of a value that could not be read (:func:`guarded`).
 ERROR = "error:"
 #: Files this module parses (``.git`` files, git config) larger than this are unreadable, not parsed.
 MAX_PARSE_BYTES = 8 * 1024 * 1024
+#: One snapshot's time budget: every path read after it is spent is unreadable (a timeout), never skipped.
+SNAPSHOT_SECONDS = 30.0
+_CHUNK = 1 << 20
+
+_until = float("inf")   # the running snapshot's deadline (:func:`git_snapshot` sets it)
 
 
-def _sha(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+def _in_time() -> None:
+    if time.monotonic() > _until:
+        raise TimeoutError(f"git-steering snapshot over {SNAPSHOT_SECONDS:.0f}s")
+
+
+def _open_regular(path: Path) -> int:
+    """A read descriptor on ``path``, which must be a regular file once open: a FIFO, socket or device is refused
+    without blocking (``O_NONBLOCK``), and so is one swapped in after any earlier ``stat``."""
+    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOCTTY)
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise ValueError("not a regular file (special file)")
+    return fd
 
 
 def _digest(path: Path) -> str:
-    """A file's sha256, streamed: size is never a reason to fail."""
-    with open(path, "rb") as f:
-        return hashlib.file_digest(f, "sha256").hexdigest()
+    """A regular file's sha256, streamed (size is never a reason to fail), within the snapshot's time budget."""
+    h = hashlib.sha256()
+    with os.fdopen(_open_regular(path), "rb") as f:
+        while chunk := f.read(_CHUNK):
+            _in_time()
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def parse_bytes(path: Path) -> bytes:
-    """A file this module parses, refused over :data:`MAX_PARSE_BYTES`."""
-    with open(path, "rb") as f:
+    """A regular file this module parses, refused over :data:`MAX_PARSE_BYTES`."""
+    _in_time()
+    with os.fdopen(_open_regular(path), "rb") as f:
         data = f.read(MAX_PARSE_BYTES + 1)
     if len(data) > MAX_PARSE_BYTES:
         raise ValueError(f"over the {MAX_PARSE_BYTES} byte parse cap")
@@ -72,18 +95,12 @@ def resolved_path(path: Path) -> Path:
     return Path(os.path.realpath(path))
 
 
-def _value(path: Path) -> str:
-    """A path's content as every class compares it: a file's sha256; ``link:<text>`` plus ``@<sha256>`` of what a
-    link resolves to when that is a regular file (a write through an unchanged link changes it; a link to a
-    directory is not walked); ``dir``; ``other``; ``absent`` when nothing is there. Raises when the content cannot
-    be read (a dangling link or a loop included): :func:`guarded` records that."""
-    if not os.path.lexists(path):
-        return ABSENT
-    if path.is_symlink():
-        text, mode = os.readlink(path), os.stat(path).st_mode   # stat follows: a dangling link or a loop raises
-        return f"link:{text}" + (f"@{_digest(path)}" if stat.S_ISREG(mode) else "")
+def _hook_value(path: Path) -> str | None:
+    """A hooks-directory entry as it compares: the sha256 of the regular file it is (a link followed, so a write
+    through an unchanged link changes it); ``None`` for a directory (not a hook). Raises for anything else (a
+    special file, a dangling link or a loop): :func:`guarded` records that."""
     mode = os.stat(path).st_mode
-    return _digest(path) if stat.S_ISREG(mode) else "dir" if stat.S_ISDIR(mode) else "other"
+    return None if stat.S_ISDIR(mode) else _digest(path)
 
 
 def real_path(path: Path) -> Path:
@@ -124,8 +141,6 @@ class Scope:
     prefix: str
     w_top: Path
     m_top: Path
-    #: per checkout top, what git itself said it reads at the turn's start (:func:`git_reads`)
-    git_known: dict[Path, tuple[list[Path], list[Path]]] = field(default_factory=dict, compare=False)
 
     @property
     def tops(self) -> list[Path]:
@@ -144,17 +159,17 @@ def _error(e: BaseException) -> str:
 
 
 def scope_for(repo_root: Path, worktree: Path) -> Scope:
-    """The worker's scope, taken at the turn's start: the only time git is asked what it reads."""
+    """The worker's scope, taken at the turn's start from the filesystem (no git command)."""
     m_root = resolved_path(main_project_root(Path(repo_root)))
     m_top, w_top = git_top(m_root), git_top(Path(worktree))
-    return Scope(prefix_within(m_top, m_root), w_top, m_top,
-                 {top: git_reads(top) for top in dict.fromkeys((w_top, m_top))})
+    return Scope(prefix_within(m_top, m_root), w_top, m_top)
 
 
 def guarded(snap: Snapshot, scope: Scope, path: Path, cls: str, step: Callable[[], None]) -> None:
     """Run one per-file or per-directory ``step``; any exception records ``path`` as unreadable for ``cls``
     (the module's one rule) and the snapshot goes on."""
     try:
+        _in_time()
         step()
     except Exception as e:  # noqa: BLE001 — one rule: an unreadable input is reported, never fatal
         unreadable(snap, scope, path, cls, e)
@@ -166,33 +181,32 @@ def unreadable(snap: Snapshot, scope: Scope, path: Path, cls: str, e: BaseExcept
     snap[str(real)] = Entry(scope.display(real), cls, _error(e))
 
 
-def _add(snap: Snapshot, scope: Scope, path: Path, cls: str, value: str | None = None) -> None:
-    """Record one path once (by its real path), its value read under the one rule: unreadable is an ``error:``."""
+def _add_hook(snap: Snapshot, scope: Scope, path: Path) -> None:
+    """Record one hooks-directory entry once (by its real path), read under the one rule."""
     real = real_path(path)
     if str(real) in snap:
         return
     try:
-        value = value if value is not None else _value(path)
+        _in_time()
+        value = _hook_value(path)
     except Exception as e:  # noqa: BLE001 — one rule: an unreadable input is reported, never fatal
         value = _error(e)
-    snap[str(real)] = Entry(scope.display(real), cls, value)
-
-
-def _list(snap: Snapshot, scope: Scope, d: Path, cls: str, each: Callable[[list[Path]], None]) -> None:
-    """``each`` on the sorted entries of directory ``d`` (none when it does not exist), guarded."""
-    if os.path.lexists(d):
-        guarded(snap, scope, d, cls, lambda: each(sorted(d.iterdir())))
+    if value is not None:
+        snap[str(real)] = Entry(scope.display(real), "git_hook", value)
 
 
 def _hooks_dir(snap: Snapshot, scope: Scope, d: Path) -> None:
-    def each(kids: list[Path]) -> None:
-        if len(kids) > HOOKS_CAP:
-            _add(snap, scope, d, "git_hook", "capped")
-            return
-        for k in kids:
-            if not k.is_dir() or k.is_symlink():   # direct entries; a real subdirectory is not a hook
-                _add(snap, scope, k, "git_hook")
-    _list(snap, scope, d, "git_hook", each)
+    """Direct entries of hooks directory ``d``, not recursive; over :data:`HOOKS_CAP` the directory itself is
+    unreadable (so every comparison fails closed), and the listing stops after ``HOOKS_CAP + 1`` entries."""
+    def each() -> None:
+        with os.scandir(d) as it:
+            names = [e.name for e in itertools.islice(it, HOOKS_CAP + 1)]
+        if len(names) > HOOKS_CAP:
+            raise OSError(f"hooks directory has more than {HOOKS_CAP} entries")
+        for name in sorted(names):
+            _add_hook(snap, scope, d / name)
+    if os.path.lexists(d):
+        guarded(snap, scope, d, "git_hook", each)
 
 
 def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, hooks: list[Path]) -> None:
@@ -202,30 +216,34 @@ def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, hooks: li
             unreadable(snap, scope, path, "git_config", data)
             continue
         real = real_path(path)
-        snap.setdefault(str(real), Entry(scope.display(real), "git_config", _sha(data),
+        snap.setdefault(str(real), Entry(scope.display(real), "git_config", hashlib.sha256(data).hexdigest(),
                                          tuple(sorted(watched_values(pairs).items()))))
         hooks += [top / os.path.expanduser(v) for k, v in pairs if k == "core.hookspath" and v]
 
 
 def git_snapshot(scope: Scope) -> Snapshot:
-    """Git steering, from the filesystem only: the config files and hooks directories git named at the turn's
-    start (``scope.git_known``), plus, as candidates from :mod:`specy_road.git_config_text`, the common
-    ``config``, ``config.worktree`` and every file they include (conditions not evaluated), ``<common>/hooks``,
-    ``<worktree-gitdir>/hooks`` and each ``core.hooksPath`` value read (relative to the checkout)."""
+    """Git steering, from the filesystem only: per checkout, the common ``config``, ``config.worktree`` and every
+    file they name by ``include.path`` or ``includeIf.*.path`` (:mod:`specy_road.git_config_text`, conditions not
+    evaluated), and the hooks directories: each ``core.hooksPath`` value read (relative to the checkout) and, since
+    an include's condition is not evaluated, ``<common>/hooks`` and ``<worktree-gitdir>/hooks`` as well."""
+    global _until
     snap: Snapshot = {}
-    for top in scope.tops:
-        guarded(snap, scope, top / ".git", "git_config", lambda top=top: _git_top(snap, scope, top))
+    _until = time.monotonic() + SNAPSHOT_SECONDS
+    try:
+        for top in scope.tops:
+            guarded(snap, scope, top / ".git", "git_config", lambda top=top: _git_top(snap, scope, top))
+    finally:
+        _until = float("inf")
     return snap
 
 
 def _git_top(snap: Snapshot, scope: Scope, top: Path) -> None:
-    known_hooks, known_files = scope.git_known.get(top, ([], []))
-    hooks, starts = list(known_hooks), list(known_files)
-    if dirs := _gitdirs(top):
-        gitdir, common = dirs
-        hooks += [common / "hooks", gitdir / "hooks"]
-        starts += [common / "config", common / "config.worktree", gitdir / "config.worktree"]
-    for start in dict.fromkeys(starts):
+    dirs = _gitdirs(top)
+    if not dirs:
+        return
+    gitdir, common = dirs
+    hooks: list[Path] = []
+    for start in dict.fromkeys((common / "config", common / "config.worktree", gitdir / "config.worktree")):
         _config_file(snap, scope, top, start, hooks)
-    for d in dict.fromkeys(resolved_path(h) for h in hooks):
+    for d in dict.fromkeys(resolved_path(h) for h in [*hooks, common / "hooks", gitdir / "hooks"]):
         _hooks_dir(snap, scope, d)

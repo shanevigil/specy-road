@@ -10,9 +10,10 @@ porcelain) with the state at the turn's start, records the findings in one ``pos
 worker :data:`FLAG_POST_RUN` (a clean turn clears it), and reports a turn stopped by a usage limit, which the
 wrapper turns into :data:`PAUSED_BY_LIMIT` with the record's ``limit_reset_at``, whatever the exit code.
 
-Steering files (M21.7, :mod:`specy_road.steering_paths`) are compared first: the git half (hooks, config) from the
-filesystem before any post-turn git command, so ``git status`` never runs under a ``core.fsmonitor`` or hook the
-turn changed; on such a change the git probes are skipped (a ``git_probes_skipped`` finding). Each changed steering
+Git steering (M22.5, :mod:`specy_road.steering_paths`: hooks and config) is compared first, from the filesystem
+before any post-turn git command, so ``git status`` never runs under a ``core.fsmonitor`` or hook the turn
+changed; on such a change, an unreadable input or no snapshot from the turn's start, the git probes are skipped
+(a ``git_probes_skipped`` finding). Each changed steering
 file is one ``steering_file`` finding, which replaces a ``porcelain`` or ``committed_outside_zones`` mention of the
 same path, and sets the sticky :data:`FLAG_STEERING`, which only ``worker reconcile`` clears.
 
@@ -106,6 +107,11 @@ def steering_changes(before: Snapshot, after: Snapshot) -> list[dict[str, Any]]:
     return out
 
 
+#: The finding that says no post-turn git probe ran, because git steering changed or could not be verified.
+PROBES_SKIPPED = {"kind": "git_probes_skipped",
+                  "summary": "git steering changed or not verified: post-turn git probes skipped"}
+
+
 def steering_finding(path: str, cls: str, before: str, after: str) -> dict[str, Any]:
     return {"kind": "steering_file", "path": path, "class": cls, "before": before, "after": after,
             "summary": f"steering file {path} ({cls}) changed: {before[:24]} -> {after[:24]}"}
@@ -153,7 +159,7 @@ class TurnWatch:
         self.before = git_state(Path(rec.worktree))
         self.steering: SteeringWatch | None = None
         self.steering_error: str | None = None
-        try:   # the steering snapshot (M21.7); a failure is a finding, never a lost turn
+        try:   # the git-steering snapshot (M22.5); a failure is a finding, never a lost turn
             self.steering = SteeringWatch(repo_root, Path(rec.worktree))
         except Exception as e:  # noqa: BLE001
             self.steering_error = str(e)
@@ -289,18 +295,18 @@ def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch, *, pause: b
 
 def _turn_findings(repo_root: Path, rec: WorkerRecord, watch: TurnWatch) -> list[dict[str, Any]]:
     """The turn's findings. Git steering is compared first, from the filesystem; the check fails closed: when
-    git steering changed, or cannot be compared (no snapshot from the turn's start, or the comparison failed),
-    no post-turn git command runs."""
+    git steering changed, or cannot be compared (no snapshot from the turn's start, or the comparison failed: a
+    ``check_error`` per class naming the worktree), the git probes are marked skipped and none of them runs."""
     found, sw = watch.stream_findings(), watch.steering
     try:
         if sw is None:
             raise RuntimeError(f"no snapshot from the turn's start ({watch.steering_error})")
         steer = sw.git_changes()
     except Exception as e:  # noqa: BLE001 — the check must never cost the turn its exit record
-        found.append({"kind": "check_error", "summary": f"git steering not checked: {e}; git probes skipped"})
-        return found
+        return found + [steering_error(str(rec.worktree), cls, f"git steering not checked: {e}") for cls in CLASSES] \
+            + [PROBES_SKIPPED]
     if steer:
-        found.append({"kind": "git_probes_skipped", "summary": "git steering changed or unreadable: post-turn git probes skipped"})
+        found.append(PROBES_SKIPPED)
     else:
         try:
             found += git_findings(repo_root, rec, watch.before)

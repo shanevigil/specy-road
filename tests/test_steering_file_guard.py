@@ -1,4 +1,4 @@
-"""M21.7: executors cannot change git steering unnoticed.
+"""M22.5: executors cannot change git steering unnoticed.
 
 Fake executor turns that change git hooks and config (a linked worktree, the main checkout beside it, ``.venv``
 linked by ``env_setup.link``, a second worktree holding the integration branch), the clean turn, and the sticky flag
@@ -99,9 +99,9 @@ def test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_read
     found = _turn(p["repo"], rec, lambda: _write(hooks / "pre-commit", "#!/bin/sh\nevil\n"))   # through a link if one
     [steer] = [f for f in found if f["kind"] == "steering_file"]
     assert steer["class"] == "git_hook" and steer["path"] == str(hooks.resolve() / "pre-commit")
-    if name == "unchanged_symlink_written_through":   # the link text is unchanged; what it resolves to is not
-        assert steer["before"].startswith(f"link:{real}@") and steer["after"].startswith(f"link:{real}@")
-        assert steer["before"] != steer["after"] and (hooks / "pre-commit").is_symlink()
+    if name == "unchanged_symlink_written_through":   # the link is unchanged; the file it resolves to is not
+        assert len(steer["before"]) == len(steer["after"]) == 64 and steer["before"] != steer["after"]
+        assert (hooks / "pre-commit").is_symlink()
     else:
         assert steer["before"] == "absent"
     assert "git_probes_skipped" in {f["kind"] for f in found}
@@ -120,9 +120,11 @@ def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
         monkeypatch.setattr(steering_paths, "git_snapshot", fail)
     found = _turn(p["repo"], rec, lambda: git(p["leaf"], "config", "core.fsmonitor", f"touch {sentinel}"))
     assert not sentinel.exists()
-    if snapshot == "unavailable":
-        [error] = found
-        assert error["kind"] == "check_error" and "git probes skipped" in error["summary"]
+    if snapshot == "unavailable":   # one check_error per class naming the worktree, and the probes skipped
+        errors = [f for f in found if f["kind"] == "check_error"]
+        assert sorted(e["class"] for e in errors) == ["git_config", "git_hook"]
+        assert {e["path"] for e in errors} == {str(p["leaf"])}
+        assert [f["kind"] for f in found if f["kind"] != "check_error"] == ["git_probes_skipped"]
     else:
         [steer] = [f for f in found if f["kind"] == "steering_file"]
         assert steer["class"] == "git_config" and steer["path"].endswith("/.git/config")
@@ -167,6 +169,8 @@ def _unreadable_as(kind: str, path: Path, tmp: Path) -> None:
     if kind == "unreadable":
         path.write_text("x\n")
         path.chmod(0)
+    elif kind == "fifo":   # a special file: never opened for a blocking read
+        os.mkfifo(path)
     elif kind == "dangling_symlink":
         path.symlink_to(tmp / "missing-target")
     else:   # symlink_loop
@@ -183,7 +187,7 @@ def _where(p: dict[str, Path], where: str) -> tuple[Path, str]:
 
 
 UNREADABLE_ROWS = [   # (failure kind, where): every combination where that kind is a failure to read there
-    *[(k, "hook") for k in ("unreadable", "dangling_symlink", "symlink_loop")],
+    *[(k, "hook") for k in ("unreadable", "fifo", "dangling_symlink", "symlink_loop")],
     ("unreadable", "git_config"), ("symlink_loop", "git_config"),   # a missing include is left out, as git does
 ]
 
@@ -206,3 +210,50 @@ def test_an_unreadable_steering_input_is_one_check_error_and_the_rest_is_still_c
     assert FLAG_STEERING in ws.load_record(p["repo"], rec.worker_id).flags
     assert "git_probes_skipped" in {f["kind"] for f in found}   # unverified git steering: no git command
     assert not [f for f in found if f.get("class") == "harness"]
+
+
+def test_a_hooks_directory_over_the_cap_fails_closed_even_when_a_replaced_hook_keeps_it_over(tmp_path: Path) -> None:
+    """201 entries at the start, one hook replaced and still 201: a check_error naming the directory, not a pass."""
+    p = _layout(tmp_path)
+    hooks = p["repo"] / ".git" / "hooks"
+    for i in range(201 - len(list(hooks.iterdir()))):
+        _write(hooks / f"extra-{i}", "#!/bin/sh\n")
+    assert len(list(hooks.iterdir())) == 201
+    rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
+    found = _turn(p["repo"], rec, lambda: _write(hooks / "extra-0", "#!/bin/sh\nevil\n"))
+    [error] = [f for f in found if f["kind"] == "check_error"]
+    assert error["path"] == str(real_path(hooks)) and error["class"] == "git_hook"
+    assert {f["kind"] for f in found} == {"check_error", "git_probes_skipped"}
+    assert tc.FLAG_POST_RUN in ws.load_record(p["repo"], rec.worker_id).flags
+
+
+def test_an_unparsable_ready_through_the_worker_runner_still_ends_with_one_check_holding_the_config_change(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fake executor writes a READY holding byte FF and changes the common config: the turn is not lost."""
+    from specy_road import worker_adapters as wa
+    from specy_road import worker_runner as wr
+    p = _layout(tmp_path)
+    repo = p["repo"]
+    ready = ws.reviews_root(repo) / "M1.1" / "READY-opus.md"
+    ready.parent.mkdir(parents=True)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "claude"
+    fake.write_text("#!/bin/sh\ncat >/dev/null\n"
+                    f"printf -- '---\\nnode_id: M1.1\\nnote: \\377\\n---\\n' > '{ready}'\n"
+                    "git config specy.turn 1\n")
+    fake.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    prompt = tmp_path / "prompt.md"
+    prompt.write_text("do the leaf")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(prompt, p["leaf"], "m", None)) == 0
+    assert b"\xff" in ready.read_bytes()
+    events = ws.events_since(repo, rec.worker_id)
+    [check] = [e for e in events if e.type == "post_run_check"]
+    [steer] = [f for f in check.detail["findings"] if f["kind"] == "steering_file"]
+    assert steer["class"] == "git_config" and steer["path"] == str(real_path(repo / ".git" / "config"))
+    [done] = [e for e in events if e.type == "completion"]
+    assert done.detail == {"exit": 0, "ready": False} and "READY file invalid" in done.summary
+    after = ws.load_record(repo, rec.worker_id)
+    assert FLAG_STEERING in after.flags and after.state == "idle"
