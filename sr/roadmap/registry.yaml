@@ -117,23 +117,6 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: finish-keeps-local-claim-and-landing
-    node_id: M22.10
-    branch: feature/rm-finish-keeps-local-claim-and-landing
-    touch_zones:
-      - specy_road/reconcile_branch.py
-      - specy_road/finish_pr_merge.py
-      - specy_road/finish_modes.py
-      - specy_road/finish_land_local.py
-      - specy_road/finish_land_integration.py
-      - tests/test_reconcile_branch.py
-      - tests/test_finish_merge_failure_undo.py
-      - docs/git-workflow-parallel-prs.md
-      - docs/git-workflow.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: verify-tells-a-blocking-404
     node_id: M22.17
     branch: feature/rm-verify-tells-a-blocking-404

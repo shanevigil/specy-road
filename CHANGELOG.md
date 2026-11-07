@@ -17,6 +17,7 @@ body. Keep section bodies focused; link to PRs for detail.
   holds, as in `group-nodes M1.1 M1.2 M1.3 --into-new M1.2`: that node leaves the id in the same transaction, so a
   regroup into the ids the flat nodes occupy no longer needs a temporary id and a second `move-node --id`. An id held by
   any other node, a listed node's descendant included, is still refused.
+- `reconcile-branch` keeps a claim that exists only on the feature branch when the integration branch has moved, so finish still finds the row. A `git checkout` of the feature branch that fails after the merge (and, in push mode, the push) has succeeded is one warning naming that command: finish exits 0 and does not undo the bookkeeping commit. A checkout failure after a failed merge or push still undoes it.
 - The worker post-run check matches touch zones from either the git root or the project root in a nested layout, like
   finish does, so a commit under an `sr/...` zone is no longer flagged `committed_outside_zones`.
 - A Codex reviewer's resumed turn, the format-repair retry included, passes `-m` with the requested model, as the
