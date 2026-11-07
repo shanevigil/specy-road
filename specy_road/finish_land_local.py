@@ -17,6 +17,7 @@ from pathlib import Path
 from specy_road.finish_land_check import resolve_land_check_cmd, run_land_check
 from specy_road.finish_land_deterministic import merge_feature_deterministically
 from specy_road.finish_land_integration import (
+    _checkout_feature_after_landing,
     _reset_integration,
     holder_project_root,
     integration_worktree,
@@ -48,8 +49,10 @@ def land_root_locally(
     """``land: local``: merge ``feature_branch`` into the local ``integration_branch``; nothing fetched or pushed.
 
     Where another worktree holds the integration branch the merge runs there,
-    only while it is clean, as the push landing does. ``(True, "")`` or
-    ``(False, why)``; a branch already merged (a re-run) merges nothing.
+    only while it is clean, as the push landing does. ``(True, "")`` when the
+    checkout worked, ``(True, warning)`` when only the final checkout of the
+    feature branch failed, or ``(False, why)``. A branch already merged (a
+    re-run) merges nothing.
     """
     ib = integration_branch
     if not git_ok(["rev-parse", "--verify", "--quiet", f"refs/heads/{ib}"], repo)[0]:
@@ -68,19 +71,17 @@ def land_root_locally(
     if code != 0:
         return False, f"git checkout {ib} failed: {out}"
     ok, err = _merge_here(repo, ib, feature_branch, check)
-    code, out = git_code(["checkout", feature_branch], repo)
-    if not ok:
-        return False, err
-    if code != 0:
-        return False, f"git checkout {feature_branch} after merge failed: {out}"
-    return True, ""
+    return _checkout_feature_after_landing(repo, feature_branch, ok, err)
 
 
 def land_on_integration(
     repo: Path, *, remote: str, ib: str, branch: str, land_check_cmd: str | None,
     tracking_before: str | None = None,
 ) -> tuple[bool, str, str]:
-    """Land ``branch`` on ``ib`` per the root ``land``: ``(ok, error, what was done)``, each step announced first.
+    """Land ``branch`` on ``ib`` per the root ``land``: ``(ok, error or warning, what was done)``.
+
+    The second value is a warning when the landing succeeded and only the final
+    ``git checkout`` of the feature branch failed. Each step is announced first.
 
     ``tracking_before`` is :func:`tracking_ref_snapshot` taken before the
     caller's own fetch; ``None`` takes it here (push only).

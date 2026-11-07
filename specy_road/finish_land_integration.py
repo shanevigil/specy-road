@@ -113,6 +113,27 @@ def integration_worktree_problem(repo: Path, integration_branch: str) -> str | N
     )
 
 
+def _checkout_feature_after_landing(
+    repo: Path, feature_branch: str, landed: bool, err: str,
+) -> tuple[bool, str]:
+    """Check ``feature_branch`` out after the landing attempt.
+
+    When the merge (and the push, in push mode) succeeded, a failing checkout
+    is ``(True, warning)`` naming ``git checkout <feature>``: the landing
+    stands. When the merge or push failed, that failure is returned unchanged
+    so the caller still undoes bookkeeping.
+    """
+    code, _out = git_code(["checkout", feature_branch], repo)
+    if not landed:
+        return False, err
+    if code != 0:
+        return True, (
+            "warning: landing succeeded, but checking out the feature branch failed; "
+            f"run `git checkout {feature_branch}`"
+        )
+    return True, ""
+
+
 def _reset_integration(tree: Path, integration_branch: str, pre: str) -> str:
     """Put ``integration_branch`` (checked out in ``tree``) back at ``pre``; a note on failure."""
     code, out = git_code(["reset", "--keep", pre], tree)
@@ -322,7 +343,8 @@ def land_merge_feature_into_integration(
     :func:`tracking_ref_snapshot` the caller took before its own first fetch;
     ``None`` takes it here, before this function's fetch.
 
-    Returns (True, "") on success, (False, message) on failure. Failure
+    Returns (True, "") on success, (True, warning) when only the final
+    feature-branch checkout failed, or (False, message) on failure. Failure
     messages are structured so callers can surface a hard error rather than
     silently falling back to PR instructions (F-012).
     """
@@ -375,9 +397,4 @@ def land_merge_feature_into_integration(
         integration_branch=integration_branch, feature_branch=feature_branch,
         land_check_cmd=check, tracking_before=tracking_before,
     )
-    code, out = git_code(["checkout", feature_branch], repo)
-    if not ok:
-        return False, err
-    if code != 0:
-        return False, f"git checkout {feature_branch} after merge failed: {out}"
-    return True, ""
+    return _checkout_feature_after_landing(repo, feature_branch, ok, err)

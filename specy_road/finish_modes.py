@@ -307,6 +307,8 @@ def retry_merge_landing(
             ib, err_msg, delete_branch=delete_branch, land_check_cmd=land_check_cmd,
             repo=repo,
         )
+    if err_msg:
+        print(err_msg, file=sys.stderr)
     report_landed(repo, done_msg, branch=branch, ib=ib, remote=remote,
                   delete_branch=delete_branch, local_only=local)
     raise SystemExit(0)
@@ -364,6 +366,8 @@ def apply_on_complete_mode(
         land_check_cmd=args.land_check_cmd,
     )
     if ok:
+        if err_msg:
+            print(err_msg, file=sys.stderr)
         report_landed(repo, done_msg, branch=branch, ib=ib, remote=gw_remote, sess_path=sess_path,
                       delete_branch=args.delete_branch, local_only=root_land(repo) == LAND_LOCAL)
         return
