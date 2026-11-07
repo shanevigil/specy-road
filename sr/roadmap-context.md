@@ -169,7 +169,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Not Started**
   - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Not Started**
   - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
-  - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Not Started**
+  - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Complete**
   - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Not Started**
   - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
@@ -315,7 +315,6 @@ Do not pick these up.
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
 - `M22.3` on `feature/rm-decisions-follow-moves` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
-- `M22.38` on `feature/rm-doctor-fix-keeps-other-clones-claims` since 2026-11-07
 - `M22.40` on `feature/rm-cursor-display-names-match-the-model` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
@@ -330,7 +329,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `specy_road` **flagged** | 46 | 0 | 2.35 | 52% | 36 | 3 |
-| `CHANGELOG.md` | 42 | 0 | 2.14 | 45% | 30 | 2 |
+| `CHANGELOG.md` | 43 | 0 | 2.16 | 47% | 30 | 2 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
 | `tests` | 47 | 0 | 2.28 | 49% | 34 | 3 |
 
