@@ -504,6 +504,16 @@ def _second_move_unsafe(repo: Path, outside: Path, rec: dict) -> Path:
     return repo / "planning" / "linked.md"
 
 
+def _origin_cancelled(repo: Path, outside: Path, rec: dict) -> Path:
+    """``planning/jump/../<sheet>`` checks as ``planning/<sheet>`` but reaches ``outside/<sheet>`` through ``jump``."""
+    (outside / "inner").mkdir()
+    origin = Path(rec["planning"][0]["origin"])
+    (outside / origin.name).write_text("theirs\n", encoding="utf-8")
+    (repo / "planning" / "jump").symlink_to(outside / "inner")
+    _set_record(repo, planning=[{**rec["planning"][0], "origin": f"planning/jump/../{origin.name}"}])
+    return repo / "planning" / "jump" / ".." / origin.name
+
+
 def _unpack_linked(repo: Path, outside: Path, rec: dict) -> Path:
     """A deep record unpacks its chunk into ``roadmap/archive/chunks/``: here a link out."""
     chunks = repo / "roadmap" / "archive" / "chunks"
@@ -517,6 +527,7 @@ def _unpack_linked(repo: Path, outside: Path, rec: dict) -> Path:
 
 RESTORE_LAYOUTS = {"chunk-out": _chunk_out, "phases-linked": _phases_linked, "origin-linked": _origin_linked,
                    "stored-linked": _stored_linked, "second-move-unsafe": _second_move_unsafe,
+                   "origin-cancelled": _origin_cancelled,
                    "unpack-linked": _unpack_linked}
 RESTORE_ROWS = [*((layout, False) for layout in RESTORE_LAYOUTS if layout != "unpack-linked"),
                 *((layout, True) for layout in ("phases-linked", "origin-linked", "unpack-linked"))]

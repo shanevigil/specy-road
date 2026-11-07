@@ -23,7 +23,6 @@ from specy_road import safe_write
 from specy_road.archive_index import (
     ARCHIVE_DIRNAME,
     INDEX_FILENAME,
-    archive_planning_dir,
     find_record,
     load_archive_index,
     write_archive_index,
@@ -79,13 +78,13 @@ def _shallow_view(root: Path, archive_id: str, record: dict[str, Any]) -> tuple[
     from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
 
     chunk_rel = record.get("chunk")
-    if not isinstance(chunk_rel, str) or not (root / chunk_rel).is_file():
+    path = _checked(root, chunk_rel) if isinstance(chunk_rel, str) else None
+    if path is None or not path.is_file():
         raise ValueError(
             f"archive {archive_id} references chunk {chunk_rel!r}, which is "
             "missing. The archive index and roadmap/archive/ are out of sync."
         )
-    _check(root, [chunk_rel])
-    return record, load_json_chunk((root / chunk_rel).resolve()), [chunk_rel]
+    return record, load_json_chunk(path), [chunk_rel]
 
 
 def _deep_view(root: Path, archive_id: str, record: dict[str, Any]) -> tuple[dict, list[dict], list] | None:
@@ -100,9 +99,9 @@ def _deep_view(root: Path, archive_id: str, record: dict[str, Any]) -> tuple[dic
     capsule = str((record.get("bundle") or {}).get("path") or "")
     if not capsule:
         return None
-    _check(root, [capsule])
+    path = _checked(root, capsule)   # undeepen_archive joins it raw: _checked refuses a spelling that differs
     try:
-        data = json.loads((root / capsule).read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
         nodes = list(data["nodes"])
         sheets = [str(s.get("origin", "")).strip() for s in data.get("planning") or [] if isinstance(s, dict)]
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -113,13 +112,29 @@ def _deep_view(root: Path, archive_id: str, record: dict[str, Any]) -> tuple[dic
     return {**record, "chunk": str(chunk), "planning": planning}, nodes, touched
 
 
-def _check(root: Path, files: list, directories: tuple = ()) -> None:
-    """The safe-write rule for each path, lexically from ``root``; a refusal is the archive commands' ``ValueError``."""
+def _checked(root: Path, rel, expected: str = safe_write.FILE) -> Path:
+    """``rel`` under ``root`` by the safe-write rule, lexically; a refusal is the archive commands' ``ValueError``.
+
+    The path returned is the one checked, and restore uses only it. A ``..``
+    in ``rel`` is refused too: the checked path would not be the one its raw
+    spelling reaches through a symlinked component (``planning/jump/../x.md``),
+    and ``undeepen_archive`` and ``archive_planning_dir`` join the raw spelling.
+    """
     try:
-        safe_write.check_all(root, (root / rel for rel in files))
-        safe_write.check_all(root, (root / rel for rel in directories), safe_write.DIRECTORY)
+        path = safe_write.check(root, root / rel, expected)
+        if path != Path(root).resolve() / rel:
+            raise safe_write.SafeWriteError(f"{root / rel} has a '..' component, not a path spelled under {root}")
     except safe_write.SafeWriteError as e:
         raise ValueError(f"restore refused, nothing was changed: {e}") from e
+    return path
+
+
+def _check(root: Path, files: list, directories: tuple = ()) -> None:
+    """:func:`_checked` for each of ``files`` and ``directories``; the first refusal raises."""
+    for rel in files:
+        _checked(root, rel)
+    for rel in directories:
+        _checked(root, rel, safe_write.DIRECTORY)
 
 
 def _preflight(root: Path, archive_id: str, record: dict[str, Any],
@@ -144,26 +159,25 @@ def _restore_planning_sheets(root: Path, record: dict[str, Any]) -> None:
     for move in record.get("planning") or []:
         if not isinstance(move, dict):
             continue
-        stored = (root / str(move.get("stored", ""))).resolve()
-        origin = (root / str(move.get("origin", ""))).resolve()
+        stored = _checked(root, str(move.get("stored", "")))
+        origin = _checked(root, str(move.get("origin", "")))
         if not stored.is_file():
             continue
-        origin.parent.mkdir(parents=True, exist_ok=True)
+        safe_write.mkdirs(root, origin.parent)
         shutil.move(str(stored), str(origin))
 
 
 def _write_back(root: Path, grouped: dict[str, list[tuple[int, dict]]]) -> list[str]:
     """Write each target chunk and return the ones needing a manifest include."""
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 
-    base = roadmap_dir(root)
     need_include: list[str] = []
     for rel, placements in sorted(grouped.items()):
-        target = (base / rel).resolve()
+        target = _checked(root, Path("roadmap", rel))
         existing = load_json_chunk(target) if target.is_file() else []
         if not target.is_file():
             need_include.append(rel)
-        target.parent.mkdir(parents=True, exist_ok=True)
+        safe_write.mkdirs(root, target.parent)
         write_json_chunk(target, _reinsert(existing, placements))
     return need_include
 
@@ -243,7 +257,7 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
         if record is None or view is None:  # pragma: no cover - undeepen would have raised
             raise ValueError(f"archive {archive_id} vanished while unpacking")
 
-    src = (root / record["chunk"]).resolve()
+    src = _checked(root, record["chunk"])
     _sync_includes(root, _write_back(root, grouped))
     _restore_planning_sheets(root, record)
 
@@ -256,7 +270,7 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
     run_validate_raise(root)
 
     src.unlink(missing_ok=True)
-    shutil.rmtree(archive_planning_dir(root, archive_id), ignore_errors=True)
+    shutil.rmtree(_checked(root, _ARCHIVE / "planning" / archive_id, safe_write.DIRECTORY), ignore_errors=True)
 
     doc["records"] = [
         r for r in doc.get("records", []) if r.get("archive_id") != archive_id
