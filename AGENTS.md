@@ -1,32 +1,32 @@
 # AGENTS — the specy-road toolkit repository
 
-**This file is for contributors working on the `specy-road` package.** If you are building an **application** with specy-road, use the `AGENTS.md` created by `specy-road init project` in your repo instead.
+**This file is the one agent entry for contributors working on the `specy-road` package** (Python package, validators, optional PM UI). `CLAUDE.md` only imports it and adds Claude-specific notes. If you are building an **application** with specy-road, use the `AGENTS.md` created by `specy-road init project` in your repo instead.
 
 Root `constitution/` here describes the **toolkit**; consumer application repos get their own scaffold from `specy-road init project` (see [`specy_road/templates/project/`](specy_road/templates/project/)).
 
-## Load order (keep context small)
+**Docs win:** prefer tracked repo docs over chat history.
 
-1. [`constitution/purpose.md`](constitution/purpose.md) — if present at repo root; else see template under [`specy_road/templates/project/`](specy_road/templates/project/)
-2. [`constitution/principles.md`](constitution/principles.md)
-3. [`constraints/README.md`](constraints/README.md) — limits for **this** repo (package + tests)
-4. [`docs/supply-chain-security.md`](docs/supply-chain-security.md) — dependency verification policy and CI mapping
-5. Dogfood test-fixture graph — [`tests/fixtures/specy_road_dogfood/roadmap/`](tests/fixtures/specy_road_dogfood/roadmap/) (`manifest.json` + chunk files) for validation, fixtures, and CLI dogfooding only
-6. **[Flat `planning/*.md` feature sheets](tests/fixtures/specy_road_dogfood/planning/README.md)** under the dogfood test fixture when validating or updating fixture data
-7. [`shared/README.md`](tests/fixtures/specy_road_dogfood/shared/README.md) in the fixture, then only cited contracts, when working on fixture behavior
+### Load order
 
-Focused brief (against the dogfood test fixture):
+Always (keep context small):
 
-```bash
-specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures/specy_road_dogfood
-```
+1. `constitution/purpose.md`
+2. `constitution/principles.md`
+3. `constraints/README.md` — limits for **this** repo (package + tests)
+
+By task, only what it needs:
+
+- **Orchestration or review** (workers, roster, review gate, grind): [`docs/orchestration.md`](docs/orchestration.md) and the `docs/orchestration-*.md` page it points to.
+- **Roadmap data** (graph shape, registry, planning sheets, `init project` layout): [`docs/roadmap-authoring.md`](docs/roadmap-authoring.md) and [`docs/git-workflow.md`](docs/git-workflow.md); keep [`suggested_prompts/`](suggested_prompts/) in step with any format change.
+- **Dependencies or release:** [`docs/supply-chain-security.md`](docs/supply-chain-security.md) for any dependency change; [`docs/release-runbook.md`](docs/release-runbook.md) to cut a release (see [Cutting a release](#cutting-a-release)).
+- **The dogfood fixture** (validation and sample data only, not the toolkit's product roadmap): [`tests/fixtures/specy_road_dogfood/roadmap/`](tests/fixtures/specy_road_dogfood/roadmap/), its [flat `planning/*.md` sheets](tests/fixtures/specy_road_dogfood/planning/README.md), then its [`shared/README.md`](tests/fixtures/specy_road_dogfood/shared/README.md) and only the cited contracts. Brief: `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures/specy_road_dogfood`.
+- **`sr/` roadmap work** (the toolkit's own product roadmap, on the `WIP/improvements-x-y-z` line only): [`sr/AGENTS.md`](sr/AGENTS.md), `sr/vision.md`, then `sr/roadmap-context.md`. `.specyrd/manifest.json` records `project_root: sr`; run roadmap commands from the checkout root and they resolve `sr/`. `sr/` is stripped before promotion and never ships.
 
 ## Coordination
 
 The dogfood tree is a **test-fixture roadmap**, not the canonical product roadmap for the `specy-road` toolkit. Do not register ordinary toolkit implementation work in [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) unless the work is specifically exercising or updating the fixture.
 
-**Toolkit branch base:** `dev` is the day-to-day integration branch. When maintainers are batching work on an active `WIP/improvements-x-y-z` line toward a release or release candidate, **create your short-lived topic branch from that WIP branch** (sync with `git fetch` first, check out the WIP, `git pull`, then `git checkout -b feature/<slug>` or equivalent)—not from `dev` in isolation, so the branch already contains WIP-only integration and docs. If there is no such active WIP for your change, branch from `dev`. The same policy is spelled out in [`docs/toolkit-development.md`](docs/toolkit-development.md#maintainer-workflow-vs-consumer-workflow), `CLAUDE.md` (Repository git workflow), and (for Cursor) [`.cursor/rules/030-git-workflow-management.mdc`](.cursor/rules/030-git-workflow-management.mdc).
-
-For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/git-workflow.md). The toolkit's own product roadmap lives under `sr/` on the `WIP/improvements-x-y-z` line (`.specyrd/manifest.json` records `project_root: sr`); it is stripped before promotion and is not in the tree on `main`.
+**Branches:** the toolkit's branch, PR and promotion policy (topic branches from the active `WIP/improvements-x-y-z` line, else from `dev`; `main` by release PR only) is stated once, in [`docs/toolkit-development.md`](docs/toolkit-development.md#maintainer-workflow-vs-consumer-workflow). For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/git-workflow.md).
 
 If this repository ran **`specyrd init`**, you may have skills under `.agents/skills/<name>/SKILL.md` (with `.claude/skills/` symlinks for Claude Code, or a flat stub directory for `--ai generic`; `.cursor/commands/` and `.claude/commands/` only in repos initialised before 0.3.0) — they delegate to `specy-road` / bundled scripts.
 
@@ -42,11 +42,29 @@ If this repository ran **`specyrd init`**, you may have skills under `.agents/sk
 - Never commit machine-, user- or developer-specific values (home or temp paths, hostnames); resolve them at run time.
 - Stop when the behaviour list is covered and the gates pass. Then list every helper, branch or guard, mock and test you added, each with its reason.
 
+## Maintainer hygiene
+
+- **Reuse:** extend `specy_road/bundled_scripts/` and tests before adding new entrypoints.
+- **Adoption prompts:** [`suggested_prompts/`](suggested_prompts/) must match the real formats (templates under `specy_road/templates/project/`, JSON schemas, validators, `docs/roadmap-authoring.md`). A significant change to graph shape, registry rules, the `init project` layout or another format those prompts describe updates the affected `suggested_prompts/*.md` in the same change set or immediately after.
+- **PM Gantt UI:** after changing [`gui/pm-gantt/`](gui/pm-gantt/), run `npm ci && npm run lint && npm test && npm run build` there (ESLint 10 with `@eslint-react/eslint-plugin`; see [`docs/contributor-guide.md`](docs/contributor-guide.md#supply-chain--dependency-audits)).
+- **Gates:** `specy-road validate`, `export --check` and `digest --check` with `--repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`, `pytest -n auto` ([`docs/toolkit-development.md`](docs/toolkit-development.md#validate-and-test-dogfood-fixture)).
+
 ## Version numbers (human-owned)
 
-Do **not** choose, bump, or retarget a toolkit version unless the user has stated the exact number in this conversation. That includes `pyproject.toml` `project.version`, `CHANGELOG.md` `## [v…]` headings, git tags, `WIP/improvements-x-y-z` names, and `chore/release-v*` branches.
+Do **not** choose, bump, or retarget a toolkit version unless the user has stated the exact number in this conversation. That includes `pyproject.toml` `project.version`, `CHANGELOG.md` `## [v…]` headings, git tags, `WIP/improvements-x-y-z` names, `chore/release-v*` branches, and prose that treats an unpublished checkout as a released version. Patch vs minor vs major is not the agent's call; chat history, "this feels like a minor" or a WIP branch name is not approval. The user stating a number in this conversation **is** approval for that number only.
 
-When a bump appears needed: stop, highlight **published PyPI version**, **declared checkout version**, **latest git tag**, and (optionally) a **proposed** next version, then wait. Patch vs minor vs major is not the agent's call. Cursor agents: [`.cursor/rules/027-version-numbers-require-human.mdc`](.cursor/rules/027-version-numbers-require-human.mdc).
+When a number is needed, stop, print this block, and wait for the user's reply with the exact version or tag; edit no version file, tag or branch until then:
+
+```text
+VERSION DECISION NEEDED
+- Published on PyPI: <pip index / pypi.org>
+- Declared in this checkout (`pyproject.toml`): <project.version>
+- Git tags on this clone: <latest v* tag>
+- Proposed next (optional, not chosen): <X.Y.Z or vX.Y.Z-rcN>
+Please confirm the exact version/tag. I will not edit version files until you reply with the number.
+```
+
+**Release / tag parity:** a promotion PR to `main` bumps `project.version`, adds or extends the matching `## [v…]` section in `CHANGELOG.md`, and syncs maintainer prose that cites the current version; CI ([`scripts/check_release_version.py`](scripts/check_release_version.py)) checks the tag against `project.version`. `specyrd init` stubs and `.specyrd/manifest.json` read `specy_road.__version__`; if they look wrong, fix `project.version` or reinstall, not template placeholders.
 
 ## Cutting a release
 
