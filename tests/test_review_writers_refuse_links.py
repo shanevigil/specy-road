@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import shutil
@@ -22,11 +23,13 @@ from specy_road.bundled_scripts import role_prompt
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
 from specy_road.review_delegate import delegate
 from specy_road.review_delegate_packet import ensure_packet
-from specy_road.review_files import archive_review, project_of, review_path, reviews_dir, write_review
+from specy_road.review_files import archive_review, load_review, project_of, review_path, reviews_dir, write_review
 from specy_road.review_gate import evaluate_gate
+from specy_road.review_lock import review_run_lock
 from specy_road.review_policy_pin import pinned_message
 from specy_road.review_rejected import rejected_path, write_rejected
 from specy_road.review_target import resolve_target
+from specy_road.review_write_check import append_log, replace_file
 from specy_road.reviewer_run_failure import run_path, save_run
 
 LOCKS = ("lock-dangling", "lock-in", "node", "reviews", "work")
@@ -458,6 +461,76 @@ def test_the_owned_root_is_the_hand_off_project_when_an_earlier_directory_is_nam
     node.mkdir(parents=True)
     write_review(record, "ok\n")
     assert record.read_text() == "ok\n"
+
+
+def test_a_relative_hand_off_is_owned_by_the_directory_that_holds_work(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path / "repo")
+    reviews = Path("work/reviews/M1")
+    assert project_of(reviews) == Path(".") == reviews.parents[2]
+    assert project_of(Path("work/prompt.md")) == Path(".")
+    monkeypatch.chdir(repo)
+
+    write_review(reviews / "REVIEW-opus.md", "ok\n")
+    with review_run_lock(reviews):
+        assert (reviews / ".review-run.lock").is_file()
+
+    assert (repo / "work" / "reviews" / "M1" / "REVIEW-opus.md").read_text() == "ok\n"
+    assert (repo / "work" / "reviews" / "M1" / ".review-run.lock").is_file()
+    assert not (repo / "work" / "work").exists()
+
+
+def test_a_relative_hand_off_does_not_follow_a_top_level_work_symlink(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path / "repo")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "kept").write_bytes(b"kept\n")
+    before = _tree(outside)
+    monkeypatch.chdir(repo)
+    Path("work").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(safe_write.SafeWriteError):
+        with review_run_lock(Path("work/reviews/M1")):
+            pass
+    with pytest.raises(safe_write.SafeWriteError):
+        write_review(Path("work/reviews/M1/REVIEW-opus.md"), "ok\n")
+    with append_log(Path("work/reviews/M1/RUN.log")) as handle:
+        handle.write("escaped append\n")
+    with pytest.raises(OSError) as caught:
+        replace_file(Path("work/reviews/M1/notes.md"), b"{}")
+
+    assert caught.value.errno == errno.ELOOP
+    assert _tree(outside) == before
+    assert not (repo / "work" / "work").exists()
+
+
+def test_mark_reviewed_refuses_a_linked_node_before_the_gate(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path / "repo")
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nDid it.\n")
+    head = git(repo, "rev-parse", "HEAD")
+    target = tmp_path / "outside"
+    target.mkdir()
+    record = target / "REVIEW-human.md"
+    record.write_text(review_text(head))
+    assert load_review(record).ok
+    node = reviews_dir(repo, "M1.1")
+    node.parent.mkdir(parents=True)
+    node.symlink_to(target, target_is_directory=True)
+    registry = (repo / "roadmap" / "registry.yaml").read_bytes()
+    gate = evaluate_gate(repo, resolve_target(repo, "M1.1", "HEAD").node, head)
+
+    with pytest.raises(SystemExit) as caught:
+        mir.main(["--yes", "--repo-root", str(repo)])
+    err = capsys.readouterr()
+
+    assert gate.approvals == [] and not gate.passed
+    assert (caught.value.code or 0) == 1
+    assert str(node) in err.err and "symlink" in err.err and "Traceback" not in err.err
+    assert "Review policy" not in err.out
+    assert (repo / "roadmap" / "registry.yaml").read_bytes() == registry
+    assert git(repo, "rev-parse", "HEAD") == head
+    assert not (target / ".review-run.lock").exists()
+    assert record.read_bytes() == review_text(head).encode()
 
 
 def test_prompt_o_relative_is_cwd_relative_before_the_safe_write_choice(tmp_path: Path, monkeypatch) -> None:

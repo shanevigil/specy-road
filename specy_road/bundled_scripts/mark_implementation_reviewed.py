@@ -37,6 +37,7 @@ from specy_road.review_gate import (
 from specy_road.review_tally import tally_trailers
 from specy_road.review_target import is_milestone, milestone_close_problem, resolve_target_or_exit
 from specy_road import safe_write
+from specy_road.review_files import project_of, reviews_dir
 from specy_road.review_lock import ReviewRunBusy, filing_busy
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
@@ -218,6 +219,16 @@ def _write_human_or_exit(node: dict, commit: str, sign_key: Path | None) -> Path
         raise SystemExit(1) from None
 
 
+def _refuse_linked_handoff(node_id: str) -> None:
+    """A symlink at ``work``, ``work/reviews`` or the node directory refuses before the gate is read."""
+    d = reviews_dir(ROOT, node_id)
+    try:
+        safe_write.check(project_of(d), d, safe_write.DIRECTORY)
+    except safe_write.SafeWriteError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
 def _gate_or_human_approval(
     args: argparse.Namespace,
     node: dict,
@@ -233,6 +244,7 @@ def _gate_or_human_approval(
     and a human approval here could not (or may not) make up the difference.
     ``commit`` is the commit under review when it is not ``HEAD`` (a milestone's integration tip).
     """
+    _refuse_linked_handoff(node["id"])
     gate = evaluate_gate(
         ROOT,
         node,

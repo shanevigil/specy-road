@@ -76,11 +76,9 @@ def ancestor_symlink(path: Path) -> Path | None:
 def handoff_ancestor_link(owned: Path) -> Path | None:
     """A symlink at ``work`` or ``work/reviews`` under ``owned``, by ``lstat``.
 
-    ``None`` when ``owned`` was not recorded, or when either directory is absent or a real directory. Nothing
-    below them is opened.
+    ``None`` when either directory is absent or a real directory. ``owned`` of ``.`` is the current directory,
+    so a relative hand-off is checked there. Nothing below them is opened.
     """
-    if owned == Path():
-        return None
     here = owned
     for name in ("work", "reviews"):
         here = here / name
@@ -92,6 +90,14 @@ def handoff_ancestor_link(owned: Path) -> Path | None:
         except FileNotFoundError:
             return None
     return None
+
+
+def handoff_closed(reviews: Path) -> Path | None:
+    """A symlink at ``work``, ``work/reviews``, or ``reviews`` itself (the node directory), by ``lstat``.
+
+    Readers treat a hit as "do not list". Nothing inside a linked directory is opened.
+    """
+    return handoff_ancestor_link(project_of(reviews)) or (reviews if reviews.is_symlink() else None)
 
 
 def replace_file(path: Path, data: bytes | str) -> None:

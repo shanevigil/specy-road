@@ -126,12 +126,13 @@ def project_of(path: Path) -> Path:
     ``parents[2]``). A path under ``work/`` with no ``reviews`` uses the last
     ``work``. A path with no ``work`` (a unit test's bare directory) is two
     parents up, so the check still sees the directory the file sits in. A
-    ``work`` that is the first component has no parent; that component is the root.
+    relative path whose first component is ``work`` is owned by ``.``: that is
+    ``parents[2]`` of ``work/reviews/<node>``, the directory that holds ``work``.
     """
     i = _work_index(path.parts)
     if i is None:
         return path.parents[2] if len(path.parents) > 2 else path.parent
-    return Path(*path.parts[:i]) if i else Path(path.parts[0])
+    return Path(*path.parts[:i])
 
 
 def _unlink_case_variant(directory: Path, name: str) -> None:
@@ -298,14 +299,14 @@ def load_review(path: Path, acceptance_ids: list[str] | None = None) -> ReviewFi
 def reviews_listing(repo_root: Path, node_id: str) -> Path:
     """The hand-off directory to list.
 
-    When ``work`` or ``work/reviews`` is a symlink, this is a path that is not a directory, so a caller's
-    ``is_dir`` check lists nothing and does not follow the link. A symlink at the node directory itself is
-    still listed: only those two ancestors stop the read. Nothing above the project is inspected.
+    When ``work``, ``work/reviews`` or the node directory is a symlink, this is a path that is not a
+    directory, so a caller's ``is_dir`` check lists nothing and does not follow the link. Nothing above
+    the project is inspected.
     """
-    from specy_road.review_write_check import handoff_ancestor_link
+    from specy_road.review_write_check import handoff_closed
 
     d = reviews_dir(repo_root, node_id)
-    if handoff_ancestor_link(project_of(d)) is not None:
+    if handoff_closed(d) is not None:
         return project_of(d) / ".handoff-closed"
     return d
 
