@@ -98,11 +98,17 @@ def tally_trailers(repo_root: Path, gate: Any) -> list[str]:
     """The gate commit's ``Review-tally`` line for a passed :class:`~specy_road.review_gate.GateResult`.
 
     When the records cannot be read, one stderr line and an unreadable trailer; the gate still closes.
+    The exception text becomes one physical line: every break ``str.splitlines`` treats as a line boundary
+    (``\\n``, ``\\r``, ``\\r\\n``, and the other boundaries it documents, including ``\\u2028``) is a space,
+    and the pieces stay in order. A tab or any other character that is not such a break stays. The type
+    name is not rewritten. The line is not truncated. An empty message leaves the surrounding punctuation.
     """
     try:
         return [format_tally(gate.node_id, leaf_tally(repo_root, gate))]
     except Exception as exc:  # noqa: BLE001 - the tally is a record for the digest, never a reason to refuse the gate
-        print(f"review tally: {type(exc).__name__}: {exc}; the leaf's quality numbers will be missing", file=sys.stderr)
+        message = " ".join(str(exc).splitlines())
+        print(f"review tally: {type(exc).__name__}: {message}; the leaf's quality numbers will be missing",
+              file=sys.stderr)
         return [f"{TRAILER}: {gate.node_id} {UNREADABLE}"]
 
 

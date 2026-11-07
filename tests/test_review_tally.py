@@ -79,21 +79,33 @@ def test_parse_tally_rejects_a_malformed_line() -> None:
     assert parse_tally("Reviewed-by: human (human) approve abc") is None
 
 
+@pytest.mark.parametrize(
+    ("message", "shown"),
+    [
+        ("records missing", "records missing"),
+        ("first line\nsecond line", "first line second line"),
+        ("tab\tstays\r\n\u2028second line", "tab\tstays  second line"),
+    ],
+    ids=["no-break", "line-feed", "other-breaks-keep-tab"],
+)
 def test_a_failed_tally_is_visible_and_the_gate_still_closes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], message: str, shown: str
 ) -> None:
-    """leaf_tally raising prints one stderr line and an unreadable trailer; mark-implementation-reviewed still commits."""
+    """leaf_tally raising prints one stderr line and an unreadable trailer; mark-implementation-reviewed still commits.
+
+    A line break in the exception text becomes a space. A tab stays a tab. The type name is not rewritten.
+    """
     repo = _gate_repo(tmp_path)
     head = _two_rounds(repo)
 
     def boom(*_args: object, **_kwargs: object) -> dict[str, object]:
-        raise RuntimeError("records missing")
+        raise RuntimeError(message)
 
     monkeypatch.setattr("specy_road.review_tally.leaf_tally", boom)
     trailer = f"Review-tally: M1.1 {UNREADABLE}"
     assert _mark_reviewed(repo) == [f"Reviewed-by: human (human) approve {head}", trailer]
     assert capsys.readouterr().err.splitlines() == [
-        "review tally: RuntimeError: records missing; the leaf's quality numbers will be missing"
+        f"review tally: RuntimeError: {shown}; the leaf's quality numbers will be missing"
     ]
     assert parse_tally(trailer) == ("M1.1", UNREADABLE)
 
