@@ -64,10 +64,8 @@ Rating for each scenario: **PASS** (criteria met), **PASS-WITH-NOTE**
 In the Notes app:
 
 1. `specy-road init project` → `validate` and `file-limits` exit 0.
-   `export --check` and `digest --check` exit 1 with `missing …` because the
-   scaffold ships neither generated file (`roadmap.md`,
-   `roadmap-context.md`); run `specy-road export` and `specy-road digest`
-   once, then both exit 0. `roadmap/orchestration.yaml`, `model-profiles/`, the `AGENTS.md`
+   `export --check` and `digest --check` exit 0 right after init: it writes
+   `roadmap.md` and `roadmap-context.md`. `roadmap/orchestration.yaml`, `model-profiles/`, the `AGENTS.md`
    managed stub, `.specyrd/AGENTS.md` and `.specyrd/AGENTS.team.md` are present.
 2. `specyrd init --ai cursor`, `--ai claude-code`, `--ai codex`: one
    `.agents/skills/<name>/SKILL.md` per command; `.claude/skills/<name>` is a
@@ -117,8 +115,10 @@ has no host to open that PR on.
 6. Signed: generate an ed25519 key, put its public line on the reviewer's
    roster entry, set `policy.signed_reviews: true` on the integration
    branch. `review record` without `--sign-key` is refused; with it, the
-   gate passes; edit one byte of the record and the gate reports "does not
-   verify".
+   gate passes. Tamper, then restore the record (the gate is met again):
+   a front-matter value byte reports `signature does not verify for <model>`;
+   a notes-body byte reports `notes body does not match notes_sha256`;
+   a schema-breaking edit such as an `A1` value makes the record schema-invalid.
 7. Policy from the branch under review must not count: lower
    `reviewers_required` on the feature branch only; the gate still reads the
    integration branch's file.
@@ -165,10 +165,11 @@ rules change model behaviour, not a FAIL.
 
 ## 4. Models, prompts, plan
 
-1. `models list` shows each roster entry's profile scores (C/E/R) and a
-   `stale` flag (`--json` adds the profile path); the `researched` dates are
-   in `models show <id>` and `models stale`. `models stale` exits 1 with one
-   rostered profile's `researched` date set 200 days back, 0 otherwise.
+1. `models list` shows each roster entry's C/E/R scores and a trailing
+   `stale` marker on a stale profile's line (`--json` adds the profile path).
+   Check a rostered profile whose `researched` date is a fixed date more than
+   180 days ago: `models stale` lists the reasons and exits 1, and
+   `models show <id>` prints them. With no such profile, `models stale` exits 0.
 2. `prompt <ID> --model <id> --role executor --channel cli` runs the
    profile's `access.cli` on the real harness and the session completes the
    leaf's precondition check (it must not implement when the leaf is not
@@ -185,8 +186,9 @@ rules change model behaviour, not a FAIL.
 
 Roster three entries with `harness: claude-code`, `codex`, `cursor`,
 executor role, each with `profile:` pointing at its scaffolded profile as
-the roster guide recommends, `max_workers: 2`. Claim two leaves. From the
-coordinator chat (any harness):
+the roster guide recommends, `max_workers: 2`. Claim two leaves from one
+checkout: the second is `do-next-available-task --allow-second-claim`
+(exit 6 without it). From the coordinator chat (any harness):
 
 1. **Delegate returns first.** `worker delegate <ID1> --model <claude id>`
    prints a worker id in under two seconds; the chat stays usable; `worker
