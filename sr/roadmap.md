@@ -199,7 +199,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Complete |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Complete |
-| `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Not Started |
+| `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Complete |
 | `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Complete |
 | `M22.5` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
 | `M22.6` | A queued worker message that cannot be delivered flags the worker and goes out with its next turn | task | — | Not Started |
@@ -236,7 +236,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.37` | Test the Cursor CLI harness on the documented default | task | — | Not Started |
 | `M22.38` | doctor --fix never removes a claim that may belong to another clone | task | — | Complete |
 | `M22.39` | Stalled workers are detected on every run and can be recovered in one command | task | — | Not Started |
-| `M22.40` | Cursor display names match the model they name | task | — | Not Started |
+| `M22.40` | Cursor display names match the model they name | task | — | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

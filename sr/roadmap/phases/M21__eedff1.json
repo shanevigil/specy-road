@@ -356,7 +356,9 @@
         "CHANGELOG.md",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/bundled_scripts/role_prompt.py",
-        "specy_road/bundled_scripts/mark_implementation_reviewed.py"
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/review_record_write.py",
+        "specy_road/bundled_scripts/role_prompt_cli.py"
       ],
       "type": "task"
     },
