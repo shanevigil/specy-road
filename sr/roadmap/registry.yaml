@@ -153,6 +153,7 @@ entries:
       - tests/test_brainstorm_promote_judgement.py
       - CHANGELOG.md
       - tests/test_scaffold_planning.py
+      - tests/test_author_approach.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

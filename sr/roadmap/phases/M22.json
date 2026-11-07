@@ -133,7 +133,8 @@
         "tests/test_outline_group_cli.py",
         "tests/test_brainstorm_promote_judgement.py",
         "CHANGELOG.md",
-        "tests/test_scaffold_planning.py"
+        "tests/test_scaffold_planning.py",
+        "tests/test_author_approach.py"
       ],
       "type": "task"
     },
