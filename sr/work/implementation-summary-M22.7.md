@@ -10,13 +10,14 @@ Final touch zones: `specy_road/changelog_check.py`, `specy_road/review_ready_mer
 
 `specy-road ready` still writes READY and returns the same exit code. After a successful write, next to the trial-merge lines, it prints one stderr warning when the branch changes a product path and `CHANGELOG.md`'s `## [Unreleased]` section at HEAD has no more non-blank lines than at the merge base. A missing changelog at the base counts as an empty section. No changelog or no that heading at HEAD, no product path, or the phrase `no CHANGELOG entry` in the leaf's acceptance or planning sheet stays silent. Git failing to run, or a changelog read failing for any reason other than the file being absent, prints nothing. A configured planning sheet that cannot be read as text (missing, a directory, or unreadable) is the same kind of failure and stays silent; an empty file is a successful read.
 
-A product path is a changed path other than `CHANGELOG.md`, anything under `tests/`, and bookkeeping. Bookkeeping in a nested layout is every path under the project prefix (`sr/` here). Otherwise it is `is_trial_merge_bookkeeping` (`roadmap/`, `planning/`, `work/`, `roadmap.md`, `roadmap-context.md`). The warning names `## [Unreleased]`, up to three product paths, and how to exempt the leaf.
+A product path is a changed path other than `CHANGELOG.md`, anything under `tests/`, and bookkeeping. Bookkeeping in a nested layout is every path under the project prefix (`sr/` here). Otherwise it is `is_trial_merge_bookkeeping` (`roadmap/`, `planning/`, `work/`, `roadmap.md`, `roadmap-context.md`). The warning names `## [Unreleased]`, up to three product paths, and how to exempt the leaf. A backslash or non-printable character in a displayed path is escaped, so that warning stays one line; other printable characters are kept.
 
 ## Added
 
 ### Helpers
 
 - `missing_entry_warning` — the one pure decision (changed paths, project prefix, changelog text at base and HEAD, exemption text) so the warning does not depend on git.
+- `_display_path` — escapes `\\` and every non-printable character in a path so the warning is one line. Printable characters, including commas and non-ASCII, are kept.
 - `_unreleased_nonblank` — counts non-blank lines under `## [Unreleased]` up to the next `## ` heading, so editing an existing line does not count as a new entry.
 - `_unreleased_heading` — matches `## [Unreleased]` with only trailing space after it, so a version heading is a different section.
 - `_product` — drops `CHANGELOG.md`, `tests/`, nested project paths, and unnested trial-merge bookkeeping from the paths the warning names.
@@ -43,8 +44,8 @@ A product path is a changed path other than `CHANGELOG.md`, anything under `test
 
 ### Tests
 
-- `test_missing_entry_warning` — one table for the pure function: package change with no entry (warns and names the section, at most three paths), an added line, an edited line, a line under a version heading only, a new changelog with an empty section, docs-only, tests-only, nested `sr/`-only, unnested bookkeeping, acceptance and sheet exemptions, no changelog, and no heading.
-- `test_ready_changelog_reminder` — ready CLI warns, stays silent when a line was added, warns when `CHANGELOG.md` is new at HEAD with an empty section, stays silent when the configured sheet is missing or a directory, and still warns when that sheet is an empty file; each exits 0 with a valid READY file.
+- `test_missing_entry_warning` — one table for the pure function: package change with no entry (warns and names the section, at most three paths), an added line, an edited line, a line under a version heading only, a new changelog with an empty section, docs-only, tests-only, nested `sr/`-only, unnested bookkeeping, acceptance and sheet exemptions, no changelog, no heading, and a path containing a newline, carriage return, tab, another control character, a backslash, a line separator, and printable `é` (one printable line).
+- `test_ready_changelog_reminder` — ready CLI warns, stays silent when a line was added, warns when `CHANGELOG.md` is new at HEAD with an empty section, stays silent when the configured sheet is missing or a directory, still warns when that sheet is an empty file, and stays one stderr line when a product path contains a newline; each exits 0 with a valid READY file.
 
 ## Fix round
 
@@ -59,3 +60,8 @@ A configured path that is not readable text was treated as an empty successful r
 - `_changelog_at` when `CHANGELOG.md` is a git tree: `git show` exits 0 with a listing and no `## [Unreleased]` heading, so HEAD stays silent. Absence is still the only case turned into empty text, and only when git says the path is not in the rev.
 - `missing_entry_warning` does not read files. Empty base text is the absent-changelog input, covered by the table row "new changelog with empty unreleased", which warns.
 - Class: a private test helper copied for a single call. The new file's `_cli` matched `tests/test_ready_command.py::_cli` and had one call; that call is inlined. No other helper in the new file copies one from `test_ready_command.py`. `test_ready_command._cli` has many calls, so it stays there.
+- Class: a character in a displayed path that is not printable splits the one stderr warning. `missing_entry_warning` on `docs/line\nbreak.md` plus `\r`, `\t`, `\x01`, `\`, U+2028, and `é` returns one printable line; those controls are `\n`, `\r`, `\t`, `\x01`, `\\`, and `\u2028`, and `é` is kept.
+- Same class through `cmd_ready` (`newline-path`): stderr is one line, exit 0, READY written, and the newline path is shown as `docs/line\nbreak.md` before `docs/x.md` and `src/a.py`.
+- The warning's only interpolated repo text is those paths. Exemption text is not printed. Changelog body is not printed. `trial_merge_warning` does not receive these paths.
+- A comma or space in a path is kept, so it is not separated from the comma between paths. That limit is stated on `missing_entry_warning` and in the ready paragraph of `docs/orchestration-review.md`. Argparse help lives in `review_gate_ready.py`, outside this leaf's zones, and was not edited.
+- `cmd_ready` complexity stays 3, the same as at the branch base. `_display_path` is 1 and `missing_entry_warning` is 5.

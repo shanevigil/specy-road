@@ -39,6 +39,10 @@ _ROWS = [
     ("planning sheet exempt", ["specy_road/a.py"], "sr/", _BASE, _BASE, "Notes: No Changelog Entry.\n", ()),
     ("no changelog", ["specy_road/a.py"], "sr/", "", "", "", ()),
     ("no heading", ["specy_road/a.py"], "sr/", _BASE, "# Changelog\n\n- a line\n", "", ()),
+    ("newline in a product path",
+     ["docs/line\nbreak.md", "docs/c\r\t\x01\\\u2028é.md"],
+     "sr/", _BASE, _BASE, "",
+     ("docs/line\\nbreak.md", "docs/c\\r\\t\\x01\\\\\\u2028é.md")),
 ]
 
 
@@ -53,6 +57,7 @@ def test_missing_entry_warning(changed, prefix, base, head, exempt, shown) -> No
         assert got is None
         return
     assert got is not None and "## [Unreleased]" in got and "no CHANGELOG entry" in got
+    assert len(got.splitlines()) == 1 and all(ch.isprintable() for ch in got)
     assert got.split("changes ", 1)[1].split(";", 1)[0] == ", ".join(shown)
 
 
@@ -60,7 +65,15 @@ def _sheet(repo: Path) -> Path:
     return next((repo / "planning").glob("*.md"))
 
 
-@pytest.mark.parametrize("mode", ["warns", "silent", "new", "missing-sheet", "sheet-dir", "empty-sheet"])
+_WARNING = (
+    "warning: ## [Unreleased] in CHANGELOG.md gained no line, but this branch changes "
+    "{names}; write `no CHANGELOG entry` in the leaf's acceptance or planning sheet to exempt it"
+)
+
+
+@pytest.mark.parametrize(
+    "mode", ["warns", "silent", "new", "missing-sheet", "sheet-dir", "empty-sheet", "newline-path"],
+)
 def test_ready_changelog_reminder(tmp_path: Path, capsys, mode: str) -> None:
     repo = make_review_repo(tmp_path)
     if mode != "new":
@@ -80,6 +93,8 @@ def test_ready_changelog_reminder(tmp_path: Path, capsys, mode: str) -> None:
         sheet.mkdir()
     elif mode == "empty-sheet":
         _sheet(repo).write_text("", encoding="utf-8")
+    elif mode == "newline-path":
+        commit_file(repo, "docs/line\nbreak.md", "x\n", "newline path")
     capsys.readouterr()
     with pytest.raises(SystemExit) as caught:
         review_cli.main(["ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)])
@@ -89,10 +104,10 @@ def test_ready_changelog_reminder(tmp_path: Path, capsys, mode: str) -> None:
     assert ready.ok, ready.errors
     lines = [line for line in err.splitlines() if "## [Unreleased]" in line]
     if mode in {"silent", "missing-sheet", "sheet-dir"}:
-        assert lines == []
-    else:
-        assert lines == [
-            "warning: ## [Unreleased] in CHANGELOG.md gained no line, but this branch changes "
-            "docs/x.md, src/a.py; write `no CHANGELOG entry` in the leaf's acceptance or planning sheet "
-            "to exempt it"
+        assert lines == [] and err.splitlines() == []
+    elif mode == "newline-path":
+        assert err.splitlines() == [
+            _WARNING.format(names="docs/line\\nbreak.md, docs/x.md, src/a.py")
         ]
+    else:
+        assert err.splitlines() == [_WARNING.format(names="docs/x.md, src/a.py")]

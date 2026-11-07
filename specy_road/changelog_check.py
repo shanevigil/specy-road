@@ -25,7 +25,9 @@ def missing_entry_warning(
     returns None. The section is the lines after that heading up to the next ``## ``
     heading; an edited line keeps the non-blank count, so it still warns. ``exempt_text``
     is the leaf's acceptance plus its planning sheet; ``no CHANGELOG entry`` in any case
-    returns None.
+    returns None. Each displayed path escapes ``\\`` and every non-printable character, so
+    the result is one line. Other printable characters, including commas and non-ASCII, are
+    kept, so a comma inside a path is not distinguished from the comma between paths.
     """
     if _EXEMPT in exempt_text.lower():
         return None
@@ -38,10 +40,18 @@ def missing_entry_warning(
     products = [path for path in changed if _product(path, prefix)]
     if not products:
         return None
-    names = ", ".join(products[:_SHOWN])
+    names = ", ".join(_display_path(path) for path in products[:_SHOWN])
     return (
         "warning: ## [Unreleased] in CHANGELOG.md gained no line, but this branch changes "
         f"{names}; write `no CHANGELOG entry` in the leaf's acceptance or planning sheet to exempt it"
+    )
+
+
+def _display_path(path: str) -> str:
+    """One line for ``path``: ``\\`` and every non-printable character use ``unicode_escape``."""
+    return "".join(
+        ch if ch.isprintable() and ch != "\\" else ch.encode("unicode_escape").decode("ascii")
+        for ch in path
     )
 
 
