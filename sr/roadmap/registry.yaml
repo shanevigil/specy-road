@@ -118,3 +118,15 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
+  - codename: ready-changelog-reminder
+    node_id: M22.7
+    branch: feature/rm-ready-changelog-reminder
+    touch_zones:
+      - specy_road/changelog_check.py
+      - specy_road/review_ready_merge.py
+      - tests/test_ready_changelog_warning.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending

@@ -309,6 +309,7 @@ Do not pick these up.
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
 - `M22.1` on `feature/rm-group-into-member-id` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
+- `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
 
 ## Quality by area
 
