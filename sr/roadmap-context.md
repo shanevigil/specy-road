@@ -307,6 +307,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
+- `M16.1.5` on `feature/rm-agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` since 2026-11-07
 - `M17.11` on `feature/rm-gui-acceptance-editing` since 2026-11-07
 - `M17.2` on `feature/rm-gui-orch-view-model` since 2026-11-07
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
