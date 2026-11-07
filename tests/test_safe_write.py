@@ -206,17 +206,23 @@ def test_a_link_swapped_in_right_before_replace_is_refused(
     assert sorted(p.name for p in path.parent.iterdir()) == ["f"]   # the temp file is gone
 
 
-def swap_after_open(monkeypatch: pytest.MonkeyPatch, opened: Path, swapped: Path, to: Path) -> None:
-    """A racer between the walk and the replace: once ``opened`` is opened as a directory, ``swapped`` is moved
-    to ``<name>.real`` and a symlink to ``to`` takes its place (once)."""
+def swap_at_open(monkeypatch: pytest.MonkeyPatch, opened: Path, swapped: Path, to: Path, before: bool = False) -> None:
+    """A racer: once ``opened`` is opened as a directory (right before ``opened`` is opened by its path, with
+    ``before``), ``swapped`` is moved to ``<name>.real`` and a symlink to ``to`` takes its place (once)."""
     real_open, aside = os.open, swapped.with_name(swapped.name + ".real")
 
-    def racing_open(path, flags, *args, **kwargs):
-        fd = real_open(path, flags, *args, **kwargs)
-        if flags & os.O_DIRECTORY and not os.path.lexists(aside) and os.path.isdir(opened) \
-                and os.path.samestat(os.fstat(fd), os.lstat(opened)):
+    def swap() -> None:
+        if not os.path.lexists(aside):
             swapped.rename(aside)
             swapped.symlink_to(to)
+
+    def racing_open(path, flags, *args, **kwargs):
+        if before and flags & os.O_DIRECTORY and path == opened:
+            swap()
+        fd = real_open(path, flags, *args, **kwargs)
+        if not before and flags & os.O_DIRECTORY and os.path.isdir(opened) \
+                and os.path.samestat(os.fstat(fd), os.lstat(opened)):
+            swap()
         return fd
 
     monkeypatch.setattr(os, "open", racing_open)
@@ -259,7 +265,7 @@ def test_a_link_swapped_in_after_the_walk_is_refused(
     outside.mkdir()
     (outside / path.name).write_bytes(OLD)
     target = path if swapped == "destination" else path.parent
-    swap_after_open(monkeypatch, path.parent, target, outside / path.name if swapped == "destination" else outside)
+    swap_at_open(monkeypatch, path.parent, target, outside / path.name if swapped == "destination" else outside)
     try:
         result = run()
     except SafeWriteError as e:
@@ -270,3 +276,17 @@ def test_a_link_swapped_in_after_the_walk_is_refused(
     assert {p.name: p.read_bytes() for p in outside.iterdir()} == {path.name: OLD}
     real = path.parent if swapped == "destination" else path.parent.with_name(path.parent.name + ".real")
     assert not [p.name for p in real.iterdir() if p.name.endswith(".tmp")]   # the temp file is gone
+
+
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("operation", ["write", "mkdirs"])
+def test_a_root_swapped_for_a_link_before_it_is_opened_is_refused(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
+    root, outside = tmp_path / "p", tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    swap_at_open(monkeypatch, root, root, outside, before=True)
+    with pytest.raises(SafeWriteError, match=f"^{root} is a symlink \\(to {outside}\\), not a directory$"):
+        safe_write.write(root, root / "made" / "f", "x") if operation == "write" else safe_write.mkdirs(root, root / "made")
+    monkeypatch.undo()
+    assert not list(outside.iterdir()) and not list((tmp_path / "p.real").iterdir())

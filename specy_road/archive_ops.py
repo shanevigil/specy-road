@@ -9,7 +9,6 @@ the emptied sources from ``includes``, and the graph shrinks.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -62,21 +61,23 @@ def _apply_chunk_edits(root: Path, plan: ArchivePlan) -> bool:
 def _move_planning_sheets(root: Path, plan: ArchivePlan) -> list[dict[str, str]]:
     """Move each planning sheet into the archive; skip any that is already gone.
 
-    Each sheet is moved by the safe-write rule as spelled, not as resolved
-    earlier: an in-repo linked sheet moves its link's target (read once), and a
-    directory swapped for a link before the move is refused.
+    One rule: each name (the sheet, its archived place, an origin link) is
+    resolved once, so in-repo links are followed as before
+    (:func:`_refuse_links_out` has refused links out). The move then goes by
+    the safe-write rule's descriptor walk from those names, so a link that
+    appears on them afterwards, or a name resolved out of ``root``, is refused.
     """
     from specy_road.archive_plan import planning_moves
 
     moved: list[dict[str, str]] = []
     for move in planning_moves(plan):
         origin = root / move["origin"]
-        src = origin.parent / os.readlink(origin) if origin.is_symlink() else origin
+        src = origin.resolve()
         if not src.is_file():
             continue
-        safe_write.move(root, src, root / move["stored"])
+        safe_write.move(root, src, (root / move["stored"]).resolve())
         if origin.is_symlink():  # left dangling, it would read as an orphan sheet
-            safe_write.remove(root, origin)
+            safe_write.remove(root, origin.parent.resolve() / origin.name)
         moved.append(move)
     return moved
 

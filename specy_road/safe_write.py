@@ -216,14 +216,15 @@ def _dir_fds() -> bool:
 
 @contextlib.contextmanager
 def _held(base: Path, parts: tuple[str, ...], create: bool):
-    """Open ``base``, then each directory of ``parts`` without following a link, relative to the one above
-    (made first when ``create``); yields ``[(path, descriptor), ...]`` from the root down, all held open."""
+    """Open ``base`` (by path), then each directory of ``parts`` relative to the one above (made first when
+    ``create``); none is followed if it is a link, the root included. Yields ``[(path, descriptor), ...]``
+    from the root down, all held open."""
     held: list[tuple[Path, int]] = []
     try:
-        held.append((base, os.open(base, os.O_RDONLY | os.O_DIRECTORY)))
-        for name in parts:
-            here, parent = held[-1][0] / name, held[-1][1]
-            if create:
+        for here in (base, *(base.joinpath(*parts[:i]) for i in range(1, len(parts) + 1))):
+            parent = held[-1][1] if held else None
+            name = here.name if held else here
+            if create and held:
                 with contextlib.suppress(FileExistsError):
                     os.mkdir(name, dir_fd=parent)
             try:
