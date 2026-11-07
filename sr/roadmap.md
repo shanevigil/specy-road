@@ -221,7 +221,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.22` | Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal | task | — | Complete |
 | `M22.23` | Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus | task | Human-led | Not Started |
 | `M22.24` | The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths | task | — | Not Started |
-| `M22.25` | Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment | task | — | Not Started |
+| `M22.25` | Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment | task | — | Complete |
 | `M22.26` | The post-run zone check matches zones written from the git root | task | — | Complete |
 | `M22.27` | The old-log review usage test asserts on the run, not on a substring | task | — | Complete |
 | `M22.28` | upgrade does not warn about itself, and export's drift line says how to fix it | task | — | Complete |

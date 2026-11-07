@@ -33,20 +33,31 @@ def checked(r: git_subprocess.GitResult, command: str, where: str = COPY, ok: tu
 
 
 @contextlib.contextmanager
-def scratch_environ(tmp: Path):
-    """The dry run's environment: no ``GIT_`` variable and no global or system git config, for every git call on a copy.
+def scratch_environ(tmp: Path | None):
+    """One stretch of an upgrade: no ``GIT_`` variable of the caller's reaches git.
+
+    With ``None``, ``os.environ`` is the caller's with every ``GIT_`` variable
+    removed and nothing else changed. The checkout still reads the caller's own
+    config files, and the ignore-report isolation is left as it was. With a
+    path, git also reads no global or system config (``GIT_CONFIG_NOSYSTEM`` and
+    an empty ``GIT_CONFIG_GLOBAL``) and :func:`isolate_git` points at that
+    scratch directory: the plan's mirror and the dry run's copy.
 
     Yields the caller's environment with ``GIT_`` variables dropped and nothing
     else changed, for the one git call that reads the caller's own checkout.
+    On exit the previous ``os.environ`` is restored and, when this stretch
+    isolated, so is the previous ignore-report isolation.
     """
-    saved, caller, env = os.environ.copy(), scratch_git_env(), scratch_git_env(tmp)
+    saved, caller = os.environ.copy(), scratch_git_env()
+    env = caller if tmp is None else scratch_git_env(tmp)
     os.environ.clear()
     os.environ.update(env)
-    isolate_git(tmp)
+    previous = isolate_git(tmp) if tmp is not None else None
     try:
         yield caller
     finally:
-        isolate_git(None)
+        if tmp is not None:
+            isolate_git(previous)
         os.environ.clear()
         os.environ.update(saved)
 
