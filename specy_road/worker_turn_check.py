@@ -162,6 +162,9 @@ class TurnWatch:
         self.repo_root, self.rec, self.now = repo_root, rec, now
         self.steering: SteeringWatch | None = None
         self.steering_error: str | None = None
+        # Whether the turn's git steering is unverified (changed, unreadable or not compared): set by close_turn,
+        # unverified until then. While it holds, no git command runs for this turn, READY's checks included.
+        self.git_unverified = True
         try:   # the git-steering snapshot (M22.5) first; a failure is a finding, never a lost turn
             self.steering = SteeringWatch(repo_root, Path(rec.worktree))
         except Exception as e:  # noqa: BLE001
@@ -278,6 +281,7 @@ def close_turn(repo_root: Path, rec: WorkerRecord, watch: TurnWatch, *, pause: b
     included. ``pause=False`` (the terminated record) still records a limit as a finding, but sets no
     ``limit_reset_at``: a terminated worker stays terminated."""
     found = _turn_findings(repo_root, rec, watch)
+    watch.git_unverified = PROBES_SKIPPED in found
     limit = watch.limit or watch.pending
     if limit:
         found.append({"kind": "usage_limit", "summary": f"usage limit ({limit.get('source')}); resets "

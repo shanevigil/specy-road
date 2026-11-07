@@ -281,36 +281,48 @@ def test_a_hooks_directory_over_the_cap_fails_closed_even_when_a_replaced_hook_k
     assert tc.FLAG_POST_RUN in ws.load_record(p["repo"], rec.worker_id).flags
 
 
+@pytest.mark.parametrize("ready_text", ["byte_ff", "valid"])
 def test_an_unparsable_ready_through_the_worker_runner_still_ends_with_one_check_holding_the_config_change(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """The fake executor writes a READY holding byte FF and changes the common config: the turn is not lost."""
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ready_text: str) -> None:
+    """The fake executor writes a READY (holding byte FF, or valid for its branch and HEAD) and changes the common
+    config: the turn is not lost, the READY does not count, and no git command runs once the executor is done: a
+    queued message is held, not delivered as a new turn."""
     from specy_road import worker_adapters as wa
     from specy_road import worker_runner as wr
     p = _layout(tmp_path)
     repo = p["repo"]
     ready = ws.reviews_root(repo) / "M1.1" / "READY-opus.md"
     ready.parent.mkdir(parents=True)
-    bin_dir = tmp_path / "bin"
+    bin_dir, calls = tmp_path / "bin", tmp_path / "git-calls"
     bin_dir.mkdir()
-    fake = bin_dir / "claude"
-    fake.write_text("#!/bin/sh\ncat >/dev/null\n"
-                    f"printf -- '---\\nnode_id: M1.1\\nnote: \\377\\n---\\n' > '{ready}'\n"
-                    "git config specy.turn 1\n")
-    fake.chmod(0o755)
+    real_git = subprocess.run(["sh", "-c", "command -v git"], capture_output=True, text=True, check=True).stdout.strip()
+    (bin_dir / "git").write_text(f"#!/bin/sh\necho \"git $*\" >> '{calls}'\nexec '{real_git}' \"$@\"\n")
+    body = ("node_id: M1.1\\nnote: \\377\\n" if ready_text == "byte_ff" else
+            "node_id: M1.1\\nagent: opus\\nbranch: feature/rm-thing\\ncommit: $(git rev-parse HEAD)\\nbase: $(git rev-parse HEAD)\\nchanged_paths: []\\nverify: []\\n")
+    (bin_dir / "claude").write_text("#!/bin/sh\ncat >/dev/null\n"
+                                    f"printf -- \"---\\n{body}---\\n\" > '{ready}'\n"
+                                    f"git config specy.turn 1\necho executor-done >> '{calls}'\n")
+    for f in bin_dir.iterdir():
+        f.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     prompt = tmp_path / "prompt.md"
     prompt.write_text("do the leaf")
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
+    ws.mutate(repo, rec, lambda r: setattr(r, "queued_message", "and then the next step"))
     assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(prompt, p["leaf"], "m", None)) == 0
-    assert b"\xff" in ready.read_bytes()
+    assert (b"\xff" in ready.read_bytes()) is (ready_text == "byte_ff")
+    assert calls.read_text().split("executor-done\n")[1] == ""   # no git command after the executor's own
     events = ws.events_since(repo, rec.worker_id)
     [check] = [e for e in events if e.type == "post_run_check"]
     [steer] = [f for f in check.detail["findings"] if f["kind"] == "steering_file"]
     assert steer["class"] == "git_config" and steer["path"] == str(real_path(repo / ".git" / "config"))
     [done] = [e for e in events if e.type == "completion"]
-    assert done.detail == {"exit": 0, "ready": False} and "READY file invalid" in done.summary
+    assert done.detail == {"exit": 0, "ready": False}
+    assert ("READY file invalid" if ready_text == "byte_ff" else "READY not checked") in done.summary
     after = ws.load_record(repo, rec.worker_id)
     assert FLAG_STEERING in after.flags and after.state == "idle"
+    assert after.queued_message == "and then the next step"
+    assert any(e.summary.startswith("queued message held") for e in ws.events_since(repo, rec.worker_id))
 
 
 def _hooks_over_cap(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[str, Path]]]:

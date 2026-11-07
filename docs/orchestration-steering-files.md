@@ -33,7 +33,11 @@ in the finding's `summary`, so one finding is one line of output.
 
 **Runner order.** The wrapper runs this check before it reads the turn's READY. A READY that cannot be parsed
 (invalid UTF-8 included) is the turn's completion error (`exit 0; READY file invalid: ...`), not an exception, so
-the turn still ends with exactly one `post_run_check`.
+the turn still ends with exactly one `post_run_check`. When that check skipped the git probes (git steering changed, unreadable
+or not compared), no git command runs after the turn either: READY is parsed but not checked against its branch
+and commit, so it does not count (`exit 0; READY not checked: git steering changed or not verified`); a queued
+message is held, not delivered as a new turn (an `error` event says so, and it goes out after a later turn whose
+git steering is verified); and the worker-log mirror finds its project prefix from the filesystem.
 
 **An input that cannot be read.** One rule covers both classes: each file and directory is listed, read, decoded,
 parsed and hashed on its own, and any failure there (a permission error, a special file such as a FIFO, which is

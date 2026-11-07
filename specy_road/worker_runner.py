@@ -26,7 +26,8 @@ from pathlib import Path
 
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
-from specy_road.runtime_paths import project_prefix
+from specy_road.runtime_paths import prefix_within
+from specy_road.worktree_env import git_top
 from specy_road.worker_adapter_cursor import launch_permissions
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model
 from specy_road.worker_adapters import ClaudeCode, Launch, adapter_for
@@ -35,6 +36,7 @@ from specy_road.worker_lease import release_lease
 from specy_road.worker_models import launch_model, turn_models, usage_event
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
+    new_ready,
     new_token,
     pid_alive,
     pid_verified,
@@ -104,8 +106,9 @@ def log_path(repo_root: Path, worker_id: str) -> Path:
 
 
 def mirror_dir(repo_root: Path, rec: WorkerRecord) -> Path:
-    """``work/worker-logs/<NODE_ID>/`` in the worker's own checkout: the leaf's branch is checked out there."""
-    return Path(rec.worktree) / project_prefix(repo_root) / WORKER_LOGS_REL / rec.node_id
+    """``work/worker-logs/<NODE_ID>/`` in the worker's own checkout: the leaf's branch is checked out there. The
+    project prefix is read from the filesystem, not git: this runs after a turn whose git steering may be changed."""
+    return Path(rec.worktree) / prefix_within(git_top(repo_root), repo_root) / WORKER_LOGS_REL / rec.node_id
 
 
 def mirror_logs(repo_root: Path, rec: WorkerRecord) -> None:
@@ -339,6 +342,20 @@ def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
                  **usage_event(repo_root, detail))
 
 
+def _turn_ready(repo_root: Path, rec: WorkerRecord, before: list[str], watch: TurnWatch) -> tuple[bool, str | None]:
+    """``(whether the turn left a fresh READY, why it does not count)``, read after the post-run check (M22.5). A READY
+    that cannot be parsed (invalid UTF-8 included) is the turn's completion error, never an exception. READY's
+    branch and commit checks run git, so after a turn whose git steering is unverified (changed, unreadable or not
+    compared) READY is parsed only and does not count: no git command runs after such a turn."""
+    try:
+        if watch.git_unverified:
+            new_ready(repo_root, rec.node_id, before)   # parsed for its errors; no git
+            return False, "READY not checked: git steering changed or not verified"
+        return fresh_ready(repo_root, rec, before), None
+    except Exception as e:  # noqa: BLE001 — a READY the executor wrote is the turn's error
+        return False, f"READY file invalid: {type(e).__name__}: {e}"
+
+
 def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], before_all: list[str],
             usage_logged: bool, watch: TurnWatch, log_start: int = 0) -> int:
     rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
@@ -348,29 +365,27 @@ def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], be
     if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
         _append_usage(repo_root, rec, {})
     watch.exited(code)   # the check runs before the exit event: a failed exit is one of its findings
-    # The post-run check (M8.2) runs before READY is read (M22.5): its git steering is compared first, and a READY
-    # that cannot be parsed must not cost the turn its check. A usage limit pauses, whatever the exit code.
+    # The post-run check (M8.2) runs before READY is read (M22.5). A usage limit pauses, whatever the exit code.
     paused = close_turn(repo_root, rec, watch)
-    try:
-        ready, unparsed = fresh_ready(repo_root, rec, before), None
-    except Exception as e:  # noqa: BLE001 — a READY the executor wrote (invalid UTF-8 included) is the turn's error
-        ready, unparsed = False, f"{type(e).__name__}: {e}"
-    if unparsed and code == 0:   # the completion summary would read that READY again
-        append_event(repo_root, rec, "completion", source="worker", summary=f"exit 0; READY file invalid: {unparsed}"[:500],
+    ready, why = _turn_ready(repo_root, rec, before, watch)
+    if why and code == 0:   # the completion summary would read that READY again
+        append_event(repo_root, rec, "completion", source="worker", summary=f"exit 0; {why}"[:500],
                      detail={"exit": 0, "ready": False})
     else:
         exit_event(repo_root, rec, code, ready, before_all=before_all, log=log_path(repo_root, rec.worker_id),
                    log_start=log_start)
     _exit_state(repo_root, rec, PAUSED_BY_LIMIT if paused   # a limit wins over READY and over the exit code
-                else ("completed" if ready else "idle") if code == 0 else "failed")
+                else ("completed" if ready else "idle") if code == 0 else "failed", hold=watch.git_unverified)
     return code
 
 
-def _exit_state(repo_root: Path, rec: WorkerRecord, state: str) -> None:
+def _exit_state(repo_root: Path, rec: WorkerRecord, state: str, *, hold: bool = False) -> None:
     """The harness has been waited for: no pid, harness pid or group is left to signal.
 
     The turn's last event is written, so the logs are mirrored first: whoever waits
-    for the record to clear its pid finds the copy complete.
+    for the record to clear its pid finds the copy complete. ``hold`` (the turn's git
+    steering is unverified) keeps a queued message queued: delivering it would start
+    the next turn, whose git commands would run under what the turn changed.
     """
     mirror_logs(repo_root, rec)
 
@@ -381,10 +396,17 @@ def _exit_state(repo_root: Path, rec: WorkerRecord, state: str) -> None:
         mutate(repo_root, rec, fn)
         if state == "failed":   # the slot lease follows the record: idle and completed keep it
             release_lease(repo_root, rec.worker_id)
-    _deliver_queued(repo_root, rec.worker_id)
+    _deliver_queued(repo_root, rec.worker_id, hold=hold)
 
 
-def _deliver_queued(repo_root: Path, worker_id: str) -> None:
+def _deliver_queued(repo_root: Path, worker_id: str, *, hold: bool = False) -> None:
+    if hold:   # no turn starts unattended after git steering changed or went unverified (M22.5)
+        rec = load_record(repo_root, worker_id)
+        if rec.queued_message:
+            append_event(repo_root, rec, "error", source="system",
+                         summary="queued message held: git steering changed or not verified; it goes out after a "
+                                 "later turn whose git steering is verified")
+        return
     try:
         deliver_queued_message(repo_root, worker_id)
     except WorkerError:
