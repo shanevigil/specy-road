@@ -18,8 +18,10 @@ body. Keep section bodies focused; link to PRs for detail.
   lock, record, marker, acceptance, packet or prompt file (dangling or inside the project) refuses the
   command with `error: <path> is a symlink ...` and exit 1, before anything is written or a reviewer is
   launched. `review record` checks the live record and `history/` before it writes or clears a rejection
-  marker. After a reviewer run, a symlink planted at `work` or `work/reviews` is a review failure and is
-  not read or written through.
+  marker. A successful filing also checks `REJECTED-<model>.md` first, so a symlink there (dangling or
+  not) refuses the command and leaves the live record unwritten. After a reviewer run, a symlink planted at
+  `work` or `work/reviews` is a review failure and is not read or written through: the gate does not count a
+  record reached through that link, the run log is not opened, and `prompt --run`'s close does not raise.
 - `specy-road doctor --fix` leaves a registry row whose branch is in neither this clone nor the
   remote. The report calls that row advisory and says what to check: another clone's claim looks
   the same until it pushes its branch, so confirm that clone no longer holds the claim, then

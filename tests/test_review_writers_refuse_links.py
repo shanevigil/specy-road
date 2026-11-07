@@ -23,6 +23,7 @@ from specy_road.bundled_scripts.registration_pickup_commit import registration_c
 from specy_road.review_delegate import delegate
 from specy_road.review_delegate_packet import ensure_packet
 from specy_road.review_files import archive_review, project_of, review_path, reviews_dir, write_review
+from specy_road.review_gate import evaluate_gate
 from specy_road.review_policy_pin import pinned_message
 from specy_road.review_rejected import rejected_path, write_rejected
 from specy_road.review_target import resolve_target
@@ -368,11 +369,24 @@ def test_ensure_packet_refuses_a_linked_node_directory(tmp_path: Path) -> None:
     assert not (outside / "PACKET.md").exists()
 
 
+def _valid_outside_review(repo: Path, outside: Path) -> None:
+    """A valid ``REVIEW-opus.md`` where the gate would read it if it followed ``work/reviews``."""
+    node = outside / "M1.1"
+    node.mkdir()
+    (node / "REVIEW-opus.md").write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus"))
+
+
+def _approvals(repo: Path) -> list[str]:
+    target = resolve_target(repo, "M1.1", None)
+    gate = evaluate_gate(repo, target.node, target.commit, branch=(target.entry or {}).get("branch"))
+    return [a.model for a in gate.approvals]
+
+
 def test_a_reviewer_that_replaces_reviews_with_a_link_is_a_review_failure(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     outside = _outside(tmp_path)
-    (outside / "REVIEW-opus.md").write_bytes(b"secret\n")
-    (outside / "planted").symlink_to(outside / "REVIEW-opus.md")
+    _valid_outside_review(repo, outside)
+    (outside / "planted").symlink_to(outside / "M1.1" / "REVIEW-opus.md")
     before = _tree(outside)
     set_steps(repo, spec, {**verdict_step(repo), "symlink": {"path": str(repo / "work" / "reviews"),
                                                              "target": str(outside)}})
@@ -380,8 +394,41 @@ def test_a_reviewer_that_replaces_reviews_with_a_link_is_a_review_failure(tmp_pa
     run = delegate(repo, "M1.1", "opus", sleep=lambda _s: None, retries=0)
 
     assert run["outcome"] == "review_failure" and run["state"] == "incomplete"
+    assert _tree(outside) == before and _approvals(repo) == []
+
+
+def test_prompt_run_does_not_follow_a_replaced_reviews_directory(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    outside = _outside(tmp_path)
+    _valid_outside_review(repo, outside)
+    before = _tree(outside)
+    set_steps(repo, spec, {**verdict_step(repo), "symlink": {"path": str(repo / "work" / "reviews"),
+                                                             "target": str(outside)}})
+
+    code = run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
+                    "--repo-root", str(repo))
+    err = capsys.readouterr().err
+
+    assert code == 1 and "review_failure" in err and "Traceback" not in err
+    assert _tree(outside) == before and _approvals(repo) == []
+
+
+@pytest.mark.parametrize("dangling", [True, False])
+def test_review_record_refuses_a_linked_marker_before_filing(tmp_path: Path, capsys, dangling: bool) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    outside = _outside(tmp_path)
+    before = _tree(outside)
+    node = reviews_dir(repo, "M1.1")
+    node.mkdir(parents=True)
+    marker = rejected_path(node, "opus")
+    marker.symlink_to(outside / ("missing-marker.md" if dangling else "record.md"))
+
+    code = _record(repo)
+    err = capsys.readouterr().err
+
+    assert code == 1 and str(marker) in err and "Traceback" not in err
+    assert not review_path(repo, "M1.1", "opus").exists() and marker.is_symlink()
     assert _tree(outside) == before
-    assert not (outside / "M1.1").exists()
 
 
 def test_write_rejected_refuses_a_linked_ancestor_before_mkdir(tmp_path: Path, capsys) -> None:

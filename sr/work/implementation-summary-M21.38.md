@@ -54,6 +54,13 @@ Touch zones, unchanged: `specy_road/review_lock.py`, `specy_road/review_policy_p
 - `test_writers_refuse_links_out.py` packet row: `ensure_packet` now raises `SafeWriteError`, which that row catches.
 - `test_the_owned_root_is_the_hand_off_project_when_an_earlier_directory_is_named_work`: the hand-off node, a file under it, a `work/` path with no `reviews`, and a bare path with no `work`.
 - `test_prompt_o_relative_is_cwd_relative_before_the_safe_write_choice`: `-o relative.md` and `-o nested/relative.md` from a cwd outside the project, then `-o work/from-cwd.md` from the project.
+- `review_files.reviews_listing`: a hand-off listing when `work` or `work/reviews` is a symlink is not that directory, so readers do not follow it. A symlink at the node directory is still listed.
+- `review_delegate._span_text`: the saved project root is checked before a delegate log span is opened.
+- `review_record_write._run_span`: the same check before `prompt --run` reads its log.
+- `role_prompt_cli._finish_cli_review_run`: the prompt close's log write and record save, reached only when the hand-off ancestors are real.
+- `test_review_record_refuses_a_linked_marker_before_filing`: a dangling or live `REJECTED-<model>.md` on a successful filing writes no live record.
+- `test_a_reviewer_that_replaces_reviews_with_a_link_is_a_review_failure`: the outside record is a valid `outside/M1.1/REVIEW-opus.md`, and the gate's approvals stay empty.
+- `test_prompt_run_does_not_follow_a_replaced_reviews_directory`: the same plant through `prompt --run` exits 1, does not raise, and does not count the outside record.
 
 ## Probes
 
@@ -67,3 +74,9 @@ Touch zones, unchanged: `specy_road/review_lock.py`, `specy_road/review_policy_p
 - `prompt -o work/from-cwd.md` with the cwd at the project creates `work/from-cwd.md` inside it, so a relative path is cwd-relative and then classified.
 - The default prompt path, used when `-o` is omitted, is `root / "work" / prompt-<node>-<role>-<model>.md`. It is a project path, not a cwd-relative user path. Unchanged.
 - The only user-supplied output path in this leaf is `prompt -o`. No other writer classifies a relative path by joining it to the project.
+- A dangling and a live `REJECTED-opus.md` on a successful `review record`: exit 1, the marker path is named, the live `REVIEW-opus.md` is absent, and the outside file is unchanged. The success path checks that marker with the live record and `history/` before any write.
+- `list_reviews`, `list_ready`, `list_review_history` and `run_states` list through `reviews_listing`. With `work/reviews` linked at an outside directory that holds a valid `M1.1/REVIEW-opus.md`, the gate's approvals are empty. A symlink at the node directory only is not this class: `reviews_listing` still returns that directory.
+- Delegate `_model_check`, `_attempts`, `_file` and `_close` read the log through `_span_text(before.owned, ...)`. The saved root is checked before `attempt_text`. The replaced-reviews delegate run stays `review_failure` and does not count the outside record.
+- `run_and_file` reads the log through `_run_span(before.owned, ...)`, so the prompt path does not open the log after the plant. `close_cli_review_run` returns before `replace_file` and `save_run`. The prompt run exits 1 with `review_failure` on stderr and no traceback.
+- `file_review` still decides `review_failure` from the post-run snapshot, which already refuses to walk a linked `work` or `work/reviews`. The new checks are the opens that used to happen before that snapshot.
+- Zones added because the review named code that lives there: `specy_road/review_record_write.py` (`run_and_file`'s log read) and `specy_road/bundled_scripts/role_prompt_cli.py` (the prompt close that raised `ELOOP`).

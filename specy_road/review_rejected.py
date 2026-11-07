@@ -220,9 +220,10 @@ def _review_record_finish(root: Path, ns: Any, t: Any, gate: Any, entry: dict, r
                           trace: ReviewRecordTrace, relabel: Any) -> int:
     dest = review_path(root, ns.node_id, ns.model)
     owned = project_of(dest)
-    # Both destinations before the live record is written or the marker cleared: a linked history/ leaves both.
+    # Every path this filing writes or clears, before the first write: a linked history/ or a linked marker leaves both.
     safe_write.check(owned, dest)
     safe_write.check(owned, dest.parent / HISTORY_DIRNAME, safe_write.DIRECTORY)
+    safe_write.check(owned, rejected_path(trace.reviews, ns.model))
     text = render_front_matter(data, rec["body"])
     write_review(dest, text)   # replaces a record filed as review-<model>.md, whatever the filesystem's case rules
     clear_rejected(trace.reviews, ns.model)

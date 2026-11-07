@@ -60,6 +60,7 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     OUTPUT_SCHEMA_NAME,
     Snapshot,
     append_log,
+    handoff_ancestor_link,
     replace_file,
     snapshot,
     written,
@@ -367,6 +368,14 @@ def delegate_turn(adapter: Any, harness: str, log: Path, cwd: Path, launch: Any)
     return out
 
 
+def _run_span(owned: Path, log: Path, span: list[Any]) -> str:
+    """The run's log span. A symlink at ``work`` or ``work/reviews`` under the root saved before the run yields
+    ``""``: the log is not opened."""
+    if handoff_ancestor_link(owned) is not None:
+        return ""
+    return run_text(log, *span)
+
+
 def attempt_text(log: Path, attempt: dict[str, Any]) -> str:
     """An attempt's output: the log span specy-road recorded in its own attempt entry (:func:`run_text`); none when
     the attempt has no span (it never launched)."""
@@ -389,7 +398,7 @@ def run_and_file(launch: Any, adapter: Any, root: Path, model: str, reviews: Pat
     before = snapshot(cwd, reviews, model)
     span: list[Any] = [0, 0, None]
     rc = run_logged(launch, adapter, cwd, path, transcript, span)
-    text = run_text(path, *span)
+    text = _run_span(before.owned, path, span)
     entry, prof = rostered(root, model)
     reported, state = check_run(text, entry, prof)
     if note := check_note(state, reported, model):

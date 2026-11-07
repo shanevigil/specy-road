@@ -295,8 +295,23 @@ def load_review(path: Path, acceptance_ids: list[str] | None = None) -> ReviewFi
     return ReviewFile(path, data, body, errs)
 
 
-def _files(repo_root: Path, node_id: str, prefix: str, any_case: bool = False) -> list[Path]:
+def reviews_listing(repo_root: Path, node_id: str) -> Path:
+    """The hand-off directory to list.
+
+    When ``work`` or ``work/reviews`` is a symlink, this is a path that is not a directory, so a caller's
+    ``is_dir`` check lists nothing and does not follow the link. A symlink at the node directory itself is
+    still listed: only those two ancestors stop the read. Nothing above the project is inspected.
+    """
+    from specy_road.review_write_check import handoff_ancestor_link
+
     d = reviews_dir(repo_root, node_id)
+    if handoff_ancestor_link(project_of(d)) is not None:
+        return project_of(d) / ".handoff-closed"
+    return d
+
+
+def _files(repo_root: Path, node_id: str, prefix: str, any_case: bool = False) -> list[Path]:
+    d = reviews_listing(repo_root, node_id)
     if not d.is_dir():
         return []
     fold = str.lower if any_case else str
@@ -345,7 +360,7 @@ def archive_review(repo_root: Path, node_id: str, model: str, text: str) -> Path
 
 def list_review_history(repo_root: Path, node_id: str) -> list[ReviewFile]:
     """Every record ``review record`` has filed for the node, oldest first."""
-    d = reviews_dir(repo_root, node_id) / HISTORY_DIRNAME
+    d = reviews_listing(repo_root, node_id) / HISTORY_DIRNAME
     return [load_review(p) for p in sorted(d.glob("*.md"))] if d.is_dir() else []
 
 
