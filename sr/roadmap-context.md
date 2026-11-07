@@ -307,6 +307,7 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
+- `M21.38` on `feature/rm-review-writers-refuse-links` since 2026-11-07
 - `M22.14` on `feature/rm-deps-ids-briefs-and-landed-branch` since 2026-11-07
 - `M22.17` on `feature/rm-verify-tells-a-blocking-404` since 2026-11-07
 - `M22.2` on `feature/rm-move-rewrites-sheet-zones` since 2026-11-07
