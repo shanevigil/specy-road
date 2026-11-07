@@ -8,10 +8,12 @@ project file pushed over its cap with no word from upgrade.
 from __future__ import annotations
 
 import json
+import os
 import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -301,8 +303,8 @@ def test_a_dry_run_whose_copy_has_no_git_validates_nothing(
     root = old_repo(tmp_path)
     build = upgrade.Mirror.build
 
-    def build_without_git(self):
-        copy = build(self)
+    def build_without_git(self, *args, **kwargs):
+        copy = build(self, *args, **kwargs)
         shutil.rmtree(copy.repo / ".git")
         return copy
 
@@ -634,3 +636,88 @@ def test_ls_files_exit_1_means_untracked(tmp_path: Path, capsys, monkeypatch: py
 
     out = capsys.readouterr().out
     assert "would write roadmap-context.md (specy-road digest)" in out and "roadmap.md (specy-road export)" not in out
+
+
+def _tree_names(root: Path) -> set[str]:
+    names: set[str] = set()
+    for dirpath, dirs, files in os.walk(root, followlinks=False):
+        for name in dirs + files:
+            names.add((Path(dirpath) / name).relative_to(root).as_posix())
+    return names
+
+
+class _ListingTemp(tempfile.TemporaryDirectory):
+    """Records the temp directory's paths in ``listings`` while they still exist."""
+
+    listings: list[set[str]] = []
+
+    def __exit__(self, exc, value, tb):
+        path = Path(self.name)
+        if path.is_dir():
+            type(self).listings.append(_tree_names(path))
+        return super().__exit__(exc, value, tb)
+
+
+def _has(paths: set[str], name: str) -> bool:
+    return any(name in path.split("/") for path in paths)
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys, dry_run: bool
+) -> None:
+    """Listed while the temp directory exists: an ignored secret, an ignored directory and a nested repo are absent."""
+    from specy_road.bundled_scripts import upgrade_plan
+
+    root = old_repo(tmp_path / "repo")
+    (root / "keep-me.txt").write_text("visible\n", encoding="utf-8")
+    (root / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    secret = root / "node_modules" / "pkg"
+    secret.mkdir(parents=True)
+    (secret / "index.js").write_text("module.exports = 1\n", encoding="utf-8")
+    ignore = root / ".gitignore"
+    ignore.write_text(ignore.read_text(encoding="utf-8") + ".env\nnode_modules/\n", encoding="utf-8")
+    nested = root / "vendor" / "other"
+    nested.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(nested)], check=True)
+    (nested / "key.txt").write_text("nested-secret\n", encoding="utf-8")
+    _ListingTemp.listings = []
+    monkeypatch.setattr(upgrade.tempfile, "TemporaryDirectory", _ListingTemp)
+    monkeypatch.setattr(upgrade_plan.tempfile, "TemporaryDirectory", _ListingTemp)
+
+    assert run_upgrade(root, dry_run=dry_run) == 0
+
+    assert _ListingTemp.listings
+    for names in _ListingTemp.listings:
+        assert not _has(names, ".env")
+        assert not _has(names, "node_modules")
+        assert not any("vendor/other" in path for path in names)
+        assert _has(names, "keep-me.txt") and _has(names, "AGENTS.md")
+    if dry_run:
+        assert capsys.readouterr().out.count("ignored files are not copied") == 1
+
+
+def test_large_ignored_content_does_not_change_the_plan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A dry run's plan is the same with or without a large ignored tree beside the checkout."""
+    root = old_repo(tmp_path)
+    ignore = root / ".gitignore"
+    ignore.write_text(ignore.read_text(encoding="utf-8") + ".env\nnode_modules/\n", encoding="utf-8")
+    plans: list[list[tuple]] = []
+    real = upgrade.make_plan
+
+    def spy(*args, **kwargs):
+        plan = real(*args, **kwargs)
+        plans.append([(entry.path, entry.action, entry.data, entry.link, entry.mode) for entry in plan.entries])
+        return plan
+
+    monkeypatch.setattr(upgrade, "make_plan", spy)
+
+    assert run_upgrade(root, dry_run=True) == 0
+    bulk = root / "node_modules" / "pkg"
+    bulk.mkdir(parents=True)
+    (bulk / "bulk.bin").write_bytes(b"x" * 1_000_000)
+    (root / ".env").write_text("TOKEN=secret\n", encoding="utf-8")
+
+    assert run_upgrade(root, dry_run=True) == 0
+
+    assert plans[0] == plans[1]

@@ -46,7 +46,7 @@ sha256sum /tmp/sr-preview/rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal
 rm -rf /tmp/sr-preview
 ```
 
-Call the venv's `specy-road` by its full path: a bare `specy-road` runs whichever launcher is first on `PATH`, which is your usual install, not the preview. `--dry-run` writes nothing to the repo.
+Call the venv's `specy-road` by its full path: a bare `specy-road` runs whichever launcher is first on `PATH`, which is your usual install, not the preview. `--dry-run` writes nothing to the repo. It prints one line before copying the checkout into a temporary directory, and it builds that copy once. The copy, like the one a real upgrade uses to decide what to write, holds tracked files, untracked files git does not ignore, and files the refreshes read. Gitignored paths such as `.env` files, virtualenvs, `node_modules` and nested repositories are not copied.
 
 ---
 
