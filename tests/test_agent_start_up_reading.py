@@ -2,8 +2,9 @@
 
 The closure is each file once per repo: the entry files (``AGENTS.md`` and ``CLAUDE.md``), the
 always-applied Cursor rules, the files ``CLAUDE.md`` imports (the managed rules in a consumer repo),
-and the load order up to its "By task" line. The "By task" part and the generated
-``roadmap-context.md`` digest are task-conditional and not counted. Run with ``-s`` to see the
+and the load order up to its "By task" line, including the generated ``roadmap-context.md`` digest
+when that part names it (``load_order_paths`` leaves the digest out). The "By task" part is
+task-conditional and not counted. Run with ``-s`` to see the
 counted paths and totals; ``CLAUDE.md``'s size is printed against its estimate, not enforced.
 """
 
@@ -15,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.agents_md_block import load_order_paths, render_rules
+from specy_road.digest import DEFAULT_OUTPUT as DIGEST
 from specy_road.harness_instruction_files import AGENTS_MD, RULES_MD, claude_imports, cursor_paths
 from specy_road.init_project import run_init_project
 from specy_road.specyrd_init import run_init
@@ -36,8 +38,9 @@ def _always_load_order(root: Path) -> list[str]:
     """The files the load order names before its task-conditional part."""
     source = root / RULES_MD if (root / RULES_MD).is_file() else root / AGENTS_MD
     lines = source.read_text(encoding="utf-8").splitlines()
-    cut = next(i for i, ln in enumerate(lines) if ln.startswith(CONDITIONAL))
-    return load_order_paths(lines[:cut])
+    always = lines[:next(i for i, ln in enumerate(lines) if ln.startswith(CONDITIONAL))]
+    digest = [DIGEST] if any(f"`{DIGEST}`" in ln for ln in always) else []
+    return digest + load_order_paths(always)
 
 
 def _lines(path: Path) -> int:

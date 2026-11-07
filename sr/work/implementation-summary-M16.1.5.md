@@ -2,7 +2,7 @@
 
 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer.
 
-Base `5dce867e`; implementation commit `c83385c5`.
+Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `origin/WIP/improvements-0-3-1` (`b781d827`).
 
 ## Acceptance
 
@@ -43,12 +43,38 @@ Base `5dce867e`; implementation commit `c83385c5`.
 - `ruff check` on the new test: clean.
 - `scripts/check_machine_paths.py` and `scripts/check_test_private_imports.py`: exit 0.
 
+## Fix round 1 (review by gpt-6.1-sol at `1cb6cefc`)
+
+- **A3 (fixed, in zone).** Class: a file in the unconditional part of a load order that the test leaves out of its count. `load_order_paths` deliberately leaves out the digest, so `roadmap-context.md` (item 0 of the consumer order, before "By task") went uncounted. `_always_load_order` now adds the digest when the unconditional part names it. The consumer closure is now 161 lines, and a missing digest fails the existing missing-file check. The toolkit's `AGENTS.md` names `sr/roadmap-context.md` only under "By task", so it is not counted.
+- **A1 (not fixed: needs paths outside the touch zones).** Class: policy restated outside its one canonical place. These copies remain, and each needs a zone added before it can become a link:
+  - `docs/contributor-guide.md` § Default branch is `dev` (lines 98-105): says all feature work targets `dev` and contradicts the WIP-base rule.
+  - `.cursor/rules/026-release-version-tag-sync.mdc:8`: the "Human owns the number" bullet.
+  - `docs/release-runbook.md:9`: restates the version rule.
+  - `docs/release-runbook.md:150`: the WIP topic-branch base.
+  - `docs/git-workflow.md:6`: still points at `CLAUDE.md` for the branch policy.
+- **A4 (not fixed: needs paths outside the touch zones).** Class: provenance comments kept in shipped block templates. Removing the 27 comments from `specy_road/templates/specyrd/agents-rules.md` breaks the parametrized `tests/test_agents_md_block.py::test_every_rule_in_a_block_template_is_followed_by_its_provenance`. It also empties `chore_garden`'s advisory-rule scan (`specy_road/bundled_scripts/chore_garden.py`, which reads `_RULE_TEMPLATES`). The same class reaches `agents-md-block.md` (8 comments) and `claude-md-block.md` (2). A design that removes the class for all three is to move the comments into a maintainer-only provenance file and point `chore_garden`, `agent_guide_block.strip_provenance`'s callers and that test at it. The coordinator needs to add these zones: `specy_road/bundled_scripts/chore_garden.py`, `specy_road/agent_guide_block.py`, `specy_road/agents_md_block.py`, `tests/test_agents_md_block.py`, `tests/test_chore_mode.py`, the two other block templates, and a new provenance file (e.g. `docs/design-notes/agent-rules-provenance.md`, which does not ship).
+
+## Probes
+
+- Digest in the consumer closure: now counted at 23 lines; total 161, under 400.
+- Digest in the toolkit closure: `AGENTS.md` names `sr/roadmap-context.md` only under "By task", so it is not counted.
+- Other unconditional items that `load_order_paths` skips: only placeholders containing `<`, i.e. `planning/<id>…`, which is under "By task" in both orders. Nothing else is skipped.
+- Branch-policy copies (grep for `WIP/improvements-x-y-z`, "topic branch" and "default branch" in tracked docs and rules, excluding `sr/` and fixtures):
+  - In zone: `AGENTS.md`, `docs/toolkit-development.md`.
+  - Outside zones: `docs/release-runbook.md:150`, `docs/contributor-guide.md:98`.
+- Version-rule copies (grep for "human-owned", "Human owns" and "VERSION DECISION"):
+  - In zone: `AGENTS.md` (canonical), 027 (link).
+  - Outside zones: 026:8, `docs/release-runbook.md:9`.
+  - `constitution/principles.md:7` and `docs/release-runbook.md:109` name the principle or link to it rather than restating the rule; I left them as they are.
+- Provenance comments by template: `agents-rules.md` 27, `agents-md-block.md` 8, `claude-md-block.md` 2, `agents-team.md` 0.
+- Readers of provenance comments: `agent_guide_block.py` (`PROVENANCE`, `strip_provenance`), `agents_md_block.py` (render), `chore_garden.py` (advisory-rule), and `tests/test_agents_md_block.py`, `tests/test_chore_mode.py`.
+
 ## Added
 
 - **Test** `tests/test_agent_start_up_reading.py::test_start_up_reading_exists_and_stays_within_the_limit` (parametrized toolkit/consumer): A3, covering the start-up closure, the missing-file and supply-chain checks, and the 400-line gate.
 - **Test** `tests/test_agent_start_up_reading.py::test_shipped_rules_cite_only_files_an_adopter_has`: A4, checking that every `docs/*.md` the rendered rules cite exists in a fresh consumer repo.
 - **Helper** `_consumer` (test module): builds the fresh consumer repo both tests need.
-- **Helper** `_always_load_order` (test module): the load order up to the "By task" line, read from the rules file in a consumer repo or from `AGENTS.md` in this one.
+- **Helper** `_always_load_order` (test module): the load order up to the "By task" line, read from the rules file in a consumer repo or from `AGENTS.md` in this one. Since fix round 1 it also includes the digest when that part names it, because `load_order_paths` leaves it out.
 - **Helper** `_lines` (test module): line count of one file.
 - **Guards:** none.
 - **Mocks:** none.
