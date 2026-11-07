@@ -280,6 +280,39 @@ def test_group_into_an_id_a_listed_node_holds(
     assert claims["middle-work"] == "M1.2.2"
 
 
+def test_group_transient_id_names_no_existing_node(repo: Path) -> None:
+    """The transient parent id is no node's id or id prefix, wherever that node hangs.
+
+    M1.3 hangs under M2 (an edge-only re-parent keeps its id) with child M1.3.4,
+    so M1's direct children stop at M1.2 but M1.3 and M1.3.4 are still taken.
+    """
+    chunk = repo / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n["id"] == "M1.3":
+            n["parent_id"], n["sibling_order"] = "M2", 2
+    child = task_node("M1.3.4", "20000000-0000-4000-8000-0000000ee001", "M1.3", "far-four")
+    write_json_chunk(chunk, [*nodes, child])
+    (repo / child["planning_dir"]).write_text("# M1.3.4\n", encoding="utf-8")
+    roadmap_crud_ops.validate_at(repo)
+    before = ids_by_key(repo)
+
+    id_map = group_nodes(repo, "M1.1", "G", ["M1.1", "M1.2"])
+
+    assert id_map == {
+        "M1.1": "M1.1.1",
+        "M1.2": "M1.1.2",
+        "M1.2.1": "M1.1.2.1",
+        "M1.2.2": "M1.1.2.2",
+        "M1.2.4": "M1.1.2.4",
+    }
+    after = nodes_by_key(repo)
+    assert (after[NK_A3]["id"], after[NK_A3]["parent_id"]) == ("M1.3", "M2")
+    assert after[child["node_key"]]["id"] == "M1.3.4"
+    new_key = (set(after) - set(before)).pop()
+    assert after[new_key]["id"] == "M1.1"
+
+
 @pytest.mark.parametrize(
     ("args", "reason"),
     [

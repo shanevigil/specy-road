@@ -56,7 +56,6 @@ from specy_road.bundled_scripts.roadmap_outline_ops import (
 from specy_road.bundled_scripts.roadmap_outline_renumber import (
     assign_subtree_ids_inplace,
     check_chosen_child_id,
-    next_free_child_id,
 )
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.runtime_paths import add_repo_root_arg
@@ -124,6 +123,18 @@ def _common_parent(by_id: dict[str, dict], node_ids: Sequence[str]) -> str | Non
     return parents.pop()
 
 
+def _transient_parent_id(nodes: list[dict], parent_id: str | None) -> str:
+    """A direct child id of ``parent_id`` that is no node's id nor any id's prefix.
+
+    Every id starting ``<parent_id>.`` (``M`` at the root) counts, wherever its
+    node hangs: an edge-only re-parent keeps a node's id, so ``M1.3`` may sit
+    under ``M2``. The result is one past the highest first segment among them.
+    """
+    prefix = "M" if parent_id is None else f"{parent_id}."
+    heads = [n["id"][len(prefix):].split(".")[0] for n in nodes if n["id"].startswith(prefix)]
+    return f"{prefix}{max((int(h) for h in heads if h.isdigit()), default=0) + 1}"
+
+
 def group_nodes(
     root: Path,
     into_new: str,
@@ -166,8 +177,7 @@ def group_nodes(
     sheet = plan_planning_sheet_for_new_node(root, node)
     siblings = ordered_sibling_ids(nodes, parent_id, by_id)
     index = min(siblings.index(nid) for nid in node_ids)
-    # Free in the loaded graph, so neither it nor any id below it is taken.
-    transient = next_free_child_id(nodes, parent_id)
+    transient = _transient_parent_id(nodes, parent_id)
     node["id"] = transient
     moves = [
         NodeMove(by_id[nid]["node_key"], transient, i, new_id=f"{transient}.{i + 1}")
