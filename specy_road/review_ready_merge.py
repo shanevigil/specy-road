@@ -48,9 +48,11 @@ def _changelog_at(root: Path, rev: str) -> str | None:
 def _exempt_text(root: Path, node: dict) -> str | None:
     """Acceptance plus the planning sheet, or None when a configured sheet cannot be read.
 
-    One rule: a set ``planning_dir`` is read as text, and any failure stays silent. That
-    includes a missing path, a directory, and an unreadable file. An empty file is a
-    successful read. No ``planning_dir`` uses the acceptance lines only.
+    One rule: a set ``planning_dir`` is read as text, and any ``Exception`` from that read
+    stays silent. That includes a missing path, a directory, an unreadable file, and
+    ``RuntimeError`` from a symlink loop. ``KeyboardInterrupt`` and ``SystemExit`` are not
+    caught. An empty file is a successful read. No ``planning_dir`` uses the acceptance
+    lines only.
     """
     acceptance = node.get("acceptance") or []
     parts = [str(item) for item in acceptance] if isinstance(acceptance, list) else []
@@ -59,7 +61,7 @@ def _exempt_text(root: Path, node: dict) -> str | None:
         return "\n".join(parts)
     try:
         parts.append(resolve_planning_path(root, rel).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except Exception:
         return None
     return "\n".join(parts)
 

@@ -31,6 +31,7 @@ _ROWS = [
      ["specy_road/a.py", "CHANGELOG.md"], "sr/", "", _EMPTY, "", ("specy_road/a.py",)),
     ("docs-only", ["docs/guide.md"], "sr/", _BASE, _BASE, "", ("docs/guide.md",)),
     ("tests-only", ["tests/test_a.py"], "sr/", _BASE, _BASE, "", ()),
+    ("root file named tests", ["tests"], "sr/", _BASE, _BASE, "", ("tests",)),
     ("sr-only nested", ["sr/planning/x.md", "sr/src/a.py"], "sr/", _BASE, _BASE, "", ()),
     ("roadmap/planning-only unnested",
      ["roadmap/a.json", "planning/x.md", "work/n.md", "roadmap.md", "roadmap-context.md"],
@@ -65,36 +66,58 @@ def _sheet(repo: Path) -> Path:
     return next((repo / "planning").glob("*.md"))
 
 
+def _sheet_dir(repo: Path) -> None:
+    sheet = _sheet(repo)
+    sheet.unlink()
+    sheet.mkdir()
+
+
+def _commit_sheet_loop(repo: Path) -> None:
+    sheet = _sheet(repo)
+    sheet.unlink()
+    sheet.symlink_to(sheet.name)
+    git(repo, "add", sheet.relative_to(repo).as_posix())
+    git(repo, "commit", "-qm", "looping sheet")
+
+
+def _with_base_changelog(repo: Path) -> None:
+    git(repo, "checkout", "-q", "dev")
+    commit_file(repo, "CHANGELOG.md", _LOG, "changelog")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "-q", "--no-edit", "dev")
+
+
 _WARNING = (
     "warning: ## [Unreleased] in CHANGELOG.md gained no line, but this branch changes "
     "{names}; write `no CHANGELOG entry` in the leaf's acceptance or planning sheet to exempt it"
 )
+_NAMES = "docs/x.md, src/a.py"
+_STDERR = {
+    "warns": [_WARNING.format(names=_NAMES)],
+    "silent": [],
+    "new": [_WARNING.format(names=_NAMES)],
+    "missing-sheet": [],
+    "sheet-dir": [],
+    "empty-sheet": [_WARNING.format(names=_NAMES)],
+    "newline-path": [_WARNING.format(names="docs/line\\nbreak.md, docs/x.md, src/a.py")],
+    "sheet-loop": [],
+}
 
 
-@pytest.mark.parametrize(
-    "mode", ["warns", "silent", "new", "missing-sheet", "sheet-dir", "empty-sheet", "newline-path"],
-)
+@pytest.mark.parametrize("mode", list(_STDERR))
 def test_ready_changelog_reminder(tmp_path: Path, capsys, mode: str) -> None:
     repo = make_review_repo(tmp_path)
     if mode != "new":
-        git(repo, "checkout", "-q", "dev")
-        commit_file(repo, "CHANGELOG.md", _LOG, "changelog")
-        git(repo, "checkout", "-q", "feature/rm-thing")
-        git(repo, "merge", "-q", "--no-edit", "dev")
-    if mode == "silent":
-        commit_file(repo, "CHANGELOG.md", _ADDED, "changelog entry")
-    elif mode == "new":
-        commit_file(repo, "CHANGELOG.md", _EMPTY, "changelog")
-    elif mode == "missing-sheet":
-        _sheet(repo).unlink()
-    elif mode == "sheet-dir":
-        sheet = _sheet(repo)
-        sheet.unlink()
-        sheet.mkdir()
-    elif mode == "empty-sheet":
-        _sheet(repo).write_text("", encoding="utf-8")
-    elif mode == "newline-path":
-        commit_file(repo, "docs/line\nbreak.md", "x\n", "newline path")
+        _with_base_changelog(repo)
+    {
+        "silent": lambda: commit_file(repo, "CHANGELOG.md", _ADDED, "changelog entry"),
+        "new": lambda: commit_file(repo, "CHANGELOG.md", _EMPTY, "changelog"),
+        "missing-sheet": lambda: _sheet(repo).unlink(),
+        "sheet-dir": lambda: _sheet_dir(repo),
+        "empty-sheet": lambda: _sheet(repo).write_text("", encoding="utf-8"),
+        "newline-path": lambda: commit_file(repo, "docs/line\nbreak.md", "x\n", "newline path"),
+        "sheet-loop": lambda: _commit_sheet_loop(repo),
+    }.get(mode, lambda: None)()
     capsys.readouterr()
     with pytest.raises(SystemExit) as caught:
         review_cli.main(["ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)])
@@ -102,12 +125,4 @@ def test_ready_changelog_reminder(tmp_path: Path, capsys, mode: str) -> None:
     err = capsys.readouterr().err
     ready = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
     assert ready.ok, ready.errors
-    lines = [line for line in err.splitlines() if "## [Unreleased]" in line]
-    if mode in {"silent", "missing-sheet", "sheet-dir"}:
-        assert lines == [] and err.splitlines() == []
-    elif mode == "newline-path":
-        assert err.splitlines() == [
-            _WARNING.format(names="docs/line\\nbreak.md, docs/x.md, src/a.py")
-        ]
-    else:
-        assert err.splitlines() == [_WARNING.format(names="docs/x.md, src/a.py")]
+    assert err.splitlines() == _STDERR[mode]

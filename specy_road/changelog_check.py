@@ -76,12 +76,13 @@ def _unreleased_heading(line: str) -> bool:
 
 
 def _product(path: str, prefix: str) -> bool:
-    """True for a changed path that is not ``CHANGELOG.md``, ``tests/``, or project bookkeeping.
+    """True for a changed path that is not ``CHANGELOG.md``, under ``tests/``, or bookkeeping.
 
-    In a nested layout (non-empty ``prefix``) bookkeeping is every path under the project
-    directory. Otherwise it is :func:`is_trial_merge_bookkeeping`.
+    A file named ``tests`` is a product path. In a nested layout (non-empty ``prefix``)
+    bookkeeping is every path under the project directory. Otherwise it is
+    :func:`is_trial_merge_bookkeeping`.
     """
-    if path == "CHANGELOG.md" or path == "tests" or path.startswith("tests/"):
+    if path == "CHANGELOG.md" or path.startswith("tests/"):
         return False
     if prefix:
         return not path.startswith(prefix)
