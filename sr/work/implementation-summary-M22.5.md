@@ -99,8 +99,40 @@ First merged `origin/WIP/improvements-0-3-1` (no conflicts). The fix is commit f
 
 The other `close_turn` callers end without git: a harness that could not start sets `failed` without READY or delivery, and a terminated record returns at once.
 
+## Fix round 4 (block by `gpt-5.6-sol-high` on 5dfcbea7)
+
+First merged `origin/WIP/improvements-0-3-1` (no conflicts). The fix is commit 3491ef0f. Both findings are one class.
+
+**Class H: a config path value not resolved the way git resolves it.** git resolves a pathname (git-config(1), "pathname") with `%(prefix)/`, `~` and `~user`. It composes a hook as `<core.hooksPath>/<hook>`, so an empty value means `/<hook>`; `git rev-parse --git-path hooks/pre-commit` gives `/pre-commit`. The snapshot expanded `~` only, and treated an empty value as naming no directory. So the include or hook git actually reads went unwatched. Every path value is reached through two places: `read_chain` (`include.path`, `includeIf.*.path`) and `_config_file` (`core.hooksPath`).
+
+**Design change, one rule:** the new `git_config_text.git_path(value, base)` is the single resolver, and both places use it:
+- `%(prefix)/` is replaced by `git_prefix()`: the parent of the directory holding the real `git` on `PATH`. That is how git computes its runtime prefix, and this git gives `/usr` for `/usr/bin/git`.
+- `~` and `~user` are expanded.
+- A relative value is relative to `base`.
+- `./%(prefix)/` and `%(prefix)x` stay literal, as in git.
+- With no git on `PATH`, a `%(prefix)/` value raises, so that checkout's `.git` is a `check_error`.
+
+Its limit, stated in the docstring and the docs: a git built with a compiled-in prefix elsewhere than its binary's parent is not matched. Reading that prefix would mean running git, and A1 reads from the filesystem only.
+
+An empty `core.hooksPath` now names the filesystem root, as git composes it. The root is not listed: `_hook_names` watches only git's own hook names there (`HOOK_NAMES`, githooks(5)). So a large regular file at the root (a swap file, for example) is never hashed. Listing and the cap for other directories moved into the same helper. The `None` key and `filter(None, ...)` from fix round 1 are gone.
+
 ## Probes
 
+Fix round 4. Each probe is a public turn on the test layout unless it says otherwise; the script was kept outside the tree.
+- `git_path` against `git config --path` for `%(prefix)/...`, `~/...`, an absolute path, a relative path, `%(prefix)x` and `./%(prefix)/...`: equal for each. Pass (new parity test; the `%(prefix)/` row fails at 5dfcbea7).
+- Include `%(prefix)/later.gitconfig`, created during the turn with `core.fsmonitor`: one `git_config` finding at the resolved path, probes skipped, sentinel absent. Pass (new `include_under_prefix` row; fails at 5dfcbea7). The prefix is made writable by a `git` shim script on PATH. This git's own prefix is compiled in (`/usr`), so the row skips the closing real-`git status` step, and the parity test covers git's own resolution.
+- Empty `core.hooksPath`: the snapshot reads `/` and the default directory is off. A `/pre-commit` appearing is one `steering_file` (`absent` to a sha). Pass (new test, through the public `git_snapshot` and `steering_changes`; a test cannot write to `/`; fails at 5dfcbea7).
+- `hooksPath = %(prefix)/hooks` with a hook written there: found at the resolved path. Pass (probe).
+- `includeIf` path `%(prefix)/cond.gitconfig` created: found. Pass (probe).
+- Include `~/home.gitconfig` with `HOME` moved, created: found. Pass (probe).
+- Include `%(prefix)lit.gitconfig` (no slash): literal, relative to the config, and found when created. Pass (probe).
+- `hooksPath = /` set explicitly: clean turn in 0.1 s; the root is not listed or hashed. Pass (probe).
+- Empty `hooksPath`, clean turn: no findings. Pass (probe; the existing `empty_hookspath` row also passes).
+- `%(prefix)/` include with no git on `PATH`: a `check_error` on each checkout's `.git`, never a silent skip. Pass (probe).
+- Other path-valued inputs: `includeIf` conditions are not evaluated (documented), and the `.git` `gitdir:` line and `commondir` are not pathnames git interpolates. Checked by reading the code and git-config(1).
+- All earlier probes re-run (Rework 3 and fix rounds 1 to 3): same results. Pass.
+
+### Fix round 3
 Fix round 3. Each probe is a public `worker_runner.run` with a fake `claude` and a `git` shim on PATH that logs every call; the script was kept outside the tree.
 - Valid READY (schema-valid, its branch and HEAD) plus a common-config change: no git call after the executor's last one, completion `READY not checked`, worker `idle`, queued message held. Pass (new `valid` row of the public-runner test). It fails at aa99d02c: `git branch --show-current` and `git rev-parse` ran.
 - The same row with the hold switched off: delivery ran `git branch --show-current`. So the hold is needed (red check by hand).
@@ -198,6 +230,7 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 
 ## Verification
 
+- Fix round 4: `pytest -q tests/test_steering_file_guard.py`: 45 passed. Targeted set: 664 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with 5dfcbea7's `steering_paths.py` and `git_config_text.py` (plus a stand-in `git_path` doing what that code did, `~` only, so the module imports), 3 of the new tests fail and 42 pass.
 - Fix round 3: `pytest -q tests/test_steering_file_guard.py`: 37 passed. The test files that import the changed modules: 590 passed. Worker-log, queued-message and finish tests: 173 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with aa99d02c's `worker_runner.py` and `worker_turn_check.py`, the `valid` row fails (git ran after the executor).
 - Fix round 2: `pytest -q tests/test_steering_file_guard.py`: 36 passed. The steering tests plus the test files that import the changed modules: 589 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with 00588b17's `steering_paths.py` and `worker_turn_check.py`, 4 rows fail (the 2 new ones and the 2 changed ones) and 32 pass.
 - Fix round 1: `pytest -q tests/test_steering_file_guard.py`: 34 passed. The steering tests plus the test files that import the changed modules: 587 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with cef67a38's `steering_paths.py`, the 6 new rows fail and the other 28 pass.
@@ -255,4 +288,7 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 - Fix round 3, `_exit_state(hold=)` and `_deliver_queued(hold=)`: a queued message held after an unverified turn, with an `error` event (class G).
 - Fix round 3, `mirror_dir` prefix from the filesystem: no `git rev-parse` after the turn (class G).
 - Fix round 3, the public-runner test is parametrized `byte_ff` / `valid`. It has a `git` shim on PATH that logs calls (no Python mock), and a queued message set before the run. It asserts that no git call follows the executor's, that the message is still queued, and the completion summary.
-- Mocks: `_Clock` (above) only; the `git` shim is a logging wrapper around the real git binary.
+- Fix round 4, `git_config_text.git_prefix` and `git_path`: one resolver for every config path value (class H).
+- Fix round 4, `steering_paths.HOOK_NAMES` and `_hook_names`: the root watched by git's hook names; the listing and the cap moved into the same helper (class H).
+- Fix round 4, tests: `test_a_config_path_value_resolves_as_git_resolves_it`, 6 rows, one per clause, against `git config --path`; the `include_under_prefix` row of the fsmonitor test, with a `git` shim script on PATH; and `test_an_empty_hooks_path_watches_the_hook_names_git_runs_at_the_root`, through the public `git_snapshot`, `Entry` and `steering_changes`.
+- Mocks: `_Clock` (above) only. The `git` shims are wrapper scripts around the real git binary.
