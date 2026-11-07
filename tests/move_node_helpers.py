@@ -101,6 +101,14 @@ def run_move_node(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def git(top: Path, *args: str) -> None:
+    """Run ``git`` in ``top`` with a throwaway identity; raise on failure."""
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+        cwd=top, check=True, capture_output=True,
+    )
+
+
 def run_cli(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
     """Run a `specy-road` command through the real dispatcher, on ``tmp``."""
     return subprocess.run(

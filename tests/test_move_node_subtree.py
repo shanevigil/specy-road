@@ -6,7 +6,6 @@ milestones' ids, sheets and claims. ``--renumber-outline`` keeps that form.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -21,6 +20,7 @@ from tests.move_node_helpers import (
     NK_A24,
     NK_B4,
     ids_by_key,
+    git,
     nodes_by_key,
     run_cli,
     run_move_node,
@@ -225,13 +225,6 @@ def test_a_subtree_move_rewrites_nothing_outside_the_subtree(tmp_path: Path) -> 
     assert claims["inner-four"]["touch_zones"] == ["docs/M2.5.4/"]
 
 
-def _git(top: Path, *args: str) -> None:
-    subprocess.run(
-        ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
-        cwd=top, check=True, capture_output=True,
-    )
-
-
 def test_a_move_rewrites_zones_naming_the_moved_sheet_in_both_forms(tmp_path: Path) -> None:
     """A zone naming the node's own sheet follows the rename, as does a docs/<old id>/ zone."""
     top, root = tmp_path, tmp_path / "sr"
@@ -249,9 +242,9 @@ def test_a_move_rewrites_zones_naming_the_moved_sheet_in_both_forms(tmp_path: Pa
         if entry["codename"] == "inner-two":
             entry["touch_zones"] = [old, f"sr/{old}", "docs/M1.2.2/"]
     registry.write_text(yaml.dump(data, sort_keys=False), encoding="utf-8")
-    _git(top, "init", "-q", "-b", "main")
-    _git(top, "add", "-A")
-    _git(top, "commit", "-q", "-m", "init")
+    git(top, "init", "-q", "-b", "main")
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-m", "init")
 
     r = run_move_node(root, "--repo-root", str(root), "M1.2.2", "--to-parent", "M2")
     assert r.returncode == 0, r.stderr
@@ -265,4 +258,4 @@ def test_a_move_rewrites_zones_naming_the_moved_sheet_in_both_forms(tmp_path: Pa
         v = run_cli(root, "validate")
         assert v.returncode == 0, v.stderr
         assert "names a planning sheet" not in v.stdout + v.stderr
-        _git(top, "add", "-A")
+        git(top, "add", "-A")

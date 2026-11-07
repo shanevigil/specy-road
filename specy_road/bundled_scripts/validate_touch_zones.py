@@ -164,15 +164,22 @@ def warn_touch_zones_match_nothing(
 _SHEET_KEY = re.compile(r"_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.md$", re.I)
 
 
-def _sheet_rel(zone: str, prefix: str) -> str | None:
-    """``zone`` as ``planning/<file>.md`` when it names a sheet, in either form, else ``None``."""
+def _sheet_rel(zone: str, prefix: str) -> tuple[str, str] | None:
+    """``(planning/<file>.md, form prefix)`` when a literal ``zone`` names a sheet, else ``None``.
+
+    One rule for both forms: the zone is read as project-relative first, and
+    only when that reading is no sheet path, with the checkout ``prefix``
+    stripped. So a project directory itself named ``planning`` keeps
+    ``planning/<file>.md`` as a project-form zone.
+    """
     if any(c in zone for c in _GLOB_CHARS):
         return None
-    rel = zone[len(prefix):] if prefix and zone.startswith(prefix) else zone
-    head, _, name = rel.partition("/")
-    if head != "planning" or not name.endswith(".md") or "/" in name:
-        return None
-    return rel
+    for form in dict.fromkeys(("", prefix)):
+        rel = zone[len(form):]
+        head, _, name = rel.partition("/")
+        if zone.startswith(form) and head == "planning" and name.endswith(".md") and "/" not in name:
+            return rel, form
+    return None
 
 
 def _sheet_exists(project_root: Path, rel: str) -> bool:
@@ -197,16 +204,15 @@ def notice_stale_sheet_zones(
     for node in nodes:
         zones = node.get("touch_zones")
         for zone in zones if isinstance(zones, list) else []:
-            rel = _sheet_rel(zone.strip(), prefix) if isinstance(zone, str) else None
-            if rel is None or _sheet_exists(project_root, rel):
+            found = _sheet_rel(zone.strip(), prefix) if isinstance(zone, str) else None
+            if found is None or _sheet_exists(project_root, found[0]):
                 continue
+            rel, form = found
             nid = node.get("id", "?")
             line = f"roadmap: notice — {nid}: touch zone {zone!r} names a planning sheet that does not exist"
             key = _SHEET_KEY.search(rel)
             owner = by_key.get(key.group(1).lower()) if key else None
             if owner is not None:
-                now = owner["planning_dir"]
-                if zone.strip() != rel:
-                    now = prefix + now
+                now = form + owner["planning_dir"]
                 line += f"; {owner.get('id', '?')}'s sheet is now {now!r} (specy-road edit-node {nid} --set touch_zones=<paths>)"
             print(line)

@@ -8,7 +8,6 @@ time, which is late. These warnings catch them at `specy-road validate`.
 
 from __future__ import annotations
 
-import subprocess
 import time
 from pathlib import Path
 
@@ -19,7 +18,7 @@ from specy_road.bundled_scripts.validate_touch_zones import (
     notice_stale_sheet_zones,
     warn_touch_zones_match_nothing,
 )
-from tests.move_node_helpers import NK_A1, base_fixture, run_cli
+from tests.move_node_helpers import NK_A1, base_fixture, git, run_cli
 
 
 def _node(**over) -> dict:
@@ -247,13 +246,6 @@ def test_a_misspelled_git_root_zone_still_warns(nested_project, capsys) -> None:
     assert "specy_road/typo.py" in err
 
 
-def _git(top: Path, *args: str) -> None:
-    subprocess.run(
-        ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
-        cwd=top, check=True, capture_output=True,
-    )
-
-
 @pytest.mark.parametrize("staged", [False, True], ids=["unstaged", "staged"])
 @pytest.mark.parametrize("status", ["Not Started", "In Progress", "Complete"])
 def test_a_zone_naming_a_missing_planning_sheet_gets_a_stdout_notice(
@@ -273,12 +265,12 @@ def test_a_zone_naming_a_missing_planning_sheet_gets_a_stdout_notice(
     for doc in ("constitution/purpose.md", "constitution/principles.md", "docs/supply-chain-security.md"):
         (project / doc).parent.mkdir(exist_ok=True)
         (project / doc).write_text("# doc\n", encoding="utf-8")   # the AGENTS.md load order
-    _git(top, "init", "-q", "-b", "main")
+    git(top, "init", "-q", "-b", "main")
     assert run_cli(project, "refresh-stubs").returncode == 0  # no AGENTS.md warning under --strict
-    _git(top, "add", "-A")
-    _git(top, "commit", "-q", "-m", "init")
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-m", "init")
     if staged:
-        _git(top, "rm", "-q", f"sr/{gone}")
+        git(top, "rm", "-q", f"sr/{gone}")
     else:
         (project / gone).unlink()
     zones = [gone, f"sr/{gone}", current, f"sr/{current}", "planning/*.md", "sr/planning/*.md"]
@@ -317,3 +309,21 @@ def test_a_not_started_missing_non_sheet_zone_gets_no_new_notice(
     out = capsys.readouterr()
     assert out.out == ""
     assert out.err == ""
+
+
+def test_a_project_directory_named_planning_reads_a_zone_as_project_form_first(
+    tmp_path: Path, capsys
+) -> None:
+    """With the project at ``planning/``, ``planning/<file>.md`` is still a project-form sheet zone."""
+    project = tmp_path / "planning"
+    (project / "planning").mkdir(parents=True)
+    (project / "planning" / "here.md").write_text("# here\n", encoding="utf-8")
+    zones = ["planning/gone.md", "planning/planning/gone.md", "planning/here.md", "planning/planning/here.md"]
+
+    notice_stale_sheet_zones([_node(touch_zones=zones)], project, git_root=tmp_path)
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines == [
+        f"roadmap: notice — M1.1: touch zone {z!r} names a planning sheet that does not exist"
+        for z in zones[:2]
+    ]
