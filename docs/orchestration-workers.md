@@ -438,7 +438,7 @@ not wrapped. In a sandboxed turn (`bwrap`, or `auto` with bwrap present):
   | Harness | Directories replaced | Files written through to yours | Yours, read-only (when you have them) |
   |---|---|---|---|
   | `claude-code` | `$CLAUDE_CONFIG_DIR` or `~/.claude`; `~/.cache` | `.credentials.json` | `settings.json`, `settings.local.json`, `hooks/`, `plugins/`, `skills/`, `agents/`, `commands/`, `output-styles/`, `CLAUDE.md` |
-  | `cursor` | `~/.cursor`, `~/.config/cursor`, `~/.cache` | `auth.json` (in `~/.config/cursor`) | `hooks/`, `hooks.json`, `mcp.json`, `plugins/`, `rules/`, `skills/`, `skills-cursor/`, `extensions/`, `sandbox-policies/` |
+  | `cursor` | `~/.cursor`, `~/.config/cursor`, `~/.cache` | `auth.json` (in `~/.config/cursor`) | `hooks/`, `hooks.json`, `mcp.json`, `plugins/`, `rules/`, `skills/`, `skills-cursor/`, `extensions/` |
   | `codex` | the profile's `CODEX_HOME` | `auth.json` (the file it links to) | `config.toml`, `AGENTS.md`, `hooks/`, `plugins/`, `rules/`, `skills/` |
 
   Anything else the harness writes stays the worker's: its transcripts and sessions, and the steering names
@@ -454,10 +454,11 @@ not wrapped. In a sandboxed turn (`bwrap`, or `auto` with bwrap present):
   worker could have put settings and hooks there.
 - **Hidden:** `~/.ssh` and `~/.config/gh` (an empty tmpfs), and `SSH_AUTH_SOCK`, `GH_TOKEN` and `GITHUB_TOKEN`
   in the environment. This blocks the default push routes. It does not isolate other secrets.
-- **Hand-off:** `work/reviews/<ID>/` is a per-worker outbox (`work/.workers/<id>.outbox`), empty at each turn's
-  start. When the turn ends the runner moves only `READY-*` files from it into the real directory. Anything else
-  written there, such as a `REVIEW-` file, is discarded. Rework prompts inline the reviewers' required changes,
-  so nothing needs to be read from there.
+- **Hand-off:** `work/reviews/<ID>/` is a per-worker outbox (`work/.workers/<id>.outbox`). At each turn's start
+  it holds a copy of the regular files already in the real directory (REVIEW, notes and `history/` records;
+  links are not copied), so a fix round can read its blocking review. When the turn ends the runner moves only
+  `READY-*` files from it into the real directory. Anything else written there, such as a new `REVIEW-` file or
+  an edited copy of a record, is discarded.
 - **Failures stop the turn.** If the sandbox cannot be set up (no linked worktree, an unwritable mount point)
   or `bwrap` exits before starting the harness, the worker ends `failed`, with the reason in an `error` event
   and bwrap's message in `<id>.log`. To run such a project unsandboxed, set `worker_sandbox: off`.
