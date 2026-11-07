@@ -1,0 +1,13 @@
+$ specy-road lessons --help
+exit: 0
+--- stdout ---
+usage: specy-road lessons [-h] {add,list} ...
+
+positional arguments:
+  {add,list}
+    add       Append a defect class that escaped review
+    list      Print every lesson, in file order
+
+options:
+  -h, --help  show this help message and exit
+--- stderr ---

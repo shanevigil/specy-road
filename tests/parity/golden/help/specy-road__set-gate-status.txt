@@ -1,0 +1,13 @@
+$ specy-road set-gate-status --help
+exit: 0
+--- stdout ---
+usage: specy-road set-gate-status [-h] --status {Blocked,Complete,In Progress,Not Started} NODE_ID
+
+positional arguments:
+  NODE_ID
+
+options:
+  -h, --help            show this help message and exit
+  --status {Blocked,Complete,In Progress,Not Started}
+                        Roadmap status (same enum as other node types).
+--- stderr ---

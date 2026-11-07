@@ -1,0 +1,22 @@
+$ specy-road models roster --help
+exit: 0
+--- stdout ---
+usage: specy-road models roster [-h] [--coordinator PROFILE_ID] [--executor PROFILE_ID]
+                                [--reviewer PROFILE_ID] [--write] [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --coordinator PROFILE_ID
+                        A profile id (file name, api_id or alias) to roster as coordinator;
+                        repeatable
+  --executor PROFILE_ID
+                        A profile id (file name, api_id or alias) to roster as executor;
+                        repeatable
+  --reviewer PROFILE_ID
+                        A profile id (file name, api_id or alias) to roster as reviewer;
+                        repeatable
+  --write               Add the entries to roadmap/orchestration.yaml
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

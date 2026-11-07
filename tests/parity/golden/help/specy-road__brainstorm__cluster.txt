@@ -1,0 +1,22 @@
+$ specy-road brainstorm cluster --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm cluster [-h] [--name TEXT] [--best IDEA_ID] [--critic ROLE: TEXT]
+                                     [--slug SLUG] [--repo-root DIR]
+                                     CID
+
+positional arguments:
+  CID
+
+options:
+  -h, --help           show this help message and exit
+  --name TEXT          What the cluster's ideas share ('' clears it).
+  --best IDEA_ID       The member that states the bet best; it must already carry this cluster id
+                       ('' clears it).
+  --critic ROLE: TEXT  A critic's strongest objection to the cluster (repeatable; same role
+                       replaces).
+  --slug SLUG          Session name (default: the only open session; required when several are).
+  --repo-root DIR      Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                       .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                       root, else the current directory).
+--- stderr ---

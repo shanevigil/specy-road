@@ -1,0 +1,24 @@
+$ specy-road doctor --help
+exit: 0
+--- stdout ---
+usage: specy-road doctor [-h] [--fix] [--yes] [--base BRANCH] [--remote NAME] [--repo-root DIR]
+
+After git fetch --prune, list feature/rm-* branches (local and remote) whose leaf is Complete or
+that nothing claims — merged by ancestry or patch content, leaf Complete, or claim gone —
+worktrees whose branch is gone or merged, other detached worktrees, registry rows with no branch
+(listed; --fix leaves a non-Complete one for registry-prune --remove) or a Complete leaf, and
+stashes specy-road pushed; also nested-repo branches with commits no remote has. Dry-run unless
+--fix.
+
+options:
+  -h, --help       show this help message and exit
+  --fix            Remove what is listed, asking once per kind, and report each action. Leaves a
+                   registry row whose branch is in neither this clone nor the remote, unless its
+                   leaf is Complete.
+  --yes            With --fix, do not ask.
+  --base BRANCH    Integration branch (default: roadmap/git-workflow.yaml, else main).
+  --remote NAME    Git remote (default: roadmap/git-workflow.yaml, else origin).
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

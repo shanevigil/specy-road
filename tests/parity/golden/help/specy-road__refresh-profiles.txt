@@ -1,0 +1,54 @@
+$ specy-road refresh-profiles --help
+exit: 0
+--- stdout ---
+usage: specy-road refresh-profiles [-h] [--repo-root DIR] [--dry-run] [--force PATH]
+                                   [--only API_ID] [--profiles {roster,all}]
+                                   [--check | --render | --capture HARNESS] [--from DIR]
+                                   [--accept]
+
+Add the model profiles this specy-road version ships that a repo lacks.
+
+``init project`` scaffolds ``model-profiles/`` once, so a repo scaffolded by an
+older version has none, and a repo whose roster names a model profiled only by
+a newer version lacks that one file. This copies the **missing** profiles a roster
+entry in ``roadmap/orchestration.yaml`` names (by ``id``, alias or ``profile:``),
+or every missing one with ``--profiles all``, and the README, and never
+overwrites: the adopter's copies are theirs to edit (prices, CLI syntax, their
+own research), which is why the profiles are scaffolded rather than read from
+the package. Use ``--force`` for one named profile to
+take the toolkit's copy over yours.
+
+Two regions of ``model-profiles/`` are rendered from the harness facts fixture
+(:mod:`specy_road.harness_facts`): each profile's ``access.cli`` and the README's
+harness block. ``--check`` reports a hand edit to either as drift (exit 1) and a
+README that predates the block as behind, and fails on a Codex memory override
+whose feature the accepted ``codex features list`` capture does not list; ``--render`` rewrites them. ``--capture
+<harness>`` classifies a new ``--version``/``--help`` capture against the accepted
+one and fails while a new workflow identifier has no relationship in the fixture;
+``--accept`` then stores it as the accepted capture.
+
+options:
+  -h, --help            show this help message and exit
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+  --dry-run             Print what would be written; do not modify files.
+  --force PATH          Overwrite this profile (repo-relative, e.g. model-profiles/openai-
+                        gpt/gpt-6.1-sol.md); repeatable.
+  --only API_ID         Add missing profile(s) whose front-matter api_id or file stem matches,
+                        whatever --profiles says.
+  --profiles {roster,all}
+                        roster (default): add the missing profiles a roadmap/orchestration.yaml
+                        roster entry names, and the README; all: every missing profile this specy-
+                        road ships.
+  --check               Report rendered regions that differ from harness-facts.yaml, and Codex
+                        memory overrides the captured features list does not list; exit 1 on
+                        either. Writes nothing.
+  --render              Rewrite the rendered regions (each profile's access.cli, the README's
+                        harness block).
+  --capture HARNESS     Classify a new --version/--help capture of HARNESS against the accepted
+                        one.
+  --from DIR            With --capture: read the capture's *.txt files from DIR instead of running
+                        the harness.
+  --accept              With --capture: store a passing capture as the accepted one.
+--- stderr ---

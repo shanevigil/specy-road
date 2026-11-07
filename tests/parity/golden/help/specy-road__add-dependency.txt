@@ -1,0 +1,12 @@
+$ specy-road add-dependency --help
+exit: 0
+--- stdout ---
+usage: specy-road add-dependency [-h] NODE_ID DEP
+
+positional arguments:
+  NODE_ID
+  DEP         Display id (M1.2) or node_key; stored as the node_key
+
+options:
+  -h, --help  show this help message and exit
+--- stderr ---

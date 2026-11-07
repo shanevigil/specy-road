@@ -1,0 +1,40 @@
+$ specy-road brainstorm --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm [-h]
+                             {start,add-idea,list,sessions,close,accept,reject,realize,revise,recommend,promote,next-round,frame,evidence,add-evidence,verify,park,decide,merge,cluster}
+                             ...
+
+Brainstorm roadmap ideas with an agent, then promote the ones you keep. Two modes: `start`
+diverges (Socratic questioning, then quantity; no research in round 1, `next-round` opens it) and
+`recommend` converges (clustering and ranking). Both write a prompt under work/ for your agent to
+run; ideas land in work/brainstorm-<slug>.yaml, which is tracked.
+
+positional arguments:
+  {start,add-idea,list,sessions,close,accept,reject,realize,revise,recommend,promote,next-round,frame,evidence,add-evidence,verify,park,decide,merge,cluster}
+    start               open (or reopen) a session and write the divergent prompt
+    add-idea            record one idea, or a file of them (the agent calls this)
+    list                show the ideas in a session
+    sessions            list every open brainstorm session
+    close               move a finished session to work/brainstorm-closed/ so it stops counting as
+                        open
+    accept              keep one or more ideas
+    reject              discard one or more ideas
+    realize             link an idea to a roadmap node you created outside promote
+    revise              edit an idea, or record a recommendation (or a file of them)
+    recommend           switch to roadmap mode and write the convergent prompt
+    promote             turn accepted ideas into roadmap nodes
+    next-round          open the next diverge round: regenerate against the pool
+    frame               record the agreed frame or the allocation grid
+    evidence            write the evidence prompt for shortlisted ideas
+    add-evidence        record one source on an idea (the agent calls this)
+    verify              check that each recorded quote appears on its page (asks before fetching)
+    park                set ideas aside with a reason and, optionally, a revisit condition
+    decide              record the decision or policy an idea settled: status decided; promote
+                        writes it into the anchor's sheet instead of a node
+    merge               fold a duplicate idea into others: status merged, linked both ways
+    cluster             record a converge cluster: its name, best statement and critics
+
+options:
+  -h, --help            show this help message and exit
+--- stderr ---

@@ -1,0 +1,27 @@
+$ specy-road review delegate --help
+exit: 0
+--- stdout ---
+usage: specy-road review delegate [-h] --model MODEL [--ref REF] [--resume] [--retries N]
+                                  [--backoff SECONDS] [--worktree WORKTREE] [--sign-key PATH]
+                                  [--json] [--repo-root DIR]
+                                  node_id
+
+positional arguments:
+  node_id
+
+options:
+  -h, --help           show this help message and exit
+  --model MODEL        Roster id (reviewer role, or an active substitute)
+  --ref REF            Branch or commit under review (default: the node's registered branch)
+  --resume             Continue the recorded reviewer session for this commit
+  --retries N          Capacity or rate-limit retries (default 3)
+  --backoff SECONDS    First retry's wait, doubled each time (default 30)
+  --worktree WORKTREE  Run the reviewer in this checkout (default: a chore's worktree for a chore
+                       slug, else this checkout's git root)
+  --sign-key PATH      Sign the filed record with this OpenSSH private key (needed under
+                       policy.signed_reviews)
+  --json
+  --repo-root DIR      Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                       .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                       root, else the current directory).
+--- stderr ---

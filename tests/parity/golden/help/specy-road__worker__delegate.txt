@@ -1,0 +1,28 @@
+$ specy-road worker delegate --help
+exit: 0
+--- stdout ---
+usage: specy-road worker delegate [-h] [--model MODEL]
+                                  [--harness {claude-code,codex,cursor,generic}]
+                                  [--worktree WORKTREE] [--offline] [--rework] [--json]
+                                  [--op-id ID] [--repo-root DIR]
+                                  node_id
+
+positional arguments:
+  node_id               A claimed leaf, or a chore slug (`specy-road chore start`)
+
+options:
+  -h, --help            show this help message and exit
+  --model MODEL         Roster id (executor role); a chore's default is its own --model
+  --harness {claude-code,codex,cursor,generic}
+                        Override the roster entry's harness
+  --worktree WORKTREE   Run in this checkout (default: this one if it has the claim's branch, else
+                        a linked worktree)
+  --offline             Count this checkout's workers only and push no lease (when the integration
+                        remote is unreachable)
+  --rework              Take over after blocking reviews or a terminated or failed worker
+  --json
+  --op-id ID
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

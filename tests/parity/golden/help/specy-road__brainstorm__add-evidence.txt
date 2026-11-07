@@ -1,0 +1,34 @@
+$ specy-road brainstorm add-evidence --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm add-evidence [-h] [--url URL] [--path FILE[:LINE]] [--query TEXT]
+                                          [--no-result] [--quote TEXT] [--supports TEXT]
+                                          [--stance {for,against}] [--tool TEXT]
+                                          [--source-type TYPE] [--retrieved-at DATE] [--slug SLUG]
+                                          [--repo-root DIR]
+                                          IDEA_ID
+
+positional arguments:
+  IDEA_ID
+
+options:
+  -h, --help            show this help message and exit
+  --url URL             The page. One of --url, --path or --query.
+  --path FILE[:LINE]    A file in this repository (source type repo); records the HEAD commit, and
+                        verify checks the quote against the file at that commit, locally.
+  --query TEXT          With --no-result: a search, e.g. a disconfirming one, that found nothing.
+  --no-result           Record --query as a search with no hit; it takes no --quote and verify
+                        skips it.
+  --quote TEXT          Verbatim text from the page or file (≤300 chars); required unless --no-
+                        result — a URL alone is not evidence.
+  --supports TEXT       The claim this source bears on.
+  --stance {for,against}
+  --tool TEXT           How it was retrieved, e.g. 'claude WebFetch'.
+  --source-type TYPE    official-doc, regulation, paper, customer-report, news, competitor; repo
+                        with --path.
+  --retrieved-at DATE   Default: today.
+  --slug SLUG           Session name (default: the only open session; required when several are).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

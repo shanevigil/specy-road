@@ -1,0 +1,15 @@
+$ specy-road show-archive --help
+exit: 0
+--- stdout ---
+usage: specy-road show-archive [-h] [--json] [--repo-root DIR] ARCHIVE_ID
+
+positional arguments:
+  ARCHIVE_ID
+
+options:
+  -h, --help       show this help message and exit
+  --json           Emit the raw record JSON.
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

@@ -1,0 +1,17 @@
+# Constraints
+
+Operational rules that are **enforced** (or enforceable by CI), not aspirational prose.
+
+| Rule | Where | Check |
+|------|--------|--------|
+| Max file length (matched globs) | [`file-limits.yaml`](file-limits.yaml) | `specy-road file-limits` |
+| Max function length (**Python** `.py`; **TS/JS** `.ts` `.tsx` `.js` `.jsx` `.mjs`) | same | same |
+| Optional policy: excludes, overlays, advisory `hard_alerts` | same | same |
+| Roadmap graph | `roadmap/` JSON + `registry.yaml` | `specy-road validate` |
+| Defect classes every reviewer checks | [`review-lessons.md`](review-lessons.md) | `specy-road lessons list` |
+
+**Dependency and supply-chain policy** (Python/npm, advisory scans, review discipline) lives in [`docs/supply-chain-security.md`](../docs/supply-chain-security.md). Enforce it with your own CI jobs and lockfiles.
+
+Tune `file-limits.yaml` globs for your repository layout (for example `src/`, `packages/`, `app/`). Per-function / `hard_alerts.max_lines_per_function` apply to **`.py`** and **`.ts` `.tsx` `.js` `.jsx` `.mjs`** sources. TS/JS coverage is `function` declarations, arrow functions bound by `const`/`let`/`var`, and class methods; unnamed callbacks are not measured. For **other languages**, keep **per-file** limits here and enforce method/style rules with language-native tooling in CI.
+
+**Two things are skipped before your globs are applied**, so you do not have to re-declare them: files **git ignores** (they never reach CI — pass `specy-road file-limits --no-respect-gitignore` to include them), and the toolkit's own session artifacts under `work/` (`brief-`, `prompt-`, `implementation-summary-`, `pr-body-`, `.on-complete-`, `.milestone-session.yaml`). Those are machine-written and regenerated each cycle, so a line cap on them is not actionable.
