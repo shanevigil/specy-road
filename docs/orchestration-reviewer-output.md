@@ -5,8 +5,12 @@ How a launched reviewer answers and what specy-road checks before it files the r
 The reviewer prompt ends with the review output schema: the review-record
 schema without the fields specy-road fills (`family`, `independence`,
 `notes_sha256`, `signature`, `launch_mode`, `harness_model`, `model_mismatch`), plus `notes`, the Markdown notes.
-The reviewer's final message is exactly one JSON object matching it. Each default
-reviewer command passes the harness's structured-output flag where there is one:
+The reviewer's final message is exactly one JSON object matching it. Before
+that object, the prompt tells the reviewer to list every required change
+it can find in this one review, re-scan the diff for further instances of each
+defect class (other inputs, call sites, files) and any acceptance line not fully
+met, and that a later round should find nothing it could have reported now.
+Each default reviewer command passes the harness's structured-output flag where there is one:
 
 | Harness | Reviewer command | Where the JSON comes from |
 |---|---|---|

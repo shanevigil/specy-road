@@ -6,6 +6,7 @@ check, stdout and stderr merged into one pipe (as ``finish-this-task 2>&1 | tee`
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -313,6 +314,100 @@ def _put(path: Path, state: tuple[str, str | bytes]) -> None:
         path.symlink_to(state[1])
     else:
         path.write_bytes(state[1])
+
+
+def _feature_checkout_hook(repo: Path) -> None:
+    """A post-checkout hook that fails only ``git checkout`` of the feature branch."""
+    hook = repo / ".git" / "hooks" / "post-checkout"
+    hook.write_text(
+        "#!/bin/sh\n"
+        "ref=$(git symbolic-ref -q HEAD || true)\n"
+        f"case $ref in refs/heads/{BRANCH}) exit 1 ;; esac\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    hook.chmod(0o755)
+
+
+def _set_land(repo: Path, land: str) -> None:
+    text = (repo / "roadmap" / "git-workflow.yaml").read_text(encoding="utf-8")
+    if not text.endswith("\n"):
+        text += "\n"
+    commit_file(repo, "roadmap/git-workflow.yaml", f"{text}land: {land}\n", f"land: {land}")
+
+
+def _clash(repo: Path) -> None:
+    """A non-bookkeeping conflict, so the integration merge fails."""
+    git(repo, "checkout", "-q", "dev")
+    commit_file(repo, "src/clash.py", "dev = 1\n", "dev clash")
+    git(repo, "checkout", "-q", BRANCH)
+    commit_file(repo, "src/clash.py", "feature = 1\n", "feature clash")
+
+
+def _separated(repo: Path, argv: list[str]) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO)
+    return subprocess.run(
+        [sys.executable, *argv, "--repo-root", str(repo)], cwd=repo, env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False,
+    )
+
+
+_CHECKOUT_WARNING = (
+    "warning: landing succeeded, but checking out the feature branch failed; "
+    f"run `git checkout {BRANCH}`"
+)
+
+
+def _node_status(repo: Path, ref: str) -> str:
+    nodes = json.loads(git(repo, "show", f"{ref}:roadmap/phases/M1.json"))["nodes"]
+    return next(n["status"] for n in nodes if n["id"] == "M1.1")
+
+
+@pytest.mark.parametrize("case", ["local", "push", "merge-fails"])
+def test_feature_checkout_failure_keeps_a_landed_finish(tmp_path: Path, monkeypatch, case: str) -> None:
+    """A2: a post-checkout failure after a successful landing warns and keeps the bookkeeping.
+
+    ``local`` and ``push`` exit 0: integration holds the completion, the feature
+    branch keeps its bookkeeping commit, one stderr warning, no advice to run
+    finish again. ``merge-fails``: the merge fails as well, so bookkeeping is undone.
+    """
+    repo, bare = _repo(tmp_path, monkeypatch)
+    if case == "local":
+        _set_land(repo, "local")
+    if case == "merge-fails":
+        _clash(repo)
+    _feature_checkout_hook(repo)
+    pre = git(repo, "rev-parse", "HEAD")
+    remote_dev = git(bare, "rev-parse", "dev")
+    result = _separated(repo, ["-m", "specy_road.cli", "finish-this-task"])
+    out = result.stdout + result.stderr
+    if case == "merge-fails":
+        assert result.returncode == 1, out
+        assert "src/clash.py" in out
+        assert git(repo, "rev-parse", BRANCH) == pre
+        assert "run `specy-road finish-this-task` again" in out
+        reg = yaml.safe_load(git(repo, "show", f"{BRANCH}:roadmap/registry.yaml"))
+        assert any(e.get("codename") == "thing" for e in reg["entries"])
+        return
+    assert result.returncode == 0, out
+    checkout_lines = [ln for ln in result.stderr.splitlines() if f"git checkout {BRANCH}" in ln]
+    assert checkout_lines == [_CHECKOUT_WARNING]
+    assert "run `specy-road finish-this-task` again" not in out and "finish again" not in out
+    assert git(repo, "rev-parse", BRANCH) != pre
+    assert "complete, deregister" in git(repo, "log", "-1", "--format=%s", BRANCH)
+    reg = yaml.safe_load(git(repo, "show", f"{BRANCH}:roadmap/registry.yaml"))
+    assert not any(e.get("codename") == "thing" for e in reg.get("entries") or [])
+    where = repo if case == "local" else bare
+    assert _node_status(where, "dev") == "Complete"
+    if case == "local":
+        git(repo, "merge-base", "--is-ancestor", BRANCH, "dev")
+        assert git(bare, "rev-parse", "dev") == remote_dev
+        done = f"[ok] merged {BRANCH} into local dev (land: local); nothing pushed to origin"
+    else:
+        git(bare, "merge-base", "--is-ancestor", git(repo, "rev-parse", BRANCH), "dev")
+        done = f"[ok] merged {BRANCH} into dev and pushed to origin"
+    assert _last_line(result) == done, result.stdout
 
 
 @pytest.mark.parametrize("tracked", [True, False], ids=["tracked", "untracked"])
