@@ -296,6 +296,7 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road review accept-policy --all-open` asks once for every open claim whose pinned review policy differs from the integration branch. It prints each distinct set of changes once with the leaves it affects, and one typed confirmation writes each of those leaves its own `work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml` naming that leaf's pinned digest and the accepted digest. It still needs a terminal; one node id is unchanged. The prompt and the gate refusal say, in plain language, what changed, that the review rules changed after this work started, and what approving covers, with the raw change lines below, and name `specy_road.review_policy_pin` in the installed package. See docs/orchestration-review.md.
 - `specy-road init project` ends a successful run with the next steps: set `integration_branch` and `remote` in
   `roadmap/git-workflow.yaml` (with the project prefix in a nested layout), commit the scaffold, and
   `specy-road validate` (`git init` first when the target is outside a repository). A `--dry-run` or a refused run
