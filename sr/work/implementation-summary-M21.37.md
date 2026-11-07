@@ -480,13 +480,37 @@ Commit `9a2fcfbc` adds the rows. This table covers every caller of `safe_write.c
 
 `history_cache.py` was not changed (M21.39).
 
+## Fix round 12 (review `gpt-5.6-sol-high` at `6d9c2556`; `gpt-6.1-sol-low` at `e3f70e09`; `grok-4.7-high` at `85466059`)
+
+Commit `a787ec3f`.
+
+- **Sol's finding.** `managed_block._write` caught every `OSError` from the strict write as `failed`. A `.gitignore` swapped to a link after the preflight was refused by `safe_write`'s re-check before replace (outside bytes safe), but `refresh-stubs` reported `.gitignore (failed)` and exited 0.
+- **The class.** A `SafeWriteError` from a write that runs after the command's preflight, turned into an outcome that is not an error. It reaches every caller of the strict managed block: `refresh-stubs`, `upgrade` and `upgrade --dry-run` (via `refresh_stubs`), and `init project` and `specyrd init` (via `agent_ignores.apply_and_report`).
+- **The fix.** `_write` keeps the error as `refused: <why>`, which is the outcome `_read` already gives for the same refusal. `refresh-stubs` and `upgrade` already turn that outcome into `error:` and exit 1 (`rule_refusal`). `init project` and `specyrd init` reported it as a line and exited 0. They now call a new `managed_block.raise_rule_refusal(written)` after `apply_and_report`, which raises `SafeWriteError`. Both commands already print that as `error:` and exit 1 (`_scaffold`'s handler and `exit_on_refusal`). In `specyrd_init` the two calls sit in a new `_apply_ignores` helper, which keeps `run_init` under the 80-line function cap.
+- **Test.** New `test_an_ignore_file_linked_right_before_replace_is_an_error`, with 5 rows: `refresh-stubs`, `upgrade`, `upgrade --dry-run`, `specyrd init` and `init project --force`. Each row makes `.gitignore` stale. It patches the public `os.chmod`, the step just before the re-check, the same hook as the primitive's swap test, so that when the `.gitignore` temp file is chmod'ed the destination is swapped to a link to an outside file. It asserts exit 1, an `error:` line naming `.gitignore is a symlink`, no traceback, and the outside bytes unchanged. Red-green:
+  - With `managed_block.py` from `6d9c2556`, all 5 rows fail.
+  - With the `managed_block` fix but without the `raise_rule_refusal` calls, the two init rows fail.
+- **Sol R1/R2 and grok's README finding (earlier commits).** These were fixed in rounds 7 and 9 and are unchanged at this tip. Their rows still pass: the shape table's `dotdot-through-link` and `git-dir` (both refused under A1's two-value rule) and the `readme-*` layouts.
+
+### Probes (fix round 12)
+
+- `managed_block.apply_managed_block`, `_read`: strict mode already maps `SafeWriteError` to `refused: <why>`. Consistent with the fix.
+- `managed_block.remove_managed_block`: non-strict, so it never calls `safe_write`. Not reachable.
+- `agent_ignores._seed`: a swap at seed time is caught as `OSError` and returns `False`. The strict block that follows then reads the path through `_read`, which refuses the link as `refused: <why>`, so the class is closed there too. Not changed.
+- `refresh_stubs._write_if_changed`: already maps `SafeWriteError` to `refused: <why>` (line 133), which `_exit_on_rule_refusals` turns into exit 1. Consistent.
+- `specyrd_skills.ensure_link`: `except OSError` covers only `os.symlink`. Its fallback `safe_write.write` raises past it to `exit_on_refusal`. Not swallowed.
+- `init_project._scaffold` (`except (OSError, RuntimeError)` → `error:`), `upgrade_plan` line 272 (names the checkout path), `specyrd_init._refuse_unsafe_paths`: each turns a refusal into an error. Consistent.
+- `specyrd_init._load_manifest`, `refresh_schemas` line 55, `upgrade` line 260, `upgrade_plan` lines 43 and 159, `specyrd_skills` lines 203, 212 and 311, `archive_restore` line 107: reads or probes only, with no `safe_write` write inside the `try`. Not reachable.
+- `AGENTS.md` / `CLAUDE.md` blocks (non-strict, `resolves_outside`): `_plain_write` never raises `SafeWriteError`. Out of the class.
+- Full suite (`pytest -n 4`) at the fix: 6176 passed. `ruff check`: pass. `specy-road file-limits`: OK.
+
 ## Touch zones
 
 All edits are inside the listed zones (`specy_road/specyrd_hooks.py` added in round 10). No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
 
 ## Verification
 
-- `pytest -n 4` full suite at `9a2fcfbc`: 6171 passed.
+- `pytest -n 4` full suite at `a787ec3f`: 6176 passed.
 - `ruff check specy_road tests scripts`, `scripts/check_clones.py`, `scripts/check_test_private_imports.py` and `scripts/check_machine_paths.py`: pass.
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood` and `specy-road file-limits`: pass.
 
@@ -544,4 +568,5 @@ All edits are inside the listed zones (`specy_road/specyrd_hooks.py` added in ro
 - Fix round 10: `specyrd_hooks.hook_destinations`, used by the preflight; the `guard_hooks` and `pre_push` arguments of `specyrd_init._refuse_unsafe_paths`; the safe-write calls and the pre-check before the harness JSON is read in `specyrd_hooks`; the pre-push mode branch, so the file keeps its own mode or the umask's, plus execute bits. Test: `test_specyrd_init_refuses_a_linked_hook_destination` (10 rows); no mock.
 - Writer audit: the `manifest-link-out` and `specyrd-parent-link` rows in `INIT_LAYOUTS` (the init-project manifest class, final and parent; they pass on the current code, coverage only); no helper, no mock.
 - Fix round 11: `archive_restore._checked` (returns the checked path, used for every restore operation, and refuses a `..` spelling that a raw re-join elsewhere would read differently), replacing the old `_check` body; `safe_write.mkdirs` for the restore's parent directories. Tests: the `origin-cancelled` (Sol's reproduction), `chunk-cancelled`, `stored-cancelled` and `capsule-cancelled` (deep) layouts in `test_archive_restore_refuses_before_the_first_change`, plus their `_cancelled` setup helper (the coordinator's caller audit: one row per restore path the fix covers); no mock.
-- Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
+- Fix round 12: the `SafeWriteError` branch in `managed_block._write` (a refusal at replace is `refused: <why>`, not `failed`); `managed_block.raise_rule_refusal` (one call for `init project` and `specyrd init`, so a rule refusal outcome exits 1 the way `refresh-stubs` and `upgrade` already do); `specyrd_init._apply_ignores` (keeps `run_init` within the function cap). Test: `test_an_ignore_file_linked_right_before_replace_is_an_error` (5 rows: refresh-stubs, upgrade, upgrade --dry-run, specyrd init, init project --force); it patches the public `os.chmod` to swap the link in.
+- Mocks: `os.chmod` (monkeypatch, restored) in the swap tests; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
