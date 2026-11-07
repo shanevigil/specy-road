@@ -6,7 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 The release-publish workflow extracts the section for the release tag
-(matched by `## [vX.Y.Z]` heading) and uses it as the GitHub Release
+(matched by `## [vX.Y.Z]` heading), appends that release's wheel URL,
+sha256 and one install line, and uses the result as the GitHub Release
 body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
@@ -71,6 +72,7 @@ body. Keep section bodies focused; link to PRs for detail.
   placeholder keeps the `<ID>` token instead of substituting the display id, so a sheet from add-node,
   scaffold-planning, group-nodes, brainstorm promote or the PM GUI add does not repeat the id the file name
   already carries. Pickup's skip reason still names the id. Existing sheets keep their line.
+- A published release's GitHub notes include the exact wheel URL (`files.pythonhosted.org` or `test-files.pythonhosted.org`), its sha256, and one ready-to-paste `pip install "specy-road @ <url>#sha256=<sha>"` line. The package metadata lists Project URLs, including the release-candidate install guide, and the README links a reader needs from the package page are absolute. The RC install guide says moving to a newer RC is a fresh install of the new URL, because `uv tool upgrade` stays on the URL pin.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.

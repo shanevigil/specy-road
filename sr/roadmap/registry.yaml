@@ -70,19 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: rc-publishes-wheel-url-and-project-urls
-    node_id: M22.36
-    branch: feature/rm-rc-publishes-wheel-url-and-project-urls
-    touch_zones:
-      - .github/workflows/release-publish.yml
-      - pyproject.toml
-      - README.md
-      - docs/install-release-candidates.md
-      - CHANGELOG.md
-      - tests/test_release_harness.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: deps-ids-briefs-and-landed-branch
     node_id: M22.14
     branch: feature/rm-deps-ids-briefs-and-landed-branch

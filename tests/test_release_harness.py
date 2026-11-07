@@ -21,10 +21,14 @@ Specifically guarded:
   pyproject ``X.Y.ZrcN``) round-trips correctly.
 - ``post_release_readme_cleanup.py`` is idempotent (re-running on a
   clean README is a no-op).
+- The release-notes step writes the exact wheel URL, sha256 and one install
+  line for both publish hosts, and refuses any other target or a dist that
+  is not exactly one wheel.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -331,3 +335,103 @@ def test_release_target_routing_documented(version: str, expect_target: str) -> 
     else:
         assert "PyPI" in body
         assert re.search(r"final.*PyPI|PyPI.*final", body, re.IGNORECASE)
+
+
+# Fixed bytes so the expected URL and sha256 are literals, not a second copy
+# of the notes step. An sdist with different bytes sits beside the wheel, as
+# dist/ does after the build.
+_WHEEL_NAME = "specy_road-0.3.1rc2-py3-none-any.whl"
+_WHEEL_BYTES = b"specy-road wheel bytes\n"
+_WHEEL_SHA256 = "1ff26bee6ed54a0e8b8e4a8ddd675cb650295c368af7982fcda7e37aa51093bf"
+_WHEEL_PATH = (
+    "d4/98/23305c4b085dba3338eb8761361dad682c039bc0cdb45839c26ea82597b1/"
+    + _WHEEL_NAME
+)
+_CHANGELOG = "changelog body\n"
+
+
+def _notes_step_script() -> str:
+    """The Python the release-notes step runs, taken from the workflow."""
+    run = _load_yaml(WORKFLOWS / "release-publish.yml")["jobs"]["github-release"]["steps"][2]["run"]
+    start = run.index("python3 - <<'PY'\n") + len("python3 - <<'PY'\n")
+    return run[start:run.index("\nPY\n", start)]
+
+
+def _run_notes_step(tmp_path: Path, target: str, files: dict[str, bytes]):
+    """Run that step's Python against ``files`` and return ``(result, notes)``."""
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    for name, data in files.items():
+        (dist / name).write_bytes(data)
+    notes = tmp_path / "release-notes.md"
+    notes.write_text(_CHANGELOG, encoding="utf-8")
+    env = os.environ.copy()
+    env["RELEASE_TARGET"] = target
+    env["RELEASE_DIST_DIR"] = str(dist)
+    env["RELEASE_NOTES_PATH"] = str(notes)
+    result = subprocess.run(
+        [sys.executable, "-c", _notes_step_script()],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result, notes.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "target,host",
+    [
+        ("pypi", "files.pythonhosted.org"),
+        ("testpypi", "test-files.pythonhosted.org"),
+    ],
+)
+def test_release_notes_name_the_wheel_for_both_publish_hosts(tmp_path: Path, target: str, host: str) -> None:
+    """Both hosts get the same wheel URL path, sha256 and one install line."""
+    result, text = _run_notes_step(
+        tmp_path,
+        target,
+        {_WHEEL_NAME: _WHEEL_BYTES, "specy_road-0.3.1rc2.tar.gz": b"sdist bytes\n"},
+    )
+    url = f"https://{host}/packages/{_WHEEL_PATH}"
+    install = f'pip install "specy-road @ {url}#sha256={_WHEEL_SHA256}"'
+    assert result.returncode == 0, result.stderr
+    assert f"Wheel URL: {url}\n" in text
+    assert f"sha256: {_WHEEL_SHA256}\n" in text
+    assert f"```bash\n{install}\n```\n" in text
+    assert text == (
+        f"{_CHANGELOG}\n"
+        f"Wheel URL: {url}\n\n"
+        f"sha256: {_WHEEL_SHA256}\n\n"
+        f"```bash\n{install}\n```\n"
+    )
+
+
+@pytest.mark.parametrize("target", ["dry-run", "local"])
+def test_release_notes_reject_an_unsupported_publish_target(tmp_path: Path, target: str) -> None:
+    """A target outside the host table writes no URL."""
+    result, text = _run_notes_step(tmp_path, target, {_WHEEL_NAME: _WHEEL_BYTES})
+    assert result.returncode != 0
+    assert text == _CHANGELOG
+    assert f"got target {target!r}" in result.stderr
+    assert "Wheel URL:" not in text
+
+
+@pytest.mark.parametrize(
+    "names",
+    [
+        [],
+        ["specy_road-0.3.1rc2.tar.gz"],
+        ["a.whl", "b.whl"],
+        ["a.whl", "b.whl", "c.whl"],
+    ],
+)
+def test_release_notes_reject_a_dist_that_is_not_one_wheel(tmp_path: Path, names: list[str]) -> None:
+    """Zero wheels, an sdist alone, or more than one wheel writes no URL."""
+    result, text = _run_notes_step(tmp_path, "pypi", {name: b"x" for name in names})
+    assert result.returncode != 0
+    assert text == _CHANGELOG
+    assert "exactly one wheel" in result.stderr
+    wheels = sorted(name for name in names if name.endswith(".whl"))
+    assert str(wheels) in result.stderr
+    assert "Wheel URL:" not in text

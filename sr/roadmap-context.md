@@ -164,7 +164,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
   - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Complete**
   - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Not Started**
-  - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Not Started**
+  - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Complete**
   - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
   - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Complete**
   - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Not Started**
@@ -313,7 +313,6 @@ Do not pick these up.
 - `M21.38` on `feature/rm-review-writers-refuse-links` since 2026-11-07
 - `M22.14` on `feature/rm-deps-ids-briefs-and-landed-branch` since 2026-11-07
 - `M22.21` on `feature/rm-preview-rollback-fidelity` since 2026-11-07
-- `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
 
 ## Quality by area
 
@@ -321,13 +320,16 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 47 | 0 | 2.40 | 53% | 29 | 3 |
-| `docs` **flagged** | 35 | 0 | 2.43 | 51% | 20 | 1 |
+| `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
+| `CHANGELOG.md` **flagged** | 47 | 0 | 2.43 | 55% | 28 | 3 |
+| `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
+| `docs` **flagged** | 35 | 0 | 2.46 | 54% | 19 | 1 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
+| `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 46 | 0 | 2.43 | 54% | 29 | 3 |
-| `tests` **flagged** | 47 | 0 | 2.36 | 51% | 27 | 3 |
+| `specy_road` **flagged** | 45 | 0 | 2.47 | 56% | 28 | 3 |
+| `tests` **flagged** | 47 | 0 | 2.38 | 53% | 26 | 3 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
