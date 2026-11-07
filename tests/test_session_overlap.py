@@ -111,6 +111,7 @@ def test_a_removed_worktree_is_unknown_not_clean(tmp_path: Path, capsys, monkeyp
     monkeypatch.setenv("USER", "alice")
     sp.start_session(repo, "alice", paths=["src"], worktree=wt)
     shutil.rmtree(wt)
+    wt.mkdir()   # still a directory, so the session stays live, but no longer a git checkout
     monkeypatch.chdir(repo)
     assert _start_as(monkeypatch, "bob", repo, "--agent", "bob", "--path", "src") == 0
     err = capsys.readouterr().err

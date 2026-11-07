@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road.session_presence import current_user, end_session, list_sessions
 from specy_road.worker_lease import lease_adopted, release_lease
 from specy_road.worker_ops_launch import _target, _worktree_for
 from specy_road.worker_process import kill_group, process_alive
@@ -41,6 +42,9 @@ def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:
         return rec
     if rec.lease.get("holder") == "human":
         raise WorkerError(f"{rec.worker_id} is handed off to a human; `worker reclaim` first")
+    # The wrapper leads its own POSIX session and drops SPECY_ROAD_AGENT_ID, so a `session start` the harness ran
+    # is named `<user>-s<pgid>`; read before anything clears the pgid.
+    agent = f"{current_user()}-s{rec.pgid}" if rec.pgid else None
     summary = "terminated by the coordinator"
     if rec.lease.get("holder") == "native":
         summary = "record closed; the adopted native session was not signalled (observe-only lease)"
@@ -54,9 +58,18 @@ def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:
         rec, summary = load_record(repo_root, rec.worker_id), f"{summary}; dropped queued follow-up"
     if FLAG_UNDELIVERED in rec.flags:
         clear_flag(repo_root, rec, FLAG_UNDELIVERED)
+    if agent:
+        _end_worker_session(repo_root, agent, Path(rec.worktree))
     set_state(repo_root, rec, "terminated", pid=None)
     append_event(repo_root, rec, "terminated", source="orchestrator", authority="orchestrator", summary=summary)
     return rec
+
+
+def _end_worker_session(repo_root: Path, agent: str, worktree: Path) -> None:
+    """End the worker's own live presence record in its worktree; a peer's, or another worktree's, stays."""
+    for s in list_sessions(repo_root):
+        if s.agent == agent and isinstance(s.worktree, str) and Path(s.worktree).resolve() == worktree.resolve():
+            end_session(repo_root, agent)
 
 
 def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,

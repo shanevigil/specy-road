@@ -43,6 +43,12 @@ body. Keep section bodies focused; link to PRs for detail.
   case-variant name (`rejected-opus.md`, `review-human.md`), and unreadable `REJECTED` markers are listed in any
   case.
 
+- A worker's simple shell `channels.cli`, such as `codex exec --json -m gpt-6.1-sol … - < {prompt}`, is priced
+  from its literal `-m` as an estimate (`est.`) instead of `$?`. A command that is not one simple command, such
+  as the Codex git-roots grant with its quoted `$(git rev-parse …)`, a pipeline, or a non-literal `-m`, stays `$?`.
+- A presence session stops counting as live once its recorded worktree is gone or its branch is deleted;
+  `session list --all` marks it `stale: worktree gone` or `stale: branch gone`. `worker terminate` ends the
+  presence session the worker's harness started in its worktree, and leaves other agents' sessions alone.
 - A sandboxed worker turn can read its leaf's review records. The `work/reviews/<ID>/` outbox now starts with a
   copy of the regular files already there (REVIEW, notes and `history/` records; links are not copied), so a
   fix round sees its blocking review. Only `READY-*` files are still moved back, so an edited copy of a record
