@@ -89,7 +89,35 @@
   `Path.resolve` swaps the root right after its first resolution). It expects `SafeWriteError` naming the root,
   and nothing outside or in the real root. `write-after-resolve` and `copy-after-resolve` fail at `4591a171`.
 
+## Fix round 5 (review `gpt-5.6-sol-high` at `b718e379`)
+
+- **Finding: a skip decided by path before the held walk.** `_hold_planning_sheets` filtered sheets with
+  `(root / origin).is_file()`. Swapping `planning` for a link out to a directory without the sheet made that
+  check read the sheet as gone, so the archive skipped it. The roadmap then changed and the sheet was left
+  behind; validation raised later. The class is any decision that lets an archive operand bypass the walk,
+  made from a path outside the held walk.
+- **Fix, one bounded rule** (in `safe_write.moving`'s docstring): only the held walk decides that `src` is
+  absent. `moving` yields `None` when a directory or the file on `src`'s way is missing (links followed as in
+  the walk), and otherwise yields the rename. The archive walks every sheet and keeps only the non-`None`
+  results; the `is_file()` pre-filter is gone. A skipped sheet makes no destination directories, because the
+  destination is walked only for a present source. Without `dir_fd` (Windows), the decision is by path, as in
+  M21.37's path model.
+- **Test:** `test_a_sheet_is_skipped_only_when_the_held_walk_finds_it_gone`, cases `gone` and
+  `swapped-before-the-walk`. In the swap case, a wrapper on public `Path.resolve` swaps `planning` for a link
+  to an empty outside directory right after the archive's link pre-check resolves the sheet, before any walk.
+  The archive is refused naming `planning`, the roadmap is byte-identical, no chunk exists, and outside stays
+  empty. In the `gone` case the sheet is really missing: it is skipped and the archive succeeds. The swap case
+  fails at `b718e379` (the sheet is skipped, the roadmap changes, then validation raises); `gone` passes on
+  both.
+
 ## Probes
+
+- Round 5: one swap of `planning` to a link out, right after the pre-check and before the walk: refused before any roadmap change (test).
+- Round 5: a sheet that is really missing: skipped and the archive succeeds (test); a dangling in-repo link or a missing directory on the way reads as absent through the held walk (`FileNotFoundError` from `_held`/`readlink`).
+- Round 5: other path-based decisions in the archive flow: `_refuse_links_out` (resolve) can only refuse, never skip, and a swap after it meets the walk; the chunk path's `resolve()` only names the record (`write_json_chunk` is outside the zones); `origin != source` and `_hold_file`'s link test use held descriptors.
+- Round 5: other path-based decisions in `safe_write.py`: `_replace`'s pre-check (`_walk`) only refuses; `remove`'s "absent by path" is M21.37's path model (out of scope); the no-`dir_fd` fallback is by path (documented).
+- Round 5, limit: `planning` swapped for an in-repo link to a directory without the sheet is followed, as in-repo links are by the rule, so the sheet reads as gone and is skipped. Only someone who can already write inside the repository can do this.
+- Round 5: full suite 6416 passed after the merge.
 
 - Round 4: `write`, `copy` and `mkdirs` with the root swapped right after its first resolution, and right before it is opened: refused, nothing outside (test; `mkdirs` already resolved once and passed before too).
 - Round 4: `moving` (archive) with the root swapped right after its first resolution, for a plain sheet and an in-repo linked sheet: refused naming the root; the sheet, its link and the outside file are unchanged (inline probe).
@@ -131,14 +159,14 @@
   there is no `/proc`; see Fix round 3. On macOS `/proc` is absent, so the descriptor form is used; that branch
   was probed on Linux by hiding `/proc`.
 - `remove`, `prune_empty` and `open_lock` are unchanged: neither the acceptance criterion nor the plan names them.
-- Net line change against base: package +250/-66, tests +233/-6, above A2's informational estimate. Most of the
+- Net line change against base: package +260/-66, tests +266/-6, above A2's informational estimate. Most of the
   difference is the Windows fallback kept beside the descriptor path in `_replace` and `move`.
 - Touch zones: no file outside them changed (rounds 3 and 4; round 3 removed the need to add
   `tests/test_setup_writers_refuse_links.py`). Merged `origin/WIP/improvements-0-3-1` first in each round, with no conflicts.
 
 ## Verification
 
-- `python -m pytest -q -n 4` (full suite, round 4, after the merge and fix): 6365 passed (round 3: 6313).
+- `python -m pytest -q -n 4` (full suite, round 5, after the merge and fix): 6416 passed (round 4: 6365).
 - Round 3 targeted (408 passed): the round-2 list plus `tests/test_init_project.py`.
 - Round 2 targeted (403 passed): the list below plus `tests/test_history_cache.py`, `tests/test_generate_brief.py`, `tests/test_digest.py`.
 - Round 1 targeted: `tests/test_safe_write.py`, `tests/test_archive_ops.py`, the archive suites,
@@ -181,3 +209,5 @@
 - Test `test_a_parent_swapped_after_the_temp_file_leaves_outside_metadata_alone` (`write`, `copy`): round-3 findings; a racer plants an outside file named like the temp file and checks its metadata is kept.
 - `_locate` / `_walk` `base` parameter and `safe_write._make_dirs`: the root is resolved once per operation and passed down (round 4).
 - Test `test_a_root_swapped_for_a_link_before_it_is_opened_is_refused` parametrized `copy` and `after-resolve`, with helper `_swap_after_resolve` (module-local; wraps public `Path.resolve`): round-4 finding.
+- `moving` yields `None` when the held walk proves `src` absent (`except FileNotFoundError` plus the final-kind check); `_hold_planning_sheets` drops those instead of a path pre-filter (round 5).
+- Test `test_a_sheet_is_skipped_only_when_the_held_walk_finds_it_gone` (`gone`, `swapped-before-the-walk`): round-5 finding.
