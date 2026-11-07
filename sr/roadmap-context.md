@@ -313,6 +313,7 @@ Do not pick these up.
 - `M21.38` on `feature/rm-review-writers-refuse-links` since 2026-11-07
 - `M22.14` on `feature/rm-deps-ids-briefs-and-landed-branch` since 2026-11-07
 - `M22.21` on `feature/rm-preview-rollback-fidelity` since 2026-11-07
+- `M22.44` on `feature/rm-workers-run-in-a-sandbox` since 2026-11-07
 
 ## Quality by area
 
