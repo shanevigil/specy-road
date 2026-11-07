@@ -20,7 +20,7 @@ from specy_road import steering_paths
 from specy_road import worker_reconcile as wrc
 from specy_road import worker_state as ws
 from specy_road import worker_turn_check as tc
-from specy_road.git_config_text import parse_config
+from specy_road.git_config_text import git_path, parse_config
 from specy_road.steering_paths import FLAG_STEERING, real_path
 
 
@@ -124,12 +124,13 @@ class _Clock:
 
 
 @pytest.mark.parametrize("snapshot", ["taken", "unavailable", "include_created", "include_link_created",
-                                      "dotgit_missing_nested", "deadline_passed_in_final_operation"])
+                                      "include_under_prefix", "dotgit_missing_nested",
+                                      "deadline_passed_in_final_operation"])
 def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, snapshot: str) -> None:
     """With no steering snapshot from the turn's start (whatever failed), the check fails closed: no git probe. An
     include the unchanged config already names, missing at the start and created by the turn (as a file, or as a
-    link to a file holding the value), is a change too. A worktree inside the main checkout whose ``.git`` is missing
+    link to a file holding the value, or named ``%(prefix)/...``), is a change too. A worktree inside the main checkout whose ``.git`` is missing
     at the start is not read as that checkout: no snapshot, no git command. A deadline passed during the snapshot's
     final operation is a check_error naming the checkout it was reading, not a clean snapshot."""
     p = _layout(tmp_path)
@@ -151,10 +152,17 @@ def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
         monkeypatch.setattr(steering_paths, "git_snapshot", fail)
     included = tmp_path / "later.gitconfig"
     target = tmp_path / "target.gitconfig"
-    if snapshot in ("include_created", "include_link_created"):
+    named = str(included)
+    if snapshot == "include_under_prefix":   # git on PATH lives in <tmp>/bin: %(prefix)/ is <tmp>/
+        real_git = subprocess.run(["sh", "-c", "command -v git"], capture_output=True, text=True, check=True).stdout
+        _write(tmp_path / "bin" / "git", f"#!/bin/sh\nexec '{real_git.strip()}' \"$@\"\n")
+        (tmp_path / "bin" / "git").chmod(0o755)
+        monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
+        named = "%(prefix)/later.gitconfig"
+    if snapshot in ("include_created", "include_link_created", "include_under_prefix"):
         config = p["repo"] / ".git" / "config"
-        config.write_text(config.read_text() + f"[include]\n\tpath = {included}\n")
-        made = included if snapshot == "include_created" else target
+        config.write_text(config.read_text() + f"[include]\n\tpath = {named}\n")
+        made = target if snapshot == "include_link_created" else included
         act = lambda: (made.write_text(f"[core]\n\tfsmonitor = touch {sentinel}\n"),  # noqa: E731
                        made == target and included.symlink_to(target))
     else:
@@ -176,6 +184,8 @@ def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
         assert steer["path"] == str(real_path(included)) if snapshot != "taken" else steer["path"].endswith("/.git/config")
         assert "core.fsmonitor=unset" in steer["before"] and f"core.fsmonitor=touch {sentinel}" in steer["after"]
         assert "git_probes_skipped" in {f["kind"] for f in found}
+    if snapshot == "include_under_prefix":   # this git's own prefix is compiled in (/usr), not the shim's directory:
+        return                                # its resolution is test_a_config_path_value_resolves_as_git_resolves_it
     subprocess.run(["git", "status"], cwd=wt, capture_output=True, check=False)
     assert sentinel.exists()   # the scenario is real: the probe the check skipped would have run it
 
@@ -211,6 +221,32 @@ def test_a_clean_turn_has_no_findings_and_leaves_the_flag_reconcile_lists_and_cl
     assert [ln.strip() for ln in lines if "evil" in ln] == ([] if first == "hook" else steering)
     assert FLAG_STEERING not in ws.load_record(repo, rec.worker_id).flags
     assert wrc.reconcile(repo, rec.worker_id)[1]["steering"] == []
+
+
+@pytest.mark.parametrize("value", ["%(prefix)/share/x.gitconfig", "~/x.gitconfig", "/abs/x.gitconfig",
+                                   "rel/x.gitconfig", "%(prefix)x.gitconfig", "./%(prefix)/x.gitconfig"])
+def test_a_config_path_value_resolves_as_git_resolves_it(tmp_path: Path, value: str) -> None:
+    """Each clause of git's pathname rule against ``git config --path`` (which leaves a relative value relative)."""
+    git(tmp_path, "init", "-q", "r")
+    git(tmp_path / "r", "config", "specy.p", value)
+    out = subprocess.run(["git", "config", "--path", "--get", "specy.p"], cwd=tmp_path / "r", capture_output=True,
+                         text=True, check=True).stdout.strip()
+    assert git_path(value, tmp_path) == (Path(out) if os.path.isabs(out) else tmp_path / out)
+
+
+def test_an_empty_hooks_path_watches_the_hook_names_git_runs_at_the_root(tmp_path: Path) -> None:
+    """git composes ``<value>/<hook>``: an empty ``core.hooksPath`` makes it ``/pre-commit``. The root is watched
+    (not listed: only git's hook names), so a hook appearing there is a change. Written through the public snapshot
+    types, since a test cannot write to ``/``."""
+    p = _layout(tmp_path)
+    git(p["repo"], "config", "core.hooksPath", "")
+    scope = steering_paths.scope_for(p["repo"], p["leaf"])
+    before = steering_paths.git_snapshot(scope)
+    assert before["/"].value.startswith(steering_paths.READ)   # the root, read
+    assert not any(k.startswith(str(p["repo"] / ".git" / "hooks")) for k in before)   # the default is off
+    after = {**before, "/pre-commit": steering_paths.Entry("/pre-commit", "git_hook", "0" * 64, parent="/")}
+    [steer] = tc.steering_changes(before, after)
+    assert (steer["kind"], steer["path"], steer["before"]) == ("steering_file", "/pre-commit", "absent")
 
 
 # --- one rule for an input that cannot be read ---------------------------------------------------------------

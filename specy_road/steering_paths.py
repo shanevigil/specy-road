@@ -39,7 +39,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road.git_config_text import read_chain, watched_values
+from specy_road.git_config_text import git_path, read_chain, watched_values
 from specy_road.runtime_paths import prefix_within
 from specy_road.worktree_env import main_project_root
 
@@ -51,6 +51,13 @@ CLASSES = ("git_hook", "git_config")
 #: listing stops after ``HOOKS_CAP + 1`` entries.
 HOOKS_CAP = 200
 ABSENT = "absent"
+#: The hooks git runs (githooks(5)): at the filesystem root, which is not listed, only these names are watched.
+HOOK_NAMES = ("applypatch-msg", "pre-applypatch", "post-applypatch", "pre-commit", "pre-merge-commit",
+              "prepare-commit-msg", "commit-msg", "post-commit", "pre-rebase", "post-checkout", "post-merge",
+              "pre-push", "pre-receive", "update", "proc-receive", "post-receive", "post-update",
+              "reference-transaction", "push-to-checkout", "pre-auto-gc", "post-rewrite", "sendemail-validate",
+              "fsmonitor-watchman", "p4-changelist", "p4-prepare-changelist", "p4-post-changelist", "p4-pre-submit",
+              "post-index-change")
 #: The prefix of a value that could not be read (:func:`guarded`).
 ERROR = "error:"
 #: The prefix of a container's value (a checkout's ``.git``, a hooks directory) read in full: what an entry's
@@ -268,6 +275,19 @@ def _add_hook(snap: Snapshot, scope: Scope, path: Path, parent: str) -> None:
         snap[str(real)] = Entry(scope.display(real), "git_hook", value, parent=parent)
 
 
+def _hook_names(d: Path) -> list[str]:
+    """The direct entries of hooks directory ``d``, listed as far as ``HOOKS_CAP + 1`` (more raises: unreadable). The
+    filesystem root, where an empty ``core.hooksPath`` points git (``/<hook>``), is not listed: only the
+    :data:`HOOK_NAMES` there that exist."""
+    if d.parent == d:
+        return [n for n in HOOK_NAMES if os.path.lexists(d / n)]
+    with os.scandir(d) as it:
+        names = [e.name for e in itertools.islice(it, HOOKS_CAP + 1)]
+    if len(names) > HOOKS_CAP:
+        raise OSError(f"hooks directory has more than {HOOKS_CAP} entries")
+    return names
+
+
 def _hooks_dir(snap: Snapshot, scope: Scope, name: Path, parent: str) -> None:
     """Direct entries of the hooks directory ``name`` resolves to (:func:`_link`; listed once), not recursive; over
     :data:`HOOKS_CAP` the directory itself is unreadable (so every comparison fails closed), and the listing stops
@@ -281,10 +301,7 @@ def _hooks_dir(snap: Snapshot, scope: Scope, name: Path, parent: str) -> None:
         if not os.path.lexists(d):
             snap[key] = Entry(scope.display(Path(key)), "git_hook", READ + "dir")
             return
-        with os.scandir(d) as it:
-            names = [e.name for e in itertools.islice(it, HOOKS_CAP + 1)]
-        if len(names) > HOOKS_CAP:
-            raise OSError(f"hooks directory has more than {HOOKS_CAP} entries")
+        names = _hook_names(d)
         snap[key] = Entry(scope.display(Path(key)), "git_hook", READ + "dir")
         for name in sorted(names):
             _add_hook(snap, scope, d / name, key)
@@ -292,7 +309,7 @@ def _hooks_dir(snap: Snapshot, scope: Scope, name: Path, parent: str) -> None:
 
 
 def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, dotgit: str,
-                 hooks: dict[Path | None, bool]) -> None:
+                 hooks: dict[Path, bool]) -> None:
     """One config file git reads and those it includes, each guarded and keyed by the file it resolves to (one
     file reached by two names is one entry); each ``core.hooksPath`` value goes to ``hooks`` with whether only an
     ``includeIf`` named it."""
@@ -311,8 +328,8 @@ def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, dotgit: s
         snap.setdefault(str(real), Entry(scope.display(real), "git_config", hashlib.sha256(f.data).hexdigest(),
                                          values, parent))
         for k, v in f.pairs:
-            if k == "core.hookspath":   # an empty value is set too: it names no directory (None)
-                d = top / os.path.expanduser(v) if v else None
+            if k == "core.hookspath":   # git composes "<value>/<hook>": an empty value is the filesystem root
+                d = git_path(v, top) if v else Path("/")
                 hooks[d] = hooks.get(d, True) and f.conditional
 
 
@@ -322,8 +339,9 @@ def git_snapshot(scope: Scope) -> Snapshot:
     evaluated), and the hooks directories: ``core.hooksPath`` when set (each value read, relative to the checkout),
     else ``<common>/hooks`` and ``<worktree-gitdir>/hooks``. A value only an ``includeIf`` names may not apply (its
     condition is not evaluated), so with no other value the default directories are watched as well. An empty
-    ``core.hooksPath`` is a value too: it names no directory, and turns the defaults off as any other value does
-    (git then runs no hook git dir or checkout holds; git 2.43 looks for ``/<hook>``, which only root can write)."""
+    ``core.hooksPath`` is a value too: git looks for ``/<hook>``, so it names the filesystem root, where only
+    :data:`HOOK_NAMES` are watched (:func:`_hook_names`). Each value is resolved by
+    :func:`~specy_road.git_config_text.git_path` (``%(prefix)/``, ``~``)."""
     global _until
     snap: Snapshot = {}
     _until = time.monotonic() + SNAPSHOT_SECONDS
@@ -339,9 +357,9 @@ def _git_top(snap: Snapshot, scope: Scope, top: Path) -> None:
     gitdir, common = _gitdirs(top)
     dotgit = real_path(top / ".git")   # where it leads is its value: a .git retargeted is a change of it
     snap[str(dotgit)] = Entry(scope.display(dotgit), "git_config", f"{READ}gitdir {gitdir} common {common}")
-    hooks: dict[Path | None, bool] = {}   # each core.hooksPath directory (None: empty): whether only an includeIf named it
+    hooks: dict[Path, bool] = {}   # each core.hooksPath directory: whether only an includeIf named it
     for start in dict.fromkeys((common / "config", common / "config.worktree", gitdir / "config.worktree")):
         _config_file(snap, scope, top, start, str(dotgit), hooks)
     default = [common / "hooks", gitdir / "hooks"] if all(hooks.values()) else []
-    for d in dict.fromkeys([*filter(None, hooks), *default]):
+    for d in dict.fromkeys([*hooks, *default]):
         _hooks_dir(snap, scope, d, str(dotgit))

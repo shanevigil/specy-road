@@ -6,8 +6,9 @@ UTF-8 byte-order mark first, ``[section]``, ``[section "subsection"]`` (backslas
 (folded); key names folded to lower case; a key with no ``=`` is ``true``; in a value, surrounding whitespace is
 dropped and inner whitespace kept, ``"`` toggles quoting, ``#`` and ``;`` start a comment outside quotes, ``\\``
 escapes ``"``, ``\\``, ``n``, ``t`` and ``b`` and joins a line it ends. ``include.path`` and every
-``includeIf.<condition>.path`` are followed, conditions not evaluated, to git's depth of 10; a relative path is
-relative to the including file, ``~`` is expanded. A malformed line is skipped, where git would refuse the file.
+``includeIf.<condition>.path`` are followed, conditions not evaluated, to git's depth of 10. Every path value
+(an include, ``core.hooksPath``) is resolved by :func:`git_path` as git resolves a pathname: ``%(prefix)/`` is git's
+install prefix, ``~`` and ``~user`` a home directory, and a relative path is relative to the including file. A malformed line is skipped, where git would refuse the file.
 
 The parser decides coverage: only files are read, never git, so this is all the check knows of what git reads.
 Each watched config file's change is reported by the digest of its bytes, and the parser adds the hooks directories
@@ -20,6 +21,7 @@ Split from :mod:`specy_road.steering_paths` for the file limit.
 from __future__ import annotations
 
 import os
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 from typing import NamedTuple
@@ -108,6 +110,25 @@ def parse_config(text: str) -> list[tuple[str, str]]:
     return out
 
 
+def git_prefix() -> Path:
+    """The install prefix git substitutes for ``%(prefix)/``, from the filesystem: the parent of the directory that
+    holds the real ``git`` on ``PATH`` (``/usr`` for ``/usr/bin/git``), as git's runtime prefix is computed. Raises
+    when no git is on ``PATH``. Limit: a git built with a compiled-in prefix elsewhere is not matched."""
+    found = shutil.which("git")
+    if found is None:
+        raise FileNotFoundError("no git on PATH to resolve %(prefix)/")
+    return Path(os.path.realpath(found)).parent.parent
+
+
+def git_path(value: str, base: Path) -> Path:
+    """A config pathname as git resolves it (git-config(1), "pathname"): ``%(prefix)/`` is :func:`git_prefix`,
+    ``~`` and ``~user`` a home directory (left as written when unknown, as git leaves it unresolved), and a relative
+    path is relative to ``base``. ``./%(prefix)/`` stays literal, as in git."""
+    if value.startswith("%(prefix)/"):
+        value = str(git_prefix()) + value.removeprefix("%(prefix)")
+    return base / os.path.expanduser(value)
+
+
 def _includes(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return [(k, v) for k, v in pairs if k == "include.path" or (k.startswith("includeif.") and k.endswith(".path"))]
 
@@ -137,7 +158,7 @@ def read_chain(path: Path, read: Callable[[Path], bytes] = Path.read_bytes, dept
     out = [ConfigFile(path, data, pairs, parent, conditional)]
     if depth < MAX_INCLUDE_DEPTH:
         for key, inc in _includes(pairs):
-            out += read_chain(path.parent / os.path.expanduser(inc), read, depth + 1, path,
+            out += read_chain(git_path(inc, path.parent), read, depth + 1, path,
                               conditional or key != "include.path")
     return out
 
