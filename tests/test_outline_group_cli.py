@@ -380,3 +380,18 @@ def test_grouping_ten_siblings_validates_the_roadmap_once(
 
     assert validations == [repo]
     assert id_map == {f"M2.{k}": f"M2.15.{k - 4}" for k in range(5, 15)}
+
+
+def test_a_renamed_group_sheet_names_neither_temporary_nor_final_id(repo: Path) -> None:
+    """B4: the scaffold never contains a display id, so a later ``move-node --id`` cannot leave one."""
+    grouped = run_cli(repo, "group-nodes", "--into-new", "M1.9", "--title", "G", "M1.1")
+    assert grouped.returncode == 0, grouped.stderr
+
+    moved = run_cli(repo, "move-node", "M1.9", "--to-parent", "M1", "--id", "M1.4")
+    assert moved.returncode == 0, moved.stderr
+
+    parent = next(n for n in nodes_by_key(repo).values() if n["id"] == "M1.4")
+    text = (repo / parent["planning_dir"]).read_text(encoding="utf-8")
+    assert "M1.9" not in text
+    assert "M1.4" not in text
+    assert "Roadmap chunk: the node this sheet's file name names" in text

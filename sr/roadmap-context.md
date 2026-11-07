@@ -135,7 +135,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Complete**
   - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Complete**
   - `M22.3` Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node `decisions-follow-moves` — task — **Not Started**
-  - `M22.4` New planning sheets no longer write the node's display id into their body `sheet-body-without-display-id` — task — **Not Started**
+  - `M22.4` New planning sheets no longer write the node's display id into their body `sheet-body-without-display-id` — task — **Complete**
   - `M22.5` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
   - `M22.6` A queued worker message that cannot be delivered flags the worker and goes out with its next turn `queued-message-undelivered` — task — **Not Started**
   - `M22.7` ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading `ready-changelog-reminder` — task — **Complete**
@@ -315,7 +315,6 @@ Do not pick these up.
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
 - `M22.38` on `feature/rm-doctor-fix-keeps-other-clones-claims` since 2026-11-07
-- `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
 - `M22.40` on `feature/rm-cursor-display-names-match-the-model` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
@@ -325,15 +324,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 36 | 0 | 2.47 | 53% | 25 | 2 |
+| `docs` **flagged** | 35 | 0 | 2.51 | 54% | 25 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `CHANGELOG.md` | 42 | 0 | 2.14 | 43% | 28 | 2 |
-| `planning` | 1 | 0 | 1.00 | 0% | 0 | 0 |
-| `specy_road` | 46 | 0 | 2.35 | 50% | 34 | 3 |
+| `specy_road` **flagged** | 46 | 0 | 2.37 | 52% | 34 | 3 |
+| `CHANGELOG.md` | 42 | 0 | 2.17 | 45% | 28 | 2 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 47 | 0 | 2.28 | 47% | 32 | 3 |
+| `tests` | 47 | 0 | 2.30 | 49% | 32 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

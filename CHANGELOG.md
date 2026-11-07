@@ -23,6 +23,11 @@ body. Keep section bodies focused; link to PRs for detail.
   `planning/<sheet>` or `sr/planning/<sheet>`, on the nodes and claims it already rewrites. `validate` prints a stdout
   notice for each literal zone, on a node of any status, naming a planning sheet that is not in the working tree, with
   the node's current sheet when the name's `node_key` matches; `--strict` does not count it.
+- New planning sheets no longer write the node's display id into the body. The feature and gate templates'
+  References line is `Roadmap chunk: the node this sheet's file name names`, and brainstorm promote's Approach
+  placeholder keeps the `<ID>` token instead of substituting the display id, so a sheet from add-node,
+  scaffold-planning, group-nodes, brainstorm promote or the PM GUI add does not repeat the id the file name
+  already carries. Pickup's skip reason still names the id. Existing sheets keep their line.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.
