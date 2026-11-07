@@ -39,8 +39,10 @@ body. Keep section bodies focused; link to PRs for detail.
   passes, in a real run and in `--dry-run`. Behaviour changes: an in-repo symlink at
   `roadmap.md` or `roadmap-context.md` was written through and is now refused; a
   stub or skill file linked out of the repository was a `refused` report line with
-  exit 0 and is now `error:` with exit 1. `AGENTS.md`/`CLAUDE.md` aliases and the
-  `.claude/skills/` links are unchanged.
+  exit 0 and is now `error:` with exit 1; a skills directory linked to an
+  in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
+  is now refused: replace it with one of the two links above or a real directory.
+  `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
 - **Security:** Publish, finish's landing and reviews copy, the pickup hint and the brainstorm lock follow the
   same safe-write rule. GUI Publish refuses (HTTP 400, nothing written) an in-repo or dangling symlink at
   `roadmap.md` or `roadmap-context.md`, with finish's sentence; the landing merge writes both files through the
@@ -48,11 +50,9 @@ body. Keep section bodies focused; link to PRs for detail.
   `work/reviews` or `work/reviews/<node>` (also from a linked worktree) refuses finish before any write. A
   symlinked `.specyrd` or `.specyrd/cache` is refused where the cache directory is made; the pickup hint
   marker is checked with `lstat`, so a link there (live or dangling) is a one-line warning and is never read as
-  "already shown" or written through; `brainstorm` reports a linked lock as an error with exit 1.
-  exit 0 and is now `error:` with exit 1; a skills directory linked to an
-  in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
-  is now refused: replace it with one of the two links above or a real directory.
-  `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
+  "already shown" or written through; `brainstorm` reports a linked lock as an error with exit 1. The
+  history cache (`.specyrd/cache/roadmap-history.json`) is written through the rule too: a link on its path
+  is one warning naming it, and `digest` carries on with exit 0.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.

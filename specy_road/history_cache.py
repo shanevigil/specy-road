@@ -24,8 +24,7 @@ directory, or a half-written file costs a rebuild, never a failed command.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -84,22 +83,20 @@ def load_cache(root: Path) -> dict[str, Any] | None:
 def save_cache(root: Path, doc: dict[str, Any]) -> bool:
     """Write the cache atomically. ``False`` if it could not be written.
 
-    Temp file plus :func:`os.replace` in the same directory, so a reader either
-    sees the whole previous cache or the whole new one. Two processes racing
-    resolve to last-writer-wins, and since both computed the same thing from the
-    same history, either outcome is correct.
+    :func:`specy_road.safe_write.write` from ``root`` (temp file plus
+    :func:`os.replace` in the same directory), so a reader either sees the whole
+    previous cache or the whole new one. Two processes racing resolve to
+    last-writer-wins, and since both computed the same thing from the same
+    history, either outcome is correct. A symlink on the path is refused: the
+    one failure that is not silent, a warning naming the path on stderr.
     """
     path = cache_path(root)
     try:
         ensure_cache_dir(path.parent)
-        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".history-", suffix=".json")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(doc, f, ensure_ascii=False)
-            os.replace(tmp, path)
-        except BaseException:
-            Path(tmp).unlink(missing_ok=True)
-            raise
+        safe_write.write(root, path, json.dumps(doc, ensure_ascii=False))
+    except safe_write.SafeWriteError as e:
+        print(f"warning: history cache not written: {e}", file=sys.stderr)
+        return False
     except (OSError, ValueError, TypeError):
         return False
     return True

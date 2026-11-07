@@ -1,4 +1,4 @@
-"""M21.39: the pickup hint marker and the brainstorm lock refuse any symlink on the path.
+"""M21.39: the pickup hint marker, the brainstorm lock and the history cache refuse any symlink on the path.
 
 Each row links one component and checks the refusal names it, and that the
 link and its target (bytes, or absence) are unchanged. Publish's rows are in
@@ -109,3 +109,44 @@ def test_brainstorm_add_idea_refuses_a_linked_lock(tmp_path: Path) -> None:
     assert "Traceback" not in result.stderr
     assert theirs.read_bytes() == THEIRS
     assert lock.is_symlink()
+
+
+def _history_file(root: Path, outside: Path) -> Path:
+    (root / ".specyrd" / "cache").mkdir(parents=True)
+    (outside / "theirs.json").write_bytes(THEIRS)
+    link = root / ".specyrd" / "cache" / "roadmap-history.json"
+    link.symlink_to(outside / "theirs.json")
+    return link
+
+
+def _ignore_dangling(root: Path, outside: Path) -> Path:
+    (root / ".specyrd" / "cache").mkdir(parents=True)
+    link = root / ".specyrd" / "cache" / ".gitignore"
+    link.symlink_to(outside / "made")
+    return link
+
+
+@pytest.mark.parametrize(
+    ("arrange", "expected"),
+    [(_cache_out, "a directory"), (_ignore_dangling, "a regular file"), (_history_file, "a regular file")],
+    ids=["cache-linked-out", "gitignore-dangling", "history-to-outside-file"],
+)
+def test_digest_carries_on_past_a_linked_history_cache(tmp_path: Path, arrange, expected: str) -> None:
+    """A6: the cache is optional; one warning naming the path, exit 0, nothing written through the link."""
+    root, outside = tmp_path / "repo", tmp_path / "outside"
+    shutil.copytree(DOGFOOD, root, ignore=shutil.ignore_patterns(".specyrd"))
+    outside.mkdir()
+    git = ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false"]
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    subprocess.run([*git, "commit", "-qm", "init"], cwd=root, check=True)
+    link = arrange(root, outside)
+    outside_before = _tree(outside)
+
+    result = subprocess.run([sys.executable, "-m", "specy_road.cli", "digest", "--repo-root", str(root)],
+                            cwd=REPO, capture_output=True, text=True, env=script_subprocess_env())
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr.splitlines() == [f"warning: history cache not written: {_refusal(link, expected)}"]
+    assert _tree(outside) == outside_before
+    assert link.is_symlink()
