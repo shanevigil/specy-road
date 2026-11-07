@@ -6,6 +6,10 @@ scripts; non-interactive without it fetches nothing). Fetching a known URL
 to check a quote is neither a model call nor a search; the guards are the
 GUI research module's — public hosts only, a timeout, a size cap. A fetch
 that fails records ``blocked``, never "fabricated": a paywall is not a lie.
+A 404 or 410 is ``blocked`` when that origin's root is not 200 (or cannot be
+fetched) and ``not-found`` when the root is. The root is https, the host as a
+URL spells it (an IPv6 literal in brackets), the port when it is not 443,
+fetched once per origin per run.
 The connection is made to the address the host was checked at, with the
 hostname kept for SNI and certificate checking, so a rebinding name cannot
 move a hop onto a private address after the check.
@@ -30,7 +34,7 @@ import http.client
 import ipaddress
 import socket
 import ssl
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin, urlunsplit, urlsplit
 
 from specy_road.bundled_scripts.brainstorm_research import _is_off_host  # noqa: PLC2701 — same guard as the GUI
 from specy_road.bundled_scripts.brainstorm_fields import REPO, is_no_result
@@ -240,8 +244,56 @@ def is_local(source: dict[str, Any]) -> bool:
     return source.get("source_type") == REPO
 
 
-def check_source(source: dict[str, Any], fetch: Fetcher, *, root: Path | None = None) -> str:
-    """The verification state for one source after a fetch, or after a local read of a repo source."""
+def _root_url(url: str) -> str:
+    """Origin root of ``url``: https, the host as a URL spells it, effective port, path ``/``.
+
+    A hostname containing ``:`` is an IPv6 literal and is written in brackets; any other host is
+    written as itself. Port 443 is omitted, so an explicit ``:443`` is the same origin as none.
+    Userinfo, query and fragment are dropped. A zone id in the hostname is retained, so
+    ``https://[fe80::1%25eth0]/a`` has root ``https://[fe80::1%25eth0]/``.
+    """
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    host = f"[{host}]" if ":" in host else host
+    port = parts.port
+    netloc = host if port in (None, 443) else f"{host}:{port}"
+    return urlunsplit(("https", netloc, "/", "", ""))
+
+
+_ASK_ROOT = frozenset({404, 410})
+_BLOCKED_STATUS = frozenset({401, 403, 429})
+
+
+def _non_200(status: int, url: str, fetch: Fetcher, roots: dict[str, bool] | None) -> str:
+    """State for a page that is not 200. 404 and 410 follow the origin root; 401, 403 and 429 are blocked."""
+    if status in _ASK_ROOT:
+        cache = roots if roots is not None else {}
+        return "not-found" if host_answers(url, fetch, cache) else "blocked"
+    return "blocked" if status in _BLOCKED_STATUS else "not-found"
+
+
+def host_answers(url: str, fetch: Fetcher, roots: dict[str, bool]) -> bool:
+    """Whether ``url``'s origin returns 200 for ``/``; one fetch per origin, stored in ``roots``.
+
+    The origin is ``_root_url``. Any status but 200, or a fetch that fails, means the host refuses verify.
+    """
+    root = _root_url(url)
+    if root not in roots:
+        try:
+            status, _text = fetch(root)
+        except Exception:  # noqa: BLE001 — a root that cannot be fetched was not checked
+            roots[root] = False
+        else:
+            roots[root] = status == 200
+    return roots[root]
+
+
+def check_source(source: dict[str, Any], fetch: Fetcher, *, root: Path | None = None,
+                 roots: dict[str, bool] | None = None) -> str:
+    """The verification state for one source after a fetch, or after a local read of a repo source.
+
+    ``roots`` remembers, for one verify run, whether each origin answered 200 at ``/``.
+    """
     if is_local(source):
         return check_repo_source(source, root)
     url = str(source.get("url", ""))
@@ -253,7 +305,7 @@ def check_source(source: dict[str, Any], fetch: Fetcher, *, root: Path | None = 
     except Exception:  # noqa: BLE001 — any transport failure is "blocked"
         return "blocked"
     if status != 200:
-        return "blocked" if status in (401, 403, 429) else "not-found"
+        return _non_200(status, url, fetch, roots)
     quote = _norm(str(source.get("quote", "")))
     # No quote, nothing to find: a URL alone is not evidence (docs/brainstorming.md).
     return "matched" if quote and quote in _norm(text) else "not-found"
@@ -285,10 +337,11 @@ def verify_session(session: BrainstormSession, ideas: list[Idea], *, fetch: Fetc
                    root: Path | None = None, web: bool = True) -> list[str]:
     """Verify every unverified source on ``ideas`` (only the repo ones unless ``web``); one report line each."""
     fetch = fetch or default_fetch   # resolved at call time so tests can swap it
+    roots: dict[str, bool] = {}
     lines = []
     for idea, src in pending(ideas):
         if not (web or is_local(src)):
             continue
-        src["verification"] = check_source(src, fetch, root=root)
+        src["verification"] = check_source(src, fetch, root=root, roots=roots)
         lines.append(f"{idea.id} {src['verification']:<10} {src.get('url')}")
     return lines

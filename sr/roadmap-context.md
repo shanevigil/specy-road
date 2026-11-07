@@ -133,14 +133,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.44` A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk `guidance-bypass-model-excluded-under-signed-reviews` — task — **Complete**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Complete**
-  - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
+  - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Complete**
   - `M22.3` Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node `decisions-follow-moves` — task — **Not Started**
-  - `M22.4` New planning sheets no longer write the node's display id into their body `sheet-body-without-display-id` — task — **Not Started**
+  - `M22.4` New planning sheets no longer write the node's display id into their body `sheet-body-without-display-id` — task — **Complete**
   - `M22.5` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
   - `M22.6` A queued worker message that cannot be delivered flags the worker and goes out with its next turn `queued-message-undelivered` — task — **Not Started**
-  - `M22.7` ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading `ready-changelog-reminder` — task — **Not Started**
+  - `M22.7` ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading `ready-changelog-reminder` — task — **Complete**
   - `M22.8` init project ends with the next steps: set the integration branch, commit the scaffold, validate `init-next-steps` — task — **Complete**
-  - `M22.9` Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME `local-roster-and-codex-reviewer-isolation` — task — **Not Started**
+  - `M22.9` Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME `local-roster-and-codex-reviewer-isolation` — task — **Complete**
   - `M22.10` reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping `finish-keeps-local-claim-and-landing` — task — **Complete**
   - `M22.11` Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout `reports-say-what-happened` — task — **Not Started**
   - `M22.12` The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing `gate-without-remote-head` — task — **Not Started**
@@ -148,12 +148,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.14` Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch `deps-ids-briefs-and-landed-branch` — task — **Not Started**
   - `M22.15` The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows `sandbox-runbook-rc4-drift` — task — **Complete**
   - `M22.16` Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends `reviewer-run-summary-and-process-tree` — task — **Not Started**
-  - `M22.17` brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist `verify-tells-a-blocking-404` — task — **Not Started**
+  - `M22.17` brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist `verify-tells-a-blocking-404` — task — **Complete**
   - `M22.18` The reviewer prompt asks for every required change in one pass, not just the first `reviewer-lists-every-required-change` — task — **Complete**
   - `M22.19` Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names `review-inputs-identity-and-unreadable` — task — **Not Started**
   - `M22.20` worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging `terminate-and-finish-rollback-robustness` — task — **Not Started**
   - `M22.21` Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback `preview-rollback-fidelity` — task — **Not Started**
-  - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal `sandbox-rc4-final-polish` — task — **Not Started**
+  - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal `sandbox-rc4-final-polish` — task — **Complete**
   - `M22.23` Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus `guidance-bypass-retest-cursor-grok-sol-opus` — task — **Not Started**
   - `M22.24` The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths `guidance-exclusion-closes-three-bypasses` — task — **Not Started**
   - `M22.25` Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment `upgrade-git-calls-share-one-environment` — task — **Not Started**
@@ -165,12 +165,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
   - `M22.32` Claude Code launch and resume deny edits to steering files `steering-claude-launch-denies` — task — **Not Started**
   - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
-  - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Not Started**
+  - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Complete**
   - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Not Started**
   - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Not Started**
   - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
   - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Not Started**
   - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Not Started**
+  - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -307,20 +308,16 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
+- `M21.38` on `feature/rm-review-writers-refuse-links` since 2026-11-07
 - `M22.14` on `feature/rm-deps-ids-briefs-and-landed-branch` since 2026-11-07
-- `M22.17` on `feature/rm-verify-tells-a-blocking-404` since 2026-11-07
-- `M22.2` on `feature/rm-move-rewrites-sheet-zones` since 2026-11-07
-- `M22.22` on `feature/rm-sandbox-rc4-final-polish` since 2026-11-07
 - `M22.24` on `feature/rm-guidance-exclusion-closes-three-bypasses` since 2026-11-07
 - `M22.25` on `feature/rm-upgrade-git-calls-share-one-environment` since 2026-11-07
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
-- `M22.34` on `feature/rm-accept-policy-for-all-open-claims` since 2026-11-07
+- `M22.3` on `feature/rm-decisions-follow-moves` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
 - `M22.38` on `feature/rm-doctor-fix-keeps-other-clones-claims` since 2026-11-07
-- `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
+- `M22.40` on `feature/rm-cursor-display-names-match-the-model` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
-- `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
-- `M22.9` on `feature/rm-local-roster-and-codex-reviewer-isolation` since 2026-11-07
 
 ## Quality by area
 
@@ -328,15 +325,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 35 | 0 | 2.54 | 54% | 34 | 2 |
+| `docs` **flagged** | 35 | 0 | 2.51 | 54% | 25 | 2 |
+| `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `CHANGELOG.md` | 40 | 0 | 2.15 | 40% | 31 | 2 |
-| `planning` | 1 | 0 | 1.00 | 0% | 0 | 0 |
-| `specy_road` | 46 | 0 | 2.37 | 50% | 42 | 3 |
+| `specy_road` **flagged** | 46 | 0 | 2.37 | 52% | 34 | 3 |
+| `CHANGELOG.md` | 42 | 0 | 2.17 | 45% | 28 | 2 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 48 | 0 | 2.31 | 48% | 42 | 3 |
+| `tests` | 47 | 0 | 2.30 | 49% | 32 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
