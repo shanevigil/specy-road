@@ -315,6 +315,7 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.38` on `feature/rm-review-writers-refuse-links` since 2026-11-07
 - `M22.14` on `feature/rm-deps-ids-briefs-and-landed-branch` since 2026-11-07
+- `M22.21` on `feature/rm-preview-rollback-fidelity` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
