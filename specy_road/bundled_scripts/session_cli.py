@@ -120,8 +120,9 @@ def cmd_list(ns: argparse.Namespace) -> int:
     if not sessions:
         print("No live sessions under work/.sessions/.")
     for s in sessions:
-        state = "" if s.is_live() else "  (expired)"
-        print(f"{s.agent:<28} {s.branch or '-':<32} until {s.expires}{state}")
+        stale = s.stale_reason()
+        state = "  (expired)" if not s.is_live() else f"  (stale: {stale})" if stale else ""
+        print(f"{s.agent:<28} {str(s.branch or '-'):<32} until {s.expires}{state}")
         print(f"  {s.worktree}")
         print(f"  paths: {', '.join(s.paths) or '-'}" + (f"  — {s.note}" if s.note else ""))
     return 0

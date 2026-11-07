@@ -31,7 +31,7 @@ from typing import Any
 import yaml
 
 from specy_road.finish_implementation_check import zone_matches
-from specy_road.git_subprocess import git_text
+from specy_road.git_subprocess import git_text, run
 from specy_road.review_files import reviews_root
 from specy_road.worker_state import _write_atomic as write_atomic
 
@@ -55,6 +55,18 @@ class Session:
 
     def is_live(self, now: datetime | None = None) -> bool:
         return _parse(self.expires) > (now or _now())
+
+    def stale_reason(self) -> str | None:
+        """``worktree gone`` or ``branch gone`` once the recorded checkout or local branch no longer exists (worktree
+        first), else ``None``. Judged only when the record names both as non-empty strings: one absent or malformed
+        keeps the expiry rule alone. The branch is looked up in the recorded checkout (it shares its repository's
+        refs); a git error there reads as present, so a peer is never dropped on a doubt."""
+        if not all(isinstance(v, str) and v for v in (self.worktree, self.branch)):
+            return None
+        if not Path(self.worktree).is_dir():
+            return "worktree gone"
+        r = run(["show-ref", "--verify", "--quiet", f"refs/heads/{self.branch}"], Path(self.worktree))
+        return "branch gone" if r.code == 1 else None   # 1: no such ref; 128 and the rest are git errors
 
     def to_dict(self) -> dict[str, Any]:
         d = {"agent": self.agent, "branch": self.branch, "worktree": self.worktree, "paths": self.paths,
@@ -136,7 +148,7 @@ def list_sessions(repo_root: Path, *, live_only: bool = True, now: datetime | No
     if not d.is_dir():
         return []
     out = [s for s in (load_session(p) for p in sorted(d.glob("*.yaml"))) if s]
-    return [s for s in out if s.is_live(now)] if live_only else out
+    return [s for s in out if s.is_live(now) and not s.stale_reason()] if live_only else out
 
 
 def git_worktree_top(cwd: Path) -> Path:
