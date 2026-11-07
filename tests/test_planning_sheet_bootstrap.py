@@ -18,7 +18,7 @@ from specy_road.bundled_scripts.planning_sheet_bootstrap import (
 
 def test_render_feature_sheet_template_substitutes_node_id() -> None:
     text = render_feature_sheet_template("M9.9")
-    assert "M9.9" in text
+    assert "M9.9" not in text
     assert "{{NODE_ID}}" not in text
 
 
@@ -34,7 +34,7 @@ def test_feature_sheet_template_points_to_the_acceptance_checklist() -> None:
 
 def test_render_planning_sheet_template_gate_sections() -> None:
     text = render_planning_sheet_template("M0.1", node_type="gate")
-    assert "M0.1" in text
+    assert "M0.1" not in text
     assert "{{NODE_ID}}" not in text
     assert "Why this gate exists" in text
     assert "Criteria to clear" in text
@@ -98,7 +98,7 @@ def test_ensure_planning_sheet_creates_file_and_sets_planning_dir(tmp_path: Path
     p = resolve_planning_path(tmp_path, pd)
     assert p.is_file()
     body = p.read_text(encoding="utf-8")
-    assert "M1.1" in body
+    assert "M1.1" not in body
     assert "{{NODE_ID}}" not in body
 
 

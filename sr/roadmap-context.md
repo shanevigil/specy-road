@@ -133,9 +133,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.44` A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk `guidance-bypass-model-excluded-under-signed-reviews` — task — **Complete**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Complete**
-  - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
+  - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Complete**
   - `M22.3` Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node `decisions-follow-moves` — task — **Not Started**
-  - `M22.4` New planning sheets no longer write the node's display id into their body `sheet-body-without-display-id` — task — **Not Started**
+  - `M22.4` New planning sheets no longer write the node's display id into their body `sheet-body-without-display-id` — task — **Complete**
   - `M22.5` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
   - `M22.6` A queued worker message that cannot be delivered flags the worker and goes out with its next turn `queued-message-undelivered` — task — **Not Started**
   - `M22.7` ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading `ready-changelog-reminder` — task — **Complete**
@@ -156,7 +156,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal `sandbox-rc4-final-polish` — task — **Complete**
   - `M22.23` Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus `guidance-bypass-retest-cursor-grok-sol-opus` — task — **Not Started**
   - `M22.24` The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths `guidance-exclusion-closes-three-bypasses` — task — **Not Started**
-  - `M22.25` Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment `upgrade-git-calls-share-one-environment` — task — **Not Started**
+  - `M22.25` Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment `upgrade-git-calls-share-one-environment` — task — **Complete**
   - `M22.26` The post-run zone check matches zones written from the git root `post-run-zone-check-git-root-zones` — task — **Complete**
   - `M22.27` The old-log review usage test asserts on the run, not on a substring `old-log-test-asserts-on-the-run` — task — **Complete**
   - `M22.28` upgrade does not warn about itself, and export's drift line says how to fix it `upgrade-no-self-warning-export-drift-hint` — task — **Complete**
@@ -309,14 +309,14 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.38` on `feature/rm-review-writers-refuse-links` since 2026-11-07
+- `M22.11` on `feature/rm-reports-say-what-happened` since 2026-11-07
 - `M22.14` on `feature/rm-deps-ids-briefs-and-landed-branch` since 2026-11-07
-- `M22.2` on `feature/rm-move-rewrites-sheet-zones` since 2026-11-07
 - `M22.24` on `feature/rm-guidance-exclusion-closes-three-bypasses` since 2026-11-07
-- `M22.25` on `feature/rm-upgrade-git-calls-share-one-environment` since 2026-11-07
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
+- `M22.3` on `feature/rm-decisions-follow-moves` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
 - `M22.38` on `feature/rm-doctor-fix-keeps-other-clones-claims` since 2026-11-07
-- `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
+- `M22.40` on `feature/rm-cursor-display-names-match-the-model` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
@@ -325,15 +325,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
+| `docs` **flagged** | 35 | 0 | 2.51 | 54% | 25 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `CHANGELOG.md` | 42 | 0 | 2.10 | 40% | 29 | 2 |
-| `docs` | 36 | 0 | 2.42 | 50% | 26 | 2 |
-| `planning` | 1 | 0 | 1.00 | 0% | 0 | 0 |
-| `specy_road` | 46 | 0 | 2.30 | 48% | 35 | 3 |
+| `specy_road` **flagged** | 46 | 0 | 2.35 | 52% | 36 | 3 |
+| `CHANGELOG.md` | 42 | 0 | 2.14 | 45% | 30 | 2 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 47 | 0 | 2.23 | 45% | 33 | 3 |
+| `tests` | 47 | 0 | 2.28 | 49% | 34 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

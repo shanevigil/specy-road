@@ -194,9 +194,11 @@ def remove_planning_sheet_if_present(repo_root: Path, planning_dir: object) -> N
         p.unlink()
 
 
-#: The line ``brainstorm promote`` writes under ``## Approach`` (``<ID>`` becomes
-#: the node id). While it is still there, nobody has written how the slice is
-#: built, and pickup skips the leaf (M3.1).
+#: The line ``brainstorm promote`` writes under ``## Approach``. ``<ID>`` stays
+#: a token: the display id is not written into the sheet, so a later rename
+#: cannot leave one behind. While the line is still there, nobody has written
+#: how the slice is built, and pickup skips the leaf (M3.1). The skip reason
+#: names the id on its own.
 PROMOTE_PLACEHOLDER = (
     "Not written yet: pickup skips this leaf until this section is written. "
     "`specy-road author-approach <ID>` prints the prompt to write it."
@@ -210,8 +212,13 @@ LEGACY_PROMOTE_PLACEHOLDER = "Rewrite this section once the slice is properly sc
 
 
 def promote_placeholder(node_id: str) -> str:
-    """:data:`PROMOTE_PLACEHOLDER` naming ``node_id``."""
-    return PROMOTE_PLACEHOLDER.replace("<ID>", node_id)
+    """:data:`PROMOTE_PLACEHOLDER` for a sheet. ``node_id`` is not written into it.
+
+    Toolkit sheet text does not repeat the node's display id: the id is already
+    in the file name, and substituting it left a stale id after ``move-node --id``.
+    Pickup's skip reason names ``node_id`` separately.
+    """
+    return PROMOTE_PLACEHOLDER
 
 #: Scaffold sections whose template body means nobody wrote one. Authored
 #: sheets keep generic lines under Tasks and References too, so those say

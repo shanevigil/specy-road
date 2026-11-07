@@ -58,7 +58,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.2_move-rewrites-sheet-zones_d4ee1c66-2780-4b43-b7bd-b9afb89ce0ab.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_id_rewrite_staging.py",
@@ -123,7 +123,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.4_sheet-body-without-display-id_2fd5c912-b8d0-40f4-bf90-7e70a09e6aa1.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "New planning sheets no longer write the node's display id into their body",
       "touch_zones": [
         "specy_road/templates/planning-node/feature-sheet.md.template",

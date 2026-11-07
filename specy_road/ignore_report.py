@@ -89,10 +89,17 @@ def scratch_git_env(isolate: Path | None = None) -> dict[str, str]:
     return env
 
 
-def isolate_git(scratch: Path | None) -> None:
-    """Make :func:`_git` read no caller config, from the empty file in ``scratch``, until called with ``None``."""
+def isolate_git(scratch: Path | None) -> Path | None:
+    """Make :func:`_git` read no caller config, from the empty file in ``scratch``, until the previous value is put back.
+
+    Returns the isolation it replaces. Passing that value restores it; ``None``
+    clears, which an outermost caller does. A nested call passes the returned
+    value, so it never clears the outer isolation.
+    """
     global _isolated
+    previous = _isolated
     _isolated = scratch
+    return previous
 
 
 def _git(args: list[str], cwd: Path, *, stdin: bytes | None = None, ok: tuple[int, ...] = (0,)) -> bytes:

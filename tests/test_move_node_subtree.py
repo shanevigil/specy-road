@@ -20,7 +20,10 @@ from tests.move_node_helpers import (
     NK_A24,
     NK_B4,
     ids_by_key,
+    commit_project,
+    git,
     nodes_by_key,
+    run_cli,
     run_move_node,
     set_zones,
     sheet_names,
@@ -221,3 +224,32 @@ def test_a_subtree_move_rewrites_nothing_outside_the_subtree(tmp_path: Path) -> 
     assert after[NK_A24]["touch_zones"] == ["docs/M2.5.4/", "docs/M1.3/"]
     assert claims["inner-four"]["node_id"] == "M2.5.4"
     assert claims["inner-four"]["touch_zones"] == ["docs/M2.5.4/"]
+
+
+def test_a_move_rewrites_zones_naming_the_moved_sheet_in_both_forms(tmp_path: Path) -> None:
+    """A zone naming the node's own sheet follows the rename, as does a docs/<old id>/ zone."""
+    top, root = tmp_path, tmp_path / "sr"
+    wide_fixture(root)
+    old = f"planning/M1.2.2_inner-two_{NK_A22}.md"
+    set_zones(root, {"M1.2.2": [old, f"sr/{old}", "docs/M1.2.2/"]})
+    registry = root / "roadmap" / "registry.yaml"
+    data = yaml.safe_load(registry.read_text(encoding="utf-8"))
+    for entry in data["entries"]:
+        if entry["codename"] == "inner-two":
+            entry["touch_zones"] = [old, f"sr/{old}", "docs/M1.2.2/"]
+    registry.write_text(yaml.dump(data, sort_keys=False), encoding="utf-8")
+    commit_project(top, root)
+
+    r = run_move_node(root, "--repo-root", str(root), "M1.2.2", "--to-parent", "M2")
+    assert r.returncode == 0, r.stderr
+
+    new = f"planning/M2.5_inner-two_{NK_A22}.md"
+    expected = [new, f"sr/{new}", "docs/M2.5/"]
+    assert nodes_by_key(root)[NK_A22]["touch_zones"] == expected
+    claims = {e["codename"]: e for e in yaml.safe_load(registry.read_text(encoding="utf-8"))["entries"]}
+    assert claims["inner-two"]["touch_zones"] == expected
+    for _ in ("unstaged", "staged"):
+        v = run_cli(root, "validate")
+        assert v.returncode == 0, v.stderr
+        assert "names a planning sheet" not in v.stdout + v.stderr
+        git(top, "add", "-A")

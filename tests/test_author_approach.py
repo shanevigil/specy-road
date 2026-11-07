@@ -59,7 +59,8 @@ def test_placeholder_text_says_pickup_skips_and_names_the_command() -> None:
         "`specy-road author-approach <ID>` prints the prompt to write it."
     )
     assert "at pickup" not in PROMOTE_PLACEHOLDER
-    assert promote_placeholder("M1") == PROMOTE_PLACEHOLDER.replace("<ID>", "M1")
+    assert promote_placeholder("M1") == PROMOTE_PLACEHOLDER
+    assert "M1" not in promote_placeholder("M1")
 
 
 def test_promote_writes_the_placeholder_under_approach_not_intent(tmp_path: Path) -> None:
@@ -67,6 +68,7 @@ def test_promote_writes_the_placeholder_under_approach_not_intent(tmp_path: Path
     text = (root / nodes[0]["planning_dir"]).read_text(encoding="utf-8")
     intent, approach = text.split("## Approach", 1)
     assert promote_placeholder("M1") in approach.split("## Tasks", 1)[0]
+    assert "M1" not in text
     assert "author-approach" not in intent and LEGACY_PROMOTE_PLACEHOLDER not in intent
 
 
