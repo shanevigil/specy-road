@@ -239,7 +239,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.43` | digest gives the same result with a cold or warm history cache | task | — | Not Started |
 | `M22.44` | Unattended workers run in a read-only sandbox on Linux | task | — | Complete |
 | `M22.45` | A worker turn that moves the integration ref is flagged | task | — | Complete |
-| `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Not Started |
+| `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

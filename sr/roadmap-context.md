@@ -174,7 +174,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.43` digest gives the same result with a cold or warm history cache `digest-is-the-same-cold-or-warm` — task — **Not Started**
   - `M22.44` Unattended workers run in a read-only sandbox on Linux `workers-run-in-a-sandbox` — task — **Complete**
   - `M22.45` A worker turn that moves the integration ref is flagged `integration-refs-stay-put-during-a-turn` — task — **Complete**
-  - `M22.46` Sandboxed workers can read their leaf's review records `sandboxed-workers-can-read-their-reviews` — task — **Not Started**
+  - `M22.46` Sandboxed workers can read their leaf's review records `sandboxed-workers-can-read-their-reviews` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -318,7 +318,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.20` on `feature/rm-terminate-and-finish-rollback-robustness` since 2026-11-07
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
-- `M22.46` on `feature/rm-sandboxed-workers-can-read-their-reviews` since 2026-11-07
 - `M22.6` on `feature/rm-queued-message-undelivered` since 2026-11-07
 
 ## Quality by area
@@ -328,15 +327,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 47 | 0 | 2.70 | 60% | 21 | 4 |
+| `CHANGELOG.md` **flagged** | 47 | 0 | 2.72 | 60% | 22 | 4 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 36 | 0 | 2.81 | 61% | 17 | 2 |
+| `docs` **flagged** | 37 | 0 | 2.78 | 59% | 18 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 46 | 0 | 2.72 | 59% | 21 | 4 |
-| `tests` **flagged** | 48 | 0 | 2.62 | 56% | 19 | 4 |
+| `specy_road` **flagged** | 46 | 0 | 2.74 | 59% | 22 | 4 |
+| `tests` **flagged** | 48 | 0 | 2.65 | 56% | 20 | 4 |
 | `suggested_prompts` | 2 | 0 | 1.00 | 0% | 3 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.

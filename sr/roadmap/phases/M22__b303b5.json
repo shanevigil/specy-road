@@ -348,7 +348,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.46_sandboxed-workers-can-read-their-reviews_43366e49-21ee-4162-8748-cd1ec4b0b76f.md",
       "sibling_order": 45,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Sandboxed workers can read their leaf's review records",
       "touch_zones": [
         "specy_road/worker_sandbox.py",
