@@ -13,6 +13,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
+  list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the
+  other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
+  also with focus in the editor. The Markdown editor configures its link extension once, so opening an edit dialog
+  no longer logs `[tiptap warn]: Duplicate extension names found: ['link']`.
 - The worker post-run check matches touch zones from either the git root or the project root in a nested layout, like
   finish does, so a commit under an `sr/...` zone is no longer flagged `committed_outside_zones`.
 - A Codex reviewer's resumed turn, the format-repair retry included, passes `-m` with the requested model, as the
