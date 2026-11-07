@@ -93,14 +93,18 @@ def _below(anchor: Path, full: Path) -> tuple[str, ...] | None:
     return tuple(parts)
 
 
-def _locate(root: Path, path: Path | str) -> tuple[Path, tuple[str, ...]]:
+def _locate(root: Path, path: Path | str, base: Path | None = None) -> tuple[Path, tuple[str, ...]]:
     """``(resolved root, parts below it)`` for ``path``, taken lexically.
 
     A relative ``path`` is under ``root``; an absolute one must be spelled from
     ``root`` as given, normalized or resolved. A ``..`` that climbs above the
     root at any step is refused, even when a later part comes back in.
+
+    The root is resolved once per operation: a caller that has ``base`` (its
+    resolution of ``root``) passes it, so a root swapped for a link after that
+    resolution is met by the walk, never resolved again to somewhere else.
     """
-    base = Path(root).resolve()
+    base = Path(root).resolve() if base is None else base
     full = Path(path) if Path(path).is_absolute() else Path(root, path)
     full = full if full.is_absolute() else Path.cwd() / full
     for anchor in (Path(root).absolute(), Path(os.path.normpath(Path(root).absolute())), base):
@@ -110,12 +114,12 @@ def _locate(root: Path, path: Path | str) -> tuple[Path, tuple[str, ...]]:
     raise SafeWriteError(f"{full} is outside {base}, not a path under it")
 
 
-def _walk(root: Path, path: Path | str, expected: str | None) -> tuple[Path, str | None]:
+def _walk(root: Path, path: Path | str, expected: str | None, base: Path | None = None) -> tuple[Path, str | None]:
     """Check every ancestor of ``path`` below ``root``; return ``(path from the resolved root, final kind)``.
 
     ``expected`` is the final kinds allowed besides absent; ``None`` allows any.
     """
-    base, parts = _locate(root, path)
+    base, parts = _locate(root, path, base)
     here = base
     for name in parts[:-1]:
         here = here / name
@@ -241,7 +245,7 @@ def _relinked(base: Path, held: list[tuple[Path, int]], link: Path, rest=()) -> 
     """The parts below ``base`` of what ``link`` (a name in the last held directory) points at, then ``rest``:
     read through that descriptor and spelled lexically from the link's directory; out of ``base`` is refused."""
     try:
-        return _locate(base, link.parent / os.readlink(link.name, dir_fd=held[-1][1]))[1] + tuple(rest)
+        return _locate(base, link.parent / os.readlink(link.name, dir_fd=held[-1][1]), base)[1] + tuple(rest)
     except SafeWriteError:
         raise _refusal(link, "a symlink", f"a link to a path under {base}") from None
 
@@ -281,7 +285,12 @@ def mkdirs(root: Path, d: Path | str) -> Path:
 
     A missing root is created too: nothing at or above it is inspected.
     """
-    base, parts = _locate(root, d)
+    return _make_dirs(root, d, Path(root).resolve())
+
+
+def _make_dirs(root: Path, d: Path | str, base: Path) -> Path:
+    """:func:`mkdirs` under ``base``, the operation's one resolution of ``root``."""
+    base, parts = _locate(root, d, base)
     base.mkdir(parents=True, exist_ok=True)
     if _dir_fds():
         with _held(base, parts, create=True):
@@ -344,9 +353,10 @@ def _anchored(dir_fd: int, name: str, fd: int) -> str | int:
 
 
 def _replace(root: Path, path: Path | str, data: bytes, finish) -> Path:
-    full = check(root, path, FILE)
+    base, parts = _locate(root, path)   # the one resolution of the root
+    full = _walk(root, path, FILE, base)[0]
     if not _dir_fds():   # M21.37's lstat re-check right before replace
-        mkdirs(root, full.parent)
+        _make_dirs(root, full.parent, base)
         fd, tmp = _temp(full.parent, full.name)
         try:
             with os.fdopen(fd, "wb") as f:
@@ -358,7 +368,6 @@ def _replace(root: Path, path: Path | str, data: bytes, finish) -> Path:
             tmp.unlink(missing_ok=True)
             raise
         return full
-    base, parts = _locate(root, full)
     base.mkdir(parents=True, exist_ok=True)
     with _held(base, parts[:-1], create=True) as held:
         parent = held[-1][1]
@@ -411,10 +420,10 @@ def _hold_file(stack: contextlib.ExitStack, base: Path, parts: tuple[str, ...], 
     raise SafeWriteError(f"{base.joinpath(*parts)} has more than {MAX_LINKS} links, not a path under {base}")
 
 
-def _move_by_path(root: Path, src: Path, dst: Path) -> Path:
+def _move_by_path(root: Path, src: Path, dst: Path, base: Path) -> Path:
     """:func:`moving`'s rename without directory descriptors: names resolved, M21.37's re-check before it."""
-    source, target = check(root, src.resolve(), FILE), check(root, dst.resolve(), FILE)
-    mkdirs(root, target.parent)
+    source, target = _walk(root, src.resolve(), FILE, base)[0], _walk(root, dst.resolve(), FILE, base)[0]
+    _make_dirs(root, target.parent, base)
     _recheck(source)
     _recheck(target)
     os.replace(source, target)
@@ -438,13 +447,13 @@ def moving(root: Path, src: Path | str, dst: Path | str):
     """
     base, sparts = _locate(root, src)
     if not _dir_fds():
-        yield lambda: _move_by_path(root, Path(src), Path(dst))
+        yield lambda: _move_by_path(root, Path(src), Path(dst), base)
         return
     with contextlib.ExitStack() as stack:
         links = stack.enter_context(_held(base, sparts[:-1], False, follow=True))
         origin = links[-1][0] / sparts[-1]
         froms, source = _hold_file(stack, base, sparts, False)
-        tos, target = _hold_file(stack, base, _locate(root, dst)[1], True)
+        tos, target = _hold_file(stack, base, _locate(root, dst, base)[1], True)
         checks = ((origin, links, _ENTRY), (source, froms, FILE), (target, tos, FILE))
 
         def rename() -> Path:
@@ -477,7 +486,7 @@ def prune_empty(root: Path, d: Path | str) -> None:
     """
     base, parts = _locate(root, d)
     while parts:
-        full, kind = _walk(base, base.joinpath(*parts), None)
+        full, kind = _walk(base, base.joinpath(*parts), None, base)
         if kind != DIRECTORY or os.listdir(full):
             return
         os.rmdir(full)

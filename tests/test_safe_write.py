@@ -278,16 +278,44 @@ def test_a_link_swapped_in_after_the_walk_is_refused(
     assert not [p.name for p in real.iterdir() if p.name.endswith(".tmp")]   # the temp file is gone
 
 
+ROOT_OPERATIONS = {
+    "write": lambda root, src: safe_write.write(root, root / "made" / "f", "x"),
+    "copy": lambda root, src: safe_write.copy(root, src, root / "f"),
+    "mkdirs": lambda root, src: safe_write.mkdirs(root, root / "made"),
+}
+
+
+def _swap_after_resolve(monkeypatch: pytest.MonkeyPatch, root: Path, to: Path) -> None:
+    """A racer: right after ``root`` is first resolved, it is moved to ``<name>.real`` and linked to ``to``."""
+    resolve = Path.resolve
+
+    def racing_resolve(self, *args, **kwargs):
+        resolved = resolve(self, *args, **kwargs)
+        if self == root and not os.path.lexists(root.with_name(root.name + ".real")):
+            root.rename(root.with_name(root.name + ".real"))
+            root.symlink_to(to)
+        return resolved
+
+    monkeypatch.setattr(Path, "resolve", racing_resolve)
+
+
 @pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
-@pytest.mark.parametrize("operation", ["write", "mkdirs"])
+@pytest.mark.parametrize("swapped", ["before-open", "after-resolve"])
+@pytest.mark.parametrize("operation", list(ROOT_OPERATIONS))
 def test_a_root_swapped_for_a_link_before_it_is_opened_is_refused(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
-    root, outside = tmp_path / "p", tmp_path / "outside"
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str, swapped: str) -> None:
+    """The root is resolved once and opened without following a link: a root swapped for a link out right
+    after that resolution, or right before it is opened, is refused and nothing lands outside."""
+    root, outside, src = tmp_path / "p", tmp_path / "outside", tmp_path / "src"
     root.mkdir()
     outside.mkdir()
-    swap_at_open(monkeypatch, root, root, outside, before=True)
+    src.write_bytes(b"new\n")
+    if swapped == "before-open":
+        swap_at_open(monkeypatch, root, root, outside, before=True)
+    else:
+        _swap_after_resolve(monkeypatch, root, outside)
     with pytest.raises(SafeWriteError, match=f"^{root} is a symlink \\(to {outside}\\), not a directory$"):
-        safe_write.write(root, root / "made" / "f", "x") if operation == "write" else safe_write.mkdirs(root, root / "made")
+        ROOT_OPERATIONS[operation](root, src)
     monkeypatch.undo()
     assert not list(outside.iterdir()) and not list((tmp_path / "p.real").iterdir())
 
