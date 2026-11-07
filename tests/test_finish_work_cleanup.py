@@ -495,7 +495,7 @@ def test_finish_from_a_linked_worktree_removes_main_copies_after_landing(tmp_pat
 
 
 def test_pr_finish_from_a_linked_worktree_keeps_main_checkout_copies(tmp_path, monkeypatch, capsys) -> None:
-    """A pr finish does not land, so the main checkout's untracked brief and prompt stay."""
+    """A pr finish removes the main checkout's untracked brief and prompt and prints no checkout line."""
     from tests.review_repo_helpers import commit_file, delegate_layout
 
     from specy_road.bundled_scripts import finish_task
@@ -516,8 +516,8 @@ def test_pr_finish_from_a_linked_worktree_keeps_main_checkout_copies(tmp_path, m
         raise SystemExit(0)
     captured = capsys.readouterr()
     assert (e.value.code or 0) == 0, captured.out + captured.err
-    assert (work / "brief-M1.1.md").read_text(encoding="utf-8") == "brief\n"
-    assert (work / "prompt-M1.1.md").read_text(encoding="utf-8") == "prompt\n"
+    assert not (work / "brief-M1.1.md").exists()
+    assert not (work / "prompt-M1.1.md").exists()
     assert "this checkout is still on" not in captured.out
 
 
@@ -590,3 +590,67 @@ def test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch(
     assert not brief.exists() and not prompt.exists()
     assert (work / "notes.md").read_text(encoding="utf-8") == "keep\n"
     assert again.rstrip().endswith(guidance)
+
+
+def test_linked_worktree_rollup_retry_clears_main_copies(tmp_path, monkeypatch, capsys) -> None:
+    """A rollup retry that lands removes the main copies and does not print the checkout line."""
+    import json
+
+    from tests.review_repo_helpers import commit_file, delegate_layout, git
+
+    from specy_road.bundled_scripts import finish_task
+    from specy_road.milestone_session import milestone_session_path, write_milestone_session
+
+    repo, leaf, bare = delegate_layout(tmp_path, monkeypatch)
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    doc = json.loads(chunk.read_text(encoding="utf-8"))
+    leaf_node = doc["nodes"][0]
+    leaf_node["parent_id"] = "M1"
+    parent = {
+        "id": "M1", "node_key": "22222222-2222-5222-8222-222222222222",
+        "codename": "roll", "title": "Roll", "type": "milestone",
+        "parent_id": None, "sibling_order": 1, "status": "In Progress",
+        "dependencies": [], "touch_zones": [], "goal": "Roll the leaves up.",
+        "planning_dir": "planning/M1_roll_22222222-2222-5222-8222-222222222222.md",
+        "milestone_execution": {
+            "state": "active", "rollup_branch": "feature/rm-roll",
+            "integration_branch": "dev", "remote": "origin",
+        },
+    }
+    doc["nodes"] = [parent, leaf_node]
+    commit_file(repo, "roadmap/phases/M1.json", json.dumps(doc), "parent milestone")
+    commit_file(repo, parent["planning_dir"], "# M1 Roll\n\n## Intent\n\nRoll up.\n", "parent sheet")
+    git(repo, "branch", "feature/rm-roll")
+    git(repo, "push", "-q", "origin", "dev", "feature/rm-roll")
+    git(leaf, "merge", "-q", "--no-edit", "dev")
+    write_milestone_session(
+        milestone_session_path(leaf / "work"),
+        parent_node_id="M1", parent_codename="roll",
+        integration_branch="dev", remote="origin",
+    )
+    git(repo, "checkout", "-q", "-b", "park")
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    brief, prompt = work / "brief-M1.1.md", work / "prompt-M1.1.md"
+    brief.write_text("brief\n", encoding="utf-8")
+    prompt.write_text("prompt\n", encoding="utf-8")
+    (work / "notes.md").write_text("keep\n", encoding="utf-8")
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text(
+        "#!/bin/sh\nwhile read old new ref; do\n"
+        "  case $ref in refs/heads/feature/rm-roll) exit 1 ;; esac\ndone\nexit 0\n",
+        encoding="utf-8",
+    )
+    hook.chmod(0o755)
+    with pytest.raises(SystemExit) as failed:
+        finish_task.main(["--repo-root", str(leaf)])
+    assert failed.value.code == 1
+    assert brief.is_file() and prompt.is_file()
+    hook.unlink()
+    capsys.readouterr()
+    git(leaf, "checkout", "-q", "feature/rm-thing")
+    out = _finish(leaf, capsys)
+    assert "landing it on feature/rm-roll" in out
+    assert not brief.exists() and not prompt.exists()
+    assert (work / "notes.md").read_text(encoding="utf-8") == "keep\n"
+    assert "this checkout is still on" not in out

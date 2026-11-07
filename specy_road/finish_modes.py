@@ -225,16 +225,14 @@ def close_merged_checkout(
     repo: Path, *, node_id: str, branch: str, ib: str, on_mode: str,
     delete_branch: bool, no_cleanup_work: bool,
 ) -> None:
-    """After a merge or auto landing: remove the main checkout's pickup files, then the checkout line.
+    """After finish returns: remove the main checkout's pickup files, then the checkout line.
 
-    A finish that did not land, such as ``pr``, leaves those files. The line is
-    the final one, and only when this checkout is still on ``branch`` without
-    ``--delete-branch``.
+    A pr finish removes the files and does not print the line. The line is the
+    final one, and only for a merge or auto landing that left this checkout on
+    ``branch`` without ``--delete-branch``.
     """
-    if on_mode not in ("merge", "auto"):
-        return
     drop_main_checkout_pickup_files(repo, node_id, no_cleanup_work=no_cleanup_work)
-    if delete_branch or current_branch(repo) != branch:
+    if on_mode not in ("merge", "auto") or delete_branch or current_branch(repo) != branch:
         return
     print(f"[ok] this checkout is still on {branch} (landed into {ib}); next: git switch {ib}")
 

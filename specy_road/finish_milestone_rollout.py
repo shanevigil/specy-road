@@ -15,7 +15,9 @@ from specy_road.milestone_rollup_git import (
 from specy_road.milestone_chunk_io import maybe_promote_milestone_to_pending_mr
 from specy_road.milestone_session import MilestoneSession, milestone_session_path, read_milestone_session
 from specy_road.milestone_subtree import subtree_node_ids
-from specy_road.finish_modes import delete_landed_branch, refuse_unless_finish_tip
+from specy_road.finish_modes import (
+    delete_landed_branch, drop_main_checkout_pickup_files, refuse_unless_finish_tip,
+)
 from specy_road.on_complete_session import remove_on_complete_session
 
 
@@ -109,8 +111,9 @@ def retry_milestone_rollup_landing(
 
     False when no session owns this leaf, or ``--no-milestone-rollup`` was
     passed, so the caller retries an integration merge instead. Only the finish
-    bookkeeping commit is landed. True after the rollup landing, having deleted
-    the leaf when asked; the caller then stops.
+    bookkeeping commit is landed. True after the rollup landing, having removed
+    the main checkout's pickup files and deleted the leaf when asked; the caller
+    then stops. A failed landing raises before that removal.
     """
     from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
@@ -126,6 +129,7 @@ def retry_milestone_rollup_landing(
     land_milestone_rollup(
         repo, branch=branch, ms=ms, ib=ms.integration_branch, remote=ms.remote,
     )
+    drop_main_checkout_pickup_files(repo, node_id, no_cleanup_work=False)
     if delete_branch:
         _delete_rolled_leaf(
             repo, branch=branch, ms=ms, ib=ms.integration_branch, remote=ms.remote,

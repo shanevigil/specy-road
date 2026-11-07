@@ -143,6 +143,7 @@ entries:
       - tests/test_gui_app_routes_nodes_errors.py
       - tests/test_finish_merge_failure_undo.py
       - specy_road/finish_modes.py
+      - specy_road/finish_milestone_rollout.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
