@@ -171,6 +171,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
   - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Not Started**
   - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Not Started**
+  - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
