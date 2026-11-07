@@ -99,17 +99,26 @@ export type MarkdownToken = { type: string; raw: string };
 
 /** The parts of the editor's Markdown codec the save path needs. */
 export type MarkdownCodec<N> = {
+  parse(markdown: string): { content?: N[] };
   serialize(doc: { type: string; content?: N[] }): string;
 };
 
-/** Each top-level node of `doc`, serialized on its own. */
-export function markdownTopLevelBlocks<N>(
-  codec: MarkdownCodec<N>,
-  doc: { content?: N[] },
-): string[] {
-  return (doc.content ?? []).map((node) =>
-    codec.serialize({ type: "doc", content: [node] }),
-  );
+/**
+ * One top-level editor block: its node object and its Markdown on its own. The editor keeps
+ * the same node object for a block the person did not touch, so `node` is its identity.
+ */
+export type EditorBlock = { node: unknown; markdown: string };
+
+/** Each node serialized on its own (`json` gives the codec's form of a node). */
+export function toEditorBlocks<N, J>(
+  codec: MarkdownCodec<J>,
+  nodes: readonly N[],
+  json: (node: N) => J,
+): EditorBlock[] {
+  return nodes.map((node) => ({
+    node,
+    markdown: codec.serialize({ type: "doc", content: [json(node)] }),
+  }));
 }
 
 type SourcePiece = { body: string; sep: string };
@@ -137,74 +146,83 @@ function sourcePieces(
   return pieces;
 }
 
-/** Pairs of equal entries (index in `a`, index in `b`), longest common subsequence. */
-function matchBlocks(a: string[], b: string[]): Map<number, number> {
-  const n = a.length;
-  const m = b.length;
-  const len: number[][] = Array.from({ length: n + 1 }, () =>
-    new Array<number>(m + 1).fill(0),
-  );
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      len[i]![j] =
-        a[i] === b[j]
-          ? len[i + 1]![j + 1]! + 1
-          : Math.max(len[i + 1]![j]!, len[i]![j + 1]!);
-    }
-  }
-  const byB = new Map<number, number>();
-  let i = 0;
-  let j = 0;
-  while (i < n && j < m) {
-    if (a[i] === b[j]) {
-      byB.set(j, i);
-      i++;
-      j++;
-    } else if (len[i + 1]![j]! >= len[i]![j + 1]!) {
-      i++;
-    } else {
-      j++;
-    }
-  }
-  return byB;
-}
+/** A block to write: the source piece it keeps (index) or, when edited, its new text. */
+type Placed = { piece?: number; text: string };
 
 /**
- * Markdown to save after an edit: the loaded `source` text for every top-level block the
- * editor still holds unchanged, and the editor's serialization only for edited blocks.
- * `baseline` holds the per-block serialization right after `source` was loaded and
- * `next` the current one (see {@link markdownTopLevelBlocks}); `tokens` is the editor's
- * lexer output for `source`. Empty blocks (the editor's trailing paragraph) are ignored.
- * When the blocks cannot be paired with the source, `serialized` (the whole document)
- * is returned.
+ * The separator between two written blocks. A pair that was adjacent in the source keeps
+ * its separator. Otherwise, when `fromSource`, the separator that followed the earlier block
+ * (or preceded the later one) in the source; else, or with neither, one blank line.
  */
-export function preserveUntouchedMarkdown(
-  source: string,
-  tokens: MarkdownToken[],
-  baseline: string[],
-  next: string[],
-  serialized: string,
+function junction(
+  pieces: SourcePiece[],
+  x: Placed,
+  y: Placed,
+  fromSource: boolean,
 ): string {
-  const base = baseline.filter((b) => b.trim());
-  const cur = next.filter((b) => b.trim());
-  if (base.length === cur.length && base.every((b, k) => b === cur[k])) {
-    return source;
-  }
-  const pieces = sourcePieces(source, tokens);
-  if (!pieces || pieces.length !== base.length || cur.length === 0) {
-    return serialized;
-  }
-  const matched = matchBlocks(base, cur);
-  const finalSep = pieces[pieces.length - 1]!.sep;
-  return cur
-    .map((block, k) => {
-      const at = matched.get(k);
-      const piece =
-        at === undefined
-          ? { body: block.replace(/\n+$/, ""), sep: "\n\n" }
-          : pieces[at]!;
-      if (k === cur.length - 1) return piece.body + finalSep;
-      return piece.body + (/\n[ \t]*\n/.test(piece.sep) ? piece.sep : "\n\n");
+  const last = pieces.length - 1;
+  if (x.piece !== undefined && y.piece === x.piece + 1) return pieces[x.piece]!.sep;
+  if (!fromSource) return "\n\n";
+  if (x.piece !== undefined && x.piece < last) return pieces[x.piece]!.sep;
+  if (y.piece !== undefined && y.piece > 0) return pieces[y.piece - 1]!.sep;
+  return "\n\n";
+}
+
+function writeBlocks(
+  pieces: SourcePiece[],
+  placed: Placed[],
+  fromSource: boolean,
+): string {
+  const ending = pieces[pieces.length - 1]?.sep ?? "";
+  return placed
+    .map((b, k) => {
+      const body = b.piece === undefined ? b.text : pieces[b.piece]!.body;
+      const next = placed[k + 1];
+      return body + (next ? junction(pieces, b, next, fromSource) : ending);
     })
     .join("");
+}
+
+const sameList = <T>(a: readonly T[], b: readonly T[]) =>
+  a.length === b.length && a.every((x, k) => x === b[k]);
+
+/**
+ * Markdown to save after an edit. Rule: every top-level block whose editor node is unchanged
+ * is written as its loaded `source` text; an edited or new block is written as the editor
+ * serializes it; separators come from the source (see {@link junction}). The result must
+ * parse back to the editor's blocks: if source separators would merge or split blocks, edited
+ * junctions get a blank line instead, and if that also fails (or the source tokens cannot be
+ * paired with the loaded blocks) the whole `serialized` document is returned. An unedited
+ * document returns `source` unchanged. Empty blocks (the editor's trailing paragraph) are
+ * ignored. `baseline` is the blocks right after `source` loaded, `next` the current ones,
+ * `tokens` the editor's lexer output for `source`.
+ */
+export function preserveUntouchedMarkdown<J>(input: {
+  source: string;
+  tokens: MarkdownToken[];
+  baseline: EditorBlock[];
+  next: EditorBlock[];
+  serialized: string;
+  codec: MarkdownCodec<J>;
+}): string {
+  const { source, codec } = input;
+  const base = input.baseline.filter((b) => b.markdown.trim());
+  const cur = input.next.filter((b) => b.markdown.trim());
+  if (sameList(base.map((b) => b.node), cur.map((b) => b.node))) return source;
+  const pieces = sourcePieces(source, input.tokens);
+  if (!pieces || pieces.length !== base.length) return input.serialized;
+  const pieceOf = new Map(base.map((b, k) => [b.node, k]));
+  const placed = cur.map((b) => ({
+    piece: pieceOf.get(b.node),
+    text: b.markdown.replace(/\n+$/, ""),
+  }));
+  const expected = cur.map((b) => b.markdown);
+  for (const fromSource of [true, false]) {
+    const out = writeBlocks(pieces, placed, fromSource);
+    const back = toEditorBlocks(codec, codec.parse(out).content ?? [], (n) => n)
+      .map((b) => b.markdown)
+      .filter((m) => m.trim());
+    if (sameList(back, expected)) return out;
+  }
+  return input.serialized;
 }

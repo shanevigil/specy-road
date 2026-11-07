@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 import { markdownWorkspaceExtensions } from "./components/MarkdownWorkspace";
 import { escapeTargetFrame, type EscapeFrame } from "./components/ModalFrame";
 import {
-  markdownTopLevelBlocks,
   preserveUntouchedMarkdown,
+  toEditorBlocks,
 } from "./planningSectionUtils";
 
 const SHEET = [
@@ -26,41 +26,73 @@ const SHEET = [
   "",
 ].join("\n");
 
-/** Load `source` the way the editor does, apply `edit` to the document, and save. */
-function roundTrip(source: string, edit?: (doc: JSONContent) => void): string {
+const TIGHT = "## Intent\nOld intent.\n## Approach\n- a\n  b\n";
+
+const paragraph = (text: string): JSONContent => ({
+  type: "paragraph",
+  content: [{ type: "text", text }],
+});
+
+/**
+ * Load `source` the way the editor does, let `edit` change the top-level nodes (an untouched
+ * node keeps its object, as in the editor), and save.
+ */
+function save(
+  source: string,
+  edit: (nodes: JSONContent[]) => JSONContent[] = (nodes) => nodes,
+): string {
   const codec = new MarkdownManager({
     extensions: markdownWorkspaceExtensions(),
     markedOptions: { gfm: true },
   });
-  const doc = codec.parse(source);
-  const baseline = markdownTopLevelBlocks(codec, doc);
+  const loaded = codec.parse(source).content ?? [];
   // The editor appends an empty trailing paragraph after a list on the first transaction.
-  doc.content = [...(doc.content ?? []), { type: "paragraph" }];
-  edit?.(doc);
-  return preserveUntouchedMarkdown(
+  const nodes = [...edit([...loaded]), { type: "paragraph" }];
+  return preserveUntouchedMarkdown({
     source,
-    codec.instance.lexer(source),
-    baseline,
-    markdownTopLevelBlocks(codec, doc),
-    codec.serialize(doc),
-  );
+    tokens: codec.instance.lexer(source),
+    baseline: toEditorBlocks(codec, loaded, (n) => n),
+    next: toEditorBlocks(codec, nodes, (n) => n),
+    serialized: codec.serialize({ type: "doc", content: nodes }),
+    codec,
+  });
 }
 
-describe("planning-sheet save", () => {
-  it("saves an unedited sheet byte-identical", () => {
-    expect(roundTrip(SHEET)).toBe(SHEET);
-  });
-
-  it("changes only the Intent paragraph's lines when it is edited", () => {
-    const saved = roundTrip(SHEET, (doc) => {
-      doc.content![1] = {
-        type: "paragraph",
-        content: [{ type: "text", text: "A new intent." }],
-      };
-    });
-    expect(saved).toBe(
+describe("planning-sheet save keeps untouched Markdown", () => {
+  it.each([
+    ["an unedited sheet, byte-identical", SHEET, undefined, SHEET],
+    [
+      "an Intent edit changes only its lines",
+      SHEET,
+      (n: JSONContent[]) => n.with(1, paragraph("A new intent.")),
       SHEET.replace("Saving keeps what the person did not touch.", "A new intent."),
-    );
+    ],
+    [
+      "a tight sheet keeps its single-newline separators",
+      TIGHT,
+      (n: JSONContent[]) => n.with(1, paragraph("New intent.")),
+      TIGHT.replace("Old intent.", "New intent."),
+    ],
+    [
+      "deleting one of two equal-looking blocks keeps the other's source",
+      "*same*\n\n_same_\n",
+      (n: JSONContent[]) => n.slice(1),
+      "_same_\n",
+    ],
+    [
+      "first text typed into an empty document",
+      "",
+      () => [paragraph("First")],
+      "First",
+    ],
+    [
+      "a source separator that would merge blocks becomes a blank line",
+      "Para one.\n## H\nPara two.\n",
+      (n: JSONContent[]) => [n[0]!, n[2]!],
+      "Para one.\n\nPara two.\n",
+    ],
+  ] as const)("%s", (_case, source, edit, expected) => {
+    expect(save(source, edit)).toBe(expected);
   });
 });
 

@@ -1,12 +1,13 @@
 import { TaskItem } from "@tiptap/extension-task-item";
 import { TaskList } from "@tiptap/extension-task-list";
-import { Markdown, type MarkdownManager } from "@tiptap/markdown";
+import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
 import {
-  markdownTopLevelBlocks,
   preserveUntouchedMarkdown,
+  toEditorBlocks,
+  type EditorBlock,
   type MarkdownToken,
 } from "../planningSectionUtils";
 import { MarkdownToolbar } from "./MarkdownToolbar";
@@ -56,23 +57,18 @@ export function markdownWorkspaceExtensions() {
   ];
 }
 
-/** The loaded text and its per-block serialization, so a save keeps untouched blocks. */
+/** The loaded text and its blocks, so a save keeps untouched blocks as loaded. */
 type LoadedMarkdown = {
-  codec: MarkdownManager;
   text: string;
   tokens: MarkdownToken[];
-  blocks: string[];
+  blocks: EditorBlock[];
 };
 
-function loadedMarkdown(editor: Editor, text: string): LoadedMarkdown | null {
-  const codec = editor.markdown;
-  if (!codec) return null;
-  return {
-    codec,
-    text,
-    tokens: codec.instance.lexer(text),
-    blocks: markdownTopLevelBlocks(codec, editor.getJSON()),
-  };
+/** The editor's top-level blocks; the editor is built from {@link markdownWorkspaceExtensions}. */
+function editorBlocks(editor: Editor): EditorBlock[] {
+  return toEditorBlocks(editor.markdown!, editor.state.doc.content.content, (n) =>
+    n.toJSON(),
+  );
 }
 
 type Props = {
@@ -146,13 +142,14 @@ export function MarkdownWorkspace({
         const serialized = normalizeMd(ed.getMarkdown());
         const loaded = loadedRef.current;
         const next = loaded
-          ? preserveUntouchedMarkdown(
-              loaded.text,
-              loaded.tokens,
-              loaded.blocks,
-              markdownTopLevelBlocks(loaded.codec, ed.getJSON()),
+          ? preserveUntouchedMarkdown({
+              source: loaded.text,
+              tokens: loaded.tokens,
+              baseline: loaded.blocks,
+              next: editorBlocks(ed),
               serialized,
-            )
+              codec: ed.markdown!,
+            })
           : serialized;
         lastTextRef.current = next;
         if (next === normalizeMd(valueRef.current)) return;
@@ -188,7 +185,11 @@ export function MarkdownWorkspace({
       contentType: "markdown",
       emitUpdate: false,
     });
-    loadedRef.current = loadedMarkdown(editor, v);
+    loadedRef.current = {
+      text: v,
+      tokens: editor.markdown!.instance.lexer(v),
+      blocks: editorBlocks(editor),
+    };
   }, [editor, value]);
 
   const rootClass = className
