@@ -53,19 +53,27 @@ from specy_road.bundled_scripts.roadmap_outline_ops import (
     ordered_sibling_ids,
     print_id_map,
 )
-from specy_road.bundled_scripts.roadmap_outline_renumber import check_chosen_child_id
+from specy_road.bundled_scripts.roadmap_outline_renumber import (
+    assign_subtree_ids_inplace,
+    check_chosen_child_id,
+    next_free_child_id,
+)
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.runtime_paths import add_repo_root_arg
 
 
 @dataclass(frozen=True)
 class NewParent:
-    """The node a group creates: ``index`` among its siblings, ``sheet`` as (path, text)."""
+    """The node a group creates: ``index`` among its siblings, ``sheet`` as (path, text).
+
+    ``node`` carries a transient id until :meth:`finish` gives it ``final_id``.
+    """
 
     root: Path
     node: dict
     index: int
     sheet: tuple[Path, str] | None
+    final_id: str
 
     def insert(self, nodes: list[dict]) -> None:
         """Add the node to ``nodes`` at its sibling position."""
@@ -76,6 +84,10 @@ class NewParent:
         by_id[self.node["id"]] = self.node
         for i, nid in enumerate(siblings):
             by_id[nid]["sibling_order"] = i
+
+    def finish(self, nodes: list[dict]) -> None:
+        """Give the node and its whole subtree their final ids, after every move."""
+        assign_subtree_ids_inplace(nodes, self.node["node_key"], self.final_id)
 
     def stage(self, plan: AtomicWritePlan, nodes: list[dict]) -> None:
         """Stage the node into its routed chunk, over the batch's other chunk edits."""
@@ -129,13 +141,17 @@ def group_nodes(
     Returns the ``old -> new`` id map; every refusal, a locked milestone
     included, is a ``ValueError``. ``rewrite_refs`` also rewrites the map's
     ids in every node's planning sheet, title and acceptance.
+
+    ``into_new`` may be an id one of ``node_ids`` holds: the members move under
+    a transient free id first, and the new parent's subtree takes its final
+    ids in one step after the last move, so no member collides on the way.
     """
     nodes = list(load_roadmap(root)["nodes"])
     by_id = {n["id"]: n for n in nodes}
     parent_id = _common_parent(by_id, node_ids)
     # A locked parent locks its whole subtree, so the listed ids cover it.
     assert_pm_nodes_not_milestone_locked(nodes, *node_ids)
-    check_chosen_child_id(nodes, parent_id, into_new, ignore_ids=set())
+    check_chosen_child_id(nodes, parent_id, into_new, ignore_ids=set(node_ids))
     node: dict = {
         "id": into_new,
         "node_key": new_node_key(),
@@ -150,14 +166,17 @@ def group_nodes(
     sheet = plan_planning_sheet_for_new_node(root, node)
     siblings = ordered_sibling_ids(nodes, parent_id, by_id)
     index = min(siblings.index(nid) for nid in node_ids)
+    # Free in the loaded graph, so neither it nor any id below it is taken.
+    transient = next_free_child_id(nodes, parent_id)
+    node["id"] = transient
     moves = [
-        NodeMove(by_id[nid]["node_key"], into_new, i, new_id=f"{into_new}.{i + 1}")
+        NodeMove(by_id[nid]["node_key"], transient, i, new_id=f"{transient}.{i + 1}")
         for i, nid in enumerate(node_ids)
     ]
     return move_nodes(
         root,
         moves,
-        new_parent=NewParent(root, node, index, sheet),
+        new_parent=NewParent(root, node, index, sheet, into_new),
         rewrite_refs=rewrite_refs,
     )
 
@@ -256,7 +275,10 @@ def _add_group_parser(sub) -> None:
         "--into-new",
         required=True,
         metavar="NEW_ID",
-        help="The new parent's id: a free direct child id of the siblings' parent.",
+        help=(
+            "The new parent's id: a direct child id of the siblings' parent, "
+            "free or held by one of the listed nodes."
+        ),
     )
     p.add_argument("--title", required=True, help="The new parent's title.")
     p.add_argument(

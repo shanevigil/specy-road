@@ -8,12 +8,13 @@ it in one step (M21.2).
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
 import yaml
 
-from specy_road.bundled_scripts import roadmap_crud_ops
+from specy_road.bundled_scripts import roadmap_crud_ops, roadmap_outline_group
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
     load_json_chunk,
     write_json_chunk,
@@ -223,6 +224,62 @@ def test_group_at_the_root_stages_a_new_chunk_and_manifest_entry(repo: Path) -> 
     assert [n["id"] for n in load_json_chunk(repo / "roadmap" / "phases" / "M3.json")] == ["M3"]
 
 
+@pytest.mark.parametrize("rewrite_refs", [False, True], ids=["plain", "rewrite-refs"])
+def test_group_into_an_id_a_listed_node_holds(
+    repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    rewrite_refs: bool,
+) -> None:
+    """B1: the holder of NEW_ID leaves it in the same transaction, chains included."""
+    registry = repo / "roadmap" / "registry.yaml"
+    registry.write_text(
+        registry.read_text(encoding="utf-8")
+        + "  - codename: middle-work\n    node_id: M1.2\n"
+        "    branch: feature/rm-middle-work\n",
+        encoding="utf-8",
+    )
+    real = roadmap_crud_ops.validate_at
+    validations: list[Path] = []
+
+    def counting(root: Path, **kwargs: object) -> None:
+        validations.append(root)
+        real(root, **kwargs)
+
+    monkeypatch.setattr(roadmap_crud_ops, "validate_at", counting)
+    expected = {
+        "M1.1": "M1.2.1",
+        "M1.2": "M1.2.2",
+        "M1.2.1": "M1.2.2.1",
+        "M1.2.2": "M1.2.2.2",
+        "M1.2.4": "M1.2.2.4",
+        "M1.3": "M1.2.3",
+    }
+    flags = ["--rewrite-refs"] if rewrite_refs else []
+
+    roadmap_outline_group.main(
+        ["group-nodes", "--into-new", "M1.2", "--title", "G", "M1.1", "M1.2", "M1.3",
+         *flags, "--repo-root", str(repo)]
+    )
+
+    out = capsys.readouterr().out
+    assert validations == [repo]
+    printed = dict(re.findall(r"(M[\d.]+) -> (M[\d.]+)", out))
+    assert printed == expected
+    nodes = {n["id"]: n for n in nodes_by_key(repo).values()}
+    assert (nodes["M1.2"]["parent_id"], nodes["M1.2"]["title"]) == ("M1", "G")
+    for old, new in expected.items():
+        sheet = nodes[new]["planning_dir"]
+        assert sheet.startswith(f"planning/{new}_")
+        assert (repo / sheet).read_text(encoding="utf-8") == f"# {new if rewrite_refs else old}\n"
+    # The transient parent id (M1.4, the next free child of M1) reaches nothing.
+    assert not [i for i in nodes if i.startswith("M1.4")]
+    assert "M1.4" not in out
+    assert not [p for p, b in tree_bytes(repo).items() if "M1.4" in p or b"M1.4" in b]
+    claims = {e["codename"]: e["node_id"] for e in yaml.safe_load(registry.read_text())["entries"]}
+    assert claims["middle-work"] == "M1.2.2"
+
+
 @pytest.mark.parametrize(
     ("args", "reason"),
     [
@@ -230,12 +287,12 @@ def test_group_at_the_root_stages_a_new_chunk_and_manifest_entry(repo: Path) -> 
         (("--into-new", "M1.4", "M1.1", "M2.1"), "must be siblings"),
         (("--into-new", "M1.4", "M1.1", "M9"), "no roadmap node with id 'M9'"),
         (("--into-new", "M1.3", "M1.1"), "already taken"),
-        # A listed sibling's own id is not free: it is still in use until the move.
-        (("--into-new", "M1.1", "M1.1"), "already taken"),
+        # A descendant's id is never a direct child id of the common parent.
+        (("--into-new", "M1.2.1", "M1.2"), "not a direct child id of M1"),
         (("--into-new", "M1.x", "M1.1"), "malformed"),
         (("--into-new", "M2.9", "M1.1"), "not a direct child id of M1"),
     ],
-    ids=["duplicate", "not-siblings", "unknown", "taken", "own-id", "malformed", "wrong-parent"],
+    ids=["duplicate", "not-siblings", "unknown", "taken", "descendant-id", "malformed", "wrong-parent"],
 )
 def test_a_refused_group_leaves_the_tree_byte_for_byte_unchanged(
     repo: Path, args: tuple[str, ...], reason: str
