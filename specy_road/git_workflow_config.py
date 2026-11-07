@@ -170,6 +170,20 @@ def track_worker_logs(repo_root: Path) -> str:
     return v if v in TRACK_WORKER_LOGS_MODES else "off"
 
 
+#: ``worker_sandbox``: bwrap (required), auto (the default: bwrap on Linux where installed, else a warning) or off.
+WORKER_SANDBOX_MODES = ("bwrap", "auto", "off")
+
+
+def worker_sandbox_mode(repo_root: Path) -> str:
+    """``bwrap``, ``auto`` or ``off`` from ``roadmap/git-workflow.yaml``; ``auto`` when absent or unreadable.
+
+    A bare YAML ``off`` loads as ``false``, which the schema accepts as ``off``.
+    """
+    data, err = load_git_workflow_config(repo_root)
+    v = (data or {}).get("worker_sandbox") if not err else None
+    return "off" if v is False else v if v in WORKER_SANDBOX_MODES else "auto"
+
+
 def resolve_prefer_agentic(repo_root: Path, *, cli: bool | None) -> bool:
     """Pickup order: CLI ``--prefer-agentic`` / ``--no-prefer-agentic`` wins, then
     ``prefer_agentic_pick_order`` in ``roadmap/git-workflow.yaml``, else off."""
