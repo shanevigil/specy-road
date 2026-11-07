@@ -40,7 +40,7 @@ from specy_road.review_files import (
     review_path, reviews_dir, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, trial_merge
-from specy_road import review_caller, review_lock
+from specy_road import review_caller, review_lock, safe_write
 from specy_road.review_lock import ReviewRunBusy, filing_busy
 from specy_road.review_rejected import run_review_record
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
@@ -265,7 +265,10 @@ def _relabel_independence(root: Path, gate: GateResult) -> None:
 
 
 def cmd_review_record(ns: argparse.Namespace) -> int:
-    return run_review_record(ns, resolve_repo_root(ns), _fail, _relabel_independence)
+    try:
+        return run_review_record(ns, resolve_repo_root(ns), _fail, _relabel_independence)
+    except safe_write.SafeWriteError as e:   # a symlink on the live record or history/: nothing was written
+        return _fail(str(e))
 
 
 def cmd_review_record_locked(ns: argparse.Namespace) -> int:
@@ -281,6 +284,8 @@ def cmd_review_record_locked(ns: argparse.Namespace) -> int:
             return cmd_review_record(ns)
     except ReviewRunBusy:
         return _fail(f"{filing_busy(ns.node_id)} — file again when it ends (review list {ns.node_id})")
+    except safe_write.SafeWriteError as e:   # a symlink at the hand-off directory or the lock
+        return _fail(str(e))
 
 
 def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget | None) -> int:

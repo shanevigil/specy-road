@@ -48,12 +48,12 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road import review_lock
+from specy_road import review_lock, safe_write
 from specy_road.bundled_scripts.registration_pickup_commit import with_policy_trailer
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_text, run
 from specy_road.registry_yaml import read_registry, registry_path
-from specy_road.review_files import reviews_dir
+from specy_road.review_files import check_handoff_read, project_of, reviews_dir
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_target import REGISTER_SUBJECT, ReviewTargetError, full_sha, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -205,12 +205,13 @@ def acceptance_path(root: Path, node_id: str) -> Path:
 
 def read_acceptance(root: Path, node_id: str) -> tuple[dict[str, Any] | None, str | None]:
     """``(acceptance, None)``, ``(None, None)`` when there is none, or ``(None, why)`` when it is present but
-    unreadable or invalid (the module's one rule; a directory in its place counts as present)."""
+    unreadable or invalid (the module's one rule; a directory or a symlink in its place counts as present)."""
     path = acceptance_path(root, node_id)
-    if not path.exists():
+    if not path.exists() and not path.is_symlink():
         return None, None
     try:
         with _unreadable_as(ACCEPTANCE_NAME):
+            check_handoff_read(path)
             data = yaml.safe_load(path.read_bytes().decode("utf-8"))
             schema = json.loads(_SCHEMA.read_text(encoding="utf-8"))
             if errors := sorted(Draft202012Validator(schema).iter_errors(data), key=str):
@@ -322,7 +323,10 @@ def _change_groups(changes: list[dict[str, Any]]) -> list[tuple[tuple[str, ...],
 
 
 def _write_acceptances(root: Path, rows: list[dict[str, Any]]) -> int:
-    """One ``POLICY-ACCEPTED.yaml`` per leaf, under that leaf's review lock. Nothing is written when a lock is held."""
+    """One ``POLICY-ACCEPTED.yaml`` per leaf, under that leaf's review lock.
+
+    Nothing is written when a lock is held, or when any acceptance path is a symlink.
+    """
     ordered = sorted(rows, key=lambda row: row["node_id"])
     user = _user(root)
     at = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
@@ -334,11 +338,26 @@ def _write_acceptances(root: Path, rows: list[dict[str, Any]]) -> int:
             except review_lock.ReviewRunBusy:
                 print(f"error: {review_lock.filing_busy(row['node_id'])}", file=sys.stderr)
                 return 1
+            except safe_write.SafeWriteError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 1
+        prepared: list[tuple[Path, str]] = []
         for row in ordered:
             path = acceptance_path(root, row["node_id"])
             record = {"node_id": row["node_id"], "pinned_sha256": row["pinned"], "accepted_sha256": row["current"],
                       "user": user, "at": at}
-            path.write_text(yaml.safe_dump(record, sort_keys=False), encoding="utf-8")
+            try:
+                safe_write.check(project_of(path), path)
+            except safe_write.SafeWriteError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 1
+            prepared.append((path, yaml.safe_dump(record, sort_keys=False)))
+        for path, body in prepared:
+            try:
+                safe_write.write(project_of(path), path, body)
+            except safe_write.SafeWriteError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 1
             print(f"wrote {path}")
     return 0
 

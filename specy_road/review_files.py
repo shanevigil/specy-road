@@ -23,6 +23,8 @@ coordinator polls the directory. Both schemas ship in the wheel, like
 from __future__ import annotations
 
 import json
+import os
+import stat
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from functools import cache
@@ -32,6 +34,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from specy_road import safe_write
 from specy_road.git_subprocess import git_text
 from specy_road.runtime_paths import specy_road_package_dir
 from specy_road.schema_revision import accepted_at_revision
@@ -97,13 +100,64 @@ def review_path(repo_root: Path, node_id: str, model: str) -> Path:
     return reviews_dir(repo_root, node_id) / f"{REVIEW_PREFIX}{model}.md"
 
 
+def _work_index(parts: tuple[str, ...]) -> int | None:
+    """The hand-off ``work``: the last one followed by ``reviews``, else the last ``work``.
+
+    An earlier directory also named ``work`` is above the project. There is no
+    other spelling: a ``work`` after ``reviews``, or a ``work`` that is not the
+    hand-off pair, is not the one ``reviews.parents[2]`` names.
+    """
+    handoff = None
+    last = None
+    for i, name in enumerate(parts):
+        if name != "work":
+            continue
+        last = i
+        if i + 1 < len(parts) and parts[i + 1] == "reviews":
+            handoff = i
+    return handoff if handoff is not None else last
+
+
+def project_of(path: Path) -> Path:
+    """The project directory that holds the hand-off ``work/``.
+
+    That ``work`` is the last component named ``work`` immediately followed by
+    ``reviews`` (``<project>/work/reviews/<node>``, so the node directory's
+    ``parents[2]``). A path under ``work/`` with no ``reviews`` uses the last
+    ``work``. A path with no ``work`` (a unit test's bare directory) is two
+    parents up, so the check still sees the directory the file sits in. A
+    relative path whose first component is ``work`` is owned by ``.``: that is
+    ``parents[2]`` of ``work/reviews/<node>``, the directory that holds ``work``.
+    """
+    i = _work_index(path.parts)
+    if i is None:
+        return path.parents[2] if len(path.parents) > 2 else path.parent
+    return Path(*path.parts[:i])
+
+
+def _unlink_case_variant(directory: Path, name: str) -> None:
+    """Remove a same-name entry whose ``lstat`` is a regular file or a symlink; a link is unlinked as an entry."""
+    for p in directory.iterdir():
+        if p.name.lower() != name.lower():
+            continue
+        try:
+            mode = os.lstat(p).st_mode
+        except OSError:
+            continue
+        if stat.S_ISREG(mode) or stat.S_ISLNK(mode):
+            os.unlink(p)
+
+
 def write_review(path: Path, text: str) -> None:
-    """Write ``path`` under its exact name; on macOS APFS writing over ``review-x.md`` would keep that name."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    for p in path.parent.iterdir():
-        if p.name.lower() == path.name.lower() and p.is_file():
-            p.unlink()
-    path.write_text(text, encoding="utf-8")
+    """Write ``path`` under its exact name; on macOS APFS writing over ``review-x.md`` would keep that name.
+
+    A symlink at the name, or at any directory from the project root down, is refused before the directory is
+    made and before the case-variant names are unlinked.
+    """
+    safe_write.check(project_of(path), path)
+    safe_write.mkdirs(project_of(path), path.parent)
+    _unlink_case_variant(path.parent, path.name)
+    safe_write.write(project_of(path), path, text)
 
 
 @cache
@@ -154,8 +208,18 @@ def _scalars_to_str(data: dict[str, Any], root: Any) -> None:
             data[k.value] = v.value
 
 
+def check_handoff_read(path: Path) -> None:
+    """Under ``work/reviews``, refuse (:class:`safe_write.SafeWriteError`) unless ``path`` is absent or a regular file
+    reached through real directories from the project root, so a planted link is never read as a hand-off file.
+    A path elsewhere (a temporary READY, a ``review record --file``) is not checked."""
+    i = _work_index(path.parts)
+    if i is not None and path.parts[i + 1:i + 2] == ("reviews",):
+        safe_write.check(project_of(path), path)
+
+
 def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
     try:
+        check_handoff_read(path)
         text = path.read_text(encoding="utf-8")
     except OSError as e:
         return {}, "", [f"cannot read: {e}"]
@@ -242,8 +306,24 @@ def load_review(path: Path, acceptance_ids: list[str] | None = None) -> ReviewFi
     return ReviewFile(path, data, body, errs)
 
 
-def _files(repo_root: Path, node_id: str, prefix: str, any_case: bool = False) -> list[Path]:
+def reviews_listing(repo_root: Path, node_id: str) -> Path:
+    """The hand-off directory to list.
+
+    When ``work``, ``work/reviews`` or the node directory is a symlink, this is ``os.devnull``. That path
+    is not a directory, so a caller's ``is_dir`` check lists nothing. No directory in the project is read,
+    including a ``<project>/.handoff-closed`` someone planted a record in. Nothing above the project is
+    inspected.
+    """
+    from specy_road.review_write_check import handoff_closed
+
     d = reviews_dir(repo_root, node_id)
+    if handoff_closed(d) is not None:
+        return Path(os.devnull)
+    return d
+
+
+def _files(repo_root: Path, node_id: str, prefix: str, any_case: bool = False) -> list[Path]:
+    d = reviews_listing(repo_root, node_id)
     if not d.is_dir():
         return []
     fold = str.lower if any_case else str
@@ -276,18 +356,24 @@ def list_reviews(repo_root: Path, node_id: str, acceptance_ids: list[str] | None
 
 
 def archive_review(repo_root: Path, node_id: str, model: str, text: str) -> Path:
-    """Keep a copy of a filed record under ``history/``; names sort in filing order."""
-    d = reviews_dir(repo_root, node_id) / HISTORY_DIRNAME
-    d.mkdir(parents=True, exist_ok=True)
+    """Keep a copy of a filed record under ``history/``; names sort in filing order.
+
+    ``history/`` and the copy are checked from the project root before the directory is made, so a symlink
+    there is refused and nothing is written through it.
+    """
+    reviews = reviews_dir(repo_root, node_id)
+    d = reviews / HISTORY_DIRNAME
     path = d / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}-{model}.md"
-    path.write_text(text, encoding="utf-8")
-    return path
+    owned = project_of(reviews)
+    safe_write.check(owned, d, safe_write.DIRECTORY)
+    safe_write.check(owned, path)
+    return safe_write.write(owned, path, text)
 
 
 def list_review_history(repo_root: Path, node_id: str) -> list[ReviewFile]:
-    """Every record ``review record`` has filed for the node, oldest first."""
-    d = reviews_dir(repo_root, node_id) / HISTORY_DIRNAME
-    return [load_review(p) for p in sorted(d.glob("*.md"))] if d.is_dir() else []
+    """Every record ``review record`` has filed for the node, oldest first; a symlinked ``history/`` is not listed."""
+    d = reviews_listing(repo_root, node_id) / HISTORY_DIRNAME
+    return [load_review(p) for p in sorted(d.glob("*.md"))] if d.is_dir() and not d.is_symlink() else []
 
 
 def round_span(repo_root: Path, node_id: str) -> dict[str, Any]:

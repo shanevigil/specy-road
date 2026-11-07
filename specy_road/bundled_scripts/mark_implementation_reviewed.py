@@ -36,6 +36,8 @@ from specy_road.review_gate import (
 )
 from specy_road.review_tally import tally_trailers
 from specy_road.review_target import is_milestone, milestone_close_problem, resolve_target_or_exit
+from specy_road import safe_write
+from specy_road.review_files import project_of, reviews_dir
 from specy_road.review_lock import ReviewRunBusy, filing_busy
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
@@ -198,6 +200,35 @@ def _print_gate(gate: GateResult) -> None:
     print()
 
 
+def _approval_failure(node_id: str, error: BaseException) -> str:
+    """Why a human-approval write was refused, for the ``error:`` line."""
+    if isinstance(error, SigningError):
+        return f"could not sign: {error}"
+    if isinstance(error, ReviewRunBusy):
+        return filing_busy(node_id)
+    return str(error)
+
+
+def _write_human_or_exit(node: dict, commit: str, sign_key: Path | None) -> Path:
+    """Write the human approval, or exit 1 with ``error:`` and no traceback."""
+    try:
+        return write_human_approval(ROOT, node, commit, sign_key)
+    except (SigningError, ReviewRunBusy, safe_write.SafeWriteError) as e:
+        # a reviewer run holds the hand-off directory, or a symlink is on the path: nothing written
+        print(f"error: {_approval_failure(node['id'], e)}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
+def _refuse_linked_handoff(node_id: str) -> None:
+    """A symlink at ``work``, ``work/reviews`` or the node directory refuses before the gate is read."""
+    d = reviews_dir(ROOT, node_id)
+    try:
+        safe_write.check(project_of(d), d, safe_write.DIRECTORY)
+    except safe_write.SafeWriteError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
 def _gate_or_human_approval(
     args: argparse.Namespace,
     node: dict,
@@ -213,6 +244,7 @@ def _gate_or_human_approval(
     and a human approval here could not (or may not) make up the difference.
     ``commit`` is the commit under review when it is not ``HEAD`` (a milestone's integration tip).
     """
+    _refuse_linked_handoff(node["id"])
     gate = evaluate_gate(
         ROOT,
         node,
@@ -232,12 +264,7 @@ def _gate_or_human_approval(
                               approve_label=_APPROVE_AS_HUMAN):
             print("Aborted (registry unchanged).")
             raise SystemExit(0)
-        try:
-            written = write_human_approval(ROOT, node, gate.commit, sign_key)
-        except (SigningError, ReviewRunBusy) as e:   # a reviewer run holds the hand-off directory: nothing written
-            why = f"could not sign: {e}" if isinstance(e, SigningError) else filing_busy(node["id"])
-            print(f"error: {why}", file=sys.stderr)
-            raise SystemExit(1) from None
+        written = _write_human_or_exit(node, gate.commit, sign_key)
         # From a linked worktree the review lands in the main worktree.
         print(f"[ok] wrote {written.relative_to(ROOT) if written.is_relative_to(ROOT) else written}")
         gate = evaluate_gate(ROOT, node, gate.commit, branch=branch)
