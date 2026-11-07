@@ -153,3 +153,22 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
+  - codename: gui-acceptance-editing
+    node_id: M17.11
+    branch: feature/rm-gui-acceptance-editing
+    touch_zones:
+      - gui/pm-gantt/src/components/EditModal.tsx
+      - gui/pm-gantt/src/editModalSaveQueue.ts
+      - gui/pm-gantt/src/editModalSaveQueue.test.ts
+      - gui/pm-gantt/src/acceptanceEdit.ts
+      - gui/pm-gantt/src/acceptanceEdit.test.ts
+      - gui/pm-gantt/src/types.ts
+      - gui/pm-gantt/src/api.ts
+      - gui/pm-gantt/src/App.css
+      - specy_road/pm_gantt_static/
+      - tests/test_gui_app_mutations.py
+      - docs/pm-gui.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending

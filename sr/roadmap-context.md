@@ -308,6 +308,7 @@ Do not pick these up.
 
 - `M16.1.1` on `feature/rm-parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` since 2026-11-07
 - `M16.1.4` on `feature/rm-constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions` since 2026-11-07
+- `M17.11` on `feature/rm-gui-acceptance-editing` since 2026-11-07
 - `M17.2` on `feature/rm-gui-orch-view-model` since 2026-11-07
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
