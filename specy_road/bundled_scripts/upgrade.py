@@ -31,7 +31,8 @@ anything outside a managed block are never touched. The refreshes run once, on
 a temporary mirror of the checkout that keeps its links and leaves gitignored
 files out: tracked files, untracked files git does not ignore, and files the
 refreshes read. A symlink to an ignored file or directory does not copy that
-target. It prints a line before that copy. What they wrote there
+target. A directory that cannot be searched is left out, on a real run and a
+dry run. It prints a line before that copy. What they wrote there
 is the plan, which is then written into the checkout. ``--dry-run`` lists the
 same plan, reuses that mirror for a temporary copy and runs ``validate`` there;
 the checkout is never written, and the generated files it would write are

@@ -11,8 +11,9 @@ The plan is the difference that run made, expressed as the real paths it lands o
 The mirror holds tracked files, untracked files git does not ignore, and any
 extra paths the caller names (what the refreshes read, including a generated
 file the preview compares). Gitignored files are not copied. A symlink does
-not bring an ignored target in: that path stays out of the mirror. A target
-outside the checkout is still copied, so a link that leaves the checkout
+not bring an ignored target in: that path stays out of the mirror. A directory
+that cannot be searched is left out too, so the copy does not stop on it. A
+target outside the checkout is still copied, so a link that leaves the checkout
 resolves as before.
 
 :func:`apply_plan` writes the plan into the checkout (``upgrade``) or into a
@@ -109,6 +110,20 @@ def _ancestors(rels: set[str]) -> set[str]:
     return found
 
 
+def _skipped_dir(path: Path) -> bool:
+    """A real directory the copy does not enter: it contains a repository, or it cannot be searched.
+
+    A symlink is not this directory. ``path/.git`` raises ``OSError`` when ``path`` cannot be listed,
+    which is the same reason to leave it out: the copy would stop, and a later snapshot cannot list it either.
+    """
+    if path.is_symlink() or not path.is_dir():
+        return False
+    try:
+        return (path / ".git").exists()
+    except OSError:
+        return True
+
+
 def _ignored(checkout: Path, rels: list[str], env: dict[str, str] | None) -> set[str]:
     """The members of ``rels`` that git ignores in ``checkout``. A git failure raises :class:`GitFailed`."""
     found: set[str] = set()
@@ -167,7 +182,7 @@ def _appeared(checkout: Path, skip: Path, states: dict[str, State]) -> list[str]
         descend: list[str] = []
         for path in children:
             rel = rel_of[path]
-            if path.is_dir() and not path.is_symlink() and (path / ".git").exists():
+            if _skipped_dir(path):
                 continue
             pruned = (path.is_dir() and not path.is_symlink() and rel not in ancestors
                       and rel not in recorded and rel in ignored)
@@ -193,8 +208,8 @@ class Mirror:
     under ``skip`` and not itself gitignored, is copied to its real path's
     place, and a link whose text names that place another way reaches it
     through one more link, which only a path already outside the checkout can
-    cross. A gitignored checkout path, and a nested repository, are not copied
-    for a link that points at them. A text whose ``..`` climbs past
+    cross. A gitignored checkout path, a nested repository, and a directory that
+    cannot be searched are not copied for a link that points at them. A text whose ``..`` climbs past
     ``/`` (where the checkout stops) would climb out of the mirror here, so
     :meth:`build` gives that one link its target's place, absolutely; nothing
     is ever made outside ``dest``.
@@ -299,7 +314,7 @@ class Mirror:
             if skip and (rel == skip or rel.startswith(skip + "/")):
                 continue
             # A symlink to a nested repository is the link, not the repository: keep the link, leave the target out.
-            if self._under_nested(path) or (path.is_dir() and not path.is_symlink() and (path / ".git").exists()):
+            if self._under_nested(path) or _skipped_dir(path):
                 continue
             kept.add(rel)
         return kept
@@ -315,7 +330,7 @@ class Mirror:
         for parent in path.parents:
             if parent == self.checkout:
                 return False
-            if (parent / ".git").exists():
+            if _skipped_dir(parent):
                 return True
         return False
 
@@ -348,7 +363,7 @@ class Mirror:
                     self._links.append((source, dest))
                 continue
             if entry.is_dir(follow_symlinks=False):
-                if (source / ".git").exists():
+                if _skipped_dir(source):
                     continue
                 if rel not in selected and rel not in ancestors and rel in ignored:
                     continue
@@ -443,14 +458,14 @@ class Mirror:
         return home
 
     def _left_out(self, real: Path) -> bool:
-        """An in-checkout path the selective copy omits: gitignored, or a nested repository.
+        """An in-checkout path the selective copy omits: gitignored, a nested repository, or unsearchable.
 
         A link that points at one does not bring it in. A path outside the checkout is not omitted here.
         """
         if not real.is_relative_to(self.checkout) or real == self.checkout:
             return False
         rel = real.relative_to(self.checkout)
-        if ".git" in rel.parts or (real / ".git").exists() or self._under_nested(real):
+        if ".git" in rel.parts or _skipped_dir(real) or self._under_nested(real):
             return True
         text = rel.as_posix()
         return text in _ignored(self.checkout, [text], self._git_env)

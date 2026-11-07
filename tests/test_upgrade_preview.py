@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import traceback
 from pathlib import Path
 
 import pytest
@@ -749,6 +750,45 @@ def test_a_global_excludes_file_keeps_a_secret_out_of_both_mirrors(
         assert not _has(names, "secret.env")
         assert "GLOBALSECRET=1" not in text
         assert _has(names, "keep-me.txt")
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_an_unsearchable_directory_is_left_out_of_the_mirror(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dry_run: bool
+) -> None:
+    """A mode-000 directory does not abort either run, and it is not in the temp directory."""
+    from specy_road.bundled_scripts import upgrade_plan
+
+    root = old_repo(tmp_path / "repo")
+    (root / "keep-me.txt").write_text("visible\n", encoding="utf-8")
+    private = root / "private"
+    private.mkdir()
+    (private / "secret.txt").write_text("NOSEE\n", encoding="utf-8")
+    private.chmod(0)
+    (root / "private-link").symlink_to("private", target_is_directory=True)
+    _ListingTemp.listings, _ListingTemp.texts = [], []
+    monkeypatch.setattr(upgrade.tempfile, "TemporaryDirectory", _ListingTemp)
+    monkeypatch.setattr(upgrade_plan.tempfile, "TemporaryDirectory", _ListingTemp)
+    caught: PermissionError | None = None
+    try:
+        code: int | None = run_upgrade(root, dry_run=dry_run)
+    except PermissionError as exc:
+        code, caught = None, exc
+    finally:
+        private.chmod(0o755)
+
+    assert _ListingTemp.listings
+    for names, text in zip(_ListingTemp.listings, _ListingTemp.texts, strict=True):
+        assert not _has(names, "private")
+        assert "NOSEE" not in text
+        assert _has(names, "private-link") and _has(names, "keep-me.txt")
+    # The copy leaves the directory out on both paths. A dry run validates that copy, so it finishes.
+    # A real run still reaches the checkout's own sibling walk, which is outside this leaf.
+    if dry_run:
+        assert code == 0 and caught is None
+    else:
+        assert caught is not None and "private/.git" in str(caught)
+        assert "upgrade_plan" not in "".join(traceback.format_tb(caught.__traceback__))
 
 
 def test_an_ignored_current_digest_is_not_predicted_as_a_rewrite(tmp_path: Path, capsys) -> None:

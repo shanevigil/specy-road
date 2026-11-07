@@ -21,6 +21,7 @@
 - An excludes rule that exists only in a `GIT_` variable is ignored on both paths. Upgrade strips those variables before any git call, including the file selection. A `core.excludesFile` in the caller's gitconfig is read.
 - `work/` is still not copied by the walk. A symlink to it copies that directory, and `_left_out` then drops ignored children. A non-ignored file inside `work/` is copied.
 - A link whose target is outside the checkout is still copied whole. The checkout's ignore rules do not apply there.
+- A real `specy-road upgrade` still raises `PermissionError` on an unsearchable directory. The copy leaves it out, then `validate` walks the checkout in `specy_road/sibling_repos.py` (`(c / ".git").exists()`), which is outside this leaf's touch zones. `--dry-run` does not: its validate runs on the copy, which omitted the directory. That file needs a change before the real command can finish.
 
 ## Changes
 
@@ -33,9 +34,9 @@
 
 ## Verification
 
-- `pytest -n 4` on `tests/test_upgrade.py`, `tests/test_upgrade_preview.py`, `tests/test_upgrade_parity.py`, `tests/test_upgrade_plan_parity.py`, `tests/test_upgrade_work_templates.py`, `tests/test_agents_md_report.py`, `tests/test_setup_writers_refuse_links.py`, `tests/test_skill_mirrors.py`: 300 passed.
+- `pytest -n 4` on `tests/test_upgrade.py`, `tests/test_upgrade_preview.py`, `tests/test_upgrade_parity.py`, `tests/test_upgrade_plan_parity.py`, `tests/test_upgrade_work_templates.py`, `tests/test_agents_md_report.py`, `tests/test_setup_writers_refuse_links.py`, `tests/test_skill_mirrors.py`: 302 passed.
 - `ruff check specy_road tests scripts`: passed.
-- `specy-road file-limits`: OK. `tests/test_upgrade_preview.py` is 800 lines, over the soft alert and under the 1,000-line cap. The other warnings are pre-existing files.
+- `specy-road file-limits`: OK. `tests/test_upgrade_preview.py` is 839 lines, over the soft alert and under the 1,000-line cap. The other warnings are pre-existing files.
 
 ## Probes
 
@@ -48,6 +49,11 @@
 - R2, scratch isolation: the existing global-config test, fsmonitor marker and `specy.probe`, dry run and real run. The dry-run marker is empty and the copy's validate probe is unset; the real run's marker lines are the checkout path. Result: held.
 - R3, ignored current digest: upgrade once, append `roadmap-context.md` to `.gitignore`, `git check-ignore` matches, bytes equal `render_digest`. Dry run does not print `would write roadmap-context.md` and prints `generated files already current`. The real run does not print `wrote roadmap-context.md` and the bytes are unchanged. Result: held.
 - R3, the other generated name: `roadmap.md` is in the same `GENERATED_COMMITTED` tuple, so an ignored untracked `roadmap.md` is copied too. `regenerate` writes it only when the checkout tracks it, which `ls-files` already copies. Result: no separate failure path.
+- Round 2, class: a directory that cannot be searched. `(path / ".git").exists()` raises `PermissionError`, and creating the directory makes `snapshot_outside`'s `copytree` raise `shutil.Error` when it lists it. One predicate, `_skipped_dir`, is what `_walk`, `_appeared`, `_left_out`, `_under_nested` and `_without_skipped` use. Result: the directory is not created.
+- Round 2, `_walk` before `mkdir`: mode-000 `private/` on a real run and a dry run. The temp directory has `private-link` and `keep-me.txt`, not `private`, and no copied file contains `NOSEE`. Result: held.
+- Round 2, `_left_out` through a link: `private-link -> private`. The link is copied and the target is not. Result: held.
+- Round 2, `_appeared` and `snapshot_outside`: the dry run exits 0, so the directory is not reported as a checkout edit and the validation copy's `copytree` does not list it. Result: held.
+- Round 2, the same class outside the copy: a real `run_upgrade` raises `PermissionError` on the checkout's `private/.git` from `specy_road/sibling_repos.py`, after the copy has finished. The traceback does not go through `upgrade_plan`. That file is outside the touch zones. Result: stopped, named for the coordinator.
 
 ## Added
 
@@ -64,6 +70,7 @@ Helpers and branches:
 - `Mirror._resolve_links`: the existing link loop, moved out of `build` so `build` stays within the line cap.
 - `Mirror._copy_selected`, `_listed`, `_without_skipped`, `_skip_rel`, `_under_nested`, `_link_parents`, `_walk`: the copy. `_under_nested` and a directory that itself contains `.git` drop nested repositories, including one git lists as `nested/repo/`. `_link_parents` keeps a symlink ancestor so the walk does not replace it with a real directory.
 - `Mirror._left_out`: the omission rule for a link target. A checkout path git ignores, or a nested repository, is not created. A path outside the checkout is not omitted. Replaces the report line, which copied the secret and then said so.
+- `_skipped_dir`: one answer for a real directory the copy does not enter. It contains `.git`, or listing it raises. A symlink is not that directory. `_walk` uses it before `mkdir`, so an unsearchable directory is never in the tree `snapshot_outside` copies. `_appeared`, `_left_out`, `_under_nested` and `_without_skipped` use the same answer.
 - `_copy_dir` skips a child `_left_out` rejects: a link to `work/` was the other way an ignored file entered.
 - `_without_skipped` keeps a symlink whose target contains `.git`: the link is not the nested repository.
 - `_ensure` makes the alias symlink only when the target was actually placed: otherwise it would create the omitted path as a self-link.
@@ -79,6 +86,7 @@ Tests:
 - `test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror`: lists the temp directory while it exists, on both paths; an ignored `.env`, `node_modules`, and a nested repo are absent, including through `env-link`, `modules-link` and `nested-link`; the secret text is absent; an untracked `keep-me.txt` and `AGENTS.md` are present; the dry run prints the copy line once.
 - `test_a_global_excludes_file_keeps_a_secret_out_of_both_mirrors`: a `core.excludesFile` in the caller's gitconfig keeps `secret.env` out of both temp directories.
 - `test_an_ignored_current_digest_is_not_predicted_as_a_rewrite`: an ignored `roadmap-context.md` that matches the roadmap is not a `would write` and not a `wrote`.
+- `test_an_unsearchable_directory_is_left_out_of_the_mirror`: a mode-000 directory and a link to it stay out of both temp directories; the dry run exits 0. The real run still raises from the checkout's sibling walk (known limit).
 - `test_large_ignored_content_does_not_change_the_plan`: the dry-run plan with a 1MB ignored tree and a secret equals the plan without them.
 - `build_without_git` forwards `build`'s new keywords so the existing no-`.git` assertion still runs (decision 5).
 
