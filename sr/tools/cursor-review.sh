@@ -8,8 +8,8 @@
 if [ "$1" = --model ]; then shift; fi
 model=$1 prompt=$2
 . "$(dirname "$0")/env.sh"
-if [ -f "$prompt" ] && [ -f "$(dirname "$0")/review-addendum.md" ]; then
-  merged=$(mktemp "${TMPDIR:-/tmp}/review-prompt.XXXXXX") && cat "$prompt" "$(dirname "$0")/review-addendum.md" > "$merged" && prompt=$merged
+if [ -z "${SR_PLAN_REVIEW:-}" ] && [ -f "$prompt" ] && [ -f "$(dirname "$0")/review-addendum.md" ]; then
+  merged=$(mktemp "${TMPDIR:-/tmp}/review-prompt.XXXXXX") && cat "$prompt" "$(dirname "$0")/review-addendum.md" "$(dirname "$0")/../constraints/review-brief.md" > "$merged" && prompt=$merged
 fi
 if [ -f "$prompt" ]; then
   prompt="Your complete prompt is in the file $prompt. Read that file first, in full, then follow it exactly; it says what to review and where to write your record."
