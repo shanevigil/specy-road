@@ -122,7 +122,8 @@ entries:
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T13:26:33+00:00'
   - codename: deps-ids-briefs-and-landed-branch
     node_id: M22.14
     branch: feature/rm-deps-ids-briefs-and-landed-branch
