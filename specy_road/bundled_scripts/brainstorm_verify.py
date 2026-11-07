@@ -57,6 +57,9 @@ _WS = re.compile(r"\s+")
 _PUNCT_SPACE = re.compile(r" (?=[.,;:!?)\]])|(?<=[(\[]) ")
 #: A page's reference markers ("restudying[43] while"), which an agent's copy of the sentence leaves out.
 _CITATION = re.compile(r"\[(?:\d+|[a-z]|note \d+|citation needed)\]", re.IGNORECASE)
+#: A marker a quote keeps, the space before it optional, and the page's own markers a quote may skip.
+_KEPT = re.compile(rf" ?({_CITATION.pattern})")
+_SKIPPED = rf"(?: ?(?:{_CITATION.pattern}))*"
 #: Typographic quotes, dashes and spaces to their ASCII form; soft hyphens and zero-width characters removed.
 _FOLD = str.maketrans({
     **dict.fromkeys("\u2018\u2019\u201a\u2032", "'"),
@@ -67,10 +70,27 @@ _FOLD = str.maketrans({
 })
 
 
-def _norm(text: str) -> str:
+def _norm(text: str, *, citations: bool = False) -> str:
     text = unescape(_TAGS.sub(" ", _INLINE_TAGS.sub("", text)))
-    text = _CITATION.sub("", text).translate(_FOLD)
+    text = (text if citations else _CITATION.sub("", text)).translate(_FOLD)
     return _PUNCT_SPACE.sub("", _WS.sub(" ", text).strip().lower())
+
+
+def _on_page(quote: str, page: str) -> bool:
+    """Whether ``quote`` is on ``page``: a page's citation marker is dropped only where the quote does not keep it.
+
+    A quote with no marker is compared with the page's markers all dropped. A marker the quote keeps must sit at
+    that place on the page, among any others there. A quote of markers alone has no words to find.
+    """
+    words, kept = _norm(quote), _norm(quote, citations=True)
+    if not words:
+        return False
+    if kept == words:
+        return words in _norm(page)
+    tokens: list[str] = []
+    for i, piece in enumerate(_KEPT.split(kept)):
+        tokens += [f" ?{re.escape(piece)}"] if i % 2 else map(re.escape, piece)
+    return re.search(_SKIPPED.join(tokens), _norm(page, citations=True)) is not None
 
 
 MAX_REDIRECTS = 5
@@ -306,9 +326,8 @@ def check_source(source: dict[str, Any], fetch: Fetcher, *, root: Path | None = 
         return "blocked"
     if status != 200:
         return _non_200(status, url, fetch, roots)
-    quote = _norm(str(source.get("quote", "")))
     # No quote, nothing to find: a URL alone is not evidence (docs/brainstorming.md).
-    return "matched" if quote and quote in _norm(text) else "not-found"
+    return "matched" if _on_page(str(source.get("quote", "")), text) else "not-found"
 
 
 def pending(ideas: list[Idea]) -> list[tuple[Idea, dict[str, Any]]]:

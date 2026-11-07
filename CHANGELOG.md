@@ -405,6 +405,13 @@ body. Keep section bodies focused; link to PRs for detail.
   `<!-- >>> end specy-road managed block <<< -->`); and `review delegate`'s
   launch step says a `claude-code` reviewer runs bare or explicit, not always
   bare.
+- `brainstorm verify` drops a citation marker only from the page and only where the quote leaves it out. A quote
+  that keeps a bracket must find it at that place, so `[44]` no longer matches a page's `[43]`, `[b]` no longer
+  matches `[a]`, and a quote with a marker the page lacks is `not-found`. A page's `[43]` against a
+  quote without it still matches. `upgrade --dry-run` renders the digest from the checkout's commits, refs and remote
+  names, read-only through `objects/info/alternates`, so a current digest with "Quality by area" is no longer
+  predicted as a write. A refused `apply` batch restores a linked planning sheet as a link with its own text, and its
+  target at its old path and with its old bytes, instead of a regular file.
 
 ### Added
 
