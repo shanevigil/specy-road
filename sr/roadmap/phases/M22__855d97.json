@@ -272,7 +272,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.26_post-run-zone-check-git-root-zones_148aa830-5bad-4086-8d27-9c6748b58ed5.md",
       "sibling_order": 25,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The post-run zone check matches zones written from the git root",
       "touch_zones": [
         "specy_road/worker_turn_check.py",

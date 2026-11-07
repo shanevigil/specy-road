@@ -137,14 +137,3 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: post-run-zone-check-git-root-zones
-    node_id: M22.26
-    branch: feature/rm-post-run-zone-check-git-root-zones
-    touch_zones:
-      - specy_road/worker_turn_check.py
-      - tests/test_worker_turn_check.py
-      - CHANGELOG.md
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T05:01:16+00:00'
