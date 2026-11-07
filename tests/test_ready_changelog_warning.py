@@ -42,12 +42,6 @@ _ROWS = [
 ]
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as caught:
-        review_cli.main(list(args))
-    return caught.value.code
-
-
 @pytest.mark.parametrize(
     "changed,prefix,base,head,exempt,shown",
     [row[1:] for row in _ROWS],
@@ -62,7 +56,11 @@ def test_missing_entry_warning(changed, prefix, base, head, exempt, shown) -> No
     assert got.split("changes ", 1)[1].split(";", 1)[0] == ", ".join(shown)
 
 
-@pytest.mark.parametrize("mode", ["warns", "silent", "new"])
+def _sheet(repo: Path) -> Path:
+    return next((repo / "planning").glob("*.md"))
+
+
+@pytest.mark.parametrize("mode", ["warns", "silent", "new", "missing-sheet", "sheet-dir", "empty-sheet"])
 def test_ready_changelog_reminder(tmp_path: Path, capsys, mode: str) -> None:
     repo = make_review_repo(tmp_path)
     if mode != "new":
@@ -74,13 +72,23 @@ def test_ready_changelog_reminder(tmp_path: Path, capsys, mode: str) -> None:
         commit_file(repo, "CHANGELOG.md", _ADDED, "changelog entry")
     elif mode == "new":
         commit_file(repo, "CHANGELOG.md", _EMPTY, "changelog")
+    elif mode == "missing-sheet":
+        _sheet(repo).unlink()
+    elif mode == "sheet-dir":
+        sheet = _sheet(repo)
+        sheet.unlink()
+        sheet.mkdir()
+    elif mode == "empty-sheet":
+        _sheet(repo).write_text("", encoding="utf-8")
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)) == 0
+    with pytest.raises(SystemExit) as caught:
+        review_cli.main(["ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)])
+    assert caught.value.code == 0
     err = capsys.readouterr().err
     ready = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
     assert ready.ok, ready.errors
     lines = [line for line in err.splitlines() if "## [Unreleased]" in line]
-    if mode == "silent":
+    if mode in {"silent", "missing-sheet", "sheet-dir"}:
         assert lines == []
     else:
         assert lines == [

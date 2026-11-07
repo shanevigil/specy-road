@@ -46,50 +46,52 @@ def _changelog_at(root: Path, rev: str) -> str | None:
 
 
 def _exempt_text(root: Path, node: dict) -> str | None:
-    """Acceptance lines plus the planning sheet, or None when the sheet cannot be read."""
+    """Acceptance plus the planning sheet, or None when a configured sheet cannot be read.
+
+    One rule: a set ``planning_dir`` is read as text, and any failure stays silent. That
+    includes a missing path, a directory, and an unreadable file. An empty file is a
+    successful read. No ``planning_dir`` uses the acceptance lines only.
+    """
     acceptance = node.get("acceptance") or []
     parts = [str(item) for item in acceptance] if isinstance(acceptance, list) else []
     rel = node.get("planning_dir")
     if not isinstance(rel, str) or not rel.strip():
         return "\n".join(parts)
     try:
-        path = resolve_planning_path(root, rel)
-        parts.append(path.read_text(encoding="utf-8") if path.is_file() else "")
+        parts.append(resolve_planning_path(root, rel).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     return "\n".join(parts)
 
 
-def _changelog_warning(root: Path, node_id: str) -> str | None:
-    """The reminder for a successful ready, or None when git or a read cannot answer."""
+def _changelog_warning(root: Path, node_id: str) -> list[str]:
+    """The reminder line after a successful ready, or nothing when git or a read cannot answer."""
     try:
         target = resolve_target(root, node_id, "HEAD")
     except ReviewTargetError:
-        return None
+        return []
     if not target.base or not target.commit:
-        return None
+        return []
     changed = diff_paths(root, f"{target.base}...{target.commit}")
     if changed is None:
-        return None
+        return []
     head = _changelog_at(root, target.commit)
     base = _changelog_at(root, target.base)
     if head is None or base is None:
-        return None
+        return []
     exempt = _exempt_text(root, target.node)
     if exempt is None:
-        return None
-    return missing_entry_warning(changed, project_prefix(root), base, head, exempt)
+        return []
+    warning = missing_entry_warning(changed, project_prefix(root), base, head, exempt)
+    return [warning] if warning else []
 
 
 def cmd_ready(ns: argparse.Namespace) -> int:
     code = _cmd_ready(ns)
     if code == 0:
         root = resolve_repo_root(ns)
-        for line in trial_merge_warning(root, ns.node_id):
+        for line in trial_merge_warning(root, ns.node_id) + _changelog_warning(root, ns.node_id):
             print(line, file=sys.stderr)
-        reminder = _changelog_warning(root, ns.node_id)
-        if reminder:
-            print(reminder, file=sys.stderr)
     return code
 
 
