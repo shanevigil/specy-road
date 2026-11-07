@@ -12,6 +12,16 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Added
+
+- `worker_sandbox` in `roadmap/git-workflow.yaml` (`bwrap`, `auto` or `off`; omitted means `off`, so a project
+  opts in) runs each unattended worker turn's harness in a read-only bubblewrap sandbox on Linux. Writable: the
+  leaf's linked worktree, the git objects, refs and logs, and the harness's own state. `work/reviews/<ID>/` is
+  a per-worker outbox, and the runner moves only `READY-*` from it. Hidden: `~/.ssh`, `~/.config/gh`,
+  `SSH_AUTH_SOCK`, `GH_TOKEN` and `GITHUB_TOKEN`. A sandboxed turn outside a linked worktree, or one whose
+  sandbox does not start, is refused and recorded. `auto` on a host without bwrap warns on each launch and runs
+  unsandboxed. See `docs/orchestration-workers.md` (Worker sandbox).
+
 ### Fixed
 
 - `set-dependencies --deps` and `edit-node --set dependencies=` accept a display id or a node_key

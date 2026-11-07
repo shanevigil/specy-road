@@ -73,7 +73,7 @@
     },
     "worker_sandbox": {
       "enum": ["bwrap", "auto", "off", false],
-      "description": "Whether unattended worker turns (worker delegate, message, resume) run their harness in a bubblewrap sandbox (default auto when omitted). bwrap requires it: a host without bwrap, a turn outside a linked worktree, or a sandbox that fails to start stops the turn. auto uses bwrap on Linux where it is installed, with the same refusals, and elsewhere warns on each launch and runs unsandboxed. off (or YAML false) always runs unsandboxed. See docs/orchestration-workers.md (Worker sandbox)."
+      "description": "Whether unattended worker turns (worker delegate, message, resume) run their harness in a bubblewrap sandbox (default off when omitted: a project opts in). bwrap requires it: a host without bwrap, a turn outside a linked worktree, or a sandbox that fails to start stops the turn. auto uses bwrap on Linux where it is installed, with the same refusals, and elsewhere warns on each launch and runs unsandboxed. off (or YAML false) runs unsandboxed. See docs/orchestration-workers.md (Worker sandbox)."
     },
     "baseline_cmd": {
       "type": "string",

@@ -396,6 +396,58 @@ feature in your own setup.
    resumed run carries the same `session_id`; if not, set `channels.cli` with
    `{session}` to a command that works, or treat Cursor workers as one-shot.
 
+## Worker sandbox
+
+**Off unless you opt in.** Without `worker_sandbox`, a worker's harness runs as your OS user with your
+permissions. It can write the main checkout and its `.git/config` and hooks (which the coordinator's next git
+command runs), your home directory and shell startup files, your harness settings and hooks, other leaves'
+`work/reviews/` hand-offs and `work/.workers/` records, and it can use your SSH keys and `gh` login to push.
+Only the review gate and finish's checks stand between such a turn and your integration branch.
+
+To opt in, set it in `roadmap/git-workflow.yaml`:
+
+```yaml
+worker_sandbox: auto   # bwrap on Linux where it is installed; elsewhere a warning on each launch
+```
+
+| Value | Effect |
+|---|---|
+| omitted, `off` (or YAML `false`) | Unsandboxed, as before. |
+| `auto` | [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`) on Linux where it is installed. Elsewhere (macOS, Windows, Linux without bwrap) every unattended launch logs `[wrapper] warning: no worker sandbox on this host …` and puts it in the `launched` event, then runs unsandboxed. |
+| `bwrap` | Required: a host without bwrap refuses the turn. |
+
+It covers turns started by `worker delegate`, `message` and `resume`. Reviewer turns and your own sessions are
+not wrapped. In a sandboxed turn (`bwrap`, or `auto` with bwrap present):
+
+- **A linked worktree is required.** A worker in the main checkout is refused before its harness starts,
+  naming the need for a separate `--worktree`: the common git dir would otherwise have to be writable.
+- **Writable:** the leaf's worktree; in the common git dir `objects/`, `refs/`, `logs/` and `worktrees/<name>/`
+  (what a commit needs); a private tmpfs on `/tmp`; the harness's own transcript, auth and runtime state
+  (Claude Code: `$CLAUDE_CONFIG_DIR` or `~/.claude`, `~/.cache/claude-cli-nodejs`; Cursor: `~/.cursor`,
+  `~/.config/cursor`, `~/.cache/cursor-compile-cache`; Codex: the profile's `CODEX_HOME` and the `auth.json` it
+  links to).
+- **Read-only:** everything else. That includes the common `config`, `hooks/` and `info/`,
+  `worktrees/<name>/commondir` and `gitdir`, the main checkout, your home, the harness binaries, and inside the
+  harness's state its shared settings, hooks, plugins, skills, rules and MCP config. `~/.claude.json` and
+  Cursor's `cli-config.json` must stay writable but can carry launch instructions, so each worker gets its own
+  copy (`work/.workers/<id>.claude.json`, `<id>.cursor-cli-config.json`), made from yours on its first turn.
+- **Hidden:** `~/.ssh` and `~/.config/gh` (an empty tmpfs), and `SSH_AUTH_SOCK`, `GH_TOKEN` and `GITHUB_TOKEN`
+  in the environment. This blocks the default push routes. It does not isolate other secrets.
+- **Hand-off:** `work/reviews/<ID>/` is a per-worker outbox (`work/.workers/<id>.outbox`), empty at each turn's
+  start. When the turn ends the runner moves only `READY-*` files from it into the real directory. Anything else
+  written there, such as a `REVIEW-` file, is discarded. Rework prompts inline the reviewers' required changes,
+  so nothing needs to be read from there.
+- **Failures stop the turn.** If the sandbox cannot be set up (no linked worktree, an unwritable mount point)
+  or `bwrap` exits before starting the harness, the worker ends `failed`, with the reason in an `error` event
+  and bwrap's message in `<id>.log`. To run such a project unsandboxed, set `worker_sandbox: off`.
+
+**Known limits.** The network stays open, because harnesses need their APIs. Refs stay writable, so a worker can
+move a local branch other than its own. A nested repository's common git dir is not carved out, so a sandboxed
+commit there fails. Codex's own `workspace-write` sandbox may still refuse git writes inside ours. Whether each
+harness refreshes its login under these binds is a smoke check, not a test: before relying on it, run a trivial
+leaf on Claude Code and on Cursor with `worker_sandbox: bwrap` and check that the turn authenticates, commits and
+hands off READY. A resumed turn should find its session.
+
 ## Optional: refuse push from a linked worktree
 
 `specyrd init --install-pre-push-hook` installs `specy_road/templates/specyrd/hooks/pre-push` as `.git/hooks/pre-push`; it refuses push when the repo toplevel is under `work/.worktrees/` and allows push from the main checkout. `worker delegate` and `review delegate` export `SPECY_ROAD_ORCHESTRATION_ROLE` (`executor` / `reviewer`) into the harness environment so the shipped orchestration hooks apply without pinning the role in the command.

@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -52,26 +51,23 @@ class Box:
     warning: str | None = None
     outbox: Path | None = None
     reviews: Path | None = None
+    pass_fds: tuple[int, ...] = ()              # bwrap's status pipe, write end, for ``Popen``
     _status: int | None = None
 
-    def popen(self, argv: list[str], **kw) -> subprocess.Popen:
-        """``subprocess.Popen`` of ``argv``, under bwrap when sandboxed; bwrap reports on a pipe once the harness starts."""
+    def command(self, argv: list[str]) -> list[str]:
+        """``argv``, under bwrap when sandboxed: bwrap reports on a pipe (``pass_fds``) once the harness starts."""
         if not self.prefix:
-            return subprocess.Popen(argv, **kw)  # noqa: S603 — the adapter's documented command
-        r, w = os.pipe()
-        try:
-            proc = subprocess.Popen([*self.prefix, "--json-status-fd", str(w), "--", *argv],  # noqa: S603
-                                    pass_fds=(w,), **kw)
-        except OSError:
-            os.close(r)
-            raise
-        finally:
-            os.close(w)
-        self._status = r
-        return proc
+            return argv
+        self._status, w = os.pipe()
+        self.pass_fds = (w,)
+        return [*self.prefix, "--json-status-fd", str(w), "--", *argv]
 
     def finish(self) -> str | None:
-        """After the harness exits: deliver READY from the outbox; the reason the sandbox never started, else ``None``."""
+        """After the harness exits (or failed to start): deliver READY from the outbox; the reason the sandbox
+        never started the harness, else ``None``."""
+        for w in self.pass_fds:
+            os.close(w)
+        self.pass_fds = ()
         started = True
         if self._status is not None:
             started = b'"child-pid"' in _read_available(self._status)
@@ -87,15 +83,9 @@ def prepare(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> Box:
     Raises :class:`SandboxError` when the sandbox is selected (``bwrap``, or ``auto`` where bwrap is installed)
     but this turn cannot run in it.
     """
-    mode = worker_sandbox_mode(repo_root)
-    if mode == "off":
-        return Box("off")
-    bwrap = shutil.which("bwrap") if sys.platform.startswith("linux") else None
-    if bwrap is None:
-        why = "bwrap is not installed" if sys.platform.startswith("linux") else f"{sys.platform} has no backend"
-        if mode == "bwrap":
-            raise SandboxError(f"worker_sandbox: bwrap, but {why}; install bubblewrap or set worker_sandbox: off")
-        return Box("off", warning=NO_SANDBOX_WARNING.format(why=why))
+    bwrap = _select(worker_sandbox_mode(repo_root))
+    if isinstance(bwrap, Box):
+        return bwrap
     wt, common, name = linked_worktree(Path(rec.worktree))
     reviews = reviews_dir(repo_root, rec.node_id)
     outbox = workers_dir(repo_root) / f"{rec.worker_id}.outbox"
@@ -104,25 +94,40 @@ def prepare(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> Box:
         shutil.rmtree(outbox, ignore_errors=True)
         outbox.mkdir(mode=0o700, parents=True)
         (common / "logs").mkdir(exist_ok=True)       # a commit's reflog goes here
-        harness = _harness_binds(repo_root, rec, env)
+        harness = _harness_binds(*_harness_state(repo_root, rec, env))
     except OSError as e:
         raise SandboxError(f"cannot set up the sandbox: {e}") from e
+    tree = common / "worktrees" / name
     argv = [bwrap, "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp",
-            "--die-with-parent", "--bind", str(wt), str(wt)]
-    for d in ("objects", "refs", "logs", f"worktrees/{name}"):
-        argv += ["--bind", str(common / d), str(common / d)]
-    for f in ("commondir", "gitdir"):
-        p = common / "worktrees" / name / f
-        if p.exists():
-            argv += ["--ro-bind", str(p), str(p)]
-    argv += ["--bind", str(outbox), str(reviews), *harness]
-    home = Path.home()
+            "--die-with-parent", "--bind", str(wt), str(wt),
+            *_binds("--bind", [common / "objects", common / "refs", common / "logs", tree]),
+            *_binds("--ro-bind", [tree / "commondir", tree / "gitdir"]),
+            "--bind", str(outbox), str(reviews), *harness]
     for d in HIDDEN_HOME:
-        if (home / d).exists():
-            argv += ["--tmpfs", str(home / d)]
+        if (Path.home() / d).exists():
+            argv += ["--tmpfs", str(Path.home() / d)]
     for k in HIDDEN_ENV:
         env.pop(k, None)
     return Box("bwrap", [*argv, "--chdir", str(wt)], outbox=outbox, reviews=reviews)
+
+
+def _select(mode: str) -> str | Box:
+    """bwrap's path when the sandbox is selected and available; else the unsandboxed :class:`Box`, or a refusal."""
+    if mode == "off":
+        return Box("off")
+    linux = sys.platform.startswith("linux")
+    bwrap = shutil.which("bwrap") if linux else None
+    if bwrap is not None:
+        return bwrap
+    why = "bwrap is not installed" if linux else f"{sys.platform} has no backend"
+    if mode == "bwrap":
+        raise SandboxError(f"worker_sandbox: bwrap, but {why}; install bubblewrap or set worker_sandbox: off")
+    return Box("off", warning=NO_SANDBOX_WARNING.format(why=why))
+
+
+def _binds(flag: str, paths: list[Path]) -> list[str]:
+    """``flag p p`` for each path that exists: bwrap cannot make a mount point on the read-only root."""
+    return [a for p in paths if p.exists() for a in (flag, str(p), str(p))]
 
 
 def linked_worktree(worktree: Path) -> tuple[Path, Path, str]:
@@ -147,36 +152,34 @@ def linked_worktree(worktree: Path) -> tuple[Path, Path, str]:
     return wt, common, gitdir.name
 
 
-def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> list[str]:
-    """Writable state for ``rec.harness``, its shared steering files read-only on top; per-worker config copies."""
+def _harness_state(repo_root: Path, rec: WorkerRecord,
+                   env: dict[str, str]) -> tuple[list[Path], list[Path], list[tuple[Path, Path]]]:
+    """``(writable, read-only on top, (config, per-worker copy))`` for ``rec.harness``: its transcript, auth and
+    runtime state stay writable; its shared settings, hooks, plugins and skills do not."""
     home = Path.home()
-    rw: list[Path] = []
-    ro: list[Path] = []
-    copies: list[tuple[Path, Path]] = []
     own = workers_dir(repo_root)   # the per-worker copies sit beside the record
     if rec.harness == "claude-code":
         conf = Path(env["CLAUDE_CONFIG_DIR"]) if env.get("CLAUDE_CONFIG_DIR") else home / ".claude"
-        rw += [conf, home / ".cache" / "claude-cli-nodejs"]
-        ro += [conf / n for n in ("settings.json", "settings.local.json", "hooks", "plugins", "skills", "agents",
-                                  "commands", "output-styles", "CLAUDE.md")]
         state = conf / ".claude.json" if env.get("CLAUDE_CONFIG_DIR") else home / ".claude.json"
-        copies.append((state, own / f"{rec.worker_id}.claude.json"))
-    elif rec.harness == "cursor":
-        rw += [home / ".cursor", home / ".config" / "cursor", home / ".cache" / "cursor-compile-cache"]
-        ro += [home / ".cursor" / n for n in ("hooks", "hooks.json", "mcp.json", "plugins", "rules", "skills",
-                                              "skills-cursor", "extensions", "sandbox-policies")]
-        copies.append((home / ".cursor" / "cli-config.json", own / f"{rec.worker_id}.cursor-cli-config.json"))
-    elif rec.harness == "codex":
+        return ([conf, home / ".cache" / "claude-cli-nodejs"],
+                [conf / n for n in ("settings.json", "settings.local.json", "hooks", "plugins", "skills", "agents",
+                                    "commands", "output-styles", "CLAUDE.md")],
+                [(state, own / f"{rec.worker_id}.claude.json")])
+    if rec.harness == "cursor":
+        return ([home / ".cursor", home / ".config" / "cursor", home / ".cache" / "cursor-compile-cache"],
+                [home / ".cursor" / n for n in ("hooks", "hooks.json", "mcp.json", "plugins", "rules", "skills",
+                                                "skills-cursor", "extensions", "sandbox-policies")],
+                [(home / ".cursor" / "cli-config.json", own / f"{rec.worker_id}.cursor-cli-config.json")])
+    if rec.harness == "codex":
         conf = Path(env.get("CODEX_HOME") or home / ".codex")
-        rw += [conf, (conf / "auth.json").resolve()]   # the profile's auth.json links to the user's login
-        ro += [conf / n for n in ("config.toml", "AGENTS.md", "hooks", "plugins", "rules", "skills")]
-    argv: list[str] = []
-    for p in rw:
-        if p.exists():
-            argv += ["--bind", str(p), str(p)]
-    for p in ro:
-        if p.exists():
-            argv += ["--ro-bind", str(p), str(p)]
+        return ([conf, (conf / "auth.json").resolve()],   # the profile's auth.json links to the user's login
+                [conf / n for n in ("config.toml", "AGENTS.md", "hooks", "plugins", "rules", "skills")], [])
+    return [], [], []
+
+
+def _harness_binds(rw: list[Path], ro: list[Path], copies: list[tuple[Path, Path]]) -> list[str]:
+    """The bwrap arguments for :func:`_harness_state`; a copy is made once, from the user's file, and kept."""
+    argv = [*_binds("--bind", rw), *_binds("--ro-bind", ro)]
     for src, copy in copies:
         if src.is_file():
             if not copy.is_file():

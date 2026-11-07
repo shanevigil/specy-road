@@ -227,11 +227,9 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         return _not_started(repo_root, rec, launch, watch, f"sandbox: {e}")
     with log.open("a", encoding="utf-8") as raw:
         log_start = raw.tell()   # this turn's part of the log starts here (the harness writes stderr into it)
-        if box.warning:
-            raw.write(f"[wrapper] warning: {box.warning}\n")
         try:
-            proc = box.popen(
-                launch.argv, cwd=rec.worktree, env=env,
+            proc = subprocess.Popen(  # noqa: S603 — the adapter's documented command
+                box.command(launch.argv), cwd=rec.worktree, env=env, pass_fds=box.pass_fds,
                 stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL,
                 stdout=subprocess.PIPE, stderr=raw, text=True, encoding="utf-8", errors="replace",
             )
@@ -245,19 +243,8 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             r.flags = [f for f in r.flags if f != FLAG_STALLED]
         mutate(repo_root, rec, seen)
         watch.proc = proc
-        append_event(repo_root, rec, "launched", source="system",
-                     summary=f"started {launch.argv[0]} (pid {proc.pid}, sandbox {box.mode})"
-                             + (f"; warning: {box.warning}" if box.warning else ""),
-                     detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed, "sandbox": box.mode,
-                             "model": launch_model(launch.argv),   # the model the harness is told, if any
-                             # Cursor: the permission flags passed, so a roster's --force opt-in shows in the log.
-                             **({"permissions": launch_permissions(launch.argv)} if rec.harness == "cursor" else {})})
-        if launch.stdin is not None and proc.stdin:
-            try:
-                proc.stdin.write(launch.stdin)
-                proc.stdin.close()
-            except (BrokenPipeError, OSError) as e:   # the harness quit before reading its prompt
-                raw.write(f"[wrapper] harness closed stdin early: {e}\n")
+        _launched(repo_root, rec, launch, proc.pid, box, raw, resumed=resumed)
+        _feed(proc, launch, raw)
         assert proc.stdout is not None
         first, marked, usage_logged = True, None, False
         for line in proc.stdout:
@@ -272,13 +259,43 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
-    why = box.finish()   # READY leaves the outbox before the turn's READY check
-    if why:
-        append_event(repo_root, rec, "error", source="system", summary=f"sandbox: {why}")
+    _close_box(repo_root, rec, box)   # READY leaves the outbox before the turn's READY check
     # A Claude result always carries usage, so none means no result line: a limit is then only in the transcript.
     if code != 0 and not usage_logged and isinstance(adapter, ClaudeCode):
         _transcript_limit(repo_root, rec, adapter, launch, watch)
     return _finish(repo_root, rec, code, before, before_all, usage_logged, watch, log_start)
+
+
+def _feed(proc: subprocess.Popen, launch: Launch, raw) -> None:
+    """Write the prompt to the harness's stdin, when it takes one."""
+    if launch.stdin is not None and proc.stdin:
+        try:
+            proc.stdin.write(launch.stdin)
+            proc.stdin.close()
+        except (BrokenPipeError, OSError) as e:   # the harness quit before reading its prompt
+            raw.write(f"[wrapper] harness closed stdin early: {e}\n")
+
+
+def _launched(repo_root: Path, rec: WorkerRecord, launch: Launch, pid: int, box: worker_sandbox.Box, raw,
+              *, resumed: bool) -> None:
+    """The ``launched`` event; a sandboxed launch names its sandbox, an unsandboxed ``auto`` one warns (also in the log)."""
+    boxed = {"sandbox": box.mode} if box.prefix or box.warning else {}   # off by default: the event is as before
+    if box.warning:
+        raw.write(f"[wrapper] warning: {box.warning}\n")
+    append_event(repo_root, rec, "launched", source="system",
+                 summary=f"started {launch.argv[0]} (pid {pid})" + (f", sandbox {box.mode}" if box.prefix else "")
+                         + (f"; warning: {box.warning}" if box.warning else ""),
+                 detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed, **boxed,
+                         "model": launch_model(launch.argv),   # the model the harness is told, if any
+                         # Cursor: the permission flags passed, so a roster's --force opt-in shows in the log.
+                         **({"permissions": launch_permissions(launch.argv)} if rec.harness == "cursor" else {})})
+
+
+def _close_box(repo_root: Path, rec: WorkerRecord, box: worker_sandbox.Box) -> None:
+    """Move READY out of the outbox; a sandbox that never started the harness is recorded (the exit is non-zero)."""
+    why = box.finish()
+    if why:
+        append_event(repo_root, rec, "error", source="system", summary=f"sandbox: {why}")
 
 
 def _not_started(repo_root: Path, rec: WorkerRecord, launch: Launch, watch: TurnWatch, why: str) -> int:
