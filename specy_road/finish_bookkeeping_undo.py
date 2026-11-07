@@ -18,11 +18,19 @@ records the worktree state of every path finish may write up to its
 bookkeeping commit (:func:`pre_commit_paths`) and the whole index file, and
 :func:`restore_pre_commit` puts both back, never from HEAD, so a user's staged
 and unstaged edits survive.
+
+Every restore writes a temporary file beside the path and renames it over the
+path, with the regular file's recorded mode bits, so a failed write leaves
+the previous bytes in place and names the temporary file (M22.20). The index
+goes back only while nothing outside finish's own paths was staged since the
+snapshot; otherwise both versions are kept and named.
 """
 
 from __future__ import annotations
 
 import os
+import secrets
+import stat
 import subprocess
 import sys
 import tempfile
@@ -51,12 +59,14 @@ class BookkeepingSnapshot:
     """The branch tip before the bookkeeping commit, and each path's content.
 
     An entry is ``("link", target)`` for a symlink, ``("file", bytes)`` for a
-    file, and ``("absent", b"")`` for a cleanup path that did not exist.
+    file, and ``("absent", b"")`` for a cleanup path that did not exist;
+    ``modes`` holds each file's permission bits.
     """
 
     branch: str
     pre_sha: str
     entries: dict[str, tuple[str, str | bytes]] = field(default_factory=dict)
+    modes: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -78,12 +88,20 @@ def snapshot_bookkeeping(
         return None
     root = repo.resolve()
     rels = _cleanup_and_log_paths(root, node_id, sess_path)
-    entries: dict[str, tuple[str, str | bytes]] = {}
+    snap = BookkeepingSnapshot(branch=branch, pre_sha=sha)
     for rel in rels:
-        state = _path_state(root / rel)
-        if state is not None:
-            entries[rel] = state
-    return BookkeepingSnapshot(branch=branch, pre_sha=sha, entries=entries)
+        _record(root, rel, snap.entries, snap.modes)
+    return snap
+
+
+def _record(root: Path, rel: str, entries: dict, modes: dict[str, int]) -> None:
+    """Put ``rel``'s :func:`_path_state` in ``entries`` and a regular file's permission bits in ``modes``."""
+    state = _path_state(root / rel)
+    if state is None:
+        return
+    entries[rel] = state
+    if state[0] == "file":
+        modes[rel] = stat.S_IMODE((root / rel).lstat().st_mode)
 
 
 def _cleanup_and_log_paths(root: Path, node_id: str, sess_path: Path | None) -> list[str]:
@@ -117,28 +135,39 @@ def _path_state(path: Path) -> tuple[str, str | bytes] | None:
     return None
 
 
-def _restore(root: Path, rel: str, entry: tuple[str, str | bytes]) -> None:
-    """Make ``rel`` exactly ``entry``: unchanged when it already is, else remove what is there and recreate it.
+def _restore(root: Path, rel: str, entry: tuple[str, str | bytes], mode: int | None = None) -> None:
+    """Make ``rel`` exactly ``entry`` (a file with ``mode`` when given): unchanged when it already is.
 
     One rule for every kind: a link with another target, a file with other
-    bytes, the wrong kind, or something that was not there before is unlinked
-    (never followed) and the snapshot state written. A directory in the way
-    raises, so nothing is removed recursively.
+    bytes or mode, or the wrong kind is replaced (never followed) by a
+    temporary link or file written beside it and renamed over it, so what
+    was there stays until the snapshot state is complete on disk; a failure
+    names the temporary file it kept. A path absent before is unlinked. A
+    directory in the way raises, so nothing is removed recursively.
     """
     path = root / rel
-    if _path_state(path) == entry:
-        return
-    if os.path.lexists(path):
-        if not path.is_symlink() and path.is_dir():
-            raise IsADirectoryError(f"{rel} is a directory")
-        path.unlink()
     kind, value = entry
-    if kind != "absent":
-        path.parent.mkdir(parents=True, exist_ok=True)
-    if kind == "link":
-        os.symlink(value, path)
-    elif kind == "file":
-        path.write_bytes(value)
+    if _path_state(path) == entry and (kind != "file" or mode is None or stat.S_IMODE(path.lstat().st_mode) == mode):
+        return
+    if os.path.lexists(path) and not path.is_symlink() and path.is_dir():
+        raise IsADirectoryError(f"{rel} is a directory")
+    if kind == "absent":
+        path.unlink()
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.{secrets.token_hex(4)}.specy-road-restore")
+    try:
+        if kind == "link":
+            os.symlink(value, tmp)
+        else:
+            with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as f:
+                f.write(value)
+            os.chmod(tmp, 0o644 if mode is None else mode)
+        os.replace(tmp, path)
+    except OSError as e:
+        if os.path.lexists(tmp):
+            raise OSError(f"{e}; the bytes from before finish are kept at {tmp}") from e
+        raise
 
 
 def _differs_from(root: Path, sha: str, rel: str, entry: tuple[str, str | bytes]) -> bool:
@@ -194,7 +223,7 @@ def undo_bookkeeping(repo: Path, snap: BookkeepingSnapshot) -> UndoOutcome:
                 out.unrestored[rel] = f"tracked, so it waits for the reset; {_save_copy(node, rel, entry)}"
             continue
         try:
-            _restore(root, rel, entry)
+            _restore(root, rel, entry, snap.modes.get(rel))
         except OSError as e:
             out.unrestored[rel] = f"{e}; {_save_copy(node, rel, entry)}"
     if out.git_error is None and not out.unrestored:
@@ -226,16 +255,22 @@ def undo_report(out: UndoOutcome, again: str) -> tuple[str | None, str]:
 
 @dataclass
 class PreCommitSnapshot:
-    """Each path's worktree state (as :func:`_path_state`), and the index file's bytes (``None``: absent).
+    """Each path's worktree state (as :func:`_path_state`) and file mode, and the index file's bytes (``None``: absent).
 
     The whole index, not per-path entries: ``git add <dir>`` reaches every entry
     under a directory, including ones absent from disk, so no path list bounds it.
+    ``index_entries`` is the staged entries (``git ls-files -s``, from the top);
+    ``owned`` the top-relative paths and directories finish itself stages, so a
+    staging change anywhere else keeps the index (M22.20).
     """
 
     head: str     # HEAD when the snapshot was taken; once it moves, the commit happened
     index_path: Path
     index_bytes: bytes | None
     files: dict[str, tuple[str, str | bytes]] = field(default_factory=dict)
+    modes: dict[str, int] = field(default_factory=dict)
+    index_entries: frozenset[str] | None = None
+    owned: tuple[str, ...] = ()
 
 
 def pre_commit_paths(repo: Path, node_id: str, sess_path: Path | None) -> list[str]:
@@ -250,25 +285,68 @@ def pre_commit_paths(repo: Path, node_id: str, sess_path: Path | None) -> list[s
     return list(dict.fromkeys([*dests, *_cleanup_and_log_paths(root, node_id, sess_path)]))
 
 
-def snapshot_pre_commit(repo: Path, rels: list[str]) -> PreCommitSnapshot:
-    """Record ``rels``' worktree bytes (or absence; a directory is skipped) and the index file's bytes."""
+def snapshot_pre_commit(repo: Path, rels: list[str], owned_dirs: tuple[str, ...] = ()) -> PreCommitSnapshot:
+    """Record ``rels``' worktree bytes and modes (or absence; a directory is skipped) and the index.
+
+    ``owned_dirs``: directories (relative to ``repo``) whose every entry finish may stage, besides ``rels``.
+    """
     root = repo.resolve()
     index_path = root / git_ok(["rev-parse", "--git-path", "index"], root)[1]
+    prefix = git_ok(["rev-parse", "--show-prefix"], root)[1]
     snap = PreCommitSnapshot(head=git_ok(["rev-parse", "HEAD"], root)[1], index_path=index_path,
-                             index_bytes=index_path.read_bytes() if index_path.is_file() else None)
+                             index_bytes=index_path.read_bytes() if index_path.is_file() else None,
+                             index_entries=_index_entries(root),
+                             owned=tuple(prefix + p for p in [*rels, *(d.rstrip("/") + "/" for d in owned_dirs)]))
     for rel in rels:
-        state = _path_state(root / rel)
-        if state is not None:
-            snap.files[rel] = state
+        _record(root, rel, snap.files, snap.modes)
     return snap
 
 
+def _index_entries(root: Path) -> frozenset[str] | None:
+    """Every staged entry (mode, object id, stage and top-relative path); ``None`` when git cannot list them.
+
+    Entries, not the file's bytes: git rewrites the index when it only refreshes stat data (``git status``).
+    """
+    r = subprocess.run(["git", "ls-files", "-s", "-z", "--full-name", "--", ":/"], cwd=root, capture_output=True,
+                       check=False)
+    return frozenset(r.stdout.decode("utf-8", "surrogateescape").split("\0")) - {""} if r.returncode == 0 else None
+
+
+def _foreign_staging(root: Path, snap: PreCommitSnapshot) -> list[str]:
+    """Paths staged or unstaged since the snapshot that finish does not own; one placeholder when unlistable."""
+    now = _index_entries(root)
+    if now is None or snap.index_entries is None:
+        return ["(git ls-files could not list the index)"]
+    paths = {e.split("\t", 1)[-1] for e in now ^ snap.index_entries}
+    return sorted(p for p in paths if not any(p == o or (o.endswith("/") and p.startswith(o)) for o in snap.owned))
+
+
+def _keep_both_indexes(snap: PreCommitSnapshot, changed: list[str]) -> str:
+    """Save the snapshot's index beside the current one, which stays; say where each is."""
+    if snap.index_bytes is None:
+        before = "there was no index before finish"
+    else:
+        fd, name = tempfile.mkstemp(prefix=f"{snap.index_path.name}.before-finish.", dir=snap.index_path.parent)
+        with os.fdopen(fd, "wb") as f:
+            f.write(snap.index_bytes)
+        before = f"the index from before finish is saved at {name}"
+    return (f"staging changed since finish started ({', '.join(changed)}), so the index was not put back: "
+            f"the current index (with that staging and finish's) stays at {snap.index_path}, and {before}; "
+            "keep the current one or move the saved one over it")
+
+
 def restore_pre_commit(repo: Path, snap: PreCommitSnapshot) -> dict[str, str]:
-    """Put the index file and every snapshotted path's bytes back; return ``{path: why}`` for each that failed."""
+    """Put the index file and every snapshotted path's bytes back; return ``{path: why}`` for each that failed.
+
+    The index is kept as it is, with the snapshot's saved beside it, when staging outside
+    :attr:`PreCommitSnapshot.owned` changed since the snapshot (:func:`_keep_both_indexes`).
+    """
     root = repo.resolve()
     failed: dict[str, str] = {}
     try:
-        if snap.index_bytes is None:
+        if changed := _foreign_staging(root, snap):
+            failed["the index"] = _keep_both_indexes(snap, changed)
+        elif snap.index_bytes is None:
             snap.index_path.unlink(missing_ok=True)
         else:   # written beside it and renamed, so git never reads half an index
             tmp = snap.index_path.with_name(snap.index_path.name + ".specy-road-restore")
@@ -278,7 +356,7 @@ def restore_pre_commit(repo: Path, snap: PreCommitSnapshot) -> dict[str, str]:
         failed["the index"] = str(e)
     for rel, entry in snap.files.items():
         try:
-            _restore(root, rel, entry)
+            _restore(root, rel, entry, snap.modes.get(rel))
         except OSError as e:
             failed[rel] = str(e)
     return failed
@@ -365,7 +443,7 @@ def bookkeeping_guard(repo: Path, node_id: str, sess_path: Path | None) -> Itera
     refuse_irregular_destinations_or_exit(repo, node_id)
     preflight_validate_or_exit(repo)
     try:
-        snap = snapshot_pre_commit(repo, pre_commit_paths(repo, node_id, sess_path))
+        snap = snapshot_pre_commit(repo, pre_commit_paths(repo, node_id, sess_path), (f"{WORKER_LOGS_REL}/{node_id}",))
     except (OSError, subprocess.SubprocessError, RuntimeError) as e:   # RuntimeError: a symlink loop (Python < 3.13)
         _nothing_changed([f"error: finish-this-task could not record the tree before writing: {_failed_step(e)}"])
     try:

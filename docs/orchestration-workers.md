@@ -293,9 +293,12 @@ says the session was not signalled.
 
 **Processes outside the group.** The recorded group covers the wrapper, the harness and what the harness forks directly, not what it
 puts in a group or session of its own (Claude Code's Bash tool, Cursor's shell tool). `terminate` snapshots the group's descendants
-before its first signal and also ends those outside the group once the group is gone (SIGTERM, then SIGKILL; each only while its
-start time still matches, so a reused pid is never signalled); a survivor, or a failed `ps` listing, makes it fail instead of
-reporting terminated. It cannot see a process already re-parented before that snapshot: after a `kill -9` of the harness or the
+before its first signal and signals those outside the group together with the group (SIGTERM, then SIGKILL after the same grace;
+each only while its start time still matches, so a reused pid is never signalled); a zombie (state `Z`, waiting for its parent or
+a subreaper to reap it) counts as gone, and a survivor makes it fail instead of reporting terminated. A failed `ps` listing ends the
+group, sets `descendants_unchecked: true` on the record and fails without terminating it; the next `terminate` repeats the listing
+(from the recorded group, harness and wrapper pids, so it finds only descendants whose parent link still holds) and clears the
+mark once a listing succeeds. It cannot see a process already re-parented before that snapshot: after a `kill -9` of the harness or the
 group, or a crash, what the tool was running (a test suite, a server) keeps running with ppid 1. Stop workers with `terminate`
 rather than `kill -9`; after any SIGKILL, list what still runs in the worker's worktree (`lsof -d cwd | grep <worktree>`) and kill
 it by hand.

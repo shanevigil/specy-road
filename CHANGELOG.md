@@ -32,6 +32,15 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- Worker terminate and finish rollback (rc4 final review, M22.20). `worker terminate` signals the
+  group's escaped descendants with the group's SIGTERM and SIGKILL, not after its grace; a zombie
+  descendant or group member is no survivor; a failed `ps` listing sets `descendants_unchecked` on
+  the worker record, and the next `terminate` repeats the listing instead of marking the worker
+  terminated (a process already re-parented stays out of reach). finish's rollback writes each file
+  to a temporary file and renames it into place (a failed write keeps the previous bytes and names
+  the temporary file), restores file modes, and keeps the index when something outside finish's own
+  paths was staged meanwhile, naming it and the saved pre-finish index.
+
 - Reviewer runs (rc4 re-test D15c, D17, D18). A refused answer's one-line reason names the first
   offending line whole, then `(N more; full text in work/reviews/<ID>/REJECTED-<model>.md)`, for the
   first refusal and for a repair turn's, instead of the last 400 characters cut mid-word. A

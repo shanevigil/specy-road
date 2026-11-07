@@ -2,8 +2,9 @@
 
 Cursor's shell tool runs each command as a new session leader, so ``killpg`` on
 the worker's group never reaches it. ``kill_group`` lists the group's
-descendants outside it before the first signal and ends each one whose start
-time still matches after the group is gone.
+descendants outside it before the first signal and signals each one whose start
+time still matches with the group (M22.20); a zombie is no survivor, and a failed
+listing is repeated by the next ``terminate``.
 """
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ print('{"type": "system", "subtype": "init", "session_id": "escaped"}', flush=Tr
 time.sleep(120)
 '''
 
-INVENTORY = ["ps", "-A", "-ww", "-o", "pid=,ppid=,pgid=,lstart="]
+INVENTORY = ["ps", "-A", "-ww", "-o", "pid=,ppid=,pgid=,stat=,lstart="]
 FAKE_PID = 4_194_000   # above any default pid_max: no real process is ever signalled through it
 
 
@@ -120,11 +121,13 @@ def leader(tmp_path: Path):
         _kill(pid)
 
 
-def _seams(monkeypatch, leader_pid: int, *, before: str | None, after: str | None) -> list[tuple[int, int]]:
+def _seams(monkeypatch, leader_pid: int, *, before: str | None, after: str | None, stat: str = "S",
+           dies: bool = False) -> list[tuple[int, int]]:
     """Patch ``ps`` and ``os.kill``: a fake descendant of ``leader_pid`` outside its group.
 
-    The inventory lists it started at ``before`` and every later read at ``after`` (``None``: not listed); a
-    ``before`` of ``None`` makes the inventory unreadable. Returns the signals sent to the fake pid.
+    The inventory lists it started at ``before`` and every later read at ``after`` in state ``stat`` (``None``: not
+    listed); a ``before`` of ``None`` makes the first inventory unreadable. ``dies``: no longer listed once
+    signalled. Returns the signals sent to the fake pid.
     """
     real_run, real_kill, sent, reads = subprocess.run, os.kill, [], []
 
@@ -136,8 +139,8 @@ def _seams(monkeypatch, leader_pid: int, *, before: str | None, after: str | Non
         reads.append(args)
         if first and before is None:
             return subprocess.CompletedProcess(args, 1, "", "ps: unreadable")
-        start = before if first else after
-        row = f"{FAKE_PID} {leader_pid} {FAKE_PID} {start}\n" if start else ""
+        start = None if dies and sent else before if first else after
+        row = f"{FAKE_PID} {leader_pid} {FAKE_PID} {'S' if first else stat} {start}\n" if start else ""
         return subprocess.CompletedProcess(args, 0, r.stdout + row, "")
 
     def kill(pid, sig):
@@ -166,11 +169,94 @@ def test_an_unreadable_inventory_raises_after_the_group_is_signalled(leader, mon
     assert _gone(pid)   # the group itself was still ended
 
 
-def test_a_same_start_survivor_raises_naming_its_pid(leader, monkeypatch) -> None:
+@pytest.mark.parametrize("stat", ["S", "Z"], ids=["running", "zombie-kept-by-a-subreaper"])
+def test_a_same_start_survivor_raises_naming_its_pid(leader, monkeypatch, stat: str) -> None:
+    """A zombie (its subreaper never waits for it) is gone, not a survivor (M22.20): terminate succeeds."""
     pid, rec = leader
     start = "Thu Nov  5 10:00:00 2026"
-    sent = _seams(monkeypatch, pid, before=start, after=start)
-    with pytest.raises(WorkerError, match=f"{FAKE_PID}.*still alive after SIGKILL"):
+    sent = _seams(monkeypatch, pid, before=start, after=start, stat=stat)
+    if stat == "Z":
         kill_group(rec, grace=0.3)
-    assert {s for _, s in sent} == {signal.SIGTERM, signal.SIGKILL}
+    else:
+        with pytest.raises(WorkerError, match=f"{FAKE_PID}.*still alive after SIGKILL"):
+            kill_group(rec, grace=0.3)
+        assert {s for _, s in sent} == {signal.SIGTERM, signal.SIGKILL}
     assert _gone(pid)
+
+
+def test_a_failed_inventory_is_repeated_by_the_next_terminate(tmp_path: Path, leader, monkeypatch) -> None:
+    """M22.20: the first terminate records ``descendants_unchecked`` and does not terminate the record; the second
+    lists the descendant (its parent link to the recorded harness still holds), signals it and clears the mark."""
+    pid, fixture = leader
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "cursor", "m", repo)
+    ws.mutate(repo, rec, lambda r: r.__dict__.update(state="running", pgid=pid, harness_pid=pid,
+                                                     harness_start=fixture.harness_start))
+    start = "Thu Nov  5 10:00:00 2026"
+    sent = _seams(monkeypatch, pid, before=None, after=start, dies=True)
+    assert run_worker_cli("worker", "terminate", rec.worker_id, "--repo-root", str(repo)) != 0
+    first = ws.load_record(repo, rec.worker_id)
+    assert first.state == "running" and first.descendants_unchecked is True
+    assert sent == [] and _gone(pid)   # the group was ended; its descendant was never listed
+    assert run_worker_cli("worker", "terminate", rec.worker_id, "--repo-root", str(repo)) == 0
+    second = ws.load_record(repo, rec.worker_id)
+    assert second.state == "terminated" and not second.descendants_unchecked
+    assert sent == [(FAKE_PID, signal.SIGTERM)]
+
+
+#: A harness that ignores SIGTERM (so the group's grace runs out) with a child in a session of its own. The child
+#: records when SIGTERM reaches it and only then forks: the fork comes after the snapshot, inside the group's grace.
+FORKING = '''
+import signal, subprocess, sys, time
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+child = """
+import os, signal, sys, time
+os.setsid()
+def term(*_):
+    open(sys.argv[1] + ".term", "w").write(repr(time.time()))
+    if os.fork() == 0:
+        open(sys.argv[1] + ".fork", "w").write(str(os.getpid()))
+        time.sleep(120)
+        os._exit(0)
+signal.signal(signal.SIGTERM, term)
+open(sys.argv[1] + ".tmp", "w").write(str(os.getpid()))
+os.replace(sys.argv[1] + ".tmp", sys.argv[1])
+while True:
+    time.sleep(1)
+"""
+subprocess.Popen([sys.executable, "-c", child, sys.argv[1]])
+print('{"type": "system", "subtype": "init", "session_id": "forking"}', flush=True)
+time.sleep(120)
+'''
+
+
+def test_an_escaped_child_gets_sigterm_with_the_group_not_after_its_grace(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    harness = tmp_path / "forking_harness.py"
+    harness.write_text(FORKING)
+    ready = tmp_path / "escaped.pid"
+    term_at, fork_file = Path(f"{ready}.term"), Path(f"{ready}.fork")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    wrapper = escaped = forked = None
+    try:
+        wrapper = spawn(repo, rec, Launch([sys.executable, str(harness), str(ready)]))
+        for _ in range(100):
+            if ready.is_file() and ws.load_record(repo, rec.worker_id).harness_pid:
+                break
+            time.sleep(0.1)
+        escaped = int(ready.read_text())
+        assert os.getpgid(escaped) != ws.load_record(repo, rec.worker_id).pgid
+        assert not fork_file.exists()   # nothing forked before the snapshot
+        began = time.time()
+        kill_group(ws.load_record(repo, rec.worker_id), repo, grace=3.0)   # no survivor: no WorkerError
+        for _ in range(50):
+            if fork_file.is_file() and fork_file.read_text():
+                break
+            time.sleep(0.1)
+        forked = int(fork_file.read_text())
+        assert float(term_at.read_text()) - began < 2.0   # with the group's SIGTERM, inside its 3 s grace
+        assert forked != escaped and _gone(escaped)
+    finally:
+        _kill(forked)
+        _kill(escaped)
+        _kill(wrapper)

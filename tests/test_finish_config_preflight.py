@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from specy_road.finish_bookkeeping_undo import restore_pre_commit, snapshot_pre_commit
 from specy_road.review_gate_agreement import GATE_FIX
 from tests.helpers import REPO
 from tests.review_repo_helpers import commit_file, git
@@ -56,12 +57,13 @@ def _repo(tmp_path: Path, monkeypatch) -> Path:
 
 
 def _entry(path: Path) -> object:
-    """A path's bytes, link target or file type, never reading through a link, FIFO or directory."""
+    """A path's bytes and permission bits, link target or file type, never reading through a link, FIFO or directory."""
     if not os.path.lexists(path):
         return None
     if path.is_symlink():
         return ("link", os.readlink(path))
-    return path.read_bytes() if path.is_file() else ("mode", stat.S_IFMT(path.lstat().st_mode))
+    mode = path.lstat().st_mode
+    return (path.read_bytes(), stat.S_IMODE(mode)) if path.is_file() else ("mode", stat.S_IFMT(mode))
 
 
 def _state(repo: Path) -> tuple[dict[str, bytes], str, str]:
@@ -169,6 +171,22 @@ def _worker_log_deleted_on_disk(repo: Path) -> None:
     (repo / "work" / "worker-logs" / "M1.1" / "a.log").unlink()
 
 
+def _modes(repo: Path) -> None:
+    """M22.20: an executable tracked brief and a 0600 untracked prompt, both removed by cleanup."""
+    (repo / "work" / "brief-M1.1.md").chmod(0o755)
+    (repo / "work" / "prompt-M1.1.md").write_text("# prompt M1.1, private\n")
+    (repo / "work" / "prompt-M1.1.md").chmod(0o600)
+
+
+def _pre_commit_hook(repo: Path, body: str) -> None:
+    """A pre-commit hook that runs ``body``, says so and refuses."""
+    hook = Path(git(repo, "rev-parse", "--git-path", "hooks/pre-commit"))
+    hook = hook if hook.is_absolute() else repo / hook
+    hook.parent.mkdir(parents=True, exist_ok=True)
+    hook.write_text(f"#!/bin/sh\n{body}\necho 'pre-commit refused' >&2\nexit 1\n")
+    hook.chmod(0o755)
+
+
 @pytest.mark.parametrize(
     ("inject", "named", "arrange", "wrote"),
     [
@@ -178,26 +196,24 @@ def _worker_log_deleted_on_disk(repo: Path) -> None:
         ("commit", COMMIT_REFUSED, _tracked_summary, "[ok] archived"),
         ("commit", COMMIT_REFUSED, _untracked_summary, "kept a copy at"),
         ("commit", COMMIT_REFUSED, _worker_log_deleted_on_disk, None),
+        ("commit", COMMIT_REFUSED, _modes, None),
     ],
     ids=["validate", "digest", "registry", "commit-tracked-summary", "commit-untracked-summary",
-         "commit-worker-log-deleted-on-disk"],
+         "commit-worker-log-deleted-on-disk", "commit-file-modes"],
 )
 def test_failure_before_the_commit_restores_the_tree(
     tmp_path: Path, monkeypatch, inject: str, named: str, arrange, wrote: str | None,
 ) -> None:
     """A3/A4: each refusal restores worktree bytes, the index file and HEAD, and reports cleanly.
 
-    ``wrote`` is what finish printed when it wrote that row's destination before the refusal.
+    ``wrote`` is what finish printed when it wrote that row's destination before the refusal. The hook runs
+    ``git status`` first: git rewrites the index to refresh its stat data, which is no staging change (M22.20).
     """
     repo = _repo(tmp_path, monkeypatch)
     if arrange is not None:
         arrange(repo)
     if inject == "commit":
-        hook = Path(git(repo, "rev-parse", "--git-path", "hooks/pre-commit"))
-        hook = hook if hook.is_absolute() else repo / hook
-        hook.parent.mkdir(parents=True, exist_ok=True)
-        hook.write_text("#!/bin/sh\necho 'pre-commit refused' >&2\nexit 1\n")
-        hook.chmod(0o755)
+        _pre_commit_hook(repo, "git status >/dev/null")
         # Distinct staged and unstaged bytes on a path cleanup removes.
         (repo / "work" / "brief-M1.1.md").write_text("# brief M1.1\n\nstaged\n")
         git(repo, "add", "work/brief-M1.1.md")
@@ -216,3 +232,50 @@ def test_failure_before_the_commit_restores_the_tree(
     assert "[ok] bookkeeping committed" not in out
     assert wrote is None or wrote in out, out
     assert _state(repo) == before
+
+
+def test_staging_by_the_hook_is_kept_and_both_indexes_named(tmp_path: Path, monkeypatch) -> None:
+    """M22.20: a path the hook stages is not dropped by the index restore; both indexes are named."""
+    repo = _repo(tmp_path, monkeypatch)
+    (repo / "notes.txt").write_text("unrelated\n")
+    _pre_commit_hook(repo, "git add notes.txt")
+    files, staged, head = _state(repo)
+    result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
+    out = result.stdout + result.stderr
+    assert result.returncode == 1, out
+    assert AGAIN in result.stderr and "Traceback" not in result.stderr, out
+    line = next(ln for ln in result.stderr.splitlines() if ln.startswith("error: could not restore the index:"))
+    assert "(notes.txt)" in line, line
+    saved = Path(line.split("the index from before finish is saved at ", 1)[1].split(";", 1)[0])
+    index = Path(git(repo, "rev-parse", "--git-path", "index"))
+    index = index if index.is_absolute() else repo / index
+    assert f"stays at {index}" in line, line
+    assert "notes.txt" in git(repo, "ls-files", "--", "notes.txt")   # the hook's staging is kept
+    env = {**os.environ, "GIT_INDEX_FILE": str(saved)}
+    assert subprocess.run(["git", "ls-files", "-s"], cwd=repo, env=env, capture_output=True, text=True,
+                          check=True).stdout.strip() == staged   # the saved index is the one from before finish
+    on_disk = {n: e for n, e in _state(repo)[0].items() if e is not None}   # the kept index lists finish's paths
+    assert on_disk == {n: e for n, e in files.items() if e is not None} and git(repo, "rev-parse", "HEAD") == head
+
+
+def test_a_failed_restore_write_keeps_the_previous_bytes(tmp_path: Path, monkeypatch) -> None:
+    """M22.20: the restore renames a finished temporary file over the path; when that fails the path keeps its
+    bytes and the error names the temporary file, which holds the snapshot's bytes."""
+    repo = tmp_path / "r"
+    repo.mkdir()
+    git(repo, "init", "-q")
+    (repo / "doc.md").write_bytes(b"before finish\n")
+    snap = snapshot_pre_commit(repo, ["doc.md"])
+    (repo / "doc.md").write_bytes(b"written by finish\n")
+    real = os.replace
+
+    def replace(src, dst, *a, **kw):
+        if Path(dst).name == "doc.md":
+            raise OSError(28, "No space left on device")
+        return real(src, dst, *a, **kw)
+
+    monkeypatch.setattr(os, "replace", replace)
+    failed = restore_pre_commit(repo, snap)
+    assert (repo / "doc.md").read_bytes() == b"written by finish\n"
+    kept = Path(failed["doc.md"].split("kept at ", 1)[1])
+    assert kept.parent == repo.resolve() and kept.read_bytes() == b"before finish\n"
