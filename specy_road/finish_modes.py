@@ -216,7 +216,7 @@ def delete_landed_branch(
 
 
 def drop_main_checkout_pickup_files(repo: Path, node_id: str, *, no_cleanup_work: bool) -> None:
-    """The main checkout's untracked brief and prompt, once finish has succeeded."""
+    """Remove the main checkout's untracked brief and prompt when cleanup is on."""
     if should_cleanup_work_artifacts_on_finish(repo, no_cleanup_work_cli=no_cleanup_work):
         remove_main_checkout_pickup_files(repo, node_id)
 
@@ -225,15 +225,16 @@ def close_merged_checkout(
     repo: Path, *, node_id: str, branch: str, ib: str, on_mode: str,
     delete_branch: bool, no_cleanup_work: bool,
 ) -> None:
-    """After the landing outcome: remove the main checkout's pickup files, then the checkout line.
+    """After a merge or auto landing: remove the main checkout's pickup files, then the checkout line.
 
-    The line is the final one, and only for a merge or auto landing that left
-    this checkout on ``branch`` without ``--delete-branch``.
+    A finish that did not land, such as ``pr``, leaves those files. The line is
+    the final one, and only when this checkout is still on ``branch`` without
+    ``--delete-branch``.
     """
-    drop_main_checkout_pickup_files(repo, node_id, no_cleanup_work=no_cleanup_work)
-    if on_mode not in ("merge", "auto") or delete_branch:
+    if on_mode not in ("merge", "auto"):
         return
-    if current_branch(repo) != branch:
+    drop_main_checkout_pickup_files(repo, node_id, no_cleanup_work=no_cleanup_work)
+    if delete_branch or current_branch(repo) != branch:
         return
     print(f"[ok] this checkout is still on {branch} (landed into {ib}); next: git switch {ib}")
 

@@ -29,7 +29,7 @@ A6 is not binding: `M16.1.1` and `M16.1.2` are Not Started. No file under `tests
 - `_symlink_on_path`: whether any component of the brief or prompt path is a symlink, or whether that cannot be established.
 - `remove_main_checkout_pickup_files`: the one removal finish and abort share for the main checkout's untracked brief and prompt.
 - `drop_main_checkout_pickup_files`: the cleanup-flag gate around `remove_main_checkout_pickup_files`. The first finish, a milestone rollup, and a merge retry all use it.
-- `close_merged_checkout`: that removal, then the checkout line when a merge or auto landing left this checkout on the feature branch without `--delete-branch`.
+- `close_merged_checkout`: that removal, then the checkout line, only after a merge or auto landing. A pr finish leaves the main checkout's files.
 - `_deps` (test): one `run_crud` call with `--repo-root`.
 - `_git`, `_linked`, `_prefix` (finish cleanup tests): a linked worktree in the embedded and nested layouts.
 - `_claim_leaf`, `_open_leaf`, `_place_main_copies` (abort tests): a claimed leaf whose main checkout is not on the integration branch, so abort can check that branch out in the worktree. They call the module's existing `_git`.
@@ -42,7 +42,7 @@ A6 is not binding: `M16.1.1` and `M16.1.2` are Not Started. No file under `tests
 - A path that is not a regular file is left alone.
 - `git ls-files` failing, or listing the path, leaves the file.
 - The checkout line is printed only for `merge` and `auto`, not with `--delete-branch`, and only when the current branch is the feature branch.
-- Main-checkout copies are removed only after a successful landing, including a merge retry that newly lands or finds the branch already merged. A refused landing still exits before that call.
+- Main-checkout copies are removed only after a successful landing: a merge or auto finish that returned, a merge retry that newly lands or is already merged, or a milestone rollup that landed. A pr finish and a refused landing leave them.
 - A merge retry has no `--no-cleanup-work` argument. The yaml cleanup flag still applies. That limit is in `retry_merge_landing`'s docstring.
 
 ### Mocks
@@ -55,6 +55,7 @@ A6 is not binding: `M16.1.1` and `M16.1.2` are Not Started. No file under `tests
 - `test_patch_dependencies_stores_a_display_id_and_refuses_an_unknown`: PATCH stores a display id as its node_key; an unknown token is HTTP 400 and the graph is unchanged.
 - `test_linked_worktree_main_checkout_pickup_files`: embedded and nested; untracked copies removed, tracked kept, a symlink alias and its target kept, a symlinked `work/` kept.
 - `test_finish_from_a_linked_worktree_removes_main_copies_after_landing`: a successful merge from a linked worktree removes the main copies and ends with the checkout line.
+- `test_pr_finish_from_a_linked_worktree_keeps_main_checkout_copies`: a pr finish leaves the main checkout's untracked brief and prompt and does not print the checkout line.
 - `test_finish_refused_at_landing_keeps_main_checkout_copies`: a land check failure keeps the main copies and does not print the line.
 - `test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch`: a linked-worktree retry that newly lands, and one that finds the branch already merged, each remove the main copies and end on the checkout line. A refused first landing keeps the copies.
 - `_finish` (test): one finish call whose exit code is 0, returning its stdout.
@@ -78,3 +79,5 @@ The checkout guidance is printed after the landing outcome whenever this checkou
 - `--delete-branch` on a retry: `close_merged_checkout` skips the line. `test_a_retried_landing_prints_its_outcome_last` still requires the already-merged outcome to be the final line in that case.
 - A non-linked retry ends on the feature branch too. `test_a_retried_landing_prints_its_outcome_last` keeps the new landing's outcome and now requires the checkout guidance as the final line. Its `--delete-branch` follow-up still ends on the already-merged outcome.
 - `report_landed` no longer says it runs every post-landing step or that the outcome is always the last line. Session cleanup and `--delete-branch` still print before the outcome.
+- Class "main-checkout pickup cleanup runs on a finish that did not land": `close_merged_checkout` removed the files before it looked at the mode, so a pr finish deleted them. The removal now sits after the merge-or-auto check, and a pr finish returns before it. A refused merge still raises inside `merge_landing_failed` before that call. `abort-task-pickup` still removes the files; A2 names abort separately from a landing.
+- A milestone rollup calls `drop_main_checkout_pickup_files` only after `land_milestone_rollup` has returned. A failed rollup step raises before that, so the copies stay. `--delete-branch` on a merge still removes the copies: the branch check that skips the checkout line is after the removal.

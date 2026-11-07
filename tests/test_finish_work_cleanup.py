@@ -494,6 +494,33 @@ def test_finish_from_a_linked_worktree_removes_main_copies_after_landing(tmp_pat
     )
 
 
+def test_pr_finish_from_a_linked_worktree_keeps_main_checkout_copies(tmp_path, monkeypatch, capsys) -> None:
+    """A pr finish does not land, so the main checkout's untracked brief and prompt stay."""
+    from tests.review_repo_helpers import commit_file, delegate_layout
+
+    from specy_road.bundled_scripts import finish_task
+
+    repo, leaf, _bare = delegate_layout(tmp_path, monkeypatch)
+    workflow = (leaf / "roadmap" / "git-workflow.yaml").read_text(encoding="utf-8")
+    commit_file(
+        leaf, "roadmap/git-workflow.yaml",
+        workflow.replace("on_complete: merge\n", "on_complete: pr\n"),
+        "pr mode",
+    )
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    (work / "brief-M1.1.md").write_text("brief\n", encoding="utf-8")
+    (work / "prompt-M1.1.md").write_text("prompt\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(leaf)])
+        raise SystemExit(0)
+    captured = capsys.readouterr()
+    assert (e.value.code or 0) == 0, captured.out + captured.err
+    assert (work / "brief-M1.1.md").read_text(encoding="utf-8") == "brief\n"
+    assert (work / "prompt-M1.1.md").read_text(encoding="utf-8") == "prompt\n"
+    assert "this checkout is still on" not in captured.out
+
+
 def test_finish_refused_at_landing_keeps_main_checkout_copies(tmp_path, monkeypatch, capsys) -> None:
     """A landing that fails leaves the main checkout's untracked brief and prompt."""
     from tests.review_repo_helpers import delegate_layout
