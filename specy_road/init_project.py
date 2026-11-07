@@ -226,8 +226,8 @@ def _profile_selection(profiles: str) -> InitProfilesSelection:
 
 def _scaffold(
     src: Path, dst: Path, selection: InitProfilesSelection, *, dry_run: bool, force: bool,
-) -> tuple[Path, str, list[str], list[str]]:
-    """Write every path ``init project`` owns; ``(root, prefix, written, skipped)``.
+) -> tuple[Path, str, list[str], list[str], bool]:
+    """Write every path ``init project`` owns; ``(root, prefix, written, skipped, in_git)``.
 
     The ignore files, ``.specyrd/manifest.json`` and (with ``force``, which
     rewrites them) the generated files are checked by the safe-write rule, and
@@ -254,7 +254,21 @@ def _scaffold(
     if top is not None:
         _record_layout(top, prefix, written, dry_run=dry_run)
     _write_generated(dst, prefix, written, skipped, dry_run=dry_run, force=force)
-    return root, prefix, written, skipped
+    return root, prefix, written, skipped, top is not None
+
+
+def _print_next_steps(root: Path, prefix: str, *, in_git: bool) -> None:
+    """Closing lines of a real run: set the branch, commit, then validate."""
+    steps = [
+        f"Set integration_branch and remote in {prefix}roadmap/git-workflow.yaml",
+        'git add -A && git commit -m "specy-road init"',
+        "specy-road validate",
+    ]
+    if not in_git:
+        steps.insert(0, "git init")
+    print(f"Next steps (run from {root}):")
+    for number, step in enumerate(steps, start=1):
+        print(f"  {number}. {step}")
 
 
 def run_init_project(
@@ -270,7 +284,9 @@ def run_init_project(
     text under ``--dry-run`` as for real: the template files, ``AGENTS.md``,
     both ignore files' managed blocks, ``.specyrd/manifest.json`` and the two
     generated files. Paths are relative to the git root (``sr/roadmap/...`` in
-    the nested layout).
+    the nested layout). A successful real run then prints the next steps
+    (set the integration branch and remote, commit, validate; ``git init``
+    first outside a repository). ``--dry-run`` and a refused run print none.
     """
     dst = project_root(target) if target else project_root()
     src = project_template_root()
@@ -295,7 +311,9 @@ def run_init_project(
         return 1
 
     try:
-        root, prefix, written, skipped = _scaffold(src, dst, selection, dry_run=dry_run, force=force)
+        root, prefix, written, skipped, in_git = _scaffold(
+            src, dst, selection, dry_run=dry_run, force=force,
+        )
     except (OSError, RuntimeError) as e:   # a refusal, or a symlink loop met before the rule
         print(f"error: {safe_write.refusal_of(e)}", file=sys.stderr)
         return 1
@@ -313,4 +331,5 @@ def run_init_project(
     print(f"Initialized specy-road layout under {dst}")
     if prefix:
         print(f"Recorded project_root={prefix.rstrip('/')} in .specyrd/manifest.json")
+    _print_next_steps(root, prefix, in_git=in_git)
     return 0
