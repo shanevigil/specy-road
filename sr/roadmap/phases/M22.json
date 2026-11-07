@@ -353,46 +353,6 @@
     },
     {
       "acceptance": [
-        "set-dependencies --deps and edit-node --set dependencies= accept display ids and node_keys (mixed), resolved through resolve_dependency_refs in edit_node_set_pairs (roadmap_crud_ops.py, the one path the CLI and PATCH /api/nodes/{id} share) before the field is applied, and stored as node_keys; archived keys, an empty value that clears, de-duplication, self and cycle refusals and the all-or-nothing write are unchanged; an unknown token is refused with the existing sentence `dependency 'X' is neither a node id nor a node_key in the roadmap`; the help says KEY or ID",
-        "finish-this-task and abort-task-pickup run from a linked worktree also remove the main checkout's <prefix>work/brief-<ID>.md and <prefix>work/prompt-<ID>.md (the project's work/ through project_prefix; sr/work/ in a nested layout) when each is a regular file git does not track there, printing each; a symlink or a symlinked work/ directory, a tracked copy, a file whose tracking git cannot establish, and every other file are left alone; finish removes them only after the landing succeeded, so a refused landing keeps them",
-        "A merge or auto landing that succeeds and leaves the feature branch checked out (no --delete-branch) ends with '[ok] this checkout is still on <feature> (landed into <ib>); next: git switch <ib>', printed only when the current branch is <feature>; docs/git-workflow.md's merge entry says so",
-        "Tests: tests/test_roadmap_crud_dependencies.py (ids, mixed, unknown refused with the existing sentence); tests/test_gui_app_routes_nodes_errors.py (PATCH /api/nodes/{id} with a display-id dependency stores its node_key; an unknown one is HTTP 400 with the graph unchanged); tests/test_finish_work_cleanup.py and tests/test_abort_task_pickup.py (linked worktree in embedded and nested layouts: untracked main copies removed, tracked kept, a symlink alias to a tracked file kept with its target; finish refused at landing keeps the main copies); tests/test_finish_merge_mode.py (line printed; absent with --delete-branch); CHANGELOG [Unreleased] Fixed. Out of scope: switching branches automatically, landing logic (M22.10)",
-        "Estimated net line change (informational, not a gate): package about +30, tests about +110, docs about +2",
-        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
-      ],
-      "codename": "deps-ids-briefs-and-landed-branch",
-      "dependencies": [
-        "f6a94a57-91ff-449b-997e-af12dedd41ee"
-      ],
-      "id": "M22.14",
-      "node_key": "121934a1-3ec8-416e-b66c-0305b77665b5",
-      "parent_id": "M22",
-      "planning_dir": "planning/M22.14_deps-ids-briefs-and-landed-branch_121934a1-3ec8-416e-b66c-0305b77665b5.md",
-      "sibling_order": 13,
-      "status": "Not Started",
-      "title": "Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch",
-      "touch_zones": [
-        "specy_road/bundled_scripts/roadmap_edit_fields.py",
-        "specy_road/bundled_scripts/roadmap_crud_argparse.py",
-        "specy_road/cli_usage.py",
-        "tests/test_roadmap_crud_dependencies.py",
-        "specy_road/finish_work_artifacts.py",
-        "specy_road/bundled_scripts/abort_task_pickup.py",
-        "tests/test_finish_work_cleanup.py",
-        "tests/test_abort_task_pickup.py",
-        "specy_road/bundled_scripts/finish_task.py",
-        "tests/test_finish_merge_mode.py",
-        "docs/git-workflow.md",
-        "CHANGELOG.md",
-        "specy_road/bundled_scripts/roadmap_crud_ops.py",
-        "tests/test_gui_app_routes_nodes_errors.py",
-        "tests/test_finish_merge_failure_undo.py",
-        "specy_road/finish_modes.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "§1.1: export --check and digest --check exit 0 right after init project (init writes roadmap.md and roadmap-context.md); the 'exit 1 with missing' sentence and the extra export/digest step are gone",
         "§5: the second claim from one checkout is `do-next-available-task --allow-second-claim` (exit 6 without it), stated where 'Claim two leaves' is",
         "§2.6: the tamper step lists its three outcomes (a front-matter value byte: 'signature does not verify for <model>'; a notes-body byte: 'notes body does not match notes_sha256'; a schema-breaking edit such as an A1 value: schema-invalid) and that restoring the record makes the gate met again",
