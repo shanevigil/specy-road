@@ -29,7 +29,17 @@ Branch `feature/rm-ops-writers-refuse-links`. As the planning sheet asks, the fi
 `gpt-5.6-sol-high` blocked `24f8f4ba` with two prose findings, both fixed in `fd52c277`. The class is prose in this leaf's zones that still describes behaviour from before this leaf (a link was skipped, or failed silently) when the code now refuses it or warns.
 
 - **`docs/dev-workflow.md` step 6.** It said a summary under a symlinked `work/` "is skipped with a warning". Finish writes under `work/` (`work/pr-body-<id>.md`, `work/done/`), so a symlinked `work/` is a write destination: preflight refuses it before the first write and names the path. The step now says so, and keeps "a symlinked summary is skipped with a warning", which is still true (the summary is a source, not a destination). A new `work-main` row in `test_finish_refuses_a_linked_reviews_base` pins the `work/` claim from the main checkout; the `work-from-worktree` row already covered a worktree.
-- **`history_cache` module docstring.** It said "Every failure here is silent by design." It now says every failure costs a rebuild and never a failed command, and names the one exception that is not silent: `save_cache` warns once, naming the path, for a symlink on the cache path.
+- **`history_cache` module docstring.** It said "Every failure here is silent by design." Fix round 2 replaced it with a sentence that named a symlink as the only failure that is not silent. That was still wrong, and fix round 3 replaces it with the bounded rule.
+
+## Fix round 3 (on `08716ee7`, WIP merged)
+
+`gpt-5.6-sol-high` blocked `c2f725ed`: prose in `history_cache.py` and in this summary said a symlink was the only failure that is not silent. In fact every `SafeWriteError` warns. The class is prose that names one input shape (a symlink) where the code acts on the whole `SafeWriteError` class. That class covers a symlink anywhere on the path, a non-directory where a directory belongs, anything but a regular file at the end, a component `lstat` cannot read, and a lexical `..` (the `safe_write` module docstring). The same prose round has now come back three times, so commit `6c30fcaa` states **one bounded rule** in `history_cache`'s module docstring, and the other text refers to it:
+
+- **The rule.** Every cache failure costs a rebuild, never a failed command. A path the safe-write rule refuses is one warning from `save_cache` naming that path. Every other failure (a read-only checkout, a full disk, a half-written file) is silent. Either way the command carries on.
+- **`save_cache` and `ensure_cache_dir` docstrings** say "a safe-write refusal" and "any path it refuses (a symlinked … among them)". They no longer present a symlink as the only case.
+- **`print_orchestration_hint` and `session_lock` docstrings** say "a path the safe-write rule refuses (a symlink … among them)", which matches their `except SafeWriteError`.
+- **CHANGELOG** cache sentence: "any path the rule refuses (a link on it, or a file where a directory belongs) is one warning …; other cache failures stay silent".
+- **Test of the rule's clauses.** The digest test is renamed `test_digest_carries_on_past_a_refused_history_cache` and gains a `specyrd-is-a-file` row, a refusal that is not a link: one warning `<root>/.specyrd is a regular file, not a directory`, and exit 0.
 
 ## Tests: one module, one test per entry point
 
@@ -40,10 +50,16 @@ All the tests are in `tests/test_ops_writers_refuse_links.py`:
 - **finish with an untracked summary:** `test_finish_refuses_a_linked_reviews_base` has five rows: `work/reviews` in the main checkout, `work/reviews` from a linked worktree, `work/reviews/M1.1`, `work` in the main checkout, and `work` from a linked worktree. Each checks exit 1, the refusal naming the link, `nothing was changed`, and no traceback. HEAD, the index and the status of both checkouts, the outside directory and the summary's bytes are all unchanged.
 - **pickup hint:** `test_pickup_hint_refuses_a_linked_marker_path` has four rows.
 - **brainstorm lock:** `test_brainstorm_add_idea_refuses_a_linked_lock`.
-- **history cache (A6):** `test_digest_carries_on_past_a_linked_history_cache` has three rows: `.specyrd/cache` linked out, a dangling `.gitignore`, and `roadmap-history.json` linked to an outside file. Each checks exit 0, exactly one warning naming the link, the outside tree unchanged, and the link still a link.
+- **history cache (A6):** `test_digest_carries_on_past_a_refused_history_cache` has four rows: `.specyrd/cache` linked out, a dangling `.gitignore`, `roadmap-history.json` linked to an outside file, and `.specyrd` as a regular file (a refusal that is not a link). Each row checks exit 0, exactly one warning with the safe-write sentence naming the path, the outside tree unchanged, and the refused path still the same kind (and target).
 
 ## Probes
 
+- Fix round 3, what `SafeWriteError` covers (the `safe_write` module docstring and `_walk`/`_kind`): a symlink at any component, a non-directory ancestor, a wrong final kind, a component that cannot be inspected, and a lexical `..` out of the root. All of them reach `save_cache`'s and `print_orchestration_hint`'s `except SafeWriteError` and `session_lock`'s re-raise, so the prose must name the class, not a symlink.
+- Fix round 3, a grep of the leaf's prose for exclusive claims ("the one exception", "the one failure", "only", "a symlink on its path is refused") in the 7 package files, `CHANGELOG.md`, `docs/dev-workflow.md` and this summary: the claims were in `history_cache` (module docstring and `save_cache`) and in this summary's fix round 2 line. Both are rewritten. The `pickup`, `brainstorm` and `ensure_cache_dir` docstrings and the CHANGELOG named only a symlink, so they now say "a path the rule refuses, a symlink among them".
+- Fix round 3, `docs/dev-workflow.md` step 6 names symlinks for `work`, `work/reviews` and `work/reviews/<node>`. That is a list of cases that refuse, not an exclusive claim, and it matches `irregular_destination`. Left unchanged.
+- Fix round 3, red-green: with `history_cache.py` at `origin/WIP/improvements-0-3-1`, all 4 `test_digest_carries_on_past_a_refused_history_cache` rows fail, the new `specyrd-is-a-file` row included. With the fix, all 4 pass.
+- Fix round 3, `tests/test_history_cache.py::test_save_cache_reports_failure_instead_of_raising` (`.specyrd` as a file) still passes: `False` is returned, and the warning now goes to stderr, which that test does not inspect.
+- Fix round 3, targeted suites: 121 passed. `ruff check specy_road tests scripts` is clean. `specy-road file-limits` is OK.
 - Fix round 2, symlinked summary file under finish (a throwaway script on `merge_mode_finish_repo`): exit 0 with `[warn] work/implementation-summary-M1.1.md is a symlink or resolves outside the repo; not copying it`. So "skipped with a warning" is still true for the file.
 - Fix round 2, symlinked `work/` in the checkout finish runs from (same script): exit 1 with `error: finish-this-task writes there, but <repo>/work is a symlink (to …), not a directory`. So the doc now says refused, and the `work-main` row pins it.
 - Fix round 2, stale-prose audit of every docstring and comment in the seven package files that mentions symlinks, silence, skipping or outside paths (`grep -n "silent|skipped|resolves outside|outside the|symlink"`): only `history_cache`'s module docstring was stale. `ensure_cache_dir`, `save_cache`, `print_orchestration_hint`, `session_lock`, `write_destinations`, `irregular_destination`, `_regenerate_for_publish` and `_regenerate_generated_files` already describe the refusal.
@@ -83,5 +99,6 @@ These are as listed, with no additions. The callers outside the zones need no ch
 - `tests/test_ops_writers_refuse_links.py`: `test_pickup_hint_refuses_a_linked_marker_path`, 4 rows. A3/A4.
 - `tests/test_ops_writers_refuse_links.py`: `test_brainstorm_add_idea_refuses_a_linked_lock`. A3/A4.
 - `specy_road/history_cache.py`: `save_cache` writes through `safe_write.write`, with an `except SafeWriteError` branch that prints one warning. A6: no write through a link, and a refused cache path is named.
-- `tests/test_ops_writers_refuse_links.py`: `_history_file` and `_ignore_dangling` arrange helpers, and `test_digest_carries_on_past_a_linked_history_cache` with 3 rows. A6: the final-link and linked-folder rows.
+- `tests/test_ops_writers_refuse_links.py`: the `_history_file`, `_ignore_dangling` and `_specyrd_file` arrange helpers, and `test_digest_carries_on_past_a_refused_history_cache` with 4 rows. A6: the final-link and linked-folder rows, plus the non-link clause of the rule (fix round 3).
+- `tests/test_ops_writers_refuse_links.py`: `_refusal` now branches on the path's kind: a symlink names its target, otherwise the path is a regular file. Fix round 3: the `specyrd-is-a-file` row needs the regular-file sentence.
 - Mocks: none.
