@@ -156,6 +156,7 @@ entries:
       - tests/test_validate_touch_zones.py
       - docs/roadmap-authoring.md
       - CHANGELOG.md
+      - tests/move_node_helpers.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -171,18 +172,6 @@ entries:
       - tests/test_brainstorm_promote_judgement.py
       - CHANGELOG.md
       - tests/test_scaffold_planning.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: upgrade-no-self-warning-export-drift-hint
-    node_id: M22.28
-    branch: feature/rm-upgrade-no-self-warning-export-drift-hint
-    touch_zones:
-      - specy_road/cli.py
-      - specy_road/bundled_scripts/export_roadmap_md.py
-      - tests/test_doctor_version_skew.py
-      - tests/test_export_roadmap_md.py
-      - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -222,6 +211,32 @@ entries:
       - specy_road/bundled_scripts/review_cli.py
       - docs/orchestration-review.md
       - tests/test_review_policy_pin.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: rc-publishes-wheel-url-and-project-urls
+    node_id: M22.36
+    branch: feature/rm-rc-publishes-wheel-url-and-project-urls
+    touch_zones:
+      - .github/workflows/release-publish.yml
+      - pyproject.toml
+      - README.md
+      - docs/install-release-candidates.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: upgrade-git-calls-share-one-environment
+    node_id: M22.25
+    branch: feature/rm-upgrade-git-calls-share-one-environment
+    touch_zones:
+      - specy_road/bundled_scripts/upgrade.py
+      - specy_road/bundled_scripts/upgrade_plan.py
+      - specy_road/bundled_scripts/upgrade_generated.py
+      - specy_road/ignore_report.py
+      - specy_road/file_limits_engine.py
+      - tests/test_upgrade_preview.py
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
