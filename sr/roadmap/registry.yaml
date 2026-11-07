@@ -80,6 +80,7 @@ entries:
       - tests/test_upgrade_preview.py
       - docs/upgrading.md
       - CHANGELOG.md
+      - specy_road/sibling_repos.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
