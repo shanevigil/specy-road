@@ -9,9 +9,11 @@ link's resolved target mapped into the sandbox (a target outside the checkout
 lands under the sandbox's ``outside/``, which is outside its repository too).
 The plan is the difference that run made, expressed as the real paths it lands on.
 The mirror holds tracked files, untracked files git does not ignore, and any
-extra paths the caller names (what the refreshes read). Gitignored files are
-not copied. A link whose target was left out is copied when the link is
-resolved, and that ignored path is reported.
+extra paths the caller names (what the refreshes read, including a generated
+file the preview compares). Gitignored files are not copied. A symlink does
+not bring an ignored target in: that path stays out of the mirror. A target
+outside the checkout is still copied, so a link that leaves the checkout
+resolves as before.
 
 :func:`apply_plan` writes the plan into the checkout (``upgrade``) or into a
 second mirror (``upgrade --dry-run``, which then validates that copy). Neither
@@ -187,11 +189,12 @@ class Mirror:
     repository is not copied. Every link keeps its own text, one hop: a relative
     text verbatim, an absolute one with ``outside`` put in front. So a chain, a
     target under a linked directory, or a ``..`` that climbs out and back resolves
-    in the mirror exactly as in the checkout. Content the copy lacks (a target
-    out of the checkout, or under ``skip``) is copied to its real path's place,
-    and a link whose text names that place another way reaches it through one
-    more link, which only a path already outside the checkout can cross. An
-    ignored path copied that way is reported. A text whose ``..`` climbs past
+    in the mirror exactly as in the checkout. A target outside the checkout, or
+    under ``skip`` and not itself gitignored, is copied to its real path's
+    place, and a link whose text names that place another way reaches it
+    through one more link, which only a path already outside the checkout can
+    cross. A gitignored checkout path, and a nested repository, are not copied
+    for a link that points at them. A text whose ``..`` climbs past
     ``/`` (where the checkout stops) would climb out of the mirror here, so
     :meth:`build` gives that one link its target's place, absolutely; nothing
     is ever made outside ``dest``.
@@ -295,7 +298,8 @@ class Mirror:
             path = self.checkout / rel
             if skip and (rel == skip or rel.startswith(skip + "/")):
                 continue
-            if (path / ".git").exists() or self._under_nested(path):
+            # A symlink to a nested repository is the link, not the repository: keep the link, leave the target out.
+            if self._under_nested(path) or (path.is_dir() and not path.is_symlink() and (path / ".git").exists()):
                 continue
             kept.add(rel)
         return kept
@@ -366,7 +370,7 @@ class Mirror:
             entries = []
         for e in entries:
             s, d = Path(e.path), dst / e.name
-            if e.name == ".git" or s == self.skip or (s == self.checkout and dst != self.repo):
+            if e.name == ".git" or s == self.skip or (s == self.checkout and dst != self.repo) or self._left_out(s):
                 continue
             if e.is_symlink():
                 self.states[str(s)] = state(s)
@@ -409,7 +413,7 @@ class Mirror:
         if not where.is_relative_to(self.outside):
             return
         home = self._place(real)
-        if not os.path.lexists(where):   # the text names the place another way (a ``..``, an alias)
+        if os.path.lexists(home) and not os.path.lexists(where):   # the text names the place another way
             where.parent.mkdir(parents=True, exist_ok=True)
             os.symlink(home, where)
 
@@ -432,20 +436,24 @@ class Mirror:
             self._place(real)
 
     def _place(self, real: Path) -> Path:
-        """``real``'s place in the mirror, with its content copied there when missing."""
+        """``real``'s place in the mirror. A checkout path the copy omits is not created."""
         home = self.to_sandbox(real)
-        if not os.path.lexists(home):
-            self._report_ignored(real)
+        if not os.path.lexists(home) and not self._left_out(real):
             (self._copy_dir if real.is_dir() else self._copy_file)(real, home)
         return home
 
-    def _report_ignored(self, real: Path) -> None:
-        """Say so when on-demand placement copies an ignored path of the checkout."""
-        if not real.is_relative_to(self.checkout) or ".git" in real.parts:
-            return
-        rel = real.relative_to(self.checkout).as_posix()
-        if rel in _ignored(self.checkout, [rel], self._git_env):
-            print(f"upgrade: copying ignored {rel} because a link in the checkout points at it", flush=True)
+    def _left_out(self, real: Path) -> bool:
+        """An in-checkout path the selective copy omits: gitignored, or a nested repository.
+
+        A link that points at one does not bring it in. A path outside the checkout is not omitted here.
+        """
+        if not real.is_relative_to(self.checkout) or real == self.checkout:
+            return False
+        rel = real.relative_to(self.checkout)
+        if ".git" in rel.parts or (real / ".git").exists() or self._under_nested(real):
+            return True
+        text = rel.as_posix()
+        return text in _ignored(self.checkout, [text], self._git_env)
 
     def snapshot(self) -> dict[Path, State]:
         out: dict[Path, State] = {}

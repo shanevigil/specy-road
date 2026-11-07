@@ -646,15 +646,32 @@ def _tree_names(root: Path) -> set[str]:
     return names
 
 
+def _file_texts(root: Path) -> str:
+    """Text of regular files under ``root``. Symlinks are not followed, so a link cannot pull the checkout in."""
+    parts: list[str] = []
+    for dirpath, _dirs, files in os.walk(root, followlinks=False):
+        for name in files:
+            path = Path(dirpath) / name
+            if path.is_symlink():
+                continue
+            try:
+                parts.append(path.read_text(encoding="utf-8", errors="ignore"))
+            except OSError:
+                continue
+    return "\n".join(parts)
+
+
 class _ListingTemp(tempfile.TemporaryDirectory):
-    """Records the temp directory's paths in ``listings`` while they still exist."""
+    """Records the temp directory's paths and file text in ``listings`` and ``texts`` while they still exist."""
 
     listings: list[set[str]] = []
+    texts: list[str] = []
 
     def __exit__(self, exc, value, tb):
         path = Path(self.name)
         if path.is_dir():
             type(self).listings.append(_tree_names(path))
+            type(self).texts.append(_file_texts(path))
         return super().__exit__(exc, value, tb)
 
 
@@ -681,20 +698,79 @@ def test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror(
     nested.mkdir(parents=True)
     subprocess.run(["git", "init", "-q", str(nested)], check=True)
     (nested / "key.txt").write_text("nested-secret\n", encoding="utf-8")
-    _ListingTemp.listings = []
+    (root / "env-link").symlink_to(".env")
+    (root / "modules-link").symlink_to("node_modules", target_is_directory=True)
+    (root / "nested-link").symlink_to(Path("vendor") / "other", target_is_directory=True)
+    _ListingTemp.listings, _ListingTemp.texts = [], []
     monkeypatch.setattr(upgrade.tempfile, "TemporaryDirectory", _ListingTemp)
     monkeypatch.setattr(upgrade_plan.tempfile, "TemporaryDirectory", _ListingTemp)
 
     assert run_upgrade(root, dry_run=dry_run) == 0
 
     assert _ListingTemp.listings
-    for names in _ListingTemp.listings:
+    for names, text in zip(_ListingTemp.listings, _ListingTemp.texts, strict=True):
         assert not _has(names, ".env")
         assert not _has(names, "node_modules")
         assert not any("vendor/other" in path for path in names)
+        assert _has(names, "env-link") and _has(names, "modules-link") and _has(names, "nested-link")
         assert _has(names, "keep-me.txt") and _has(names, "AGENTS.md")
+        assert "SECRET=1" not in text and "nested-secret" not in text and "module.exports" not in text
     if dry_run:
         assert capsys.readouterr().out.count("ignored files are not copied") == 1
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_global_excludes_file_keeps_a_secret_out_of_both_mirrors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dry_run: bool
+) -> None:
+    """A ``core.excludesFile`` in the caller's gitconfig hides the secret on a real run and a dry run."""
+    from specy_road.bundled_scripts import upgrade_plan
+
+    root = old_repo(tmp_path / "repo")
+    (root / "keep-me.txt").write_text("visible\n", encoding="utf-8")
+    (root / "secret.env").write_text("GLOBALSECRET=1\n", encoding="utf-8")
+    excludes = tmp_path / "excludes"
+    excludes.write_text("secret.env\n", encoding="utf-8")
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".gitconfig").write_text(f"[core]\n\texcludesFile = {excludes}\n", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    for name in ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_NOSYSTEM"):
+        monkeypatch.delenv(name, raising=False)
+    _ListingTemp.listings, _ListingTemp.texts = [], []
+    monkeypatch.setattr(upgrade.tempfile, "TemporaryDirectory", _ListingTemp)
+    monkeypatch.setattr(upgrade_plan.tempfile, "TemporaryDirectory", _ListingTemp)
+
+    assert run_upgrade(root, dry_run=dry_run) == 0
+
+    assert _ListingTemp.listings
+    for names, text in zip(_ListingTemp.listings, _ListingTemp.texts, strict=True):
+        assert not _has(names, "secret.env")
+        assert "GLOBALSECRET=1" not in text
+        assert _has(names, "keep-me.txt")
+
+
+def test_an_ignored_current_digest_is_not_predicted_as_a_rewrite(tmp_path: Path, capsys) -> None:
+    """An ignored ``roadmap-context.md`` that matches the roadmap is current in the preview and the real run."""
+    root = old_repo(tmp_path)
+    assert run_upgrade(root) == 0
+    ignore = root / ".gitignore"
+    ignore.write_text(ignore.read_text(encoding="utf-8") + "roadmap-context.md\n", encoding="utf-8")
+    digest = root / "roadmap-context.md"
+    assert digest.is_file() and digest.read_bytes() == render_digest(root).encode()
+    assert subprocess.run(["git", "check-ignore", "-q", "--", "roadmap-context.md"], cwd=root).returncode == 0
+    current = digest.read_bytes()
+    capsys.readouterr()
+
+    assert run_upgrade(root, dry_run=True) == 0
+
+    dry = capsys.readouterr().out
+    assert "would write roadmap-context.md" not in dry and "generated files already current" in dry
+
+    assert run_upgrade(root) == 0
+    assert "wrote roadmap-context.md" not in capsys.readouterr().out
+    assert digest.read_bytes() == current
 
 
 def test_large_ignored_content_does_not_change_the_plan(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

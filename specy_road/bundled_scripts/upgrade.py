@@ -30,15 +30,18 @@ Each step keeps its own narrow contract; the roadmap, planning sheets and
 anything outside a managed block are never touched. The refreshes run once, on
 a temporary mirror of the checkout that keeps its links and leaves gitignored
 files out: tracked files, untracked files git does not ignore, and files the
-refreshes read. It prints a line before that copy. What they wrote there
+refreshes read. A symlink to an ignored file or directory does not copy that
+target. It prints a line before that copy. What they wrote there
 is the plan, which is then written into the checkout. ``--dry-run`` lists the
 same plan, reuses that mirror for a temporary copy and runs ``validate`` there;
 the checkout is never written, and the generated files it would write are
 listed as ``would write``, the digest rendered from the checkout's history,
-read-only. Every git call runs with every ``GIT_`` variable of
-the caller's removed and a timeout; in the plan's mirror and the dry run's
-copy, git also reads no global or system config and runs no hook, and in the
-checkout the caller's own config files apply. The exit code is 2 when a git
+read-only. Choosing the files reads the caller's excludes file on a real run
+and a dry run, so a global ``core.excludesFile`` hides the same paths in both.
+Every git call runs with every ``GIT_`` variable of
+the caller's removed and a timeout; git commands inside the plan's mirror and
+the dry run's copy read no global or system config and run no hook. The exit
+code is 2 when a git
 call it depends on fails or times out, 1 when ``validate`` fails or a write
 is refused, and 0 otherwise. A generated file with a symlink on its path is
 refused, and ``digest`` stays a next step, as it does when ``validate`` fails
@@ -82,6 +85,7 @@ from specy_road.bundled_scripts.upgrade_plan import (
 )
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
+from specy_road.generated_files import GENERATED_COMMITTED
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
 from specy_road.git_subprocess import git_text
 from specy_road.ignore_report import GITIGNORE, attempt, observe, observed, print_matches, scratch_git_env
@@ -338,7 +342,7 @@ def _skill_paths() -> set[str]:
 
 
 def _mirror_extras(project: Path, checkout: Path) -> set[str]:
-    """Checkout-relative paths the refreshes read, copied even when git ignores them."""
+    """Paths copied even when git ignores them: what the refreshes read, and a generated file the preview compares."""
     prefix = prefix_within(checkout, project)
 
     def under(rel: str) -> str:
@@ -349,6 +353,7 @@ def _mirror_extras(project: Path, checkout: Path) -> set[str]:
         ".specyrd/manifest.json", ".specyrd/README.md",
         under("roadmap/orchestration.yaml"), under("constraints/file-limits.yaml"),
         *(under(name) for name in AGENTS_FILES),
+        *(under(name) for name in GENERATED_COMMITTED),
     }
     rels.update(under(rel) for rel in load_order_paths(render_rules().splitlines()) if rel.startswith("docs/"))
     if bundled_schemas_dir().is_dir():
@@ -461,7 +466,8 @@ def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
     """
     with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-") as tmp, scratch_environ(Path(tmp)) as caller_env:
         root = Path(tmp)
-        mirror = Mirror(checkout, root / "plan", project / "work").build(extra=_mirror_extras(project, checkout))
+        mirror = Mirror(checkout, root / "plan", project / "work").build(
+            git_env=caller_env, extra=_mirror_extras(project, checkout))
         if not (mirror.repo / ".git").is_dir():
             raise GitFailed("git init failed in the temporary copy (no .git was created)")
         staging = root / "staging"
