@@ -175,18 +175,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: upgrade-no-self-warning-export-drift-hint
-    node_id: M22.28
-    branch: feature/rm-upgrade-no-self-warning-export-drift-hint
-    touch_zones:
-      - specy_road/cli.py
-      - specy_road/bundled_scripts/export_roadmap_md.py
-      - tests/test_doctor_version_skew.py
-      - tests/test_export_roadmap_md.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: safe-write-directory-descriptors
     node_id: M22.29
     branch: feature/rm-safe-write-directory-descriptors
@@ -235,6 +223,42 @@ entries:
       - pyproject.toml
       - README.md
       - docs/install-release-candidates.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: upgrade-git-calls-share-one-environment
+    node_id: M22.25
+    branch: feature/rm-upgrade-git-calls-share-one-environment
+    touch_zones:
+      - specy_road/bundled_scripts/upgrade.py
+      - specy_road/bundled_scripts/upgrade_plan.py
+      - specy_road/bundled_scripts/upgrade_generated.py
+      - specy_road/ignore_report.py
+      - specy_road/file_limits_engine.py
+      - tests/test_upgrade_preview.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: doctor-fix-keeps-other-clones-claims
+    node_id: M22.38
+    branch: feature/rm-doctor-fix-keeps-other-clones-claims
+    touch_zones:
+      - specy_road/bundled_scripts/doctor.py
+      - tests/test_doctor.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: guidance-exclusion-closes-three-bypasses
+    node_id: M22.24
+    branch: feature/rm-guidance-exclusion-closes-three-bypasses
+    touch_zones:
+      - specy_road/orchestrate_assign.py
+      - specy_road/orchestration_pinned.py
+      - tests/test_guidance_bypass_roles.py
+      - docs/orchestration-roster.md
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil

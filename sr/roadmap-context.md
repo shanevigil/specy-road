@@ -159,7 +159,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.25` Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment `upgrade-git-calls-share-one-environment` — task — **Not Started**
   - `M22.26` The post-run zone check matches zones written from the git root `post-run-zone-check-git-root-zones` — task — **Complete**
   - `M22.27` The old-log review usage test asserts on the run, not on a substring `old-log-test-asserts-on-the-run` — task — **Complete**
-  - `M22.28` upgrade does not warn about itself, and export's drift line says how to fix it `upgrade-no-self-warning-export-drift-hint` — task — **Not Started**
+  - `M22.28` upgrade does not warn about itself, and export's drift line says how to fix it `upgrade-no-self-warning-export-drift-hint` — task — **Complete**
   - `M22.29` safe_write and archive moves traverse by directory descriptor `safe-write-directory-descriptors` — task — **Not Started**
   - `M22.30` Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed `steering-detection-other-classes` — task — **Not Started**
   - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
@@ -311,10 +311,12 @@ Do not pick these up.
 - `M22.17` on `feature/rm-verify-tells-a-blocking-404` since 2026-11-07
 - `M22.2` on `feature/rm-move-rewrites-sheet-zones` since 2026-11-07
 - `M22.22` on `feature/rm-sandbox-rc4-final-polish` since 2026-11-07
-- `M22.28` on `feature/rm-upgrade-no-self-warning-export-drift-hint` since 2026-11-07
+- `M22.24` on `feature/rm-guidance-exclusion-closes-three-bypasses` since 2026-11-07
+- `M22.25` on `feature/rm-upgrade-git-calls-share-one-environment` since 2026-11-07
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
 - `M22.34` on `feature/rm-accept-policy-for-all-open-claims` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
+- `M22.38` on `feature/rm-doctor-fix-keeps-other-clones-claims` since 2026-11-07
 - `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
@@ -326,11 +328,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 35 | 0 | 2.46 | 51% | 34 | 2 |
+| `docs` **flagged** | 34 | 0 | 2.50 | 53% | 34 | 2 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `CHANGELOG.md` | 38 | 0 | 2.13 | 39% | 31 | 2 |
+| `CHANGELOG.md` | 39 | 0 | 2.10 | 38% | 31 | 2 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `specy_road` | 45 | 0 | 2.33 | 49% | 42 | 3 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
