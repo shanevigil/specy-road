@@ -17,6 +17,8 @@ body. Keep section bodies focused; link to PRs for detail.
   remote. The report calls that row advisory and says what to check: another clone's claim looks
   the same until it pushes its branch, so confirm that clone no longer holds the claim, then
   `specy-road registry-prune --remove <CODENAME>`. A row whose leaf is Complete is still removed.
+  The same rule is in `docs/git-workflow.md` (Finding leftovers: `doctor`), the `doctor` usage
+  line, and the finish stub.
 - PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
   list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the
   other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
