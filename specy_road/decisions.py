@@ -74,7 +74,7 @@ def _validator(schema_path: Path) -> Draft202012Validator:
     return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 
-def schema_errors(doc: dict[str, Any], schema_path: Path | None = None) -> list[str]:
+def schema_errors(doc: Any, schema_path: Path | None = None) -> list[str]:
     path = schema_path or bundled_schema_path()
     if not path.is_file():
         return [f"missing schema at {path}"]
@@ -134,22 +134,23 @@ def load_checked_decisions(root: Path) -> dict[str, Any] | None:
     """The tracked ledger, checked against the decisions schema.
 
     ``None`` when ``roadmap/decisions.yaml`` is absent. A directory at that
-    path counts as absent, and ``decisions.local.yaml`` is not read. One
-    read-failure rule: a YAML parse error, or any ``UnicodeError`` or
-    ``OSError`` while reading the file (it is not UTF-8, or it cannot be
-    opened), plus a non-mapping root or schema errors, raise ``ValueError``
-    naming that file.
+    path counts as absent, and ``decisions.local.yaml`` is not read. The raw
+    YAML value is what the schema sees. A falsy root (empty text, ``[]``,
+    ``{}``, ``null``, ``false``, or ``0``) is schema-invalid and is not
+    replaced with an empty ledger. :func:`read_decisions` still does that
+    replacement for other callers; this function does not call it. A YAML
+    parse error, or any ``UnicodeError`` or ``OSError`` while reading, raises
+    ``ValueError`` naming the file, as do schema errors.
     """
     path = decisions_path(root)
     if not path.is_file():
         return None
     name = DECISIONS_REL.as_posix()
     try:
-        doc = read_decisions(path, missing_ok=False)
+        with path.open(encoding="utf-8") as f:
+            doc = yaml.safe_load(f)
     except (yaml.YAMLError, UnicodeError, OSError) as e:
         raise ValueError(f"{name}: {e}") from e
-    if not isinstance(doc, dict):
-        raise ValueError(f"{name}: root must be a mapping")
     errs = schema_errors(doc, schema_path_for_write(root))
     if errs:
         raise ValueError(f"{name}: " + "; ".join(errs))
@@ -163,8 +164,8 @@ def notice_decisions_naming_no_node(
 
     Entries with no ``node``, closed entries and expired preferences are omitted.
     Every ``ValueError`` from :func:`load_checked_decisions` prints nothing:
-    a parse error, a file that is not UTF-8 or cannot be opened, a non-mapping
-    root, or schema errors. An absent ledger prints nothing.
+    a parse error, a file that is not UTF-8 or cannot be opened, or a value
+    the schema rejects, including a falsy root. An absent ledger prints nothing.
     """
     try:
         doc = load_checked_decisions(root)

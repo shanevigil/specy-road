@@ -239,17 +239,22 @@ def test_validate_notices_open_entries_naming_no_live_node(tmp_path: Path) -> No
         assert silent not in r.stdout
 
 
+_SILENT_LEDGER_TEXT = {
+    "yaml": "version: [\n",
+    "sequence": "- not-a-mapping\n",
+    "empty_sequence": "[]\n",
+}
+
+
 @pytest.mark.parametrize(
     "case",
-    ["yaml", "sequence", "utf8", "unreadable"],
+    [*_SILENT_LEDGER_TEXT, "utf8", "unreadable"],
 )
 def test_validate_stays_silent_on_an_invalid_decision_ledger(tmp_path: Path, case: str) -> None:
     repo = _strict_repo(tmp_path)
     path = repo / "roadmap" / "decisions.yaml"
-    if case == "yaml":
-        path.write_text("version: [\n", encoding="utf-8")
-    elif case == "sequence":
-        path.write_text("- not-a-mapping\n", encoding="utf-8")
+    if case in _SILENT_LEDGER_TEXT:
+        path.write_text(_SILENT_LEDGER_TEXT[case], encoding="utf-8")
     elif case == "utf8":
         path.write_bytes(b"\xff\xfe not utf-8")
     else:

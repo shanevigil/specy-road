@@ -345,14 +345,29 @@ def test_renumber_outline_swaps_decision_nodes_in_one_lookup(tmp_path: Path) -> 
     assert by_id["Dd"]["summary"] == "was M2.1"
 
 
-@pytest.mark.parametrize("kind", ["validation", "yaml", "sequence", "utf8", "unreadable"])
+# Text that is not a decisions document. Falsy roots are the class read_decisions
+# would replace with an empty ledger before a schema check.
+_INVALID_LEDGER_TEXT = {
+    "yaml": "version: [\n",
+    "sequence": "- not-a-mapping\n",
+    "empty": "",
+    "empty_sequence": "[]\n",
+    "empty_mapping": "{}\n",
+    "null": "null\n",
+    "false": "false\n",
+    "zero": "0\n",
+}
+
+
+@pytest.mark.parametrize(
+    "kind",
+    ["validation", *_INVALID_LEDGER_TEXT, "utf8", "unreadable"],
+)
 def test_a_refused_move_leaves_the_tree_byte_for_byte_unchanged(tmp_path: Path, kind: str) -> None:
     wide_fixture(tmp_path)
     ledger = tmp_path / "roadmap" / "decisions.yaml"
-    if kind == "yaml":
-        ledger.write_text("version: [\n", encoding="utf-8")
-    elif kind == "sequence":
-        ledger.write_text("- not-a-mapping\n", encoding="utf-8")
+    if kind in _INVALID_LEDGER_TEXT:
+        ledger.write_text(_INVALID_LEDGER_TEXT[kind], encoding="utf-8")
     elif kind == "utf8":
         ledger.write_bytes(b"\xff\xfe not utf-8")
     elif kind == "unreadable":

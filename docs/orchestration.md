@@ -148,7 +148,8 @@ An id-changing move rewrites `node` here for every entry whose `node` is an old 
 status, one lookup so a chain or a swap stays correct), in the same transaction as the chunks,
 planning sheets and registry. The file is written only when an entry changed; an absent file stays
 absent; a file that does not parse, is not UTF-8, cannot be opened, or fails the schema refuses
-the move before any write.
+the move before any write. A falsy root (empty text, `[]`, `{}`, `null`, `false`, or `0`) fails that
+schema and is not treated as an empty ledger.
 `specy-road validate` prints one stdout notice listing each open decision or human-action and each
 active preference whose `node` is a non-empty string naming no live node. Closed entries, expired
 preferences and entries with no `node` are omitted, and `--strict` does not count the notice. A

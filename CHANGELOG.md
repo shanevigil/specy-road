@@ -19,7 +19,8 @@ body. Keep section bodies focused; link to PRs for detail.
   chain or a swap stays correct, in the same transaction as the chunks and registry. The file is written
   only when an entry changed. An absent ledger stays absent. A ledger that does not parse or fails its
   schema refuses the move before any write, as does a ledger that is not UTF-8 or cannot be opened
-  (the error names `roadmap/decisions.yaml`). `validate` prints one stdout notice listing each open decision,
+  (the error names `roadmap/decisions.yaml`). A falsy root (empty text, `[]`, `{}`, `null`, `false`, or `0`)
+  fails that schema and is not treated as an empty ledger. `validate` prints one stdout notice listing each open decision,
   open human-action and active preference whose `node` names no live node; `--strict` does not count it.
   A missing, unreadable (not UTF-8, or not openable) or schema-invalid ledger adds no notice.
 - PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
