@@ -172,33 +172,3 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: reports-say-what-happened
-    node_id: M22.11
-    branch: feature/rm-reports-say-what-happened
-    touch_zones:
-      - specy_road/review_tally.py
-      - tests/test_review_tally.py
-      - tests/test_digest_quality.py
-      - specy_road/bundled_scripts/planning_rename.py
-      - tests/test_rename_refs.py
-      - docs/roadmap-authoring.md
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/bundled_scripts/upgrade_plan.py
-      - tests/test_upgrade_preview.py
-      - CHANGELOG.md
-      - specy_road/digest.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: gate-without-remote-head
-    node_id: M22.12
-    branch: feature/rm-gate-without-remote-head
-    touch_zones:
-      - specy_road/review_policy_ref.py
-      - tests/test_review_policy_ref_no_remote_head.py
-      - docs/orchestration.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
