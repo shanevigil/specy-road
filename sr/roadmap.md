@@ -199,7 +199,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Complete |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Complete |
-| `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Not Started |
+| `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Complete |
 | `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Complete |
 | `M22.5` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
 | `M22.6` | A queued worker message that cannot be delivered flags the worker and goes out with its next turn | task | — | Not Started |

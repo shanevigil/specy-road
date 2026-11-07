@@ -54,6 +54,7 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
 )
 from specy_road.bundled_scripts.roadmap_id_rewrite_staging import (
     _rewrite_touch_zones,
+    _stage_decision_ids,
     _stage_merged_nodes,
     _stage_planning_moves,
     _stage_registry_ids,
@@ -107,12 +108,14 @@ def stage_id_rewrite(
     new_parent: NewParent | None = None,
     rewrite_refs: bool = False,
 ) -> None:
-    """Stage ``nodes`` plus the zone, sheet and claim rewrites an id map implies; commit.
+    """Stage ``nodes`` plus the zone, sheet, claim and decision-ledger rewrites an id map implies; commit.
 
     ``scope`` is every node a rewrite may touch. Shared by ``move_nodes`` and the
     PM GUI's ``reorder_siblings``; nothing reaches disk until the whole
     prospective graph validates. ``new_parent`` joins the same plan.
     ``rewrite_refs`` also rewrites the map's ids in prose (``rename-refs``).
+    The tracked decision ledger's ``node`` fields are rewritten on every
+    id-changing move, before anything else is staged.
     """
     renamed = {o: n for o, n in old_to_new.items() if o != n}
     sheet_moves = plan_planning_artifact_moves(scope)
@@ -120,6 +123,7 @@ def stage_id_rewrite(
     _rewrite_touch_zones(scope, renamed, sheets)
 
     plan = AtomicWritePlan(root)
+    _stage_decision_ids(plan, root, renamed)
     _stage_planning_moves(plan, root, sheet_moves, nodes, renamed if rewrite_refs else None)
     _stage_merged_nodes(plan, root, nodes)
     if new_parent is not None:

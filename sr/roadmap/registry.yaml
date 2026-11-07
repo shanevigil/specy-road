@@ -172,23 +172,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: decisions-follow-moves
-    node_id: M22.3
-    branch: feature/rm-decisions-follow-moves
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_id_rewrite_staging.py
-      - specy_road/bundled_scripts/roadmap_move_node.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/decisions.py
-      - tests/test_move_node_subtree.py
-      - tests/test_decisions.py
-      - docs/roadmap-authoring.md
-      - docs/orchestration.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: reports-say-what-happened
     node_id: M22.11
     branch: feature/rm-reports-say-what-happened
