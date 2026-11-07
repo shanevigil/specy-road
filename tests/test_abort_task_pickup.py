@@ -286,3 +286,81 @@ def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path
     atp.main(["--repo-root", str(tmp_path), "--force"])
 
     assert "push" in calls
+
+
+def _claim_leaf(tmp_path, shape: str):
+    """A claimed leaf in a linked worktree; the main checkout is on ``park``, not ``dev``."""
+    from tests.review_repo_helpers import make_layout_finish_repo
+
+    git_top, project = make_layout_finish_repo(tmp_path / "src", shape)
+    return git_top, project
+
+
+def _open_leaf(git_top, tmp_path, shape: str):
+    bare = tmp_path / "remote.git"
+    _git(tmp_path, "clone", "-q", "--bare", str(git_top), str(bare))
+    _git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
+    _git(git_top, "remote", "add", "origin", str(bare))
+    _git(git_top, "fetch", "-q", "origin")
+    _git(git_top, "checkout", "-q", "-b", "park")
+    leaf_top = tmp_path / "leaf"
+    _git(git_top, "worktree", "add", "-q", str(leaf_top), "feature/rm-thing")
+    return leaf_top / "sr" if shape == "nested" else leaf_top
+
+
+def _place_main_copies(git_top, project, shape: str, kind: str) -> None:
+    work = project / "work"
+    brief, prompt = work / "brief-M1.1.md", work / "prompt-M1.1.md"
+    notes = project / "notes.md"
+    notes.write_text("target\n", encoding="utf-8")
+    if kind == "work_link":
+        real = project / "elsewhere"
+        real.mkdir()
+        (real / "brief-M1.1.md").write_text("stay\n", encoding="utf-8")
+        work.symlink_to(real, target_is_directory=True)
+        return
+    work.mkdir()
+    if kind == "tracked":
+        brief.write_text("tracked\n", encoding="utf-8")
+        prompt.write_text("tracked\n", encoding="utf-8")
+        _git(git_top, "add", "-A")
+        _git(git_top, "commit", "-qm", "track briefs")
+    elif kind == "symlink":
+        rel = "notes.md" if shape == "embedded" else "sr/notes.md"
+        _git(git_top, "add", rel)
+        _git(git_top, "commit", "-qm", "target")
+        brief.symlink_to(notes)
+        prompt.write_text("drop\n", encoding="utf-8")
+    else:
+        brief.write_text("brief\n", encoding="utf-8")
+        prompt.write_text("prompt\n", encoding="utf-8")
+    (work / "notes.md").write_text("other\n", encoding="utf-8")
+
+
+@pytest.mark.parametrize("shape", ["embedded", "nested"])
+@pytest.mark.parametrize("kind", ["untracked", "tracked", "symlink", "work_link"])
+def test_abort_from_a_linked_worktree_cleans_the_main_checkout(
+    tmp_path, shape: str, kind: str, capsys,
+) -> None:
+    """Abort from a linked worktree removes the main checkout's untracked brief and prompt only."""
+    git_top, project = _claim_leaf(tmp_path, shape)
+    _place_main_copies(git_top, project, shape, kind)
+    leaf = _open_leaf(git_top, tmp_path, shape)
+    atp.main(["--repo-root", str(leaf), "--force"])
+    out = capsys.readouterr().out
+    work = project / "work"
+    brief, prompt = work / "brief-M1.1.md", work / "prompt-M1.1.md"
+    prefix = "sr/" if shape == "nested" else ""
+    if kind == "untracked":
+        assert not brief.exists() and not prompt.exists()
+        assert f"[ok] removed {prefix}work/brief-M1.1.md" in out
+        assert (work / "notes.md").read_text(encoding="utf-8") == "other\n"
+    elif kind == "tracked":
+        assert brief.read_text(encoding="utf-8") == "tracked\n"
+        assert prompt.read_text(encoding="utf-8") == "tracked\n"
+    elif kind == "symlink":
+        assert brief.is_symlink() and (project / "notes.md").read_text(encoding="utf-8") == "target\n"
+        assert not prompt.exists()
+    else:
+        assert work.is_symlink()
+        assert (project / "elsewhere" / "brief-M1.1.md").read_text(encoding="utf-8") == "stay\n"

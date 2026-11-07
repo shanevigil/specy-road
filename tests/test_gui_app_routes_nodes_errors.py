@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 from starlette.testclient import TestClient
 
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
 
 
@@ -154,3 +155,28 @@ def test_pm_gui_fingerprint_returns_409_when_manifest_unreadable(
         assert detail.get("retryable") is False
     else:  # legacy string detail still acceptable, must mention validate
         assert "specy-road validate" in detail
+
+
+def test_patch_dependencies_stores_a_display_id_and_refuses_an_unknown(
+    api_client: TestClient, dogfood_copy: Path,
+) -> None:
+    """PATCH stores a display id as its node_key; an unknown token is 400 and writes nothing."""
+    roadmap = dogfood_copy / "roadmap"
+    before = {p: p.read_bytes() for p in roadmap.rglob("*") if p.is_file()}
+    headers = {**_mutation_headers(api_client), "Content-Type": "application/json"}
+    refused = api_client.patch(
+        "/api/nodes/M2", headers=headers,
+        json={"pairs": [{"key": "dependencies", "value": "NOPE"}]},
+    )
+    assert refused.status_code == 400
+    assert refused.json()["detail"] == (
+        "dependency 'NOPE' is neither a node id nor a node_key in the roadmap"
+    )
+    assert {p: p.read_bytes() for p in roadmap.rglob("*") if p.is_file()} == before
+    stored = api_client.patch(
+        "/api/nodes/M2", headers=headers,
+        json={"pairs": [{"key": "dependencies", "value": "M0.3"}]},
+    )
+    assert stored.status_code == 200, stored.text
+    deps = next(n["dependencies"] for n in load_roadmap(dogfood_copy)["nodes"] if n["id"] == "M2")
+    assert deps == ["cd44fef1-715a-5b8d-b03f-1752a61a47cc"]

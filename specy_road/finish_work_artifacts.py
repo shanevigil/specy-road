@@ -19,8 +19,11 @@ import sys
 from pathlib import Path
 
 from specy_road import safe_write
+from specy_road.git_subprocess import git_ok
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.review_files import reviews_root
+from specy_road.runtime_paths import project_prefix
+from specy_road.worker_adapter_base import linked_worktree
 
 
 def work_artifact_rel_paths(node_id: str) -> tuple[str, str, str]:
@@ -151,6 +154,61 @@ def _keep_untracked_summary(root_r: Path, node_id: str) -> None:
     dst = safe_write.copy(reviews.parents[1], src, reviews / node_id / src.name)
     print(f"[warn] {rel} was never committed; kept a copy at {dst} "
           "(commit the summary on the feature branch to keep it in history)")
+
+
+def _main_git_root(repo_root: Path) -> Path | None:
+    """The main checkout's git root when ``repo_root`` is a linked worktree, else ``None``."""
+    from specy_road.git_subprocess import git_text
+
+    if not linked_worktree(repo_root):
+        return None
+    common = git_text(["rev-parse", "--path-format=absolute", "--git-common-dir"], repo_root)
+    if not common or Path(common).name != ".git":
+        return None
+    return Path(common).parent
+
+
+def _symlink_on_path(root: Path, rel: str) -> bool | None:
+    """True when a component of ``rel`` is a symlink; ``None`` when that cannot be established."""
+    cursor = root
+    try:
+        for part in Path(rel).parts:
+            cursor = cursor / part
+            if cursor.is_symlink():
+                return True
+    except OSError:
+        return None
+    return False
+
+
+def remove_main_checkout_pickup_files(repo_root: Path, node_id: str) -> None:
+    """From a linked worktree, remove the main checkout's untracked brief and prompt.
+
+    Only a regular file git does not track, under the project's ``work/``
+    (``project_prefix``, so ``sr/work/`` in a nested layout). A symlink anywhere
+    on that path, a symlinked ``work/`` directory, a tracked copy, and a file
+    whose tracking git cannot establish are left alone. Each removal is printed.
+    """
+    main = _main_git_root(repo_root)
+    if main is None:
+        return
+    prefix = project_prefix(repo_root)
+    for name in (f"brief-{node_id}.md", f"prompt-{node_id}.md"):
+        rel = f"{prefix}work/{name}"
+        if _symlink_on_path(main, rel) is not False:
+            continue
+        path = main / rel
+        try:
+            regular = path.is_file()
+        except OSError:
+            continue
+        if not regular:
+            continue
+        ok, listed = git_ok(["ls-files", "--", rel], main)
+        if not ok or listed:
+            continue
+        path.unlink()
+        print(f"[ok] removed {rel}")
 
 
 def cleanup_work_artifacts(repo_root: Path, node_id: str) -> list[str]:

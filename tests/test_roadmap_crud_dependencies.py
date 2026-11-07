@@ -6,7 +6,11 @@ from pathlib import Path
 
 import pytest
 
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.cli_usage import USAGE_TEXT
 from tests.test_roadmap_crud import crud_fixture_repo, run_crud
+
+_NK991 = "10000000-0000-4000-8000-000000009902"
 
 
 def test_list_dependencies_cli(tmp_path: Path) -> None:
@@ -161,6 +165,45 @@ def test_add_dependency_reports_descendant_leaves_that_now_wait(tmp_path: Path) 
     assert add("M99.3.1", "M99.1") == []   # a leaf has no descendants
     assert add("M99.3", "M99.1") == []     # M99.3.1 already waits on M99.1
     assert add("M99.3", "M99.2") == ["1 descendant leaves now wait on M99.2: M99.3.1"]
+
+
+def _deps(tmp_path: Path, *args: str):
+    return run_crud(tmp_path, "--repo-root", str(tmp_path), *args)
+
+
+def test_set_dependencies_accepts_display_ids_and_refuses_an_unknown(tmp_path: Path) -> None:
+    """A display id and a node_key in one value are stored as keys; an unknown token writes nothing."""
+    crud_fixture_repo(tmp_path)
+    help_out = run_crud(tmp_path, "set-dependencies", "--help")
+    assert help_out.returncode == 0, help_out.stderr
+    assert "KEY or ID" in help_out.stdout
+    assert 'KEY or ID' in USAGE_TEXT
+
+    listed = _deps(tmp_path, "set-dependencies", "M99.2", "--deps", "M99.1")
+    assert listed.returncode == 0, listed.stderr
+    shown = _deps(tmp_path, "list-dependencies", "M99.2")
+    assert shown.stdout.splitlines() == [f"{_NK991}\tM99.1\tOne"]
+
+    added = _deps(
+        tmp_path, "add-node", "--id", "M99.4", "--type", "task", "--title", "Four",
+        "--parent-id", "M99",
+    )
+    assert added.returncode == 0, added.stderr
+    nk994 = next(n["node_key"] for n in load_roadmap(tmp_path)["nodes"] if n["id"] == "M99.4")
+    mixed = _deps(tmp_path, "set-dependencies", "M99.2", "--deps", f"M99.1 {nk994}")
+    assert mixed.returncode == 0, mixed.stderr
+    edited = _deps(
+        tmp_path, "edit-node", "M99.2", "--set", "dependencies=M99.1", "--set", f"dependencies={nk994}",
+    )
+    assert edited.returncode == 0, edited.stderr
+    chunk = tmp_path / "roadmap" / "phases" / "T.json"
+    before = chunk.read_bytes()
+    refused = _deps(tmp_path, "set-dependencies", "M99.2", "--deps", "M99.1 NOPE")
+    assert refused.returncode == 1
+    assert "dependency 'NOPE' is neither a node id nor a node_key in the roadmap" in refused.stderr
+    assert chunk.read_bytes() == before
+    keys = next(n["dependencies"] for n in load_roadmap(tmp_path)["nodes"] if n["id"] == "M99.2")
+    assert keys == [_NK991, nk994]
 
 
 @pytest.mark.parametrize(
