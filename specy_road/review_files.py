@@ -221,7 +221,7 @@ def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
     try:
         check_handoff_read(path)
         text = path.read_text(encoding="utf-8")
-    except OSError as e:
+    except (OSError, UnicodeDecodeError) as e:   # a READY or record that is not UTF-8 is unreadable, not a traceback
         return {}, "", [f"cannot read: {e}"]
     block, body = _split_front_matter(text)
     missing = ["missing YAML front matter (--- … ---) at the top of the file"]

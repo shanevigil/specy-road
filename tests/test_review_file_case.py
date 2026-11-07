@@ -15,9 +15,10 @@ import pytest
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
 from tests.test_review_cli import ONE_AI
 
-from specy_road.bundled_scripts import review_cli
+from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed, review_cli
 from specy_road.review_files import list_reviews, review_path, reviews_dir, write_review
-from specy_road.review_gate import evaluate_gate
+from specy_road.review_gate import evaluate_gate, write_human_approval
+from specy_road.review_rejected import rejected_state, unreadable_rejected_lines, write_rejected
 
 
 def _run(*args: str) -> int:
@@ -90,3 +91,52 @@ def test_handoff_status_and_review_list_report_a_lowercase_record(tmp_path: Path
     out = capsys.readouterr().out
     assert "REVIEW-opus.md: approve by opus" in out and "review-opus.md" not in out
     assert "1/1 approvals, 0 block(s): met" in out
+
+
+@pytest.mark.parametrize(("old", "canonical"), [("rejected-opus.md", "REJECTED-opus.md"),
+                                                ("review-human.md", "REVIEW-human.md")])
+def test_rejected_marker_and_human_approval_replace_a_case_variant(tmp_path: Path, old: str, canonical: str) -> None:
+    """M22.19: both writers share write_review's case-variant unlink, so the stored name is canonical."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / old).write_text("---\nnot: a marker\n", encoding="utf-8")
+    head = git(repo, "rev-parse", "HEAD")
+    if canonical.startswith("REJECTED"):
+        write_rejected(d, "opus", head, "refused")
+        assert rejected_state(d, "opus", head, repo) is not None
+    else:
+        write_human_approval(repo, NODE, head)
+        assert [r.path.name for r in list_reviews(repo, "M1.1")] == [canonical]
+    assert [p.name for p in d.iterdir() if p.is_file() and not p.name.startswith(".")] == [canonical]
+
+
+def test_an_unreadable_rejected_marker_is_listed_whatever_its_case(tmp_path: Path) -> None:
+    d = tmp_path / "M1.1"
+    d.mkdir()
+    (d / "rejected-opus.md").write_text("---\nnot: a marker\n---\n", encoding="utf-8")
+    assert unreadable_rejected_lines(d) == [f"marker unreadable: {d / 'rejected-opus.md'}"]
+
+
+def test_a_ready_that_is_not_utf8_is_refused_naming_the_file(tmp_path: Path, capsys) -> None:
+    """M22.19 A7: a READY's author cannot be read, so the gate closes; no command shows a traceback."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nDid it.\n")
+    _lowercase_record(repo, "REVIEW-opus.md")
+    (reviews_dir(repo, "M1.1") / "READY-sol.md").write_bytes(b"---\nnode_id: M1.1\nagent: sol \xff\n---\n")
+    gate = evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
+    assert not gate.passed and any(p.startswith("READY-sol.md is unreadable") for p in gate.problems())
+    capsys.readouterr()
+    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
+    assert "READY-sol.md is unreadable" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as e:
+        mark_implementation_reviewed.main(["--yes", "--repo-root", str(repo)])
+    assert e.value.code == 1 and "Traceback" not in capsys.readouterr().err
+    reg = repo / "roadmap" / "registry.yaml"   # approved before the READY went bad: finish re-checks the gate
+    reg.write_text(reg.read_text().replace("implementation_review: pending", "implementation_review: approved"))
+    commit_file(repo, "roadmap/registry.yaml", reg.read_text(), "approved")
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(repo)])
+    err = capsys.readouterr().err
+    assert e.value.code == 1 and "Traceback" not in err and "READY-sol.md is unreadable" in err
