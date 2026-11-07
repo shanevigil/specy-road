@@ -68,7 +68,33 @@
   temp file there. Each case is refused, the planted file's mode, times and bytes are unchanged, and the real
   directory has no temp file left. Both fail at `a91a11b6`.
 
+## Fix round 4 (review `gpt-5.6-sol-high` at `4591a171`)
+
+- **Finding: the root was resolved twice in one operation.** The class is any operation that resolves the root
+  again after its first resolution: a root swapped for a link out between the two resolutions resolves to the
+  outside directory, a real directory, so the `O_NOFOLLOW` walk would accept it. Instances found:
+  - `_replace`: `check()` resolved the root, then `_locate(root, full)` resolved it again. This is the
+    reviewer's `write`/`copy` instance.
+  - `moving`: resolved again for `dst`.
+  - `_relinked`: resolved again for every followed link.
+  - `prune_empty`: re-resolved its base on every step.
+  - The no-`dir_fd` fallbacks of `_replace` and `moving`: `mkdirs`/`check` resolved again.
+
+  Fix, one rule: `_locate` takes `base`, the operation's own resolution of the root, and resolves only when it
+  is not given. Each public operation resolves once and passes `base` down: `_walk` gains `base`, and
+  `_make_dirs` is `mkdirs` under a given base. A swap after that resolution is met by the walk's `O_NOFOLLOW`
+  open of the root and refused.
+- **Test:** `test_a_root_swapped_for_a_link_before_it_is_opened_is_refused` is parametrized over `write`,
+  `copy` and `mkdirs`, and over the swap timing: `before-open`, or `after-resolve` (a wrapper on public
+  `Path.resolve` swaps the root right after its first resolution). It expects `SafeWriteError` naming the root,
+  and nothing outside or in the real root. `write-after-resolve` and `copy-after-resolve` fail at `4591a171`.
+
 ## Probes
+
+- Round 4: `write`, `copy` and `mkdirs` with the root swapped right after its first resolution, and right before it is opened: refused, nothing outside (test; `mkdirs` already resolved once and passed before too).
+- Round 4: `moving` (archive) with the root swapped right after its first resolution, for a plain sheet and an in-repo linked sheet: refused naming the root; the sheet, its link and the outside file are unchanged (inline probe).
+- Round 4: remaining `resolve()` calls in `safe_write.py`: one per public entry (`_locate` without `base`, `mkdirs`), and the no-`dir_fd` fallback `_move_by_path`, which resolves names by design (M21.37's path model, Windows only). `remove` and `open_lock` resolve once each; `open_lock`'s second `check` only names a refusal after a failed open.
+- Round 4: full suite 6365 passed after the merge.
 
 - Round 3: the race above on Linux (`/proc` branch): refused, outside mode, times and bytes unchanged, no temp left (test).
 - Round 3: the same race with `/proc/self/fd` hidden (the descriptor branch): `write` and `copy` refused, outside metadata unchanged, no temp left (inline probe).
@@ -105,14 +131,14 @@
   there is no `/proc`; see Fix round 3. On macOS `/proc` is absent, so the descriptor form is used; that branch
   was probed on Linux by hiding `/proc`.
 - `remove`, `prune_empty` and `open_lock` are unchanged: neither the acceptance criterion nor the plan names them.
-- Net line change against base: package +234/-59, tests +205/-6, above A2's informational estimate. Most of the
+- Net line change against base: package +250/-66, tests +233/-6, above A2's informational estimate. Most of the
   difference is the Windows fallback kept beside the descriptor path in `_replace` and `move`.
-- Touch zones: no file outside them changed (round 3 removed the need to add
+- Touch zones: no file outside them changed (rounds 3 and 4; round 3 removed the need to add
   `tests/test_setup_writers_refuse_links.py`). Merged `origin/WIP/improvements-0-3-1` first in each round, with no conflicts.
 
 ## Verification
 
-- `python -m pytest -q -n 4` (full suite, round 3, after the merge and fix): 6313 passed.
+- `python -m pytest -q -n 4` (full suite, round 4, after the merge and fix): 6365 passed (round 3: 6313).
 - Round 3 targeted (408 passed): the round-2 list plus `tests/test_init_project.py`.
 - Round 2 targeted (403 passed): the list below plus `tests/test_history_cache.py`, `tests/test_generate_brief.py`, `tests/test_digest.py`.
 - Round 1 targeted: `tests/test_safe_write.py`, `tests/test_archive_ops.py`, the archive suites,
@@ -153,3 +179,5 @@
 - Test `test_planning_sheets_move_out_of_the_flat_planning_dir`, parametrized `in-repo-link`, `link-chain`, `linked-dir`: in-repo linked sheets still move their final target (review finding 2).
 - Test helper `_link_sheet` (module-local): builds the three linked-sheet shapes.
 - Test `test_a_parent_swapped_after_the_temp_file_leaves_outside_metadata_alone` (`write`, `copy`): round-3 findings; a racer plants an outside file named like the temp file and checks its metadata is kept.
+- `_locate` / `_walk` `base` parameter and `safe_write._make_dirs`: the root is resolved once per operation and passed down (round 4).
+- Test `test_a_root_swapped_for_a_link_before_it_is_opened_is_refused` parametrized `copy` and `after-resolve`, with helper `_swap_after_resolve` (module-local; wraps public `Path.resolve`): round-4 finding.
