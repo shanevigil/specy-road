@@ -21,7 +21,10 @@ from specy_road.finish_land_integration import (
 )
 from specy_road.finish_land_local import land_on_integration
 from specy_road.finish_on_complete_override import OVERRIDE_FLAG, needs_override
+from specy_road.bundled_scripts.repo_ops import current_branch
+from specy_road.finish_work_artifacts import remove_main_checkout_pickup_files
 from specy_road.git_subprocess import git_ok
+from specy_road.git_workflow_config import should_cleanup_work_artifacts_on_finish
 from specy_road.on_complete_session import remove_on_complete_session
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.workflow_prefs import LAND_LOCAL, root_land
@@ -212,14 +215,38 @@ def delete_landed_branch(
         print(f"[warn] --delete-branch: {failure['message']}", file=sys.stderr)
 
 
+def drop_main_checkout_pickup_files(repo: Path, node_id: str, *, no_cleanup_work: bool) -> None:
+    """The main checkout's untracked brief and prompt, once finish has succeeded."""
+    if should_cleanup_work_artifacts_on_finish(repo, no_cleanup_work_cli=no_cleanup_work):
+        remove_main_checkout_pickup_files(repo, node_id)
+
+
+def close_merged_checkout(
+    repo: Path, *, node_id: str, branch: str, ib: str, on_mode: str,
+    delete_branch: bool, no_cleanup_work: bool,
+) -> None:
+    """After the landing outcome: remove the main checkout's pickup files, then the checkout line.
+
+    The line is the final one, and only for a merge or auto landing that left
+    this checkout on ``branch`` without ``--delete-branch``.
+    """
+    drop_main_checkout_pickup_files(repo, node_id, no_cleanup_work=no_cleanup_work)
+    if on_mode not in ("merge", "auto") or delete_branch:
+        return
+    if current_branch(repo) != branch:
+        return
+    print(f"[ok] this checkout is still on {branch} (landed into {ib}); next: git switch {ib}")
+
+
 def report_landed(
     repo: Path, outcome: str, *, branch: str, ib: str, remote: str, delete_branch: bool,
     local_only: bool, sess_path: Path | None = None,
 ) -> None:
-    """Run every step that follows a landing, then print ``[ok] <outcome>`` last (M15.40 A1).
+    """Print ``[ok] <outcome>`` after session cleanup and ``--delete-branch``.
 
-    Whatever those steps print (session cleanup, ``--delete-branch``) comes
-    first, so the outcome is the final line under any option.
+    Those steps print first. The outcome is not finish's last line: the main
+    checkout's pickup files are removed after this returns, and a checkout that
+    stays on the feature branch then prints the switch guidance.
     """
     if sess_path is not None:
         remove_on_complete_session(sess_path)
@@ -285,7 +312,11 @@ def retry_merge_landing(
     Only the finish commit itself -- the tip that removed this leaf's registry
     row -- is landed: a commit added after it was never reviewed or checked.
     ``--delete-branch`` on this re-run still deletes the branch once it is on
-    ``remote/ib``, including when an earlier run already got it there.
+    ``remote/ib``, including when an earlier run already got it there. Either
+    result then removes the main checkout's pickup files and, when this
+    checkout is still on ``branch`` and the branch was not deleted, prints the
+    switch guidance. This re-run has no ``--no-cleanup-work`` argument; the
+    yaml cleanup flag still applies.
     """
     refuse_unless_finish_tip(repo, branch)
     local = root_land(repo) == LAND_LOCAL   # land: local fetches nothing and checks the local branch
@@ -295,22 +326,27 @@ def retry_merge_landing(
     target, where = (f"refs/heads/{ib}", f"local {ib}") if local else (f"refs/remotes/{remote}/{ib}", f"{ib} on {remote}")
     if git_ok(["merge-base", "--is-ancestor", branch, target], repo)[0]:
         done = "" if delete_branch else "; nothing to do"
-        report_landed(repo, f"{branch} is already merged into {where}{done}", branch=branch, ib=ib,
-                      remote=remote, delete_branch=delete_branch, local_only=local)
-        raise SystemExit(0)
-    ok, err_msg, done_msg = land_on_integration(
-        repo, remote=remote, ib=ib, branch=branch, land_check_cmd=land_check_cmd,
-        tracking_before=tracking_before,
-    )
-    if not ok:
-        merge_landing_failed(
-            ib, err_msg, delete_branch=delete_branch, land_check_cmd=land_check_cmd,
-            repo=repo,
+        err_msg, outcome = "", f"{branch} is already merged into {where}{done}"
+    else:
+        ok, err_msg, outcome = land_on_integration(
+            repo, remote=remote, ib=ib, branch=branch, land_check_cmd=land_check_cmd,
+            tracking_before=tracking_before,
         )
+        if not ok:
+            merge_landing_failed(
+                ib, err_msg, delete_branch=delete_branch, land_check_cmd=land_check_cmd,
+                repo=repo,
+            )
     if err_msg:
         print(err_msg, file=sys.stderr)
-    report_landed(repo, done_msg, branch=branch, ib=ib, remote=remote,
+    report_landed(repo, outcome, branch=branch, ib=ib, remote=remote,
                   delete_branch=delete_branch, local_only=local)
+    from specy_road.feature_rm_registry import finish_already_done_on_branch
+    done_node = finish_already_done_on_branch(repo, branch)
+    close_merged_checkout(
+        repo, node_id=done_node["id"], branch=branch, ib=ib, on_mode="merge",
+        delete_branch=delete_branch, no_cleanup_work=False,
+    )
     raise SystemExit(0)
 
 

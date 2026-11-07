@@ -14,9 +14,9 @@
 
 ## Touch zones (final)
 
-`specy_road/bundled_scripts/roadmap_edit_fields.py`, `specy_road/bundled_scripts/roadmap_crud_argparse.py`, `specy_road/cli_usage.py`, `tests/test_roadmap_crud_dependencies.py`, `specy_road/finish_work_artifacts.py`, `specy_road/bundled_scripts/abort_task_pickup.py`, `tests/test_finish_work_cleanup.py`, `tests/test_abort_task_pickup.py`, `specy_road/bundled_scripts/finish_task.py`, `tests/test_finish_merge_mode.py`, `docs/git-workflow.md`, `CHANGELOG.md`, `specy_road/bundled_scripts/roadmap_crud_ops.py`, `tests/test_gui_app_routes_nodes_errors.py`, `tests/test_finish_merge_failure_undo.py`.
+`specy_road/bundled_scripts/roadmap_edit_fields.py`, `specy_road/bundled_scripts/roadmap_crud_argparse.py`, `specy_road/cli_usage.py`, `tests/test_roadmap_crud_dependencies.py`, `specy_road/finish_work_artifacts.py`, `specy_road/bundled_scripts/abort_task_pickup.py`, `tests/test_finish_work_cleanup.py`, `tests/test_abort_task_pickup.py`, `specy_road/bundled_scripts/finish_task.py`, `tests/test_finish_merge_mode.py`, `docs/git-workflow.md`, `CHANGELOG.md`, `specy_road/bundled_scripts/roadmap_crud_ops.py`, `tests/test_gui_app_routes_nodes_errors.py`, `tests/test_finish_merge_failure_undo.py`, `specy_road/finish_modes.py`.
 
-The last path was added with `specy-road edit-node` before that file was edited. The same command rewrote the claim's `touch_zones` in `roadmap/registry.yaml` so the row matches the node. `roadmap_edit_fields.py` stayed in the list because the brief names it and the dependency parser there is what the resolved keys still go through. `docs/roadmap-authoring.md` and `docs/pm-workflow.md` still describe `set-dependencies` as taking node_keys; the sheet leaves `docs/roadmap-authoring.md` to M22.11, and neither file is in this leaf's zones.
+`tests/test_finish_merge_failure_undo.py` and `specy_road/finish_modes.py` were each added with `specy-road edit-node` before that file was edited. The same command rewrote the claim's `touch_zones` in `roadmap/registry.yaml` so the row matches the node. `roadmap_edit_fields.py` stayed in the list because the brief names it and the dependency parser there is what the resolved keys still go through. `docs/roadmap-authoring.md` and `docs/pm-workflow.md` still describe `set-dependencies` as taking node_keys; the sheet leaves `docs/roadmap-authoring.md` to M22.11, and neither file is in this leaf's zones.
 
 A6 is not binding: `M16.1.1` and `M16.1.2` are Not Started. No file under `tests/parity/` changed.
 
@@ -28,8 +28,8 @@ A6 is not binding: `M16.1.1` and `M16.1.2` are Not Started. No file under `tests
 - `_main_git_root`: the main checkout's git root when the current project root is a linked worktree.
 - `_symlink_on_path`: whether any component of the brief or prompt path is a symlink, or whether that cannot be established.
 - `remove_main_checkout_pickup_files`: the one removal finish and abort share for the main checkout's untracked brief and prompt.
-- `_drop_main_pickup_files`: finish's call of that helper, gated on the same cleanup flag as the worktree's own session files.
-- `_say_still_on_feature`: the closing line after a merge or auto landing.
+- `drop_main_checkout_pickup_files`: the cleanup-flag gate around `remove_main_checkout_pickup_files`. The first finish, a milestone rollup, and a merge retry all use it.
+- `close_merged_checkout`: that removal, then the checkout line when a merge or auto landing left this checkout on the feature branch without `--delete-branch`.
 - `_deps` (test): one `run_crud` call with `--repo-root`.
 - `_git`, `_linked`, `_prefix` (finish cleanup tests): a linked worktree in the embedded and nested layouts.
 - `_claim_leaf`, `_open_leaf`, `_place_main_copies` (abort tests): a claimed leaf whose main checkout is not on the integration branch, so abort can check that branch out in the worktree. They call the module's existing `_git`.
@@ -42,11 +42,12 @@ A6 is not binding: `M16.1.1` and `M16.1.2` are Not Started. No file under `tests
 - A path that is not a regular file is left alone.
 - `git ls-files` failing, or listing the path, leaves the file.
 - The checkout line is printed only for `merge` and `auto`, not with `--delete-branch`, and only when the current branch is the feature branch.
-- Main-checkout copies are removed only after finish returns from a successful landing, rollup or pr tail, so a refused landing keeps them.
+- Main-checkout copies are removed only after a successful landing, including a merge retry that newly lands or finds the branch already merged. A refused landing still exits before that call.
+- A merge retry has no `--no-cleanup-work` argument. The yaml cleanup flag still applies. That limit is in `retry_merge_landing`'s docstring.
 
 ### Mocks
 
-none
+- `finish_task.merge_undo_snapshot` returns None for the linked-worktree retry test's first finish, so a rejected push keeps the bookkeeping commit and the next run is a retry. `test_a_retried_landing_prints_its_outcome_last` uses the same patch.
 
 ### Tests
 
@@ -55,6 +56,8 @@ none
 - `test_linked_worktree_main_checkout_pickup_files`: embedded and nested; untracked copies removed, tracked kept, a symlink alias and its target kept, a symlinked `work/` kept.
 - `test_finish_from_a_linked_worktree_removes_main_copies_after_landing`: a successful merge from a linked worktree removes the main copies and ends with the checkout line.
 - `test_finish_refused_at_landing_keeps_main_checkout_copies`: a land check failure keeps the main copies and does not print the line.
+- `test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch`: a linked-worktree retry that newly lands, and one that finds the branch already merged, each remove the main copies and end on the checkout line. A refused first landing keeps the copies.
+- `_finish` (test): one finish call whose exit code is 0, returning its stdout.
 - `test_abort_from_a_linked_worktree_cleans_the_main_checkout`: the same four file kinds from `abort-task-pickup` in both layouts.
 - `test_finish_merge_prints_push_disclosure_for_unrelated_dev_commit`: extended so the successful merge ends with the checkout line.
 - `test_finish_merge_omits_the_branch_line_when_the_branch_is_deleted`: the line is absent with `--delete-branch`.
@@ -70,3 +73,8 @@ The checkout guidance is printed after the landing outcome whenever this checkou
 - `test_restore_failure_after_reset_saves_a_copy` asserts `still on` is absent from the undo error of a failed landing. That test passed, so the guidance is not on that path.
 - Class "a later function definition shadows an earlier helper in the same module": the only doubled name this leaf added is `_git` in `tests/test_abort_task_pickup.py`. `tests/test_finish_work_cleanup.py` and `tests/test_finish_merge_mode.py` each define `_git` once, in their own module. The later abort definition was deleted. Its callers do not read command output, so the earlier `cwd=` helper covers them.
 - `specy-road digest --check` fails on the quality-by-area table. Rendering the digest at the merge commit and again with this zone edit produced the same text, so the drift was already on the merged branch and this edit does not change `roadmap-context.md`.
+- Class "a successful merge retry exits before the shared post-success tail": `retry_merge_landing` had two `SystemExit(0)` paths, one for already merged and one for a new landing, and neither reached the removal or the checkout line. Both results now fall through to one `close_merged_checkout` call, the same function the first finish uses after `apply_on_complete_mode`. A refused landing still raises inside `merge_landing_failed` before that call.
+- Other success exits: a milestone rollup calls `drop_main_checkout_pickup_files` only. It lands on the rollup branch and prints its own outcome, so it does not take the merge guidance. `retry_milestone_rollup_landing` returns to `feature_rm_registry.py`, which is outside this leaf's zones; that path is a rollup re-land, not the merge retry. The pr tail still reaches `close_merged_checkout`, and the line stays off because the mode is not merge or auto.
+- `--delete-branch` on a retry: `close_merged_checkout` skips the line. `test_a_retried_landing_prints_its_outcome_last` still requires the already-merged outcome to be the final line in that case.
+- A non-linked retry ends on the feature branch too. `test_a_retried_landing_prints_its_outcome_last` keeps the new landing's outcome and now requires the checkout guidance as the final line. Its `--delete-branch` follow-up still ends on the already-merged outcome.
+- `report_landed` no longer says it runs every post-landing step or that the outcome is always the last line. Session cleanup and `--delete-branch` still print before the outcome.

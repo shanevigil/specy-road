@@ -513,3 +513,53 @@ def test_finish_refused_at_landing_keeps_main_checkout_copies(tmp_path, monkeypa
     assert "this checkout is still on" not in captured.out
     assert (work / "brief-M1.1.md").read_text(encoding="utf-8") == "brief\n"
     assert (work / "prompt-M1.1.md").read_text(encoding="utf-8") == "prompt\n"
+
+
+def _finish(leaf, capsys, *extra: str) -> str:
+    from specy_road.bundled_scripts import finish_task
+
+    with pytest.raises(SystemExit) as caught:
+        finish_task.main(["--repo-root", str(leaf), *extra])
+    out = capsys.readouterr().out
+    assert (caught.value.code or 0) == 0, out
+    return out
+
+
+def test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch(
+    tmp_path, monkeypatch, capsys,
+) -> None:
+    """A later merge finish removes the main copies and ends on the checkout line, landed or already merged."""
+    from tests.review_repo_helpers import delegate_layout
+
+    from specy_road.bundled_scripts import finish_task
+
+    repo, leaf, bare = delegate_layout(tmp_path, monkeypatch)
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    brief, prompt = work / "brief-M1.1.md", work / "prompt-M1.1.md"
+    brief.write_text("brief\n", encoding="utf-8")
+    prompt.write_text("prompt\n", encoding="utf-8")
+    (work / "notes.md").write_text("keep\n", encoding="utf-8")
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    hook.chmod(0o755)
+    monkeypatch.setattr(finish_task, "merge_undo_snapshot", lambda *_a, **_k: None)
+    with pytest.raises(SystemExit) as failed:
+        finish_task.main(["--repo-root", str(leaf)])
+    assert failed.value.code == 1
+    assert brief.is_file() and prompt.is_file()
+    hook.unlink()
+    guidance = (
+        "[ok] this checkout is still on feature/rm-thing (landed into dev); next: git switch dev"
+    )
+    landed = _finish(leaf, capsys)
+    assert "[ok] merged feature/rm-thing into dev and pushed to origin" in landed
+    assert not brief.exists() and not prompt.exists()
+    assert landed.rstrip().endswith(guidance)
+    brief.write_text("again\n", encoding="utf-8")
+    prompt.write_text("again\n", encoding="utf-8")
+    again = _finish(leaf, capsys)
+    assert "[ok] feature/rm-thing is already merged into dev on origin; nothing to do" in again
+    assert not brief.exists() and not prompt.exists()
+    assert (work / "notes.md").read_text(encoding="utf-8") == "keep\n"
+    assert again.rstrip().endswith(guidance)
