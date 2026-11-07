@@ -379,14 +379,13 @@
     },
     {
       "acceptance": [
-        "Starts from the integration branch with `git revert <R31>`, the commit id this leaf's planning sheet records under ## Source (the coordinator's split of feature/rm-steering-file-guard; the code comes from 80c56903). Conflicts are resolved in that commit by keeping every predecessor already on the integration branch (narrowed M22.5, M22.30, M22.14, M22.10 and M22.20) and adding only this leaf's class; no file is taken from narrowed M22.5's version where a predecessor has changed it since. Reviewed on this leaf's own diff from its merge base",
+        "The code starts from R31 (the commit under ## Source), taken only as far as this leaf's class. The in-tree steering list lives in specy_road/steering_gate.py; there is no steering_paths.py. Everything predecessors landed stays. This is the merge-point check on every platform, with or without a sandbox",
         "finish-this-task refuses, before its bookkeeping commit, a leaf whose branch diff against the merge base changes an in-tree steering path (harness config and hooks, the three roadmap policy files, root shell startup files) unless a touch zone names that exact path (a directory or glob zone does not count); roadmap/registry.yaml is ignored. The message names each path and the next step: add that exact path to touch_zones with specy-road edit-node and get it reviewed, or revert it.",
         "Tests: in tests/test_steering_file_guard.py, with .claude/settings.json named exactly in zones the leaf lands, and without it finish refuses naming the path; tests/test_finish_merge_failure_undo.py and tests/test_finish_work_cleanup.py commit the integration config on the integration branch first, because a leaf's own change to it is a steering file. Ends with one full Sol sweep of the merged result",
-        "steering_gate.py's module docstring names its topic (the steering list's uses at finish and, after M22.32, at launch), not the file limit: the cap is 1,000 lines and cap-driven splits are being folded (constraints/file-limits.yaml)"
+        "steering_gate.py's module docstring names its topic, the steering list's use at finish, not the file limit: the cap is 1,000 lines and cap-driven splits are being folded (constraints/file-limits.yaml)"
       ],
       "codename": "steering-finish-refusal",
       "dependencies": [
-        "37904d88-a256-4ae0-9abf-1c92de6bed7f",
         "121934a1-3ec8-416e-b66c-0305b77665b5",
         "24a67d66-529a-40ca-a500-759cedaacb12",
         "17405142-e2fa-4516-83e2-e536820d1ec2"
@@ -401,7 +400,6 @@
       "touch_zones": [
         "specy_road/steering_gate.py",
         "specy_road/bundled_scripts/finish_task.py",
-        "specy_road/steering_paths.py",
         "docs/orchestration-steering-files.md",
         "tests/test_steering_file_guard.py",
         "tests/test_finish_merge_failure_undo.py",

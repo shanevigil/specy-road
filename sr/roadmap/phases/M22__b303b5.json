@@ -274,6 +274,57 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "With worker_sandbox set in git-workflow.yaml (auto: bwrap on Linux), worker_runner runs every harness argv under bwrap: the root read-only, with the leaf worktree, the git objects, refs, logs and worktree metadata a commit needs, a per-worker outbox and each harness's state directories writable",
+        "Inside the sandbox the common git config, hooks, info, the worktree's commondir and gitdir files, the main checkout and home stay read-only, and ssh and gh credentials are not visible; a commit succeeds",
+        "READY reaches work/reviews/<node> only through the outbox, moved by the runner; the worker cannot write other files there",
+        "Where no sandbox can start, an unattended launch warns once and runs as today; docs state plainly what that host does not protect",
+        "tests/test_worker_sandbox.py, skipped where bwrap is missing, runs a fake harness turn: a commit lands, and writes to the common config, a hook, the main checkout and home are refused; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "workers-run-in-a-sandbox",
+      "dependencies": [],
+      "id": "M22.44",
+      "node_key": "9022edcd-0ffa-48b3-829d-0ad51f8d6866",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.44_workers-run-in-a-sandbox_9022edcd-0ffa-48b3-829d-0ad51f8d6866.md",
+      "sibling_order": 43,
+      "status": "Not Started",
+      "title": "Unattended workers run in a read-only sandbox on Linux",
+      "touch_zones": [
+        "specy_road/worker_sandbox.py",
+        "specy_road/worker_runner.py",
+        "specy_road/schemas/git-workflow.schema.json",
+        "specy_road/git_workflow_config.py",
+        "tests/test_worker_sandbox.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker_turn_check snapshots the local and remote-tracking integration refs at turn start and end, and a move during the turn is a post-run finding naming the ref and both commits",
+        "A turn that moves only its own branch stays clean; tests/test_worker_turn_check.py covers both through the public runner; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "integration-refs-stay-put-during-a-turn",
+      "dependencies": [
+        "9022edcd-0ffa-48b3-829d-0ad51f8d6866"
+      ],
+      "id": "M22.45",
+      "node_key": "49e7b2a8-6486-47cb-a9c7-ba757373b6c8",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.45_integration-refs-stay-put-during-a-turn_49e7b2a8-6486-47cb-a9c7-ba757373b6c8.md",
+      "sibling_order": 44,
+      "status": "Not Started",
+      "title": "A worker turn that moves the integration ref is flagged",
+      "touch_zones": [
+        "specy_road/worker_turn_check.py",
+        "tests/test_worker_turn_check.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
