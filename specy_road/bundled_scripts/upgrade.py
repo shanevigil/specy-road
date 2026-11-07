@@ -37,9 +37,13 @@ variable of the caller's removed and no global or system git config, no hook
 and a timeout, so it never reaches the checkout's repository or runs a command
 the caller's config names. A failed ``git init``, ``add`` or ``commit`` in either
 temporary copy, the plan's included, stops the run with exit 2: nothing is
-written or validated. A generated file whose path leads out of the project is refused, and ``digest``
+written or validated. A generated file with a symlink on its path is refused, and ``digest``
 stays a next step, as it does when ``validate`` fails (nothing is regenerated
-from an invalid graph). The exit code is ``validate``'s. Read validate's
+from an invalid graph). The exit code is 1 when ``validate`` fails, a generated
+file is refused, or the safe-write rule refuses a stub, skill file, skill link
+or ignore file (printed ``error:``; that path is left as it is, the rest of the
+plan is applied), else 0. A refused ``AGENTS.md``, ``CLAUDE.md``, shipped doc,
+work template or profile stays a report line. Read validate's
 notices for what the new version reports (held milestones among them).
 """
 
@@ -48,7 +52,6 @@ from __future__ import annotations
 import argparse
 import os
 import shlex
-import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -69,7 +72,9 @@ from specy_road.file_limits_engine import build_overlay_match_sets, collect_trac
 from specy_road.git_subprocess import git_text
 from specy_road.ignore_report import scratch_git_env
 from specy_road.init_project import project_template_root
-from specy_road.managed_block import resolves_outside
+from specy_road import safe_write
+from specy_road.managed_block import refused_link, rule_refusal
+from specy_road.safe_write import SafeWriteError
 from specy_road.runtime_paths import add_repo_root_arg, git_root, project_root, source_scan_root
 from specy_road.upgrade_templates import (
     copy_missing_work_templates,
@@ -95,7 +100,7 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False, declined: list[st
     The load order sends every agent to them, and only ``init project`` copied
     them, so a repo scaffolded before a doc shipped has a load order pointing at
     nothing. An existing file (or link) is the project's and stays as it is.
-    A doc refused for a link out of the repository is appended to ``declined``.
+    A doc the safe-write rule refuses (a link on its path) is appended to ``declined``.
     """
     src_root = project_template_root()
     copied: list[str] = []
@@ -103,19 +108,20 @@ def copy_missing_docs(project: Path, *, dry_run: bool = False, declined: list[st
         src, dst = src_root / rel, project / rel
         if not rel.startswith("docs/") or not src.is_file() or dst.exists() or dst.is_symlink():
             continue
-        if resolves_outside(project, dst):
-            print(f"skipped {rel} (a symlink leads outside the repository)")
+        if why := refused_link(project, dst):
+            print(f"skipped {rel} ({why})")
             if declined is not None:
                 declined.append(rel)
             continue
         if not dry_run:
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
+            safe_write.copy(project, src, dst)
         copied.append(rel)
     return copied
 
 
 # Outcome words with which the refreshes report a path they leave as it is (managed_block, specyrd_skills).
+# A ``refused: <why>`` of the safe-write rule (a stub, skill file, skill link or ignore file) is an ``error``
+# instead (rule_refusal): it is printed as ``error:`` and the upgrade exits 1.
 _DECLINED = {"refused": "refuse", "skipped": "skip", "failed": "fail"}
 
 
@@ -169,11 +175,18 @@ def _report_stubs_declined(
         print("stubs and managed blocks already current")
     prefix = _prefix(checkout, project)
     declined = {f"{prefix}{rel}": "refuse" for rel in declined_docs}
-    for rel, sep, outcome in (entry.partition(" (") for entry in written):
-        action = next((a for word, a in _DECLINED.items() if outcome.startswith(word)), None)
-        if sep and action:
-            declined[rel] = action
+    for entry in written:
+        if action := _declined(getattr(entry, "outcome", "")):
+            declined[entry.path] = action
     return declined
+
+
+def _declined(outcome: str) -> str | None:
+    """The plan action for an outcome that left its path as it was; a rule refusal is printed as ``error:``."""
+    if why := rule_refusal(outcome):
+        print(f"error: {why}", file=sys.stderr)
+        return "error"
+    return next((a for word, a in _DECLINED.items() if outcome.startswith(word)), None)
 
 
 def _refresh(
@@ -186,7 +199,7 @@ def _refresh(
 ) -> dict[str, str]:
     """Run the refreshes for real on ``checkout`` (the plan's mirror); ``preview`` changes only the wording.
 
-    Returns ``{checkout-relative path: refuse | skip | fail}`` for each path they left as it was.
+    Returns ``{checkout-relative path: refuse | error | skip | fail}`` for each path they left as it was.
     """
     verb = "would write" if preview else "wrote"
     _report_schemas(project, verb)
@@ -195,11 +208,20 @@ def _refresh(
     return _report_stubs_declined(project, checkout, preview=preview, prune=prune, declined_docs=declined_docs)
 
 
-def _check(
-    project: Path, tracked_in: Path, verb: str, caller_env: dict[str, str],
-) -> tuple[bool, bool]:
-    """``(validate passed, generated files done)``; each step prints its own detail.
+_VALIDATE_FAILED = "Fix the validate errors above; the refreshes are written either way."
+_REFUSED_STEP = ("Replace each path refused above (error:, refused) with a regular file: any symlink on its path is"
+                 " refused, except .claude/skills -> ../.agents/skills or .agents/skills -> ../.claude/skills."
+                 " Then run specy-road upgrade again.")
 
+
+def _check(
+    project: Path, tracked_in: Path, verb: str, refused: bool, caller_env: dict[str, str],
+) -> tuple[str | None, bool]:
+    """``(what failed, as the first next step, or None; generated files done)``; each step prints its own detail.
+
+    A failed ``validate``, a refused generated file, or ``refused`` (the plan
+    has an ``error`` entry: a stub, skill file, skill link or ignore file the
+    rule refused) fails the run (exit 1).
     The generated files are done only when validate passed (so they were
     regenerated), nothing was refused, and ``digest --check`` passes; otherwise
     ``specy-road digest`` stays a next step.
@@ -210,16 +232,20 @@ def _check(
         valid = True
     except SystemExit as e:
         valid = not e.code
-    refused = False
+    generated_refused = False
     if valid:
         _section("generated files")
-        refused = regenerate(project, tracked_in, verb, caller_env)
+        generated_refused = regenerate(project, tracked_in, verb, caller_env)
     _section("digest --check")
     ns = argparse.Namespace(output=DEFAULT_OUTPUT, check=True, repo_root=project)
-    # A digest that is a link out is never read (regenerate printed its refusal): not current.
-    outside = resolves_outside(project, project / DEFAULT_OUTPUT)
-    current = not outside and cmd_digest(ns) == 0
-    return valid, valid and current and not refused
+    # A digest the rule refuses is never read (regenerate printed its refusal): not current.
+    current = not refused_link(project, project / DEFAULT_OUTPUT) and cmd_digest(ns) == 0
+    failed = (_VALIDATE_FAILED if not valid else _REFUSED_STEP if refused or generated_refused else None)
+    return failed, valid and current and not generated_refused
+
+
+_DIGEST_STEP = ("Run specy-road digest (and specy-road export if roadmap.md is tracked), then commit"
+                " them. Not specy-road sync: it also fast-forwards the integration branch.")
 
 
 def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
@@ -276,8 +302,11 @@ def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool):
     return make_plan(checkout, project, refresh)
 
 
-def _apply(project: Path, checkout: Path, *, prune: bool) -> None:
-    """Make the plan, write it into the checkout, then check its writes against the line caps."""
+def _apply(project: Path, checkout: Path, *, prune: bool) -> bool:
+    """Make the plan, write it into the checkout, then check its writes against the line caps.
+
+    Returns whether the plan has an ``error`` entry (applied as nothing, the rest applied).
+    """
     before = _capped_lines(project)
     plan = _plan(project, checkout, preview=False, prune=prune)
     stale = conflicts(plan)
@@ -286,6 +315,7 @@ def _apply(project: Path, checkout: Path, *, prune: bool) -> None:
     apply_plan(plan)
     copy_missing_work_templates(project)
     _report_line_caps(before, _capped_lines(project))
+    return any(e.action == "error" for e in plan.entries)
 
 
 def _commit_copy(copy: Mirror) -> None:
@@ -319,14 +349,16 @@ def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
         apply_plan(plan, copy.to_sandbox)
         copy_missing_work_templates(copy_project, existence_root=project)
         _report_line_caps(before, _capped_lines(copy_project))
-        valid, _digest_ok = _check(copy_project, project, "would write", caller_env)
+        failed, _digest_ok = _check(copy_project, project, "would write",
+                                    any(e.action == "error" for e in plan.entries), caller_env)
     changed = plan.changed_since()
     if changed:
         print(f"error: dry run modified {', '.join(changed)} in {checkout}; this is a bug in specy-road upgrade,"
               " please report it", file=sys.stderr)
         return 2
-    print("\n(dry-run; no files written in the checkout. The exit code is validate's on the copy.)")
-    return 0 if valid else 1
+    print("\n(dry-run; no files written in the checkout. The exit code is 1 when validate fails on the copy"
+          " or a write is refused.)")
+    return 0 if failed is None else 1
 
 
 def _other_worktrees(checkout: Path) -> list[tuple[str, str]]:
@@ -369,21 +401,20 @@ def _upgrade(repo_root: Path | None, *, dry_run: bool, prune: bool) -> int:
     else:
         print(f"specy-road {__version__} upgrade: {project}")
     print_install_report()
-    if dry_run:
-        return _dry_run(project, checkout, prune=prune)
-    _apply(project, checkout, prune=prune)
-    valid, digest_ok = _check(project, project, "wrote", scratch_git_env())
+    try:
+        if dry_run:
+            return _dry_run(project, checkout, prune=prune)
+        refused = _apply(project, checkout, prune=prune)
+    except SafeWriteError as e:   # refused before the first write: nothing was applied
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    failed, digest_ok = _check(project, project, "wrote", refused, scratch_git_env())
     _section("next")
-    steps = list(CHECKLIST)
-    if not digest_ok:
-        steps.insert(1, "Run specy-road digest (and specy-road export if roadmap.md is tracked), then commit"
-                        " them. Not specy-road sync: it also fast-forwards the integration branch.")
-    if not valid:
-        steps.insert(0, "Fix the validate errors above; the refreshes are written either way.")
-    for step in steps:
+    steps = [failed, CHECKLIST[0], None if digest_ok else _DIGEST_STEP, *CHECKLIST[1:]]
+    for step in filter(None, steps):
         print(f"- {step}")
     _print_other_worktrees(checkout)
-    return 0 if valid else 1
+    return 0 if failed is None else 1
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -403,7 +434,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     try:
-        code = run_upgrade(args.repo_root, dry_run=args.dry_run, prune=args.prune)
+        with safe_write.exit_on_refusal():   # a refusal, or a symlink loop met before the rule
+            code = run_upgrade(args.repo_root, dry_run=args.dry_run, prune=args.prune)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e

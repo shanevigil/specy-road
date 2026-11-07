@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road import __version__
-from specy_road.agent_ignores import apply_and_report
+from specy_road import __version__, safe_write
+from specy_road.agent_ignores import apply_and_report, check_ignore_files
 from specy_road.agents_md_block import apply_agents_files
-from specy_road.generated_files import GENERATED_COMMITTED, refused_generated_files, regenerate_generated_files
+from specy_road.generated_files import GENERATED_COMMITTED, regenerate_generated_files
 from specy_road.harness_instruction_files import AGENTS_MD
-from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
+from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, raise_rule_refusal
 from specy_road.model_profiles import PROFILES_REL, load_profile
 from specy_road.runtime_paths import (
     git_root,
@@ -173,9 +172,15 @@ def _copy_templates(
     dry_run: bool,
     force: bool,
 ) -> tuple[list[str], list[str]]:
-    """Copy each template file; return ``(written, skipped)`` as git-root-relative paths."""
+    """Copy each template file; return ``(written, skipped)`` as git-root-relative paths.
+
+    Every destination is checked by the safe-write rule before the first copy,
+    with or without ``force``: a symlink at it (a dangling one counts as present)
+    or on a directory above it raises :class:`~specy_road.safe_write.SafeWriteError`.
+    """
     written: list[str] = []
     skipped: list[str] = []
+    copies: list[tuple[Path, Path]] = []
     for path in sorted(src.rglob("*")):
         rel = path.relative_to(src)
         # .gitignore is written as the git root's managed block (seeded from
@@ -183,13 +188,14 @@ def _copy_templates(
         if path.is_dir() or rel == _GITIGNORE or not include_template_profiles_file(rel, selection):
             continue
         out = dst / rel
-        if out.exists() and not force:
+        safe_write.check(dst, out)
+        if os.path.lexists(out) and not force:
             skipped.append(f"{prefix}{rel.as_posix()}")
             continue
-        if not dry_run:
-            out.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(path, out)
+        copies.append((path, out))
         written.append(f"{prefix}{rel.as_posix()}")
+    for path, out in () if dry_run else copies:
+        safe_write.copy(dst, path, out)
     return written, skipped
 
 
@@ -204,11 +210,9 @@ def _write_generated(
     if present and not force:
         skipped.extend(f"{prefix}{name}" for name in present)
         return
-    refused = refused_generated_files(dst)   # a link out of the project is never written through
-    if not dry_run:
+    if not dry_run:   # _scaffold checked both by the safe-write rule
         regenerate_generated_files(dst)
-    written.extend(f"{prefix}{name}" for name in GENERATED_COMMITTED if name not in refused)
-    skipped.extend(f"{prefix}{name} ({why})" for name, why in refused.items())
+    written.extend(f"{prefix}{name}" for name in GENERATED_COMMITTED)
 
 
 def _profile_selection(profiles: str) -> InitProfilesSelection:
@@ -218,6 +222,39 @@ def _profile_selection(profiles: str) -> InitProfilesSelection:
     if profiles_src.is_dir():
         selection = validate_init_profiles_selection(selection, profiles_src)
     return selection
+
+
+def _scaffold(
+    src: Path, dst: Path, selection: InitProfilesSelection, *, dry_run: bool, force: bool,
+) -> tuple[Path, str, list[str], list[str]]:
+    """Write every path ``init project`` owns; ``(root, prefix, written, skipped)``.
+
+    The ignore files, ``.specyrd/manifest.json`` and (with ``force``, which
+    rewrites them) the generated files are checked by the safe-write rule, and
+    the template destinations by :func:`_copy_templates`, before anything is
+    written.
+    """
+    # The ignore files live at the git root (dst itself outside a repository)
+    # and name project paths with the prefix, so a nested project gets no
+    # .gitignore of its own. The template's commented header seeds a missing
+    # one only when the two roots coincide: its comments name unprefixed paths.
+    top = git_root(next(p for p in (dst, *dst.parents) if p.is_dir()))   # dst may not exist yet
+    root = top or dst
+    prefix = prefix_within(top, dst) if top else ""
+    check_ignore_files(root)
+    if top is not None:
+        safe_write.check(top, top / _MANIFEST)
+    # without force a present generated file is skipped, not written
+    safe_write.check_all(dst, (dst / name for name in GENERATED_COMMITTED if force))
+    written, skipped = _copy_templates(src, dst, prefix, selection, dry_run=dry_run, force=force)
+    _apply_agents_md(dst, prefix, written, dry_run=dry_run)
+    seed = "" if prefix else (src / _GITIGNORE).read_text(encoding="utf-8")
+    apply_and_report(root, prefix, written, dry_run=dry_run, gitignore_seed=seed)
+    raise_rule_refusal(written)   # an ignore file linked after the preflight, refused right before replace
+    if top is not None:
+        _record_layout(top, prefix, written, dry_run=dry_run)
+    _write_generated(dst, prefix, written, skipped, dry_run=dry_run, force=force)
+    return root, prefix, written, skipped
 
 
 def run_init_project(
@@ -257,20 +294,11 @@ def run_init_project(
         print(msg, file=sys.stderr)
         return 1
 
-    # The ignore files live at the git root (dst itself outside a repository)
-    # and name project paths with the prefix, so a nested project gets no
-    # .gitignore of its own. The template's commented header seeds a missing
-    # one only when the two roots coincide: its comments name unprefixed paths.
-    top = git_root(next(p for p in (dst, *dst.parents) if p.is_dir()))   # dst may not exist yet
-    root = top or dst
-    prefix = prefix_within(top, dst) if top else ""
-    written, skipped = _copy_templates(src, dst, prefix, selection, dry_run=dry_run, force=force)
-    _apply_agents_md(dst, prefix, written, dry_run=dry_run)
-    seed = "" if prefix else (src / _GITIGNORE).read_text(encoding="utf-8")
-    apply_and_report(root, prefix, written, dry_run=dry_run, gitignore_seed=seed)
-    if top is not None:
-        _record_layout(top, prefix, written, dry_run=dry_run)
-    _write_generated(dst, prefix, written, skipped, dry_run=dry_run, force=force)
+    try:
+        root, prefix, written, skipped = _scaffold(src, dst, selection, dry_run=dry_run, force=force)
+    except (OSError, RuntimeError) as e:   # a refusal, or a symlink loop met before the rule
+        print(f"error: {safe_write.refusal_of(e)}", file=sys.stderr)
+        return 1
 
     verb = "would write" if dry_run else "wrote"
     for entry in written:

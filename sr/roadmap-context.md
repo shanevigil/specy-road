@@ -123,7 +123,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.34` Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch `cr2-case-fits-the-todo-app` — task — **Complete**
   - `M21.35` review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules `refused-review-gets-one-repair-turn` — task — **Complete**
   - `M21.36` brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens `verify-normalizes-real-page-text` — task — **Complete**
-  - `M21.37` One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout `safe-write-rule-setup-writers` — task — **Not Started**
+  - `M21.37` One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout `safe-write-rule-setup-writers` — task — **Complete**
   - `M21.38` Review writers and the review lock refuse any symlink on the path from the project root `review-writers-refuse-links` — task — **Not Started**
   - `M21.39` Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path `ops-writers-refuse-links` — task — **Not Started**
   - `M21.40` upgrade's scratch git drops every GIT_ variable, runs no hook, and times out `upgrade-scratch-git-env-sterile` — task — **Complete**
@@ -306,7 +306,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.37` on `feature/rm-safe-write-rule-setup-writers` since 2026-11-06
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
@@ -316,13 +315,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 31 | 0 | 2.45 | 55% | 30 | 2 |
+| `docs` **flagged** | 32 | 0 | 2.78 | 56% | 34 | 3 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 46 | 0 | 2.43 | 52% | 38 | 4 |
-| `tests` **flagged** | 49 | 0 | 2.39 | 51% | 38 | 4 |
-| `CHANGELOG.md` | 33 | 0 | 1.91 | 39% | 27 | 1 |
+| `specy_road` **flagged** | 46 | 0 | 2.67 | 54% | 42 | 5 |
+| `tests` **flagged** | 49 | 0 | 2.61 | 53% | 42 | 5 |
+| `CHANGELOG.md` | 34 | 0 | 2.24 | 41% | 31 | 2 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
 

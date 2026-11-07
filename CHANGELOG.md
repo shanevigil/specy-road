@@ -18,6 +18,31 @@ body. Keep section bodies focused; link to PRs for detail.
 - A Codex reviewer's resumed turn, the format-repair retry included, passes `-m` with the requested model, as the
   fresh turn does, so the retry no longer runs on Codex's configured default while its verdict is filed under the
   requested id. Claude Code and Cursor already passed their `--model` on a reviewer resume.
+- **Security:** one safe-write rule for the setup and upgrade writers
+  (`specy_road/safe_write.py`): before any mkdir, write or delete, every
+  directory from the project root down must be a real directory and the file a
+  regular one, so any symlink on the path is refused, dangling, out of the
+  project or **inside it**. `init project`, `refresh-schemas`, `specyrd init`
+  (`.specyrd/manifest.json`), `export`, `digest` (default and relative `-o`),
+  pickup's regeneration, `refresh-stubs` and `specyrd init` (stubs, skill
+  files and skill links; an agent skills directory may itself be a symlink only
+  as `.claude/skills -> ../.agents/skills` or `.agents/skills -> ../.claude/skills`,
+  any other link is refused), `--prune` (an
+  orphan under a linked directory), `.gitignore` and `.cursorindexingignore`,
+  the opt-in hook installs (`--install-guard-hooks`: the harness settings or hooks file and
+  `.specyrd/hooks/<agent>/README.md`; `--install-pre-push`: `.git/hooks/pre-push`, all checked before `specyrd init`'s
+  first write), and `restore-archive` (every path checked before its first change) refuse it,
+  naming `<path> is a symlink (to <target>), not <kind>`; the commands exit 1, a symlink loop on the path
+  (a link to itself, or the two skills directories linked to each other) included, without a traceback. `upgrade` checks every change before its first one, so a schema linked out
+  of the checkout no longer overwrites the outside file; it exits 1 on a
+  refusal (a generated file, stub, skill file or skill link) even when `validate`
+  passes, in a real run and in `--dry-run`. Behaviour changes: an in-repo symlink at
+  `roadmap.md` or `roadmap-context.md` was written through and is now refused; a
+  stub or skill file linked out of the repository was a `refused` report line with
+  exit 0 and is now `error:` with exit 1; a skills directory linked to an
+  in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
+  is now refused: replace it with one of the two links above or a real directory.
+  `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.

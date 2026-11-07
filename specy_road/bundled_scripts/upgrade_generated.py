@@ -14,7 +14,8 @@ from specy_road.bundled_scripts.export_roadmap_md import export_markdown
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.ignore_report import isolate_git, scratch_git_env
-from specy_road.managed_block import resolves_outside
+from specy_road import safe_write
+from specy_road.managed_block import refused_link
 
 COPY = "the temporary copy"
 
@@ -54,8 +55,8 @@ def regenerate(project: Path, tracked_in: Path, verb: str, caller_env: dict[str,
     """Write each drifted generated file into ``project``: the digest, and ``roadmap.md`` if ``tracked_in`` tracks it.
 
     ``tracked_in`` is the checkout's project: a dry run renders and writes into its
-    copy, whose single commit tracks everything. A path that leads out of the
-    project is refused before it is read; the rest are compared as bytes, so a
+    copy, whose single commit tracks everything. A path the safe-write rule
+    refuses (a symlink of any kind) is refused before it is read; the rest are compared as bytes, so a
     file that is not UTF-8 is drifted, not an error. Returns whether a path was refused.
 
     The question goes to the caller's checkout, under their own config (``caller_env``,
@@ -73,14 +74,14 @@ def regenerate(project: Path, tracked_in: Path, verb: str, caller_env: dict[str,
     refused = wrote = False
     for rel, body, command in files:
         path = project / rel
-        if resolves_outside(project, path):   # checked before any read: a link out is never opened
-            print(f"refused {rel} (a symlink leads outside the project)")
+        if why := refused_link(project, path):   # checked before any read: a link is never opened
+            print(f"refused {rel} ({why})")
             refused = wrote = True
             continue
         if path.is_file() and path.read_bytes() == body.encode("utf-8"):
             continue
         wrote = True
-        path.write_text(body, encoding="utf-8")
+        safe_write.write(project, path, body)
         print(f"{verb} {rel} ({command})")
     if not wrote:
         print("generated files already current")

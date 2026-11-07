@@ -188,7 +188,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.34` | Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch | task | — | Complete |
 | `M21.35` | review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules | task | — | Complete |
 | `M21.36` | brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens | task | — | Complete |
-| `M21.37` | One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout | task | — | Not Started |
+| `M21.37` | One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout | task | — | Complete |
 | `M21.38` | Review writers and the review lock refuse any symlink on the path from the project root | task | — | Not Started |
 | `M21.39` | Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path | task | — | Not Started |
 | `M21.40` | upgrade's scratch git drops every GIT_ variable, runs no hook, and times out | task | — | Complete |

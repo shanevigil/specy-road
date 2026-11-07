@@ -25,6 +25,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.harness_instruction_files import LOCAL_MD
+from specy_road import safe_write
 from specy_road.ignore_report import MATCH_LIMIT, attempt, estimate, observe, observed, print_matches  # noqa: F401 — MATCH_LIMIT re-exported
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, apply_managed_block
 from specy_road.written_entry import Written
@@ -121,10 +122,15 @@ def _seed(path: Path, text: str, dry_run: bool) -> bool:
         return False
     if not dry_run:
         try:
-            path.write_text(text, encoding="utf-8")
+            safe_write.write(path.parent, path, text)
         except OSError:
             return False
     return True
+
+
+def check_ignore_files(git_root: Path) -> None:
+    """Raise ``SafeWriteError`` when the safe-write rule refuses either ignore file, so a command can stop first."""
+    safe_write.check_all(git_root, (git_root / name for name in (GITIGNORE, CURSOR_INDEXING_IGNORE)))
 
 
 def apply_agent_ignores(
@@ -144,7 +150,8 @@ def apply_agent_ignores(
     as created, so a dry run, which writes no seed, reports the same outcome.
 
     Both files belong to the consumer, so only the marked block is ever
-    rewritten. Re-running is a no-op.
+    rewritten. Re-running is a no-op. Both go through the safe-write rule
+    (``strict``): a symlink of any kind at either name is refused, not followed.
     """
     seeded = _seed(git_root / GITIGNORE, gitignore_seed, dry_run)
     gitignore = apply_managed_block(
@@ -152,6 +159,7 @@ def apply_agent_ignores(
         _prefixed(GITIGNORE_LINES, project_prefix),
         note=_GITIGNORE_NOTE,
         dry_run=dry_run,
+        strict=True,
     )
     return {
         CURSOR_INDEXING_IGNORE: apply_managed_block(
@@ -159,6 +167,7 @@ def apply_agent_ignores(
             _prefixed(INDEXING_IGNORE_LINES, project_prefix),
             note=_INDEXING_NOTE,
             dry_run=dry_run,
+            strict=True,
         ),
         GITIGNORE: CREATED if seeded and gitignore == UPDATED else gitignore,
     }

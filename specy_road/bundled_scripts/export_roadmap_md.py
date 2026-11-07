@@ -11,6 +11,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from specy_road import safe_write
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
 from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
@@ -148,12 +149,11 @@ def reexport_roadmap_md(root: Path) -> None:
     The archive CLI and the PM GUI both did this inline so that a later
     ``export --check`` would not report drift they had caused; the module that
     owns the file -- and the --check comparison -- owns the regeneration too.
+    Written by the safe-write rule: a symlink at it raises ``SafeWriteError``.
     """
     from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
-    (root / "roadmap.md").write_text(
-        export_markdown(load_roadmap(root)["nodes"]), encoding="utf-8"
-    )
+    safe_write.write(root, root / "roadmap.md", export_markdown(load_roadmap(root)["nodes"]))
 
 
 def _print_gitignore_hint(root: Path) -> None:
@@ -187,7 +187,8 @@ def _write_export(
             raise SystemExit(1)
         print("OK: roadmap.md matches merged roadmap graph.")
         return
-    out_index.write_text(index, encoding="utf-8")
+    with safe_write.exit_on_refusal():
+        safe_write.write(root, out_index, index)
     print(f"Wrote {out_index}")
 
 
