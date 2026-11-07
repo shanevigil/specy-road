@@ -20,7 +20,8 @@ from specy_road.init_project import run_init_project
 from specy_road.review_delegate_packet import ensure_packet
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_rejected import rejected_path, write_rejected
-from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.review_target import resolve_target
+from specy_road.safe_write import SafeWriteError
 
 # A packet naming another commit, so ensure_packet rebuilds it when it may write.
 OLD = b"# old\n\n**Commit under review:** `0000000`\n"
@@ -85,7 +86,7 @@ def _packet(tmp_path: Path):
     def run() -> object:
         try:
             return ensure_packet(repo, t, None)
-        except ReviewTargetError as exc:
+        except SafeWriteError as exc:
             return exc
     return reviews, PACKET_NAME, run
 

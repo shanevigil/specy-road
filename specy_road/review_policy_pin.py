@@ -41,11 +41,11 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road import review_lock
+from specy_road import review_lock, safe_write
 from specy_road.bundled_scripts.registration_pickup_commit import with_policy_trailer
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_text, run
-from specy_road.review_files import reviews_dir
+from specy_road.review_files import project_of, reviews_dir
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_target import REGISTER_SUBJECT, ReviewTargetError, full_sha, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -287,11 +287,15 @@ def cmd_accept_policy(ns: argparse.Namespace) -> int:
         return 1
     record = {"node_id": ns.node_id, "pinned_sha256": pinned, "accepted_sha256": current, "user": _user(root),
               "at": datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()}
+    path = acceptance_path(root, ns.node_id)
     try:
-        with review_lock.review_run_lock(reviews_dir(root, ns.node_id), wait=review_lock.FILING_WAIT):
-            acceptance_path(root, ns.node_id).write_text(yaml.safe_dump(record, sort_keys=False), encoding="utf-8")
+        with review_lock.review_run_lock(path.parent, wait=review_lock.FILING_WAIT):
+            safe_write.write(project_of(path), path, yaml.safe_dump(record, sort_keys=False))
     except review_lock.ReviewRunBusy:
         print(f"error: {review_lock.filing_busy(ns.node_id)}", file=sys.stderr)
+        return 1
+    except safe_write.SafeWriteError as e:
+        print(f"error: {e}", file=sys.stderr)
         return 1
     print(f"wrote {acceptance_path(root, ns.node_id)}")
     return 0

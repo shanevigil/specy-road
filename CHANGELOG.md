@@ -13,6 +13,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- **Security:** review writers and the review lock follow the safe-write rule from the project
+  directory that holds `work/`. A symlink at `work`, `work/reviews`, `work/reviews/<node>`, or at the
+  lock, record, marker, acceptance, packet or prompt file (dangling or inside the project) refuses the
+  command with `error: <path> is a symlink ...` and exit 1, before anything is written or a reviewer is
+  launched. `review record` checks the live record and `history/` before it writes or clears a rejection
+  marker. After a reviewer run, a symlink planted at `work` or `work/reviews` is a review failure and is
+  not read or written through.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.

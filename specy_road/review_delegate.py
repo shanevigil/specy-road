@@ -45,6 +45,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from specy_road import safe_write
 from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
@@ -59,6 +60,7 @@ from specy_road.review_model_check import check_note, check_run, rostered
 from specy_road.review_record_write import (Outcome, ReviewRunBusy, answer_scratch, attempt_text,
                                             close_review_run, delegate_turn, file_review, final_answer, repair_prompt,
                                             review_run_lock, snapshot, write_schema)
+from specy_road.review_write_check import ancestor_symlink
 from specy_road.review_run_status import superseded_by
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.review_usage import add_parser as add_usage_parser, archive_round
@@ -197,7 +199,7 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
                                 "log_sha256": turn["log_sha256"], **({"repair": True} if "refusal" in run else {})})
         if path.is_symlink():   # replaced below, never followed; the tripwire still reports it (review_write_check)
             h.replaced.append(path)
-        save_run(path, run)
+        _save(path, run)
         if not cap:
             return f"harness exited {turn['exit']}: {said[:200]}" if failed else ""
         reason = f"capacity error after {n + 1} attempt(s): {cap[:200]}"
@@ -206,11 +208,29 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
     return reason
 
 
+def _save(path: Path, run: dict[str, Any]) -> None:
+    """Write the run record unless a symlink sits between the project and it: nothing is created through one."""
+    if ancestor_symlink(path) is None:
+        save_run(path, run)
+
+
+def _prompt_path(repo_root: Path, node_id: str, model: str, suffix: str = "") -> Path:
+    return repo_root / "work" / f"prompt-{node_id}-reviewer-{model}{suffix}.md"
+
+
 def _prompt_file(repo_root: Path, node_id: str, model: str, text: str, suffix: str = "") -> Path:
-    p = repo_root / "work" / f"prompt-{node_id}-reviewer-{model}{suffix}.md"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(text, encoding="utf-8")
+    p = _prompt_path(repo_root, node_id, model, suffix)
+    safe_write.write(repo_root, p, text)   # refused before the caller launches
     return p
+
+
+def _prompt_pair(repo_root: Path, node_id: str, model: str, first: tuple[str, str],
+                 second: tuple[str, str]) -> tuple[Path, Path]:
+    """Both prompt files checked before either is written, so a link at the second name writes nothing."""
+    safe_write.check_all(repo_root, (_prompt_path(repo_root, node_id, model, first[0]),
+                                     _prompt_path(repo_root, node_id, model, second[0])))
+    return (_prompt_file(repo_root, node_id, model, first[1], first[0]),
+            _prompt_file(repo_root, node_id, model, second[1], second[0]))
 
 
 def _repair_prompts(repo_root: Path, node_id: str, model: str, text: str, refusal: str,
@@ -218,8 +238,8 @@ def _repair_prompts(repo_root: Path, node_id: str, model: str, text: str, refusa
     """The repair turn's pair for :func:`_attempts`: the full prompt plus the repair section (a fresh launch), and
     the repair section alone (a resumed one), so every launch of the phase carries the refusal of ``kind``."""
     section = repair_prompt(refusal, kind)
-    return (_prompt_file(repo_root, node_id, model, text.rstrip("\n") + "\n\n" + section, "-repair-full"),
-            _prompt_file(repo_root, node_id, model, section, "-repair"))
+    return _prompt_pair(repo_root, node_id, model, ("-repair-full", text.rstrip("\n") + "\n\n" + section),
+                        ("-repair", section))
 
 
 def _file(repo_root: Path, node_id: str, model: str, reviews: Path, h: _Harness, run: dict[str, Any],
@@ -291,9 +311,9 @@ def _delegate_locked(repo_root: Path, t: ReviewTarget, node_id: str, model: str,
         print(h.note, file=sys.stderr)
     if h.api_id is None and entry.get("routing") != "dynamic":
         raise DelegateError(_no_model_refusal(model, h.harness))
+    resume_text = CHORE_RESUME_PROMPT if chore else RESUME_PROMPT
     prompts = (_repair_prompts(repo_root, node_id, model, text, *stored) if stored is not None else
-               (_prompt_file(repo_root, node_id, model, text),
-                _prompt_file(repo_root, node_id, model, CHORE_RESUME_PROMPT if chore else RESUME_PROMPT, "-resume")))
+               _prompt_pair(repo_root, node_id, model, ("", text), ("-resume", resume_text)))
     archive_round(repo_root, node_id, model)   # M14.6: the previous round's RUN json, log and notes, kept in history/
     run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
            "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
@@ -302,7 +322,7 @@ def _delegate_locked(repo_root: Path, t: ReviewTarget, node_id: str, model: str,
            "log": str(path.with_suffix(".log"))}
     if stored is not None:   # this resume is the repair turn: it gets no second one
         run["refusal"], run["refusal_kind"] = stored
-    save_run(path, run)
+    _save(path, run)
     h.log = path.with_suffix(".log")
     try:
         # M8.3's read-only check and filing are for roadmap reviews; a chore reviewer files its own verdict file.
@@ -327,7 +347,7 @@ def _delegate_locked(repo_root: Path, t: ReviewTarget, node_id: str, model: str,
         raise
     finally:
         run["ended_at"] = _now()
-        save_run(path, run)
+        _save(path, run)
     return run
 
 
@@ -416,7 +436,8 @@ def cmd_review_delegate(ns: argparse.Namespace) -> int:
     try:
         run = delegate(root, ns.node_id, ns.model, ref=ns.ref, resume=ns.resume, retries=ns.retries,
                        backoff=ns.backoff, worktree=Path(ns.worktree) if ns.worktree else None, sign_key=ns.sign_key)
-    except (DelegateError, ReviewTargetError, WorkerError) as e:   # WorkerError: an unsafe recorded session id
+    except (DelegateError, ReviewTargetError, WorkerError, safe_write.SafeWriteError) as e:
+        # WorkerError: an unsafe recorded session id. SafeWriteError: a symlink on a path the run would write.
         print(f"error: {e}", file=sys.stderr)
         return 1
     except Unsupported as e:

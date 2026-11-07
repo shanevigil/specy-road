@@ -74,6 +74,7 @@ from specy_road.bundled_scripts.role_prompt_rca import (
     profile_lines,
     reviewer_preamble,
 )
+from specy_road import safe_write
 from specy_road.bundled_scripts.role_prompt_rework import rework_lines
 from specy_road.decisions import coordinator_decision_lines
 from specy_road.model_profiles import ROLES, Profile
@@ -364,19 +365,47 @@ def main(argv: list[str] | None = None) -> None:
         p.error("--run applies only to --channel cli")
     root = resolve_repo_root(ns)
     lock = contextlib.ExitStack()
-    if ns.role == "reviewer" and ns.channel == "cli" and ns.run:   # bare-mode auth only: the roster preflight still runs after the RUN opens
-        config, _err = pinned_config(root)
-        entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
-        blocked = reviewer_launch_block(pinned_profile_for_entry(root, entry), entry, root)
-        if blocked is not None:
-            raise SystemExit(blocked.exit or 1)
-        try:   # the leaf's run lock before the run writes any of its files
-            lock.enter_context(review_run_lock(reviews_dir(root, ns.node_id)))
-        except ReviewRunBusy as e:
-            print(f"error: {e}", file=sys.stderr)
-            raise SystemExit(1) from None
-    with lock:
-        _run(ns, root)
+    try:
+        if ns.role == "reviewer" and ns.channel == "cli" and ns.run:   # bare-mode auth only: the roster preflight still runs after the RUN opens
+            config, _err = pinned_config(root)
+            entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
+            blocked = reviewer_launch_block(pinned_profile_for_entry(root, entry), entry, root)
+            if blocked is not None:
+                raise SystemExit(blocked.exit or 1)
+            lock.enter_context(review_run_lock(reviews_dir(root, ns.node_id)))   # before the run writes any file
+        with lock:
+            _run(ns, root)
+    except ReviewRunBusy as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+    except safe_write.SafeWriteError as e:   # a symlink at the lock or at the prompt file: nothing was launched
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
+def _in_project(root: Path, path: Path) -> bool:
+    """``path`` spelled under ``root``, ``.`` and ``..`` collapsed, without following a symlink."""
+    base = root if root.is_absolute() else Path.cwd() / root
+    full = path if path.is_absolute() else base / path
+    parts: list[str] = []
+    for name in full.parts:
+        if name == "..":
+            if len(parts) > 1:
+                parts.pop()
+        elif name != ".":
+            parts.append(name)
+    full = Path(*parts)
+    return full == base or base in full.parents
+
+
+def _write_prompt(root: Path, out: Path, text: str) -> None:
+    """The prompt file. Inside the project it goes through the safe-write rule; an explicit ``-o`` outside stays
+    the caller's own write."""
+    if _in_project(root, out):
+        safe_write.write(root, out, text)
+        return
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text, encoding="utf-8")
 
 
 def _launch_warning(ns: argparse.Namespace, config: dict, entry: dict, prof: Profile | None, root: Path) -> None:
@@ -399,8 +428,7 @@ def _run(ns: argparse.Namespace, root: Path) -> None:
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)
     out = ns.output or root / "work" / f"prompt-{ns.node_id}-{ns.role}-{ns.model}.md"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text, encoding="utf-8")
+    _write_prompt(root, out, text)
     print(f"Wrote {out}", file=sys.stderr)
     if prof is None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)

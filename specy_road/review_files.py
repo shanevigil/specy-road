@@ -23,6 +23,8 @@ coordinator polls the directory. Both schemas ship in the wheel, like
 from __future__ import annotations
 
 import json
+import os
+import stat
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from functools import cache
@@ -32,6 +34,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from specy_road import safe_write
 from specy_road.git_subprocess import git_text
 from specy_road.runtime_paths import specy_road_package_dir
 from specy_road.schema_revision import accepted_at_revision
@@ -97,13 +100,43 @@ def review_path(repo_root: Path, node_id: str, model: str) -> Path:
     return reviews_dir(repo_root, node_id) / f"{REVIEW_PREFIX}{model}.md"
 
 
+def project_of(path: Path) -> Path:
+    """The project directory that holds ``work/`` on ``path``.
+
+    A hand-off path is ``<project>/work/...``. A path with no ``work`` component
+    (a unit test's bare directory) is two parents up, so the check still sees
+    the directory the file sits in.
+    """
+    parts = path.parts
+    if "work" in parts:
+        i = parts.index("work")
+        return Path(*parts[:i]) if i else Path(parts[0])
+    return path.parents[2] if len(path.parents) > 2 else path.parent
+
+
+def _unlink_case_variant(directory: Path, name: str) -> None:
+    """Remove a same-name entry whose ``lstat`` is a regular file or a symlink; a link is unlinked as an entry."""
+    for p in directory.iterdir():
+        if p.name.lower() != name.lower():
+            continue
+        try:
+            mode = os.lstat(p).st_mode
+        except OSError:
+            continue
+        if stat.S_ISREG(mode) or stat.S_ISLNK(mode):
+            os.unlink(p)
+
+
 def write_review(path: Path, text: str) -> None:
-    """Write ``path`` under its exact name; on macOS APFS writing over ``review-x.md`` would keep that name."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    for p in path.parent.iterdir():
-        if p.name.lower() == path.name.lower() and p.is_file():
-            p.unlink()
-    path.write_text(text, encoding="utf-8")
+    """Write ``path`` under its exact name; on macOS APFS writing over ``review-x.md`` would keep that name.
+
+    A symlink at the name, or at any directory from the project root down, is refused before the directory is
+    made and before the case-variant names are unlinked.
+    """
+    safe_write.check(project_of(path), path)
+    safe_write.mkdirs(project_of(path), path.parent)
+    _unlink_case_variant(path.parent, path.name)
+    safe_write.write(project_of(path), path, text)
 
 
 @cache
@@ -276,12 +309,18 @@ def list_reviews(repo_root: Path, node_id: str, acceptance_ids: list[str] | None
 
 
 def archive_review(repo_root: Path, node_id: str, model: str, text: str) -> Path:
-    """Keep a copy of a filed record under ``history/``; names sort in filing order."""
-    d = reviews_dir(repo_root, node_id) / HISTORY_DIRNAME
-    d.mkdir(parents=True, exist_ok=True)
+    """Keep a copy of a filed record under ``history/``; names sort in filing order.
+
+    ``history/`` and the copy are checked from the project root before the directory is made, so a symlink
+    there is refused and nothing is written through it.
+    """
+    reviews = reviews_dir(repo_root, node_id)
+    d = reviews / HISTORY_DIRNAME
     path = d / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}-{model}.md"
-    path.write_text(text, encoding="utf-8")
-    return path
+    owned = project_of(reviews)
+    safe_write.check(owned, d, safe_write.DIRECTORY)
+    safe_write.check(owned, path)
+    return safe_write.write(owned, path, text)
 
 
 def list_review_history(repo_root: Path, node_id: str) -> list[ReviewFile]:

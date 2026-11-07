@@ -36,6 +36,7 @@ from specy_road.review_gate import (
 )
 from specy_road.review_tally import tally_trailers
 from specy_road.review_target import is_milestone, milestone_close_problem, resolve_target_or_exit
+from specy_road import safe_write
 from specy_road.review_lock import ReviewRunBusy, filing_busy
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
@@ -234,8 +235,14 @@ def _gate_or_human_approval(
             raise SystemExit(0)
         try:
             written = write_human_approval(ROOT, node, gate.commit, sign_key)
-        except (SigningError, ReviewRunBusy) as e:   # a reviewer run holds the hand-off directory: nothing written
-            why = f"could not sign: {e}" if isinstance(e, SigningError) else filing_busy(node["id"])
+        except (SigningError, ReviewRunBusy, safe_write.SafeWriteError) as e:
+            # a reviewer run holds the hand-off directory, or a symlink is on the path: nothing written
+            if isinstance(e, SigningError):
+                why = f"could not sign: {e}"
+            elif isinstance(e, ReviewRunBusy):
+                why = filing_busy(node["id"])
+            else:
+                why = str(e)
             print(f"error: {why}", file=sys.stderr)
             raise SystemExit(1) from None
         # From a linked worktree the review lands in the main worktree.
