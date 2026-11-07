@@ -172,6 +172,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Complete**
   - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Not Started**
   - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Complete**
+  - `M22.41` ready refuses a leaf with no commits, and handoff status stops offering it for review `ready-refuses-a-leaf-with-no-commits` — task — **Not Started**
+  - `M22.42` Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review `sibling-heads-come-from-the-reviewed-checkout` — task — **Not Started**
+  - `M22.43` digest gives the same result with a cold or warm history cache `digest-is-the-same-cold-or-warm` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -320,15 +323,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 35 | 0 | 2.54 | 54% | 34 | 2 |
+| `CHANGELOG.md` **flagged** | 47 | 0 | 2.30 | 51% | 31 | 2 |
+| `docs` **flagged** | 35 | 0 | 2.43 | 51% | 20 | 1 |
+| `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `CHANGELOG.md` | 40 | 0 | 2.15 | 40% | 31 | 2 |
-| `planning` | 1 | 0 | 1.00 | 0% | 0 | 0 |
-| `specy_road` | 46 | 0 | 2.37 | 50% | 42 | 3 |
+| `specy_road` **flagged** | 46 | 0 | 2.33 | 52% | 31 | 2 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 48 | 0 | 2.31 | 48% | 42 | 3 |
+| `tests` | 47 | 0 | 2.26 | 49% | 29 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
