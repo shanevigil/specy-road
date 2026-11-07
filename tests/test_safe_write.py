@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from specy_road import safe_write
+from specy_road.generated_files import regenerate_generated_files
+from specy_road.init_project import run_init_project
+from specy_road.managed_block import apply_managed_block
 from specy_road.safe_write import SafeWriteError
 
 OLD = b"old\n"
@@ -178,7 +182,11 @@ def test_prune_empty_stops_at_a_link_or_a_non_empty_directory(tmp_path: Path) ->
     assert (tmp_path / "linked").is_symlink() and (tmp_path / "target").is_dir()
 
 
-def test_a_link_swapped_in_right_before_replace_is_refused(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("dir_fd", [True, False], ids=["descriptors", "no-dir-fd"])
+def test_a_link_swapped_in_right_before_replace_is_refused(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dir_fd: bool) -> None:
+    if not dir_fd:   # as on Windows: M21.37's lstat re-check is the guard
+        monkeypatch.setattr(os, "supports_dir_fd", os.supports_dir_fd - {os.open, os.rename, os.replace})
     path, theirs = tmp_path / "root" / "f", tmp_path / "theirs"
     path.parent.mkdir()
     path.write_bytes(OLD)
@@ -196,3 +204,158 @@ def test_a_link_swapped_in_right_before_replace_is_refused(tmp_path: Path, monke
     monkeypatch.undo()
     assert theirs.read_bytes() == OLD and path.is_symlink()
     assert sorted(p.name for p in path.parent.iterdir()) == ["f"]   # the temp file is gone
+
+
+def swap_at_open(monkeypatch: pytest.MonkeyPatch, opened: Path, swapped: Path, to: Path, before: bool = False) -> None:
+    """A racer: once ``opened`` is opened as a directory (right before ``opened`` is opened by its path, with
+    ``before``), ``swapped`` is moved to ``<name>.real`` and a symlink to ``to`` takes its place (once)."""
+    real_open, aside = os.open, swapped.with_name(swapped.name + ".real")
+
+    def swap() -> None:
+        if not os.path.lexists(aside):
+            swapped.rename(aside)
+            swapped.symlink_to(to)
+
+    def racing_open(path, flags, *args, **kwargs):
+        if before and flags & os.O_DIRECTORY and path == opened:
+            swap()
+        fd = real_open(path, flags, *args, **kwargs)
+        if not before and flags & os.O_DIRECTORY and os.path.isdir(opened) \
+                and os.path.samestat(os.fstat(fd), os.lstat(opened)):
+            swap()
+        return fd
+
+    monkeypatch.setattr(os, "open", racing_open)
+    monkeypatch.setattr(os, "supports_dir_fd", os.supports_dir_fd | {racing_open})
+
+
+def _generated(tmp_path: Path):
+    root = tmp_path / "p"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    assert run_init_project(root, profiles="none") == 0
+    return root / "roadmap.md", lambda: regenerate_generated_files(root)
+
+
+def _managed(tmp_path: Path):
+    path = tmp_path / "p" / ".gitignore"
+    path.parent.mkdir()
+    path.write_bytes(OLD)
+    return path, lambda: apply_managed_block(path, ["x"], strict=True)
+
+
+def _nested(tmp_path: Path):
+    path = tmp_path / "p" / "sub" / "f"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(OLD)
+    return path, lambda: safe_write.write(tmp_path / "p", path, "new\n")
+
+
+# writer -> setup returning (destination, run); the generated file and the managed block sit in the root itself
+RACED_WRITERS = {"generated file": _generated, "managed block": _managed, "nested file": _nested}
+
+
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("swapped", ["destination", "parent"])
+@pytest.mark.parametrize("writer", list(RACED_WRITERS))
+def test_a_link_swapped_in_after_the_walk_is_refused(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, writer: str, swapped: str) -> None:
+    path, run = RACED_WRITERS[writer](tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / path.name).write_bytes(OLD)
+    target = path if swapped == "destination" else path.parent
+    swap_at_open(monkeypatch, path.parent, target, outside / path.name if swapped == "destination" else outside)
+    try:
+        result = run()
+    except SafeWriteError as e:
+        result = f"refused: {e}"
+    monkeypatch.undo()
+
+    assert str(result).startswith(f"refused: {target} is a symlink (to {outside}")
+    assert {p.name: p.read_bytes() for p in outside.iterdir()} == {path.name: OLD}
+    real = path.parent if swapped == "destination" else path.parent.with_name(path.parent.name + ".real")
+    assert not [p.name for p in real.iterdir() if p.name.endswith(".tmp")]   # the temp file is gone
+
+
+ROOT_OPERATIONS = {
+    "write": lambda root, src: safe_write.write(root, root / "made" / "f", "x"),
+    "copy": lambda root, src: safe_write.copy(root, src, root / "f"),
+    "mkdirs": lambda root, src: safe_write.mkdirs(root, root / "made"),
+}
+
+
+def _swap_after_resolve(monkeypatch: pytest.MonkeyPatch, root: Path, to: Path) -> None:
+    """A racer: right after ``root`` is first resolved, it is moved to ``<name>.real`` and linked to ``to``."""
+    resolve = Path.resolve
+
+    def racing_resolve(self, *args, **kwargs):
+        resolved = resolve(self, *args, **kwargs)
+        if self == root and not os.path.lexists(root.with_name(root.name + ".real")):
+            root.rename(root.with_name(root.name + ".real"))
+            root.symlink_to(to)
+        return resolved
+
+    monkeypatch.setattr(Path, "resolve", racing_resolve)
+
+
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("swapped", ["before-open", "after-resolve"])
+@pytest.mark.parametrize("operation", list(ROOT_OPERATIONS))
+def test_a_root_swapped_for_a_link_before_it_is_opened_is_refused(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str, swapped: str) -> None:
+    """The root is resolved once and opened without following a link: a root swapped for a link out right
+    after that resolution, or right before it is opened, is refused and nothing lands outside."""
+    root, outside, src = tmp_path / "p", tmp_path / "outside", tmp_path / "src"
+    root.mkdir()
+    outside.mkdir()
+    src.write_bytes(b"new\n")
+    if swapped == "before-open":
+        swap_at_open(monkeypatch, root, root, outside, before=True)
+    else:
+        _swap_after_resolve(monkeypatch, root, outside)
+    with pytest.raises(SafeWriteError, match=f"^{root} is a symlink \\(to {outside}\\), not a directory$"):
+        ROOT_OPERATIONS[operation](root, src)
+    monkeypatch.undo()
+    assert not list(outside.iterdir()) and not list((tmp_path / "p.real").iterdir())
+
+
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("operation", ["write", "copy"])
+def test_a_parent_swapped_after_the_temp_file_leaves_outside_metadata_alone(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
+    """A racer swaps the parent for a link out right after the temp file is made, and plants a file with the
+    temp file's name there: setting the temp file's mode (``write``) or mode and times (``copy``) leaves it be."""
+    parent, outside, src = tmp_path / "p" / "sub", tmp_path / "outside", tmp_path / "src"
+    parent.mkdir(parents=True)
+    outside.mkdir()
+    (parent / "f").write_bytes(OLD)
+    src.write_bytes(b"new\n")
+    os.chmod(src, 0o600)
+    os.utime(src, (1_000_000, 1_000_000))
+    real_open, planted = os.open, {}
+
+    def racing_open(path, flags, *args, **kwargs):
+        fd = real_open(path, flags, *args, **kwargs)
+        if flags & os.O_CREAT and flags & os.O_EXCL and not planted:   # the temp file, by name in its parent
+            parent.rename(parent.with_name("sub.real"))
+            parent.symlink_to(outside)
+            theirs = outside / os.fsdecode(path)
+            theirs.write_bytes(OLD)
+            os.chmod(theirs, 0o666)
+            planted[theirs] = os.stat(theirs)
+        return fd
+
+    monkeypatch.setattr(os, "open", racing_open)
+    monkeypatch.setattr(os, "supports_dir_fd", os.supports_dir_fd | {racing_open})
+    with pytest.raises(SafeWriteError, match=f"^{parent} is a symlink"):
+        if operation == "write":
+            safe_write.write(tmp_path / "p", parent / "f", "new\n", mode=0o600)
+        else:
+            safe_write.copy(tmp_path / "p", src, parent / "f")
+    monkeypatch.undo()
+    [(theirs, before)] = planted.items()
+    after = os.stat(theirs)
+    assert (after.st_mode, after.st_mtime_ns, theirs.read_bytes()) == (before.st_mode, before.st_mtime_ns, OLD)
+    assert sorted(p.name for p in outside.iterdir()) == [theirs.name]
+    assert sorted(p.name for p in (tmp_path / "p" / "sub.real").iterdir()) == ["f"]   # the temp file is gone

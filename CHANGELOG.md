@@ -123,6 +123,15 @@ body. Keep section bodies focused; link to PRs for detail.
   in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
   is now refused: replace it with one of the two links above or a real directory.
   `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
+- **Security:** safe-write's writes (generated files, the strict managed blocks and the other writers on the rule)
+  and `archive`'s planning-sheet moves walk by directory descriptor: each directory is opened without following a
+  link, relative to the one above, and the file is written, given its mode and times, and replaced in the directory the walk checked. A
+  destination or a directory on the path swapped for a link between that check and the replace is refused and
+  nothing outside changes, the project root itself included. `archive` walks to every planning sheet and its archived place
+  that way before its first change, following an in-repo link (a chain of links or a linked directory included, so
+  the sheet's final target moves as before) through the directory that holds it and refusing a link out, and then
+  moves the sheets through the directories it holds; a swap is refused before the roadmap changes. Where the platform
+  has no directory descriptors (Windows), the `lstat` re-check right before the replace remains the guard.
 - **Security:** Publish, finish's landing and reviews copy, the pickup hint and the brainstorm lock follow the
   same safe-write rule. GUI Publish refuses (HTTP 400, nothing written) an in-repo or dangling symlink at
   `roadmap.md` or `roadmap-context.md`, with finish's sentence; the landing merge writes both files through the
