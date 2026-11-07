@@ -35,6 +35,12 @@ The design change: each snapshot entry records its `parent`, the key of what lis
 
 **A1 directory selection:** an unconditional `core.hooksPath` value now excludes `<common>/hooks` and `<worktree-gitdir>/hooks`. `read_chain` now returns `ConfigFile` (path, data, pairs, parent, conditional) so the snapshot knows each file's includer and whether only an `includeIf` reached it.
 
+## Rework 2 (block by `gpt-5.6-sol-high` on 3ccb81da)
+
+**Class: a config file the snapshot never recorded at one end, under a container that is not a `read:` marker.** `read_chain` left a missing include out entirely, and an included file's parent is its including config, which holds a digest and not a `read:` marker. So `compared` never treated that absence as a change: an include the unchanged config already named, created or deleted during the turn, gave no finding, and a created one holding `core.fsmonitor` was run by the post-turn `git status`.
+
+**Design change:** a missing file is now part of the chain. `read_chain` lists it with its `FileNotFoundError`, and `_config_file` records it as an `absent` entry (with its parent). Every config file a readable config names is now recorded at each end, so a creation or deletion compares as present against `absent` directly, without depending on the container rule. A file that is no longer named at all (its includer changed) is still covered by the includer's own `git_config` finding, and a file under an unreadable includer by that includer's `check_error`, as before. Hooks never had this gap: their container is a hooks directory listed in full (`read:`), and a missing hooks directory is recorded as `read:absent`.
+
 ## Probes
 
 - `hooksPath` set unconditionally, hook written in the default `.git/hooks`: no finding (the `HOOKS_CONFIGS` rows now also write `ignored-by-git`). Pass.
@@ -53,13 +59,21 @@ The design change: each snapshot entry records its `parent`, the key of what lis
 - Hooks directory reached by two names (a `hooksPath` link to the default): one listing. Checked by reading the code (`resolved_path` plus `dict.fromkeys`), as before.
 - Red/green: with base 3efc97a7's `steering_paths.py`, `git_config_text.py` and `worker_turn_check.py`, all 4 new rows and 5 `HOOKS_CONFIGS` rows fail. With the change, all 22 pass.
 
+- Rework 2: an include the unchanged common config names, missing at the start and created with `core.fsmonitor`, through a public turn: one `git_config` finding (`absent;core.fsmonitor=unset` to the digest), probes skipped, sentinel not run. Pass (new `include_created` row; fails at 3ccb81da).
+- Rework 2: an include deleted under its unchanged config: one `steering_file` finding. Pass (new `include_deleted` row; fails at 3ccb81da).
+- Rework 2: a nested include (included by an include) created, then deleted: one finding each. Pass (probe).
+- Rework 2: an `includeIf` target created under an unchanged config: one finding. Pass (probe).
+- Rework 2: `config.worktree` created when missing at the start: one finding. Pass (probe; already covered by the `.git` container, now also recorded `absent`).
+- Rework 2: an include dropped by its includer: only the includer's finding, the dropped file not reported. Pass (probe).
+- Rework 2: a clean snapshot pair with missing includes recorded: no findings. Pass (probe).
+- Rework 2: hooks checked by reading the code: every hook's parent is a hooks directory recorded as a `read:` marker, a missing directory included, so a hook created or deleted there already compares.
 ## Touch zones
 
 The final list is the brief's list, unchanged. `specy_road/schemas/worker-record.schema.json` needed no change: it already lists `steering_changed` and describes it. No call site outside the zones changed.
 
 ## Verification
 
-- `pytest -q tests/test_steering_file_guard.py`: 22 passed.
+- `pytest -q tests/test_steering_file_guard.py`: 24 passed (rework 2).
 - `pytest -q -n 4`: 5984 passed.
 - `specy-road file-limits`: OK.
 - `ruff check` on the changed Python files: clean.
@@ -90,4 +104,7 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 - Rework, `_gitdirs` raises on a missing or invalid `.git`: fail closed instead of silently watching nothing.
 - Rework, `HOOKS_CONFIGS` rows also write a hook in the default directory, asserted unreported when `hooksPath` applies (review finding 1).
 - Rework, test `test_a_container_one_end_could_not_list_is_its_one_finding_and_one_file_is_one_finding`, four rows: `hooks_over_cap`, `hooks_dir_becomes_fifo`, `including_config_unreadable`, `include_reached_by_two_names` (review findings 2 to 4).
+- Rework 2, `read_chain` lists a missing file with its `FileNotFoundError`, and `_config_file` records it as an `absent` entry: an include created or deleted under an unchanged includer compares (review finding).
+- Rework 2, test row `include_created` in `test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it`: the public-turn regression the review asked for (sentinel absent, probes skipped).
+- Rework 2, test row `include_deleted` in `CONTAINER_ROWS`: the deletion side of the same class.
 - Mocks: none added.
