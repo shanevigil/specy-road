@@ -24,6 +24,7 @@ from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import brainstorm_verify as bv
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
+    Idea,
     read_session,
 )
 
@@ -112,11 +113,14 @@ def test_check_source_states(monkeypatch) -> None:
     pages = {"https://example.com/ok": (200, "<p>Some  exact\nwords here</p>"),
              "https://example.com/miss": (200, "<p>other</p>"),
              "https://example.com/paywall": (403, ""), "https://example.com/gone": (404, ""),
+             "https://example.com/": (200, ""),
              "https://example.com/inline": (200, "<p>defined in <code>.git/config</code>.</p>"
                                                  "<p><b>Ex</b>port <em>files </em>, then</p><td>end</td>")}
     monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
+    calls: list[str] = []
 
     def fetch(url):
+        calls.append(url)
         if url.endswith("boom"):
             raise OSError("down")
         return pages[url]
@@ -133,6 +137,55 @@ def test_check_source_states(monkeypatch) -> None:
     assert bv.check_source({"url": "https://example.com/boom", "quote": "x"}, fetch) == "blocked"
     assert bv.check_source({"url": "http://example.com/ok", "quote": "x"}, fetch) == "blocked"
     assert bv.check_source({"url": "https://localhost/ok", "quote": "x"}, fetch) == "blocked"
+    assert calls.count("https://example.com/") == 1
+
+
+@pytest.mark.parametrize(("page", "page_status", "root_status", "state", "root"), [
+    ("https://example.com/missing", 404, 404, "blocked", "https://example.com/"),
+    ("https://example.com/missing", 404, 200, "not-found", "https://example.com/"),
+    ("https://example.com/missing", 404, "down", "blocked", "https://example.com/"),
+    ("https://example.com/gone", 410, 404, "blocked", "https://example.com/"),
+    ("https://example.com/gone", 410, 200, "not-found", "https://example.com/"),
+    ("https://example.com/gone", 410, "down", "blocked", "https://example.com/"),
+    ("https://user:secret@example.com:8443/missing?q=1#frag", 404, 200, "not-found", "https://example.com:8443/"),
+    ("https://example.com/ok", 200, "down", "matched", None),
+    ("https://example.com/err", 500, "down", "not-found", None),
+])
+def test_a_missing_page_follows_its_origin_root(monkeypatch, page, page_status, root_status, state, root) -> None:
+    """404 and 410 ask the origin root; only a 200 root stays not-found. A 200 or 500 page does not ask."""
+    monkeypatch.setattr(bv.socket, "getaddrinfo", _example_com_is_public)
+    calls: list[str] = []
+
+    def fetch(url: str):
+        calls.append(url)
+        if root is not None and url == root:
+            if root_status == "down":
+                raise OSError("down")
+            return root_status, ""
+        return (200, "x") if page_status == 200 else (page_status, "")
+
+    assert bv.check_source({"url": page, "quote": "x"}, fetch) == state
+    assert calls == ([page] if root is None else [page, root])
+
+
+def test_two_missing_pages_on_one_origin_probe_the_root_once(monkeypatch) -> None:
+    """One root fetch per origin per run; a different port is a different origin."""
+    monkeypatch.setattr(bv.socket, "getaddrinfo", _example_com_is_public)
+    calls: list[str] = []
+
+    def fetch(url: str):
+        calls.append(url)
+        return (200, "") if url == "https://example.com:8443/" else (404, "")
+
+    idea = Idea(id="B1", title="One", sources=[
+        {"url": "https://example.com/a", "quote": "one"},
+        {"url": "https://example.com/b", "quote": "two"},
+        {"url": "https://example.com:8443/c", "quote": "three"},
+    ])
+    bv.verify_session(BrainstormSession(slug="s"), [idea], fetch=fetch)
+    assert [s["verification"] for s in idea.sources] == ["blocked", "blocked", "not-found"]
+    assert calls == ["https://example.com/a", "https://example.com/", "https://example.com/b",
+                     "https://example.com:8443/c", "https://example.com:8443/"]
 
 
 _FOLDED = {"'": "\u2018\u2019\u201a\u2032", '"': "\u201c\u201d\u201e\u2033",
@@ -243,6 +296,41 @@ def test_default_fetch_checks_every_redirect_hop(monkeypatch) -> None:
     assert calls == ["https://example.com/a"]
     assert bv.default_fetch("https://example.com/b") == (200, "<p>exact words</p>")
     assert bv.check_source({"url": "https://example.com/a", "quote": "secret"}, bv.default_fetch) == "blocked"
+
+
+def test_a_root_that_redirects_to_a_private_address_is_blocked(monkeypatch) -> None:
+    """A 404 whose root redirects to a private address is blocked, and that address is never connected."""
+    payloads = [
+        b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+        b"HTTP/1.1 302 Found\r\nLocation: https://10.0.0.1/secret\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+    ]
+    opened: list[tuple] = []
+
+    class Sock:
+        def __init__(self) -> None:
+            self._body = payloads[len(opened) - 1]
+
+        def sendall(self, _data: bytes) -> None:
+            pass
+
+        def makefile(self, _mode: str = "rb", _buffering: int = -1):
+            return io.BytesIO(self._body)
+
+        def close(self) -> None:
+            pass
+
+    def connect(addr, _timeout):
+        opened.append(addr)
+        return object()
+
+    def wrap(_self, _sock, server_hostname=None, **_kwargs):
+        return Sock()
+
+    monkeypatch.setattr(bv.socket, "getaddrinfo", _example_com_is_public)
+    monkeypatch.setattr(bv.socket, "create_connection", connect)
+    monkeypatch.setattr(bv.ssl.SSLContext, "wrap_socket", wrap)
+    assert bv.check_source({"url": "https://example.com/missing", "quote": "x"}, bv.default_fetch) == "blocked"
+    assert opened == [("93.184.216.34", 443), ("93.184.216.34", 443)]
 
 
 def test_the_connection_is_pinned_to_the_checked_address(monkeypatch) -> None:

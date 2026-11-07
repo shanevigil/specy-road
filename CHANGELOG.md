@@ -13,6 +13,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `brainstorm verify` records `blocked`, not `not-found`, when a page returns 404 or 410 and that origin's root
+  is not 200 or cannot be fetched — a host that answers verify with 404 at its root is refusing the check. A root
+  of 200 keeps `not-found`. The root (https, the page's host and effective port, path `/`) is requested once per
+  origin per run, with the same public-https, redirect and size rules, and a 200 page makes no extra request.
 - The worker post-run check matches touch zones from either the git root or the project root in a nested layout, like
   finish does, so a commit under an `sr/...` zone is no longer flagged `committed_outside_zones`.
 - A Codex reviewer's resumed turn, the format-repair retry included, passes `-m` with the requested model, as the
