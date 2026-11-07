@@ -6,7 +6,6 @@ its golden; ``SPECY_ROAD_PARITY_REGEN=1`` rewrites the goldens instead (see READ
 
 from __future__ import annotations
 
-import itertools
 import os
 import re
 import subprocess
@@ -14,14 +13,15 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-import yaml
-
 from tests.helpers import REPO
 
 PARITY = Path(__file__).resolve().parent
 GOLDEN = PARITY / "golden"
 COMMAND_MAP = PARITY / "command_map.yaml"
-REGEN = os.environ.get("SPECY_ROAD_PARITY_REGEN") == "1"
+#: ``1`` rewrites every golden (a new baseline); ``missing`` writes only goldens that do not exist
+#: yet (a command a command_map.yaml row adds) and leaves every other golden as it is.
+REGEN_MODE = os.environ.get("SPECY_ROAD_PARITY_REGEN", "")
+REGEN = REGEN_MODE == "1"
 
 #: Harness and session variables that change what a command decides; a parity run sees none of them.
 _SCRUBBED_PREFIXES = ("SPECY_ROAD_", "CLAUDE", "CODEX_", "CURSOR_")
@@ -53,8 +53,12 @@ def _version_patterns() -> list[tuple[re.Pattern[str], str]]:
     from specy_road.doc_links import docs_ref
 
     return [
-        (re.compile(re.escape(docs_ref())), "<DOCS_REF>"),
-        (re.compile(re.escape(__version__) + r"(\+[0-9A-Za-z.]+)?"), "<VERSION>"),
+        # Whole tokens only: at 0.3.1, "0.3.1rc1" in prose is another version, not this one.
+        (re.compile(rf"(?<![\w.-]){re.escape(docs_ref())}(?![\w.-])"), "<DOCS_REF>"),
+        (
+            re.compile(rf"(?<![\w.]){re.escape(__version__)}(\+[0-9A-Za-z.]+)?(?![\w-])"),
+            "<VERSION>",
+        ),
     ]
 
 
@@ -85,48 +89,49 @@ def transcript(
     )
 
 
-def words(text: str) -> str:
-    """``text`` with every whitespace run collapsed to one space.
+def help_paragraphs(text: str) -> list[str]:
+    """``text`` split into argparse paragraphs.
 
-    Help text is compared this way because argparse reflows a paragraph when a URL in it changes
-    length, and the docs tag in those URLs follows the version (``v0.3.1-rc2`` to ``v0.3.1``): a
-    version bump must not read as a changed transcript, while any changed word still does.
+    A paragraph ends at a blank line, and a new one starts at each line indented exactly two
+    spaces (an option, positional or subcommand entry); deeper-indented lines continue the entry
+    above them, and consecutive unindented lines (a description) stay together.
     """
-    return " ".join(text.split())
+    paragraphs: list[list[str]] = []
+    for line in text.split("\n"):
+        starts = not paragraphs or not line.strip() or not paragraphs[-1][-1].strip()
+        starts = starts or (len(line) - len(line.lstrip(" ")) == 2)
+        if starts:
+            paragraphs.append([line])
+        else:
+            paragraphs[-1].append(line)
+    return ["\n".join(p) for p in paragraphs]
+
+
+def help_text(text: str) -> str:
+    """The form help transcripts are compared in: byte for byte, with one bounded exception.
+
+    A paragraph (:func:`help_paragraphs`) holding a toolkit docs URL (``<DOCS_REF>``) has its
+    whitespace runs collapsed to one space. The docs tag follows the version (``v0.3.1-rc2`` to
+    ``v0.3.1``), so a version bump changes the URL's length and argparse reflows that paragraph.
+    Limit: whitespace-only drift inside such a paragraph passes; a changed word still fails, and
+    every other paragraph must match exactly.
+    """
+    return "\n".join(" ".join(p.split()) if "<DOCS_REF>" in p else p for p in help_paragraphs(text))
 
 
 def check_golden(path: Path, actual: str, compare: Callable[[str], str] = str) -> None:
     """Fail when ``actual`` differs from the golden at ``path`` (both passed through ``compare``).
 
-    Under regeneration, write ``actual`` instead.
+    Under regeneration, write ``actual`` instead: always for ``1``, only if absent for ``missing``.
     """
-    if REGEN:
+    if REGEN or (REGEN_MODE == "missing" and not path.is_file()):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(actual, encoding="utf-8")
         return
-    assert path.is_file(), f"no golden {path.relative_to(REPO)}; run with SPECY_ROAD_PARITY_REGEN=1"
+    assert path.is_file(), (
+        f"no golden {path.relative_to(REPO)}; run with SPECY_ROAD_PARITY_REGEN=missing"
+    )
     expected = path.read_text(encoding="utf-8")
     assert compare(actual) == compare(expected), (
         f"{path.relative_to(REPO)} differs from today's output"
     )
-
-
-def command_map_rows() -> list[dict]:
-    """Rows of command_map.yaml: each authorises one changed invocation (old -> new, allowed)."""
-    doc = yaml.safe_load(COMMAND_MAP.read_text(encoding="utf-8")) or {}
-    return list(doc.get("rows") or [])
-
-
-def mapped(key: str, rows: list[dict]) -> bool:
-    """True when ``key`` (``specy-road branches prune``) or a command above it is in a map row.
-
-    A row's invocation may carry options (``specy-road doctor --prune``); its command words decide.
-    """
-    names = set()
-    for row in rows:
-        for side in ("old", "new"):
-            words = str(row.get(side) or "").split()
-            command = " ".join(itertools.takewhile(lambda w: not w.startswith("-"), words))
-            if command:
-                names.add(command)
-    return any(key == n or key.startswith(n + " ") for n in names)
