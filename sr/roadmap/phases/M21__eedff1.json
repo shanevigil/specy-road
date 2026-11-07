@@ -284,7 +284,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.37_safe-write-rule-setup-writers_3e6996c7-2e6f-477d-9c9f-fc8e33a2e313.md",
       "sibling_order": 35,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout",
       "touch_zones": [
         "specy_road/safe_write.py",

@@ -123,7 +123,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.34` Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch `cr2-case-fits-the-todo-app` — task — **Complete**
   - `M21.35` review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules `refused-review-gets-one-repair-turn` — task — **Complete**
   - `M21.36` brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens `verify-normalizes-real-page-text` — task — **Complete**
-  - `M21.37` One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout `safe-write-rule-setup-writers` — task — **Not Started**
+  - `M21.37` One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout `safe-write-rule-setup-writers` — task — **Complete**
   - `M21.38` Review writers and the review lock refuse any symlink on the path from the project root `review-writers-refuse-links` — task — **Not Started**
   - `M21.39` Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path `ops-writers-refuse-links` — task — **Not Started**
   - `M21.40` upgrade's scratch git drops every GIT_ variable, runs no hook, and times out `upgrade-scratch-git-env-sterile` — task — **Complete**
@@ -244,9 +244,6 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
-- 2026-11-06 `M21.40` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
-- 2026-11-06 `M21.43` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
-- 2026-11-06 `M21.44` stopped depending on `M21.38 Review writers and the review lock refuse any symlink on the path from the project root`
 - 2026-11-05 `M17.5` stopped depending on `M17.3 PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags`
 - 2026-11-05 `M19` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
 - 2026-11-05 `M18` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
@@ -269,7 +266,10 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.33` stopped depending on `M16.4.5 One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points`
 - 2026-11-05 `M16.33` stopped depending on `M16.5.3 Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration`
 - 2026-11-05 `M16.33` stopped depending on `M16.5.12 Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated`
-- _…and 44 earlier — `specy-road history --json`_
+- 2026-11-05 `M16.33` stopped depending on `M16.5.1 Worker runtime moves into orchestration/workers with import-path edits only`
+- 2026-11-05 `M16.33` stopped depending on `M16.5.9 Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings`
+- 2026-11-05 `M16.9` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
+- _…and 41 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -300,7 +300,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M21.37` on `feature/rm-safe-write-rule-setup-writers` since 2026-11-06
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
 - `M22.26` on `feature/rm-post-run-zone-check-git-root-zones` since 2026-11-06
 - `M22.27` on `feature/rm-old-log-test-asserts-on-the-run` since 2026-11-06
@@ -312,13 +311,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 33 | 0 | 2.52 | 58% | 31 | 3 |
-| `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
+| `docs` **flagged** | 32 | 0 | 2.53 | 56% | 28 | 3 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
-| `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 47 | 0 | 2.49 | 53% | 39 | 5 |
-| `tests` **flagged** | 49 | 0 | 2.47 | 53% | 39 | 5 |
-| `CHANGELOG.md` | 31 | 0 | 1.94 | 39% | 27 | 1 |
+| `specy_road` **flagged** | 47 | 0 | 2.57 | 55% | 40 | 5 |
+| `tests` **flagged** | 49 | 0 | 2.55 | 55% | 40 | 5 |
+| `CHANGELOG.md` | 26 | 0 | 1.96 | 35% | 20 | 1 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
 
