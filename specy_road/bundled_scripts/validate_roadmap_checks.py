@@ -13,8 +13,10 @@ from specy_road.bundled_scripts.effective_dependency_checks import cycle_check, 
 from specy_road.bundled_scripts.planning_artifacts import collect_planning_artifact_errors
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.roster_profile_check import report_roster_profiles
+from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.review_gate import review_required
 from specy_road.review_gate_agreement import gate_config_mismatch
+from specy_road.review_policy_ref import policy_source
 from specy_road.runtime_paths import default_user_repo_root, git_root
 from specy_road.workflow_prefs import warn_summary_rule
 
@@ -265,12 +267,25 @@ def _validate_roadmap_and_registry_schemas(
     validate_schema(registry, load_schema(registry_schema), "registry.schema")
 
 
+def _unread_policy_source(repo_root: Path) -> str | None:
+    """The policy-source error when the working tree leaves the review switch off.
+
+    ``review_required`` then counts the gate as on only because that source cannot
+    be read. ``None`` when the working tree turns the switch on, or the source was read.
+    """
+    if require_implementation_review_before_finish(repo_root):
+        return None
+    _ref, err = policy_source(repo_root)
+    return err or None
+
+
 def _validate_registry_entries(
     registry: dict,
     id_set: set[str],
     id_to_type: dict[str, object],
     *,
     gate: bool,
+    policy_unread: str | None = None,
 ) -> None:
     allowed_review = frozenset({"pending", "approved"})
     for e in registry.get("entries") or []:
@@ -291,12 +306,20 @@ def _validate_registry_entries(
             cn = e.get("codename")
             rv = e.get("implementation_review")
             if rv not in allowed_review:
-                print(
-                    f"registry: entry {cn!r}: when require_implementation_review_before_finish "
-                    f"is true, implementation_review must be 'pending' or 'approved' "
-                    f"(got {rv!r}).",
-                    file=sys.stderr,
-                )
+                if policy_unread:
+                    print(
+                        f"registry: entry {cn!r}: the policy source could not be read "
+                        f"({policy_unread}). implementation_review must be 'pending' or "
+                        f"'approved' (got {rv!r}).",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(
+                        f"registry: entry {cn!r}: when require_implementation_review_before_finish "
+                        f"is true, implementation_review must be 'pending' or 'approved' "
+                        f"(got {rv!r}).",
+                        file=sys.stderr,
+                    )
                 raise SystemExit(1)
 
 
@@ -354,7 +377,8 @@ def run_validation(
     id_set = set(ids)
     id_to_type = {n["id"]: n.get("type") for n in nodes}
     gate = review_required(r)
-    _validate_registry_entries(registry, id_set, id_to_type, gate=gate)
+    unread = _unread_policy_source(r) if gate else None
+    _validate_registry_entries(registry, id_set, id_to_type, gate=gate, policy_unread=unread)
     mismatch = gate_config_mismatch(r, gate_on=gate)
     if mismatch:
         print(f"roadmap: error — {mismatch}", file=sys.stderr)

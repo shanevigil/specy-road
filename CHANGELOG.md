@@ -13,6 +13,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- With `refs/remotes/<remote>/HEAD` missing, the review gate still fails closed. The error says to run
+  `git remote set-head <remote> <name>` and notes that `--auto` fails when the remote's HEAD is unborn.
+  It names `<name>` only when exactly one other remote-tracking ref has a readable committed
+  `git-workflow.yaml` whose `integration_branch` names itself; otherwise it names no branch. When
+  `validate` treats the review switch as on only because that policy source cannot be read, the registry
+  error says the policy source could not be read and prints the same command.
 - A Cursor display name that includes a context size immediately before a trailing effort, such as
   `Claude Opus 5.5 300K High` or `GPT-5.6 Sol 1M High`, matches the catalog id it names (`claude-opus-5-5-high`,
   `gpt-5.6-sol-high`). `Extra High` is `xhigh` only as that trailing suffix, and `fast` stays part of the identity.

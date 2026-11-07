@@ -340,7 +340,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.12_gate-without-remote-head_4dfa0dbd-5b47-4b91-abc3-953669d35a8a.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing",
       "touch_zones": [
         "specy_road/review_policy_ref.py",
