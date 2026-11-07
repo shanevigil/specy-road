@@ -15,6 +15,18 @@ body. Keep section bodies focused; link to PRs for detail.
 ### Fixed
 
 - A published release's GitHub notes include the exact wheel URL (`files.pythonhosted.org` or `test-files.pythonhosted.org`), its sha256, and one ready-to-paste `pip install "specy-road @ <url>#sha256=<sha>"` line. The package metadata lists Project URLs, including the release-candidate install guide, and the README links a reader needs from the package page are absolute. The RC install guide says moving to a newer RC is a fresh install of the new URL, because `uv tool upgrade` stays on the URL pin.
+- `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
+  `validate` and the other commands print that warning when a managed block was written by another
+  toolkit version.
+- `specy-road export --check` reports a stale `roadmap.md` as
+  `drift: <path> no longer matches the roadmap. Run: specy-road export` and exits 1. The gitignore
+  hint follows on the next line.
+- A local `roster_add` entry with a non-empty `preflight`, `channels.cli_resume` or `harness_bin`, or with
+  `cursor_force: true`, is refused unless that file sets `allow_local_cli: true`, naming the field in the same
+  message as `channels.cli`. Committed roster entries are unchanged.
+- A Codex reviewer passes the memory-off switches and an isolated `CODEX_HOME` (the profile home on a fresh turn,
+  the session's home on resume) for both `review delegate` and `prompt --channel cli --run`. A resumed turn still
+  passes `-m`. Claude and Cursor reviewers are unchanged.
 - `group-nodes --into-new NEW_ID` (and `POST /api/outline/group`) accepts a `NEW_ID` that one of the listed nodes
   holds, as in `group-nodes M1.1 M1.2 M1.3 --into-new M1.2`: that node leaves the id in the same transaction, so a
   regroup into the ids the flat nodes occupy no longer needs a temporary id and a second `move-node --id`. An id held by
@@ -50,6 +62,17 @@ body. Keep section bodies focused; link to PRs for detail.
   in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
   is now refused: replace it with one of the two links above or a real directory.
   `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
+- **Security:** Publish, finish's landing and reviews copy, the pickup hint and the brainstorm lock follow the
+  same safe-write rule. GUI Publish refuses (HTTP 400, nothing written) an in-repo or dangling symlink at
+  `roadmap.md` or `roadmap-context.md`, with finish's sentence; the landing merge writes both files through the
+  rule. Finish walks the untracked summary's copy from the main checkout's project root, so a symlinked `work`,
+  `work/reviews` or `work/reviews/<node>` (also from a linked worktree) refuses finish before any write. A
+  symlinked `.specyrd` or `.specyrd/cache` is refused where the cache directory is made; the pickup hint
+  marker is checked with `lstat`, so a link there (live or dangling) is a one-line warning and is never read as
+  "already shown" or written through; `brainstorm` reports a linked lock as an error with exit 1. The
+  history cache (`.specyrd/cache/roadmap-history.json`) is written through the rule too: any path the rule
+  refuses (a link on it, or a file where a directory belongs) is one warning naming it, and `digest` carries
+  on with exit 0; other cache failures stay silent.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.

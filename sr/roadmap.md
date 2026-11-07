@@ -190,7 +190,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.36` | brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens | task | — | Complete |
 | `M21.37` | One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout | task | — | Complete |
 | `M21.38` | Review writers and the review lock refuse any symlink on the path from the project root | task | — | Not Started |
-| `M21.39` | Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path | task | — | Not Started |
+| `M21.39` | Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path | task | — | Complete |
 | `M21.40` | upgrade's scratch git drops every GIT_ variable, runs no hook, and times out | task | — | Complete |
 | `M21.41` | The notes rules name every clause break the checker uses; rework docstring and verify tests fixed | task | — | Complete |
 | `M21.42` | review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it | task | — | Complete |
@@ -205,7 +205,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.6` | A queued worker message that cannot be delivered flags the worker and goes out with its next turn | task | — | Not Started |
 | `M22.7` | ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading | task | — | Not Started |
 | `M22.8` | init project ends with the next steps: set the integration branch, commit the scaffold, validate | task | — | Complete |
-| `M22.9` | Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME | task | — | Not Started |
+| `M22.9` | Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME | task | — | Complete |
 | `M22.10` | reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping | task | — | Complete |
 | `M22.11` | Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout | task | — | Not Started |
 | `M22.12` | The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing | task | — | Not Started |
@@ -224,7 +224,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.25` | Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment | task | — | Not Started |
 | `M22.26` | The post-run zone check matches zones written from the git root | task | — | Complete |
 | `M22.27` | The old-log review usage test asserts on the run, not on a substring | task | — | Complete |
-| `M22.28` | upgrade does not warn about itself, and export's drift line says how to fix it | task | — | Not Started |
+| `M22.28` | upgrade does not warn about itself, and export's drift line says how to fix it | task | — | Complete |
 | `M22.29` | safe_write and archive moves traverse by directory descriptor | task | — | Not Started |
 | `M22.30` | Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed | task | — | Not Started |
 | `M22.31` | finish-this-task refuses a branch that changes a steering file no touch zone names | task | — | Not Started |

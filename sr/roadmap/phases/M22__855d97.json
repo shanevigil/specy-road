@@ -314,7 +314,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.28_upgrade-no-self-warning-export-drift-hint_02771e58-14a5-472d-8292-a1fb1dce7e3e.md",
       "sibling_order": 27,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade does not warn about itself, and export's drift line says how to fix it",
       "touch_zones": [
         "specy_road/cli.py",

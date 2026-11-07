@@ -68,7 +68,8 @@
         "tests/test_move_node_subtree.py",
         "tests/test_validate_touch_zones.py",
         "docs/roadmap-authoring.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/move_node_helpers.py"
       ],
       "type": "task"
     },
@@ -132,7 +133,8 @@
         "tests/test_outline_group_cli.py",
         "tests/test_brainstorm_promote_judgement.py",
         "CHANGELOG.md",
-        "tests/test_scaffold_planning.py"
+        "tests/test_scaffold_planning.py",
+        "tests/test_author_approach.py"
       ],
       "type": "task"
     },
@@ -238,7 +240,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.9_local-roster-and-codex-reviewer-isolation_d340dc53-ba74-45b4-a5c4-9f778862e8f0.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME",
       "touch_zones": [
         "specy_road/roster_local.py",

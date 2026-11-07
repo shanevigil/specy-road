@@ -21,6 +21,7 @@ from typing import Any
 
 import yaml
 
+from specy_road import safe_write
 from specy_road.bundled_scripts.brainstorm_fields import extra_to_dict, parse_extra
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.history_cache import CACHE_DIR, ensure_cache_dir
@@ -389,10 +390,15 @@ def session_lock(root: Path):
     files; without one lock around load, ``B<n>`` allocation and write, two take
     the same id and the last writer drops the other's idea. The lock file lives
     in the ignored ``.specyrd/cache/`` so it never shows up as an untracked file.
+    A path the safe-write rule refuses (a symlink on it, among them) is a :class:`BrainstormError`.
     """
     lock = root / CACHE_DIR / "brainstorm.lock"
-    ensure_cache_dir(lock.parent)
-    with lock.open("a+") as f:
+    try:
+        ensure_cache_dir(lock.parent)
+        fd = safe_write.open_lock(root, lock)
+    except safe_write.SafeWriteError as e:
+        raise BrainstormError(str(e)) from e
+    with os.fdopen(fd, "r+") as f:
         unlock = _lock_file(f)
         try:
             yield
