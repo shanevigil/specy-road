@@ -51,8 +51,10 @@ def _cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
                           cwd=REPO, capture_output=True, text=True, env=script_subprocess_env())
 
 
-def _refusal(link: Path, expected: str) -> str:
-    return f"{link} is a symlink (to {os.readlink(link)}), not {expected}"
+def _refusal(path: Path, expected: str) -> str:
+    """The safe-write sentence for ``path``: a symlink names its target; the other refused shape here is a file."""
+    kind = f"a symlink (to {os.readlink(path)})" if path.is_symlink() else "a regular file"
+    return f"{path} is {kind}, not {expected}"
 
 
 def _cache_out(root: Path, outside: Path) -> Path:
@@ -139,24 +141,30 @@ def _ignore_dangling(root: Path, outside: Path) -> Path:
     return link
 
 
+def _specyrd_file(root: Path, outside: Path) -> Path:
+    (root / ".specyrd").write_bytes(THEIRS)
+    return root / ".specyrd"
+
+
 @pytest.mark.parametrize(
     ("arrange", "expected"),
-    [(_cache_out, "a directory"), (_ignore_dangling, "a regular file"), (_history_file, "a regular file")],
-    ids=["cache-linked-out", "gitignore-dangling", "history-to-outside-file"],
+    [(_cache_out, "a directory"), (_ignore_dangling, "a regular file"), (_history_file, "a regular file"),
+     (_specyrd_file, "a directory")],
+    ids=["cache-linked-out", "gitignore-dangling", "history-to-outside-file", "specyrd-is-a-file"],
 )
-def test_digest_carries_on_past_a_linked_history_cache(tmp_path: Path, arrange, expected: str) -> None:
-    """A6: the cache is optional; one warning naming the path, exit 0, nothing written through the link."""
+def test_digest_carries_on_past_a_refused_history_cache(tmp_path: Path, arrange, expected: str) -> None:
+    """A6: the cache is optional; any safe-write refusal (a link, or a file where a directory belongs) is one
+    warning naming the path, exit 0, and nothing is written there or through it."""
     root, outside = _committed_dogfood(tmp_path / "repo"), tmp_path / "outside"
     outside.mkdir()
-    link = arrange(root, outside)
-    outside_before = _snapshot(outside)
+    refused = arrange(root, outside)
+    sentence, outside_before = _refusal(refused, expected), _snapshot(outside)
 
     result = _cli(root, "digest")
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stderr.splitlines() == [f"warning: history cache not written: {_refusal(link, expected)}"]
-    assert _snapshot(outside) == outside_before
-    assert link.is_symlink()
+    assert result.stderr.splitlines() == [f"warning: history cache not written: {sentence}"]
+    assert (_refusal(refused, expected), _snapshot(outside)) == (sentence, outside_before)
 
 
 @pytest.mark.parametrize(

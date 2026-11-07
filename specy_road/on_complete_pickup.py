@@ -107,8 +107,9 @@ def print_orchestration_hint(repo_root: Path | None = None) -> None:
     advertising the loop to itself once per cycle is the flood this is trying not
     to become.
 
-    The marker is best effort: a symlink on its path (live or dangling) is never
-    read as "already shown" or written through; one warning line, and the hint.
+    The marker is best effort: a path the safe-write rule refuses (a symlink
+    on it, live or dangling, among them) is never read as "already shown" or
+    written through; one warning line, and the hint.
     """
     if os.environ.get("SPECY_ROAD_GRIND_SESSION"):
         return

@@ -56,8 +56,9 @@ body. Keep section bodies focused; link to PRs for detail.
   symlinked `.specyrd` or `.specyrd/cache` is refused where the cache directory is made; the pickup hint
   marker is checked with `lstat`, so a link there (live or dangling) is a one-line warning and is never read as
   "already shown" or written through; `brainstorm` reports a linked lock as an error with exit 1. The
-  history cache (`.specyrd/cache/roadmap-history.json`) is written through the rule too: a link on its path
-  is one warning naming it, and `digest` carries on with exit 0.
+  history cache (`.specyrd/cache/roadmap-history.json`) is written through the rule too: any path the rule
+  refuses (a link on it, or a file where a directory belongs) is one warning naming it, and `digest` carries
+  on with exit 0; other cache failures stay silent.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.

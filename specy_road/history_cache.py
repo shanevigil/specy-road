@@ -17,11 +17,15 @@ writes a ``.gitignore`` of ``*`` into it): the managed ``.gitignore`` block
 reaches only repos that ran ``refresh-stubs`` or ``init project``, and the
 first ``validate`` after an upgrade must not leave ``?? .specyrd/`` behind.
 
-Every failure here costs a rebuild, never a failed command. A read-only
-checkout, a missing directory, or a half-written file is silent by design. A
-symlink on the cache path is the one exception that is not silent:
-:func:`save_cache` refuses it (the safe-write rule) and prints one warning
-naming the path, so a planted link is visible, and the command carries on.
+Every failure here costs a rebuild, never a failed command. One rule
+decides which are silent: a path the safe-write rule refuses
+(:class:`~specy_road.safe_write.SafeWriteError`: a symlink anywhere on the
+cache path, live or dangling; a non-directory where a directory belongs;
+anything but a regular file at the end; a component ``lstat`` cannot read) is
+one warning naming that path from :func:`save_cache`, so a planted link or a
+misplaced file is visible. Every other failure (a read-only checkout, a full
+disk, a half-written file) is silent by design. Either way the command
+carries on.
 """
 
 from __future__ import annotations
@@ -51,8 +55,9 @@ def ensure_cache_dir(cache_dir: Path) -> None:
     """Create ``cache_dir`` with a ``.gitignore`` of ``*`` in it; raises ``OSError``.
 
     ``cache_dir`` is ``<root>/.specyrd/cache``; the safe-write rule walks it from
-    that root, so a symlinked ``.specyrd``, ``cache`` or ``.gitignore`` raises
-    :class:`~specy_road.safe_write.SafeWriteError` (an ``OSError``).
+    that root, so any path it refuses (a symlinked ``.specyrd``, ``cache`` or
+    ``.gitignore`` among them) raises :class:`~specy_road.safe_write.SafeWriteError`
+    (an ``OSError``).
     """
     root = cache_dir.parents[1]
     safe_write.mkdirs(root, cache_dir)
@@ -90,8 +95,8 @@ def save_cache(root: Path, doc: dict[str, Any]) -> bool:
     :func:`os.replace` in the same directory), so a reader either sees the whole
     previous cache or the whole new one. Two processes racing resolve to
     last-writer-wins, and since both computed the same thing from the same
-    history, either outcome is correct. A symlink on the path is refused: the
-    one failure that is not silent, a warning naming the path on stderr.
+    history, either outcome is correct. A safe-write refusal is a warning naming
+    the path on stderr; every other failure is silent (the module docstring).
     """
     path = cache_path(root)
     try:

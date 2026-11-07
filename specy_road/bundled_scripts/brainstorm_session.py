@@ -390,7 +390,7 @@ def session_lock(root: Path):
     files; without one lock around load, ``B<n>`` allocation and write, two take
     the same id and the last writer drops the other's idea. The lock file lives
     in the ignored ``.specyrd/cache/`` so it never shows up as an untracked file.
-    A symlink on its path is refused as a :class:`BrainstormError` (the safe-write rule).
+    A path the safe-write rule refuses (a symlink on it, among them) is a :class:`BrainstormError`.
     """
     lock = root / CACHE_DIR / "brainstorm.lock"
     try:
