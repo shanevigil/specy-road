@@ -50,7 +50,13 @@
 | Hook staging on a path finish owns is discarded | Staging that cannot be told apart from finish's own (same path, worktree-consistent) | Owner classification is dropped. Any change to the staged entries saves and names the replaced index before the restore. |
 | Fork test had no no-survivor assertion | Test integrity | Added `assert _gone(forked)`. |
 
-Finding 3 is broader than the review says. Telling a hook's staging apart from finish's own `git add` on the same path would need the index captured right after that `git add`, which happens in `specy_road/bundled_scripts/finish_task.py` (outside the zones). The save-and-name rule avoids needing to know who staged what, so it needs no change outside the zones.
+## Fix round 2 (gpt-5.6-sol-high at 8ccae91d)
+
+| Finding | Class | Fix |
+|---|---|---|
+| The zombie case used a fake `stat="Z"` row for a nonexistent pid | A fake process stands in for a process state that a real tree can produce | `test_terminate_ends_a_grandchild_in_its_own_session` gains a `subreaper` case (Linux). It does the following: <br>• Makes the test process the escaped grandchild's `PR_SET_CHILD_SUBREAPER`, so nothing waits for that grandchild. <br>• Runs public `worker terminate`. <br>• Asserts exit 0, state `terminated`, and that the grandchild is a `Z` entry whose ppid is the test process. <br>The fake case and `_seams`' `stat` option are removed. No package change was needed. |
+
+Finding 3 of round 1 was broader than the review said. Telling a hook's staging apart from finish's own `git add` on the same path would need the index captured right after that `git add`, which happens in `specy_road/bundled_scripts/finish_task.py` (outside the zones). The save-and-name rule avoids needing to know who staged what, so it needs no change outside the zones.
 
 ## Probes
 
@@ -58,7 +64,13 @@ Finding 3 is broader than the review says. Telling a hook's staging apart from f
 - ps failing at every listing of the first terminate: the record stays `running` with `descendants_unchecked: true`; the second terminate signals the fake descendant, ends `terminated`, and clears the mark. This passes on both modules.
 - ps failing after a successful snapshot (the reviewer's transient case): same result as the previous probe. Against 1194573f it fails with "cannot recheck pid(s) … failed" and the mark is lost.
 - Descendant whose start time changed between the snapshot and the first signal: never signalled, no survivor (existing test, unchanged). Checked because the step listings now drive the signalling.
-- A zombie kept by a subreaper: terminate succeeds (parametrized existing test).
+- A zombie kept by a real subreaper (round 2): public `worker terminate` exits 0, the record is `terminated`, and `ps` shows the grandchild as `Z` with ppid = the test process.
+- The same case with the `Z` exclusion removed from the survivor check (`_Descendants._running`): terminate exits 1 (the zombie is reported as a survivor). Red.
+- The same case with the `Z` exclusion removed from `_group_members`: terminate exits 1. The harness's zombie, re-parented to the subreaper once its wrapper died, kept the group "alive". This shows the group-member half of the rule is needed too. Red.
+- The test's own group check now skips zombies (`_live_members`), matching `_gone`. Every zombie this test kept is reaped in `finally`, and the subreaper flag is reset.
+- Other fake-row cases checked for the same class:
+  - Reused pid (changed start time), unreadable `ps`, and a survivor of SIGKILL: no real tree can produce these on demand (forcing a pid reuse, breaking `ps`, or a process that ignores SIGKILL), so the seam stays.
+  - The repeat-pass case has a fake descendant whose parent link to the dead harness still holds. A real one would have been re-parented, which is option (b)'s accepted limit. Its class is reachable only through fakes; A1 passed review.
 - Unreadable first inventory: the group is still ended and terminate raises "could not list its descendants" (existing test, unchanged).
 - Hook staging on an unrelated path, on `roadmap.md` (a path finish writes), and under `work/worker-logs/M1.1/` (a directory finish stages): each time the note names the path, the saved index holds the hook's blob ("hook bytes"), and the index and files are back as before. All three fail against 1194573f.
 - A hook running only `git status`, plus a staged/unstaged brief: full restore, no `could not restore`, the state is identical (existing commit rows).
@@ -96,8 +108,8 @@ The original seven plus `specy_road/worker_state.py` and `specy_road/schemas/wor
 
 ### Tests
 - `test_worker_terminate_descendants.py`:
-  - `_seams` takes `stat=`, `dies=` and `outage=` (`{"on", "ok"}`: reads fail after the first `ok` while on), and its rows now include `stat`.
-  - `test_a_same_start_survivor_raises_naming_its_pid` is parametrized with a zombie kept by a subreaper (A3).
+  - `_seams` takes `dies=` and `outage=` (`{"on", "ok"}`: reads fail after the first `ok` while on), and its rows now include `stat`.
+  - `test_terminate_ends_a_grandchild_in_its_own_session` gains a `subreaper` case (Linux, `PR_SET_CHILD_SUBREAPER` via `ctypes` and `_subreaper`): a real escaped zombie, then public `worker terminate` succeeds (A3, round 2). Helpers `_table`, `_live_members` and `_kept_zombies` support the group check (zombies skipped) and the cleanup. Round 1's fake `stat="Z"` case and `_seams`' `stat` option are removed.
   - `test_a_failed_inventory_is_repeated_by_the_next_terminate` is parametrized: every listing fails, or failures start after the snapshot (A1, A3).
   - `test_an_escaped_child_gets_sigterm_with_the_group_not_after_its_grace` with the `FORKING` harness asserts SIGTERM inside the grace and no survivor, the forked child included (A3).
 - `test_finish_config_preflight.py`:
