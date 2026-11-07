@@ -104,9 +104,14 @@ body. Keep section bodies focused; link to PRs for detail.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
-  Upgrade's git calls time out after 60 s. A failed `git init`, `add` or `commit` in a temporary copy, the plan's
-  included (so a real run too), prints `error: git <command> failed in the temporary copy (<reason>)` and exits 2
-  without writing or validating, and so does a failed
+  Upgrade's git calls, a real run and `--dry-run` alike, time out after 60 s. That includes the checkout's
+  `git check-ignore` (`file_limits_engine.git_ignored_paths`). The spawns a run reaches are `git_subprocess.run`
+  (the plan mirror's `init`, the dry-run copy's `add` and `commit`, `ls-files` on `roadmap.md`, and `worktree list`),
+  `ignore_report`'s git for the refresh's ignore note, and `runtime_paths.git_path` (`rev-parse` for the project and
+  checkout roots); each passes a timeout. A real run drops every `GIT_*` variable too, and isolates only the plan's
+  mirror, so the checkout still reads the caller's own config files. A failed `git init`, `add` or `commit` in a
+  temporary copy, the plan's included (so a real run too), prints `error: git <command> failed in the temporary copy
+  (<reason>)` and exits 2 without writing or validating, and so does a failed
   `ls-files` on `roadmap.md` (in a real run it names the checkout), before a generated file is written.
   `GIT_CEILING_DIRECTORIES` no longer hides a tracked `roadmap.md`.
 - `specy-road digest`, `digest --check` and `digest -o -` with no roadmap manifest print the one line
