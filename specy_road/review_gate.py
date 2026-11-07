@@ -13,6 +13,8 @@ reports. A review record counts only when all of these hold:
   an approval counts only from an entry whose routing is fixed or pinned (:func:`routing_problem`);
 * that model's roster ``may_process`` includes the node's sensitivity, as
   ``orchestrate plan`` and ``prompt`` require;
+* under ``signed_reviews``, no model its entry launches has a profile recording guidance bypass, unless the entry
+  sets ``allow_guidance_bypass_model: true`` (:func:`guidance_problem`, M21.44);
 * it attests a fresh session when policy requires one (``reviewer_resumed_delta`` waives
   that for an approval naming ``delta_from``: :mod:`specy_road.review_resumed_delta`).
 
@@ -46,7 +48,7 @@ from specy_road.git_subprocess import git_code
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.integrity import compare_integrity
 from specy_road.integrity_gate import integrity_gate_problems
-from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
+from specy_road.orchestrate_plan import entry_may_process, guidance_problem, may_handle, node_sensitivity
 from specy_road.orchestration_config import (effective_config, family_of, is_rostered_reviewer, roster_entry,
                                             routing_problem, substitute_for)
 from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exported
@@ -211,7 +213,7 @@ def _eligibility(repo_root: Path, config: dict[str, Any], node: dict[str, Any], 
                       f"{entry_may_process(entry)} (roster may_process)")
     why = (rerun_problem(config["policy"], review.data) or notes_problem(review.data, review.body)
            or _signature_problem(config, model, review) or routing_problem(repo_root, config, review.data)
-           or model_mismatch_problem(review.data))
+           or model_mismatch_problem(review.data) or guidance_problem(repo_root, config, entry))
     family = family_of(config, model)
     why = why or (None if family else f"no family for {model!r}: add it to the roster")
     if why := fresh_session_problem(config["policy"], review.data, why):   # exactly FRESH_SESSION when alone

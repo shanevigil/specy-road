@@ -142,8 +142,9 @@ write` in a dry run), and refuses a path with any symlink on it (in the project 
 after a refusal, or when `validate` fails, it says to run `specy-road digest`
 instead (not `specy-road sync`, which also fast-forwards your integration
 branch from the remote). `--dry-run` runs its git calls in the temporary copy
-with `GIT_DIR` and the related variables removed, so it is safe inside a git
-hook. It exits non-zero when `validate` fails, and also, even when `validate`
+with every `GIT_` variable dropped, no global or system git config, no hooks
+and a timeout, so it is safe inside a git hook. It exits 2 when a git call it
+depends on fails, and 1 when `validate` fails, and also, even when `validate`
 passes, when a write is refused: before its first write, `upgrade` checks every
 path it would change, and one that leads out of the checkout, or a schema, stub
 directory or other path with any symlink on it, prints `error: <path> is a

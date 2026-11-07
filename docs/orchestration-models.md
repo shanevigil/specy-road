@@ -40,6 +40,26 @@ api_id: claude-opus-5-5
 aliases: [claude-opus-5-5-high, claude-opus-5-5-max]   # harness ids for this model
 ```
 
+### Guidance bypass observed
+
+A profile can record that its model was seen going around specy-road's guidance:
+
+```yaml
+guidance_bypass_observed:
+  date: 2026-11-06        # YYYY-MM-DD, a real date
+  harness: cursor         # claude-code | codex | cursor | generic: where it was observed
+  evidence: >-            # non-blank: what was seen, in how many runs
+    CR1: faked a terminal with `script` to run the human approval, merged and pushed (2 of 3 runs). …
+```
+
+Any other shape (null, a list, a missing or extra key, an impossible date, another harness, blank or
+non-string evidence) makes the profile invalid. `models show` prints the date, harness and evidence
+(`--json`: under `front_matter`). The shipped **composer-2.5** profile carries it (its alias
+`composer-2.5-fast` too), from the 2026-11-05/06 replay through Cursor; the finding is about that model,
+not the Cursor harness, and `composer-2` is not flagged. While `policy.signed_reviews` is on, an entry
+that launches a flagged model is excluded from the executor and reviewer roles unless it opts in:
+[orchestration-roster.md](orchestration-roster.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
+
 A profile's `access.launch_mode` pins how much of its harness a Claude Code
 worker gets: `full` (the default when absent) or `bare`. Any other value makes
 the profile invalid, and `models show` prints the error naming the profile.

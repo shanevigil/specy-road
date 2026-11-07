@@ -42,16 +42,14 @@
         "Estimated net line change (informational, not a gate): package about +150, tests about +360, docs about +35"
       ],
       "codename": "guidance-bypass-model-excluded-under-signed-reviews",
-      "dependencies": [
-        "992a07fe-018e-4ff0-adc5-1675c130adb6"
-      ],
+      "dependencies": [],
       "execution_milestone": "Agentic-led",
       "id": "M21.44",
       "node_key": "14485811-9209-468d-bd05-0f5156228e8a",
       "parent_id": "M21",
       "planning_dir": "planning/M21.44_guidance-bypass-model-excluded-under-signed-reviews_14485811-9209-468d-bd05-0f5156228e8a.md",
       "sibling_order": 42,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk",
       "touch_zones": [
         "specy_road/model_profiles.py",
@@ -81,7 +79,10 @@
         "docs/orchestration-models.md",
         "CHANGELOG.md",
         "specy_road/bundled_scripts/models_cli.py",
-        "specy_road/roster_local.py"
+        "specy_road/roster_local.py",
+        "model-profiles/README.md",
+        "model-profiles/cursor-composer/composer-2.5.md",
+        "schemas/orchestration.schema.json"
       ],
       "type": "task"
     }

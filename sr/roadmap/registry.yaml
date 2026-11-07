@@ -76,17 +76,13 @@ entries:
     touch_zones:
       - specy_road/steering_paths.py
       - specy_road/worker_turn_check.py
+      - specy_road/worker_runner.py
       - specy_road/worker_reconcile.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/bundled_scripts/finish_task.py
-      - docs/orchestration-workers.md
-      - docs/orchestration-harness-launch.md
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/schemas/worker-record.schema.json
-      - specy_road/steering_gate.py
-      - docs/orchestration-steering-files.md
       - specy_road/git_config_text.py
+      - specy_road/schemas/worker-record.schema.json
+      - docs/orchestration-workers.md
+      - docs/orchestration-steering-files.md
+      - tests/test_steering_file_guard.py
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
@@ -119,6 +115,43 @@ entries:
       - tests/test_prerelease_files.py
       - tests/test_m13_7_notices.py
       - tests/test_upgrade_plan_parity.py
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: ops-writers-refuse-links
+    node_id: M21.39
+    branch: feature/rm-ops-writers-refuse-links
+    touch_zones:
+      - specy_road/pm_publish.py
+      - specy_road/finish_land_deterministic.py
+      - specy_road/finish_bookkeeping_undo.py
+      - specy_road/finish_work_artifacts.py
+      - specy_road/history_cache.py
+      - specy_road/on_complete_pickup.py
+      - specy_road/bundled_scripts/brainstorm_session.py
+      - tests/test_ops_writers_refuse_links.py
+      - tests/test_pm_publish.py
+      - tests/test_finish_config_preflight.py
+      - docs/dev-workflow.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: post-run-zone-check-git-root-zones
+    node_id: M22.26
+    branch: feature/rm-post-run-zone-check-git-root-zones
+    touch_zones:
+      - specy_road/worker_turn_check.py
+      - tests/test_worker_turn_check.py
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: old-log-test-asserts-on-the-run
+    node_id: M22.27
+    branch: feature/rm-old-log-test-asserts-on-the-run
+    touch_zones:
+      - tests/test_review_usage.py
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending

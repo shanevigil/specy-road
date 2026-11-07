@@ -32,6 +32,9 @@
         "profile": { "type": "string", "minLength": 1, "description": "Repo-relative path to this model's profile (model-profiles/<family>/<api_id>.md)." },
         "harness": { "enum": ["claude-code", "codex", "cursor", "generic"], "description": "Which vendor harness `specy-road worker delegate` runs this model on (generic runs the profile's access.cli). Distinct from the model: a Claude model under Cursor's agent is a cursor worker." },
         "harness_model": { "$ref": "#/$defs/id", "description": "Model id the harness CLI expects when it differs from id (e.g. claude-opus-5-5 for id claude-opus-5.5); the default commands pass it as --model / -m, before the profile's api_id and the id." },
+        "allow_guidance_bypass_model": { "type": "boolean", "description": "Default false. At your own risk: with policy.signed_reviews on, keep this entry eligible as executor and reviewer although a model it launches has a profile recording guidance_bypass_observed (otherwise it is excluded from both roles). Honoured only in the committed roadmap/orchestration.yaml on the integration branch; a roster_add entry in orchestration.local.yaml may not set it. Every executor or reviewer launch of the entry prints a warning. See docs/orchestration-roster.md." },
+        "harness_bin": { "type": "string", "minLength": 1, "description": "Path (or PATH name) of the harness binary the default commands run (claude, codex or agent). Unset: PATH, then the harness's install directories (~/.local/bin; ~/.claude/local for claude); not found is refused before launch, naming where it looked. See docs/orchestration-harness-launch.md." },
+        "cursor_force": { "type": "boolean", "description": "cursor harness only, default false. The default launch and resume commands pass --trust --sandbox enabled (Cursor's sandbox confines shell commands); true passes --trust --force instead, which force-allows every command not explicitly denied. orchestrate plan and doctor warn once per entry that sets it. A channels.cli / cli_resume keeps its own flags. See docs/orchestration-workers.md." },
         "routing": { "enum": ["fixed", "dynamic"], "description": "fixed (the default): the harness runs the model it is told. dynamic: the harness may route among models itself (cascades, Auto, its own critic), so under policy.reviewers_distinct_families this entry's approvals do not count unless pinned is true. A cursor entry told no model or auto is dynamic whatever this says." },
         "pinned": { "type": "boolean", "description": "Set by the maintainer after checking the harness honours the requested model: a dynamic entry's approvals then count toward distinct families. Default false." },
         "billing_route": { "type": "string", "minLength": 1, "description": "Label for whose quota a worker on this entry draws (e.g. claude_subscription, chatgpt_oauth, api_key). Recorded on the worker; never used to authenticate." },
@@ -85,6 +88,10 @@
         "signed_reviews": {
           "type": "boolean",
           "description": "When true, a review record counts only if it carries a signature that verifies against its roster entry's public_key. Default false."
+        },
+        "count_human_filed_reviews": {
+          "type": "boolean",
+          "description": "When true, an unsigned review record filed by hand (human_filed: `review record --human-filed` from a caller with no harness marker or worker id) counts toward the gate. When false, such a record counts only when its signature verifies. Default false."
         },
         "reviewer_reruns_required": {
           "type": "boolean",

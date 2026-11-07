@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 from specy_road import safe_write
+from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.generated_files import gitignore_resolution_hint
 from specy_road.runtime_paths import add_repo_root_arg, git_root, resolve_repo_root
@@ -55,6 +56,11 @@ def _write_output(root: Path, output: str, out: Path, body: str) -> None:
 
 def cmd_digest(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
+    try:
+        discover_manifest_path(root)
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        return 1
     body = render_digest(root)
 
     if ns.output == "-":

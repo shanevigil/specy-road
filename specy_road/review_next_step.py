@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
-from specy_road.orchestrate_plan import is_available
+from specy_road.orchestrate_plan import guidance_problem, is_available
 from specy_road.review_deferral import rca_deferral
 from specy_road.review_files import HUMAN, PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 
@@ -131,10 +131,12 @@ def classify(f: Facts) -> State:
     return next(s for s in STATES if s.when(f))
 
 
-def _available(config: dict[str, Any], role: str, exclude: set[str] = frozenset()) -> list[str]:
-    """Rostered ids with ``role`` that :func:`orchestrate_plan.is_available` allows (the rule prompt applies)."""
+def _available(repo_root: Path, config: dict[str, Any], role: str, exclude: set[str] = frozenset()) -> list[str]:
+    """Rostered ids with ``role`` that :func:`orchestrate_plan.is_available` allows and the guidance-bypass rule does
+    not exclude (:func:`orchestrate_plan.guidance_problem`, M21.44): the rules prompt applies."""
     return [e["id"] for e in config.get("roster") or [] if role in (e.get("roles") or [])
-            and e.get("id") not in exclude and e.get("id") != HUMAN and is_available(e)]
+            and e.get("id") not in exclude and e.get("id") != HUMAN and is_available(e)
+            and not guidance_problem(repo_root, config, e)]
 
 
 def facts(repo_root: Path, config: dict[str, Any], loop: LoopState, node_id: str, blocked: bool) -> Facts:
@@ -156,11 +158,11 @@ def facts(repo_root: Path, config: dict[str, Any], loop: LoopState, node_id: str
         rca, refused = DEFER_UNAPPLIED, "; ".join(w for w in why if w) or None
     ready = latest_ready(repo_root, node_id) if budget is not None else None
     agent = ready.data.get("agent") if ready else None
-    reviewers = set(_available(config, "reviewer"))
+    reviewers = set(_available(repo_root, config, "reviewer"))
     blockers = [r.data["model"] for r in loop.rounds[-1].records if r.data["verdict"] == "block"] if loop.rounds else []
-    analysts = _available(config, "reviewer", rca_parties(repo_root, node_id, loop)) if budget is not None else []
+    analysts = _available(repo_root, config, "reviewer", rca_parties(repo_root, node_id, loop)) if budget is not None else []
     return Facts(node_id, None if budget is None else int(budget), blocking, blocked, rca, record, refused,
-                 analysts[0] if analysts else None, agent if agent in _available(config, "executor") else None,
+                 analysts[0] if analysts else None, agent if agent in _available(repo_root, config, "executor") else None,
                  next((m for m in blockers if m in reviewers), None),
                  (reviews_dir(repo_root, node_id) / PACKET_NAME).is_file())
 

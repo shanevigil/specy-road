@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import pytest
 
 from tests.review_repo_helpers import advance_dev, git, make_review_repo
 
-from specy_road.git_subprocess import git_ok, merge_conflicts
+from specy_road.git_subprocess import git_ok, merge_conflicts, run
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -61,6 +62,15 @@ def test_git_ok_returns_false_on_oserror(monkeypatch: pytest.MonkeyPatch) -> Non
     ok, out = git_ok(["status"], Path("."), 0.01)
     assert ok is False
     assert out == ""
+
+
+def test_run_inherits_the_environment_unless_given_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    for name, value in (("COUNT", "1"), ("KEY_0", "specy.probe"), ("VALUE_0", "inherited")):
+        monkeypatch.setenv(f"GIT_CONFIG_{name}", value)
+
+    assert run(["config", "--get", "specy.probe"], tmp_path).text == "inherited"
+    given = {**os.environ, "GIT_CONFIG_VALUE_0": "given"}
+    assert run(["config", "--get", "specy.probe"], tmp_path, env=given).text == "given"
 
 
 def test_merge_conflicts_is_in_memory_and_names_conflicted_paths(tmp_path: Path) -> None:

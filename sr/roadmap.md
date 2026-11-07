@@ -191,11 +191,11 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.37` | One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout | task | — | Not Started |
 | `M21.38` | Review writers and the review lock refuse any symlink on the path from the project root | task | — | Not Started |
 | `M21.39` | Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path | task | — | Not Started |
-| `M21.40` | upgrade's scratch git drops every GIT_ variable, runs no hook, and times out | task | — | Not Started |
+| `M21.40` | upgrade's scratch git drops every GIT_ variable, runs no hook, and times out | task | — | Complete |
 | `M21.41` | The notes rules name every clause break the checker uses; rework docstring and verify tests fixed | task | — | Complete |
 | `M21.42` | review delegate also gives one repair turn when the final answer does not parse, not only when review record refuses it | task | — | Complete |
-| `M21.43` | digest refuses cleanly when the roadmap manifest is missing, like export --check | task | — | Not Started |
-| `M21.44` | A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk | task | Agentic-led | Not Started |
+| `M21.43` | digest refuses cleanly when the roadmap manifest is missing, like export --check | task | — | Complete |
+| `M21.44` | A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk | task | Agentic-led | Complete |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
@@ -208,7 +208,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.9` | Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME | task | — | Not Started |
 | `M22.10` | reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping | task | — | Not Started |
 | `M22.11` | Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout | task | — | Not Started |
-| `M22.12` | The review gate finds the integration branch when refs/remotes/<remote>/HEAD is missing, without trusting the branch under review | task | — | Not Started |
+| `M22.12` | The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing | task | — | Not Started |
 | `M22.13` | Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone | task | — | Not Started |
 | `M22.14` | Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch | task | — | Not Started |
 | `M22.15` | The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows | task | — | Not Started |
@@ -217,8 +217,18 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.18` | The reviewer prompt asks for every required change in one pass, not just the first | task | — | Not Started |
 | `M22.19` | Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names | task | — | Not Started |
 | `M22.20` | worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging | task | — | Not Started |
-| `M22.21` | Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback, descriptor-anchored writes | task | — | Not Started |
-| `M22.22` | Sandbox polish: planning-sheet save keeps untouched Markdown, one GUI extra name, no self-warning in upgrade, export drift hint, Escape closes modals | task | — | Not Started |
+| `M22.21` | Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback | task | — | Not Started |
+| `M22.22` | Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal | task | — | Not Started |
 | `M22.23` | Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus | task | Human-led | Not Started |
+| `M22.24` | The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths | task | — | Not Started |
+| `M22.25` | Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment | task | — | Not Started |
+| `M22.26` | The post-run zone check matches zones written from the git root | task | — | Not Started |
+| `M22.27` | The old-log review usage test asserts on the run, not on a substring | task | — | Not Started |
+| `M22.28` | upgrade does not warn about itself, and export's drift line says how to fix it | task | — | Not Started |
+| `M22.29` | safe_write and archive moves traverse by directory descriptor | task | — | Not Started |
+| `M22.30` | Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed | task | — | Not Started |
+| `M22.31` | finish-this-task refuses a branch that changes a steering file no touch zone names | task | — | Not Started |
+| `M22.32` | Claude Code launch and resume deny edits to steering files | task | — | Not Started |
+| `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

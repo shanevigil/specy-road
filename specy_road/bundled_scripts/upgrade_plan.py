@@ -21,14 +21,14 @@ import io
 import os
 import shutil
 import stat
-import subprocess
 import sys
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from specy_road import safe_write
+from specy_road import git_subprocess, safe_write
+from specy_road.bundled_scripts.upgrade_generated import checked
 from specy_road.ignore_report import scratch_git_env
 
 State = tuple | None   # ("file", size, mtime_ns, mode) | ("link", text) | ("dir",) | ("other",) | None (absent)
@@ -113,8 +113,10 @@ class Mirror:
 
     def __init__(self, checkout: Path, dest: Path, skip: Path) -> None:
         self.checkout, self.skip = checkout.resolve(), skip.resolve()
-        self.outside = dest.resolve() / "outside"
+        self.dest = dest.resolve()
+        self.outside, self.hooks = self.dest / "outside", self.dest / "no-hooks"
         self.repo = self.to_sandbox(self.checkout)
+        self.unreadable: list[Path] = []   # files copied empty: git add could not read them
         self.states: dict[str, State] = {}
         self._links: list[tuple[Path, Path]] = []
         self._hardlinks: dict[tuple[int, int], Path] = {}   # (dev, ino) -> first sandbox path for this inode
@@ -130,6 +132,7 @@ class Mirror:
         return text.replace(str(self.outside), "")
 
     def build(self) -> Mirror:
+        """Copy the checkout and ``git init`` the copy; :class:`GitFailed` if git could not, for every mirror alike."""
         self._hardlinks.clear()
         self.outside.mkdir(parents=True)
         self._copy_dir(self.checkout, self.repo)
@@ -141,7 +144,11 @@ class Mirror:
                 os.symlink(self.to_sandbox(Path(text)) if os.path.isabs(text) else text, dst)   # its own text, one hop
             for src, _dst in batch:
                 self._ensure(Path(os.path.realpath(src)), self.to_sandbox(src.parent / os.readlink(src)))
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=False, capture_output=True, env=scratch_git_env())
+        template = self.dest / "no-template"
+        template.mkdir()
+        self.hooks.mkdir()
+        checked(git_subprocess.run(["-c", f"core.hooksPath={self.hooks}", "init", "-q", f"--template={template}"],
+                                   self.repo, env=scratch_git_env(self.dest)), "init")
         return self
 
     def _copy_dir(self, src: Path, dst: Path) -> None:
@@ -182,6 +189,7 @@ class Mirror:
         except PermissionError:   # unreadable: unreadable in the sandbox too, so every reader fails alike
             dst.touch()
             dst.chmod(src.stat().st_mode & 0o777)
+            self.unreadable.append(dst)
 
     def _ensure(self, real: Path, mapped: Path) -> None:
         """Give a link's target (``mapped``, as its text names it) content when the mirror lacks it.
