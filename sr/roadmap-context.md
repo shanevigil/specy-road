@@ -313,6 +313,7 @@ Do not pick these up.
 - `M22.2` on `feature/rm-move-rewrites-sheet-zones` since 2026-11-07
 - `M22.22` on `feature/rm-sandbox-rc4-final-polish` since 2026-11-07
 - `M22.28` on `feature/rm-upgrade-no-self-warning-export-drift-hint` since 2026-11-07
+- `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
 - `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
