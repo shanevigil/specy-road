@@ -57,7 +57,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.2_parity-harness-a-review-gate-decision-table-covering-every-review-policy_de3d165f-d76a-4430-b54e-9dea18809691.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Parity harness: a review-gate decision table covering every review policy",
       "touch_zones": [
         "tests/parity/review_gate/"

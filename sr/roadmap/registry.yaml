@@ -173,12 +173,3 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: parity-harness-a-review-gate-decision-table-covering-every-review-policy
-    node_id: M16.1.2
-    branch: feature/rm-parity-harness-a-review-gate-decision-table-covering-every-review-policy
-    touch_zones:
-      - tests/parity/review_gate/
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T22:18:13+00:00'
