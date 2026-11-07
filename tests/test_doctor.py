@@ -133,7 +133,12 @@ def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> No
     assert "wt-thing  — branch feature/rm-thing live: claimed by M1.1, so --fix leaves it" in out   # A1
     assert "wt-locked" not in out
     assert "wt-wip  — detached at" in out and "uncommitted changes, so --fix leaves it" in out
-    assert "ghost  — node M1.3: feature/rm-ghost is in neither this clone nor origin" in out
+    ghost = next(line for line in out.splitlines() if "ghost  —" in line)
+    assert ghost.startswith("  ghost  — node M1.3: feature/rm-ghost is in neither this clone nor origin")
+    assert "advisory: another clone's claim looks the same until it pushes its branch" in ghost
+    assert "confirm that clone no longer holds the claim" in ghost
+    assert "specy-road registry-prune --remove ghost" in ghost and ghost.endswith("so --fix leaves it")
+    assert "registry-prune --remove <CODENAME>" in out
     assert "settled  — node M1.4: leaf Complete; feature/rm-settled is listed above" in out
     assert TOOLKIT_STASH in out
     assert ": mine" not in out
@@ -153,6 +158,15 @@ def test_doctor_is_wired_into_the_cli(doctor_repo, capfd) -> None:
 
 def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> None:
     repo, bare = doctor_repo
+    chunk = json.loads((repo / "roadmap" / "phases" / "M1.json").read_text())
+    chunk["nodes"].append({**NODE, "id": "M1.5", "codename": "buried", "status": "Complete",
+                           "node_key": "55555555-5555-5555-8555-555555555555", "sibling_order": 5})
+    commit_file(repo, "roadmap/phases/M1.json", json.dumps(chunk), "complete without a branch")
+    reg = yaml.safe_load((repo / "roadmap" / "registry.yaml").read_text())
+    reg["entries"].append({"codename": "buried", "node_id": "M1.5",
+                           "branch": "feature/rm-buried", "touch_zones": ["buried"]})
+    commit_file(repo, "roadmap/registry.yaml", yaml.safe_dump(reg), "buried claim")
+    git(repo, "push", "-q", "origin", "dev")
 
     assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
 
@@ -170,9 +184,20 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
     for name in KEPT_WORKTREES:
         assert name in git(repo, "worktree", "list")
     assert any(line.startswith("[kept] ") and "wt-wip: detached at" in line for line in out.splitlines())
-    for codename in ("ghost", "settled"):
-        assert f"[ok] removed registry row {codename} on origin/dev" in out
-        assert codename not in git(bare, "show", "dev:roadmap/registry.yaml")
+    assert "[ok] removed registry row settled on origin/dev" in out
+    assert "  buried  — node M1.5: leaf Complete" in out
+    assert "feature/rm-buried is listed above" not in out
+    assert "[ok] removed registry row buried on origin/dev" in out
+    registry = git(bare, "show", "dev:roadmap/registry.yaml")
+    assert "settled" not in registry
+    assert "buried" not in registry
+    assert any(
+        line.startswith("[kept] ghost:") and "specy-road registry-prune --remove ghost" in line
+        and "confirm that clone no longer holds the claim" in line
+        and line.endswith("so --fix leaves it")
+        for line in out.splitlines()
+    )
+    assert "ghost" in registry
     assert "[ok] dropped stash" in out
     stashes = git(repo, "stash", "list").splitlines()
     assert len(stashes) == 1 and stashes[0].endswith(": mine")
@@ -183,9 +208,10 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
     assert _exit(["--repo-root", str(repo)]) == 0
     out = capsys.readouterr().out
     listed = [line for line in out.split("Claims with no live worker")[0].splitlines() if line.startswith("  ")]
-    assert len(listed) == 2   # only what --fix leaves
+    assert len(listed) == 3   # only what --fix leaves: two worktrees and the no-branch registry row
     assert any("wt-wip  — detached at" in line for line in listed)
     assert any("wt-thing  — branch feature/rm-thing live: claimed by M1.1" in line for line in listed)
+    assert any("ghost  —" in line and "specy-road registry-prune --remove ghost" in line for line in listed)
     assert "M1.1" in out.split("Claims with no live worker", 1)[1]   # the claim is reported, not released
 
 
