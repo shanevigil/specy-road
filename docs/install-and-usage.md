@@ -152,11 +152,15 @@ symlink (to <target>), not <kind>` and writes nothing (`--dry-run` included).
 `init project`, `refresh-schemas`, `refresh-stubs`, `specyrd init`, `export` and
 `digest` refuse the same way and exit 1: any symlink on the path they write,
 pointing out of the project or inside it, dangling or not, is refused rather than
-followed. One exception: an agent skills directory itself (`.agents/skills` or
-`.claude/skills`) may be a symlink to a real directory inside the repository, and
-the stubs are written into that directory. A skills link that is chained (its
-target is a link or under one), dangling or leaving the repository is refused,
-as is any other link on a stub's path; the skill links made under
+followed. One exception: an agent skills directory itself may be a symlink to the other
+one, with exactly this link text: `.claude/skills -> ../.agents/skills` or
+`.agents/skills -> ../.claude/skills`, the other being a real directory; the
+stubs are written into that directory. Any other skills link is refused: an
+in-repository alias such as `.claude/skills -> ../tools/skills` (which earlier
+releases accepted), an absolute or chained link, one through another link, a
+dangling one, or one leaving the repository. Replace such a link with one of the
+two values above or a real directory. Any other link on a stub's path is refused
+too; the skill links made under
 `.claude/skills/` are made on purpose. A stub, skill file, skill link or ignore
 file refused this way prints `error:` and makes `refresh-stubs`, `upgrade` and
 `upgrade --dry-run` exit 1; that path is left as it is and everything else is

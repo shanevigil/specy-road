@@ -24,9 +24,9 @@ paths the manifest recorded as the kit's: in practice, the pre-0.3.0
 ``*/commands/`` stubs that every upgrading repo otherwise removes by hand.
 
 Every write follows the safe-write rule from the repository root, with one
-exception: an agent skills directory (``.agents/skills``, ``.claude/skills``)
-may be a symlink to a real directory in the repository
-(``specyrd_skills.skill_path``). A stub, skill file, skill link or ignore file
+exception: an agent skills directory may be a symlink to the other, with the
+exact text ``../.agents/skills`` (at ``.claude/skills``) or ``../.claude/skills``
+(at ``.agents/skills``) (``specyrd_skills.skill_path``). A stub, skill file, skill link or ignore file
 refused for a link prints ``error: <why>`` and the command exits 1; the rest
 is still written. ``AGENTS.md`` or ``CLAUDE.md`` linked out of the repository
 stays a ``refused`` report line.

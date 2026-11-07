@@ -210,7 +210,7 @@ def _refresh(
 
 _VALIDATE_FAILED = "Fix the validate errors above; the refreshes are written either way."
 _REFUSED_STEP = ("Replace each path refused above (error:, refused) with a regular file: any symlink on its path is"
-                 " refused, except an agent skills directory linked to a real directory in the repository."
+                 " refused, except .claude/skills -> ../.agents/skills or .agents/skills -> ../.claude/skills."
                  " Then run specy-road upgrade again.")
 
 

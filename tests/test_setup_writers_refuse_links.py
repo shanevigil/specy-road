@@ -245,28 +245,57 @@ def test_pickup_regenerates_only_tracked_files_and_refuses_a_link(tmp_path: Path
     assert _tree(repo, outside) == before
 
 
-def _skills_link(repo: Path, outside: Path, shape: str) -> Path:
-    """The target to link a skills directory to, by ``shape``; the real directory sits at depth 3, not 2."""
-    tools = repo / "tools"
+OTHER_SKILLS = {".agents/skills": ".claude/skills", ".claude/skills": ".agents/skills"}
+
+
+def _skills_link(repo: Path, outside: Path, skills: str, shape: str) -> tuple[str, Path]:
+    """Link ``skills`` by ``shape``: ``(the link text, where the real skills directory now is)``.
+
+    The installed skills move out of ``.agents/skills`` to the shape's real
+    directory (the other skills directory for the two allowed values).
+    """
+    other, tools = OTHER_SKILLS[skills], repo / "tools"
+    shutil.rmtree(repo / ".claude" / "skills")   # the per-skill links: one skills directory links to the other
+    shutil.copytree(repo / ".agents" / "skills", outside / "skills")
+    real = {"pair": repo / other, "absolute-pair": repo / other, "git-dir": repo / ".git" / "skills"}.get(
+        shape, tools / "deep" / "skills")
+    (tools / "deep").mkdir(parents=True)
+    real.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(repo / ".agents" / "skills", real)
     (tools / "hop").symlink_to("deep")
+    (tools / "bounce").symlink_to(Path("deep") / "nested")
+    (tools / "deep" / "nested").mkdir()
+    shutil.copytree(real, tools / "skills")   # the decoy a lexical ``bounce/..`` names
     (repo / "alias").symlink_to("tools")
-    return {
-        "relative-in-repo": Path("..") / "tools" / "deep" / "skills",
-        "absolute-in-repo": tools / "deep" / "skills",
-        "relative-chained": Path("..") / "tools" / "hop" / "skills",
-        "absolute-chained": tools / "hop" / "skills",
-        "absolute-under-linked-ancestor": repo / "alias" / "deep" / "skills",
-        "outward": outside / "skills",
-        "dangling": repo / "missing",
+    if shape == "pair-under-linked-parent":   # the right text, but the other skills directory's parent is a link
+        shutil.rmtree(repo / Path(other).parent, ignore_errors=True)
+        (repo / Path(other).parent).symlink_to(Path("tools") / "deep")
+    text = {
+        "pair": f"../{other}",
+        "absolute-pair": str(repo / other),
+        "pair-under-linked-parent": f"../{other}",
+        "relative-alias": "../tools/deep/skills",
+        "relative-chained": "../tools/hop/skills",
+        "absolute-under-linked-ancestor": str(repo / "alias" / "deep" / "skills"),
+        "dotdot-through-link": "../tools/bounce/../skills",
+        "git-dir": "../.git/skills",
+        "outward": str(outside / "skills"),
+        "dangling": str(repo / "missing"),
     }[shape]
+    (repo / skills).parent.mkdir(exist_ok=True)
+    (repo / skills).symlink_to(text)
+    return text, real
 
 
 SKILLS_LINK_SHAPES = {   # shape -> allowed; the one table of skills-directory link shapes (M21.37 skills-link rule)
-    "relative-in-repo": True,
-    "absolute-in-repo": True,
+    "pair": True,
+    "absolute-pair": False,
+    "pair-under-linked-parent": False,
+    "relative-alias": False,
     "relative-chained": False,
-    "absolute-chained": False,
     "absolute-under-linked-ancestor": False,
+    "dotdot-through-link": False,
+    "git-dir": False,
     "outward": False,
     "dangling": False,
 }
@@ -283,19 +312,15 @@ SKILLS_RUNNERS = {
 def test_every_entry_point_gives_the_same_skills_link_verdict(
         tmp_path: Path, capsys, shape: str, skills: str, runner: str) -> None:
     """refresh-stubs, upgrade and upgrade --dry-run: the same verdict and line for the same link, the upgrade's
-    mirror keeping the link's own shape; allowed links write skill links that resolve from where they land."""
+    mirror keeping the link's own text; only ``../.agents/skills`` or ``../.claude/skills`` (the other one) is allowed."""
     repo, outside = _inited(tmp_path)
     run_init(target=repo, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None)
-    (repo / "tools" / "deep").mkdir(parents=True)
-    shutil.copytree(repo / skills, outside / "skills", symlinks=True)
-    shutil.move(repo / skills, repo / "tools" / "deep" / "skills")
-    canonical = repo / ".agents" / "skills" / "specyrd-validate" / "SKILL.md"
-    target = _skills_link(repo, outside, shape)
-    (repo / skills).symlink_to(target)
-    if canonical.exists():
-        canonical.write_text("stale\n", encoding="utf-8")
+    text, real = _skills_link(repo, outside, skills, shape)
+    canonical = real / "specyrd-validate" / "SKILL.md"
+    canonical.write_text("stale\n", encoding="utf-8")
     capsys.readouterr()
-    before = _tree(repo / "tools", outside)
+    watched = [repo / "tools", outside] + ([real] if real != repo / ".agents" / "skills" else [])   # a real
+    before = _tree(*watched)                                       # .agents/skills is written as usual
 
     try:
         code = SKILLS_RUNNERS[runner](repo)
@@ -304,16 +329,23 @@ def test_every_entry_point_gives_the_same_skills_link_verdict(
     err = capsys.readouterr().err
 
     if not SKILLS_LINK_SHAPES[shape]:
-        refusal = f"error: {repo / skills} is a symlink (to {target}), not a link to a real directory in the repository"
+        refusal = (f"error: {repo / skills} is a symlink (to {text}), not a real directory or a link to"
+                   f" ../{OTHER_SKILLS[skills]} (the skills directories may link only"
+                   " .agents/skills -> ../.claude/skills or .claude/skills -> ../.agents/skills)")
+        if shape == "pair-under-linked-parent" and skills == ".claude/skills":   # the canonical files are refused
+            refusal = f"error: {repo / '.agents'} is a symlink (to tools/deep), not a directory"   # first, so no link
         assert code == 1 and refusal in err.splitlines(), err
-        assert "Traceback" not in err and _tree(repo / "tools", outside) == before
+        assert "Traceback" not in err
+        assert _tree(*watched) == before and os.readlink(repo / skills) == text
         return
     assert code in (None, 0), err
     if runner != "upgrade --dry-run":
         assert canonical.read_text(encoding="utf-8") != "stale\n"
-        links = sorted((repo / ".claude" / "skills").iterdir())
-        assert links and all(link.resolve() == (repo / ".agents" / "skills" / link.name).resolve()
-                             and (link / "SKILL.md").is_file() for link in links)
+        skill_dirs = sorted((repo / ".claude" / "skills").iterdir())
+        assert skill_dirs and all(d.resolve() == (repo / ".agents" / "skills" / d.name).resolve()
+                                  and (d / "SKILL.md").is_file() for d in skill_dirs)
+    else:
+        assert canonical.read_text(encoding="utf-8") == "stale\n"
 
 
 def test_refresh_stubs_refuses_a_linked_stub_and_still_makes_the_skill_links(tmp_path: Path, capsys) -> None:

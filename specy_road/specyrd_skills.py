@@ -69,11 +69,7 @@ def link_rel(agent: str, name: str) -> Path | None:
 
 
 def link_target(agent: str, name: str) -> str:
-    """The symlink's relative target in the default layout (neither skills directory an alias).
-
-    :func:`ensure_link` computes it from the real locations instead, which is
-    the same text in this layout.
-    """
+    """The per-skill symlink's relative target (``../../.agents/skills/<name>``)."""
     up = [".."] * len(LINK_DEST[agent].parts)
     return os.path.join(*up, *(SKILLS_REL / stem(name)).parts)
 
@@ -93,34 +89,37 @@ def is_link_path(rel: str) -> bool:
     return any(Path(rel).parent == d for d in LINK_DEST.values())
 
 
-#: The agent skills directories: each may itself be a symlink to a real directory in the repository.
-SKILLS_DIRS = (SKILLS_REL, *LINK_DEST.values())
+#: The one link text each agent skills directory may have, byte for byte: the other one (maintainer, 2026-11-06).
+SKILLS_LINK_TEXT: dict[Path, str] = {SKILLS_REL: "../.claude/skills", LINK_DEST["claude-code"]: "../.agents/skills"}
 
 
 def skill_path(repo_root: Path, rel: str | Path, expected: str | None = safe_write.FILE) -> Path:
     """Where ``rel`` is written under the skills-link rule; raises ``SafeWriteError`` naming a refused path.
 
     The one exception to the safe-write rule's ancestor clause (maintainer,
-    2026-11-06): when ``rel`` is under an agent skills directory
-    (:data:`SKILLS_DIRS`) and that directory is a symlink, that single
-    component is swapped for the link's target, taken from the link's own
-    directory, which must be a real directory in the repository. A chained
-    link (the target, or a directory above it, is a link), a dangling one and
-    one leaving the repository are refused. The rule then applies from
+    2026-11-06): an agent skills directory may be a symlink only when its raw
+    ``os.readlink`` text is exactly :data:`SKILLS_LINK_TEXT`'s value for it
+    (``.claude/skills -> ../.agents/skills`` or ``.agents/skills -> ../.claude/skills``).
+    The text is never normalised: the rule walks the un-normalised join of the
+    link's directory and that text with ``lstat``, so a linked ``.agents`` or
+    ``.claude`` is refused, and the final component must be a real directory.
+    Any other text (an in-repository alias, a ``..`` through a link, a chained,
+    dangling or outward link) is refused. The rule then applies from
     ``repo_root`` to the result (``expected`` is the final kind, ``None`` for a
     skill link itself), so any other link on the path is refused.
     """
     rel = Path(rel)
-    for skills in SKILLS_DIRS:
+    for skills, allowed in SKILLS_LINK_TEXT.items():
         link = repo_root / skills
         if rel.parts[: len(skills.parts)] == skills.parts and link.is_symlink():
             safe_write.check(repo_root, link, None)   # the directories above the skills link are real
-            text = os.readlink(link)
-            base = Path(os.path.normpath(link.parent / text))
-            if safe_write.refused(repo_root, link.parent / text, safe_write.DIRECTORY) or not base.is_dir():
+            text, other = os.readlink(link), link.parent / allowed
+            if text != allowed or safe_write.refused(repo_root, other, safe_write.DIRECTORY) or not other.is_dir():
                 raise safe_write.SafeWriteError(
-                    f"{link} is a symlink (to {text}), not a link to a real directory in the repository")
-            return safe_write.check(repo_root, base.joinpath(*rel.parts[len(skills.parts):]), expected)
+                    f"{link} is a symlink (to {text}), not a real directory or a link to {allowed}"
+                    f" (the skills directories may link only {SKILLS_REL} -> ../.claude/skills"
+                    f" or {LINK_DEST['claude-code']} -> ../.agents/skills)")
+            return safe_write.check(repo_root, other.joinpath(*rel.parts[len(skills.parts):]), expected)
     return safe_write.check(repo_root, repo_root / rel, expected)
 
 
@@ -150,12 +149,14 @@ def ensure_link(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """
     rel = link_rel(agent, name)
     assert rel is not None
-    try:   # both by the skills-link rule: either skills directory may be an in-repo alias at another depth
+    try:   # both by the skills-link rule: either skills directory may link to the other
         link = skill_path(repo_root, rel, None)
         canonical = skill_path(repo_root, SKILLS_REL / stem(name), None)
     except safe_write.SafeWriteError as e:
         return f"refused: {e}"
-    target = os.path.relpath(canonical, link.parent)   # from where the link really lands, not its logical depth
+    if link == canonical:
+        return UNCHANGED   # one skills directory links to the other: the canonical skill is the link's place
+    target = link_target(agent, name)
     if link.is_symlink() and os.readlink(link) == target:
         return UNCHANGED
     if link.exists() and link.resolve() == canonical.resolve():
