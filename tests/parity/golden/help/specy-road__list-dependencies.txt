@@ -1,0 +1,11 @@
+$ specy-road list-dependencies --help
+exit: 0
+--- stdout ---
+usage: specy-road list-dependencies [-h] NODE_ID
+
+positional arguments:
+  NODE_ID
+
+options:
+  -h, --help  show this help message and exit
+--- stderr ---

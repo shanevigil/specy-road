@@ -1,0 +1,5 @@
+$ specy-road orchestration --help
+exit: 2
+--- stdout ---
+--- stderr ---
+usage: specy-road orchestration guard --format …

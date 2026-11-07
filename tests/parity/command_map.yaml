@@ -1,0 +1,8 @@
+# The only way a later leaf may change the command surface or a golden --help transcript.
+# Each row is applied to the golden inventory as a declared delta (tests/parity/command_map.py):
+# an old invocation's options may be lost, an old command without options may be gone, a new
+# invocation's options may be gained, a new command is added. Any other difference fails. Fields:
+#   old: the invocation before the change ("specy-road branches prune"); empty for an addition
+#   new: the invocation after it ("specy-road doctor --prune"); empty for a removal
+#   allowed: the difference this row allows, in one line
+rows: []

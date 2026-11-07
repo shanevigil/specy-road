@@ -1,0 +1,41 @@
+$ specy-road brief --help
+exit: 0
+--- stdout ---
+usage: specy-road brief [-h] [-o OUTPUT] [--repo-root DIR] [--no-history] [--all-contracts]
+                        node_id
+
+Generate a comprehensive work-packet brief for a roadmap node. F-004: ``specy-road brief`` is a
+deterministic agent-handoff document that inlines all the context an implementer needs (no
+separate file-opening): * node metadata (id, codename, title, status, rollup, touch zones; in the
+nested layout the project root, with the summary and hand-off paths from the git root), then its
+``goal`` and ``acceptance`` criteria numbered ``A1..An`` (review records cite those ids — see
+``brief_acceptance``) * ancestor context chain (program -> phase -> milestone -> task) * every
+ancestor planning sheet body, in chain order, then this node's; an ancestor ``## Intent`` still
+left as a placeholder becomes one line * the shared contracts this node cites — every ``shared/…``
+path named in the ``## References`` section of its own planning sheet or an ancestor's, plus
+``shared/README.md`` as the index. Everything else under ``shared/`` is listed as a path rather
+than inlined, so a brief's size tracks the task and not the repository. ``--all-contracts``
+inlines the lot. * dependency list (resolved from node_key UUIDs to display ids) * **dependency
+context: each effective dependency's ``## Intent`` block inlined verbatim** (so PMs do not have to
+paraphrase upstream work in this task's own planning sheet — see ``brief_dependency_context``; one
+line instead while that ``## Intent`` is still a placeholder) * an explicit touch-zone instruction
+for the implementing agent, then how to run the leaf's tests (``verify_cmd``,
+:mod:`specy_road.verify_cmd_config`); the header states the brief's size and largest sections
+(``brief_acceptance``) Determinism: same chunks + same planning files + same shared/*.md set =>
+byte-identical output. No timestamps, no host info. Output: stdout by default; ``-o PATH`` writes
+to a file.
+
+positional arguments:
+  node_id               Roadmap node id, e.g. M1.1
+
+options:
+  -h, --help            show this help message and exit
+  -o OUTPUT, --output OUTPUT
+                        Write markdown to this file (default: stdout)
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+  --no-history          Omit the git-derived history section (## 9).
+  --all-contracts       Inline every shared/**/*.md instead of only those cited in the planning
+                        chain's `## References`. Restores pre-0.2.1 behaviour.
+--- stderr ---

@@ -1,0 +1,28 @@
+$ specy-road brainstorm promote --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm promote [-h] [--under NODE_ID] [--type {vision,phase,milestone,task}]
+                                     [--dry-run] [--set KEY=VALUE] [--by-cluster]
+                                     [--min-recommendation {strong,consider,park}]
+                                     [--plan PLAN.yaml] [--slug SLUG] [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --under NODE_ID       Override the session's anchor for this promotion.
+  --type {vision,phase,milestone,task}
+                        Node type to create (default: milestone).
+  --dry-run             Show the ids that would be created, write nothing.
+  --set KEY=VALUE       Override a field on every promoted node. Only execution_milestone is
+                        supported (e.g. --set execution_milestone=Human-led); otherwise the
+                        anchor's execution_milestone is copied.
+  --by-cluster          One node per cluster lead (strongest verdict, then accept order); the
+                        cluster's other accepted ideas are listed on it as alternatives.
+  --min-recommendation {strong,consider,park}
+                        Promote only ideas with at least this verdict; weaker ones stay accepted.
+  --plan PLAN.yaml      Create the tree a plan file describes (parent, type, title, acceptance,
+                        dependencies, ideas by id) instead of one node per accepted idea.
+  --slug SLUG           Session name (default: the only open session; required when several are).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

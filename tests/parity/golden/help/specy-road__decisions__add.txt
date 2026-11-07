@@ -1,0 +1,46 @@
+$ specy-road decisions add --help
+exit: 0
+--- stdout ---
+usage: specy-road decisions add [-h] --kind {decision,human-action,preference} --summary SUMMARY
+                                [--why WHY] [--option LABEL|EFFECT]
+                                [--recommendation RECOMMENDATION]
+                                [--recommendation-reason RECOMMENDATION_REASON]
+                                [--default DEFAULT] [--id ID] [--needed-by NEEDED_BY]
+                                [--asked ASKED] [--role {coordinator,executor,reviewer}]
+                                [--model ROSTER_ID] [--applies-to LEAF_KIND] [--expires EXPIRES]
+                                [--supersedes ID] [--local] [--repo-root DIR]
+                                [NODE]
+
+positional arguments:
+  NODE                  Roadmap node id this entry belongs to (optional for a preference)
+
+options:
+  -h, --help            show this help message and exit
+  --kind {decision,human-action,preference}
+  --summary SUMMARY     Plain-words summary; for a preference, the rule
+  --why WHY             Why now and what it blocks (decision); the human's reason (preference)
+  --option LABEL|EFFECT
+                        Repeat for each option (label|effect); decision and human-action
+  --recommendation RECOMMENDATION
+  --recommendation-reason RECOMMENDATION_REASON
+  --default DEFAULT     Default if unanswered
+  --id ID               Entry id (default: next D#, or P# for a preference)
+  --needed-by NEEDED_BY
+                        ISO date by which an answer is needed
+  --asked ASKED         ISO date when asked or stated (default: today)
+  --role {coordinator,executor,reviewer}
+                        Preference: the role the rule routes
+  --model ROSTER_ID     Preference: a preferred roster id; repeat, most preferred first.
+                        Availability is not a preference: set available/paused_until in the roster
+  --applies-to LEAF_KIND
+                        Preference: a leaf kind it covers, such as docs or data; repeat (default:
+                        every leaf)
+  --expires EXPIRES     Preference: active through this date (YYYY-MM-DD) or until this datetime
+  --supersedes ID       Preference: close this open preference in the same write
+  --local               Write the gitignored roadmap/decisions.local.yaml (this clone only, no
+                        commit needed) instead of roadmap/decisions.yaml; readers merge it over
+                        the tracked ledger, local wins
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

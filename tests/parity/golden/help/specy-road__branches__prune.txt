@@ -1,0 +1,19 @@
+$ specy-road branches prune --help
+exit: 0
+--- stdout ---
+usage: specy-road branches prune [-h] [--delete] [--base BRANCH] [--remote NAME] [--repo-root DIR]
+
+List feature/rm-* branches, local and on the remote, that the remote integration branch already
+contains, after git fetch --prune. Branches with a registry claim and open milestone rollup
+branches are skipped. Deletes only with --delete; run it from the up-to-date integration branch,
+because git branch -d also wants HEAD (or the branch's upstream) to contain the branch.
+
+options:
+  -h, --help       show this help message and exit
+  --delete         Delete the listed branches locally and on the remote.
+  --base BRANCH    Integration branch (default: roadmap/git-workflow.yaml, else main).
+  --remote NAME    Git remote (default: roadmap/git-workflow.yaml, else origin).
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

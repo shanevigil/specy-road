@@ -2,7 +2,7 @@
 
 This guide is for **maintainers and contributors** working on the `specy-road` package, validators, and optional PM UI in **this** repository. It does **not** apply to application repositories that use `specy-road init project`.
 
-The dogfood tree under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) is the repository's **test-fixture roadmap**: it keeps validators, exports, briefs, and GUI flows exercised against a consumer-shaped project. It is not the canonical product roadmap for the `specy-road` toolkit; a first-class toolkit roadmap is intentionally not defined here yet.
+The dogfood tree under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) is the repository's **test-fixture roadmap**: it keeps validators, exports, briefs, and GUI flows exercised against a consumer-shaped project. It is not the canonical product roadmap for the `specy-road` toolkit; the toolkit's own product roadmap lives under `sr/` on the `WIP/improvements-x-y-z` line, is stripped before promotion, and is not in the tree on `main`.
 
 To participate in development, contact the **repository owner** (or maintainers) before investing significant time; they can confirm priorities and access.
 

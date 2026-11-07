@@ -1,0 +1,22 @@
+$ specy-road brainstorm list --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm list [-h]
+                                  [--status {proposed,accepted,rejected,revised,parked,merged,decided}]
+                                  [--json] [--summary] [--by {cluster}] [--show-verdicts]
+                                  [--slug SLUG] [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --status {proposed,accepted,rejected,revised,parked,merged,decided}
+                        Show only ideas in this state.
+  --json                Machine-readable output.
+  --summary             Print per-status and per-recommendation counts instead of a row listing.
+  --by {cluster}        Group the listing (cluster-first triage).
+  --show-verdicts       Show the agent's recommendation column, its reasoning and the critics'
+                        objections (hidden by default so they do not steer the triage).
+  --slug SLUG           Session name (default: the only open session; required when several are).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

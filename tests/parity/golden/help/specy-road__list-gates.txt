@@ -1,0 +1,17 @@
+$ specy-road list-gates --help
+exit: 0
+--- stdout ---
+usage: specy-road list-gates [-h] [--under NODE_ID] [--json] [--repo-root DIR]
+
+Gate nodes still holding work back, and what each one blocks. --under scopes by the work being
+blocked, not by where the gate lives, because a phase is routinely held by a gate defined
+elsewhere in the graph.
+
+options:
+  -h, --help       show this help message and exit
+  --under NODE_ID  Only gates blocking work in this node's subtree.
+  --json           Machine-readable output.
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

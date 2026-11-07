@@ -1,0 +1,17 @@
+$ specy-road author-approach --help
+exit: 0
+--- stdout ---
+usage: specy-road author-approach [-h] [-o] [--repo-root DIR] NODE_ID [NODE_ID ...]
+
+Print the prompt that writes each leaf's ## Approach while it is still a placeholder.
+
+positional arguments:
+  NODE_ID
+
+options:
+  -h, --help       show this help message and exit
+  -o, --output     write work/prompt-approach-<ID>.md instead of printing
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

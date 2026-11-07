@@ -1,0 +1,24 @@
+$ specy-road review --help
+exit: 0
+--- stdout ---
+usage: specy-road review [-h]
+                         {record,list,check-pre-existing,red-green,delegate,usage,defer,accept-policy}
+                         ...
+
+positional arguments:
+  {record,list,check-pre-existing,red-green,delegate,usage,defer,accept-policy}
+    record              Validate a reviewer's notes and file them as a review record
+    list                Print a node's filed review records and the gate evaluation; writes
+                        nothing
+    check-pre-existing  Re-run claimed pre-existing verifier failures twice on the integration tip
+    red-green           Run the tests a leaf adds or changes at its merge base and at head
+    delegate            Run a rostered reviewer on its harness and wait for its record
+    usage               Tokens and cost per delegated reviewer run, and their total
+    defer               Human-only: apply an RCA's defer_findings record (follow-up leaf, decision
+                        entry, gate marker)
+    accept-policy       Human-only: accept a review policy change made on the integration branch
+                        since the leaf was claimed
+
+options:
+  -h, --help            show this help message and exit
+--- stderr ---

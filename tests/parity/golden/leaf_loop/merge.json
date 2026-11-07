@@ -1,0 +1,315 @@
+[
+ {
+  "step": "init project",
+  "exit": 0,
+  "registry": {
+   "checkout": [],
+   "main": []
+  },
+  "status": {
+   "checkout": null,
+   "main": null
+  },
+  "git": {
+   "branch": "main",
+   "branches": [],
+   "origin_branches": [],
+   "merged_into_main": null,
+   "merged_into_origin_main": null,
+   "head_subject": "",
+   "worktree": [
+    "?? .cursorindexingignore",
+    "?? .gitignore",
+    "?? .specyrd/",
+    "?? AGENTS.md",
+    "?? constitution/",
+    "?? constraints/",
+    "?? docs/",
+    "?? model-profiles/",
+    "?? planning/",
+    "?? research/",
+    "?? roadmap-context.md",
+    "?? roadmap.md",
+    "?? roadmap/",
+    "?? schemas/",
+    "?? shared/",
+    "?? vision.md",
+    "?? work/"
+   ]
+  }
+ },
+ {
+  "step": "add-node",
+  "exit": 0,
+  "registry": {
+   "checkout": [],
+   "main": []
+  },
+  "status": {
+   "checkout": "Not Started",
+   "main": null
+  },
+  "git": {
+   "branch": "main",
+   "branches": [
+    "main"
+   ],
+   "origin_branches": [
+    "main"
+   ],
+   "merged_into_main": null,
+   "merged_into_origin_main": null,
+   "head_subject": "specy-road init",
+   "worktree": [
+    "?? planning/M1.2_write-the-hello-module_<NODE_KEY>.md",
+    "M roadmap/phases/M1.json"
+   ]
+  }
+ },
+ {
+  "step": "scaffold-planning",
+  "exit": 0,
+  "registry": {
+   "checkout": [],
+   "main": []
+  },
+  "status": {
+   "checkout": "Not Started",
+   "main": null
+  },
+  "git": {
+   "branch": "main",
+   "branches": [
+    "main"
+   ],
+   "origin_branches": [
+    "main"
+   ],
+   "merged_into_main": null,
+   "merged_into_origin_main": null,
+   "head_subject": "specy-road init",
+   "worktree": [
+    "?? planning/M1.2_write-the-hello-module_<NODE_KEY>.md",
+    "M roadmap/phases/M1.json"
+   ]
+  }
+ },
+ {
+  "step": "pickup",
+  "exit": 0,
+  "registry": {
+   "checkout": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "pending"
+    }
+   ],
+   "main": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "pending"
+    }
+   ]
+  },
+  "status": {
+   "checkout": "Not Started",
+   "main": "Not Started"
+  },
+  "git": {
+   "branch": "feature/rm-write-the-hello-module",
+   "branches": [
+    "feature/rm-write-the-hello-module",
+    "main"
+   ],
+   "origin_branches": [
+    "main"
+   ],
+   "merged_into_main": true,
+   "merged_into_origin_main": true,
+   "head_subject": "chore(rm-write-the-hello-module): register as in-progress [skip ci] [ci skip] ***NO_CI***",
+   "worktree": [
+    "?? work/brief-M1.2.md"
+   ]
+  }
+ },
+ {
+  "step": "ready",
+  "exit": 0,
+  "registry": {
+   "checkout": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "pending"
+    }
+   ],
+   "main": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "pending"
+    }
+   ]
+  },
+  "status": {
+   "checkout": "Not Started",
+   "main": "Not Started"
+  },
+  "git": {
+   "branch": "feature/rm-write-the-hello-module",
+   "branches": [
+    "feature/rm-write-the-hello-module",
+    "main"
+   ],
+   "origin_branches": [
+    "main"
+   ],
+   "merged_into_main": false,
+   "merged_into_origin_main": null,
+   "head_subject": "feat: hello module",
+   "worktree": []
+  }
+ },
+ {
+  "step": "review record rev-b",
+  "exit": 0,
+  "registry": {
+   "checkout": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "pending"
+    }
+   ],
+   "main": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "pending"
+    }
+   ]
+  },
+  "status": {
+   "checkout": "Not Started",
+   "main": "Not Started"
+  },
+  "git": {
+   "branch": "feature/rm-write-the-hello-module",
+   "branches": [
+    "feature/rm-write-the-hello-module",
+    "main"
+   ],
+   "origin_branches": [
+    "main"
+   ],
+   "merged_into_main": false,
+   "merged_into_origin_main": null,
+   "head_subject": "feat: hello module",
+   "worktree": []
+  }
+ },
+ {
+  "step": "review record rev-c",
+  "exit": 0,
+  "registry": {
+   "checkout": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "pending"
+    }
+   ],
+   "main": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "pending"
+    }
+   ]
+  },
+  "status": {
+   "checkout": "Not Started",
+   "main": "Not Started"
+  },
+  "git": {
+   "branch": "feature/rm-write-the-hello-module",
+   "branches": [
+    "feature/rm-write-the-hello-module",
+    "main"
+   ],
+   "origin_branches": [
+    "main"
+   ],
+   "merged_into_main": false,
+   "merged_into_origin_main": null,
+   "head_subject": "feat: hello module",
+   "worktree": []
+  }
+ },
+ {
+  "step": "gate check",
+  "exit": 0,
+  "registry": {
+   "checkout": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "approved"
+    }
+   ],
+   "main": [
+    {
+     "node_id": "M1.2",
+     "branch": "feature/rm-write-the-hello-module",
+     "implementation_review": "pending"
+    }
+   ]
+  },
+  "status": {
+   "checkout": "Not Started",
+   "main": "Not Started"
+  },
+  "git": {
+   "branch": "feature/rm-write-the-hello-module",
+   "branches": [
+    "feature/rm-write-the-hello-module",
+    "main"
+   ],
+   "origin_branches": [
+    "main"
+   ],
+   "merged_into_main": false,
+   "merged_into_origin_main": null,
+   "head_subject": "chore(rm-write-the-hello-module): mark implementation reviewed",
+   "worktree": []
+  }
+ },
+ {
+  "step": "finish",
+  "exit": 0,
+  "registry": {
+   "checkout": [],
+   "main": []
+  },
+  "status": {
+   "checkout": "Complete",
+   "main": "Complete"
+  },
+  "git": {
+   "branch": "feature/rm-write-the-hello-module",
+   "branches": [
+    "feature/rm-write-the-hello-module",
+    "main"
+   ],
+   "origin_branches": [
+    "main"
+   ],
+   "merged_into_main": true,
+   "merged_into_origin_main": true,
+   "head_subject": "chore(rm-write-the-hello-module): complete, deregister",
+   "worktree": []
+  }
+ }
+]

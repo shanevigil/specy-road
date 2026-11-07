@@ -10,10 +10,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 |----|-------|------|------|--------|
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
 | `M16.1` | Freeze, rules, parity harness and baselines | milestone | — | Not Started |
-| `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
-| `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Not Started |
+| `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Complete |
+| `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Complete |
 | `M16.1.3` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Not Started |
-| `M16.1.4` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Not Started |
+| `M16.1.4` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Complete |
 | `M16.1.5` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Not Started |
 | `M16.1.6` | Review-policy evidence: how often each optional review policy changed a gate outcome | task | Mixed | Not Started |
 | `M16.1.7` | Baseline metrics, a coverage floor in CI, and the M16 working rules written down | task | Agentic-led | Not Started |
@@ -240,6 +240,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.44` | Unattended workers run in a read-only sandbox on Linux | task | — | Complete |
 | `M22.45` | A worker turn that moves the integration ref is flagged | task | — | Complete |
 | `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Complete |
+| `M22.47` | Cursor workers start and keep their config under the sandbox | task | — | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
