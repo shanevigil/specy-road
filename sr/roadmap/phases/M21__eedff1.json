@@ -337,7 +337,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.38_review-writers-refuse-links_992a07fe-018e-4ff0-adc5-1675c130adb6.md",
       "sibling_order": 36,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review writers and the review lock refuse any symlink on the path from the project root",
       "touch_zones": [
         "specy_road/review_lock.py",
