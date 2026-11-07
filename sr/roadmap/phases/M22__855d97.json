@@ -202,7 +202,8 @@
         "docs/orchestration-workers.md",
         "CHANGELOG.md",
         "specy_road/worker_adapter_base.py",
-        "specy_road/bundled_scripts/session_cli.py"
+        "specy_road/bundled_scripts/session_cli.py",
+        "tests/test_session_overlap.py"
       ],
       "type": "task"
     },
