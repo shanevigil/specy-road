@@ -180,7 +180,8 @@ def move_nodes(
     in one ``AtomicWritePlan`` and the graph validates once, so nothing reaches
     disk unless the whole batch is good. A later move's ``new_parent_id`` is the
     id after the earlier moves. ``new_parent`` is created before the first move,
-    so moves can name it; it is not in the map, which covers moved nodes only.
+    so moves can name it, and finished (its final ids) after the last; it is
+    not in the map, which covers moved nodes only.
     ``rewrite_refs`` rewrites the map's ids in prose too (``stage_id_rewrite``).
     """
     nodes = list(load_roadmap(root)["nodes"])
@@ -193,6 +194,8 @@ def move_nodes(
             _apply_move(nodes, move, renumber_outline=renumber_outline).values()
         )
         moved_keys |= {n["node_key"] for n in nodes if n["id"] in new_ids}
+    if new_parent is not None:
+        new_parent.finish(nodes)
     # ``scope`` is every node a rewrite may touch. A subtree move scopes it to
     # the subtree, so no node, sheet or claim outside it changes, even where
     # its text names a moved id.

@@ -39,18 +39,42 @@ from specy_road.runtime_paths import project_prefix
 _REF_READ_TIMEOUT = 4.0
 
 
-def _registry_from(repo: Path, ref: str, codename: str | None) -> str:
-    """Write ``ref``'s registry minus ``codename``'s row; return its project-relative path.
+def _head_row(repo: Path, codename: str) -> dict | None:
+    """This leaf's registry row at ``HEAD``, when the branch still holds that claim."""
+    doc = read_registry_at_ref(repo, "HEAD", _REF_READ_TIMEOUT) or {}
+    for entry in doc.get("entries") or []:
+        if isinstance(entry, dict) and entry.get("codename") == codename:
+            return entry
+    return None
 
-    With no row to drop, ``ref``'s blob is checked out byte for byte, as merge
-    mode does, so its comments survive; with no registry on ``ref``, this
-    branch's own copy stays.
+
+def _registry_from(repo: Path, ref: str, codename: str | None, *, keep_local_row: bool = False) -> str:
+    """Write the registry the merge keeps; return its project-relative path.
+
+    Dropping ``codename`` writes ``ref``'s registry minus that row. Keeping the
+    row starts from ``ref``'s registry and, when that registry lacks
+    ``codename``, adds the row from ``HEAD``. With nothing to change, ``ref``'s
+    blob is checked out byte for byte so its comments survive; with no registry
+    on ``ref``, this branch's own copy stays.
     """
     rel = REGISTRY_REL.as_posix()
     doc = read_registry_at_ref(repo, ref, _REF_READ_TIMEOUT)
-    entries = [e for e in ((doc or {}).get("entries") or []) if isinstance(e, dict)]
-    if doc is not None and codename is not None and any(e.get("codename") == codename for e in entries):
-        doc["entries"] = [e for e in entries if e.get("codename") != codename]
+    entries = list((doc or {}).get("entries") or [])
+    dicts = [e for e in entries if isinstance(e, dict)]
+    if (
+        keep_local_row and doc is not None and codename is not None
+        and not any(e.get("codename") == codename for e in dicts)
+    ):
+        row = _head_row(repo, codename)
+        if row is not None:
+            doc["entries"] = [*entries, row]
+            write_registry(registry_path(repo), doc)
+            return rel
+    if (
+        doc is not None and codename is not None and not keep_local_row
+        and any(e.get("codename") == codename for e in dicts)
+    ):
+        doc["entries"] = [e for e in dicts if e.get("codename") != codename]
         write_registry(registry_path(repo), doc)
     else:
         git_code(["checkout", ref if doc is not None else "HEAD", "--", rel], repo)
@@ -69,9 +93,9 @@ def merge_integration_resolving_bookkeeping(
 
     ``None`` once the merge commit exists; otherwise why it could not, with the
     merge aborted and ``branch`` where it was. ``drop_row=False`` keeps this
-    leaf's row from ``ref``: a branch that has not finished still holds its claim.
+    leaf's row: ``ref``'s registry, plus the row from ``HEAD`` when ``ref`` lacks it.
     """
-    codename = codename_from_branch(branch) if drop_row else None
+    own = codename_from_branch(branch)
     pre_sha = git_text(["rev-parse", "HEAD"], repo)
     if not pre_sha:
         return f"could not read {branch} HEAD before merging"
@@ -83,13 +107,14 @@ def merge_integration_resolving_bookkeeping(
     if not merge_in_progress(repo):
         return _abort(repo, out) if code != 0 else None
     try:
-        staged = [_registry_from(repo, ref, codename), *_regenerate_generated_files(repo)]
+        staged = [_registry_from(repo, ref, own, keep_local_row=not drop_row),
+                  *_regenerate_generated_files(repo)]
     except DeterministicResolveError as exc:
         return _abort(repo, str(exc))
     code, out = git_code(["add", "--", *staged], repo)
     if code != 0:
         return _abort(repo, f"staging {', '.join(staged)} failed: {out}")
-    minus = f" minus rm-{codename}" if codename else ""
+    minus = f" minus rm-{own}" if drop_row and own else ""
     body = (f"roadmap/registry.yaml resolved to {ib}{minus}; roadmap.md and roadmap-context.md "
             "regenerated from the merged graph, so the PR merges without a bookkeeping conflict.")
     code, out = git_code(["commit", "-m", f"Merge {ib} into {branch}", "-m", body], repo)

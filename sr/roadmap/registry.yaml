@@ -105,19 +105,6 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: group-into-member-id
-    node_id: M22.1
-    branch: feature/rm-group-into-member-id
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_outline_group.py
-      - specy_road/bundled_scripts/roadmap_move_node.py
-      - tests/test_outline_group_cli.py
-      - tests/test_gui_outline_contract.py
-      - docs/roadmap-authoring.md
-      - CHANGELOG.md
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: pending
   - codename: ready-changelog-reminder
     node_id: M22.7
     branch: feature/rm-ready-changelog-reminder
@@ -130,43 +117,6 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: init-next-steps
-    node_id: M22.8
-    branch: feature/rm-init-next-steps
-    touch_zones:
-      - specy_road/init_project.py
-      - tests/test_init_project_reports.py
-      - tests/test_init_project.py
-      - docs/install-and-usage.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: finish-keeps-local-claim-and-landing
-    node_id: M22.10
-    branch: feature/rm-finish-keeps-local-claim-and-landing
-    touch_zones:
-      - specy_road/reconcile_branch.py
-      - specy_road/finish_pr_merge.py
-      - specy_road/finish_modes.py
-      - specy_road/finish_land_local.py
-      - specy_road/finish_land_integration.py
-      - tests/test_reconcile_branch.py
-      - tests/test_finish_merge_failure_undo.py
-      - docs/git-workflow-parallel-prs.md
-      - docs/git-workflow.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: sandbox-runbook-rc4-drift
-    node_id: M22.15
-    branch: feature/rm-sandbox-runbook-rc4-drift
-    touch_zones:
-      - docs/agentic-sandbox-runbook.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: verify-tells-a-blocking-404
     node_id: M22.17
     branch: feature/rm-verify-tells-a-blocking-404
@@ -174,6 +124,87 @@ entries:
       - specy_road/bundled_scripts/brainstorm_verify.py
       - tests/test_brainstorm_verify.py
       - docs/brainstorming.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: reviewer-lists-every-required-change
+    node_id: M22.18
+    branch: feature/rm-reviewer-lists-every-required-change
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/review_record_write.py
+      - tests/test_role_prompt_reviewer.py
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: sandbox-rc4-final-polish
+    node_id: M22.22
+    branch: feature/rm-sandbox-rc4-final-polish
+    touch_zones:
+      - gui/pm-gantt/src/components/MarkdownWorkspace.tsx
+      - gui/pm-gantt/src/components/ModalFrame.tsx
+      - gui/pm-gantt/src/components/EditModal.tsx
+      - gui/pm-gantt/src/components/PublishRoadmapModal.tsx
+      - gui/pm-gantt/src/planningSectionUtils.ts
+      - gui/pm-gantt/src/planningSectionUtils.test.ts
+      - gui/pm-gantt/src/markdownWorkspace.test.ts
+      - specy_road/pm_gantt_static/
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: move-rewrites-sheet-zones
+    node_id: M22.2
+    branch: feature/rm-move-rewrites-sheet-zones
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_id_rewrite_staging.py
+      - specy_road/bundled_scripts/roadmap_move_node.py
+      - specy_road/bundled_scripts/validate_touch_zones.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - tests/test_move_node_subtree.py
+      - tests/test_validate_touch_zones.py
+      - docs/roadmap-authoring.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: sheet-body-without-display-id
+    node_id: M22.4
+    branch: feature/rm-sheet-body-without-display-id
+    touch_zones:
+      - specy_road/templates/planning-node/feature-sheet.md.template
+      - specy_road/templates/planning-node/gate-sheet.md.template
+      - specy_road/bundled_scripts/planning_sheet_bootstrap.py
+      - tests/test_planning_sheet_bootstrap.py
+      - tests/test_outline_group_cli.py
+      - tests/test_brainstorm_promote_judgement.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: upgrade-no-self-warning-export-drift-hint
+    node_id: M22.28
+    branch: feature/rm-upgrade-no-self-warning-export-drift-hint
+    touch_zones:
+      - specy_road/cli.py
+      - specy_road/bundled_scripts/export_roadmap_md.py
+      - tests/test_doctor_version_skew.py
+      - tests/test_export_roadmap_md.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: safe-write-directory-descriptors
+    node_id: M22.29
+    branch: feature/rm-safe-write-directory-descriptors
+    touch_zones:
+      - specy_road/safe_write.py
+      - specy_road/archive_ops.py
+      - tests/test_safe_write.py
+      - tests/test_archive_ops.py
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil

@@ -142,6 +142,26 @@ def test_outline_group_returns_the_id_map(client: TestClient, repo: Path) -> Non
     assert unchanged_except(before, after, moved)
 
 
+def test_outline_group_into_an_id_a_listed_node_holds(client: TestClient, repo: Path) -> None:
+    body = {"into_new": "M1.2", "title": "Grouped", "node_ids": ["M1.2", "M1.3"]}
+
+    r = _post(client, "/api/outline/group", body)
+
+    assert r.status_code == 200, r.text
+    assert r.json() == {
+        "ok": "true",
+        "id_map": {
+            "M1.2": "M1.2.1",
+            "M1.2.1": "M1.2.1.1",
+            "M1.2.2": "M1.2.1.2",
+            "M1.2.4": "M1.2.1.4",
+            "M1.3": "M1.2.2",
+        },
+    }
+    after = ids_by_key(repo)
+    assert (after[NK_A1], after[NK_A2], after[NK_A3]) == ("M1.1", "M1.2.1", "M1.2.2")
+
+
 @pytest.mark.parametrize(
     "body",
     [
