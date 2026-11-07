@@ -130,6 +130,11 @@ def schema_lines() -> list[str]:
             "nothing before or after it (anything else is a rerun request). `commit` is the "
             "packet's **Commit under review**, quoted; `notes` holds your Markdown notes. A field the schema does not "
             "require may be left out or `null`.", "",
+            "List every required change you can find in this one review, not just the first. Before you answer, "
+            "re-scan the diff for further instances of each defect class (other inputs, other call sites, other "
+            "files) and for any acceptance line not fully met. A later round should find nothing you could have "
+            "reported now.",
+            "",
             *NOTES_RULES_LINES,   # M21.35: read right before the answer is written
             "```json", json.dumps(output_schema(), indent=2), "```", ""]
 
