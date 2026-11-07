@@ -320,14 +320,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 47 | 0 | 2.30 | 51% | 31 | 2 |
-| `docs` **flagged** | 35 | 0 | 2.43 | 51% | 20 | 1 |
-| `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
+| `docs` **flagged** | 35 | 0 | 2.54 | 54% | 34 | 2 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
+| `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 46 | 0 | 2.33 | 52% | 31 | 2 |
+| `CHANGELOG.md` | 40 | 0 | 2.15 | 40% | 31 | 2 |
+| `planning` | 1 | 0 | 1.00 | 0% | 0 | 0 |
+| `specy_road` | 46 | 0 | 2.37 | 50% | 42 | 3 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 47 | 0 | 2.26 | 49% | 29 | 2 |
+| `tests` | 48 | 0 | 2.31 | 48% | 42 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
