@@ -165,7 +165,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
   - `M22.32` Claude Code launch and resume deny edits to steering files `steering-claude-launch-denies` — task — **Not Started**
   - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
-  - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Not Started**
+  - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Complete**
   - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Not Started**
   - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Not Started**
   - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
@@ -314,7 +314,6 @@ Do not pick these up.
 - `M22.24` on `feature/rm-guidance-exclusion-closes-three-bypasses` since 2026-11-07
 - `M22.25` on `feature/rm-upgrade-git-calls-share-one-environment` since 2026-11-07
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
-- `M22.34` on `feature/rm-accept-policy-for-all-open-claims` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
 - `M22.38` on `feature/rm-doctor-fix-keeps-other-clones-claims` since 2026-11-07
 - `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
@@ -327,7 +326,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 36 | 0 | 2.53 | 53% | 31 | 2 |
+| `docs` **flagged** | 37 | 0 | 2.49 | 51% | 31 | 2 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |

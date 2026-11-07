@@ -74,7 +74,13 @@ added or removed, every changed property of a kept entry including
 switch). A human accepts it with `specy-road review accept-policy <NODE_ID>`,
 which needs a terminal, prints the changes, asks for the node id typed back and
 writes `work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml`
-(`schemas/policy-acceptance.schema.json`); or the leaf is claimed again. An
+(`schemas/policy-acceptance.schema.json`); or the leaf is claimed again.
+`specy-road review accept-policy --all-open` does that for every open claim
+whose pin differs from the integration branch: it prints each distinct set of
+changes once, with the leaves that set affects, asks for those node ids typed
+back once, and writes each of those leaves its own `POLICY-ACCEPTED.yaml`. A
+leaf whose pin still matches is not listed and gets no file. It needs a
+terminal, the same as one node. An
 acceptance counts only for its node and the two digests it names, so a later
 change needs a new one; an invalid file is a gate problem, never an
 acceptance. A trailer that does not parse is a gate problem; a registration
@@ -85,6 +91,18 @@ forging them can (another commit with the registration subject, a hand-written
 acceptance). The rule stops the CR1 regression, an executor that rosters a
 reviewer or turns the gate off on the integration branch after its claim;
 M22.5's steering guard is the broader protection.
+
+## What the review-policy fingerprint covers
+
+The fingerprint is the digest of four committed values: `roster`, `substitutions` and `policy` in `roadmap/orchestration.yaml`, and `require_implementation_review_before_finish` in `roadmap/git-workflow.yaml`. A missing key counts as null. Toolkit defaults and `orchestration.local.yaml` are not part of it. Pickup records the digest on the claim's registration commit.
+
+When that digest matches the policy on the integration branch, the rules that will judge the leaf are the rules it started under. The gate passes that check with no human.
+
+A person is asked when the digest differs, because the review rules changed after this work started. The gate is not met. Its refusal says that in plain language, says what approving means, and lists the raw change lines below. `review accept-policy` prints the same explanation and the same lines, and waits for the node id typed back. With `--all-open` it waits for every affected node id, once. Both name `specy_road.review_policy_pin`, the module installed with the package, which states this rule. `docs/` is not in the wheel.
+
+An acceptance covers one leaf and two digests: the digest pinned at claim, and the digest on the integration branch when the person accepted. The file is `work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml` (`specy_road/schemas/policy-acceptance.schema.json` in the installed package). It does not cover another leaf, and it does not cover a later change to the policy. `--all-open` does not widen that. One confirmation writes one such file per listed leaf, each naming that leaf's own two digests.
+
+To decline, do not type the confirmation. Re-claim the leaf: `abort-task-pickup` releases it, and claiming it again pins the policy then in force. A wrong confirmation, or a run with no terminal, writes nothing.
 
 ## What a reviewer probes
 
