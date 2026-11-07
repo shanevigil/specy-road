@@ -144,23 +144,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: move-rewrites-sheet-zones
-    node_id: M22.2
-    branch: feature/rm-move-rewrites-sheet-zones
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_id_rewrite_staging.py
-      - specy_road/bundled_scripts/roadmap_move_node.py
-      - specy_road/bundled_scripts/validate_touch_zones.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - tests/test_move_node_subtree.py
-      - tests/test_validate_touch_zones.py
-      - docs/roadmap-authoring.md
-      - CHANGELOG.md
-      - tests/move_node_helpers.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T09:43:22+00:00'
   - codename: sheet-body-without-display-id
     node_id: M22.4
     branch: feature/rm-sheet-body-without-display-id
