@@ -21,7 +21,10 @@ from specy_road.workflow_prefs import warn_summary_rule
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
 from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
 from specy_road.bundled_scripts.touch_zone_tracked import warn_untracked_zones
-from specy_road.bundled_scripts.validate_touch_zones import warn_touch_zones_match_nothing
+from specy_road.bundled_scripts.validate_touch_zones import (
+    notice_stale_sheet_zones,
+    warn_touch_zones_match_nothing,
+)
 from specy_road.bundled_scripts.validate_registry_overlap import (
     AuthoringOverlapScope,
     warn_registry_touch_zone_overlap,
@@ -358,7 +361,9 @@ def run_validation(
 
     warn_stale_parent_status(nodes)
     report_roster_profiles(r)   # unmatched ids, and profile: values that do not resolve
-    warn_touch_zones_match_nothing(nodes, r, git_root=git_root(r) or r)
+    top = git_root(r) or r
+    warn_touch_zones_match_nothing(nodes, r, git_root=top)
+    notice_stale_sheet_zones(nodes, r, git_root=top)   # stdout: --strict does not count it
     warn_untracked_zones(nodes, r, claims=registry.get("entries") or [], show_all=show_all)
     warn_summary_rule(r, nodes)   # implementation_summary: commit against a .gitignore that ignores summaries (M15.22)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
