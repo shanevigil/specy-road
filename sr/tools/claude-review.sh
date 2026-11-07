@@ -13,8 +13,8 @@ set -- --model claude-opus-5-5 --effort "$effort" --permission-mode acceptEdits 
   --allowedTools "Read,Grep,Glob,Write,Edit,Bash" --add-dir "$REVIEWS"
 # Since M8.3 the channel output must be one JSON object: append the notes self-check, keep the raw output in a side
 # file, and print only the answer's last top-level JSON object (as cursor-review.sh does).
-if [ -f "$prompt" ] && [ -f "$(dirname "$0")/review-addendum.md" ]; then
-  merged=$(mktemp "${TMPDIR:-/tmp}/review-prompt.XXXXXX") && cat "$prompt" "$(dirname "$0")/review-addendum.md" > "$merged" && prompt=$merged
+if [ -z "${SR_PLAN_REVIEW:-}" ] && [ -f "$prompt" ] && [ -f "$(dirname "$0")/review-addendum.md" ]; then
+  merged=$(mktemp "${TMPDIR:-/tmp}/review-prompt.XXXXXX") && cat "$prompt" "$(dirname "$0")/review-addendum.md" "$(dirname "$0")/../constraints/review-brief.md" > "$merged" && prompt=$merged
 fi
 mkdir -p "$REVIEWS/.transcripts"
 side="$REVIEWS/.transcripts/claude-$(date +%Y%m%dT%H%M%S)-$$.log"

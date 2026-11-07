@@ -23,7 +23,7 @@
       ],
       "codename": "parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs",
       "dependencies": [
-        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+        "9022edcd-0ffa-48b3-829d-0ad51f8d6866"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.1.1",
@@ -49,7 +49,7 @@
       ],
       "codename": "parity-harness-a-review-gate-decision-table-covering-every-review-policy",
       "dependencies": [
-        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+        "9022edcd-0ffa-48b3-829d-0ad51f8d6866"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.1.2",
@@ -114,7 +114,7 @@
         "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
         "f6a94a57-91ff-449b-997e-af12dedd41ee",
         "0bcbdc19-743c-4037-9bbb-089c6a3f0cb4",
-        "37904d88-a256-4ae0-9abf-1c92de6bed7f"
+        "49e7b2a8-6486-47cb-a9c7-ba757373b6c8"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.2.2",

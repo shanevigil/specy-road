@@ -16,7 +16,4 @@ tests/test_gui_outline_contract.py) stall in some reviewer sandboxes. When the l
 by `specy-road ready --run` at the reviewed commit with exit 0, that recorded run is the verification: cite it in
 commands_rerun. Your own rerun timing out is an environment limit, not a defect; do not block on it. Block only if the
 recorded run is missing, not at this commit, or not exit 0, or if you find a product cause.
-Be exhaustive in one pass: a block costs a whole fix-and-review round, so list EVERY required change you can find in
-this review, not just the first. Before you answer, re-scan the diff for further instances of each defect you found
-(same class, other inputs, other call sites, other files) and for any other acceptance line not fully met. A later
-round should find nothing you could have reported now.
+List every required change that meets the review standard below in one pass, so a real problem does not cost a second round.

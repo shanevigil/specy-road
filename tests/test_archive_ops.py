@@ -8,6 +8,7 @@ chunk outright. All three must round-trip back to a byte-identical tree.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -15,9 +16,11 @@ import pytest
 
 from specy_road.archive_index import load_archive_index
 from specy_road.archive_ops import archive_node
-from specy_road.archive_plan import plan_archive
+from specy_road.archive_plan import plan_archive, planning_moves
 from specy_road.archive_restore import restore_archive
+from specy_road.safe_write import SafeWriteError
 from tests.helpers import DOGFOOD
+from tests.test_safe_write import swap_at_open
 
 
 @pytest.fixture()
@@ -117,16 +120,110 @@ def _move_node(repo: Path, src: str, dst: str, node_id: str) -> None:
     (base / dst).write_text(json.dumps(d, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def test_planning_sheets_move_out_of_the_flat_planning_dir(repo: Path) -> None:
-    """`validate` forbids subdirectories under planning/, so sheets park in the archive."""
+def _link_sheet(repo: Path, origin: Path, shape: str) -> Path:
+    """Move the sheet to ``docs/kept.md`` and link ``origin`` to it in ``shape``; returns where it now is."""
+    real = repo / ("docs-real" if shape == "linked-dir" else "docs")
+    real.mkdir(exist_ok=True)
+    origin.rename(real / "kept.md")
+    if shape == "in-repo-link":
+        origin.symlink_to(Path("..", "docs", "kept.md"))
+    elif shape == "link-chain":   # origin -> docs/mid.md -> docs/kept.md
+        (real / "mid.md").symlink_to("kept.md")
+        origin.symlink_to(Path("..", "docs", "mid.md"))
+    else:   # origin -> docs/kept.md through docs -> docs-real
+        (repo / "docs").symlink_to("docs-real")
+        origin.symlink_to(Path("..", "docs", "kept.md"))
+    return real / "kept.md"
+
+
+@pytest.mark.parametrize("shape", ["sheet", "in-repo-link", "link-chain", "linked-dir"])
+def test_planning_sheets_move_out_of_the_flat_planning_dir(repo: Path, shape: str) -> None:
+    """`validate` forbids subdirectories under planning/, so sheets park in the archive.
+
+    An in-repo linked sheet moves its final target (through a chain of links or a linked
+    directory too), and the link goes with it.
+    """
+    [move] = planning_moves(plan_archive(repo, "M0.1"))
+    origin = repo / move["origin"]
+    text = origin.read_bytes()
+    kept = origin if shape == "sheet" else _link_sheet(repo, origin, shape)
     rec = archive_node(repo, "M0.1")
 
     moves = rec["planning"]
     assert len(moves) == 1
-    assert not (repo / moves[0]["origin"]).exists()
-    assert (repo / moves[0]["stored"]).is_file()
+    assert not os.path.lexists(repo / moves[0]["origin"]) and not os.path.lexists(kept)
+    assert (repo / moves[0]["stored"]).is_file() and not (repo / moves[0]["stored"]).is_symlink()
+    assert (repo / moves[0]["stored"]).read_bytes() == text
     assert moves[0]["stored"].startswith("roadmap/archive/planning/")
     assert not any(p.is_dir() for p in (repo / "planning").iterdir())
+
+
+def _roadmap(repo: Path) -> dict[str, str]:
+    return {k: v for k, v in _snapshot(repo).items() if k.startswith("roadmap")}
+
+
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("shape,swapped,opened", [
+    ("sheet", "planning", "planning"), ("sheet", "roadmap/archive/planning", "roadmap/archive/planning"),
+    ("in-repo-link", "planning", "planning"), ("in-repo-link", "docs", "docs"), ("in-repo-link", "planning", "docs"),
+], ids=["sheet-parent", "archive-dir", "link-parent", "link-target-parent", "link-parent-after-target"])
+def test_a_directory_swapped_for_a_link_before_a_sheet_moves_is_refused(
+        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, shape: str, swapped: str, opened: str) -> None:
+    """A racer swaps a directory on a sheet's way (its own, a linked sheet's target's, or the archive's) for a
+    link out once the walk reaches it (or a later directory): the archive is refused before it changes the roadmap, nothing outside
+    changes, and the sheet (and its link) stay where they were."""
+    [move] = planning_moves(plan_archive(repo, "M0.1"))
+    origin, outside, raced = repo / move["origin"], tmp_path / "outside", repo / swapped
+    text = origin.read_bytes()
+    kept = origin if shape == "sheet" else _link_sheet(repo, origin, shape)
+    before = _roadmap(repo)
+    outside.mkdir()
+    (outside / kept.name).write_bytes(b"theirs\n")
+    swap_at_open(monkeypatch, repo / opened, raced, outside)
+
+    with pytest.raises(SafeWriteError, match=f"^{raced} is a symlink \\(to {outside}\\), not a"):
+        archive_node(repo, "M0.1")
+    monkeypatch.undo()
+    assert {p.name: p.read_bytes() for p in outside.iterdir()} == {kept.name: b"theirs\n"}
+    assert _roadmap(repo) == before and not (repo / "roadmap" / "archive" / "chunks").exists()
+
+    def real(path: Path) -> Path:   # where ``path`` is now that ``raced`` was moved aside
+        return raced.with_name(raced.name + ".real") / path.relative_to(raced) if path.is_relative_to(raced) else path
+    assert real(kept).read_bytes() == text
+    assert shape == "sheet" or real(origin).is_symlink()
+
+
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("state", ["gone", "swapped-before-the-walk"])
+def test_a_sheet_is_skipped_only_when_the_held_walk_finds_it_gone(
+        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, state: str) -> None:
+    """A sheet that is really gone is skipped. One that only looks gone because ``planning`` was swapped for
+    a link out right after the archive's link pre-check resolved the sheet (before any walk) is refused,
+    and the roadmap is unchanged."""
+    [move] = planning_moves(plan_archive(repo, "M0.1"))
+    origin, outside, planning = repo / move["origin"], tmp_path / "outside", repo / "planning"
+    text = origin.read_bytes()
+    outside.mkdir()   # no sheet there: a path check would read the sheet as gone
+    before = _roadmap(repo)
+    if state == "gone":
+        origin.unlink()
+        assert archive_node(repo, "M0.1")["planning"] == []
+        return
+    resolve = Path.resolve
+
+    def racing_resolve(self, *args, **kwargs):
+        resolved = resolve(self, *args, **kwargs)
+        if self == origin and not planning.is_symlink():   # the pre-check is done: one swap
+            planning.rename(repo / "planning.real")
+            planning.symlink_to(outside)
+        return resolved
+
+    monkeypatch.setattr(Path, "resolve", racing_resolve)
+    with pytest.raises(SafeWriteError, match=f"^{planning} is a symlink \\(to {outside}\\), not a"):
+        archive_node(repo, "M0.1")
+    monkeypatch.undo()
+    assert _roadmap(repo) == before and not (repo / "roadmap" / "archive" / "chunks").exists()
+    assert not list(outside.iterdir()) and (repo / "planning.real" / origin.name).read_bytes() == text
 
 
 @pytest.mark.parametrize(

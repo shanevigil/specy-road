@@ -56,7 +56,8 @@
       "acceptance": [
         "On a machine where the Cursor sandbox starts, the documented default launch (sandbox on, no --force) runs a worker and a reviewer turn, and the result is recorded",
         "The run records whether the CLI reports its model and whether it matches the request, how --resume with a new prompt behaves, and whether --mode ask suits reviewers",
-        "docs/orchestration-workers.md states what was confirmed; findings about the Cursor IDE stay separate from CLI findings"
+        "docs/orchestration-workers.md states what was confirmed; findings about the Cursor IDE stay separate from CLI findings",
+        "A documented-default worker commits in a linked worktree; if the sandbox denies the git metadata, the default launch grants the worktree's gitdir and common dir, or delegate refuses an executor that cannot commit, and a denial emits permission_denied"
       ],
       "codename": "cursor-cli-harness-test-pass",
       "dependencies": [],
@@ -69,7 +70,9 @@
       "title": "Test the Cursor CLI harness on the documented default",
       "touch_zones": [
         "docs/orchestration-workers.md",
-        "sr/planning/"
+        "sr/planning/",
+        "specy_road/worker_adapter_cursor.py",
+        "CHANGELOG.md"
       ],
       "type": "task"
     },
@@ -186,6 +189,140 @@
         "tests/test_finish_merge_failure_undo.py",
         "specy_road/finish_modes.py",
         "specy_road/finish_milestone_rollout.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road ready refuses when HEAD equals the merge base, or when the tree has uncommitted changes inside the leaf's touch zones, and names the paths; a READY with blocked_on set is still written",
+        "handoff status does not show ok or offer review for an existing READY whose commit equals its base",
+        "tests/test_ready_empty_leaf.py covers no commits, a dirty zone path, a dirty path outside the zones, blocked_on, and an old empty READY; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "ready-refuses-a-leaf-with-no-commits",
+      "dependencies": [
+        "992a07fe-018e-4ff0-adc5-1675c130adb6",
+        "855d9738-4b87-480b-8404-d6a1aa85c714"
+      ],
+      "id": "M22.41",
+      "node_key": "ac3ad49e-21e0-4e99-afd3-f91340af713a",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.41_ready-refuses-a-leaf-with-no-commits_ac3ad49e-21e0-4e99-afd3-f91340af713a.md",
+      "sibling_order": 40,
+      "status": "Not Started",
+      "title": "ready refuses a leaf with no commits, and handoff status stops offering it for review",
+      "touch_zones": [
+        "specy_road/review_gate_ready.py",
+        "specy_road/review_files.py",
+        "tests/test_ready_empty_leaf.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A review delegated with --worktree records sibling heads from that checkout, and the same record gives the same gate answer from the main checkout and the leaf worktree",
+        "Only sibling repositories the leaf's touch zones name can make a record stale: a moved or dirty unrelated sibling does not, and a moved or dirty named one still does",
+        "review list says stale, with the reason, rather than 'not the current commit' when the commit matches, and counts a block on file",
+        "tests/test_sibling_heads_worktree.py covers both evaluation points, an unrelated dirty sibling, a named moved sibling and the list wording; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "sibling-heads-come-from-the-reviewed-checkout",
+      "dependencies": [
+        "992a07fe-018e-4ff0-adc5-1675c130adb6",
+        "e129232c-a131-477e-bb91-12699f010034",
+        "855d9738-4b87-480b-8404-d6a1aa85c714",
+        "ac3ad49e-21e0-4e99-afd3-f91340af713a"
+      ],
+      "id": "M22.42",
+      "node_key": "181434e9-497e-4969-9329-3659d4fc0908",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.42_sibling-heads-come-from-the-reviewed-checkout_181434e9-497e-4969-9329-3659d4fc0908.md",
+      "sibling_order": 41,
+      "status": "Not Started",
+      "title": "Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review",
+      "touch_zones": [
+        "specy_road/review_rejected.py",
+        "specy_road/review_bookkeeping.py",
+        "specy_road/sibling_repos.py",
+        "specy_road/review_delegate.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "tests/test_sibling_heads_worktree.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "digest and digest --check give the same bytes from a fresh clone and from a checkout with a warm .specyrd/cache, on a history where a dependency edge is removed on a merged side branch",
+        "tests/test_digest_cold_warm.py builds that history and asserts both renders match, and that upgrade's render in a fresh worktree keeps the line; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "digest-is-the-same-cold-or-warm",
+      "dependencies": [],
+      "id": "M22.43",
+      "node_key": "936cac0b-872f-4f66-82ae-9a987f865b57",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.43_digest-is-the-same-cold-or-warm_936cac0b-872f-4f66-82ae-9a987f865b57.md",
+      "sibling_order": 42,
+      "status": "Not Started",
+      "title": "digest gives the same result with a cold or warm history cache",
+      "touch_zones": [
+        "specy_road/history_index.py",
+        "specy_road/history_cache.py",
+        "tests/test_digest_cold_warm.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "With worker_sandbox set in git-workflow.yaml (auto: bwrap on Linux), worker_runner runs every harness argv under bwrap: the root read-only, with the leaf worktree, the git objects, refs, logs and worktree metadata a commit needs, a per-worker outbox and each harness's state directories writable",
+        "Inside the sandbox the common git config, hooks, info, the worktree's commondir and gitdir files, the main checkout and home stay read-only, and ssh and gh credentials are not visible; a commit succeeds",
+        "READY reaches work/reviews/<node> only through the outbox, moved by the runner; the worker cannot write other files there",
+        "Where no sandbox can start, an unattended launch warns once and runs as today; docs state plainly what that host does not protect",
+        "tests/test_worker_sandbox.py, skipped where bwrap is missing, runs a fake harness turn: a commit lands, and writes to the common config, a hook, the main checkout and home are refused; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "workers-run-in-a-sandbox",
+      "dependencies": [],
+      "id": "M22.44",
+      "node_key": "9022edcd-0ffa-48b3-829d-0ad51f8d6866",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.44_workers-run-in-a-sandbox_9022edcd-0ffa-48b3-829d-0ad51f8d6866.md",
+      "sibling_order": 43,
+      "status": "Not Started",
+      "title": "Unattended workers run in a read-only sandbox on Linux",
+      "touch_zones": [
+        "specy_road/worker_sandbox.py",
+        "specy_road/worker_runner.py",
+        "specy_road/schemas/git-workflow.schema.json",
+        "specy_road/git_workflow_config.py",
+        "tests/test_worker_sandbox.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker_turn_check snapshots the local and remote-tracking integration refs at turn start and end, and a move during the turn is a post-run finding naming the ref and both commits",
+        "A turn that moves only its own branch stays clean; tests/test_worker_turn_check.py covers both through the public runner; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "integration-refs-stay-put-during-a-turn",
+      "dependencies": [
+        "9022edcd-0ffa-48b3-829d-0ad51f8d6866"
+      ],
+      "id": "M22.45",
+      "node_key": "49e7b2a8-6486-47cb-a9c7-ba757373b6c8",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.45_integration-refs-stay-put-during-a-turn_49e7b2a8-6486-47cb-a9c7-ba757373b6c8.md",
+      "sibling_order": 44,
+      "status": "Not Started",
+      "title": "A worker turn that moves the integration ref is flagged",
+      "touch_zones": [
+        "specy_road/worker_turn_check.py",
+        "tests/test_worker_turn_check.py",
+        "CHANGELOG.md"
       ],
       "type": "task"
     }

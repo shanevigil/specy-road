@@ -15,3 +15,4 @@ It is tracked: everyone working here reads it. Put personal notes in
 - **Touch zones belong to the coordinator.** Executors never edit `roadmap/`, `planning/` or `registry.yaml` to widen a leaf's zones. If a change needs a path outside the zones, stop and name the path and why in your summary.
 - **Reviewers route zone changes.** A needed zone change is a note to the coordinator in your notes, not a required change for the executor. Block only if the code is wrong without it.
 - **No person is reachable during a worker turn.** Do not call a question or ask-the-user tool. If you need a decision, stop and say so in your summary, and never record that a person answered or declined.
+- **Stopping is a good outcome.** If the leaf cannot be done as written, stop and say which: the requirements conflict (show the conflict), no way found yet (list what you tried), or too costly (give the estimate). Do not change the acceptance, the tests or the checks to get there.
