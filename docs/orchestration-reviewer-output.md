@@ -205,7 +205,10 @@ run record, schema or answer file. The reviewer's process gets
 `PYTHONDONTWRITEBYTECODE=1`, `PYTEST_ADDOPTS=-p no:cacheprovider` and
 `GIT_OPTIONAL_LOCKS=0`, so re-running tests and `git status` write nothing.
 Both runners (`review delegate` and `prompt --channel cli --run`) start the
-reviewer in a session and process group of its own. When its main process
+reviewer in a session and process group of its own, and guard it from launch
+to end: the prompt goes on stdin from a separate thread, after the watch on
+the reviewer's exit has started, so an undelivered prompt (a child holding
+stdin unread) never holds the run. When its main process
 exits (a background child still holding its output does not delay this), or
 the run is interrupted (Ctrl-C reaches specy-road, not the reviewer) or fails
 while reading output, specy-road sends that group SIGTERM, then SIGKILL after

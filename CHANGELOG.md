@@ -34,7 +34,9 @@ body. Keep section bodies focused; link to PRs for detail.
   capacity reason alone, with no `line N of the final turn is not one JSON object`. `review delegate`
   and `prompt --channel cli --run` start the reviewer in its own process group and end that group
   (SIGTERM, SIGKILL after 5 s) when the reviewer exits or the run is interrupted, so a background
-  child such as Cursor's `worker-server` no longer outlives the run.
+  child such as Cursor's `worker-server` no longer outlives the run. The prompt goes on stdin from a
+  thread inside that guard, so a reviewer that exits or is interrupted before reading it no longer
+  strands the run.
 - `set-dependencies --deps` and `edit-node --set dependencies=` accept a display id or a node_key
   (mixed in one value) and store the node_key. An unknown token is still refused with
   `dependency 'X' is neither a node id nor a node_key in the roadmap`.

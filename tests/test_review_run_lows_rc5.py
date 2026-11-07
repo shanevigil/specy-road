@@ -1,9 +1,10 @@
 """M22.16 (rc4 re-test): a whole refusal summary (D15c), no parse reason after a capacity failure (D17), and the
 reviewer's process group ended when its run ends (D18).
 
-The process cases replace the shared fake harness (tests/review_delegate_helpers.py) with :data:`GROUP_FAKE`: a
-reviewer that starts a background child in its own process group, holding stdout, and waits for the child's
-handshake before it goes on. The child waits until it is signalled (bounded at 60 s). No case sleeps.
+The process cases run :data:`GROUP_FAKE` as ``claude`` on PATH, its prompt (a packet larger than a pipe buffer)
+on stdin: a reviewer that starts a background child in its own process group, holding stdin unread and stdout,
+and waits for the child's handshake before it goes on, so the prompt's delivery blocks. The child waits until it
+is signalled (bounded at 60 s). No case sleeps.
 """
 
 from __future__ import annotations
@@ -31,19 +32,25 @@ LONG = ("The change keeps every existing caller and its behaviour while it adds 
 MORE = [f"Line {n} reads as an observation of the change" for n in range(9)]
 EXHAUSTED = "RetriableError: [resource_exhausted] Resource has been exhausted (e.g. check quota)."
 
-GROUP_FAKE = '''
+GROUP_FAKE = '''#!{python}
 import json, os, signal, subprocess, sys, threading
-spec = json.loads(open(sys.argv[1]).read())
+spec = json.loads(open(os.environ["FAKE_GROUP_SPEC"]).read())
 child = "import os, sys, threading; open(sys.argv[1], 'w').write(str(os.getpid())); os.write(int(sys.argv[2]), b'k'); threading.Event().wait(60)"
 r, w = os.pipe()
-subprocess.Popen([sys.executable, "-c", child, spec["pidfile"], str(w)], pass_fds=(w,))   # holds stdout, same group
+subprocess.Popen([sys.executable, "-c", child, spec["pidfile"], str(w)], pass_fds=(w,))   # holds stdin and stdout
 os.close(w)
 os.read(r, 1)   # the handshake: the child is running and its pid is written
-print("reviewing", flush=True)
+print("reviewing", flush=True)   # the prompt on stdin is never read: its delivery blocks
 if spec.get("interrupt"):
     os.kill(spec["caller"], signal.SIGINT)   # Ctrl-C reaches the caller only: the reviewer has a session of its own
     threading.Event().wait(60)
 '''
+
+#: A packet larger than any pipe buffer, so the prompt (which inlines it) cannot be delivered to a reviewer that
+#: does not read it.
+BIG_PACKET = "# Review packet\n\n**Commit under review:** HEAD\n\n" + "Packet line kept for its size.\n" * 20000
+GROUP_ROSTER = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+                "  - {id: opus, family: anthropic, roles: [reviewer], harness: claude-code}\n")
 
 
 def _refused(repo: Path, model: str = "opus") -> dict:
@@ -91,19 +98,26 @@ def test_a_capacity_failure_has_no_parse_reason(tmp_path: Path, turn: str) -> No
     assert CAPACITY not in run["reason"]   # the shared fake's other capacity text: this one is the run's own
 
 
-def _group_repo(tmp_path: Path, interrupt: bool = False) -> tuple[Path, Path]:
-    repo, spec = delegate_repo(tmp_path, GENERIC)
-    (tmp_path / "fake.py").write_text(GROUP_FAKE)
-    pidfile = tmp_path / "child.pid"
+def _group_repo(tmp_path: Path, monkeypatch, interrupt: bool = False) -> tuple[Path, Path]:
+    """A repo whose ``opus`` reviewer is :data:`GROUP_FAKE` as ``claude`` on PATH: its prompt goes on stdin."""
+    repo, _spec = delegate_repo(tmp_path, GROUP_ROSTER)
+    (rf.reviews_dir(repo, "M1.1") / "PACKET.md").write_text(BIG_PACKET)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "claude").write_text(GROUP_FAKE.format(python=sys.executable))
+    (bin_dir / "claude").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    pidfile, spec = tmp_path / "child.pid", tmp_path / "group.json"
     spec.write_text(json.dumps({"pidfile": str(pidfile), "interrupt": interrupt, "caller": os.getpid()}))
+    monkeypatch.setenv("FAKE_GROUP_SPEC", str(spec))
     return repo, pidfile
 
 
 def _run(runner: str, repo: Path) -> None:
     if runner == "delegate":
-        _delegate(repo, model="gem", retries=0)
+        _delegate(repo, retries=0)
     else:
-        run_main(role_prompt, "M1.1", "--model", "gem", "--role", "reviewer", "--channel", "cli", "--run",
+        run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                  "--repo-root", str(repo))
 
 
@@ -116,18 +130,21 @@ def _gone(pid: int) -> bool:
 
 
 @pytest.mark.parametrize("runner", ["delegate", "prompt-run"])
-def test_a_background_child_holding_stdout_is_ended_with_the_run(tmp_path: Path, runner: str) -> None:
-    repo, pidfile = _group_repo(tmp_path)
+def test_a_reviewer_exiting_while_its_prompt_is_undelivered_ends_its_group_and_the_run(
+        tmp_path: Path, monkeypatch, runner: str) -> None:
+    """The reviewer exits; its background child holds stdout and stdin unread, so the prompt's delivery blocks."""
+    repo, pidfile = _group_repo(tmp_path, monkeypatch)
     start = time.monotonic()
     _run(runner, repo)
     assert time.monotonic() - start < 30   # ended by the run, not after the child's own 60 s
     assert _gone(int(pidfile.read_text()))
-    assert load_run(repo, "M1.1", "gem")["state"] == "incomplete"
+    assert load_run(repo, "M1.1", "opus")["state"] == "incomplete"
 
 
 @pytest.mark.parametrize("runner", ["delegate", "prompt-run"])
-def test_an_interrupt_to_the_caller_ends_the_reviewers_group_and_closes_the_run(tmp_path: Path, runner: str) -> None:
-    repo, pidfile = _group_repo(tmp_path, interrupt=True)
+def test_an_interrupt_while_the_prompt_is_undelivered_ends_the_reviewers_group_and_closes_the_run(
+        tmp_path: Path, monkeypatch, runner: str) -> None:
+    repo, pidfile = _group_repo(tmp_path, monkeypatch, interrupt=True)
     old = signal.signal(signal.SIGINT, signal.default_int_handler)
     try:
         with pytest.raises(KeyboardInterrupt):
@@ -135,7 +152,7 @@ def test_an_interrupt_to_the_caller_ends_the_reviewers_group_and_closes_the_run(
     finally:
         signal.signal(signal.SIGINT, old)
     assert _gone(int(pidfile.read_text()))
-    run = load_run(repo, "M1.1", "gem")
+    run = load_run(repo, "M1.1", "opus")
     assert run["state"] == "incomplete" and run["reason"].startswith("interrupted")
 
 
