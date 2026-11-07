@@ -26,10 +26,13 @@ from specy_road.worker_sessions import check_session_id
 from specy_road.worker_turn_check import limit_gate
 from specy_road.worker_state import (
     FLAG_STALLED,
+    FLAG_UNDELIVERED,
     WorkerError,
     WorkerRecord,
     append_event,
+    clear_flag,
     load_record,
+    mutate,
     require_writer,
     workers_lock,
 )
@@ -38,6 +41,18 @@ from specy_road.worker_runner_ready import READY_ONLY_PROMPT
 
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
                    "first; if the hand-off is already written, say so and stop.\n")
+
+
+def _prompt_with_queued(stored: str | None, text: str) -> str:
+    """The launch prompt: a stuck queued follow-up, a blank line, then this turn's own text."""
+    return f"{stored}\n\n{text}" if stored else text
+
+
+def _clear_delivered(repo_root: Path, rec: WorkerRecord, stored: str | None) -> None:
+    """Drop the queued text and ``message_undelivered`` once the turn has started."""
+    if stored:
+        mutate(repo_root, rec, lambda r: setattr(r, "queued_message", None))
+        clear_flag(repo_root, rec, FLAG_UNDELIVERED)
 
 
 def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: bool = False, *,
@@ -84,6 +99,8 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
         raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}); {rec.worker_id} stays {rec.state}")
     cli, api_id, mode, effort = _cli_for(repo_root, entry, rec.harness)
     cli = _selected_cli(entry, cli, resuming=True)   # the command the auth check above was run for
+    stored = rec.queued_message   # delivery cleared this first, so that path does not send the text twice
+    text = _prompt_with_queued(stored, text)
     n = rec.last_event_seq + 1
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
     prompt.parent.mkdir(parents=True, exist_ok=True)   # a linked worktree may have no work/ yet
@@ -98,6 +115,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
                  summary=f"{kind}: {' '.join(text.split())[:300]}")
     spawn(repo_root, rec, launch, resumed=True)
+    _clear_delivered(repo_root, rec, stored)   # a refusal before spawn keeps the text and the flag
     return rec
 
 

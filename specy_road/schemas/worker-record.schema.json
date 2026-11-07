@@ -27,8 +27,8 @@
     "limit_reset_at": { "type": ["string", "null"], "description": "UTC ISO 8601 time the usage limit that paused this worker lifts, set with state paused_by_limit (null when the harness named no time: resume is then allowed at once) and cleared when the next turn starts. One field for every harness and every recogniser of a limit: the adapters' parsers and the retry watchdog write it, worker resume reads it." },
     "flags": {
       "type": "array", "uniqueItems": true,
-      "items": { "enum": ["possibly_modified_externally", "needs_reconcile", "wrapper_gone_harness_alive", "stalled", "post_run_findings"] },
-      "description": "post_run_findings: the post-run check after the worker's last turn found something beyond a clean turn (permission denials, a failed turn, api retries, or git state beyond the expected files); its post_run_check event lists them. Set or cleared by each turn's check, whatever the exit code."
+      "items": { "enum": ["possibly_modified_externally", "needs_reconcile", "wrapper_gone_harness_alive", "stalled", "post_run_findings", "message_undelivered"] },
+      "description": "post_run_findings: the post-run check after the worker's last turn found something beyond a clean turn (permission denials, a failed turn, api retries, or git state beyond the expected files); its post_run_check event lists them. Set or cleared by each turn's check, whatever the exit code. message_undelivered: a queued follow-up could not be delivered; the text stays in queued_message until the next worker message or worker resume sends it, or terminate clears both."
     },
     "lease": {
       "type": "object", "required": ["holder", "since"], "additionalProperties": false,
