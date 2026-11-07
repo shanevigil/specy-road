@@ -28,6 +28,7 @@ import {
 } from "../planningSectionUtils";
 import { ROADMAP_NODE_STATUS_ORDERED } from "../roadmapNodeStatuses";
 import { EditModalSaveQueue } from "../editModalSaveQueue";
+import { acceptanceEdit } from "../acceptanceEdit";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 import { PlanningSheetDiffPane } from "./PlanningSheetDiffPane";
@@ -210,6 +211,82 @@ function PlanningHintHelp({ inFlow = false }: PlanningHintHelpProps) {
   );
 }
 
+type AcceptanceSectionProps = {
+  items: string[];
+  disabled: boolean;
+  error: string | null;
+  onChange: (next: string[]) => void;
+};
+
+/** One field per criterion, with add, remove and move up / down. */
+function AcceptanceSection({ items, disabled, error, onChange }: AcceptanceSectionProps) {
+  const errId = useId();
+  const replace = (i: number, text: string) =>
+    onChange(items.map((c, j) => (j === i ? text : c)));
+  const move = (i: number, to: number) => {
+    const next = [...items];
+    [next[i], next[to]] = [next[to], next[i]];
+    onChange(next);
+  };
+  return (
+    <section className="modal-edit-title-wrap" aria-label="Acceptance criteria">
+      <span className="modal-edit-title-label">Acceptance</span>
+      <ol style={{ margin: 0, paddingLeft: "1.6rem", maxHeight: "12rem", overflowY: "auto" }}>
+        {items.map((c, i) => (
+          // Criteria have no id of their own; a row is its position.
+          // eslint-disable-next-line @eslint-react/no-array-index-key
+          <li key={i} style={{ display: "flex", gap: "0.25rem", alignItems: "flex-start" }}>
+            <textarea
+              rows={1}
+              value={c}
+              readOnly={disabled}
+              aria-label={`Acceptance criterion A${i + 1}`}
+              aria-describedby={error ? errId : undefined}
+              style={{ flex: 1, resize: "vertical" }}
+              onChange={(e) => replace(i, e.target.value)}
+            />
+            <button
+              type="button"
+              disabled={disabled || i === 0}
+              aria-label={`Move criterion A${i + 1} up`}
+              onClick={() => move(i, i - 1)}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              disabled={disabled || i === items.length - 1}
+              aria-label={`Move criterion A${i + 1} down`}
+              onClick={() => move(i, i + 1)}
+            >
+              ↓
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              aria-label={`Remove criterion A${i + 1}`}
+              onClick={() => onChange(items.filter((_, j) => j !== i))}
+            >
+              ✕
+            </button>
+          </li>
+        ))}
+      </ol>
+      {items.length === 0 ? <p className="outline-meta">No acceptance criteria.</p> : null}
+      <div>
+        <button type="button" disabled={disabled} onClick={() => onChange([...items, ""])}>
+          Add criterion
+        </button>
+      </div>
+      {error ? (
+        <p className="modal-edit-title-error" id={errId} role="alert">
+          {error}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 export function EditModal({
   node,
   allNodes = [],
@@ -273,6 +350,10 @@ export function EditModal({
   const [reviewSelectionTick, setReviewSelectionTick] = useState(0);
   /** Gate roadmap status (gates only); saved through the save queue. */
   const [gateStatusDraft, setGateStatusDraft] = useState("Not Started");
+  /** Acceptance criteria, one per field; saved through the save queue. */
+  const [acceptanceDraft, setAcceptanceDraft] = useState<string[]>([]);
+  /** Shown when an edit was refused (a line break inside a criterion). */
+  const [acceptanceErr, setAcceptanceErr] = useState<string | null>(null);
 
   const reviewTextareaRef = useRef<HTMLTextAreaElement>(null);
   const sectionScrollRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -332,7 +413,7 @@ export function EditModal({
           },
           onSheetPathAdopted: (path) => setSheetPath(path),
         },
-        { title: "", status: "", path: null, content: "" },
+        { title: "", status: "", acceptance: "", path: null, content: "" },
       ),
   );
 
@@ -413,9 +494,13 @@ export function EditModal({
     const gate = node.type === "gate";
     const status = (node.status as string)?.trim() || "Not Started";
     setGateStatusDraft(status);
+    const acceptance = node.acceptance ?? [];
+    setAcceptanceDraft(acceptance);
+    setAcceptanceErr(null);
     saveQueue.reset({
       title: node.title || "",
       status: gate ? status : "",
+      acceptance: acceptance.join("\n"),
       path: null,
       content: "",
     });
@@ -467,6 +552,18 @@ export function EditModal({
     setGateStatusDraft(value);
     if (!node || !hydrated || readOnlyCheckout || node.type !== "gate") return;
     saveQueue.setStatus(value);
+  };
+
+  const onAcceptanceInput = (next: string[]) => {
+    if (!node || !hydrated || readOnlyCheckout) return;
+    const r = acceptanceEdit(next);
+    if (!r.ok) {
+      setAcceptanceErr(r.message);
+      return;
+    }
+    setAcceptanceErr(null);
+    setAcceptanceDraft(next);
+    saveQueue.setAcceptance(r.value);
   };
 
   const depItems = useMemo(
@@ -863,6 +960,12 @@ export function EditModal({
             </select>
           </label>
         ) : null}
+        <AcceptanceSection
+          items={acceptanceDraft}
+          disabled={readOnlyCheckout || !hydrated}
+          error={acceptanceErr}
+          onChange={onAcceptanceInput}
+        />
         {workLine ? (
           <p className="modal-edit-work-line" title={workLine}>
             {workLine}
@@ -877,7 +980,7 @@ export function EditModal({
         ) : null}
         {readOnlyCheckout ? (
           <p className="outline-meta" role="status">
-            The title and planning sheet
+            The title, acceptance criteria and planning sheet
             {node.type === "gate" ? " and gate status" : ""} are read-only while this task is in
             active development (in progress, open or merged merge request, or this checkout matches
             the registered branch).

@@ -14,6 +14,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- The PM GUI's node edit dialog shows and edits a node's acceptance criteria: one field per criterion, with add,
+  remove and move up / down, saved through the existing `PATCH /api/nodes/{id}` as `edit-node --set acceptance=`
+  (one criterion per line; an empty list removes the field). A line break inside a criterion is refused with a
+  message. See `docs/pm-gui.md` (Node edit dialog).
 - `worker_sandbox` in `roadmap/git-workflow.yaml` (`bwrap`, `auto` or `off`; omitted means `off`, so a project
   opts in) runs each unattended worker turn's harness in a read-only bubblewrap sandbox on Linux. Writable: the
   leaf's linked worktree and the git objects, refs and logs. Each harness state directory is replaced by the

@@ -8,6 +8,8 @@ export type RoadmapNode = {
   dependencies?: string[];
   sibling_order?: number;
   planning_dir?: string | null;
+  /** Acceptance criteria, one per item (absent when the node has none). */
+  acceptance?: string[];
   [key: string]: unknown;
 };
 
