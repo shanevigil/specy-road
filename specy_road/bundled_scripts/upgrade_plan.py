@@ -21,14 +21,14 @@ import io
 import os
 import shutil
 import stat
-import subprocess
 import sys
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from specy_road import safe_write
+from specy_road import git_subprocess, safe_write
+from specy_road.bundled_scripts.upgrade_generated import checked
 from specy_road.ignore_report import scratch_git_env
 
 State = tuple | None   # ("file", size, mtime_ns, mode) | ("link", text) | ("dir",) | ("other",) | None (absent)
@@ -104,7 +104,10 @@ class Mirror:
     checkout. Content the copy lacks (a target out of the checkout, or under
     ``skip``) is copied to its real path's place, and a link whose text names
     that place another way reaches it through one more link, which only a path
-    already outside the checkout can cross.
+    already outside the checkout can cross. A text whose ``..`` climbs past
+    ``/`` (where the checkout stops) would climb out of the mirror here, so
+    :meth:`build` gives that one link its target's place, absolutely; nothing
+    is ever made outside ``dest``.
 
     Invariant: ``safe_write`` and the skills-link rule see the same link shapes
     here as in the checkout, so ``upgrade``, ``upgrade --dry-run`` and
@@ -113,8 +116,10 @@ class Mirror:
 
     def __init__(self, checkout: Path, dest: Path, skip: Path) -> None:
         self.checkout, self.skip = checkout.resolve(), skip.resolve()
-        self.outside = dest.resolve() / "outside"
+        self.dest = dest.resolve()
+        self.outside, self.hooks = self.dest / "outside", self.dest / "no-hooks"
         self.repo = self.to_sandbox(self.checkout)
+        self.unreadable: list[Path] = []   # files copied empty: git add could not read them
         self.states: dict[str, State] = {}
         self._links: list[tuple[Path, Path]] = []
         self._hardlinks: dict[tuple[int, int], Path] = {}   # (dev, ino) -> first sandbox path for this inode
@@ -130,18 +135,31 @@ class Mirror:
         return text.replace(str(self.outside), "")
 
     def build(self) -> Mirror:
+        """Copy the checkout and ``git init`` the copy; :class:`GitFailed` if git could not, for every mirror alike."""
         self._hardlinks.clear()
         self.outside.mkdir(parents=True)
         self._copy_dir(self.checkout, self.repo)
-        while self._links:   # every link of a round first, so content never lands where a link belongs
-            batch, self._links = self._links, []
-            for src, dst in batch:
-                text = os.readlink(src)
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                os.symlink(self.to_sandbox(Path(text)) if os.path.isabs(text) else text, dst)   # its own text, one hop
-            for src, _dst in batch:
-                self._ensure(Path(os.path.realpath(src)), self.to_sandbox(src.parent / os.readlink(src)))
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=False, capture_output=True, env=scratch_git_env())
+        made: list[tuple[Path, Path]] = []
+        while True:
+            while self._links:   # every link of a round first, so content never lands where a link belongs
+                batch, self._links = self._links, []
+                for src, dst in batch:
+                    text = os.readlink(src)
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    os.symlink(self.to_sandbox(Path(text)) if os.path.isabs(text) else text, dst)   # its own text, one hop
+                for src, _dst in batch:
+                    self._ensure(Path(os.path.realpath(src)), self.to_sandbox(src.parent / os.readlink(src)))
+                made += batch
+            escaping = [(src, dst) for src, dst in made if not self._inside(dst)]
+            if not escaping:
+                break
+            for src, dst in escaping:
+                self._contain(src, dst)
+        template = self.dest / "no-template"
+        template.mkdir()
+        self.hooks.mkdir()
+        checked(git_subprocess.run(["-c", f"core.hooksPath={self.hooks}", "init", "-q", f"--template={template}"],
+                                   self.repo, env=scratch_git_env(self.dest)), "init")
         return self
 
     def _copy_dir(self, src: Path, dst: Path) -> None:
@@ -182,6 +200,7 @@ class Mirror:
         except PermissionError:   # unreadable: unreadable in the sandbox too, so every reader fails alike
             dst.touch()
             dst.chmod(src.stat().st_mode & 0o777)
+            self.unreadable.append(dst)
 
     def _ensure(self, real: Path, mapped: Path) -> None:
         """Give a link's target (``mapped``, as its text names it) content when the mirror lacks it.
@@ -191,10 +210,31 @@ class Mirror:
         """
         if os.path.lexists(mapped) or ".git" in real.parts or not real.exists():
             return
+        where = Path(os.path.realpath(mapped))   # where the text lands in the mirror; out of it, build contains the link
+        if not where.is_relative_to(self.outside):
+            return
         home = self._place(real)
-        if not os.path.lexists(mapped):   # the text names the place another way (a ``..``, an alias)
-            mapped.parent.mkdir(parents=True, exist_ok=True)
-            os.symlink(home, mapped)
+        if not os.path.lexists(where):   # the text names the place another way (a ``..``, an alias)
+            where.parent.mkdir(parents=True, exist_ok=True)
+            os.symlink(home, where)
+
+    def _inside(self, path: Path) -> bool:
+        return Path(os.path.realpath(path)).is_relative_to(self.outside)
+
+    def _contain(self, src: Path, dst: Path) -> None:
+        """Point ``dst``, whose text climbs out of the mirror, at its real target's place in it.
+
+        A ``..`` past ``/`` stays at ``/`` in the checkout but climbs above
+        ``outside`` here, so such a text is given as that place, absolutely.
+        """
+        real = Path(os.path.realpath(src))
+        home = self.to_sandbox(real)
+        if os.readlink(dst) == str(home):   # contained once and still out: refuse rather than reach outside
+            raise safe_write.SafeWriteError(f"{src} resolves out of the upgrade's copy; nothing was written")
+        dst.unlink()
+        os.symlink(home, dst)
+        if os.path.exists(src) and ".git" not in real.parts:
+            self._place(real)
 
     def _place(self, real: Path) -> Path:
         """``real``'s place in the mirror, with its content copied there when missing."""
@@ -261,8 +301,11 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
         try:
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
                 declined = refresh(mirror.to_sandbox(project.resolve()), mirror.repo)
-        except OSError as e:
-            raise _named_in_checkout(e, real)
+        except (OSError, RuntimeError) as e:   # a symlink loop in the mirror is the checkout's: refused, named there
+            refusal = safe_write.loop_refusal(e)
+            if refusal is None and not isinstance(e, OSError):
+                raise
+            raise _named_in_checkout(refusal or e, real) from e
         finally:
             for buf, stream in ((out, sys.stdout), (err, sys.stderr)):
                 stream.write(real(buf.getvalue()))

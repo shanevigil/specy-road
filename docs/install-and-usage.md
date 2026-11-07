@@ -142,20 +142,27 @@ write` in a dry run), and refuses a path with any symlink on it (in the project 
 after a refusal, or when `validate` fails, it says to run `specy-road digest`
 instead (not `specy-road sync`, which also fast-forwards your integration
 branch from the remote). `--dry-run` runs its git calls in the temporary copy
-with `GIT_DIR` and the related variables removed, so it is safe inside a git
-hook. It exits non-zero when `validate` fails, and also, even when `validate`
+with every `GIT_` variable dropped, no global or system git config, no hooks
+and a timeout, so it is safe inside a git hook. It exits 2 when a git call it
+depends on fails, and 1 when `validate` fails, and also, even when `validate`
 passes, when a write is refused: before its first write, `upgrade` checks every
 path it would change, and one that leads out of the checkout, or a schema, stub
 directory or other path with any symlink on it, prints `error: <path> is a
 symlink (to <target>), not <kind>` and writes nothing (`--dry-run` included).
 `init project`, `refresh-schemas`, `refresh-stubs`, `specyrd init`, `export` and
-`digest` refuse the same way and exit 1: any symlink on the path they write,
-pointing out of the project or inside it, dangling or not, is refused rather than
-followed. One exception: an agent skills directory itself (`.agents/skills` or
-`.claude/skills`) may be a symlink to a real directory inside the repository, and
-the stubs are written into that directory. A skills link that is chained (its
-target is a link or under one), dangling or leaving the repository is refused,
-as is any other link on a stub's path; the skill links made under
+`digest` refuse the same way and exit 1 (`specyrd init` also for the files
+`--install-guard-hooks` and `--install-pre-push` write, checked before its first write):
+any symlink on the path they write,
+pointing out of the project or inside it, dangling or looping, is refused rather than
+followed. One exception: an agent skills directory itself may be a symlink to the other
+one, with exactly this link text: `.claude/skills -> ../.agents/skills` or
+`.agents/skills -> ../.claude/skills`, the other being a real directory; the
+stubs are written into that directory. Any other skills link is refused: an
+in-repository alias such as `.claude/skills -> ../tools/skills` (which earlier
+releases accepted), an absolute or chained link, one through another link, a
+dangling one, or one leaving the repository. Replace such a link with one of the
+two values above or a real directory. Any other link on a stub's path is refused
+too; the skill links made under
 `.claude/skills/` are made on purpose. A stub, skill file, skill link or ignore
 file refused this way prints `error:` and makes `refresh-stubs`, `upgrade` and
 `upgrade --dry-run` exit 1; that path is left as it is and everything else is

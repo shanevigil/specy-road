@@ -10,12 +10,15 @@ import json
 import os
 import sys
 import time
+
+import yaml
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
+from tests.test_worker_m310_reconcile_status import nested_project
 
 from specy_road import worker_adapter_codex as codex
 from specy_road import worker_adapter_cursor as cursor
@@ -254,6 +257,51 @@ def test_cursor_creates_the_chat_first_passes_trust_sandbox_and_never_w(
 
 
 # --- A3: the git half of the post-run check ---------------------------------------------------------------
+
+
+def _nested_touch_zones(project: Path, top: Path, zones: list[str]) -> None:
+    phases = json.loads((project / "roadmap" / "phases" / "M1.json").read_text(encoding="utf-8"))
+    phases["nodes"][0]["touch_zones"] = zones
+    (project / "roadmap" / "phases" / "M1.json").write_text(json.dumps(phases), encoding="utf-8")
+    reg = yaml.safe_load((project / "roadmap" / "registry.yaml").read_text(encoding="utf-8"))
+    reg["entries"][0]["touch_zones"] = zones
+    (project / "roadmap" / "registry.yaml").write_text(yaml.safe_dump(reg), encoding="utf-8")
+    git(top, "add", "sr/roadmap")
+    git(top, "commit", "-qm", "touch zones")
+
+
+def _close_turn_findings(project: Path, rec: ws.WorkerRecord, watch: tc.TurnWatch) -> list[dict[str, object]]:
+    tc.close_turn(project, rec, watch)
+    return _events(project, rec.worker_id, "post_run_check")[-1].detail["findings"]
+
+
+@pytest.mark.parametrize("zones", [["sr/src"], ["src"]])
+def test_nested_close_turn_accepts_a_commit_inside_either_zone_form(tmp_path: Path, zones: list[str]) -> None:
+    top, project = nested_project(tmp_path)
+    if zones != ["src"]:   # nested_project's graph already names the zone project-relative
+        _nested_touch_zones(project, top, zones)
+    rec = ws.create_record(project, "M1.1", "claude-code", "opus", top, branch="feature/rm-thing")
+    watch = tc.TurnWatch(project, rec)
+    rel = "sr/src/in_zone.py"
+    (project / "src").mkdir(exist_ok=True)
+    (project / "src" / "in_zone.py").write_text("ok\n", encoding="utf-8")
+    git(top, "add", rel)
+    git(top, "commit", "-qm", "in zone")
+    findings = _close_turn_findings(project, rec, watch)
+    assert not any(f["kind"] == "committed_outside_zones" for f in findings)
+
+
+def test_nested_close_turn_flags_a_commit_outside_git_root_and_project_zones(tmp_path: Path) -> None:
+    top, project = nested_project(tmp_path)
+    rec = ws.create_record(project, "M1.1", "claude-code", "opus", top, branch="feature/rm-thing")
+    watch = tc.TurnWatch(project, rec)
+    (top / "outside").mkdir()
+    (top / "outside" / "x.py").write_text("stray\n", encoding="utf-8")
+    git(top, "add", "outside/x.py")
+    git(top, "commit", "-qm", "outside")
+    findings = _close_turn_findings(project, rec, watch)
+    outside = [f for f in findings if f["kind"] == "committed_outside_zones"]
+    assert outside and outside[0]["paths"] == ["outside/x.py"]
 
 
 def test_post_run_check_reports_branch_stash_porcelain_and_commits_outside_the_zones(

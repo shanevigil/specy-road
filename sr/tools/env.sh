@@ -13,5 +13,8 @@ elif [ -x "$ROOT/.venv/bin/python" ]; then PY=$ROOT/.venv/bin/python
 else PY=python3
 fi
 REVIEWS=$ROOT/sr/work/reviews
+# The main checkout's wrappers, for roster channels: a leaf branch may carry older ones.
+SPECY_ROAD_TOOLS=${SPECY_ROAD_TOOLS:-$ROOT/sr/tools}
+export SPECY_ROAD_TOOLS
 case "$PY" in */*) PATH="$ROOT/sr/tools:$(dirname "$PY"):$PATH" ;; *) PATH="$ROOT/sr/tools:$PATH" ;; esac
 export PATH

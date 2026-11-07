@@ -27,7 +27,9 @@ close the remaining race; it is not done here.
 
 from __future__ import annotations
 
+import ast
 import contextlib
+import errno
 import os
 import secrets
 import shutil
@@ -139,13 +141,56 @@ def check_all(root: Path, paths, expected: str | None = FILE) -> None:
         check(root, path, expected)
 
 
+def _loops(path: Path) -> bool:
+    try:
+        os.stat(path)
+    except OSError as e:
+        return e.errno == errno.ELOOP
+    return False
+
+
+def loop_refusal(e: BaseException) -> SafeWriteError | None:
+    """``e`` as the rule's refusal: itself for a :class:`SafeWriteError`; for a symlink loop that code reading,
+    resolving or making a directory met before the rule did, the refusal of the looping link; else ``None``.
+
+    A loop shows as ``ELOOP``, as pathlib's ``RuntimeError("Symlink loop from ...")``
+    (``resolve()`` before Python 3.13), or as ``FileExistsError`` from ``mkdir``
+    over a looping link. The looping link is the shallowest component of the
+    error's path that is a symlink ``stat`` cannot follow.
+    """
+    if isinstance(e, SafeWriteError):
+        return e
+    if isinstance(e, RuntimeError) and str(e).startswith("Symlink loop from "):
+        name = ast.literal_eval(str(e).removeprefix("Symlink loop from "))
+    elif isinstance(e, OSError) and e.errno in (errno.ELOOP, errno.EEXIST) and e.filename:
+        name = e.filename
+    else:
+        return None
+    full = Path(os.fsdecode(name))
+    here = Path(full.anchor)
+    for part in full.parts[1:]:
+        here = here / part
+        if os.path.islink(here) and _loops(here):
+            return _refusal(here, "a symlink", DIRECTORY if here != full else f"{FILE} or {DIRECTORY}")
+    return None
+
+
+def refusal_of(e: OSError | RuntimeError) -> SafeWriteError:
+    """:func:`loop_refusal` of ``e``; ``e`` itself is raised again when it is neither a refusal nor a loop."""
+    refusal = loop_refusal(e)
+    if refusal is None:
+        raise e
+    return refusal
+
+
 @contextlib.contextmanager
 def exit_on_refusal():
-    """The command-line boundary: a :class:`SafeWriteError` inside prints ``error: <message>`` on stderr, exit 1."""
+    """The command-line boundary: a :class:`SafeWriteError`, or a symlink loop (:func:`loop_refusal`), inside
+    prints ``error: <message>`` on stderr and exits 1, no traceback."""
     try:
         yield
-    except SafeWriteError as e:
-        print(f"error: {e}", file=sys.stderr)
+    except (OSError, RuntimeError) as e:
+        print(f"error: {refusal_of(e)}", file=sys.stderr)
         raise SystemExit(1) from e
 
 

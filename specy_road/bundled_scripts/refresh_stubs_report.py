@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road import safe_write
+from specy_road.specyrd_skills import skill_path
 from specy_road.written_entry import Written
 
 NEXT_STEP = "Next: specy-road validate (specy-road upgrade runs the whole sequence)."
@@ -28,6 +30,15 @@ def _linked_dir(repo_root: Path, rel: Path) -> Path | None:
     return None
 
 
+def _refused(repo_root: Path, rel: str) -> bool:
+    """Whether the skills-link rule refuses ``rel`` (any final kind)."""
+    try:
+        skill_path(repo_root, rel, None)
+    except safe_write.SafeWriteError:
+        return True
+    return False
+
+
 def resolve_linked(written: list[str], repo_root: Path | None) -> list[str]:
     """``written`` with each entry under a symlinked directory named by its real path, once.
 
@@ -39,14 +50,16 @@ def resolve_linked(written: list[str], repo_root: Path | None) -> list[str]:
     skill-folder entry that *is* the real directory of a listed file is that same
     skill and is dropped, in either direction (``.agents/skills`` →
     ``.claude/skills`` or the reverse): a real run reports it unchanged, so the
-    dry run reports the same lines.
+    dry run reports the same lines. An entry whose path the skills-link rule
+    (:func:`~specy_road.specyrd_skills.skill_path`) refuses is printed as it is,
+    never resolved: it wrote nothing, and its path may run through a symlink loop.
     """
     if repo_root is None:
         return list(written)
     root = repo_root.resolve()
     entries = []
     for entry in written:
-        if not isinstance(entry, Written):
+        if not isinstance(entry, Written) or _refused(repo_root, entry.path):
             entries.append((entry, None, None))
             continue
         link = _linked_dir(repo_root, Path(entry.path))

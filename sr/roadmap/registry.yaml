@@ -76,50 +76,14 @@ entries:
     touch_zones:
       - specy_road/steering_paths.py
       - specy_road/worker_turn_check.py
+      - specy_road/worker_runner.py
       - specy_road/worker_reconcile.py
-      - specy_road/worker_adapter_claude.py
-      - specy_road/bundled_scripts/finish_task.py
-      - docs/orchestration-workers.md
-      - docs/orchestration-harness-launch.md
-      - docs/orchestration-review.md
-      - tests/
-      - specy_road/schemas/worker-record.schema.json
-      - specy_road/steering_gate.py
-      - docs/orchestration-steering-files.md
       - specy_road/git_config_text.py
+      - specy_road/schemas/worker-record.schema.json
+      - docs/orchestration-workers.md
+      - docs/orchestration-steering-files.md
+      - tests/test_steering_file_guard.py
     started: '2026-11-05'
-    owner: savigil
-    implementation_review: pending
-  - codename: safe-write-rule-setup-writers
-    node_id: M21.37
-    branch: feature/rm-safe-write-rule-setup-writers
-    touch_zones:
-      - specy_road/safe_write.py
-      - specy_road/managed_block.py
-      - specy_road/init_project.py
-      - specy_road/specyrd_init.py
-      - specy_road/generated_files.py
-      - specy_road/archive_restore.py
-      - specy_road/bundled_scripts/refresh_schemas.py
-      - specy_road/bundled_scripts/upgrade_plan.py
-      - specy_road/bundled_scripts/upgrade_generated.py
-      - specy_road/bundled_scripts/export_roadmap_md.py
-      - specy_road/bundled_scripts/digest_cli.py
-      - specy_road/bundled_scripts/do_next_task_register.py
-      - specy_road/bundled_scripts/refresh_stubs.py
-      - tests/test_safe_write.py
-      - tests/test_setup_writers_refuse_links.py
-      - tests/test_writers_refuse_links_out.py
-      - tests/test_upgrade.py
-      - docs/install-and-usage.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/agent_ignores.py
-      - specy_road/specyrd_skills.py
-      - tests/test_prerelease_files.py
-      - tests/test_m13_7_notices.py
-      - tests/test_upgrade_plan_parity.py
-    started: '2026-11-06'
     owner: savigil
     implementation_review: pending
   - codename: ops-writers-refuse-links

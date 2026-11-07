@@ -30,6 +30,10 @@ Rules, in the order they apply:
   score.
 * **Independence (§3.2).** The executor's model is not offered as its own
   reviewer, and with ``reviewers_distinct_families`` one reviewer per family.
+* **Guidance bypass (M21.44).** With ``policy.signed_reviews`` on, an entry
+  whose model a profile records as bypassing the guidance stays out of the
+  executor and reviewer pools (a note says why) unless its roster entry sets
+  ``allow_guidance_bypass_model: true``; the coordinator pool is unaffected.
 * **Strong review.** Each ``policy.strong_review`` item the leaf's touch zones
   meet (:mod:`specy_road.review_strong`) is listed with the reviewers that can
   satisfy it, and its best-ranked one is picked first, whatever its family;
@@ -68,6 +72,9 @@ from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: calle
     _pause_active,
     assign_leaf,
     entry_may_process,
+    guidance_bypass_refusal,
+    guidance_bypass_warning,
+    guidance_problem,
     is_available,
     may_handle,
     node_eligibility,
@@ -124,6 +131,14 @@ def preference_notice(pref: dict[str, Any], cands: list[Candidate], today: date 
     return {**pref, "roster_notes": notes}
 
 
+def _candidate(root: Path, config: dict[str, Any], entry: dict[str, Any], local: bool, worktree: bool) -> Candidate:
+    """A roster entry with its pinned profile and, M21.44, its guidance-bypass refusal (kept out of the executor and
+    reviewer pools, never the coordinator's) or opted-in warning."""
+    prof = pinned_profile_for_entry(root, entry, worktree=worktree)
+    return Candidate(entry, prof, local, guidance_bypass_refusal(config, entry, prof, root),
+                     guidance_bypass_warning(config, entry, prof, root))
+
+
 def build_orchestration_plan(root: Path, *, under: str | None = None, today: date | None = None,
                              spread: bool = False, roster_from_worktree: bool = False) -> tuple[OrchestrationPlan | None, str | None]:
     """``spread``: executors round-robin over the capable entries by leaf order (batch, then position).
@@ -136,8 +151,7 @@ def build_orchestration_plan(root: Path, *, under: str | None = None, today: dat
     nodes, _reg, sp = gather_session_plan(root, under)
     by_id = {n["id"]: n for n in nodes}
     local = local_roster_ids(root)
-    cands = [Candidate(e, pinned_profile_for_entry(root, e, worktree=roster_from_worktree), e.get("id") in local)
-             for e in config.get("roster") or []]
+    cands = [_candidate(root, config, e, e.get("id") in local, roster_from_worktree) for e in config.get("roster") or []]
     ref, drift = (WORKTREE_REF, None) if roster_from_worktree else roster_source(root)
     prefix = project_prefix(root)
     flagged = flagged_areas(root, config["policy"])

@@ -68,8 +68,10 @@ class GitResult:
         return (self.err or self.out).strip()
 
 
-def run(args: list[str], cwd: Path, *, timeout: float = DEFAULT_TIMEOUT) -> GitResult:
-    """Run ``git <args>`` in ``cwd``. Never raises."""
+def run(
+    args: list[str], cwd: Path, *, timeout: float = DEFAULT_TIMEOUT, env: dict[str, str] | None = None
+) -> GitResult:
+    """Run ``git <args>`` in ``cwd``, in ``env`` (``None`` inherits this process's). Never raises."""
     try:
         r = subprocess.run(
             ["git", *args],
@@ -78,6 +80,7 @@ def run(args: list[str], cwd: Path, *, timeout: float = DEFAULT_TIMEOUT) -> GitR
             text=True,
             timeout=timeout,
             check=False,
+            env=env,
         )
     except subprocess.TimeoutExpired as e:
         return GitResult(-1, "", str(e), "timeout")

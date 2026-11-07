@@ -55,7 +55,8 @@
         "`worker list`, `orchestrate plan` and doctor's claim checks read the snapshot, and every row gives the same output and cleanup eligibility as at pickup; M15.26's delivered reporting and slot rules hold for every row, manual claims included, and the snapshot's status adds no exemption",
         "The layering gate fails when the review gate, a CLI entry point or a gui_app module adds an import of an orchestration module other than `specy_road.orchestration`; imports present at pickup are baselined and may only shrink; when a later leaf moves one of those consumers, its baseline entries follow the recorded module rename (M16.2.6's rule) instead of counting as new imports. Before the first module lands in specy_road/orchestration/, constraints/file-limits.yaml's applies_to_globs gains `specy_road/orchestration/**/*.py`, so the 1,000-line file cap, the 80-line function cap and the 750-line warning cover every later move into it",
         "docs/orchestration.md documents the snapshot fields as the read-only interface for other consumers (the PM GUI work is phase M17); writes stay in today's modules; no GUI change",
-        "Estimated net line change (informational, not a gate): package about -100"
+        "Estimated net line change (informational, not a gate): package about -100",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui",
       "dependencies": [
@@ -84,41 +85,8 @@
         "tests/fixtures/orchestration_snapshot_v1.json",
         "tests/parity/orchestration_state/",
         "tests/",
-        "constraints/file-limits.yaml"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "The worker modules (adapters, runner, lease, lock, state, reconcile, ops, outbox, process, sessions, usage, witness, exit, schema) move under specy_road/orchestration/workers/ with `git mv`; code outside imports them through specy_road.orchestration; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
-        "The worker test files pass with only import paths, patch targets and recorded fixture-path relocations edited (the summary shows that every changed test line is one of those); no assertion changes; real subprocess, lease-race and crash-recovery tests are kept as they are",
-        "Parity harness, decision table and the M16.3.1 state table unchanged",
-        "Estimated net line change (informational, not a gate): package about -50"
-      ],
-      "codename": "worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only",
-      "dependencies": [
-        "449eeb3e-1874-4b25-841c-2b1fed8e2363"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.5.1",
-      "node_key": "51f22f17-0d11-4dc4-8709-d39d406991c5",
-      "parent_id": "M16.5",
-      "planning_dir": "planning/M16.5.1_worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only_51f22f17-0d11-4dc4-8709-d39d406991c5.md",
-      "sibling_order": 0,
-      "status": "Not Started",
-      "title": "Worker runtime moves into orchestration/workers with import-path edits only",
-      "touch_zones": [
-        "specy_road/orchestration/workers/",
-        "specy_road/worker_*.py",
-        "specy_road/bundled_scripts/worker_cli*.py",
-        "specy_road/bundled_scripts/worker_hook.py",
-        "tests/",
-        "specy_road/",
-        "scripts/line_width_baseline.json",
-        "scripts/ruff_quality_baseline.json",
-        "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt",
-        "constraints/clone-baseline.json"
+        "constraints/file-limits.yaml",
+        "sr/constraints/file-limits.yaml"
       ],
       "type": "task"
     },
@@ -131,7 +99,8 @@
       ],
       "codename": "shared-checkout-guard-and-session-presence-move-into-orchestration",
       "dependencies": [
-        "66711ba8-3d38-427a-bf76-fdc3989e0c75"
+        "66711ba8-3d38-427a-bf76-fdc3989e0c75",
+        "99ad0839-6c85-4631-b67b-80ef2d3b3c57"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.5.7",
@@ -233,7 +202,10 @@
       "codename": "fold-the-review-gate-and-escalation-fragments-and-mark-the-policies-the-evidence-did-not-keep-as-deprecated",
       "dependencies": [
         "6434cf7b-842b-4532-96e3-1821655a5fb5",
-        "68912bae-f046-43f9-8576-a97d7c2577c8"
+        "68912bae-f046-43f9-8576-a97d7c2577c8",
+        "3d3ddc19-998c-4d9e-9e79-bc5afa51e7ef",
+        "4dfa0dbd-5b47-4b91-abc3-953669d35a8a",
+        "855d9738-4b87-480b-8404-d6a1aa85c714"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.5.12",
@@ -468,10 +440,13 @@
         "purpose.md says specy-road governs a repository's plan, its multi-agent execution (workers, roster, review delegation, grind) and its review trail, and states the not-list in this sheet word for word",
         "principles.md is split into product invariants and engineering rules for this repo; principle 5 keeps 'no daemon and no MCP server' and names the PM GUI as a local server the user starts and detached workers as processes a command launches, neither a coordination daemon nor an MCP server; 'leave model choice to the team' and 'does not reinvent agent tooling' are reworded to what the product does (model profiles are data the team chooses from)",
         "docs/philosophy-and-scope.md shrinks to what is opinionated and what is not, linking purpose.md; AGENTS.md and docs/toolkit-development.md no longer say the toolkit roadmap is 'intentionally not defined': they say it lives under sr/ on the WIP line and is not in the tree on main",
-        "Estimated net line change (informational, not a gate): docs about -150"
+        "Estimated net line change (informational, not a gate): docs about -150",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions",
-      "dependencies": [],
+      "dependencies": [
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M16.1.4",
       "node_key": "42e6f078-5c8e-4ac2-b6bc-519cdac7c399",
@@ -485,7 +460,9 @@
         "constitution/principles.md",
         "docs/philosophy-and-scope.md",
         "AGENTS.md",
-        "docs/toolkit-development.md"
+        "docs/toolkit-development.md",
+        "sr/constitution/purpose.md",
+        "sr/constitution/principles.md"
       ],
       "type": "task"
     }

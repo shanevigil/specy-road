@@ -268,12 +268,14 @@
     },
     {
       "acceptance": [
-        "Primitive: new specy_road/safe_write.py (check, mkdirs, write, copy, remove, prune_empty, open_lock, SafeWriteError(OSError)) walks with lstat from the owned root (resolved once; nothing above it inspected) and refuses a symlink at any ancestor below the root (dangling, in-repo and outward alike), a non-directory where a directory belongs, or a lexical '..' leaving the root. The final component is per operation: write/copy/open_lock absent or a regular file; mkdirs absent or a real directory; remove a regular file or a symlink unlinked as an entry, never followed; prune_empty only an lstat real directory. Messages use finish's irregular_destination sentence ('<path> is <kind>[ (to <readlink>)], not <expected>'). write/copy use an exclusive temp file in the verified parent and re-lstat destination and parent right before os.replace; open_lock uses O_NOFOLLOW, or where os.O_NOFOLLOW is absent lstat-refuses a final link then opens. managed_block.refused_link returns this refusal for any link; agent_ignores' managed blocks (.gitignore, Cursor ignore files) use a strict mode on the rule; resolves_outside stays only for agents_md_block, agent_guide_block, upgrade_templates and refresh_profiles. Skills-link rule, the one named exception to the ancestor rule (maintainer 2026-11-06): refresh_stubs and specyrd_skills write through safe_write with repo_root as the owned root, and the agent skills directory itself (.agents/skills or .claude/skills) may be a symlink to a real directory inside the repo: the writer swaps that single component for its target, then applies safe_write from repo_root to the result. Any other link on the path, a chained or dangling skills link, or a skills link leaving the repo is refused",
+        "Primitive: new specy_road/safe_write.py (check, mkdirs, write, copy, remove, prune_empty, open_lock, SafeWriteError(OSError)) walks with lstat from the owned root (resolved once; nothing above it inspected) and refuses a symlink at any ancestor below the root (dangling, in-repo and outward alike), a non-directory where a directory belongs, or a lexical '..' leaving the root. The final component is per operation: write/copy/open_lock absent or a regular file; mkdirs absent or a real directory; remove a regular file or a symlink unlinked as an entry, never followed; prune_empty only an lstat real directory. Messages use finish's irregular_destination sentence ('<path> is <kind>[ (to <readlink>)], not <expected>'). write/copy use an exclusive temp file in the verified parent and re-lstat destination and parent right before os.replace; open_lock uses O_NOFOLLOW, or where os.O_NOFOLLOW is absent lstat-refuses a final link then opens. managed_block.refused_link returns this refusal for any link; agent_ignores' managed blocks (.gitignore, Cursor ignore files) use a strict mode on the rule; resolves_outside stays only for agents_md_block, agent_guide_block, upgrade_templates and refresh_profiles. Skills-link rule, the one named exception to the ancestor rule (maintainer 2026-11-06): refresh_stubs and specyrd_skills write through safe_write with repo_root as the owned root, and the agent skills directory itself may be a symlink only when its raw os.readlink text is, byte for byte, `../.agents/skills` at .claude/skills or `../.claude/skills` at .agents/skills. The text is not normalised (specyrd_skills.skill_path's os.path.normpath of it goes); safe_write's lstat walk runs on the un-normalised join of the link's parent and that text, so a symlinked .agents or .claude above it is refused, and the final component must be a real directory by lstat. Any other link on the path, any other skills-link text (an in-repo alias such as ../tools/skills included), a chained or dangling skills link, or a skills link leaving the repo is refused. link_target() stays and gives the per-skill link target; only ensure_link's dynamic os.path.relpath target goes",
         "Setup writers on the rule: init_project._copy_templates (a dangling destination link counts as present and is refused; a linked parent refused before mkdir), refresh_schemas, specyrd_init._save_manifest, export (reexport_roadmap_md and main's index write), digest (default output and a relative or in-checkout -o; '-' stays stdout; an explicit absolute -o outside the checkout stays today's write), generated_files (refused_generated_files refuses any link, in-repo included), pickup (do_next_task_register.regenerated_tracked_paths keeps tracked-only selection and writes each tracked name through safe_write.write; an untracked name is never created), upgrade_generated.regenerate, refresh_stubs (the file-write branch through safe_write from repo_root under the skills-link rule, no resolves_outside branch; the is_link_path branch keeps specyrd_skills.ensure_link; _prune refuses an orphan under a linked directory, removes a symlink orphan as an entry, and its empty-parent cleanup never lists or rmdirs a linked directory)",
         "Upgrade invariant and CLI boundary: upgrade_plan.apply_plan checks every entry of plan.changes() by its target (the real path, before locate) with safe_write.check against the checkout before its first mutation; a failure names each path and applies nothing to the checkout or to the dry run's copy (declined entries are not changes and apply nothing for that entry, and the rest of the plan still applies; a stub or canonical skill file refused for a link is an error diagnostic, and refresh-stubs, upgrade and upgrade --dry-run all exit 1 for it (maintainer 2026-11-06); declined entries of agents_md_block, agent_guide_block, upgrade_templates and refresh_profiles stay report lines in this leaf). grok's reproduction (schemas/roadmap.schema.json linked to an outside file, real upgrade) leaves the outside bytes unchanged. upgrade.main (real and --dry-run), init project, refresh-schemas, specyrd init, refresh-stubs, export and digest print SafeWriteError as 'error: <message>' on stderr, exit 1, no traceback",
         "archive_restore.restore_archive preflights every path it will touch, lexically from the owned root with no resolve(): record.chunk (the source it later unlinks), each target chunk _write_back will write, every planning stored and origin, and the manifest, ledger and archive planning directory; any refusal raises before the first write, move or unlink",
         "Tests: tests/test_safe_write.py (each operation's allowed and refused final kinds, an existing real directory for mkdirs, a symlink orphan removed with its target intact, FIFO destination, non-directory ancestor, '..' out, a link swapped in right before replace, the message shape) and tests/test_setup_writers_refuse_links.py, one row per entry point (init with and without --force incl. .gitignore linked to an in-repo file; refresh_schemas; upgrade real and --dry-run, nothing written to the copy; manifest; export; digest default and relative -o; pickup with neither and with exactly one generated file tracked; refresh_stubs write with skill links still created; upgrade --prune with an outside orphan and with the orphan the only entry under a linked directory; archive restore with chunk ../../outside.json, a symlinked roadmap/phases, a linked origin or stored, and a two-move record whose second move is unsafe) -> refused naming the path, exit 1, no traceback, outside and original bytes and existence unchanged; tests/test_writers_refuse_links_out.py generated-file link_in rows now refused. tests/test_m13_7_notices.py keeps both in-repo skills-link layouts writing; refusal rows cover a stub under a linked parent other than the skills directory, a chained, dangling and outward skills link; tests/test_prerelease_files.py and tests/test_upgrade_plan_parity.py assert exit 1 for an outward stub or canonical skill link, real and dry run alike. docs/install-and-usage.md (any symlink on the path is refused, naming the skills-link exception and which declined entries stay report lines; upgrade exits non-zero on a refusal of a generated, stub or canonical skill file even when validate passes) and CHANGELOG [Unreleased] Fixed (in-repo links at generated files now refused)",
-        "Estimated net line change (informational, not a gate): package about +200, tests about +340, docs about +8"
+        "Estimated net line change (informational, not a gate): package about +200, tests about +340, docs about +8",
+        "The skills-link change is intentional: both allowed values work through specyrd init, refresh-stubs and upgrade, including upgrade --dry-run's mirror (upgrade_plan Mirror._ensure); a formerly accepted in-repo alias (.claude/skills -> ../tools/skills) is refused with a message naming the two allowed values; CHANGELOG [Unreleased] and docs/install-and-usage.md tell an adopter to replace such a link with one of the two values or a real directory",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
       ],
       "codename": "safe-write-rule-setup-writers",
       "dependencies": [],
@@ -282,7 +284,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.37_safe-write-rule-setup-writers_3e6996c7-2e6f-477d-9c9f-fc8e33a2e313.md",
       "sibling_order": 35,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout",
       "touch_zones": [
         "specy_road/safe_write.py",
@@ -309,7 +311,9 @@
         "specy_road/specyrd_skills.py",
         "tests/test_prerelease_files.py",
         "tests/test_m13_7_notices.py",
-        "tests/test_upgrade_plan_parity.py"
+        "tests/test_upgrade_plan_parity.py",
+        "specy_road/bundled_scripts/refresh_stubs_report.py",
+        "specy_road/specyrd_hooks.py"
       ],
       "type": "task"
     },
@@ -324,7 +328,9 @@
       "codename": "review-writers-refuse-links",
       "dependencies": [
         "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
-        "f4abbcaf-6a04-44f7-a505-8b0694560f41"
+        "f4abbcaf-6a04-44f7-a505-8b0694560f41",
+        "f6a968f0-f084-49e0-b5f1-c8132d45ea7f",
+        "d340dc53-ba74-45b4-a5c4-9f778862e8f0"
       ],
       "id": "M21.38",
       "node_key": "992a07fe-018e-4ff0-adc5-1675c130adb6",
@@ -360,10 +366,13 @@
         "Finish reviews base: write_destinations names the untracked-summary copy from the owning main checkout's project root (work/reviews/<node>/<summary>) so irregular_destination, now a thin wrapper over safe_write's walk with its message kept (tests/test_finish_config_preflight.py passes), inspects work and work/reviews too; _keep_untracked_summary copies with safe_write; a linked work/reviews (main checkout or linked worktree), <node> or work refuses finish before any bookkeeping write",
         "Cache dir, pickup hint, brainstorm lock: history_cache.ensure_cache_dir refuses a linked .specyrd or .specyrd/cache (root = cache_dir.parents[1]) and writes .gitignore through safe_write (search_index and context_notice_cache inherit it through their OSError handling); on_complete_pickup tests the marker with lstat, so any symlink there (live or dangling) is refused rather than read as already shown, and writes it through safe_write (a refusal prints one warning line, pickup exits 0, the link target unchanged); brainstorm_session.session_lock opens with safe_write.open_lock and re-raises SafeWriteError as BrainstormError with the same message, so its existing callers report it with no traceback",
         "Tests: tests/test_ops_writers_refuse_links.py rows per entry point (Publish in-repo link and dangling roadmap-context.md; resolve_deterministic_paths called directly with an in-repo and an outward link; finish with an untracked summary and work/reviews linked out from the main checkout and from a linked worktree, <node> link, work link; pickup with .specyrd/cache linked out, .specyrd linked, a dangling marker link and a marker linked to an outside regular file; brainstorm add-idea with the lock name linked -> error line, exit 1, no traceback) -> refused naming the path, target bytes and existence unchanged. docs/dev-workflow.md finish paragraph and CHANGELOG [Unreleased] Fixed",
-        "Estimated net line change (informational, not a gate): package about +35, tests about +185, docs about +3"
+        "Estimated net line change (informational, not a gate): package about +35, tests about +185, docs about +3",
+        "history_cache.save_cache and ensure_cache_dir write .specyrd/cache, its .gitignore and roadmap-history.json through safe_write from the project root: with .specyrd/cache linked out of the repo, or its .gitignore a dangling link, nothing is written outside the repo. The cache stays optional: a refused cache path prints one warning naming the path and digest carries on, exit 0. Tests add a final-link row and a linked-folder row"
       ],
       "codename": "ops-writers-refuse-links",
-      "dependencies": [],
+      "dependencies": [
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
+      ],
       "id": "M21.39",
       "node_key": "f6a94a57-91ff-449b-997e-af12dedd41ee",
       "parent_id": "M21",
@@ -395,15 +404,13 @@
         "Estimated net line change (informational, not a gate): package about +35, tests about +130, docs about +3"
       ],
       "codename": "upgrade-scratch-git-env-sterile",
-      "dependencies": [
-        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
-      ],
+      "dependencies": [],
       "id": "M21.40",
       "node_key": "74c3d924-fc2e-4170-a786-caed84beca86",
       "parent_id": "M21",
       "planning_dir": "planning/M21.40_upgrade-scratch-git-env-sterile_74c3d924-fc2e-4170-a786-caed84beca86.md",
       "sibling_order": 38,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade's scratch git drops every GIT_ variable, runs no hook, and times out",
       "touch_zones": [
         "specy_road/ignore_report.py",
@@ -457,7 +464,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.43_digest-check-no-manifest-clean-error_dc4d8f5d-b3cc-4224-b456-4991ab6b3909.md",
       "sibling_order": 41,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "digest refuses cleanly when the roadmap manifest is missing, like export --check",
       "touch_zones": [
         "specy_road/bundled_scripts/digest_cli.py",

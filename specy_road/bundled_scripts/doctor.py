@@ -55,6 +55,7 @@ from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WOR
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.nested_repos import report_unpushed
+from specy_road.orchestrate_assign import guidance_bypass_lines
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.orphaned_claims import orphaned_claims, report_lines
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
@@ -299,7 +300,8 @@ def _print_cursor_force(root: Path) -> None:
     """Advisory: one line per roster ``cursor`` entry that launches with ``--force`` (the roster launches read).
     An unreadable roster is left to ``validate`` and ``orchestrate plan``."""
     config, err = pinned_config(root)
-    for line in [] if err else force_warnings(config.get("roster") or []):
+    # M21.44: then each excluded or opted-in guidance-bypass model
+    for line in ([] if err else force_warnings(config.get("roster") or [])) + guidance_bypass_lines(root):
         print(line, file=sys.stderr)
 
 

@@ -23,9 +23,13 @@ from typing import Any, NamedTuple
 
 from specy_road.git_subprocess import git_stdout, git_text
 from specy_road.model_profiles import (
+    GUIDANCE_BYPASS_KEY,
     PROFILES_REL,
     Profile,
+    bundled_profiles_root,
+    list_profiles,
     parse_profile,
+    profiles_dir,
     profile_for_entry,
     profile_rel_problem,
 )
@@ -35,10 +39,11 @@ from specy_road.orchestration_config import (
     effective_config,
     load_orchestration_config,
     orchestration_yaml_path,
+    parse_orchestration_text,
 )
 from specy_road.review_policy_ref import integration_name, policy_source
 from specy_road.review_target import full_sha
-from specy_road.roster_local import merge_local_roster
+from specy_road.roster_local import GUIDANCE_OPT_IN, merge_local_roster
 from specy_road.roster_profile_check import profile_value_form_problem, profile_value_problem
 
 
@@ -283,3 +288,125 @@ def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree
     sha = full_sha(repo_root, ref) or ref
     return _integration_profile_for_entry(repo_root, entry, rel, ref, sha)
 
+
+def flags_of(profiles: list[Profile] | tuple[Profile, ...]) -> dict[str, dict[str, Any]]:
+    """``api_id`` and each alias -> the ``guidance_bypass_observed`` value of every profile that sets one, whatever
+    its shape: a malformed record still flags (the profile is invalid besides), it never clears."""
+    out: dict[str, dict[str, Any]] = {}
+    for p in profiles:
+        if p.data.get(GUIDANCE_BYPASS_KEY) is None:
+            continue
+        record = p.data[GUIDANCE_BYPASS_KEY] if isinstance(p.data[GUIDANCE_BYPASS_KEY], dict) else {}
+        aliases = p.data.get("aliases") if isinstance(p.data.get("aliases"), list) else []
+        for name in (p.data.get("api_id"), *aliases):
+            if name:
+                out.setdefault(str(name), record)
+    return out
+
+
+@cache
+def bundled_flags() -> dict[str, dict[str, Any]]:
+    """:func:`flags_of` the profiles this specy-road version ships."""
+    return flags_of(list_profiles(bundled_profiles_root()))
+
+
+class GuidanceSource(NamedTuple):
+    """Everything the M21.44 rule reads, from one place: the integration branch (the working tree outside git).
+
+    ``flags``: :func:`flags_of` the committed profiles plus the bundled ones (a copy only ever adds a flag).
+    ``profiles``: the committed profiles by project-relative path, so a model's identity survives a working-tree
+    copy that differs (drift). ``opt_ins``: committed roster ids that set ``allow_guidance_bypass_model: true``.
+    ``signed``: the committed ``policy.signed_reviews``. ``error``: a read failed, so nothing above is known."""
+    root: Path
+    flags: dict[str, dict[str, Any]]
+    profiles: dict[str, Profile]
+    opt_ins: frozenset[str] = frozenset()
+    signed: bool = False
+    error: str | None = None
+
+    def committed(self, profile: Profile | None) -> Profile | None:
+        """The committed copy of ``profile`` (same path), whatever the working tree holds."""
+        if profile is None:
+            return None
+        try:
+            rel = Path(profile.path).resolve().relative_to(self.root.resolve()).as_posix()
+        except ValueError:
+            return None
+        return self.profiles.get(rel)
+
+
+def _failed(repo_root: Path, why: str) -> GuidanceSource:
+    return GuidanceSource(repo_root, dict(bundled_flags()), {}, error=why)
+
+
+def _source(repo_root: Path, texts: dict[str, str], roster_text: str | None) -> GuidanceSource:
+    profiles = {rel: parse_profile(repo_root / rel, text) for rel, text in texts.items()}
+    data, err = parse_orchestration_text(roster_text, repo_root) if roster_text is not None else (None, None)
+    if err:
+        return _failed(repo_root, err)
+    data = data or {}
+    return GuidanceSource(repo_root, {**flags_of(list(profiles.values())), **bundled_flags()}, profiles,
+                          frozenset(str(e.get("id")) for e in data.get("roster") or [] if e.get(GUIDANCE_OPT_IN) is True),
+                          bool((data.get("policy") or {}).get("signed_reviews")))
+
+
+def _committed_text(repo_root: Path, sha: str, rel: str) -> tuple[str | None, str | None]:
+    """``(text, error)``: ``None`` text when absent or a symlink; a git failure is the error, never absent."""
+    mode = git_text(["ls-tree", sha, "--", rel], repo_root)
+    if mode is not None and (not mode or mode.startswith("120000")):
+        return None, None
+    text = git_stdout(["show", f"{sha}:./{rel}"], repo_root) if mode is not None else None
+    return (text, None) if text is not None else (None, f"cannot read {rel} on the integration branch ({sha[:12]})")
+
+
+def _committed_source(repo_root: Path, sha: str) -> GuidanceSource:
+    listing = git_text(["ls-tree", "-r", "--name-only", sha, "--", PROFILES_REL.as_posix()], repo_root)
+    if listing is None:
+        return _failed(repo_root, f"cannot list {PROFILES_REL.as_posix()}/ on the integration branch ({sha[:12]})")
+    texts = {}
+    for rel in (r for r in listing.splitlines() if r.endswith(".md") and not r.endswith("/README.md")):
+        text, err = _committed_text(repo_root, sha, rel)
+        if err:
+            return _failed(repo_root, err)
+        if text is not None:
+            texts[rel] = text
+    roster, err = _committed_text(repo_root, sha, ORCHESTRATION_REL.as_posix())
+    return _failed(repo_root, err) if err else _source(repo_root, texts, roster)
+
+
+def _worktree_source(repo_root: Path) -> GuidanceSource:
+    """Outside git: the working tree's profiles and roster; an unreadable file is the error."""
+    root = profiles_dir(repo_root)
+    try:
+        texts = {p.relative_to(repo_root).as_posix(): p.read_text(encoding="utf-8")
+                 for p in sorted(root.rglob("*.md")) if p.name != "README.md"} if root.is_dir() else {}
+        path = orchestration_yaml_path(repo_root)
+        roster = path.read_text(encoding="utf-8") if path.is_file() else None
+    except OSError as e:
+        return _failed(repo_root, f"cannot read the model profiles or roster: {e}")
+    return _source(repo_root, texts, roster)
+
+
+_SOURCES: dict[tuple[str, str], GuidanceSource] = {}
+
+
+def guidance_source(repo_root: Path) -> GuidanceSource:
+    """:class:`GuidanceSource` for ``repo_root``, read at the integration branch's commit (cached by that commit
+    when the read succeeded). One bounded rule: a git or file read that fails is an ``error`` (eligibility is
+    refused), never an empty read; a committed profile whose front matter does not parse flags nothing, and is
+    refused as an invalid profile wherever it is routed."""
+    ref, err = policy_source(repo_root)
+    if err:
+        return _failed(repo_root, err)
+    if ref is None:
+        return _worktree_source(repo_root)
+    sha = full_sha(repo_root, ref)
+    if not sha:
+        return _failed(repo_root, f"cannot resolve the integration branch ({ref})")
+    key = (str(Path(repo_root).resolve()), sha)
+    if key not in _SOURCES:
+        src = _committed_source(repo_root, sha)
+        if src.error:
+            return src
+        _SOURCES[key] = src
+    return _SOURCES[key]

@@ -181,12 +181,15 @@ def test_delegate_after_prompt_cli_does_not_append_to_the_old_log(tmp_path: Path
     repo, spec = make_delegate_repo(tmp_path)
     path = run_path(repo, "M1.1", "opus")
     _write_prompt_cli_run(path, git(repo, "rev-parse", "HEAD"))
+    log_path = path.with_suffix(".log")
+    prompt_cli_log = log_path.read_bytes()
     set_delegate_steps(repo, spec, _round(repo, "delegate notes: not a defect because the diff is covered\n", usage={"input_tokens": 10, "output_tokens": 1},
                                           total_cost_usd=0.1))
     assert run_review_delegate(repo) == 0
     data = review_usage(repo, "M1.1")
     assert len(data["runs"]) == 1 and data["runs"][0]["input_tokens"] == 10 and data["total"]["turns"] == 1
-    assert "900" not in path.with_suffix(".log").read_text()
+    after = log_path.read_bytes()
+    assert after[:len(prompt_cli_log)] != prompt_cli_log
     assert not list((reviews_dir(repo, "M1.1") / "history").glob("RUN-opus*"))
 
 

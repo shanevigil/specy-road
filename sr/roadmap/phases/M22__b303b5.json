@@ -1,0 +1,98 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "The upgrade mirror holds tracked files, untracked non-ignored files and what the refreshes read, so gitignored paths such as .env files, virtualenvs, node_modules and nested repos are never copied to the temp directory, on a real run or a dry run",
+        "A dry run builds the mirror once or reuses it, prints a line before copying, and its plan matches the real run as today",
+        "tests prove an ignored secret file and an ignored directory are absent from the mirror on both paths, and that a plan on a checkout with large ignored content equals the plan without it; docs and CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "upgrade-mirror-skips-ignored-files",
+      "dependencies": [
+        "5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c"
+      ],
+      "id": "M22.35",
+      "node_key": "b303b556-fa59-422a-a1c4-f1ce47d429ef",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.35_upgrade-mirror-skips-ignored-files_b303b556-fa59-422a-a1c4-f1ce47d429ef.md",
+      "sibling_order": 34,
+      "status": "Not Started",
+      "title": "upgrade mirrors only what the refreshes need, never ignored files",
+      "touch_zones": [
+        "specy_road/bundled_scripts/upgrade_plan.py",
+        "specy_road/bundled_scripts/upgrade.py",
+        "tests/test_upgrade.py",
+        "tests/test_upgrade_preview.py",
+        "docs/upgrading.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "release-publish.yml adds the exact wheel URL, sha256 and one ready-to-paste install line to the release notes",
+        "pyproject.toml has Project-URL entries, README links that readers need from the package are absolute, and the RC guide says moving to a newer RC is a fresh install of the new URL because uv tool upgrade stays on a URL pin",
+        "project.version is not changed; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "rc-publishes-wheel-url-and-project-urls",
+      "dependencies": [],
+      "id": "M22.36",
+      "node_key": "00b3ae55-3843-44f0-94ad-61ba72868d91",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.36_rc-publishes-wheel-url-and-project-urls_00b3ae55-3843-44f0-94ad-61ba72868d91.md",
+      "sibling_order": 35,
+      "status": "Not Started",
+      "title": "Each RC publishes its wheel URL and install line, and the package links to the guide",
+      "touch_zones": [
+        ".github/workflows/release-publish.yml",
+        "pyproject.toml",
+        "README.md",
+        "docs/install-release-candidates.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "On a machine where the Cursor sandbox starts, the documented default launch (sandbox on, no --force) runs a worker and a reviewer turn, and the result is recorded",
+        "The run records whether the CLI reports its model and whether it matches the request, how --resume with a new prompt behaves, and whether --mode ask suits reviewers",
+        "docs/orchestration-workers.md states what was confirmed; findings about the Cursor IDE stay separate from CLI findings"
+      ],
+      "codename": "cursor-cli-harness-test-pass",
+      "dependencies": [],
+      "id": "M22.37",
+      "node_key": "bc7839a4-9796-4a0c-a544-d53116c1d045",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.37_cursor-cli-harness-test-pass_bc7839a4-9796-4a0c-a544-d53116c1d045.md",
+      "sibling_order": 36,
+      "status": "Not Started",
+      "title": "Test the Cursor CLI harness on the documented default",
+      "touch_zones": [
+        "docs/orchestration-workers.md",
+        "sr/planning/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "doctor --fix leaves a registry row with no branch in this clone or on the remote, reports it as advisory with what to check, and still removes a row whose leaf is Complete",
+        "Removing a no-branch row takes the existing explicit registry-prune path, named in the report",
+        "tests/test_doctor.py covers both rows through the CLI; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "doctor-fix-keeps-other-clones-claims",
+      "dependencies": [],
+      "id": "M22.38",
+      "node_key": "ee340317-9162-4a87-a51a-cc4ee3725421",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.38_doctor-fix-keeps-other-clones-claims_ee340317-9162-4a87-a51a-cc4ee3725421.md",
+      "sibling_order": 37,
+      "status": "Not Started",
+      "title": "doctor --fix never removes a claim that may belong to another clone",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "tests/test_doctor.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    }
+  ]
+}

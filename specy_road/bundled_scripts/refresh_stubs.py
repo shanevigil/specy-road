@@ -24,9 +24,9 @@ paths the manifest recorded as the kit's: in practice, the pre-0.3.0
 ``*/commands/`` stubs that every upgrading repo otherwise removes by hand.
 
 Every write follows the safe-write rule from the repository root, with one
-exception: an agent skills directory (``.agents/skills``, ``.claude/skills``)
-may be a symlink to a real directory in the repository
-(``specyrd_skills.skill_path``). A stub, skill file, skill link or ignore file
+exception: an agent skills directory may be a symlink to the other, with the
+exact text ``../.agents/skills`` (at ``.claude/skills``) or ``../.claude/skills``
+(at ``.agents/skills``) (``specyrd_skills.skill_path``). A stub, skill file, skill link or ignore file
 refused for a link prints ``error: <why>`` and the command exits 1; the rest
 is still written. ``AGENTS.md`` or ``CLAUDE.md`` linked out of the repository
 stays a ``refused`` report line.
@@ -351,10 +351,12 @@ def main(argv: list[str] | None = None) -> None:
     root = _resolve_root(args.repo_root)
     dry_run = args.dry_run or args.diff
     prefix = _prefix(root, project_root(args.repo_root))
-    print_migration(root / prefix, prefix)
     try:
-        written, orphans = refresh_stubs(root, dry_run=dry_run, project=project_root(args.repo_root), prune=args.prune)
-    except (ValueError, safe_write.SafeWriteError) as e:
+        with safe_write.exit_on_refusal():
+            print_migration(root / prefix, prefix)
+            written, orphans = refresh_stubs(root, dry_run=dry_run, project=project_root(args.repo_root),
+                                             prune=args.prune)
+    except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
     if not _load_manifest(root).get("agents"):

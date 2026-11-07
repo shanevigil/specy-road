@@ -13,6 +13,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- The worker post-run check matches touch zones from either the git root or the project root in a nested layout, like
+  finish does, so a commit under an `sr/...` zone is no longer flagged `committed_outside_zones`.
+- A Codex reviewer's resumed turn, the format-repair retry included, passes `-m` with the requested model, as the
+  fresh turn does, so the retry no longer runs on Codex's configured default while its verdict is filed under the
+  requested id. Claude Code and Cursor already passed their `--model` on a reviewer resume.
 - **Security:** one safe-write rule for the setup and upgrade writers
   (`specy_road/safe_write.py`): before any mkdir, write or delete, every
   directory from the project root down must be a real directory and the file a
@@ -20,11 +25,15 @@ body. Keep section bodies focused; link to PRs for detail.
   project or **inside it**. `init project`, `refresh-schemas`, `specyrd init`
   (`.specyrd/manifest.json`), `export`, `digest` (default and relative `-o`),
   pickup's regeneration, `refresh-stubs` and `specyrd init` (stubs, skill
-  files and skill links; an agent skills directory may itself be a symlink to a
-  real directory in the repository, any other link is refused), `--prune` (an
+  files and skill links; an agent skills directory may itself be a symlink only
+  as `.claude/skills -> ../.agents/skills` or `.agents/skills -> ../.claude/skills`,
+  any other link is refused), `--prune` (an
   orphan under a linked directory), `.gitignore` and `.cursorindexingignore`,
-  and `restore-archive` (every path checked before its first change) refuse it,
-  naming `<path> is a symlink (to <target>), not <kind>`; the commands exit 1. `upgrade` checks every change before its first one, so a schema linked out
+  the opt-in hook installs (`--install-guard-hooks`: the harness settings or hooks file and
+  `.specyrd/hooks/<agent>/README.md`; `--install-pre-push`: `.git/hooks/pre-push`, all checked before `specyrd init`'s
+  first write), and `restore-archive` (every path checked before its first change) refuse it,
+  naming `<path> is a symlink (to <target>), not <kind>`; the commands exit 1, a symlink loop on the path
+  (a link to itself, or the two skills directories linked to each other) included, without a traceback. `upgrade` checks every change before its first one, so a schema linked out
   of the checkout no longer overwrites the outside file; it exits 1 on a
   refusal (a generated file, stub, skill file or skill link) even when `validate`
   passes, in a real run and in `--dry-run`. Behaviour changes: an in-repo symlink at
@@ -40,6 +49,21 @@ body. Keep section bodies focused; link to PRs for detail.
   symlinked `.specyrd` or `.specyrd/cache` is refused where the cache directory is made; the pickup hint
   marker is checked with `lstat`, so a link there (live or dangling) is a one-line warning and is never read as
   "already shown" or written through; `brainstorm` reports a linked lock as an error with exit 1.
+  exit 0 and is now `error:` with exit 1; a skills directory linked to an
+  in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
+  is now refused: replace it with one of the two links above or a real directory.
+  `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
+- **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
+  copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
+  longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
+  Upgrade's git calls time out after 60 s. A failed `git init`, `add` or `commit` in a temporary copy, the plan's
+  included (so a real run too), prints `error: git <command> failed in the temporary copy (<reason>)` and exits 2
+  without writing or validating, and so does a failed
+  `ls-files` on `roadmap.md` (in a real run it names the checkout), before a generated file is written.
+  `GIT_CEILING_DIRECTORIES` no longer hides a tracked `roadmap.md`.
+- `specy-road digest`, `digest --check` and `digest -o -` with no roadmap manifest print the one line
+  `no roadmap manifest: expected <root>/roadmap/manifest.json` on stderr and exit 1, writing nothing, the same as
+  `export --check`, instead of a traceback.
 - The notes rules in the reviewer and repair-turn prompts name every clause break `review record` checks: `'. '`,
   `'! '`, `'? '`, `'; '` and all eight conjunctions (and, but, while, whereas, although, though, yet, plus). The
   check itself is unchanged. The `rework_rca` docstring now names `review_deferral.rca_deferral`, and two brainstorm
@@ -343,6 +367,17 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- **Security:** a model observed to bypass specy-road's guidance is excluded from the executor and reviewer roles
+  while `policy.signed_reviews` is on (M21.44). A profile may record `guidance_bypass_observed: {date, harness,
+  evidence}` (any other shape makes it invalid; `models show` prints it); the shipped **composer-2.5** profile does,
+  alias `composer-2.5-fast` included, from the 2026-11-05/06 replay (CR1, CR3, CR5, 2 of 5 delegated reviews): a
+  finding about that model, not the Cursor harness. An entry launching a model flagged on the integration branch or
+  in the bundled profiles is skipped by `orchestrate plan`, refused by `worker delegate`, `review delegate` and
+  `prompt` (chores, resume and `message` included, before any preflight or harness), shown as excluded and never
+  offered by `handoff status`, and its records do not count at the gate. The roster key
+  `allow_guidance_bypass_model: true` (committed roster only; a `roster_add` entry is refused) lets it back in at the
+  developer's own risk, with a warning on every executor or reviewer launch; `validate` and `doctor` warn for each
+  flagged entry. The coordinator role, and everything with `signed_reviews` off, are unchanged.
 - The `specyrd-brainstorm` skill (description and first paragraph, in every
   harness's rendered copy) and `suggested_prompts/brainstorm-roadmap.md` Phase 1
   say to make `specy-road brainstorm start` the next tool call after reading the

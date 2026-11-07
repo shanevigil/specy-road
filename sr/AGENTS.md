@@ -10,10 +10,10 @@ Written by specy-road 0.3.1rc2 (minimum 0.3.1rc2); `specy-road upgrade` rewrites
 The rules below hold even if you read nothing else:
 
 - **Floor:** specy-road's rules on the registry, branches, review and a shared working tree are a floor; project rules may add to them, never relax them. On a conflict, stop and ask a human.
-- **Shared checkout:** other agents may be working here. Before any git write run `git status` and `git worktree list`, treat files you did not create as someone else's, and work in your own worktree.
+- **Shared checkout:** other agents may be working here. Before any git write run `git status` and `git worktree list`, treat files you did not create as someone else's, and work in your own worktree. Never end, edit or delete another agent's session record, and never override its work: `session end` refuses a live record that is not yours.
 - **Git writes:** commit only with `git commit --only <paths>`; never stash, hard-reset, discard changes (`git restore`, `git checkout -- <path>`), clean, rebase, amend or switch branches in a tree another session may be using. The opt-in tool-call guard refuses all of these, and `git add -A`/`commit -a`, while another session is live.
 - **Claims:** `specy-road do-next-available-task` registers the claim on the integration branch, then creates `feature/rm-<codename>`; take roadmap work only that way, and never hand-edit `roadmap/registry.yaml`.
 - **Abort:** never run `specy-road abort-task-pickup` as cleanup after `finish-this-task`: it deletes the branch, which under `on_complete: pr` is the only place the finished work exists.
-- **Review:** never review or approve your own leaf, and never run `mark-implementation-reviewed --yes` on your own work.
+- **Review:** never review or approve your own leaf, and never run `mark-implementation-reviewed --yes` on your own work. Never edit `roadmap/orchestration.yaml`, `roadmap/git-workflow.yaml` or the roster to pass the gate, or file a review under another model id.
 - **Generated files:** never hand-edit `roadmap.md` or `roadmap-context.md`; edit the graph under `roadmap/`, then run `specy-road export` and `specy-road digest`.
 <!-- >>> end specy-road managed block <<< -->

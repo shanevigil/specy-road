@@ -22,7 +22,9 @@
         "Estimated net line change (informational, not a gate): package 0; tests about +550"
       ],
       "codename": "parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs",
-      "dependencies": [],
+      "dependencies": [
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M16.1.1",
       "node_key": "b7db8132-bda6-4fb9-8a71-3932fde03766",
@@ -46,7 +48,9 @@
         "Estimated net line change (informational, not a gate): package 0; tests about +450"
       ],
       "codename": "parity-harness-a-review-gate-decision-table-covering-every-review-policy",
-      "dependencies": [],
+      "dependencies": [
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M16.1.2",
       "node_key": "de3d165f-d76a-4430-b54e-9dea18809691",
@@ -68,7 +72,8 @@
         "The baseline coverage configuration is committed in pyproject.toml ([tool.coverage.run] source scope, branch setting and subprocess capture); [tool.coverage.report] fail_under is that configuration's coverage.py TOTAL at the baseline commit, rounded down to a whole percent; CI runs the same configuration and fails below it; a separately printed branch percentage is informational; project.version is not touched",
         "constraints/README.md states the M16 rules: behaviour-preserving except the two named exceptions (zone-scoped `checks:` gates in M16.4.6 and the complexity gate in M16.5.14); each leaf carries an informational line-change estimate, never a gate; no new config key, policy key or command without retiring one; adopter feedback is parked; the review-finding test rule, which is these five conditions, all required: the test fails before the fix and passes after; it checks something no existing test checks, and a new input to tested behaviour is a new row in that behaviour's table rather than a new test; it is written at the cheapest level that reproduces the bug; it lives in the module's test file and is named for the behaviour, not the round; it asserts structured results, not message text; after a second block of the same class the planner rescopes or splits the leaf; a leaf past four review rounds is split or rescoped; reviewers check the acceptance lines and the leaf's parity tables, and a new input class goes to intake",
         "constraints/README.md states the M16 quality rules (maintainer, 2026-11-05, revision 3): behaviour is preserved (the parity harness, the decision table and the leaf's own tables); code a leaf touches moves toward best practice: small single-purpose functions, clear module boundaries, no new import cycle (M16.2.6), explicit dependencies (module globals and functions that call the clock or git themselves are given those as parameters where a test needs a seam; no dependency-injection framework), one statement of each rule rather than copies; no touched function rises in complexity (the M16.5.14 rule); docstrings and comments that explain intent are kept or improved, never stripped to save lines; names say what the code does; no code squashing (joined statements, removed blank lines, shortened names or deleted explanations to meet a number); the quality metrics (M16.1.8's ruff family baseline, line width, M16.2.6's layering gate) never regress in a leaf; line-count estimates are informational and never by themselves a review finding or a gate",
-        "Estimated net line change (informational, not a gate): package 0; scripts about +200 (maintainer-only, not shipped)"
+        "Estimated net line change (informational, not a gate): package 0; scripts about +200 (maintainer-only, not shipped)",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down",
       "dependencies": [
@@ -89,7 +94,8 @@
         "constraints/lean-baseline.json",
         "constraints/README.md",
         ".github/workflows/validate.yml",
-        "pyproject.toml"
+        "pyproject.toml",
+        "sr/constraints/README.md"
       ],
       "type": "task"
     },
@@ -99,11 +105,16 @@
         "specy_road/fs_atomic.py defines `atomic_write_text()`; the hand-written temp-file writers in worker_state (and worker_outbox's import of its private helper), history_cache, brainstorm_session, roadmap_chunk_atomic, reviewer_run_failure and worker_lease call it, and a test fails on `os.replace(` in specy_road outside fs_atomic.py and an allowlist committed with the test",
         "A parametrised test per replaced writer asserts the encoding, newline handling, file mode and the leftover temp file on a failed write are what they were at pickup; review_write_check.replace_file's symlink protections and worker_lease.checkout_id's link-if-absent install are kept as specialised installers on the allowlist and tested through their public callers",
         "Parity harness unchanged",
-        "Estimated net line change (informational, not a gate): package about -60"
+        "Estimated net line change (informational, not a gate): package about -60",
+        "The os.replace( allowlist is fs_atomic.py, safe_write.py (specialised and descriptor-anchored after M22.29, not routed through atomic_write_text), review_write_check.replace_file and worker_lease.checkout_id; worker_state, history_cache.save_cache and the brainstorm session's replace call atomic_write_text directly, with no repo-root check; safe_write's directory-descriptor replace and its re-check where dir_fd is unsupported are unchanged"
       ],
       "codename": "shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers",
       "dependencies": [
-        "bdf86710-8da3-4c1b-a1db-c11e0a5c1613"
+        "bdf86710-8da3-4c1b-a1db-c11e0a5c1613",
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
+        "f6a94a57-91ff-449b-997e-af12dedd41ee",
+        "0bcbdc19-743c-4037-9bbb-089c6a3f0cb4",
+        "37904d88-a256-4ae0-9abf-1c92de6bed7f"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.2.2",
@@ -244,11 +255,17 @@
         "scripts/line_width_baseline.json records, per file under specy_road, scripts and tests, the number of lines over 100 characters at pickup (counted with `ruff check --select E501 --line-length 100 --output-format json`); a test fails when a file's count rises or a file outside the baseline has any, and when a count falls the entry must be lowered in the same change; for a move or fold a leaf records as old path -> new path, the width baseline's `--transfer OLD NEW` moves OLD's count onto NEW and the total never rises. No code is reformatted or fixed in this leaf; the fold leaves rewrap the files they merge and lower their width entries",
         "upgrade never rewrites an existing project's constraints/file-limits.yaml: it prints one notice naming the new template default when the project's values differ, and docs/file-limits.md and docs/upgrading.md say the same; the rc3-shaped `upgrade --dry-run` golden differs only by that notice; the toolkit stays at 1,000 lines with a 750 warning; tests/test_upgrade_file_limits_notice.py pins that notice",
         "CHANGELOG.md's [Unreleased] section records the new consumer default and that upgrade leaves existing projects' files alone; no version heading is written",
-        "Estimated net line change (informational, not a gate): package 0; config about +40; scripts and tests about +70 plus the generated width baseline file"
+        "Estimated net line change (informational, not a gate): package 0; config about +40; scripts and tests about +70 plus the generated width baseline file",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "ruff-quality-baseline",
       "dependencies": [
-        "fce532e1-9ed0-4da1-9f16-2465c6e73df0"
+        "fce532e1-9ed0-4da1-9f16-2465c6e73df0",
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
+        "1d5c3b8f-8179-40d8-a04a-262e6f8765d9",
+        "5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c",
+        "02c665e8-0e2a-44d5-b297-c82a5a288c41",
+        "b303b556-fa59-422a-a1c4-f1ce47d429ef"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.1.8",
@@ -270,7 +287,9 @@
         "specy_road/bundled_scripts/upgrade.py",
         "docs/upgrading.md",
         "tests/parity/golden/",
-        "tests/test_upgrade_file_limits_notice.py"
+        "tests/test_upgrade_file_limits_notice.py",
+        "sr/constraints/file-limits.yaml",
+        "sr/constraints/README.md"
       ],
       "type": "task"
     },
@@ -285,7 +304,9 @@
       "dependencies": [
         "fba72c3a-24a5-4c6b-b174-0e581d8b8450",
         "c840cf76-95c4-4688-a587-3bc06824fad5",
-        "467b60ed-37a1-4220-ba8a-9507471e9dcc"
+        "467b60ed-37a1-4220-ba8a-9507471e9dcc",
+        "24a67d66-529a-40ca-a500-759cedaacb12",
+        "17405142-e2fa-4516-83e2-e536820d1ec2"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.3.2",
@@ -319,7 +340,8 @@
         "brainstorm_chat's own `_complete_anthropic` and `complete_chat` copies are removed; llm_client exposes a client factory tests can replace without patching private names",
         "review_node's override is removed from constraints/file-limits.yaml",
         "Parity harness unchanged, review-node and brainstorm transcripts included",
-        "Estimated net line change (informational, not a gate): package about -80"
+        "Estimated net line change (informational, not a gate): package about -80",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "one-llm-client-module-replaces-the-provider-code-inside-review-node",
       "dependencies": [
@@ -342,7 +364,8 @@
         "specy_road/bundled_scripts/llm_throughput.py",
         "constraints/file-limits.yaml",
         "tests/",
-        "constraints/clone-baseline.json"
+        "constraints/clone-baseline.json",
+        "sr/constraints/file-limits.yaml"
       ],
       "type": "task"
     },
@@ -400,7 +423,8 @@
       ],
       "codename": "review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session",
       "dependencies": [
-        "fcb9f89a-2bad-423c-8d52-eb748967a367"
+        "fcb9f89a-2bad-423c-8d52-eb748967a367",
+        "99ad0839-6c85-4631-b67b-80ef2d3b3c57"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.4.3",

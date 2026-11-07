@@ -4,6 +4,8 @@
 # the rendered prompt text; with "{prompt}" it passes the path of the file holding it, which keeps
 # long prompts (an RCA after many rounds) under the command-line length limit: the agent is then
 # told to read that file first. --force lets it run the verify commands.
+# "--model <id> <prompt>" is the form the review gate can read (worker_models.command_model); "<id> <prompt>" still works.
+if [ "$1" = --model ]; then shift; fi
 model=$1 prompt=$2
 . "$(dirname "$0")/env.sh"
 if [ -f "$prompt" ] && [ -f "$(dirname "$0")/review-addendum.md" ]; then

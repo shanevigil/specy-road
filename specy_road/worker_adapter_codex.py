@@ -79,9 +79,11 @@ class Codex(Adapter):
         """A reviewer's turn in the read-only sandbox: it writes nothing, so it needs no writable root, and the
         verdict comes back as the final message, shaped by ``--output-schema`` and written to ``-o``. Both flags
         are documented for ``codex exec`` only, so a resume (``session`` is ``(id, True)``) leaves them out and
-        its last ``agent_message`` is parsed instead; a fresh turn cannot choose its thread id."""
+        its last ``agent_message`` is parsed instead; a fresh turn cannot choose its thread id. A resume passes
+        ``-m`` again, as the fresh turn does, so a format-repair retry runs on the requested model."""
         if session and session[1]:
-            return Launch([self._program(harness_bin), "exec", "resume", "--json", *self.effort_flag(effort), *CODEX_REVIEW_POLICY,
+            return Launch([self._program(harness_bin), "exec", "resume", "--json", *_model_flag("-m", model),
+                           *self.effort_flag(effort), *CODEX_REVIEW_POLICY,
                            session[0], "-"], stdin=_text(prompt_path), session_id=session[0])
         return Launch([self._program(harness_bin), "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
                        *CODEX_REVIEW_POLICY, *(["--output-schema", str(schema)] if schema else []),

@@ -54,3 +54,6 @@ work/.worktrees/
 work/brainstorm-*-prompt.md
 work/brainstorm-closed/*-prompt.md
 # >>> end specy-road managed block <<<
+
+# Local research reports: kept in this folder for reference, never published.
+docs/research/reports/

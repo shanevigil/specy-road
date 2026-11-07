@@ -77,6 +77,8 @@ INIT_LAYOUTS = {
     "schemas-parent-link": ("schemas", lambda repo, out: out),
     "in-repo-link": (SCHEMA, lambda repo, out: repo / "mine.json"),
     "gitignore-in-repo-link": (".gitignore", lambda repo, out: repo / "mine.json"),
+    "manifest-link-out": (".specyrd/manifest.json", lambda repo, out: out / "theirs.json"),
+    "specyrd-parent-link": (".specyrd", lambda repo, out: out),
 }
 
 
@@ -154,20 +156,54 @@ def test_apply_plan_writes_nothing_when_one_change_lands_outside(tmp_path: Path)
     assert _tree(checkout, outside) == before and not any(copy.iterdir())
 
 
-@pytest.mark.parametrize("layout", ["file-link-out", "specyrd-dir-link", "gitignore-in-repo-link"])
-def test_specyrd_init_refuses_a_linked_manifest_or_ignore_file(tmp_path: Path, capsys, layout: str) -> None:
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("layout", ["file-link-out", "specyrd-dir-link", "gitignore-in-repo-link",
+                                    "readme-link-out", "readme-dangling"])
+def test_specyrd_init_refuses_a_linked_manifest_or_ignore_file(tmp_path: Path, capsys, layout: str,
+                                                               force: bool) -> None:
     repo, outside = _inited(tmp_path)
+    readme = repo / ".specyrd" / "README.md"
     path = {"file-link-out": repo / ".specyrd" / "manifest.json", "specyrd-dir-link": repo / ".specyrd",
-            "gitignore-in-repo-link": repo / ".gitignore"}[layout]
+            "gitignore-in-repo-link": repo / ".gitignore", "readme-link-out": readme, "readme-dangling": readme}[layout]
     target = {"file-link-out": outside / "theirs.json", "specyrd-dir-link": outside / "specyrd",
-              "gitignore-in-repo-link": repo / "mine.txt"}[layout]
+              "gitignore-in-repo-link": repo / "mine.txt", "readme-link-out": outside / "theirs.json",
+              "readme-dangling": outside / "made.md"}[layout]
     if layout == "specyrd-dir-link":
         shutil.copytree(repo / ".specyrd", outside / "specyrd")
     (repo / "mine.txt").write_text("mine\n", encoding="utf-8")
+    path.parent.mkdir(exist_ok=True)
     _relink(path, target)
 
-    _refused(lambda: run_init(target=repo, agent="cursor", dry_run=False, force=False, ai_commands_dir=None),
+    _refused(lambda: run_init(target=repo, agent="cursor", dry_run=False, force=force, ai_commands_dir=None),
              capsys, path, repo, outside)
+    assert not (outside / "made.md").exists()
+
+
+HOOK_DESTINATIONS = [   # (agent, the file an opt-in hook install writes)
+    ("claude-code", ".claude/settings.json"), ("codex", ".codex/hooks.json"), ("cursor", ".cursor/hooks.json"),
+    ("claude-code", ".specyrd/hooks/claude-code/README.md"), ("cursor", ".git/hooks/pre-push"),
+]
+
+
+@pytest.mark.parametrize("linked", ["final", "parent"])
+@pytest.mark.parametrize(("agent", "rel"), HOOK_DESTINATIONS)
+def test_specyrd_init_refuses_a_linked_hook_destination(tmp_path: Path, capsys, agent: str, rel: str,
+                                                        linked: str) -> None:
+    repo, outside = _inited(tmp_path)
+    dest = repo / rel
+    if linked == "final":
+        path, target = dest, outside / "theirs.json"
+    else:   # the destination's parent, its files copied out so a followed write would change them
+        path, target = dest.parent, outside / "hookdir"
+        shutil.copytree(path, target) if path.is_dir() else target.mkdir()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _relink(path, target)
+    git_hooks = sorted(p.name for p in (repo / ".git" / "hooks").iterdir()) if linked == "final" else None
+
+    _refused(lambda: run_init(target=repo, agent=agent, dry_run=False, force=True, ai_commands_dir=None,
+                              install_guard_hooks=True, install_pre_push=True), capsys, path, repo, outside)
+    if git_hooks is not None:   # _tree leaves .git out: no hook was written beside the refused one
+        assert sorted(p.name for p in (repo / ".git" / "hooks").iterdir()) == git_hooks
 
 
 GENERATED_LAYOUTS = {
@@ -245,28 +281,61 @@ def test_pickup_regenerates_only_tracked_files_and_refuses_a_link(tmp_path: Path
     assert _tree(repo, outside) == before
 
 
-def _skills_link(repo: Path, outside: Path, shape: str) -> Path:
-    """The target to link a skills directory to, by ``shape``; the real directory sits at depth 3, not 2."""
-    tools = repo / "tools"
+OTHER_SKILLS = {".agents/skills": ".claude/skills", ".claude/skills": ".agents/skills"}
+
+
+def _skills_link(repo: Path, outside: Path, skills: str, shape: str) -> tuple[str, Path]:
+    """Link ``skills`` by ``shape``: ``(the link text, where the real skills directory now is)``.
+
+    The installed skills move out of ``.agents/skills`` to the shape's real
+    directory (the other skills directory for the two allowed values).
+    """
+    other, tools = OTHER_SKILLS[skills], repo / "tools"
+    shutil.rmtree(repo / ".claude" / "skills")   # the per-skill links: one skills directory links to the other
+    shutil.copytree(repo / ".agents" / "skills", outside / "skills")
+    real = {"pair": repo / other, "absolute-pair": repo / other, "git-dir": repo / ".git" / "skills"}.get(
+        shape, tools / "deep" / "skills")
+    (tools / "deep").mkdir(parents=True)
+    real.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(repo / ".agents" / "skills", real)
     (tools / "hop").symlink_to("deep")
+    (tools / "bounce").symlink_to(Path("deep") / "nested")
+    (tools / "deep" / "nested").mkdir()
+    shutil.copytree(real, tools / "skills")   # the decoy a lexical ``bounce/..`` names
     (repo / "alias").symlink_to("tools")
-    return {
-        "relative-in-repo": Path("..") / "tools" / "deep" / "skills",
-        "absolute-in-repo": tools / "deep" / "skills",
-        "relative-chained": Path("..") / "tools" / "hop" / "skills",
-        "absolute-chained": tools / "hop" / "skills",
-        "absolute-under-linked-ancestor": repo / "alias" / "deep" / "skills",
-        "outward": outside / "skills",
-        "dangling": repo / "missing",
+    if shape == "cycle":   # the right text both ways: each skills directory links to the other
+        (repo / other).symlink_to(f"../{skills}")
+    if shape == "pair-under-linked-parent":   # the right text, but the other skills directory's parent is a link
+        shutil.rmtree(repo / Path(other).parent, ignore_errors=True)
+        (repo / Path(other).parent).symlink_to(Path("tools") / "deep")
+    text = {
+        "pair": f"../{other}",
+        "absolute-pair": str(repo / other),
+        "pair-under-linked-parent": f"../{other}",
+        "cycle": f"../{other}",
+        "relative-alias": "../tools/deep/skills",
+        "relative-chained": "../tools/hop/skills",
+        "absolute-under-linked-ancestor": str(repo / "alias" / "deep" / "skills"),
+        "dotdot-through-link": "../tools/bounce/../skills",
+        "git-dir": "../.git/skills",
+        "outward": str(outside / "skills"),
+        "dangling": str(repo / "missing"),
     }[shape]
+    (repo / skills).parent.mkdir(exist_ok=True)
+    (repo / skills).symlink_to(text)
+    return text, real
 
 
 SKILLS_LINK_SHAPES = {   # shape -> allowed; the one table of skills-directory link shapes (M21.37 skills-link rule)
-    "relative-in-repo": True,
-    "absolute-in-repo": True,
+    "pair": True,
+    "absolute-pair": False,
+    "pair-under-linked-parent": False,
+    "cycle": False,
+    "relative-alias": False,
     "relative-chained": False,
-    "absolute-chained": False,
     "absolute-under-linked-ancestor": False,
+    "dotdot-through-link": False,
+    "git-dir": False,
     "outward": False,
     "dangling": False,
 }
@@ -283,19 +352,15 @@ SKILLS_RUNNERS = {
 def test_every_entry_point_gives_the_same_skills_link_verdict(
         tmp_path: Path, capsys, shape: str, skills: str, runner: str) -> None:
     """refresh-stubs, upgrade and upgrade --dry-run: the same verdict and line for the same link, the upgrade's
-    mirror keeping the link's own shape; allowed links write skill links that resolve from where they land."""
+    mirror keeping the link's own text; only ``../.agents/skills`` or ``../.claude/skills`` (the other one) is allowed."""
     repo, outside = _inited(tmp_path)
     run_init(target=repo, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None)
-    (repo / "tools" / "deep").mkdir(parents=True)
-    shutil.copytree(repo / skills, outside / "skills", symlinks=True)
-    shutil.move(repo / skills, repo / "tools" / "deep" / "skills")
-    canonical = repo / ".agents" / "skills" / "specyrd-validate" / "SKILL.md"
-    target = _skills_link(repo, outside, shape)
-    (repo / skills).symlink_to(target)
-    if canonical.exists():
-        canonical.write_text("stale\n", encoding="utf-8")
+    text, real = _skills_link(repo, outside, skills, shape)
+    canonical = real / "specyrd-validate" / "SKILL.md"
+    canonical.write_text("stale\n", encoding="utf-8")
     capsys.readouterr()
-    before = _tree(repo / "tools", outside)
+    watched = [repo / "tools", outside] + ([real] if real != repo / ".agents" / "skills" else [])   # a real
+    before = _tree(*watched)                                       # .agents/skills is written as usual
 
     try:
         code = SKILLS_RUNNERS[runner](repo)
@@ -304,16 +369,88 @@ def test_every_entry_point_gives_the_same_skills_link_verdict(
     err = capsys.readouterr().err
 
     if not SKILLS_LINK_SHAPES[shape]:
-        refusal = f"error: {repo / skills} is a symlink (to {target}), not a link to a real directory in the repository"
+        refusal = (f"error: {repo / skills} is a symlink (to {text}), not a real directory or a link to"
+                   f" ../{OTHER_SKILLS[skills]} (the skills directories may link only"
+                   " .agents/skills -> ../.claude/skills or .claude/skills -> ../.agents/skills)")
+        if shape == "pair-under-linked-parent" and skills == ".claude/skills":   # the canonical files are refused
+            refusal = f"error: {repo / '.agents'} is a symlink (to tools/deep), not a directory"   # first, so no link
+        if shape == "cycle" and skills == ".claude/skills":   # the canonical files' link is refused first
+            refusal = (f"error: {repo / '.agents/skills'} is a symlink (to ../.claude/skills), not a real directory"
+                       " or a link to ../.claude/skills (the skills directories may link only"
+                       " .agents/skills -> ../.claude/skills or .claude/skills -> ../.agents/skills)")
         assert code == 1 and refusal in err.splitlines(), err
-        assert "Traceback" not in err and _tree(repo / "tools", outside) == before
+        assert "Traceback" not in err
+        assert _tree(*watched) == before and os.readlink(repo / skills) == text
         return
     assert code in (None, 0), err
     if runner != "upgrade --dry-run":
         assert canonical.read_text(encoding="utf-8") != "stale\n"
-        links = sorted((repo / ".claude" / "skills").iterdir())
-        assert links and all(link.resolve() == (repo / ".agents" / "skills" / link.name).resolve()
-                             and (link / "SKILL.md").is_file() for link in links)
+        skill_dirs = sorted((repo / ".claude" / "skills").iterdir())
+        assert skill_dirs and all(d.resolve() == (repo / ".agents" / "skills" / d.name).resolve()
+                                  and (d / "SKILL.md").is_file() for d in skill_dirs)
+    else:
+        assert canonical.read_text(encoding="utf-8") == "stale\n"
+
+
+LOOP_RUNNERS = {
+    **SKILLS_RUNNERS,
+    "specyrd init": lambda repo: run_init(target=repo, agent="claude-code", dry_run=False, force=False,
+                                          ai_commands_dir=None, write_claude_md=True),
+    "init project --force": lambda repo: run_init_project(repo, force=True, profiles="none"),
+}
+
+
+LOOP_ROWS = [   # (the path linked to itself, a command that writes there); each failed with a traceback before
+    *(("AGENTS.md", runner) for runner in LOOP_RUNNERS),
+    ("CLAUDE.md", "specyrd init"),
+    *((".specyrd", runner) for runner in SKILLS_RUNNERS),
+    (".agents/skills/specyrd-brief", "refresh-stubs"),
+    (".agents/skills/specyrd-brief", "upgrade"),
+]
+
+
+@pytest.mark.parametrize(("rel", "runner"), LOOP_ROWS)
+def test_a_symlink_loop_on_a_managed_path_is_refused_without_a_traceback(
+        tmp_path: Path, capsys, rel: str, runner: str) -> None:
+    """A link to itself is a symlink on the path like any other: ``error:`` naming it, exit 1, nothing changed."""
+    repo, outside = _inited(tmp_path)
+    run_init(target=repo, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None, write_claude_md=True)
+    _relink(repo / rel, Path(Path(rel).name))
+    capsys.readouterr()
+    # A refused skill drops out of the manifest (test_upgrade_plan_parity, Sol F2): watch the skills, not the manifest.
+    watched = [repo / ".agents", repo / ".claude"] if rel.startswith(".agents/") else [repo]
+
+    _refused(lambda: LOOP_RUNNERS[runner](repo), capsys, repo / rel, *watched, outside)
+
+
+@pytest.mark.parametrize("runner", list(LOOP_RUNNERS))
+def test_an_ignore_file_linked_right_before_replace_is_an_error(
+        tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, runner: str) -> None:
+    """The re-check before replace refuses a ``.gitignore`` a racer linked out: ``error:``, exit 1, no write out."""
+    repo, outside = _inited(tmp_path)
+    (repo / ".gitignore").write_text("node_modules/\n", encoding="utf-8")   # its managed block is now missing
+    theirs = outside / "theirs.json"
+    before = theirs.read_bytes()
+    chmod = os.chmod
+
+    def swap(tmp, mode: int, **kw) -> None:   # the last step before the re-check: a racer links the destination
+        chmod(tmp, mode, **kw)
+        if Path(tmp).name.startswith("..gitignore."):   # safe_write.write's temp file for .gitignore
+            dest = Path(tmp).parent / ".gitignore"
+            dest.unlink()
+            dest.symlink_to(theirs)
+
+    monkeypatch.setattr(os, "chmod", swap)
+    capsys.readouterr()
+    try:
+        code = LOOP_RUNNERS[runner](repo)
+    except SystemExit as e:
+        code = e.code
+    err = capsys.readouterr().err
+    assert code == 1, err
+    assert any(ln.startswith("error: ") and ".gitignore is a symlink" in ln for ln in err.splitlines()), err
+    assert "Traceback" not in err
+    assert theirs.read_bytes() == before
 
 
 def test_refresh_stubs_refuses_a_linked_stub_and_still_makes_the_skill_links(tmp_path: Path, capsys) -> None:
@@ -397,6 +534,50 @@ def _second_move_unsafe(repo: Path, outside: Path, rec: dict) -> Path:
     return repo / "planning" / "linked.md"
 
 
+def _origin_cancelled(repo: Path, outside: Path, rec: dict) -> Path:
+    """``planning/jump/../<sheet>`` checks as ``planning/<sheet>`` but reaches ``outside/<sheet>`` through ``jump``."""
+    (outside / "inner").mkdir()
+    origin = Path(rec["planning"][0]["origin"])
+    (outside / origin.name).write_text("theirs\n", encoding="utf-8")
+    (repo / "planning" / "jump").symlink_to(outside / "inner")
+    _set_record(repo, planning=[{**rec["planning"][0], "origin": f"planning/jump/../{origin.name}"}])
+    return repo / "planning" / "jump" / ".." / origin.name
+
+
+def _cancelled(repo: Path, outside: Path, rel: str) -> tuple[str, Path]:
+    """``<dir>/jump/../<rest>`` for ``rel = <dir>/<rest>``: checks as ``rel``; through ``jump`` it is ``outside/<rest>``.
+
+    ``outside/<rest>`` holds a copy of ``rel``, so the raw spelling reads, moves or unlinks that copy.
+    """
+    head, rest = Path(rel).parts[:3], Path(*Path(rel).parts[3:])
+    (outside / "inner").mkdir(exist_ok=True)
+    (outside / rest).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(repo / rel, outside / rest)
+    (repo.joinpath(*head) / "jump").symlink_to(outside / "inner")
+    spelled = str(Path(*head, "jump", "..", rest))
+    return spelled, repo / spelled
+
+
+def _chunk_cancelled(repo: Path, outside: Path, rec: dict) -> Path:
+    spelled, path = _cancelled(repo, outside, rec["chunk"])
+    _set_record(repo, chunk=spelled)
+    return path
+
+
+def _stored_cancelled(repo: Path, outside: Path, rec: dict) -> Path:
+    spelled, path = _cancelled(repo, outside, rec["planning"][0]["stored"])
+    _set_record(repo, planning=[{**rec["planning"][0], "stored": spelled}])
+    return path
+
+
+def _capsule_cancelled(repo: Path, outside: Path, rec: dict) -> Path:
+    """``undeepen_archive`` joins the capsule's spelling raw: through ``jump`` it would unpack and unlink the copy."""
+    bundle = load_archive_index(repo)["records"][0]["bundle"]
+    spelled, path = _cancelled(repo, outside, bundle["path"])
+    _set_record(repo, bundle={**bundle, "path": spelled})
+    return path
+
+
 def _unpack_linked(repo: Path, outside: Path, rec: dict) -> Path:
     """A deep record unpacks its chunk into ``roadmap/archive/chunks/``: here a link out."""
     chunks = repo / "roadmap" / "archive" / "chunks"
@@ -410,9 +591,11 @@ def _unpack_linked(repo: Path, outside: Path, rec: dict) -> Path:
 
 RESTORE_LAYOUTS = {"chunk-out": _chunk_out, "phases-linked": _phases_linked, "origin-linked": _origin_linked,
                    "stored-linked": _stored_linked, "second-move-unsafe": _second_move_unsafe,
+                   "origin-cancelled": _origin_cancelled, "chunk-cancelled": _chunk_cancelled,
+                   "stored-cancelled": _stored_cancelled, "capsule-cancelled": _capsule_cancelled,
                    "unpack-linked": _unpack_linked}
-RESTORE_ROWS = [*((layout, False) for layout in RESTORE_LAYOUTS if layout != "unpack-linked"),
-                *((layout, True) for layout in ("phases-linked", "origin-linked", "unpack-linked"))]
+RESTORE_ROWS = [*((layout, False) for layout in RESTORE_LAYOUTS if layout not in ("unpack-linked", "capsule-cancelled")),
+                *((layout, True) for layout in ("phases-linked", "origin-linked", "unpack-linked", "capsule-cancelled"))]
 
 
 @pytest.mark.parametrize(("layout", "deep"), RESTORE_ROWS)

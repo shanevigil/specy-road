@@ -214,7 +214,7 @@ def test_codex_reviewer_runs_read_only_with_the_output_schema(tmp_path: Path) ->
                           "--output-schema", str(schema), "-o", str(out), "-"]
     assert fresh.stdin == "review it"
     resumed = Codex().reviewer_launch(prompt, "gpt-6.1-sol", tmp_path, session=("t1", True), schema=schema, output=out)
-    assert resumed.argv == ["codex", "exec", "resume", "--json", "-c", "sandbox_mode=read-only",
+    assert resumed.argv == ["codex", "exec", "resume", "--json", "-m", "gpt-6.1-sol", "-c", "sandbox_mode=read-only",
                             "-c", "approval_policy=never", "t1", "-"]
     assert "sandbox_mode=read-only" in M87_NOTE.read_text(encoding="utf-8")
 

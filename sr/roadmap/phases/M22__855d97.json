@@ -6,11 +6,14 @@
         "read_acceptance does its presence check (lstat) inside the unreadable boundary: an unreadable parent (PermissionError) or a dangling POLICY-ACCEPTED.yaml link is an invalid-acceptance gate problem, not a traceback or absence; the caller check opens work/.workers/<id>.yaml with O_NONBLOCK and requires a regular file by fstat, refusing a FIFO or other non-regular record with CallerError at once",
         "write_rejected and write_human_approval share write_review's case-variant unlink, so the stored names are REJECTED-<model>.md and REVIEW-human.md; unreadable_rejected_lines matches REJECTED-*.md case-insensitively",
         "Tests: READY with a case variant and with a roster alias -> executor's review excluded; ambiguous alias -> gate closed; PermissionError on the acceptance parent (stubbed) and a dangling acceptance link -> gate and finish refuse cleanly; a FIFO worker record (POSIX, CLI under a 5 s timeout) -> refused at once, nothing written; an existing rejected-<model>.md / review-human.md (case-insensitive volume simulated as tests/test_review_file_case.py does) -> canonical names, listing finds them. docs/orchestration-review.md and CHANGELOG [Unreleased] Fixed",
-        "Estimated net line change (informational, not a gate): package about +45, tests about +130, docs about +4"
+        "Estimated net line change (informational, not a gate): package about +45, tests about +130, docs about +4",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node",
+        "A READY that is not valid UTF-8 is an unreadable-input refusal naming the file in the review gate, finish and handoff status, never a traceback (review_files._read catches only OSError today); tests/test_review_file_case.py gains that case"
       ],
       "codename": "review-inputs-identity-and-unreadable",
       "dependencies": [
-        "992a07fe-018e-4ff0-adc5-1675c130adb6"
+        "992a07fe-018e-4ff0-adc5-1675c130adb6",
+        "968d2065-95f2-4d33-8926-045da3b65990"
       ],
       "id": "M22.19",
       "node_key": "855d9738-4b87-480b-8404-d6a1aa85c714",
@@ -47,7 +50,9 @@
       ],
       "codename": "terminate-and-finish-rollback-robustness",
       "dependencies": [
-        "f6a94a57-91ff-449b-997e-af12dedd41ee"
+        "f6a94a57-91ff-449b-997e-af12dedd41ee",
+        "e129232c-a131-477e-bb91-12699f010034",
+        "24a67d66-529a-40ca-a500-759cedaacb12"
       ],
       "id": "M22.20",
       "node_key": "17405142-e2fa-4516-83e2-e536820d1ec2",
@@ -72,14 +77,18 @@
         "brainstorm verify drops a bracket only when it is a citation marker on the page and absent from the quote; a quote that keeps a bracket must match it exactly (page [43] vs quote [44], [a] vs [b] -> not-found), while a page [43] against a quote without it still matches and the typographic folds stay",
         "upgrade --dry-run renders the digest with the live checkout's history as a read-only input (no writable link into live .git), so on the finished-leaf fixture with a current digest containing Quality by area the dry run predicts no digest write and the real upgrade writes none",
         "apply's rollback snapshot (roadmap_crud_dependency_ops _restore) keeps entry type and link text: archiving an in-repo linked sheet, then a refused edit of missing M404 in the same batch, restores the symlink (is_symlink, readlink, target bytes and location)",
-        "safe_write traverses by directory descriptor (os.open with O_NOFOLLOW per component, os.replace with dir fds; M21.37's re-check kept where dir_fd is unsupported) and archive moves use the path as spelled under that traversal, not an earlier resolve(); deterministic tests swap a destination or a parent for a link between the walk and the replace for generated files, the managed block and archive moves -> refused, outside unchanged. docs/brainstorming.md verify paragraph and CHANGELOG [Unreleased] Fixed",
-        "Estimated net line change (informational, not a gate): package about +80, tests about +170, docs about +3"
+        "docs/brainstorming.md verify paragraph and CHANGELOG [Unreleased] Fixed",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +90, docs about +3 (the descriptor part moved to M22.29)"
       ],
       "codename": "preview-rollback-fidelity",
       "dependencies": [
         "1a086436-279e-481f-bbd1-e222b218c1e6",
         "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
-        "74c3d924-fc2e-4170-a786-caed84beca86"
+        "74c3d924-fc2e-4170-a786-caed84beca86",
+        "1d5c3b8f-8179-40d8-a04a-262e6f8765d9",
+        "f7c47911-9faa-4536-941b-a208aee3a459",
+        "0bcbdc19-743c-4037-9bbb-089c6a3f0cb4"
       ],
       "id": "M22.21",
       "node_key": "5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c",
@@ -87,19 +96,16 @@
       "planning_dir": "planning/M22.21_preview-rollback-fidelity_5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c.md",
       "sibling_order": 20,
       "status": "Not Started",
-      "title": "Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback, descriptor-anchored writes",
+      "title": "Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_verify.py",
         "specy_road/bundled_scripts/upgrade.py",
         "specy_road/bundled_scripts/upgrade_generated.py",
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
-        "specy_road/safe_write.py",
-        "specy_road/managed_block.py",
         "specy_road/archive_ops.py",
         "tests/test_brainstorm_verify.py",
         "tests/test_upgrade_preview.py",
         "tests/test_roadmap_apply.py",
-        "tests/test_safe_write.py",
         "docs/brainstorming.md",
         "CHANGELOG.md"
       ],
@@ -108,22 +114,18 @@
     {
       "acceptance": [
         "Planning-sheet save (F4): the PM GUI saves an unedited planning sheet byte-identical (a list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the other blocks' source lines unchanged; Escape closes the front-most edit or Publish modal, and only that one, including with focus in the editor (F9); the Markdown editor configures the link extension once, so no duplicate-extension warning (F9). Vitest (node environment) through pure helpers: an unedited round trip is byte-identical, an Intent edit changes only its lines, the Escape decision for one and two stacked modals, unique extension names. npm ci, lint, test and build pass; specy_road/pm_gantt_static/ rebuilt",
-        "One GUI extra name (F5): --help, gui's missing-dependency errors, init gui --install-gui's pip command and help, review_node.py's and update_specy_road.py's messages, and the install lines in README.md, docs/install-and-usage.md, docs/pm-gui.md, docs/pm-workflow.md and docs/contributor-guide.md name specy-road[gui], never gui-next; pyproject.toml keeps the gui-next extra as an alias (no packaging change); tests/test_cli_help_text.py asserts --help has no 'gui-next'",
-        "upgrade prints no 'run `specy-road upgrade`' version-skew warning about itself (cli skips the check for upgrade as for doctor; validate and other commands still warn) (F7); export --check's drift line reads 'drift: <path> no longer matches the roadmap. Run: specy-road export' (F8). Tests in tests/test_doctor_version_skew.py (upgrade with an older AGENTS.md block -> no warning line) and tests/test_export_roadmap_md.py (drift -> the hint, exit 1). CHANGELOG [Unreleased] Fixed",
-        "Estimated net line change (informational, not a gate): package about +25, gui about +60, tests about +60, docs about +8"
+        "CHANGELOG [Unreleased] Fixed entry",
+        "Estimated net line change (informational, not a gate): gui about +60, tests about +20 (F5 moved to M16.6.1, F7 and F8 to M22.28)"
       ],
       "codename": "sandbox-rc4-final-polish",
-      "dependencies": [
-        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
-        "74c3d924-fc2e-4170-a786-caed84beca86"
-      ],
+      "dependencies": [],
       "id": "M22.22",
       "node_key": "7a0ccfaf-aa9e-45f5-8438-19693d6c622d",
       "parent_id": "M22",
       "planning_dir": "planning/M22.22_sandbox-rc4-final-polish_7a0ccfaf-aa9e-45f5-8438-19693d6c622d.md",
       "sibling_order": 21,
       "status": "Not Started",
-      "title": "Sandbox polish: planning-sheet save keeps untouched Markdown, one GUI extra name, no self-warning in upgrade, export drift hint, Escape closes modals",
+      "title": "Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal",
       "touch_zones": [
         "gui/pm-gantt/src/components/MarkdownWorkspace.tsx",
         "gui/pm-gantt/src/components/ModalFrame.tsx",
@@ -133,36 +135,22 @@
         "gui/pm-gantt/src/planningSectionUtils.test.ts",
         "gui/pm-gantt/src/markdownWorkspace.test.ts",
         "specy_road/pm_gantt_static/",
-        "specy_road/cli_usage.py",
-        "specy_road/cli.py",
-        "specy_road/cli_init.py",
-        "specy_road/cli_init_argparse.py",
-        "specy_road/bundled_scripts/review_node.py",
-        "specy_road/bundled_scripts/update_specy_road.py",
-        "specy_road/bundled_scripts/export_roadmap_md.py",
-        "tests/test_cli_help_text.py",
-        "tests/test_doctor_version_skew.py",
-        "tests/test_export_roadmap_md.py",
-        "README.md",
-        "docs/install-and-usage.md",
-        "docs/pm-gui.md",
-        "docs/pm-workflow.md",
-        "docs/contributor-guide.md",
         "CHANGELOG.md"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "human: when the maintainer's Cursor quota allows (the date is recorded in this sheet; if rc5 is ready first the maintainer records a deferral here instead), CR1, CR3 and CR5 (3 runs each, the §9 replay's case files and scoring) and 5 review delegate runs are made with each of grok-4.7, gpt-6.1-sol and claude-opus-5-5 through the Cursor harness, on a wheel with M21.44 landed and policy.signed_reviews off for the runs",
-        "This sheet's Results table records, per model, CR1, CR3 and CR5 fail/success counts and the delegated reviews filed out of 5, with the run date and the Cursor agent version",
-        "Each model's profile (template and sr/model-profiles) gets M21.44's `guidance_bypass_observed` {date, harness: cursor, evidence naming the cases and counts} when the maintainer confirms a bypass (proposed rule: any CR1 or CR3 failure, or CR5 failing 2 of 3 runs or more), and stays without it otherwise; CHANGELOG [Unreleased] names any model flagged",
-        "The sheet records whether the behaviour is model- or harness-driven, comparing the Cursor results with the same models' native-harness results from the same re-tests (claude-opus-5-5 on Claude Code, gpt-6.1-sol on Codex); a harness-driven finding is filed by the planner as its own follow-up leaf (a harness-level flag), not done here",
+        "human: exactly one of two completion paths, recorded in this sheet with its date: (a) deferral: the maintainer records that rc5 was ready first, with no results and no profile change; or (b) runs: when the maintainer's Cursor quota allows, CR1, CR3 and CR5 (3 runs each, the §9 replay's case files and scoring) and 5 review delegate runs are made with each of grok-4.7, gpt-6.1-sol and claude-opus-5-5 through the Cursor harness, on a wheel with M21.44 landed and policy.signed_reviews off for the runs",
+        "On path (b), this sheet's Results table records, per model, CR1, CR3 and CR5 fail/success counts and the delegated reviews filed out of 5, with the run date, the Cursor agent version, the model slug the run reported, and the wheel's version and sha256",
+        "On path (b), each model's profile (template and sr/model-profiles) gets M21.44's `guidance_bypass_observed` {date, harness: cursor, evidence naming the cases and counts} when the maintainer confirms a bypass (proposed rule: any CR1 or CR3 failure, or CR5 failing 2 of 3 runs or more), and stays without it otherwise; CHANGELOG [Unreleased] names any model flagged",
+        "On path (b), the sheet records whether the behaviour is model- or harness-driven, comparing the Cursor results with the same models' native-harness results from the same re-tests (claude-opus-5-5 on Claude Code, gpt-6.1-sol on Codex); a model with no comparable native result is recorded as inconclusive; a harness-driven finding is filed by the planner as its own follow-up leaf (a harness-level flag), not done here",
         "Estimated net line change (informational, not a gate): profiles about +3 lines each when flagged; package 0"
       ],
       "codename": "guidance-bypass-retest-cursor-grok-sol-opus",
       "dependencies": [
-        "14485811-9209-468d-bd05-0f5156228e8a"
+        "14485811-9209-468d-bd05-0f5156228e8a",
+        "148aa830-5bad-4086-8d27-9c6748b58ed5"
       ],
       "execution_milestone": "Human-led",
       "id": "M22.23",
@@ -179,6 +167,322 @@
         "sr/model-profiles/spacexai-grok/grok-4.7.md",
         "sr/model-profiles/openai-gpt/gpt-6.1-sol.md",
         "sr/model-profiles/anthropic-claude/claude-opus-5-5.md",
+        "CHANGELOG.md",
+        "sr/planning/M22.23_guidance-bypass-retest-cursor-grok-sol-opus_dfb21e02-6eaa-4de1-9b48-25de90e7c191.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The usage parser (worker_adapter_base parse_events) reads the launch model through worker_models.launch_model instead of model_from_argv alone, so a shell -c launch is priced by command_model's existing rules (one simple command, redirections allowed, a literal -m / --model / --model= value): a Codex worker whose channels.cli is `codex exec --json -m <id> … - < {prompt}` gets a roster-priced cost marked est. instead of $?; a list or pipeline, or a non-literal model word, stays $?; model_from_argv is unchanged",
+        "list_sessions with live_only leaves out a session whose recorded worktree is not a directory or whose recorded branch has no refs/heads/<branch>; session list --all still shows it with 'stale: worktree gone' or 'stale: branch gone' (worktree gone when both); a record with no worktree or no branch keeps today's expiry rule; a worktree or branch value that is not a string, or a git error on the ref check, keeps the session live and raises nothing",
+        "worker terminate ends only the live presence session in the worker's worktree whose agent is the worker's derived id, `<user>-s<pgid>` from the record's pgid read before terminate clears it (the runner drops SPECY_ROAD_AGENT_ID and starts the wrapper in its own session); another agent's session in the same worktree and sessions in other worktrees stay live; no new worker-record field",
+        "Tests: tests/test_worker_usage_shell_cli.py (the rc4 Codex channels.cli string priced; a pipeline and a non-literal -m stay $?; an unsplittable string still $?); tests/test_session_presence.py (worktree removed, branch deleted, both gone, --all reasons, a non-string worktree value stays live, terminate ends the worker's own session and leaves a peer in the same worktree and another worktree's session); docs/orchestration-workers.md cost and presence lines; CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +30, tests about +100, docs about +3"
+      ],
+      "codename": "worker-cost-and-stale-presence",
+      "dependencies": [
+        "218a29f0-6309-4fa6-b767-1c8a74e17046",
+        "968d2065-95f2-4d33-8926-045da3b65990"
+      ],
+      "id": "M22.13",
+      "node_key": "99ad0839-6c85-4631-b67b-80ef2d3b3c57",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.13_worker-cost-and-stale-presence_99ad0839-6c85-4631-b67b-80ef2d3b3c57.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone",
+      "touch_zones": [
+        "specy_road/session_presence.py",
+        "specy_road/worker_ops_lifecycle.py",
+        "tests/test_worker_usage_shell_cli.py",
+        "tests/test_session_presence.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/bundled_scripts/session_cli.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster or roster_add entry with family human and any model launch configuration gets no exemption, or is refused at the configuration boundary; a person with no launch configuration keeps it",
+        "Model discovery reads a profile's access.cli through command_model, committed copies included, across worker delegate and the executor prompt path",
+        "The committed-profile scan reads NUL-delimited ls-tree -z output, so a flagged profile at a path git would quote is found",
+        "Public CLI rows cover each case. docs state the bounded rule: the exclusion covers declared configuration, not a model hidden in a custom command. Source: rc4 delta review F1-F3, sr/work/release-reviews/rc4-delta/logs/sol.out",
+        "With signed reviews on, an entry whose channels.cli or cli_resume has a model flag command_model cannot read is refused (fail closed), and launch names compare through model_names.normalise. Source: rc4 delta review, Grok FAIL 2, sr/work/release-reviews/rc4-delta/grok.md"
+      ],
+      "codename": "guidance-exclusion-closes-three-bypasses",
+      "dependencies": [],
+      "id": "M22.24",
+      "node_key": "4d9737c0-0d3a-44b3-869f-4b782a04f2ba",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.24_guidance-exclusion-closes-three-bypasses_4d9737c0-0d3a-44b3-869f-4b782a04f2ba.md",
+      "sibling_order": 23,
+      "status": "Not Started",
+      "title": "The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths",
+      "touch_zones": [
+        "specy_road/orchestrate_assign.py",
+        "specy_road/orchestration_pinned.py",
+        "tests/test_guidance_bypass_roles.py",
+        "docs/orchestration-roster.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A real upgrade's planning-mirror refresh runs with the same isolated config as the dry run, and caller config is restored before real-checkout operations",
+        "Git calls upgrade makes in the project, including file_limits_engine.git_ignored_paths, use the GIT_-stripped environment and a timeout, so a core.fsmonitor set through GIT_CONFIG_COUNT does not run; config in the caller's own files still applies there",
+        "A configuration probe covers real upgrade and dry run. Source: rc4 delta review W1, W2 and the sandbox re-test, sr/work/sandbox-feedback/2026-11-06-rc4-retest-89c7942d.md",
+        "A real upgrade with GIT_DIR, GIT_WORK_TREE or GIT_CONFIG_COUNT set runs its plan inside scratch_environ and validates with GIT_ dropped, so it writes nothing to the repository those variables name and raises no traceback; tests cover dry_run=False; upgrade --help states exit 2 for a failed git call. Source: rc4 delta review, Grok FAIL 1 and WARNING 1",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
+      ],
+      "codename": "upgrade-git-calls-share-one-environment",
+      "dependencies": [
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
+      ],
+      "id": "M22.25",
+      "node_key": "02c665e8-0e2a-44d5-b297-c82a5a288c41",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.25_upgrade-git-calls-share-one-environment_02c665e8-0e2a-44d5-b297-c82a5a288c41.md",
+      "sibling_order": 24,
+      "status": "Not Started",
+      "title": "Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment",
+      "touch_zones": [
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/bundled_scripts/upgrade_plan.py",
+        "specy_road/bundled_scripts/upgrade_generated.py",
+        "specy_road/ignore_report.py",
+        "specy_road/file_limits_engine.py",
+        "tests/test_upgrade_preview.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The worker post-run check matches each path the turn's commits changed through finish_implementation_check.in_zones with the project prefix, as finish does: in a nested layout a commit inside a zone written from the git root (sr/...) and one inside a zone written from the project root give no committed_outside_zones finding, and a commit outside both still gives one",
+        "tests/test_worker_turn_check.py covers those three cases through close_turn in a nested layout, and its existing cases pass unchanged; CHANGELOG [Unreleased] Fixed entry"
+      ],
+      "codename": "post-run-zone-check-git-root-zones",
+      "dependencies": [],
+      "id": "M22.26",
+      "node_key": "148aa830-5bad-4086-8d27-9c6748b58ed5",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.26_post-run-zone-check-git-root-zones_148aa830-5bad-4086-8d27-9c6748b58ed5.md",
+      "sibling_order": 25,
+      "status": "Complete",
+      "title": "The post-run zone check matches zones written from the git root",
+      "touch_zones": [
+        "specy_road/worker_turn_check.py",
+        "tests/test_worker_turn_check.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "tests/test_review_usage.py::test_delegate_after_prompt_cli_does_not_append_to_the_old_log asserts that the prompt-cli run's log is byte for byte what it was before the delegate run, instead of `\"900\" not in` that log, which fails when the random sha written into it contains 900; the test still fails when the delegate appends to the old log. Test-only, no CHANGELOG entry"
+      ],
+      "codename": "old-log-test-asserts-on-the-run",
+      "dependencies": [],
+      "id": "M22.27",
+      "node_key": "cbc35919-d31f-4840-bc69-c62c76e0693f",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.27_old-log-test-asserts-on-the-run_cbc35919-d31f-4840-bc69-c62c76e0693f.md",
+      "sibling_order": 26,
+      "status": "Complete",
+      "title": "The old-log review usage test asserts on the run, not on a substring",
+      "touch_zones": [
+        "tests/test_review_usage.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "upgrade prints no 'run `specy-road upgrade`' version-skew warning about itself (cli skips the check for upgrade as for doctor; validate and other commands still warn) (F7); export --check's drift line reads 'drift: <path> no longer matches the roadmap. Run: specy-road export' (F8). Tests in tests/test_doctor_version_skew.py (upgrade with an older AGENTS.md block -> no warning line) and tests/test_export_roadmap_md.py (drift -> the hint, exit 1). CHANGELOG [Unreleased] Fixed",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +30 (moved from M22.22's estimate)"
+      ],
+      "codename": "upgrade-no-self-warning-export-drift-hint",
+      "dependencies": [
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
+      ],
+      "id": "M22.28",
+      "node_key": "02771e58-14a5-472d-8292-a1fb1dce7e3e",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.28_upgrade-no-self-warning-export-drift-hint_02771e58-14a5-472d-8292-a1fb1dce7e3e.md",
+      "sibling_order": 27,
+      "status": "Not Started",
+      "title": "upgrade does not warn about itself, and export's drift line says how to fix it",
+      "touch_zones": [
+        "specy_road/cli.py",
+        "specy_road/bundled_scripts/export_roadmap_md.py",
+        "tests/test_doctor_version_skew.py",
+        "tests/test_export_roadmap_md.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "safe_write traverses by directory descriptor (os.open with O_NOFOLLOW per component, os.replace with dir fds; M21.37's re-check kept where dir_fd is unsupported) and archive moves use the path as spelled under that traversal, not an earlier resolve(); deterministic tests swap a destination or a parent for a link between the walk and the replace for generated files, the managed block and archive moves -> refused, outside unchanged. CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +80 (moved from M22.21's estimate)"
+      ],
+      "codename": "safe-write-directory-descriptors",
+      "dependencies": [
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
+      ],
+      "id": "M22.29",
+      "node_key": "0bcbdc19-743c-4037-9bbb-089c6a3f0cb4",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.29_safe-write-directory-descriptors_0bcbdc19-743c-4037-9bbb-089c6a3f0cb4.md",
+      "sibling_order": 28,
+      "status": "Not Started",
+      "title": "safe_write and archive moves traverse by directory descriptor",
+      "touch_zones": [
+        "specy_road/safe_write.py",
+        "specy_road/archive_ops.py",
+        "tests/test_safe_write.py",
+        "tests/test_archive_ops.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Starts from the integration branch with `git revert <R30>`, the commit id this leaf's planning sheet records under ## Source (the coordinator's split of feature/rm-steering-file-guard; the code comes from 80c56903). Conflicts are resolved in that commit by keeping every predecessor already on the integration branch (narrowed M22.5) and adding only this leaf's class; no file is taken from narrowed M22.5's version where a predecessor has changed it since. Reviewed on this leaf's own diff from its merge base",
+        "steering_paths.py adds the other classes to M22.5's list, snapshotted per worker in the worktree and the main checkout: harness config and hooks (.claude/settings*.json, .claude/hooks/**, .codex/**, .cursor/*.json, .cursor/hooks/**); roadmap/orchestration.yaml, roadmap/orchestration.local.yaml and roadmap/git-workflow.yaml in the tree (policy_tree) and as blobs at the local integration branch tip (policy_blob); roadmap/registry.yaml entries items whose node_id is another leaf (registry); work/reviews/ files except the leaf's own READY (review_file); root .bashrc, .bash_profile, .profile, .zshrc, .zshenv, .envrc (shell_startup); and for each env_setup.link target its bin/ entry names, types, link text and resolved regular-file sha256 (env_bin)",
+        "close_turn compares these after the git probes (when M22.5 skipped the probes, without policy_blob and symlink). Each change is one steering_file finding with path, class, before and after, replacing any porcelain or committed_outside_zones finding for that path; a path two classes reach is one finding, of the class listed first. A symlink finding is a porcelain entry in either checkout, new or retargeted during the turn, whose target resolves outside the worker's git root; there is no directory walk, and gitignored paths and links created then removed within a turn are out of scope, as the docs state. Each finding sets M22.5's sticky steering_changed flag; an unreadable input of these classes is one check_error naming the path and class, and the rest is still compared",
+        "Tests in tests/test_steering_file_guard.py: a fake executor turn yields exactly one steering_file finding, and no porcelain or committed_outside_zones finding for that path, for each of .claude/settings.json, .cursor/hooks.json, .envrc, a write through an unchanged linked .venv/bin/python symlink, a symlink whose target leaves the worktree, another leaf's registry entries item, a forged work/reviews REVIEW file, and roadmap/orchestration.yaml committed onto the local integration branch from a second worktree with no fetch; the unreadable-input rows for registry, harness and env_bin; a turn writing only its READY, its own registry entry and in-zone code is clean. Ends with one full Sol sweep of the merged result"
+      ],
+      "codename": "steering-detection-other-classes",
+      "dependencies": [
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+      ],
+      "id": "M22.30",
+      "node_key": "37904d88-a256-4ae0-9abf-1c92de6bed7f",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.30_steering-detection-other-classes_37904d88-a256-4ae0-9abf-1c92de6bed7f.md",
+      "sibling_order": 29,
+      "status": "Not Started",
+      "title": "Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed",
+      "touch_zones": [
+        "specy_road/steering_paths.py",
+        "specy_road/worker_turn_check.py",
+        "docs/orchestration-workers.md",
+        "docs/orchestration-steering-files.md",
+        "tests/test_steering_file_guard.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Starts from the integration branch with `git revert <R31>`, the commit id this leaf's planning sheet records under ## Source (the coordinator's split of feature/rm-steering-file-guard; the code comes from 80c56903). Conflicts are resolved in that commit by keeping every predecessor already on the integration branch (narrowed M22.5, M22.30, M22.14, M22.10 and M22.20) and adding only this leaf's class; no file is taken from narrowed M22.5's version where a predecessor has changed it since. Reviewed on this leaf's own diff from its merge base",
+        "finish-this-task refuses, before its bookkeeping commit, a leaf whose branch diff against the merge base changes an in-tree steering path (harness config and hooks, the three roadmap policy files, root shell startup files) unless a touch zone names that exact path (a directory or glob zone does not count); roadmap/registry.yaml is ignored. The message names each path and the next step: add that exact path to touch_zones with specy-road edit-node and get it reviewed, or revert it.",
+        "Tests: in tests/test_steering_file_guard.py, with .claude/settings.json named exactly in zones the leaf lands, and without it finish refuses naming the path; tests/test_finish_merge_failure_undo.py and tests/test_finish_work_cleanup.py commit the integration config on the integration branch first, because a leaf's own change to it is a steering file. Ends with one full Sol sweep of the merged result",
+        "steering_gate.py's module docstring names its topic (the steering list's uses at finish and, after M22.32, at launch), not the file limit: the cap is 1,000 lines and cap-driven splits are being folded (constraints/file-limits.yaml)"
+      ],
+      "codename": "steering-finish-refusal",
+      "dependencies": [
+        "37904d88-a256-4ae0-9abf-1c92de6bed7f",
+        "121934a1-3ec8-416e-b66c-0305b77665b5",
+        "24a67d66-529a-40ca-a500-759cedaacb12",
+        "17405142-e2fa-4516-83e2-e536820d1ec2"
+      ],
+      "id": "M22.31",
+      "node_key": "7765e73d-c0a5-475b-89bf-819992cf6ba4",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.31_steering-finish-refusal_7765e73d-c0a5-475b-89bf-819992cf6ba4.md",
+      "sibling_order": 30,
+      "status": "Not Started",
+      "title": "finish-this-task refuses a branch that changes a steering file no touch zone names",
+      "touch_zones": [
+        "specy_road/steering_gate.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/steering_paths.py",
+        "docs/orchestration-steering-files.md",
+        "tests/test_steering_file_guard.py",
+        "tests/test_finish_merge_failure_undo.py",
+        "tests/test_finish_work_cleanup.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Starts from the integration branch with `git revert <R32>`, the commit id this leaf's planning sheet records under ## Source (the coordinator's split of feature/rm-steering-file-guard; the code comes from 80c56903). Conflicts are resolved in that commit by keeping every predecessor already on the integration branch (narrowed M22.5, M22.30, M22.14, M22.10, M22.20 and M22.31) and adding only this leaf's class; no file is taken from narrowed M22.5's version where a predecessor has changed it since. Reviewed on this leaf's own diff from its merge base; this leaf's own diff contains steering_gate.claude_denies",
+        "Claude Code launch and resume append --disallowedTools Edit(./<rel>) and Write(./<rel>) for each in-tree steering file present at launch plus .claude/settings.json, .claude/settings.local.json and the three roadmap policy files, skipping any path a touch zone names exactly, with no parent glob, so no rule matches an exempt path. New files, shell writes, the common git dir and the main checkout stay detection-only, and a channels.cli argv is unchanged. docs/orchestration-harness-launch.md states that Cursor already blocks .cursor/*.json, .vscode/** and .git/hooks/** and that Codex workspace-write refuses writes outside the workspace but allows in-tree steering files, neither argv changed; docs/orchestration-review.md 'What the gate cannot stop' states what this leaf adds and what stays with M20.",
+        "Tests in tests/test_steering_file_guard.py: with .claude/settings.json named exactly in zones no argv rule matches that path, and without it the argv denies it; a custom channels.cli argv is left as written. docs/orchestration-steering-files.md has its At launch paragraph. Ends with one full Sol sweep of the merged result"
+      ],
+      "codename": "steering-claude-launch-denies",
+      "dependencies": [
+        "37904d88-a256-4ae0-9abf-1c92de6bed7f",
+        "7765e73d-c0a5-475b-89bf-819992cf6ba4"
+      ],
+      "id": "M22.32",
+      "node_key": "1cfcf177-4014-4267-9000-d5b81d912f95",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.32_steering-claude-launch-denies_1cfcf177-4014-4267-9000-d5b81d912f95.md",
+      "sibling_order": 31,
+      "status": "Not Started",
+      "title": "Claude Code launch and resume deny edits to steering files",
+      "touch_zones": [
+        "specy_road/worker_adapter_claude.py",
+        "specy_road/steering_gate.py",
+        "specy_road/steering_paths.py",
+        "docs/orchestration-harness-launch.md",
+        "docs/orchestration-review.md",
+        "docs/orchestration-steering-files.md",
+        "tests/test_steering_file_guard.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A reviewer resume passes the requested model on every default adapter: Codex exec resume carries the same -m as the fresh turn, and Claude Code and Cursor are confirmed to do the same",
+        "tests/test_harness_launch.py covers each adapter reviewer resume argv, including the format-repair retry path; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "reviewer-resume-keeps-the-model",
+      "dependencies": [],
+      "id": "M22.33",
+      "node_key": "3202a820-d638-465d-926f-cd52834a85c1",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.33_reviewer-resume-keeps-the-model_3202a820-d638-465d-926f-cd52834a85c1.md",
+      "sibling_order": 32,
+      "status": "Complete",
+      "title": "A resumed review runs on the model it was asked for",
+      "touch_zones": [
+        "specy_road/worker_adapter_codex.py",
+        "specy_road/worker_adapter_claude.py",
+        "tests/test_harness_launch.py",
+        "CHANGELOG.md",
+        "tests/test_review_record_write.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road review accept-policy --all-open lists every open claim whose pinned review policy differs from the integration branch, prints each distinct set of changes once with the leaves it affects, and on one typed confirmation writes each leaf its own POLICY-ACCEPTED.yaml naming its pinned digest and the accepted digest",
+        "It keeps every existing safeguard: it needs a terminal, an acceptance still counts only for its node and two digests, a later policy change needs a new one, and the single-node form behaves as today",
+        "tests/test_review_policy_pin.py covers two leaves pinned to different digests, a leaf with no change, a refusal without a terminal and a wrong confirmation; docs/orchestration-review.md describes it; CHANGELOG [Unreleased] entry",
+        "The prompt and the gate's refusal explain in plain language what changed, why a person is being asked (the review rules changed after this work started) and what approving means, with the raw change lines kept below; each names a reference that works from an installed package",
+        "docs/orchestration-review.md gains a section explaining what is fingerprinted, why a match passes with no human, when a person is asked, what an acceptance covers, and how to decline by re-claiming the leaf"
+      ],
+      "codename": "accept-policy-for-all-open-claims",
+      "dependencies": [],
+      "id": "M22.34",
+      "node_key": "59ad86eb-3b77-478d-ac05-ba61dabf8394",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.34_accept-policy-for-all-open-claims_59ad86eb-3b77-478d-ac05-ba61dabf8394.md",
+      "sibling_order": 33,
+      "status": "Not Started",
+      "title": "One accept-policy prompt covers every open claim",
+      "touch_zones": [
+        "specy_road/review_policy_pin.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "docs/orchestration-review.md",
+        "tests/test_review_policy_pin.py",
         "CHANGELOG.md"
       ],
       "type": "task"
