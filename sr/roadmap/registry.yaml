@@ -170,6 +170,7 @@ entries:
       - tests/test_outline_group_cli.py
       - tests/test_brainstorm_promote_judgement.py
       - CHANGELOG.md
+      - tests/test_scaffold_planning.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

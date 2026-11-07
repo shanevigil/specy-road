@@ -131,7 +131,8 @@
         "tests/test_planning_sheet_bootstrap.py",
         "tests/test_outline_group_cli.py",
         "tests/test_brainstorm_promote_judgement.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_scaffold_planning.py"
       ],
       "type": "task"
     },
