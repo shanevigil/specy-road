@@ -316,6 +316,7 @@ Do not pick these up.
 - `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
+- `M22.9` on `feature/rm-local-roster-and-codex-reviewer-isolation` since 2026-11-07
 
 ## Quality by area
 
