@@ -197,21 +197,21 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.43` | digest refuses cleanly when the roadmap manifest is missing, like export --check | task | — | Complete |
 | `M21.44` | A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk | task | Agentic-led | Complete |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
-| `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Not Started |
+| `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Complete |
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
 | `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Not Started |
 | `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Not Started |
 | `M22.5` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
 | `M22.6` | A queued worker message that cannot be delivered flags the worker and goes out with its next turn | task | — | Not Started |
 | `M22.7` | ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading | task | — | Not Started |
-| `M22.8` | init project ends with the next steps: set the integration branch, commit the scaffold, validate | task | — | Not Started |
+| `M22.8` | init project ends with the next steps: set the integration branch, commit the scaffold, validate | task | — | Complete |
 | `M22.9` | Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME | task | — | Not Started |
 | `M22.10` | reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping | task | — | Not Started |
 | `M22.11` | Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout | task | — | Not Started |
 | `M22.12` | The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing | task | — | Not Started |
 | `M22.13` | Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone | task | — | Not Started |
 | `M22.14` | Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch | task | — | Not Started |
-| `M22.15` | The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows | task | — | Not Started |
+| `M22.15` | The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows | task | — | Complete |
 | `M22.16` | Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends | task | — | Not Started |
 | `M22.17` | brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist | task | — | Not Started |
 | `M22.18` | The reviewer prompt asks for every required change in one pass, not just the first | task | — | Not Started |
@@ -235,6 +235,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.36` | Each RC publishes its wheel URL and install line, and the package links to the guide | task | — | Not Started |
 | `M22.37` | Test the Cursor CLI harness on the documented default | task | — | Not Started |
 | `M22.38` | doctor --fix never removes a claim that may belong to another clone | task | — | Not Started |
+| `M22.39` | Stalled workers are detected on every run and can be recovered in one command | task | — | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
