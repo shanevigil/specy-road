@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -78,25 +79,51 @@ def test_cursor_names_the_prompt_file_on_every_launch(prompt: Path, tmp_path: Pa
 
 # --- M22.33: a reviewer resume, the format-repair retry's included, runs on the model it was asked for -----------
 
+#: A reviewer harness that appends its argv to $FAKE_CALLS and ends a clean turn with an empty final message, in
+#: $FAKE_HARNESS's stream format, on the session it was given (--session-id, --resume, exec resume) or $FAKE_SID.
+FAKE_REVIEWER = '''#!{python}
+import json, os, sys
+argv = sys.argv[1:]
+open(os.environ["FAKE_CALLS"], "a").write(json.dumps(argv) + "\\n")
+sys.stdin.read()
+named = [argv[i + 1] for i, a in enumerate(argv[:-1]) if a in ("--session-id", "--resume")]
+sid = named[0] if named else (argv[-2] if argv[:2] == ["exec", "resume"] else os.environ["FAKE_SID"])
+if os.environ["FAKE_HARNESS"] == "codex":
+    lines = [{{"type": "thread.started", "thread_id": sid}},
+             {{"type": "item.completed", "item": {{"type": "agent_message", "text": ""}}}}, {{"type": "turn.completed"}}]
+else:
+    lines = [{{"type": "system", "subtype": "init", "session_id": sid, "model": "fake"}},
+             {{"type": "result", "subtype": "success", "result": "", "session_id": sid}}]
+for line in lines:
+    print(json.dumps(line), flush=True)
+'''
+
+
+def _resumes(argv: list[str]) -> bool:
+    return "--resume" in argv or argv[:2] == ["exec", "resume"]
+
+
 @pytest.mark.parametrize(("harness", "flag"), [("claude-code", "--model"), ("codex", "-m"), ("cursor", "--model")])
 def test_a_reviewer_resume_passes_the_requested_model(harness: str, flag: str, prompt: Path, tmp_path: Path,
                                                       monkeypatch) -> None:
     a = ADAPTERS[harness]
     resumed = a.reviewer_launch(prompt, "m", tmp_path, session=("s-1", True)).argv
     assert "s-1" in resumed and resumed[resumed.index(flag) + 1] == "m"
+    fake, calls, sid = tmp_path / "tools" / "fake-reviewer", tmp_path / "calls.jsonl", str(uuid.uuid4())
+    _exe(fake).write_text(FAKE_REVIEWER.format(python=sys.executable))
+    for k, v in {"FAKE_CALLS": str(calls), "FAKE_HARNESS": harness, "FAKE_SID": sid}.items():
+        monkeypatch.setenv(k, v)
     roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
-              f"  - {{id: rev, family: other, roles: [reviewer], harness: {harness}}}\n")
+              f"  - {{id: rev, family: other, roles: [reviewer], harness: {harness}, harness_bin: {fake}}}\n")
     repo = make_review_repo(tmp_path / "repo", orchestration=roster)
     reviews_dir(repo, "M1.1").mkdir(parents=True, exist_ok=True)
     (reviews_dir(repo, "M1.1") / "PACKET.md").write_text("# Review packet\n")
-    sid, seen = str(uuid.uuid4()), []
     # a clean turn with an empty final message: one format-repair turn, which resumes the reported session
-    monkeypatch.setattr(review_delegate, "delegate_turn", lambda _a, _h, _log, _cwd, launch: seen.append(launch) or {
-        "session_id": sid, "exit": 0, "errors": [], "tail": [], "log_start": 0, "log_end": 0, "log_sha256": None})
     run = review_delegate.delegate(repo, "M1.1", "rev", retries=0, sleep=lambda _s: None)
     assert [at.get("repair", False) for at in run["attempts"]] == [False, True]
-    fresh, repair = (la.argv for la in seen)
-    assert sid in repair and sid not in fresh
+    argvs = [json.loads(line) for line in calls.read_text().splitlines()]
+    (fresh,), (repair,) = [c for c in argvs if not _resumes(c)], [c for c in argvs if _resumes(c)]
+    assert run["session_id"] in repair   # the repair resumes the session the fresh turn reported
     assert fresh[fresh.index(flag) + 1] == repair[repair.index(flag) + 1] == "rev"
 
 
