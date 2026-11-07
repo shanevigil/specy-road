@@ -232,7 +232,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.33` | A resumed review runs on the model it was asked for | task | — | Complete |
 | `M22.34` | One accept-policy prompt covers every open claim | task | — | Not Started |
 | `M22.35` | upgrade mirrors only what the refreshes need, never ignored files | task | — | Not Started |
-| `M22.36` | Each RC publishes its wheel URL and install line, and the package links to the guide | task | — | Not Started |
+| `M22.36` | Each RC publishes its wheel URL and install line, and the package links to the guide | task | — | Complete |
 | `M22.37` | Test the Cursor CLI harness on the documented default | task | — | Not Started |
 | `M22.38` | doctor --fix never removes a claim that may belong to another clone | task | — | Not Started |
 | `M22.39` | Stalled workers are detected on every run and can be recovered in one command | task | — | Not Started |

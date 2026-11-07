@@ -181,19 +181,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: rc-publishes-wheel-url-and-project-urls
-    node_id: M22.36
-    branch: feature/rm-rc-publishes-wheel-url-and-project-urls
-    touch_zones:
-      - .github/workflows/release-publish.yml
-      - pyproject.toml
-      - README.md
-      - docs/install-release-candidates.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T18:45:46+00:00'
   - codename: upgrade-git-calls-share-one-environment
     node_id: M22.25
     branch: feature/rm-upgrade-git-calls-share-one-environment

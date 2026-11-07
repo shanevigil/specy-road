@@ -40,7 +40,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.36_rc-publishes-wheel-url-and-project-urls_00b3ae55-3843-44f0-94ad-61ba72868d91.md",
       "sibling_order": 35,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Each RC publishes its wheel URL and install line, and the package links to the guide",
       "touch_zones": [
         ".github/workflows/release-publish.yml",
