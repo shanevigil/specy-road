@@ -28,6 +28,11 @@ body. Keep section bodies focused; link to PRs for detail.
   record planted at `<project>/.handoff-closed` is not an approval. `mark-implementation-reviewed` refuses a
   node link before the gate, naming the path, without committing the registry. A relative `work/reviews/<node>`
   is owned by `.`, so the lock and the writers do not create `work/work` or follow a top-level `work` link.
+  Readers apply the same rule: a symlink at a `REVIEW-*.md`, `READY-*.md`, `RCA-*.md`, `RED-GREEN.md`,
+  `PRE-EXISTING.md`, `POLICY-ACCEPTED.yaml` or `history/` copy, or a symlinked `history/`, is never read
+  as that file, so `mark-implementation-reviewed --yes` does not count a linked `REVIEW-human.md` and an
+  earlier approval behind a linked history copy does not count. A failed reviewer run does not restore a
+  symlinked record as a real file holding the link's target.
 - With `refs/remotes/<remote>/HEAD` missing, the review gate still fails closed. The error says to run
   `git remote set-head <remote> <name>` and notes that `--auto` fails when the remote's HEAD is unborn.
   It names `<name>` only when exactly one other remote-tracking ref has a readable committed

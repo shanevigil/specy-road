@@ -53,11 +53,13 @@ SYMLINK = "symlink "
 
 
 def _own_records(reviews: Path, model: str) -> list[Path]:
-    """This model's live record, in any case, and its ``history/`` copies."""
+    """This model's live record, in any case, and its ``history/`` copies: regular files by ``lstat`` only, so a
+    restore never turns a link's target bytes into a record; a symlinked ``history/`` is not listed."""
     live = [p for p in reviews.iterdir() if p.name.lower() == f"{REVIEW_PREFIX}{model}.md".lower()] \
         if reviews.is_dir() else []
     hist = reviews / HISTORY_DIRNAME
-    return live + (sorted(hist.glob(f"*-{model}.md")) if hist.is_dir() else [])
+    copies = sorted(hist.glob(f"*-{model}.md")) if hist.is_dir() and not hist.is_symlink() else []
+    return [p for p in live + copies if stat.S_ISREG(os.lstat(p).st_mode)]
 
 
 def path_ancestor_link(root: Path, path: Path) -> Path | None:

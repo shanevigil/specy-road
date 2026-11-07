@@ -53,7 +53,7 @@ from specy_road.bundled_scripts.registration_pickup_commit import with_policy_tr
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_text, run
 from specy_road.registry_yaml import read_registry, registry_path
-from specy_road.review_files import project_of, reviews_dir
+from specy_road.review_files import check_handoff_read, project_of, reviews_dir
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_target import REGISTER_SUBJECT, ReviewTargetError, full_sha, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -205,12 +205,13 @@ def acceptance_path(root: Path, node_id: str) -> Path:
 
 def read_acceptance(root: Path, node_id: str) -> tuple[dict[str, Any] | None, str | None]:
     """``(acceptance, None)``, ``(None, None)`` when there is none, or ``(None, why)`` when it is present but
-    unreadable or invalid (the module's one rule; a directory in its place counts as present)."""
+    unreadable or invalid (the module's one rule; a directory or a symlink in its place counts as present)."""
     path = acceptance_path(root, node_id)
-    if not path.exists():
+    if not path.exists() and not path.is_symlink():
         return None, None
     try:
         with _unreadable_as(ACCEPTANCE_NAME):
+            check_handoff_read(path)
             data = yaml.safe_load(path.read_bytes().decode("utf-8"))
             schema = json.loads(_SCHEMA.read_text(encoding="utf-8"))
             if errors := sorted(Draft202012Validator(schema).iter_errors(data), key=str):

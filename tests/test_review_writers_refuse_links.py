@@ -28,7 +28,7 @@ from specy_road.review_files import (
 )
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_lock import review_run_lock
-from specy_road.review_policy_pin import pinned_message
+from specy_road.review_policy_pin import acceptance_path, pinned_message, read_acceptance
 from specy_road.review_rejected import rejected_path, write_rejected
 from specy_road.review_target import resolve_target
 from specy_road.review_write_check import append_log, replace_file
@@ -593,6 +593,77 @@ def test_mark_reviewed_refuses_a_linked_node_before_the_gate(tmp_path: Path, cap
     assert git(repo, "rev-parse", "HEAD") == head
     assert not (target / ".review-run.lock").exists()
     assert record.read_bytes() == review_text(head).encode()
+
+
+@pytest.mark.parametrize("kind", ("live", "history", "history-dir"))
+def test_a_linked_record_in_a_real_node_directory_is_not_read(tmp_path: Path, capsys, kind: str) -> None:
+    repo = make_review_repo(tmp_path / "repo")
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nDid it.\n")
+    head = git(repo, "rev-parse", "HEAD")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    record = outside / "REVIEW-human.md"
+    record.write_text(review_text(head))
+    assert load_review(record).ok
+    node = reviews_dir(repo, "M1.1")
+    node.mkdir(parents=True)
+    if kind == "live":
+        (node / "REVIEW-human.md").symlink_to(record)
+    elif kind == "history":
+        (node / "history").mkdir()
+        (node / "history" / "20261107T000000000000Z-human.md").symlink_to(record)
+    else:
+        (node / "history").symlink_to(outside, target_is_directory=True)
+    registry = (repo / "roadmap" / "registry.yaml").read_bytes()
+
+    assert [r for r in list_reviews(repo, "M1.1") + list_review_history(repo, "M1.1") if r.ok] == []
+    assert evaluate_gate(repo, resolve_target(repo, "M1.1", "HEAD").node, head).approvals == []
+    with pytest.raises(SystemExit) as caught:
+        mir.main(["--yes", "--repo-root", str(repo)])
+    err = capsys.readouterr().err
+
+    assert (caught.value.code or 0) == 1 and "Traceback" not in err
+    assert (repo / "roadmap" / "registry.yaml").read_bytes() == registry and git(repo, "rev-parse", "HEAD") == head
+    assert record.read_bytes() == review_text(head).encode()
+
+
+@pytest.mark.parametrize("kind", ("live", "history-dir"))
+def test_a_failed_run_does_not_restore_a_linked_record_as_a_real_one(tmp_path: Path, kind: str) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    outside = _outside(tmp_path)
+    _valid_outside_review(repo, outside)
+    node = reviews_dir(repo, "M1.1")
+    node.mkdir(parents=True, exist_ok=True)
+    if kind == "live":
+        (node / "REVIEW-opus.md").symlink_to(outside / "M1.1" / "REVIEW-opus.md")
+    else:
+        (outside / "M1.1" / "20261107T000000000000Z-opus.md").write_bytes(
+            (outside / "M1.1" / "REVIEW-opus.md").read_bytes())
+        (node / "history").symlink_to(outside / "M1.1", target_is_directory=True)
+    before = _tree(outside)
+    set_steps(repo, spec, {**verdict_step(repo), "symlink": {"path": str(node / "planted"),
+                                                             "target": str(outside / "record.md")}})
+
+    run = delegate(repo, "M1.1", "opus", sleep=lambda _s: None, retries=0)
+
+    assert run["outcome"] == "review_failure"
+    assert [r for r in list_reviews(repo, "M1.1") + list_review_history(repo, "M1.1") if r.ok] == []
+    assert _tree(outside) == before and _approvals(repo) == []
+
+
+def test_a_linked_acceptance_is_not_read_as_one(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = _policy_repo(tmp_path)
+    outside = _outside(tmp_path)
+    assert _invoke("accept", repo, monkeypatch) == 0
+    path = acceptance_path(repo, "M1.1")
+    assert read_acceptance(repo, "M1.1")[0] is not None
+    path.rename(outside / "accepted.yaml")
+    path.symlink_to(outside / "accepted.yaml")
+
+    accepted, why = read_acceptance(repo, "M1.1")
+
+    assert accepted is None and str(path) in why and "symlink" in why
 
 
 def test_prompt_o_relative_is_cwd_relative_before_the_safe_write_choice(tmp_path: Path, monkeypatch) -> None:

@@ -208,8 +208,18 @@ def _scalars_to_str(data: dict[str, Any], root: Any) -> None:
             data[k.value] = v.value
 
 
+def check_handoff_read(path: Path) -> None:
+    """Under ``work/reviews``, refuse (:class:`safe_write.SafeWriteError`) unless ``path`` is absent or a regular file
+    reached through real directories from the project root, so a planted link is never read as a hand-off file.
+    A path elsewhere (a temporary READY, a ``review record --file``) is not checked."""
+    i = _work_index(path.parts)
+    if i is not None and path.parts[i + 1:i + 2] == ("reviews",):
+        safe_write.check(project_of(path), path)
+
+
 def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
     try:
+        check_handoff_read(path)
         text = path.read_text(encoding="utf-8")
     except OSError as e:
         return {}, "", [f"cannot read: {e}"]
@@ -361,9 +371,9 @@ def archive_review(repo_root: Path, node_id: str, model: str, text: str) -> Path
 
 
 def list_review_history(repo_root: Path, node_id: str) -> list[ReviewFile]:
-    """Every record ``review record`` has filed for the node, oldest first."""
+    """Every record ``review record`` has filed for the node, oldest first; a symlinked ``history/`` is not listed."""
     d = reviews_listing(repo_root, node_id) / HISTORY_DIRNAME
-    return [load_review(p) for p in sorted(d.glob("*.md"))] if d.is_dir() else []
+    return [load_review(p) for p in sorted(d.glob("*.md"))] if d.is_dir() and not d.is_symlink() else []
 
 
 def round_span(repo_root: Path, node_id: str) -> dict[str, Any]:
