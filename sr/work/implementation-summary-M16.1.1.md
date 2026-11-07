@@ -17,14 +17,18 @@ code changed, and no private `specy_road` name is imported or patched. Every tes
   For each of the 147 paths, `golden/inventory.json` records the subparser path, the sorted option
   strings, the subcommands, and whether the command passes the remaining arguments through (a bare
   `...` from `argparse.REMAINDER`, or a bare `--` in usage; none do today).
-  `test_inventory_matches_golden_both_ways` compares the inventory with the golden in both
-  directions. It skips any command or subcommand named in a `command_map.yaml` row (the command
-  words of the row's `old` or `new` invocation, with its subcommands), and every other difference
-  is listed with its name, e.g. `specy-road history: options lost ['--json'], gained []`.
+  `test_inventory_matches_golden_both_ways` applies each `command_map.yaml` row to the golden
+  inventory as the delta it declares (`command_map.apply_rows`), then compares that with the CLI
+  exactly, in both directions. Any other difference is listed with its name, e.g.
+  `specy-road history: options lost ['--limit'], gained ['--limimt']`. A row whose `old` names a
+  command or option that is not in the golden is itself an error.
 - **A2:** `golden/help/<prog>__<cmd>__<sub>.txt` holds one transcript (exit code, stdout, stderr)
   for each of the 147 paths. `command_map.yaml` exists with `rows: []` and a header that names the
-  row fields (`old`, `new`, `allowed`). `test_help_transcript_matches_golden[<name>]` fails when a
-  transcript differs from its golden, unless that name is a row.
+  row fields (`old`, `new`, `allowed`) and the delta rule.
+  `test_help_transcript_matches_golden[<name>]` fails when a transcript differs from its golden,
+  unless a row covers that name. `test_every_current_name_has_a_golden_transcript` requires a
+  golden for every current name, mapped or not. `SPECY_ROAD_PARITY_REGEN=missing` writes only the
+  absent ones.
 - **A3:** `test_leaf_loop_matches_golden[merge|pr]` runs these steps in a temp repo:
   `init project`, a two-reviewer roster with `count_human_filed_reviews: true`, `on_complete` set,
   push to a local bare origin, `add-node`, `scaffold-planning`, the sheet written and landed,
@@ -67,15 +71,55 @@ code changed, and no private `specy_road` name is imported or patched. Every tes
 
 ## Choices a reviewer should check
 
-- **Whitespace in transcript comparison.** Help transcripts are compared with whitespace runs
-  collapsed (`support.words`). The docs URLs in help text carry the version's tag (`v0.3.1-rc2`),
-  so a version bump changes their length and argparse reflows the paragraph. Without collapsing,
-  every bump would need map rows. Any changed word, option or exit code still fails.
+- **Help transcripts are compared byte for byte, with one bounded exception (`support.help_text`).**
+  A paragraph (one argparse entry, or a run of description lines) that holds a toolkit docs URL has
+  its whitespace collapsed. The URL carries the version's tag, so a version bump reflows that
+  paragraph. Limit: whitespace-only drift inside such a paragraph passes. A changed word there still
+  fails, and every other paragraph must match exactly. Three goldens contain such a paragraph.
 - **Clean environment for every CLI run.** `cli_env()` removes `SPECY_ROAD_*`, `CLAUDE*`, `CODEX_*`
   and `CURSOR_*` and sets `COLUMNS=100`. A worker's own session (`SPECY_ROAD_REPO_ROOT`,
   `SPECY_ROAD_ORCHESTRATION_ROLE`) would otherwise steer the commands.
 - **Inventory paths include the roots.** The inventory also has `specy-road` and `specyrd` keys,
   so the top-level `--help` text is pinned too.
+
+## Fix round 1 (review by gpt-5.6-sol-high at fd4ff5ca)
+
+The review record could not be read from this sandbox (its directory lists empty), so I worked from
+the three findings quoted in the fix-round prompt. I also merged `origin/WIP/improvements-0-3-1`
+first; the goldens were unchanged by it.
+
+- **A1, class: a row authorised more than it declared.** `mapped()` skipped every inventory field of
+  every command under a row's command words. Changed the design: `command_map.apply_rows` applies
+  each side of each row as one declared delta to the golden inventory (options lost, command gone,
+  options gained, command added, with its parent's subcommand list updated), and the inventory is
+  then compared exactly. The same class reached the transcript check, which skipped every name
+  under a row's command. Now only the row's own `old` and `new` commands, and the commands the row
+  adds or removes, are covered. A parent whose help lists a changed subcommand needs its own row.
+- **A2, class: a current name without a golden transcript passed.** Transcript tests were
+  parametrised over the golden inventory only, so a name a row added was never checked.
+  `test_every_current_name_has_a_golden_transcript` now needs a golden for every name in the CLI.
+  `SPECY_ROAD_PARITY_REGEN=missing` writes only absent goldens, so a later leaf can add one without
+  rewriting the baseline. The other goldens (leaf loop, dogfood, upgrade) already fail when absent.
+- **A2, class: comparison looser than the reflow it was meant to absorb.** `words()` collapsed
+  whitespace across the whole transcript. Replaced it with `help_text`, which keeps everything exact
+  except paragraphs that hold a docs URL. While probing the version-bump case I found a second
+  instance of the version-sensitivity class. At version `0.3.1`, the version pattern matched inside
+  the literal `0.3.1rc1` in `upgrade`'s help, so a bump would have changed that transcript. Both the
+  version and docs-tag patterns now match whole tokens only.
+
+## Probes
+
+Each probe below ran in a scratch copy of the tree and was then discarded.
+
+- Dropped `history --json` with a row for `old: "specy-road history --json"`: passes.
+- Same row, with `--limit` also renamed: fails with `specy-road history: options lost ['--limit'], gained ['--limimt']`.
+- A row for `specy-road review`, with `review record --ref` renamed: fails, naming `specy-road review record` in both the inventory and the transcript test.
+- Added a whitespace-only change to the raw root usage text: `test_help_transcript_matches_golden[specy-road]` fails (`words()` collapsed that whitespace, so it would have passed before).
+- Added the command `doctor-two` with a `new` row and no transcript: fails with "no golden …specy-road__doctor-two.txt".
+- After `SPECY_ROAD_PARITY_REGEN=missing`: passes, and the only change is the one new transcript file.
+- Set `pyproject.toml` to version `0.3.1` (docs tag `v0.3.1`): before the anchoring fix, `[specy-road upgrade]` failed; after it, all 172 tests pass.
+- Ran the clause tests for each row rule (old with or without options, kept alias, new with or without options, stale row, unknown option) and for the help comparison (exact outside docs paragraphs, reflow and changed word inside one, neighbour stays exact): all pass.
+- Ran the full parity lane against the round-0 goldens: unchanged, 181 passed.
 
 ## Checks run (the "Done but wrong" list), in a scratch copy of the tree
 
@@ -101,15 +145,19 @@ Final list: `tests/parity/`. Nothing outside it was changed.
 
 - `tests/parity/__init__.py`: makes `tests.parity` importable for the shared helpers.
 - `tests/parity/conftest.py` (`pytest_configure`): registers the `parity` marker.
+- `tests/parity/command_map.py` (fix round 1): `command_map_rows`, `split_invocation`,
+  `apply_rows` (with `_apply_old` and `_apply_new`, one per row side), `inventory_differences`
+  (moved here). It applies rows as declared deltas instead of skipping whole commands.
 - `tests/parity/support.py`:
   - `cli_env`: a clean environment for each CLI run (no harness or session variables, `COLUMNS=100`).
   - `run_cli`: runs the CLI as a user would.
   - `normalise`: replaces paths, the version and the docs tag with placeholders.
   - `transcript`: one command's exit code and output, in golden form.
-  - `words`: collapses whitespace so a version bump that reflows a URL is not a change.
+  - `help_paragraphs` and `help_text` (fix round 1, replace `words`): exact comparison except for
+    paragraphs that hold a docs URL.
+  - the `missing` regeneration mode (fix round 1): writes only absent goldens.
+  - the whole-token version patterns (fix round 1): a nearby version in prose is not rewritten.
   - `check_golden`: compares with a golden, or writes it under `SPECY_ROAD_PARITY_REGEN=1`.
-  - `command_map_rows`: reads the rows of `command_map.yaml`.
-  - `mapped`: decides whether a row covers a key.
 - `tests/parity/help_surface.py`:
   - `crawl`: the command surface from the registered names and `--help` output.
   - `parse_help`: reads subcommands, option strings and passthrough from help text.
@@ -125,7 +173,14 @@ Final list: `tests/parity/`. Nothing outside it was changed.
   - `test_passthrough_is_read_from_usage`: checks that the passthrough field can tell REMAINDER
     from a `*` positional. No command uses REMAINDER today, so without this nothing would show the
     field works.
-  - `inventory_differences`: names each difference.
+  - `test_every_current_name_has_a_golden_transcript` (fix round 1): a name a row adds needs a
+    transcript.
+  - `test_command_map_rows_apply_as_declared_deltas` (fix round 1): one case per clause of the row
+    rule.
+  - `test_help_text_is_exact_outside_docs_url_paragraphs` (fix round 1): the clauses of the
+    comparison rule.
+  - `test_version_is_normalised_as_a_whole_token` (fix round 1): a nearby version in prose stays
+    as written.
 - `tests/parity/test_leaf_loop.py`:
   - `test_leaf_loop_matches_golden[merge|pr]`: A3.
   - `test_leaf_loop_gate_refuses_one_review_short`: proves the loop goes through the gate.
