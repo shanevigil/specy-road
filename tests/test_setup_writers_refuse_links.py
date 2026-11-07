@@ -514,6 +514,40 @@ def _origin_cancelled(repo: Path, outside: Path, rec: dict) -> Path:
     return repo / "planning" / "jump" / ".." / origin.name
 
 
+def _cancelled(repo: Path, outside: Path, rel: str) -> tuple[str, Path]:
+    """``<dir>/jump/../<rest>`` for ``rel = <dir>/<rest>``: checks as ``rel``; through ``jump`` it is ``outside/<rest>``.
+
+    ``outside/<rest>`` holds a copy of ``rel``, so the raw spelling reads, moves or unlinks that copy.
+    """
+    head, rest = Path(rel).parts[:3], Path(*Path(rel).parts[3:])
+    (outside / "inner").mkdir(exist_ok=True)
+    (outside / rest).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(repo / rel, outside / rest)
+    (repo.joinpath(*head) / "jump").symlink_to(outside / "inner")
+    spelled = str(Path(*head, "jump", "..", rest))
+    return spelled, repo / spelled
+
+
+def _chunk_cancelled(repo: Path, outside: Path, rec: dict) -> Path:
+    spelled, path = _cancelled(repo, outside, rec["chunk"])
+    _set_record(repo, chunk=spelled)
+    return path
+
+
+def _stored_cancelled(repo: Path, outside: Path, rec: dict) -> Path:
+    spelled, path = _cancelled(repo, outside, rec["planning"][0]["stored"])
+    _set_record(repo, planning=[{**rec["planning"][0], "stored": spelled}])
+    return path
+
+
+def _capsule_cancelled(repo: Path, outside: Path, rec: dict) -> Path:
+    """``undeepen_archive`` joins the capsule's spelling raw: through ``jump`` it would unpack and unlink the copy."""
+    bundle = load_archive_index(repo)["records"][0]["bundle"]
+    spelled, path = _cancelled(repo, outside, bundle["path"])
+    _set_record(repo, bundle={**bundle, "path": spelled})
+    return path
+
+
 def _unpack_linked(repo: Path, outside: Path, rec: dict) -> Path:
     """A deep record unpacks its chunk into ``roadmap/archive/chunks/``: here a link out."""
     chunks = repo / "roadmap" / "archive" / "chunks"
@@ -527,10 +561,11 @@ def _unpack_linked(repo: Path, outside: Path, rec: dict) -> Path:
 
 RESTORE_LAYOUTS = {"chunk-out": _chunk_out, "phases-linked": _phases_linked, "origin-linked": _origin_linked,
                    "stored-linked": _stored_linked, "second-move-unsafe": _second_move_unsafe,
-                   "origin-cancelled": _origin_cancelled,
+                   "origin-cancelled": _origin_cancelled, "chunk-cancelled": _chunk_cancelled,
+                   "stored-cancelled": _stored_cancelled, "capsule-cancelled": _capsule_cancelled,
                    "unpack-linked": _unpack_linked}
-RESTORE_ROWS = [*((layout, False) for layout in RESTORE_LAYOUTS if layout != "unpack-linked"),
-                *((layout, True) for layout in ("phases-linked", "origin-linked", "unpack-linked"))]
+RESTORE_ROWS = [*((layout, False) for layout in RESTORE_LAYOUTS if layout not in ("unpack-linked", "capsule-cancelled")),
+                *((layout, True) for layout in ("phases-linked", "origin-linked", "unpack-linked", "capsule-cancelled"))]
 
 
 @pytest.mark.parametrize(("layout", "deep"), RESTORE_ROWS)
