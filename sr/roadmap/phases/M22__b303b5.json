@@ -277,11 +277,12 @@
     },
     {
       "acceptance": [
-        "With worker_sandbox set in git-workflow.yaml (auto: bwrap on Linux), worker_runner runs every harness argv under bwrap: the root read-only, with the leaf worktree, the git objects, refs, logs and worktree metadata a commit needs, a per-worker outbox and each harness's state directories writable",
-        "Inside the sandbox the common git config, hooks, info, the worktree's commondir and gitdir files, the main checkout and home stay read-only, and ssh and gh credentials are not visible; a commit succeeds",
-        "READY reaches work/reviews/<node> only through the outbox, moved by the runner; the worker cannot write other files there",
-        "Where no sandbox can start, an unattended launch warns once and runs as today; docs state plainly what that host does not protect",
-        "tests/test_worker_sandbox.py, skipped where bwrap is missing, runs a fake harness turn: a commit lands, and writes to the common config, a hook, the main checkout and home are refused; CHANGELOG [Unreleased] entry"
+        "git-workflow.yaml takes worker_sandbox: bwrap (required), auto (the default when omitted: bwrap on Linux where it is installed, else the warned path) or off (explicit). worker_runner runs every harness argv under it, at the single launch point",
+        "A sandboxed turn needs a linked worktree distinct from the main checkout; otherwise the runner refuses before starting the harness and names the need for a separate --worktree",
+        "Writable: the leaf worktree; the common dir's objects, refs, logs and worktrees/<name>; an outbox mounted at the canonical reviews path; and only the transcript, auth and runtime state each harness needs. Read-only: everything else, including common config, hooks, info, worktrees/<name>/commondir and gitdir, the main checkout, shared harness settings, hooks, plugins and skills. Configuration that must be writable and can hold launch instructions, such as ~/.claude.json, is a per-worker copy. ~/.ssh, ~/.config/gh, SSH_AUTH_SOCK, GH_TOKEN and GITHUB_TOKEN are not visible",
+        "READY reaches work/reviews/<node> only through the outbox, moved by the runner; nothing else written there reaches the reviews directory",
+        "On a host with no sandbox available, auto warns on each unattended launch and runs as today. Where a sandbox is selected and available, a setup or start failure stops the turn and records the reason; running unsandboxed needs worker_sandbox: off. Docs state plainly what an unsandboxed host does not protect",
+        "tests/test_worker_sandbox.py, skipped where bwrap is missing, drives one table-driven fake-harness launch and resume through the public runner with a temporary home: the commit is on the branch after the turn; a fresh READY reaches the canonical node directory and a REVIEW write does not; writes to common config, a hook, commondir, gitdir, the main checkout, home and shared harness settings are refused; dummy ssh, gh and env credentials are not visible; the main-checkout case refuses; a failed start stops the turn. Real harness authentication stays a recorded smoke check for Claude and Cursor. CHANGELOG [Unreleased] entry"
       ],
       "codename": "workers-run-in-a-sandbox",
       "dependencies": [],
@@ -295,7 +296,7 @@
       "touch_zones": [
         "specy_road/worker_sandbox.py",
         "specy_road/worker_runner.py",
-        "specy_road/schemas/git-workflow.schema.json",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
         "specy_road/git_workflow_config.py",
         "tests/test_worker_sandbox.py",
         "docs/orchestration-workers.md",
@@ -305,8 +306,8 @@
     },
     {
       "acceptance": [
-        "worker_turn_check snapshots the local and remote-tracking integration refs at turn start and end, and a move during the turn is a post-run finding naming the ref and both commits",
-        "A turn that moves only its own branch stays clean; tests/test_worker_turn_check.py covers both through the public runner; CHANGELOG [Unreleased] entry"
+        "Using the integration branch and remote resolved by the existing config, worker_turn_check records the local and remote-tracking refs at turn start and end. A change in either, including appearing or disappearing, is a post-run finding naming the ref and its before and after values; a ref absent throughout is fine; a failed read is a check error, not a clean result",
+        "A turn that moves only its own branch stays clean. tests/test_worker_turn_check.py parametrizes local move, remote-tracking move, absent to present, present to absent and unchanged through the public runner; CHANGELOG [Unreleased] entry"
       ],
       "codename": "integration-refs-stay-put-during-a-turn",
       "dependencies": [
