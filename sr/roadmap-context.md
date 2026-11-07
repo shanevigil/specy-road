@@ -311,6 +311,7 @@ Do not pick these up.
 - `M22.17` on `feature/rm-verify-tells-a-blocking-404` since 2026-11-07
 - `M22.2` on `feature/rm-move-rewrites-sheet-zones` since 2026-11-07
 - `M22.22` on `feature/rm-sandbox-rc4-final-polish` since 2026-11-07
+- `M22.24` on `feature/rm-guidance-exclusion-closes-three-bypasses` since 2026-11-07
 - `M22.25` on `feature/rm-upgrade-git-calls-share-one-environment` since 2026-11-07
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
 - `M22.34` on `feature/rm-accept-policy-for-all-open-claims` since 2026-11-07
