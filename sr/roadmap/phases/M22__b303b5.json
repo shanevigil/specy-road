@@ -325,7 +325,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.45_integration-refs-stay-put-during-a-turn_49e7b2a8-6486-47cb-a9c7-ba757373b6c8.md",
       "sibling_order": 44,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A worker turn that moves the integration ref is flagged",
       "touch_zones": [
         "specy_road/worker_turn_check.py",
@@ -338,6 +338,7 @@
       "acceptance": [
         "A sandboxed turn can read the existing regular files in work/reviews/<node>, including REVIEW and notes files, so a fix round sees its blocking review; links are not copied",
         "Only READY-* files are delivered back after the turn: a changed copy of a REVIEW or notes file does not reach the reviews directory",
+        "Cursor launches work under the sandbox: sandbox-policies is no longer a read-only entry in HARNESS_STATE, because Cursor writes its policy file there on every start (EROFS on 2026-11-07), and that directory is per-worker state",
         "tests/test_worker_sandbox.py covers both through the public runner; CHANGELOG [Unreleased] entry"
       ],
       "codename": "sandboxed-workers-can-read-their-reviews",
@@ -352,7 +353,8 @@
       "touch_zones": [
         "specy_road/worker_sandbox.py",
         "tests/test_worker_sandbox.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     }

@@ -43,9 +43,9 @@
     },
     {
       "acceptance": [
-        "terminate signals the snapshotted escaped descendants on the same SIGTERM/SIGKILL schedule as the group (not after the group grace); zombie (Z-state) entries do not count as survivors; a failed ps inventory is recorded on the worker record and the next terminate repeats the descendant pass instead of marking the worker terminated",
+        "terminate signals the snapshotted escaped descendants on the same SIGTERM/SIGKILL schedule as the group (not after the group grace); zombie (Z-state) entries do not count as survivors; a failed ps inventory is recorded on the worker record and the next terminate repeats the descendant pass instead of marking the worker terminated; that pass finds descendants whose parent links still hold, and re-parented processes are an accepted limit",
         "finish's pre-commit restore writes a temp file and os.replace without unlinking first (on failure the previous bytes stay and the temp path is printed); snapshots keep regular-file mode bits and the restore applies them; the index restore refuses to discard staging that changed since the snapshot, keeping both versions and naming them",
-        "Tests: escaped child forked during the group grace -> signalled with the group, no survivor; a subreaper keeping an escaped zombie -> terminate succeeds; ps failing on the first terminate -> the second signals the escaped descendants; restore write raising OSError (stubbed) -> previous bytes still there; executable and 0600 cleanup files after a failing pre-commit hook -> modes restored; an unrelated path staged during the hook -> kept or saved and named. docs/orchestration-workers.md terminate paragraph and CHANGELOG [Unreleased] Fixed",
+        "Tests: escaped child forked during the group grace -> signalled with the group, no survivor; a subreaper keeping an escaped zombie -> terminate succeeds; ps failing on the first terminate -> the second repeats the pass and signals descendants still linked; restore write raising OSError (stubbed) -> previous bytes still there; executable and 0600 cleanup files after a failing pre-commit hook -> modes restored; an unrelated path staged during the hook -> kept or saved and named. docs/orchestration-workers.md terminate paragraph and CHANGELOG [Unreleased] Fixed",
         "Estimated net line change (informational, not a gate): package about +50, tests about +150, docs about +3"
       ],
       "codename": "terminate-and-finish-rollback-robustness",
@@ -68,7 +68,9 @@
         "tests/test_finish_config_preflight.py",
         "tests/test_finish_merge_failure_undo.py",
         "docs/orchestration-workers.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/worker_state.py",
+        "specy_road/schemas/worker-record.schema.json"
       ],
       "type": "task"
     },

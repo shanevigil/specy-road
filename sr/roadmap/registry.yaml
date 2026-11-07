@@ -83,19 +83,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-run-summary-and-process-tree
-    node_id: M22.16
-    branch: feature/rm-reviewer-run-summary-and-process-tree
-    touch_zones:
-      - specy_road/review_record_write.py
-      - specy_road/review_delegate.py
-      - specy_road/worker_process.py
-      - tests/test_review_run_lows_rc5.py
-      - docs/orchestration-reviewer-output.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: queued-message-undelivered
     node_id: M22.6
     branch: feature/rm-queued-message-undelivered
@@ -111,21 +98,86 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: integration-refs-stay-put-during-a-turn
-    node_id: M22.45
-    branch: feature/rm-integration-refs-stay-put-during-a-turn
-    touch_zones:
-      - specy_road/worker_turn_check.py
-      - tests/test_worker_turn_check.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
     node_id: M16.1.1
     branch: feature/rm-parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
     touch_zones:
       - tests/parity/
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
+    node_id: M16.1.4
+    branch: feature/rm-constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
+    touch_zones:
+      - constitution/purpose.md
+      - constitution/principles.md
+      - docs/philosophy-and-scope.md
+      - AGENTS.md
+      - docs/toolkit-development.md
+      - sr/constitution/purpose.md
+      - sr/constitution/principles.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: gui-orch-view-model
+    node_id: M17.2
+    branch: feature/rm-gui-orch-view-model
+    touch_zones:
+      - gui/pm-gantt/src/orchestrationSnapshot.ts
+      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
+      - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: gui-acceptance-editing
+    node_id: M17.11
+    branch: feature/rm-gui-acceptance-editing
+    touch_zones:
+      - gui/pm-gantt/src/components/EditModal.tsx
+      - gui/pm-gantt/src/editModalSaveQueue.ts
+      - gui/pm-gantt/src/editModalSaveQueue.test.ts
+      - gui/pm-gantt/src/acceptanceEdit.ts
+      - gui/pm-gantt/src/acceptanceEdit.test.ts
+      - gui/pm-gantt/src/types.ts
+      - gui/pm-gantt/src/api.ts
+      - gui/pm-gantt/src/App.css
+      - specy_road/pm_gantt_static/
+      - tests/test_gui_app_mutations.py
+      - docs/pm-gui.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: sandboxed-workers-can-read-their-reviews
+    node_id: M22.46
+    branch: feature/rm-sandboxed-workers-can-read-their-reviews
+    touch_zones:
+      - specy_road/worker_sandbox.py
+      - tests/test_worker_sandbox.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: terminate-and-finish-rollback-robustness
+    node_id: M22.20
+    branch: feature/rm-terminate-and-finish-rollback-robustness
+    touch_zones:
+      - specy_road/worker_process.py
+      - specy_road/finish_bookkeeping_undo.py
+      - tests/test_worker_terminate_descendants.py
+      - tests/test_finish_config_preflight.py
+      - tests/test_finish_merge_failure_undo.py
+      - docs/orchestration-workers.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: parity-harness-a-review-gate-decision-table-covering-every-review-policy
+    node_id: M16.1.2
+    branch: feature/rm-parity-harness-a-review-gate-decision-table-covering-every-review-policy
+    touch_zones:
+      - tests/parity/review_gate/
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

@@ -6,7 +6,8 @@ twice. While it runs, a :class:`TurnWatch` sees every event the adapter parsed (
 ``api_retry``, ``error``, ``usage_limited``) and is the retry watchdog: a run that keeps retrying on
 ``rate_limit`` past :data:`LIMIT_WAIT_CAP_SECONDS` of announced waits is stopped instead of being left to wait
 out a usage limit. When it ends, :func:`close_turn` compares the worktree's git state (HEAD, branch, stash list,
-porcelain) with the state at the turn's start, records the findings in one ``post_run_check`` event, flags the
+porcelain, and the local and remote-tracking integration refs) with the state at the turn's start, records the
+findings in one ``post_run_check`` event, flags the
 worker :data:`FLAG_POST_RUN` (a clean turn clears it), and reports a turn stopped by a usage limit, which the
 wrapper turns into :data:`PAUSED_BY_LIMIT` with the record's ``limit_reset_at``, whatever the exit code.
 
@@ -28,6 +29,7 @@ from typing import Any
 from specy_road.finish_implementation_check import _clean, in_zones
 from specy_road.git_changed_paths import branch_commit_paths
 from specy_road.git_subprocess import git_text, head_sha, run
+from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 from specy_road.worker_adapter_base import Parsed
@@ -43,12 +45,22 @@ LIMIT_WAIT_CAP_SECONDS = 600
 
 
 @dataclass(frozen=True)
+class RefTip:
+    """One integration ref. ``sha`` is ``None`` when the ref is absent; ``error`` is set when the read failed."""
+
+    ref: str
+    sha: str | None
+    error: str | None = None
+
+
+@dataclass(frozen=True)
 class GitState:
     """What the post-run check compares; ``None`` where git could not answer."""
     head: str | None
     branch: str | None
     stash: tuple[str, ...] | None
     dirty: dict[str, str] | None   # each modified or untracked path and :func:`_content` of it
+    integration: tuple[RefTip, ...] = ()   # local branch and remote-tracking ref, resolved at the turn's start
 
 
 def _content(worktree: Path, rel: str) -> str:
@@ -63,12 +75,34 @@ def _content(worktree: Path, rel: str) -> str:
         return "-"
 
 
-def git_state(worktree: Path) -> GitState:
+def _integration_refs(repo_root: Path) -> tuple[str, str]:
+    """The local and remote-tracking refs for the integration branch the config names."""
+    base, remote, _warnings = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
+    return (f"refs/heads/{base}", f"refs/remotes/{remote}/{base}")
+
+
+def _ref_tip(worktree: Path, ref: str) -> RefTip:
+    """The ref's sha, or absent when git reports no such name. Any other failure is ``error``, not absence."""
+    result = run(["rev-parse", "--verify", "--quiet", ref], worktree)
+    if result.ok:
+        return RefTip(ref, result.out.strip())
+    # ``--verify --quiet`` exits 1 with no output when the name is absent. A warning or any other
+    # status (a broken ref, not a repository, a timeout) is a failed read.
+    if result.failure is None and result.code == 1 and not (result.out.strip() or result.err.strip()):
+        return RefTip(ref, None)
+    return RefTip(ref, None, result.failure or result.message or f"exit {result.code}")
+
+
+def git_state(worktree: Path, repo_root: Path, refs: tuple[str, ...] | None = None) -> GitState:
+    """``refs`` re-reads those exact names. The turn's start resolves them; the end passes that pair back,
+    so a mid-turn edit of the integration branch name cannot hide a move of the refs the turn began with."""
     stash = run(["stash", "list", "--format=%H"], worktree)
     entries = status_entries(worktree)
+    watched = _integration_refs(repo_root) if refs is None else refs
     return GitState(head_sha(worktree), git_text(["branch", "--show-current"], worktree),
                     tuple(stash.out.split()) if stash.ok else None,
-                    {p: _content(worktree, p) for _xy, p in entries} if entries is not None else None)
+                    {p: _content(worktree, p) for _xy, p in entries} if entries is not None else None,
+                    tuple(_ref_tip(worktree, ref) for ref in watched))
 
 
 def _utcnow() -> datetime:
@@ -80,7 +114,7 @@ class TurnWatch:
 
     def __init__(self, repo_root: Path, rec: WorkerRecord, *, now: Callable[[], datetime] = _utcnow) -> None:
         self.repo_root, self.rec, self.now = repo_root, rec, now
-        self.before = git_state(Path(rec.worktree))
+        self.before = git_state(Path(rec.worktree), repo_root)
         self.proc: subprocess.Popen | None = None   # the harness, once started: what the watchdog stops
         self.denials: list[str] = []
         self.failed: str | None = None   # the last error no completed turn followed: the turn failed
@@ -151,10 +185,24 @@ def _outside_zones(repo_root: Path, rec: WorkerRecord, start: str, end: str,
     return sorted(p for p in paths if zones and not expected(p) and not in_zones(zones, p, prefix))
 
 
+def _integration_findings(before: tuple[RefTip, ...], after: tuple[RefTip, ...]) -> list[dict[str, Any]]:
+    """A move, appearance or disappearance of either ref. Absence at both ends is clean; a failed read is not."""
+    out: list[dict[str, Any]] = []
+    for start, end in zip(before, after):
+        if start.error or end.error:
+            why = start.error or end.error
+            out.append({"kind": "check_error", "ref": start.ref,
+                        "summary": f"integration ref {start.ref} could not be read: {why}"})
+        elif start.sha != end.sha:
+            out.append({"kind": "integration_ref", "ref": start.ref, "before": start.sha, "after": end.sha,
+                        "summary": f"integration ref {start.ref} {start.sha or '(absent)'} -> {end.sha or '(absent)'}"})
+    return out
+
+
 def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState) -> list[dict[str, Any]]:
     """The worktree's git state now against ``before``: anything beyond the leaf's own commits and bookkeeping."""
     wt = Path(rec.worktree)
-    after = git_state(wt)
+    after = git_state(wt, repo_root, tuple(tip.ref for tip in before.integration))
     prefix = project_prefix(repo_root)
 
     def expected(p: str) -> bool:   # what reconcile never counts as a breach
@@ -180,6 +228,7 @@ def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState) -> list[d
                            if start.get(p) != after.dirty.get(p) and not expected(p)):
             out.append({"kind": "porcelain", "paths": extra,
                         "summary": "dirty paths new, changed or gone during the turn: " + ", ".join(extra[:10])})
+    out.extend(_integration_findings(before.integration, after.integration))
     return out
 
 
