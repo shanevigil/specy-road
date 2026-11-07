@@ -153,7 +153,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.19` Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names `review-inputs-identity-and-unreadable` — task — **Not Started**
   - `M22.20` worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging `terminate-and-finish-rollback-robustness` — task — **Not Started**
   - `M22.21` Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback `preview-rollback-fidelity` — task — **Not Started**
-  - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal `sandbox-rc4-final-polish` — task — **Not Started**
+  - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal `sandbox-rc4-final-polish` — task — **Complete**
   - `M22.23` Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus `guidance-bypass-retest-cursor-grok-sol-opus` — task — **Not Started**
   - `M22.24` The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths `guidance-exclusion-closes-three-bypasses` — task — **Not Started**
   - `M22.25` Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment `upgrade-git-calls-share-one-environment` — task — **Not Started**
@@ -310,7 +310,6 @@ Do not pick these up.
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
 - `M22.17` on `feature/rm-verify-tells-a-blocking-404` since 2026-11-07
 - `M22.2` on `feature/rm-move-rewrites-sheet-zones` since 2026-11-07
-- `M22.22` on `feature/rm-sandbox-rc4-final-polish` since 2026-11-07
 - `M22.25` on `feature/rm-upgrade-git-calls-share-one-environment` since 2026-11-07
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
 - `M22.34` on `feature/rm-accept-policy-for-all-open-claims` since 2026-11-07
@@ -327,15 +326,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 34 | 0 | 2.50 | 53% | 34 | 2 |
+| `docs` **flagged** | 32 | 0 | 2.78 | 56% | 34 | 3 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `CHANGELOG.md` | 39 | 0 | 2.10 | 38% | 31 | 2 |
+| `specy_road` **flagged** | 46 | 0 | 2.67 | 54% | 42 | 5 |
+| `tests` **flagged** | 49 | 0 | 2.61 | 53% | 42 | 5 |
+| `CHANGELOG.md` | 34 | 0 | 2.24 | 41% | 31 | 2 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
-| `specy_road` | 45 | 0 | 2.33 | 49% | 42 | 3 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 48 | 0 | 2.29 | 48% | 42 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

@@ -124,7 +124,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.22_sandbox-rc4-final-polish_7a0ccfaf-aa9e-45f5-8438-19693d6c622d.md",
       "sibling_order": 21,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal",
       "touch_zones": [
         "gui/pm-gantt/src/components/MarkdownWorkspace.tsx",

@@ -128,23 +128,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: sandbox-rc4-final-polish
-    node_id: M22.22
-    branch: feature/rm-sandbox-rc4-final-polish
-    touch_zones:
-      - gui/pm-gantt/src/components/MarkdownWorkspace.tsx
-      - gui/pm-gantt/src/components/ModalFrame.tsx
-      - gui/pm-gantt/src/components/EditModal.tsx
-      - gui/pm-gantt/src/components/PublishRoadmapModal.tsx
-      - gui/pm-gantt/src/planningSectionUtils.ts
-      - gui/pm-gantt/src/planningSectionUtils.test.ts
-      - gui/pm-gantt/src/markdownWorkspace.test.ts
-      - specy_road/pm_gantt_static/
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T09:31:40+00:00'
   - codename: move-rewrites-sheet-zones
     node_id: M22.2
     branch: feature/rm-move-rewrites-sheet-zones
