@@ -84,6 +84,7 @@ class WorkerRecord:
     harness_pid: int | None = None    # the harness child, while it runs
     harness_start: str | None = None  # the harness's start time (ps lstart): with the pid, its identity
     last_output_at: str | None = None  # the harness's last stdout line (the turn's launch until one); stalled reads it
+    descendants_unchecked: bool | None = None  # terminate could not list escaped descendants; terminate repeats
     queued_message: str | None = None  # a follow-up from ``worker message`` while the wrapper was still running
     limit_reset_at: str | None = None  # while paused_by_limit: when the usage limit lifts (worker_turn_check)
     toolkit_version: str | None = None
