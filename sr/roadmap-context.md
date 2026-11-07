@@ -245,6 +245,8 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-06 `M22.22` stopped depending on `M21.40 upgrade's scratch git drops every GIT_ variable, runs no hook, and times out`
+- 2026-11-06 `M22.22` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.40` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.43` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.44` stopped depending on `M21.38 Review writers and the review lock refuse any symlink on the path from the project root`
@@ -268,9 +270,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.33` stopped depending on `M16.5.7 Shared-checkout guard and session presence move into orchestration`
 - 2026-11-05 `M16.33` stopped depending on `M16.5.14 Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it`
 - 2026-11-05 `M16.33` stopped depending on `M16.4.5 One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points`
-- 2026-11-05 `M16.33` stopped depending on `M16.5.3 Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration`
-- 2026-11-05 `M16.33` stopped depending on `M16.5.12 Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated`
-- _…and 44 earlier — `specy-road history --json`_
+- _…and 46 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
