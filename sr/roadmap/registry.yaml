@@ -167,3 +167,14 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
+  - codename: verify-tells-a-blocking-404
+    node_id: M22.17
+    branch: feature/rm-verify-tells-a-blocking-404
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_verify.py
+      - tests/test_brainstorm_verify.py
+      - docs/brainstorming.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
