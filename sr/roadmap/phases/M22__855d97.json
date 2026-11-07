@@ -465,7 +465,9 @@
       "acceptance": [
         "specy-road review accept-policy --all-open lists every open claim whose pinned review policy differs from the integration branch, prints each distinct set of changes once with the leaves it affects, and on one typed confirmation writes each leaf its own POLICY-ACCEPTED.yaml naming its pinned digest and the accepted digest",
         "It keeps every existing safeguard: it needs a terminal, an acceptance still counts only for its node and two digests, a later policy change needs a new one, and the single-node form behaves as today",
-        "tests/test_review_policy_pin.py covers two leaves pinned to different digests, a leaf with no change, a refusal without a terminal and a wrong confirmation; docs/orchestration-review.md describes it; CHANGELOG [Unreleased] entry"
+        "tests/test_review_policy_pin.py covers two leaves pinned to different digests, a leaf with no change, a refusal without a terminal and a wrong confirmation; docs/orchestration-review.md describes it; CHANGELOG [Unreleased] entry",
+        "The prompt and the gate's refusal explain in plain language what changed, why a person is being asked (the review rules changed after this work started) and what approving means, with the raw change lines kept below; each names a reference that works from an installed package",
+        "docs/orchestration-review.md gains a section explaining what is fingerprinted, why a match passes with no human, when a person is asked, what an acceptance covers, and how to decline by re-claiming the leaf"
       ],
       "codename": "accept-policy-for-all-open-claims",
       "dependencies": [],
