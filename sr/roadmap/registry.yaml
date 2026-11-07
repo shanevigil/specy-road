@@ -128,7 +128,8 @@ entries:
       - specy_road/schemas/worker-record.schema.json
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T23:19:04+00:00'
   - codename: worker-cost-and-stale-presence
     node_id: M22.13
     branch: feature/rm-worker-cost-and-stale-presence
