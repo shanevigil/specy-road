@@ -385,7 +385,8 @@
         "docs/git-workflow.md",
         "CHANGELOG.md",
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
-        "tests/test_gui_app_routes_nodes_errors.py"
+        "tests/test_gui_app_routes_nodes_errors.py",
+        "tests/test_finish_merge_failure_undo.py"
       ],
       "type": "task"
     },
