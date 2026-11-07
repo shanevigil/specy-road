@@ -24,19 +24,33 @@ Branch `feature/rm-ops-writers-refuse-links`. As the planning sheet asks, the fi
 - **A4 location.** A4 names one module, but the earlier split had put the Publish and finish rows in two other modules and left out the direct `resolve_deterministic_paths` rows. The class is an A4 entry point whose rows live somewhere other than `tests/test_ops_writers_refuse_links.py`. Now every A4 entry point has its test in that module, built only from public helpers: `tests.review_repo_helpers.commit_file`/`git`, `tests.test_finish_merge_mode.merge_mode_finish_repo`, the GUI app's `create_app` through `TestClient`, and `resolve_deterministic_paths`. `tests/test_pm_publish.py` and `tests/test_finish_config_preflight.py` are restored to WIP's, so this leaf no longer changes them and no row exists in two places.
 - **`_tree`.** Its absent, symlink and file branches could never run, because every caller passes an existing directory. The class is a test helper with branches no caller reaches. It is now `_snapshot(d)`, a single dict comprehension: a file's bytes, or `None` for a directory, so a directory made through a link shows up too. The other helpers were checked for the same class (see Probes).
 
+## Fix round 2 (on `4ae8b281`, WIP merged)
+
+`gpt-5.6-sol-high` blocked `24f8f4ba` with two prose findings, both fixed in the commit after `4ae8b281`. The class is prose in this leaf's zones that still describes behaviour from before this leaf (a link was skipped, or failed silently) when the code now refuses it or warns.
+
+- **`docs/dev-workflow.md` step 6.** It said a summary under a symlinked `work/` "is skipped with a warning". Finish writes under `work/` (`work/pr-body-<id>.md`, `work/done/`), so a symlinked `work/` is a write destination: preflight refuses it before the first write and names the path. The step now says so, and keeps "a symlinked summary is skipped with a warning", which is still true (the summary is a source, not a destination). A new `work-main` row in `test_finish_refuses_a_linked_reviews_base` pins the `work/` claim from the main checkout; the `work-from-worktree` row already covered a worktree.
+- **`history_cache` module docstring.** It said "Every failure here is silent by design." It now says every failure costs a rebuild and never a failed command, and names the one exception that is not silent: `save_cache` warns once, naming the path, for a symlink on the cache path.
+
 ## Tests: one module, one test per entry point
 
 All the tests are in `tests/test_ops_writers_refuse_links.py`:
 
 - **Publish:** `test_publish_refuses_a_linked_generated_file` has two rows: `roadmap.md` linked in-repo and `roadmap-context.md` dangling.
 - **`resolve_deterministic_paths` called directly:** `test_resolve_deterministic_paths_refuses_a_linked_roadmap_md` has two rows, a link in-repo and a link out. Each checks that `DeterministicResolveError` names the link, that no bytes under the test's directory changed, and that the link is unchanged. M21.37's `finish` writer row in `tests/test_writers_refuse_links_out.py` covers the same function from the outward-only angle. This row is the one A4 asks for here.
-- **finish with an untracked summary:** `test_finish_refuses_a_linked_reviews_base` has four rows: `work/reviews` in the main checkout, `work/reviews` from a linked worktree, `work/reviews/M1.1`, and `work` from a linked worktree. Each checks exit 1, the refusal naming the link, `nothing was changed`, and no traceback. HEAD, the index and the status of both checkouts, the outside directory and the summary's bytes are all unchanged.
+- **finish with an untracked summary:** `test_finish_refuses_a_linked_reviews_base` has five rows: `work/reviews` in the main checkout, `work/reviews` from a linked worktree, `work/reviews/M1.1`, `work` in the main checkout, and `work` from a linked worktree. Each checks exit 1, the refusal naming the link, `nothing was changed`, and no traceback. HEAD, the index and the status of both checkouts, the outside directory and the summary's bytes are all unchanged.
 - **pickup hint:** `test_pickup_hint_refuses_a_linked_marker_path` has four rows.
 - **brainstorm lock:** `test_brainstorm_add_idea_refuses_a_linked_lock`.
 - **history cache (A6):** `test_digest_carries_on_past_a_linked_history_cache` has three rows: `.specyrd/cache` linked out, a dangling `.gitignore`, and `roadmap-history.json` linked to an outside file. Each checks exit 0, exactly one warning naming the link, the outside tree unchanged, and the link still a link.
 
 ## Probes
 
+- Fix round 2, symlinked summary file under finish (a throwaway script on `merge_mode_finish_repo`): exit 0 with `[warn] work/implementation-summary-M1.1.md is a symlink or resolves outside the repo; not copying it`. So "skipped with a warning" is still true for the file.
+- Fix round 2, symlinked `work/` in the checkout finish runs from (same script): exit 1 with `error: finish-this-task writes there, but <repo>/work is a symlink (to …), not a directory`. So the doc now says refused, and the `work-main` row pins it.
+- Fix round 2, stale-prose audit of every docstring and comment in the seven package files that mentions symlinks, silence, skipping or outside paths (`grep -n "silent|skipped|resolves outside|outside the|symlink"`): only `history_cache`'s module docstring was stale. `ensure_cache_dir`, `save_cache`, `print_orchestration_hint`, `session_lock`, `write_destinations`, `irregular_destination`, `_regenerate_for_publish` and `_regenerate_generated_files` already describe the refusal.
+- Fix round 2, `_keep_untracked_summary`'s warning text ("is a symlink or resolves outside the repo"): left unchanged. It is the pre-existing message. From finish, its "resolves outside" half is now refused earlier by preflight, which the docs say.
+- Fix round 2, the CHANGELOG entry: it already says a symlinked `work`, `work/reviews` or `work/reviews/<node>` refuses finish before any write, and that a linked history cache warns. Not stale.
+- Fix round 2, docs outside the zones (`grep` of `docs/` and `README.md` for `.specyrd/cache` with silent/warn/link, and for `work/reviews` with symlink/skipped): no other stale statement.
+- Fix round 2, targeted suites (the seven listed below plus `test_finish_work_cleanup`): 120 passed. `ruff check specy_road tests scripts` is clean. `specy-road file-limits` is OK.
 - Every A4 and A6 entry point (Publish, the direct resolve, finish's reviews base, pickup, brainstorm, digest's cache): each has its test in `tests/test_ops_writers_refuse_links.py`. `git diff origin/WIP/improvements-0-3-1 --stat -- tests` lists only that file.
 - No `_`-prefixed name is imported from another module. Checked with grep on the file's imports: it imports only `DeterministicResolveError`, `resolve_deterministic_paths`, `print_orchestration_hint`, `DOGFOOD`, `REPO`, `script_subprocess_env`, `commit_file`, `git`, `merge_mode_finish_repo` and `create_app`.
 - No row is duplicated: the two moved tests are gone from `tests/test_pm_publish.py` and `tests/test_finish_config_preflight.py`, which are byte-identical to WIP's.
@@ -65,7 +79,7 @@ These are as listed, with no additions. The callers outside the zones need no ch
 - `tests/test_ops_writers_refuse_links.py`: `_snapshot`, `_git_state`, `_committed_dogfood`, `_cli`, `_refusal`, `_cache_out`, `_specyrd_out`, `_marker`. These are the inspect and arrange helpers shared by the rows.
 - `tests/test_ops_writers_refuse_links.py`: `test_publish_refuses_a_linked_generated_file`, 2 rows. A1/A4.
 - `tests/test_ops_writers_refuse_links.py`: `test_resolve_deterministic_paths_refuses_a_linked_roadmap_md`, 2 rows. A1/A4.
-- `tests/test_ops_writers_refuse_links.py`: `test_finish_refuses_a_linked_reviews_base`, 4 rows. A2/A4: a distinct regression, since the reviews base was never walked.
+- `tests/test_ops_writers_refuse_links.py`: `test_finish_refuses_a_linked_reviews_base`, 5 rows (`work-main` in fix round 2, with its arrange step that moves main's existing `work/` contents to the link's target). A2/A4: a distinct regression, since the reviews base was never walked.
 - `tests/test_ops_writers_refuse_links.py`: `test_pickup_hint_refuses_a_linked_marker_path`, 4 rows. A3/A4.
 - `tests/test_ops_writers_refuse_links.py`: `test_brainstorm_add_idea_refuses_a_linked_lock`. A3/A4.
 - `specy_road/history_cache.py`: `save_cache` writes through `safe_write.write`, with an `except SafeWriteError` branch that prints one warning. A6: no write through a link, and a refused cache path is named.
