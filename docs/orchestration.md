@@ -113,7 +113,9 @@ one, else the local branch — not from the branch under review, so a feature br
 own bar; the gate is also on when either that branch or the working tree sets
 `require_implementation_review_before_finish`. In a repo with remotes, the branch's name comes from
 `roadmap/git-workflow.yaml` as committed on the remote's default branch (`refs/remotes/<remote>/HEAD`,
-which `git clone` sets and `git remote set-head <remote> --auto` restores; it must exist), whose copy
+which the gate needs. `git clone` sets it; `git remote set-head <remote> <name>` restores it, and
+`<name>` is that remote's real default branch. `git remote set-head <remote> --auto` fails when the
+remote's HEAD is unborn), whose copy
 must also name the same remote as `HEAD`'s; in a repo with no remote, from the copy at `HEAD`. The
 working tree and `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` are ignored. The named branch
 must name itself in its own committed copy, and with remotes only `refs/remotes/<remote>/<branch>` is

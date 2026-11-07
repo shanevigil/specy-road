@@ -238,6 +238,29 @@ def test_landed_leaves_count_newest_finish_merge_first(repo: Path) -> None:
     ]
 
 
+def test_an_unreadable_tally_is_counted_apart_from_no_tally(repo: Path) -> None:
+    """A trailer that says unreadable is not a leaf that landed before tallies were recorded."""
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.review_tally import area_quality
+
+    land(repo, "api-contract-outline")
+    land(repo, "contracts-bootstrap", "M0.1 unreadable")
+    land(repo, "roadmap-ci", _tally("M0.2", 1, 0))
+    text = render_digest(repo)
+    assert _quality(text) == [
+        "| `roadmap` | 1 | 0 | 1.00 | 0% | 0 | 0 |",
+        "| `schemas` | 2 | 0 | 1.00 | 0% | 0 | 0 |",
+        "| `shared` | 2 | 1 | — | — | 0 | 0 |",
+    ]
+    assert ("Unreadable tallies: `schemas` 1, `shared` 1. "
+            "They stay in the leaf totals and are left out of the rates.") in text
+    assert "Leaves with no tally landed before tallies were recorded; they are left out of the rates." in text
+    areas = {a.area: a for a in area_quality(repo, load_roadmap(repo)["nodes"])}
+    assert (areas["schemas"].leaves, areas["schemas"].no_tally, areas["schemas"].unreadable) == (2, 0, 1)
+    assert (areas["shared"].leaves, areas["shared"].no_tally, areas["shared"].unreadable) == (2, 1, 1)
+    assert (areas["roadmap"].no_tally, areas["roadmap"].unreadable, areas["roadmap"].mean_rounds) == (0, 0, 1)
+
+
 def test_a_landing_without_a_gate_commit_counts_with_no_tally(repo: Path) -> None:
     _set_policy(repo, "  quality_window: 1\n")
     land(repo, "contracts-bootstrap", _tally("M0.1", 4, 0))

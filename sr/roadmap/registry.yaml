@@ -111,18 +111,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: guidance-exclusion-closes-three-bypasses
-    node_id: M22.24
-    branch: feature/rm-guidance-exclusion-closes-three-bypasses
-    touch_zones:
-      - specy_road/orchestrate_assign.py
-      - specy_road/orchestration_pinned.py
-      - tests/test_guidance_bypass_roles.py
-      - docs/orchestration-roster.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: deps-ids-briefs-and-landed-branch
     node_id: M22.14
     branch: feature/rm-deps-ids-briefs-and-landed-branch
@@ -169,36 +157,6 @@ entries:
       - specy_road/bundled_scripts/mark_implementation_reviewed.py
       - specy_road/review_record_write.py
       - specy_road/bundled_scripts/role_prompt_cli.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: reports-say-what-happened
-    node_id: M22.11
-    branch: feature/rm-reports-say-what-happened
-    touch_zones:
-      - specy_road/review_tally.py
-      - tests/test_review_tally.py
-      - tests/test_digest_quality.py
-      - specy_road/bundled_scripts/planning_rename.py
-      - tests/test_rename_refs.py
-      - docs/roadmap-authoring.md
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/bundled_scripts/upgrade_plan.py
-      - tests/test_upgrade_preview.py
-      - CHANGELOG.md
-      - specy_road/digest.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: gate-without-remote-head
-    node_id: M22.12
-    branch: feature/rm-gate-without-remote-head
-    touch_zones:
-      - specy_road/review_policy_ref.py
-      - tests/test_review_policy_ref_no_remote_head.py
-      - docs/orchestration.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

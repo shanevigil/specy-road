@@ -219,7 +219,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.24_guidance-exclusion-closes-three-bypasses_4d9737c0-0d3a-44b3-869f-4b782a04f2ba.md",
       "sibling_order": 23,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths",
       "touch_zones": [
         "specy_road/orchestrate_assign.py",
