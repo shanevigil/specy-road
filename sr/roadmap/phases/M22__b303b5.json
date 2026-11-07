@@ -71,6 +71,28 @@
         "sr/planning/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "doctor --fix leaves a registry row with no branch in this clone or on the remote, reports it as advisory with what to check, and still removes a row whose leaf is Complete",
+        "Removing a no-branch row takes the existing explicit registry-prune path, named in the report",
+        "tests/test_doctor.py covers both rows through the CLI; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "doctor-fix-keeps-other-clones-claims",
+      "dependencies": [],
+      "id": "M22.38",
+      "node_key": "ee340317-9162-4a87-a51a-cc4ee3725421",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.38_doctor-fix-keeps-other-clones-claims_ee340317-9162-4a87-a51a-cc4ee3725421.md",
+      "sibling_order": 37,
+      "status": "Not Started",
+      "title": "doctor --fix never removes a claim that may belong to another clone",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "tests/test_doctor.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
