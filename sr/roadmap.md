@@ -198,9 +198,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.44` | A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk | task | Agentic-led | Complete |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Complete |
-| `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
+| `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Complete |
 | `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Not Started |
-| `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Not Started |
+| `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Complete |
 | `M22.5` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
 | `M22.6` | A queued worker message that cannot be delivered flags the worker and goes out with its next turn | task | — | Not Started |
 | `M22.7` | ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading | task | — | Complete |
@@ -221,7 +221,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.22` | Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal | task | — | Complete |
 | `M22.23` | Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus | task | Human-led | Not Started |
 | `M22.24` | The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths | task | — | Not Started |
-| `M22.25` | Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment | task | — | Not Started |
+| `M22.25` | Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment | task | — | Complete |
 | `M22.26` | The post-run zone check matches zones written from the git root | task | — | Complete |
 | `M22.27` | The old-log review usage test asserts on the run, not on a substring | task | — | Complete |
 | `M22.28` | upgrade does not warn about itself, and export's drift line says how to fix it | task | — | Complete |

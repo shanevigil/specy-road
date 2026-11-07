@@ -18,6 +18,16 @@ body. Keep section bodies focused; link to PRs for detail.
   other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
   also with focus in the editor. The Markdown editor configures its link extension once, so opening an edit dialog
   no longer logs `[tiptap warn]: Duplicate extension names found: ['link']`.
+- A move that renames planning sheets (`move-node`, `indent`, `outdent`, `group-nodes` and the PM UI's move, indent,
+  outdent, group and `renumber_outline` reorder) also rewrites a touch zone equal to a renamed sheet's old path, as
+  `planning/<sheet>` or `sr/planning/<sheet>`, on the nodes and claims it already rewrites. `validate` prints a stdout
+  notice for each literal zone, on a node of any status, naming a planning sheet that is not in the working tree, with
+  the node's current sheet when the name's `node_key` matches; `--strict` does not count it.
+- New planning sheets no longer write the node's display id into the body. The feature and gate templates'
+  References line is `Roadmap chunk: the node this sheet's file name names`, and brainstorm promote's Approach
+  placeholder keeps the `<ID>` token instead of substituting the display id, so a sheet from add-node,
+  scaffold-planning, group-nodes, brainstorm promote or the PM GUI add does not repeat the id the file name
+  already carries. Pickup's skip reason still names the id. Existing sheets keep their line.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.
@@ -92,9 +102,14 @@ body. Keep section bodies focused; link to PRs for detail.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
-  Upgrade's git calls time out after 60 s. A failed `git init`, `add` or `commit` in a temporary copy, the plan's
-  included (so a real run too), prints `error: git <command> failed in the temporary copy (<reason>)` and exits 2
-  without writing or validating, and so does a failed
+  Upgrade's git calls, a real run and `--dry-run` alike, time out after 60 s. That includes the checkout's
+  `git check-ignore` (`file_limits_engine.git_ignored_paths`). The spawns a run reaches are `git_subprocess.run`
+  (the plan mirror's `init`, the dry-run copy's `add` and `commit`, `ls-files` on `roadmap.md`, and `worktree list`),
+  `ignore_report`'s git for the refresh's ignore note, and `runtime_paths.git_path` (`rev-parse` for the project and
+  checkout roots); each passes a timeout. A real run drops every `GIT_*` variable too, and isolates only the plan's
+  mirror, so the checkout still reads the caller's own config files. A failed `git init`, `add` or `commit` in a
+  temporary copy, the plan's included (so a real run too), prints `error: git <command> failed in the temporary copy
+  (<reason>)` and exits 2 without writing or validating, and so does a failed
   `ls-files` on `roadmap.md` (in a real run it names the checkout), before a generated file is written.
   `GIT_CEILING_DIRECTORIES` no longer hides a tracked `roadmap.md`.
 - `specy-road digest`, `digest --check` and `digest -o -` with no roadmap manifest print the one line

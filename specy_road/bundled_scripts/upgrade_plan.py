@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from specy_road import git_subprocess, safe_write
-from specy_road.bundled_scripts.upgrade_generated import checked
+from specy_road.bundled_scripts.upgrade_generated import checked, scratch_environ
 from specy_road.ignore_report import scratch_git_env
 
 State = tuple | None   # ("file", size, mtime_ns, mode) | ("link", text) | ("dir",) | ("other",) | None (absent)
@@ -291,6 +291,9 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
 
     ``refresh`` returns ``{checkout-relative path: refuse | error | skip | fail}``.
     Its output is printed with the mirror's paths given as the checkout's.
+    Only the refresh runs in the mirror's scratch environment (no ``GIT_``
+    variable, no global or system config). When it returns, that isolation is
+    the caller's again, before the plan is applied in the checkout.
     """
     checkout = checkout.resolve()
     with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-plan-") as tmp:
@@ -299,7 +302,11 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
         out, err = io.StringIO(), io.StringIO()
         real = mirror.real_text
         try:
-            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            with (
+                contextlib.redirect_stdout(out),
+                contextlib.redirect_stderr(err),
+                scratch_environ(Path(tmp)),
+            ):
                 declined = refresh(mirror.to_sandbox(project.resolve()), mirror.repo)
         except (OSError, RuntimeError) as e:   # a symlink loop in the mirror is the checkout's: refused, named there
             refusal = safe_write.loop_refusal(e)
