@@ -450,7 +450,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.33_reviewer-resume-keeps-the-model_3202a820-d638-465d-926f-cd52834a85c1.md",
       "sibling_order": 32,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A resumed review runs on the model it was asked for",
       "touch_zones": [
         "specy_road/worker_adapter_codex.py",

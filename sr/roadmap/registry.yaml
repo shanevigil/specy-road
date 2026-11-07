@@ -156,16 +156,3 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-resume-keeps-the-model
-    node_id: M22.33
-    branch: feature/rm-reviewer-resume-keeps-the-model
-    touch_zones:
-      - specy_road/worker_adapter_codex.py
-      - specy_road/worker_adapter_claude.py
-      - tests/test_harness_launch.py
-      - CHANGELOG.md
-      - tests/test_review_record_write.py
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T05:20:41+00:00'

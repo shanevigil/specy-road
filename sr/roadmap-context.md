@@ -164,7 +164,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.30` Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed `steering-detection-other-classes` — task — **Not Started**
   - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
   - `M22.32` Claude Code launch and resume deny edits to steering files `steering-claude-launch-denies` — task — **Not Started**
-  - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Not Started**
+  - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -245,6 +245,8 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-06 `M22.22` stopped depending on `M21.40 upgrade's scratch git drops every GIT_ variable, runs no hook, and times out`
+- 2026-11-06 `M22.22` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.40` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.43` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.44` stopped depending on `M21.38 Review writers and the review lock refuse any symlink on the path from the project root`
@@ -268,9 +270,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.33` stopped depending on `M16.5.7 Shared-checkout guard and session presence move into orchestration`
 - 2026-11-05 `M16.33` stopped depending on `M16.5.14 Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it`
 - 2026-11-05 `M16.33` stopped depending on `M16.4.5 One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points`
-- 2026-11-05 `M16.33` stopped depending on `M16.5.3 Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration`
-- 2026-11-05 `M16.33` stopped depending on `M16.5.12 Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated`
-- _…and 44 earlier — `specy-road history --json`_
+- _…and 46 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -305,7 +305,6 @@ Do not pick these up.
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
 - `M22.26` on `feature/rm-post-run-zone-check-git-root-zones` since 2026-11-06
 - `M22.27` on `feature/rm-old-log-test-asserts-on-the-run` since 2026-11-06
-- `M22.33` on `feature/rm-reviewer-resume-keeps-the-model` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
