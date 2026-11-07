@@ -15,8 +15,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 - A Cursor display name that includes a context size and an effort word, such as `Claude Opus 5.5 300K High` or
   `GPT-5.6 Sol 1M High`, matches the catalog id it names (`claude-opus-5-5-high`, `gpt-5.6-sol-high`). `Extra High`
-  is that same check for `xhigh`. A different model or effort still does not match, including a context size whose
-  display name omits the effort word (`GPT-5.6 Sol 1M`, the medium name).
+  is that same check for `xhigh`, and `fast` stays part of the identity. A different effort does not match, including
+  when the profile lists every effort as an alias: `GPT-5.6 Sol 1M Medium` against `gpt-5.6-sol-high` is a mismatch
+  in the review check and the worker note. A context size whose display name omits the effort word (`GPT-5.6 Sol 1M`,
+  the medium name) does not match either. A request that names no effort still accepts the profile's aliases.
 - PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
   list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the
   other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,

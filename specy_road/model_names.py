@@ -3,7 +3,8 @@
 Cursor's stream-json names the model by its display name (``Grok 4.6 High``, ``Claude Opus 5.5 300K High``) while
 the roster passes the slug (``cursor-grok-4.6-high``, ``claude-opus-5-5-high``). :func:`same_model` compares the
 reported name with every name the told model goes by: the slug, the roster entry's ``harness_model`` and the
-profile's ids and names, after :func:`normalise`, dropping a context-size token that sits beside an effort word.
+profile's ids and names, after :func:`normalise`. A context-size token beside an effort is not part of the name.
+When the request names an effort, a profile alias for a different effort is not a name of that request.
 :func:`roster_match` finds the roster entry and pinned profile a launched slug belongs to, for the price estimate.
 """
 
@@ -15,9 +16,12 @@ from typing import Any
 
 #: Cursor's prefix on the slugs it routes itself (``cursor-grok-4.6-high``); its display names drop it.
 _HARNESS_PREFIX = "cursor-"
-#: Effort words a Cursor display name spells out. A context size is dropped only beside one of these, so
-#: ``GPT-5.6 Sol 1M`` (the medium name, the effort word omitted) does not collapse to the bare model.
-_EFFORT_WORDS = frozenset({"none", "minimal", "low", "medium", "high", "xhigh", "max"})
+#: Trailing effort identity, longest first so ``xhigh`` is not read as ``high``. ``fast`` stays on the identity
+#: (``high-fast``). ``Extra High`` is written ``xhigh`` before this table is applied.
+_EFFORT_TAILS = (
+    "xhigh-fast", "minimal-fast", "medium-fast", "none-fast", "high-fast", "max-fast", "low-fast",
+    "minimal", "medium", "xhigh", "none", "high", "max", "low",
+)
 _CONTEXT_SIZE = re.compile(r"\d+[km]")
 
 
@@ -27,33 +31,75 @@ def normalise(name: object) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(name).lower()).strip("-")
 
 
-def _without_context_size(key: str) -> str:
-    """Drop a context-size token (``300k``, ``1m``) when ``key`` also names an effort; otherwise return ``key``."""
+def _tail(parts: list[str]) -> str:
+    """The effort identity ``parts`` ends with (``high``, ``high-fast``, ``xhigh``), or ``''``."""
+    key = "-".join(parts)
+    for tail in _EFFORT_TAILS:
+        if key == tail or key.endswith("-" + tail):
+            return tail
+    return ""
+
+
+def _comparable(name: object) -> str:
+    """``normalise`` with ``Extra High`` as ``xhigh`` and a context-size token dropped beside an effort tail.
+
+    A name that does not end in an effort keeps its context-size token, so ``GPT-5.6 Sol 1M`` (the medium
+    display name, the effort word omitted) does not become the bare model.
+    """
+    key = normalise(name).replace("extra-high", "xhigh")
     parts = [p for p in key.split("-") if p]
-    if any(p in _EFFORT_WORDS for p in parts):
+    if _tail(parts):
         parts = [p for p in parts if _CONTEXT_SIZE.fullmatch(p) is None]
     return "-".join(parts)
 
 
 def _forms(name: object) -> set[str]:
-    key = _without_context_size(normalise(name))
-    forms = {key, key.removeprefix(_HARNESS_PREFIX)}
-    # ``Extra High`` is the effort word whose catalog suffix is ``xhigh``; keep both spellings.
-    forms |= {f.replace("extra-high", "xhigh") for f in forms}
-    return forms - {""}
+    key = _comparable(name)
+    return {key, key.removeprefix(_HARNESS_PREFIX)} - {""}
+
+
+def _effort(name: object) -> str:
+    """The request or report's effort identity, or ``''`` when ``name`` is missing or names none."""
+    if name is None:
+        return ""
+    key = _comparable(name).removeprefix(_HARNESS_PREFIX)
+    return _tail([p for p in key.split("-") if p])
+
+
+def _keeps_name(name: object, requested: set[str]) -> bool:
+    """A profile name counts when it names no effort, or the effort the request names.
+
+    A request that names no effort keeps every profile name. That is the limit of this rule: effort identity
+    is enforced only when the slug or ``harness_model`` names one.
+    """
+    if not name:
+        return False
+    effort = _effort(name)
+    if effort in requested:
+        return True
+    return not effort or not requested
+
+
+def _profile_names(profile: Any, slug: object, harness_model: object) -> list:
+    """Profile ids and names whose effort does not contradict the request."""
+    data = profile.data
+    aliases = data.get("aliases") if isinstance(data.get("aliases"), list) else []
+    requested = {_effort(slug), _effort(harness_model)} - {""}
+    raw = [profile.api_id, profile.path.stem, data.get("model"), data.get("display_name"), *aliases]
+    return [n for n in raw if _keeps_name(n, requested)]
 
 
 def same_model(reported: object, slug: object, harness_model: object = None, profile: Any = None) -> bool:
     """True when ``reported`` is, after :func:`normalise` and without Cursor's ``cursor-`` prefix, the ``slug``,
     the roster entry's ``harness_model``, or the profile's ``api_id``, file name, ``aliases``, ``model`` or
-    ``display_name``. A context-size token beside an effort word is not part of the name (``Claude Opus 5.5
-    300K High`` is ``claude-opus-5-5-high``), and ``Extra High`` is the same effort as ``xhigh``. A different
-    model or effort does not match."""
+    ``display_name``. A context-size token beside an effort is not part of the name (``Claude Opus 5.5 300K
+    High`` is ``claude-opus-5-5-high``), and ``Extra High`` is ``xhigh``. When the slug or ``harness_model``
+    names an effort, a profile name that names a different effort is ignored, so ``GPT-5.6 Sol 1M Medium``
+    does not match ``gpt-5.6-sol-high`` through an alias list. ``fast`` is part of that identity. A profile
+    name that names no effort still counts. A different model or effort does not match."""
     names = [slug, harness_model]
     if profile is not None:
-        data = profile.data
-        aliases = data.get("aliases") if isinstance(data.get("aliases"), list) else []
-        names += [profile.api_id, profile.path.stem, data.get("model"), data.get("display_name"), *aliases]
+        names += _profile_names(profile, slug, harness_model)
     told = set().union(*(_forms(n) for n in names if n))
     return bool(_forms(reported) & told)
 
