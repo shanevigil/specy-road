@@ -459,7 +459,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.17_verify-tells-a-blocking-404_f7c47911-9faa-4536-941b-a208aee3a459.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_verify.py",
