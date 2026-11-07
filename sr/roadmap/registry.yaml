@@ -111,19 +111,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: guidance-exclusion-closes-three-bypasses
-    node_id: M22.24
-    branch: feature/rm-guidance-exclusion-closes-three-bypasses
-    touch_zones:
-      - specy_road/orchestrate_assign.py
-      - specy_road/orchestration_pinned.py
-      - tests/test_guidance_bypass_roles.py
-      - docs/orchestration-roster.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T13:26:33+00:00'
   - codename: deps-ids-briefs-and-landed-branch
     node_id: M22.14
     branch: feature/rm-deps-ids-briefs-and-landed-branch
