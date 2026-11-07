@@ -70,8 +70,34 @@ First merged `origin/WIP/improvements-0-3-1` (c2c8f2e3, no conflicts). The fix i
 
 **Class D: an empty `core.hooksPath` value was ignored.** The snapshot skipped empty values, so it watched the default directories, which git no longer uses then. With git 2.43, `git rev-parse --git-path hooks/pre-commit` gives `/pre-commit`, and a commit tries only `/pre-commit` (seen with strace). **Change:** an empty value is a value that names no directory (`None` in the `hooks` map). Like any unconditional value, it turns the defaults off. Only an empty value under an `includeIf` keeps them watched, as before. I do not watch `/`: only root can write there, and hashing every regular file at the filesystem root (a swap file, for example) would hit the time budget on every turn. The docstring and docs state this limit.
 
+## Fix round 2 (block by `gpt-5.6-sol-high` on 00588b17)
+
+First merged `origin/WIP/improvements-0-3-1` (no conflicts). The fix is commit d28194b7. The four required changes fall into two classes.
+
+**Class E: a checkout located by searching upward for `.git`.** `scope_for` used `git_top`, which walks up from a path to the nearest `.git`. A worktree under `work/.worktrees/` whose own `.git` is missing therefore resolved to the main checkout that holds it. The turn then compared the main checkout and passed. The turn-start `git_state` ran git there too, before any snapshot. **Design change:**
+- Neither checkout is searched for. The worker's top is the worktree its record names (`rec.worktree` is the worktree's top: `worker_ops_launch` passes `wt` and applies the project prefix separately).
+- The main checkout is the one the worker's common git dir belongs to (`<main>/.git`), read by `_gitdirs`. That replaces the second search, from the main project root. It also refuses a common dir that is not a checkout's `.git`.
+- If that cannot be read, `scope_for` raises. The turn has no snapshot, so the check records one `check_error` per class naming the worktree, and skips the git probes (A3's no-snapshot rule).
+- `TurnWatch` now takes the steering snapshot before its first git command. With no snapshot, it runs none: the start `git_state` is skipped, and the check never uses it in that case.
+- `git_top` is no longer imported.
+- Changed expectation: the `gitdir_missing` and `commondir_missing` rows set the bad target before the turn starts. They now expect the no-snapshot `check_error` naming the worktree, not `.git`. A gitdir that goes missing during the turn is still a `.git` `check_error` (probe).
+
+**Class F: the time budget was checked only before each step.** A step that started in time and ended past the budget was accepted, and so was the snapshot's last read. **Design change:** `guarded` checks the budget after its step as well as before. Every read runs inside a guarded step (one per checkout `.git`, one per hooks directory), so a snapshot that returns ended within its budget. Otherwise the step's path is a `check_error` (`TimeoutError`).
+
 ## Probes
 
+Fix round 2. Each probe is a public turn or a public snapshot on the test layout; the script was kept outside the tree.
+- Worktree inside the main checkout (`work/.worktrees/nested`), `.git` missing at the start, fsmonitor set during the turn: one `check_error` per class naming the worktree, only `git_probes_skipped` otherwise, sentinel not run. Pass (new `dotgit_missing_nested` row; fails at 00588b17).
+- Clock past the deadline at the end snapshot's last read (the read count taken from a clean turn): one `check_error` for the main checkout's `.git` with `TimeoutError`, probes skipped. Pass (new `deadline_passed_in_final_operation` row; fails at 00588b17).
+- Main checkout's `.git` moved away before the turn, worker in its linked worktree: no snapshot, a `check_error` per class naming the worktree, probes skipped. Pass (probe).
+- Worker in the main checkout itself: one checkout in scope, clean turn has no findings. Pass (probe).
+- `scope_for` given a subdirectory of a worktree: raises, so the turn fails closed. Pass (probe). That is the rule: the record names the worktree's top.
+- Deadline passing at read 2, 22, 43 and 44 of 44: each gives a `check_error` with a path and class, and never a clean snapshot. Pass (probe).
+- Every read runs inside a guarded step: checked by reading the code. `_add_hook` and `_config_file` handle their own errors, but run inside the per-checkout `guarded` step, whose check after the step covers them.
+- `TurnWatch.before` is used only by `_turn_findings` after a snapshot comparison; without a snapshot, the check returns before it. Checked by reading the code and by grep (no other user).
+- All earlier probes re-run (Rework 3 and fix round 1, 20 in all): same results. Pass.
+
+### Fix round 1
 Fix round 1. Each probe is a public turn on the test layout, and the script was kept outside the tree. Six were new `CONTAINER_ROWS` rows; each fails at cef67a38 and passes at b4c69de9:
 - Empty `core.hooksPath`, then a hook written in the default `.git/hooks`: no finding, and the probes run (row `empty_hookspath`).
 - Include under a dangling directory link, clean turn: one `check_error` at the include (`git_config`) (row `include_under_dangling_link`).
@@ -143,6 +169,7 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 
 ## Verification
 
+- Fix round 2: `pytest -q tests/test_steering_file_guard.py`: 36 passed. The steering tests plus the test files that import the changed modules: 589 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with 00588b17's `steering_paths.py` and `worker_turn_check.py`, 4 rows fail (the 2 new ones and the 2 changed ones) and 32 pass.
 - Fix round 1: `pytest -q tests/test_steering_file_guard.py`: 34 passed. The steering tests plus the test files that import the changed modules: 587 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with cef67a38's `steering_paths.py`, the 6 new rows fail and the other 28 pass.
 - `pytest -q tests/test_steering_file_guard.py`: 28 passed (rework 3).
 - `pytest -q -n 4`: 5990 passed (rework 3).
@@ -154,7 +181,7 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 ## Notes for reviewers
 
 - I dropped a `fifo` row for `git_config` (a FIFO as an included config). With that FIFO in place before the turn, git's own `git status` at the turn's start blocks on it (300 s), before any of this code runs. The snapshot side of a FIFO is covered by the `fifo` hook row.
-- The turn-start `git_state` (`git status` and others in `TurnWatch.__init__`) still runs before the next turn. If the previous turn changed `core.fsmonitor`, it runs under it. That turn was already flagged `steering_changed`, and refusing the next turn is outside this leaf (M22.31 refuses at finish).
+- The turn-start `git_state` (`git status` and others in `TurnWatch.__init__`) still runs before the next turn (fix round 2: only after that turn's steering snapshot was taken). If the previous turn changed `core.fsmonitor`, it runs under it. That turn was already flagged `steering_changed`, and refusing the next turn is outside this leaf (M22.31 refuses at finish).
 
 ## Added
 
@@ -189,4 +216,8 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 - Fix round 1, `_gitdirs` directory check: a gitdir or common dir that is not an existing directory raises, so `.git` is a `check_error` (class C).
 - Fix round 1, `None` key in the `hooks` map for an empty `core.hooksPath`: the value turns the defaults off and names no directory (class D).
 - Fix round 1, test rows `empty_hookspath`, `include_under_dangling_link`, `hooks_under_dangling_link`, `hooks_under_link_loop`, `gitdir_missing` and `commondir_missing` in `CONTAINER_ROWS`. Their helpers are `_empty_hookspath`, `_unresolvable` and `_noop`. Two changes to the shared test: it now names expected paths as findings do (worktree paths project-relative, others `abspath`, so a name is not resolved through its dangling parent), and it requires `git_probes_skipped` exactly when a row expects a finding.
-- Mocks: none added.
+- Fix round 2, `scope_for` bound to the record's worktree and its common dir's owner: no checkout is searched for (class E).
+- Fix round 2, `TurnWatch` takes the snapshot before `git_state` and runs it only with a snapshot: no git command before git steering is read (class E).
+- Fix round 2, `guarded` checks the budget after its step: a slow last step is a timeout (class F).
+- Fix round 2, test rows `dotgit_missing_nested` and `deadline_passed_in_final_operation` in the fsmonitor test, with the test's `_Clock`, a stand-in for `steering_paths.time` that counts reads and jumps past the deadline at a chosen read. The test sets it with `monkeypatch` on the public `time` attribute. Changed expectations: the `gitdir_missing` and `commondir_missing` rows now expect the no-snapshot `check_error` naming the worktree.
+- Mocks: `_Clock` (above) only.
