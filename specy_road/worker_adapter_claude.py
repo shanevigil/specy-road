@@ -14,7 +14,6 @@ from typing import Any
 
 from specy_road.claude_config import claude_projects_dir
 from specy_road.reviewer_auth import WORKER_FULL_FLAGS, bare_settings_argv, worker_environment
-from specy_road.steering_gate import claude_denies
 from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, REVIEWER_TOOLS, STDIN_INSTRUCTION,
                                          Adapter, Capabilities, Launch, Parsed, _model_flag)
 from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
@@ -25,8 +24,6 @@ EXECUTOR_TOOLS = "Read,Edit,Write,Glob,Grep,Bash"
 #: An executor's permissions, the same on launch and resume: the mode, the allow-list, and no prompts (anything
 #: still unresolved is denied and Claude is told not to retry; the denial shows in the stream, see ``parse_events``).
 #: ``--allowedTools`` takes several values, so a single-value flag follows it before the instruction.
-#: Launch and resume also pass ``--disallowedTools`` ``Edit(./<rel>)`` / ``Write(./<rel>)`` per steering file
-#: (:func:`~specy_road.steering_gate.claude_denies`, M21.7) before these; ``--allowedTools`` ends that list.
 EXECUTOR_PERMISSIONS = ("--allowedTools", EXECUTOR_TOOLS, "--permission-prompts", "none", "--permission-mode", "acceptEdits")
 
 
@@ -53,8 +50,7 @@ class ClaudeCode(Adapter):
             return replace(custom, launch_mode=launch_mode)   # left as written; only the check uses the mode
         return Launch([self._program(harness_bin), "-p", *_worker_mode(launch_mode), "--output-format", "stream-json", "--verbose",
                        "--session-id", sid, *_model_flag("--model", model), *self.effort_flag(effort),
-                       *self._add_dir(worktree, repo_root, node_id),
-                       *claude_denies(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
+                       *self._add_dir(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=sid, launch_mode=launch_mode)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
@@ -66,8 +62,7 @@ class ClaudeCode(Adapter):
         # A resumed session does not keep the launch's --model: pass it again, as the launch did.
         return Launch([self._program(harness_bin), "-p", *_worker_mode(launch_mode), "--resume", session_id, "--output-format", "stream-json",
                        "--verbose", *_model_flag("--model", model), *self.effort_flag(effort),
-                       *self._add_dir(worktree, repo_root, node_id),
-                       *claude_denies(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
+                       *self._add_dir(worktree, repo_root, node_id), *EXECUTOR_PERMISSIONS, STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 
     def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None,

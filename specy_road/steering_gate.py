@@ -3,7 +3,6 @@ worker turn.
 
 - :func:`zones_or_exit`: finish's implementation check, then :func:`steering_or_exit`, which refuses a branch
   that changes an in-tree steering path no touch zone names exactly.
-- :func:`claude_denies`: per-file ``--disallowedTools`` rules for a Claude Code executor's launch and resume.
 
 Split from :mod:`specy_road.steering_paths` for the file limit.
 """
@@ -14,10 +13,8 @@ import sys
 from pathlib import Path
 
 from specy_road.finish_implementation_check import _clean, base_ref, changed_paths, implementation_or_exit
-from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import prefix_within, rebase_to_project
-from specy_road.steering_paths import (CLAUDE_ALWAYS_DENIED, FINISH_CLASSES, HARNESS_DIRS, POLICY_FILES, SHELL_FILES,
-                                      in_tree_class, tree_files)
+from specy_road.steering_paths import FINISH_CLASSES, in_tree_class
 from specy_road.worktree_env import git_top
 
 # --- finish -----------------------------------------------------------------------------------------------
@@ -64,33 +61,3 @@ def steering_or_exit(repo_root: Path, *, node: dict, entry: dict, remote: str, i
           f"    specy-road edit-node {node['id']} --set touch_zones=<current zones>,<path>\n"
           f"  otherwise revert it on this branch (git checkout {ref} -- <path>) and commit.", file=sys.stderr)
     raise SystemExit(1)
-
-
-# --- Claude Code launch ---------------------------------------------------------------------------------
-
-
-def claude_denies(worktree: Path, repo_root: Path | None, node_id: str | None) -> list[str]:
-    """``--disallowedTools`` with ``Edit(./<rel>)`` and ``Write(./<rel>)`` for each in-tree steering file present
-    in ``worktree`` (the harness's cwd) plus :data:`CLAUDE_ALWAYS_DENIED` and the policy files, skipping each
-    path a touch zone names exactly. One rule per file, no parent glob: no rule can match an exempt path."""
-    top = Path(worktree)
-    prefix = prefix_within(git_top(repo_root), Path(repo_root)) if repo_root else ""
-    zones: list[str] = []
-    if repo_root and node_id:
-        try:
-            zones = resolve_target(repo_root, node_id).touch_zones
-        except ReviewTargetError:
-            zones = []
-    exact = {z for z in (_clean(z) for z in zones) if z}
-    rels = set(CLAUDE_ALWAYS_DENIED) | {prefix + p for p in POLICY_FILES}
-    for base, project, lead in ((top, prefix == "", ""), (top / prefix, True, prefix)):
-        for name in (*SHELL_FILES, *(POLICY_FILES if project else ())):
-            if (base / name).exists() or (base / name).is_symlink():
-                rels.add(lead + name)
-        for d in HARNESS_DIRS:
-            for p in tree_files(base / d) if (base / d).is_dir() else []:
-                if in_tree_class(rel := p.relative_to(base).as_posix(), project=project):
-                    rels.add(lead + rel)
-    keep = sorted(r for r in rels if r not in exact and rebase_to_project(r, prefix) not in exact)
-    rules = [rule for r in keep for rule in (f"Edit(./{r})", f"Write(./{r})")]
-    return ["--disallowedTools", *rules] if rules else []

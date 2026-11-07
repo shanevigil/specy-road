@@ -2,7 +2,7 @@
 
 One fake executor turn per steering class (a linked worktree, the main checkout beside it, ``.venv`` linked by
 ``env_setup.link``, a second worktree holding the integration branch), the clean turn, the sticky flag and its
-listing by ``worker reconcile``, and finish's refusal paired with the Claude Code launch denies.
+listing by ``worker reconcile``, and finish's refusal.
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ import yaml
 from tests.review_repo_helpers import commit_file, delegate_layout, git, make_review_repo
 
 from specy_road import steering_paths
-from specy_road import worker_adapters as wa
 from specy_road import worker_reconcile as wrc
 from specy_road import worker_state as ws
 from specy_road import worker_turn_check as tc
@@ -224,7 +223,7 @@ def test_a_clean_turn_has_no_findings_and_leaves_the_flag_reconcile_lists_and_cl
     assert wrc.reconcile(repo, rec.worker_id)[1]["steering"] == []
 
 
-# --- finish and the launch argv ------------------------------------------------------------------------------
+# --- finish --------------------------------------------------------------------------------------------------
 
 
 def _finish(root: Path) -> int:
@@ -241,29 +240,15 @@ def _set_zones(root: Path, zones: list[str]) -> None:
     commit_file(root, "roadmap/registry.yaml", yaml.safe_dump(doc), "zones")
 
 
-def _denies(leaf: Path, repo: Path) -> list[str]:
-    argv = wa.adapter_for("claude-code").launch(leaf / "prompt.md", leaf, "m", None, node_id="M1.1", repo_root=repo).argv
-    resumed = wa.adapter_for("claude-code").resume("sid", leaf / "prompt.md", leaf, "m", None, node_id="M1.1",
-                                                   repo_root=repo).argv
-    rules = argv[argv.index("--disallowedTools") + 1:argv.index("--allowedTools")]
-    assert rules == resumed[resumed.index("--disallowedTools") + 1:resumed.index("--allowedTools")]
-    assert all(r.startswith(("Edit(./", "Write(./")) and "*" not in r for r in rules)   # per file, no parent glob
-    return rules
-
-
 @pytest.mark.parametrize("zoned", [False, True])
-def test_finish_refuses_an_unzoned_steering_file_and_the_argv_denies_it(
+def test_finish_refuses_an_unzoned_steering_file(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], zoned: bool) -> None:
     repo, leaf, _bare = delegate_layout(tmp_path, monkeypatch)
-    (leaf / "prompt.md").write_text("do the leaf")
     if zoned:   # as edit-node would: the claim row on the integration branch, merged into the leaf
         _set_zones(repo, ["src", ".claude/settings.json"])
         git(leaf, "merge", "-q", "--no-edit", "dev")
         git(repo, "push", "-q", "origin", "dev")
     commit_file(leaf, ".claude/settings.json", '{"hooks": {}}\n', "harness settings")
-    rules = _denies(leaf, repo)
-    assert ("Edit(./.claude/settings.json)" in rules) is not zoned and ("Write(./.claude/settings.json)" in rules) is not zoned
-    assert "Edit(./roadmap/orchestration.yaml)" in rules and "Write(./.claude/settings.local.json)" in rules
     before = git(leaf, "rev-parse", "HEAD")
     code = _finish(leaf)
     err = capsys.readouterr().err
@@ -272,13 +257,6 @@ def test_finish_refuses_an_unzoned_steering_file_and_the_argv_denies_it(
     else:
         assert code == 1 and ".claude/settings.json (harness)" in err and "edit-node M1.1" in err
         assert git(leaf, "rev-parse", "HEAD") == before   # refused before the bookkeeping commit
-
-
-def test_a_custom_cli_argv_is_left_as_written(tmp_path: Path) -> None:
-    repo = make_review_repo(tmp_path)
-    launch = wa.adapter_for("claude-code").launch(repo / "p.md", repo, "m", "claude -p {prompt}",
-                                                  node_id="M1.1", repo_root=repo)
-    assert "--disallowedTools" not in launch.argv
 
 
 # --- one rule for an input that cannot be read ---------------------------------------------------------------

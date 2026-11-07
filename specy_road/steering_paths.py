@@ -14,7 +14,6 @@ docs/orchestration-workers.md) and the per-turn watch; :mod:`specy_road.steering
   compared before any post-turn git command runs.
 - :func:`~specy_road.steering_gate.steering_or_exit`: finish's refusal of a branch that changes an in-tree steering path no touch zone
   names exactly.
-- :func:`~specy_road.steering_gate.claude_denies`: per-file ``--disallowedTools`` rules for a Claude Code executor's launch and resume.
 
 Detection only: nothing here restores a changed file. Paths compare project-relative, as ``zone_matches``
 does, and one real path is stored once.
@@ -61,8 +60,6 @@ POLICY_FILES = ("roadmap/orchestration.yaml", "roadmap/orchestration.local.yaml"
 SHELL_FILES = (".bashrc", ".bash_profile", ".profile", ".zshrc", ".zshenv", ".envrc")
 #: The harness config directories walked for :func:`in_tree_class`.
 HARNESS_DIRS = (".claude", ".codex", ".cursor")
-#: Denied to a Claude Code executor whether present at launch or not (unless a touch zone names one exactly).
-CLAUDE_ALWAYS_DENIED = (".claude/settings.json", ".claude/settings.local.json")
 #: More direct children than this in a hooks directory are recorded as the one marker ``capped``.
 HOOKS_CAP = 200
 ABSENT = "absent"

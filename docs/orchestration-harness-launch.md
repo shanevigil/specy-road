@@ -57,16 +57,3 @@ failing with exit 127. The absolute path is what runs: Cursor's `agent create-ch
 `launched` event records it (`detail.argv0`), and a reviewer's `RUN-<model>.log` names it on its first line.
 
 A custom `channels.cli` runs as written: put the path in the command itself if the program is off `PATH`.
-
-## Steering files at launch
-
-A Claude Code executor's default launch and resume pass `--disallowedTools` with `Edit(./<rel>)` and
-`Write(./<rel>)` for each in-tree steering file present at launch (harness config and hooks, the roadmap policy files,
-root shell startup files; [orchestration-workers.md](orchestration-steering-files.md)) plus
-`.claude/settings.json`, `.claude/settings.local.json` and the three roadmap policy files, present or not. A path a
-touch zone names exactly is skipped. There is one rule per file and no parent glob, so no rule matches an exempt path.
-The rules are relative to the worktree, so new files, shell writes, the common git dir and the main checkout stay
-detection-only (the post-run check). A custom `channels.cli` command keeps its argv and gets detection only.
-
-Cursor already blocks writes to `.cursor/*.json`, `.vscode/**` and `.git/hooks/**` on its own, and Codex
-`workspace-write` refuses writes outside the workspace but allows in-tree steering files; neither argv is changed.

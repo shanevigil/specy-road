@@ -1,7 +1,7 @@
 # Steering files
 
 Some files an executor can write are later read or run by trusted code outside it: the coordinator's harness, git,
-the coordinator's shell, and specy-road's own gate. The one list is `specy_road/steering_paths.py` (finish's refusal and the launch denies are in `specy_road/steering_gate.py`); the worker flags and the post-run check are in [orchestration-workers.md](orchestration-workers.md). For each worker
+the coordinator's shell, and specy-road's own gate. The one list is `specy_road/steering_paths.py` (finish's refusal is in `specy_road/steering_gate.py`); the worker flags and the post-run check are in [orchestration-workers.md](orchestration-workers.md). For each worker
 turn it is snapshotted in the worker's worktree and in the main checkout (one real path is stored once; paths are
 named project-relative in the worker's tree, as `zone_matches` compares them, and absolute elsewhere):
 
@@ -58,6 +58,3 @@ changes an in-tree steering path (harness config and hooks, the three policy fil
 a touch zone names that exact path; a directory or glob zone does not count, and `roadmap/registry.yaml` is ignored.
 The message names each path: add that exact path to the leaf's touch zones with `specy-road edit-node` and get it
 reviewed, or revert it.
-
-**At launch:** a Claude Code executor's launch and resume deny each steering file per path
-([orchestration-harness-launch.md](orchestration-harness-launch.md#steering-files-at-launch)).
