@@ -1,0 +1,19 @@
+$ specy-road worker sync --help
+exit: 0
+--- stdout ---
+usage: specy-road worker sync [-h] [--ack] [--wait] [--until TYPES] [--timeout SECONDS]
+                              [--verbose] [--json] [--repo-root DIR]
+
+options:
+  -h, --help         show this help message and exit
+  --ack              Mark the returned events handled
+  --wait             Block until a worker writes an event (exit 2 on --timeout)
+  --until TYPES      With --wait: return only on these event types (comma list: completion, error,
+                     intervention)
+  --timeout SECONDS  With --wait (default 600)
+  --verbose          Show each tool-use output line instead of collapsing runs
+  --json
+  --repo-root DIR    Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                     .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                     root, else the current directory).
+--- stderr ---

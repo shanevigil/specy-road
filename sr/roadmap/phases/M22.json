@@ -155,7 +155,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.6_queued-message-undelivered_968d2065-95f2-4d33-8926-045da3b65990.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A queued worker message that cannot be delivered flags the worker and goes out with its next turn",
       "touch_zones": [
         "specy_road/worker_runner.py",
@@ -393,7 +393,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.16_reviewer-run-summary-and-process-tree_e129232c-a131-477e-bb91-12699f010034.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends",
       "touch_zones": [
         "specy_road/review_record_write.py",

@@ -1,0 +1,16 @@
+$ specy-road export --help
+exit: 0
+--- stdout ---
+usage: specy-road export [-h] [--check] [--repo-root DIR]
+
+Export the merged roadmap graph to ``roadmap.md`` (read-only index). Canonical nodes live in
+**JSON** chunk files listed by ``roadmap/manifest.json``. This script writes only the generated
+root ``roadmap.md`` index — it does not overwrite chunk files.
+
+options:
+  -h, --help       show this help message and exit
+  --check          Exit 1 if generated files differ from disk (CI drift check)
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

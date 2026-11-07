@@ -1,0 +1,16 @@
+$ specy-road sync --help
+exit: 0
+--- stdout ---
+usage: specy-road sync [-h] [--base BRANCH] [--remote NAME] [--repo-root DIR]
+
+PM workflow: sync integration branch from remote, then validate, export and digest.
+
+options:
+  -h, --help       show this help message and exit
+  --base BRANCH    Integration branch to sync (default: roadmap/git-workflow.yaml, else main).
+  --remote NAME    Git remote to fetch and merge from (default: roadmap/git-workflow.yaml, else
+                   origin).
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

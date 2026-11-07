@@ -1,0 +1,12 @@
+$ specy-road orchestrate --help
+exit: 0
+--- stdout ---
+usage: specy-road orchestrate [-h] {plan} ...
+
+positional arguments:
+  {plan}
+    plan      Assign coordinator, executor, and reviewers per ready leaf
+
+options:
+  -h, --help  show this help message and exit
+--- stderr ---

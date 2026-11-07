@@ -1,0 +1,62 @@
+$ specy-road review-packet --help
+exit: 0
+--- stdout ---
+usage: specy-road review-packet [-h] [--ref REF] [--base REF] [--verify-cmd CMD]
+                                [--max-diff-lines N] [--max-diff-bytes N] [--full] [-o OUTPUT]
+                                [--repo-root DIR]
+                                node_id
+
+Assemble the verification packet a reviewer reads: ``specy-road review-packet``.
+
+Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in order:
+
+1. the brief (goal, numbered acceptance, planning, contracts);
+2. the implementation summary (``work/implementation-summary-<NODE_ID>.md``);
+3. a warning when the brief, a planning sheet or the summary names a path not
+   in the tree at the reviewed commit;
+4. every changed path since the merge base (with the integration branch, or
+   ``--base``), with paths outside the touch zones called out: the claim row's
+   zones plus the node's as committed at the reviewed commit;
+   then ``## Test integrity`` (``specy-road integrity``), and ``## Required check: unplanned test
+   removal`` for a removed or weakened test not in ``planned_test_changes`` (``review_packet_observed``);
+5. the Python test files that import a changed module (``specy-road impact``);
+6. ``git diff <base>...<ref>``, with a warning when it is empty, then each ``nested_repos`` repository's; past
+   ``--max-diff-lines`` (default 1500) or ``--max-diff-bytes`` (default 200000)
+   the first files that fit both are inlined whole, the rest are listed with
+   their ``+``/``-`` counts and diff bytes, and the full diff is written to
+   ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap); a generated file
+   (a well-known lockfile included, unless ``.gitattributes`` says otherwise) is
+   never inlined, only listed;
+7. verifier output — the newest valid READY file's ``verify`` tails, plus any
+   ``--verify-cmd`` run now.
+
+A reviewer is handed this file and nothing else (proposal §3.2). The commit it
+describes is printed at the top; a review record must name that commit. For a
+milestone the diff runs from the first leaf's branch point to the integration tip.
+With ``prior``, ``prompt --role reviewer`` builds one reviewer's delta packet; ``--full`` stops that.
+
+positional arguments:
+  node_id               Roadmap node id, e.g. M1.2
+
+options:
+  -h, --help            show this help message and exit
+  --ref REF             Branch or commit to review (default: the node's registered branch, local
+                        or remote-tracking)
+  --base REF            Diff from the merge base with REF instead of the integration branch's
+                        (e.g. the commit before the leaf, when its branch is already merged)
+  --verify-cmd CMD      Run CMD now and include its exit code and output tail (repeatable)
+  --max-diff-lines N    Inline at most N diff lines (default 1500): whole files up to the cap, the
+                        rest listed with +/- counts and the full diff written to
+                        work/reviews/<NODE_ID>/DIFF.patch; 0 = no line cap
+  --max-diff-bytes N    Inline at most N bytes of diff too (default 200000), as for --max-diff-
+                        lines; 0 = no byte cap. With both 0 and no generated file, nothing is
+                        listed and no DIFF.patch
+  --full                Every reviewer reads this full packet: `prompt --role reviewer` builds no
+                        delta packet (policy.delta_review) while it is current
+  -o OUTPUT, --output OUTPUT
+                        Also write here; work/reviews/<NODE_ID>/PACKET.md is always written, since
+                        `prompt --role reviewer` reads that path
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

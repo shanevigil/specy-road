@@ -325,11 +325,57 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.45_integration-refs-stay-put-during-a-turn_49e7b2a8-6486-47cb-a9c7-ba757373b6c8.md",
       "sibling_order": 44,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A worker turn that moves the integration ref is flagged",
       "touch_zones": [
         "specy_road/worker_turn_check.py",
         "tests/test_worker_turn_check.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A sandboxed turn can read the existing regular files in work/reviews/<node>, including REVIEW and notes files, so a fix round sees its blocking review; links are not copied",
+        "Only READY-* files are delivered back after the turn: a changed copy of a REVIEW or notes file does not reach the reviews directory",
+        "Cursor launches work under the sandbox: sandbox-policies is no longer a read-only entry in HARNESS_STATE, because Cursor writes its policy file there on every start (EROFS on 2026-11-07), and that directory is per-worker state",
+        "tests/test_worker_sandbox.py covers both through the public runner; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "sandboxed-workers-can-read-their-reviews",
+      "dependencies": [],
+      "id": "M22.46",
+      "node_key": "43366e49-21ee-4162-8748-cd1ec4b0b76f",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.46_sandboxed-workers-can-read-their-reviews_43366e49-21ee-4162-8748-cd1ec4b0b76f.md",
+      "sibling_order": 45,
+      "status": "Complete",
+      "title": "Sandboxed workers can read their leaf's review records",
+      "touch_zones": [
+        "specy_road/worker_sandbox.py",
+        "tests/test_worker_sandbox.py",
+        "CHANGELOG.md",
+        "docs/orchestration-workers.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A seeded config file inside a replaced state directory is copied into the worker's own directory, not bound as a separate file, so a harness can replace it by rename: Cursor renames cli-config.json on start and failed with EBUSY on 2026-11-07. Seeds outside a replaced directory, such as ~/.claude.json, keep today's behaviour",
+        "tests/test_worker_sandbox.py: a fake harness that writes a temp file and renames it over the seeded file succeeds, and the change does not reach the user's copy. A real Cursor start under the sandbox is a recorded smoke check in the implementation summary; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "cursor-starts-under-the-sandbox",
+      "dependencies": [],
+      "id": "M22.47",
+      "node_key": "d4c82f4c-c50c-4f31-b15c-e7c4041a9727",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.47_cursor-starts-under-the-sandbox_d4c82f4c-c50c-4f31-b15c-e7c4041a9727.md",
+      "sibling_order": 46,
+      "status": "Not Started",
+      "title": "Cursor workers start and keep their config under the sandbox",
+      "touch_zones": [
+        "specy_road/worker_sandbox.py",
+        "tests/test_worker_sandbox.py",
+        "docs/orchestration-workers.md",
         "CHANGELOG.md"
       ],
       "type": "task"

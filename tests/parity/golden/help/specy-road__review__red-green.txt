@@ -1,0 +1,15 @@
+$ specy-road review red-green --help
+exit: 0
+--- stdout ---
+usage: specy-road review red-green [-h] [--ref REF] [--repo-root DIR] node_id
+
+positional arguments:
+  node_id
+
+options:
+  -h, --help       show this help message and exit
+  --ref REF        Branch or commit under review (default: the node's registered branch)
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

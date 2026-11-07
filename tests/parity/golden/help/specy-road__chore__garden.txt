@@ -1,0 +1,15 @@
+$ specy-road chore garden --help
+exit: 0
+--- stdout ---
+usage: specy-road chore garden [-h] [--open-chores] [--under PARENT] [--json] [--repo-root DIR]
+
+options:
+  -h, --help       show this help message and exit
+  --open-chores    Add one leaf per finding class through the add-node write; none while one is
+                   still open
+  --under PARENT   The node --open-chores adds its leaves under (required with it)
+  --json
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

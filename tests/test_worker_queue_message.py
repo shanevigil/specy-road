@@ -11,13 +11,17 @@ from pathlib import Path
 
 import pytest
 
+from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
-
-from tests.worker_repo_helpers import make_worker_repo
+from tests.worker_lease_helpers import remote_and_clone
+from tests.worker_repo_helpers import make_worker_repo, worker_roster
 
 from specy_road import worker_ops as ops
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
+from specy_road.bundled_scripts import review_cli
+from specy_road.worker_adapters import Launch
+from specy_road.worker_runner_ready import READY_ONLY_PROMPT
 
 
 FAKE_SLOW = '''
@@ -187,4 +191,163 @@ def test_deliver_and_message_launch_one_turn(tmp_path: Path, monkeypatch) -> Non
     for t in threads:
         t.join()
     assert len(spawned) == 1 and len(errors) == 0
-    assert ws.load_record(repo, rec.worker_id).queued_message in ("queued-follow-up", "from-coordinator")
+    left = ws.load_record(repo, rec.worker_id).queued_message
+    sent = next(p for p in (repo / "work").glob(f"prompt-{rec.worker_id}-message-*.md") if p.is_file()).read_text()
+    if sent == "queued-follow-up\n\nfrom-coordinator":   # message launched and took the queued text with it
+        assert left is None
+    else:
+        assert sent == "queued-follow-up" and left == "from-coordinator"   # deliver launched; the message queued
+
+
+_STORED = "stored follow-up"
+
+# Holds the turn open until the test has queued both follow-ups. argv is the delegate prompt; the gate is a sibling file.
+_GATED = '''
+import json, sys, time
+from pathlib import Path
+gate = Path("work/release-turn")
+deadline = time.time() + 30
+while not gate.is_file():
+    if time.time() > deadline:
+        sys.exit(1)
+    time.sleep(0.05)
+print(json.dumps({"type": "result", "subtype": "success", "result": "done", "session_id": "sid-live"}), flush=True)
+'''
+
+
+def _reject_leases(remote: Path) -> None:
+    """The remote stays readable and refuses every lease ref push."""
+    hook = remote / "hooks" / "update"
+    hook.write_text('#!/bin/sh\ncase "$1" in refs/specy-road/*) echo "no leases here" >&2; exit 1;; esac\nexit 0\n')
+    hook.chmod(0o755)
+
+
+def _block_prompt_writes(repo: Path, wid: str) -> None:
+    """``work/prompt-<id>-message-N.md`` is a directory, so the delivery write raises OSError."""
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    for n in range(1, 40):
+        (work / f"prompt-{wid}-message-{n}.md").mkdir()
+
+
+def _deliver_fail(tmp_path: Path, *, harness: str = "claude-code", reject: bool = False,
+                  block: bool = False) -> tuple[Path, str, int]:
+    """One fake turn with a queued follow-up. Returns ``(repo, worker id, wrapper exit)``."""
+    repo, script = make_worker_repo(tmp_path)
+    if reject:
+        remote, _clone = remote_and_clone(tmp_path, repo)
+        _reject_leases(remote)
+    rec = ws.create_record(repo, "M1.1", harness, "opus", repo)
+    ws.mutate(repo, rec, lambda r: (setattr(r, "provider_session_id", "sid-live"),
+                                    setattr(r, "queued_message", _STORED)))
+    if block:
+        _block_prompt_writes(repo, rec.worker_id)
+    spec = tmp_path / "turn.json"
+    spec.write_text(json.dumps({"lines": [
+        {"type": "result", "subtype": "success", "result": "done", "session_id": "sid-live"}], "exit": 0}))
+    code = wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec)]))
+    return repo, rec.worker_id, code
+
+
+def _flags(repo: Path, wid: str, capsys) -> None:
+    root = str(repo)
+    assert run_worker_cli("worker", "list", "--json", "--repo-root", root) == 0
+    listed = json.loads(capsys.readouterr().out)["workers"]
+    assert run_worker_cli("worker", "status", wid, "--json", "--repo-root", root) == 0
+    status = json.loads(capsys.readouterr().out)
+    with pytest.raises(SystemExit) as caught:
+        review_cli.main(["handoff", "status", "--json", "--repo-root", root])
+    assert (caught.value.code or 0) == 0
+    handoff = json.loads(capsys.readouterr().out)["workers"]
+    assert listed and listed[0]["worker_id"] == wid and handoff and handoff[0]["worker_id"] == wid
+    for flags in (listed[0]["flags"], status["flags"], handoff[0]["flags"]):
+        assert ws.FLAG_UNDELIVERED in flags
+
+
+def _stuck(repo: Path, wid: str, text: str, capsys) -> None:
+    assert ws.load_record(repo, wid).queued_message == text
+    assert [e.type for e in ws.events_since(repo, wid)].count("error") == 1
+    _flags(repo, wid, capsys)
+
+
+def _prompt_text(repo: Path, wid: str, kind: str) -> str:
+    files = [p for p in (repo / "work").glob(f"prompt-{wid}-{kind}-*.md") if p.is_file()]
+    assert len(files) == 1
+    return files[0].read_text(encoding="utf-8")
+
+
+def _two_while_running(tmp_path: Path, capsys) -> None:
+    """Two messages during a live turn stay in order when delivery is then refused."""
+    script = tmp_path / "gated.py"
+    script.write_text(_GATED)
+    repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
+    (repo / ".gitignore").write_text("work/\n")
+    git(repo, "add", ".gitignore")
+    git(repo, "commit", "-qm", "ignore work")
+    remote, _clone = remote_and_clone(tmp_path, repo)
+    _reject_leases(remote)
+    root = str(repo)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--offline", "--json", "--repo-root", root) == 0
+    wid = json.loads(capsys.readouterr().out)["worker_id"]
+    for _ in range(100):
+        if ws.load_record(repo, wid).pid is not None:
+            break
+        time.sleep(0.05)
+    else:
+        raise AssertionError("worker never started")
+    assert run_worker_cli("worker", "message", wid, "--text", "one", "--repo-root", root) == 0
+    assert run_worker_cli("worker", "message", wid, "--text", "two", "--repo-root", root) == 0
+    capsys.readouterr()
+    (repo / "work" / "release-turn").write_text("go", encoding="utf-8")
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        final = ws.load_record(repo, wid)
+        if final.pid is None and ws.FLAG_UNDELIVERED in final.flags:
+            break
+        time.sleep(0.1)
+    else:
+        raise AssertionError("queued text was not kept")
+    _stuck(repo, wid, "one\n\ntwo", capsys)
+
+
+@pytest.mark.parametrize("case", [
+    "lease", "unsupported", "oserror", "message", "resume", "ready-only",
+    "resume-rejected", "two-queued", "terminate",
+])
+def test_undelivered_queued_message(tmp_path: Path, capsys, case: str) -> None:
+    if case == "two-queued":
+        _two_while_running(tmp_path, capsys)
+        return
+    repo, wid, code = _deliver_fail(
+        tmp_path, harness="generic" if case == "unsupported" else "claude-code",
+        reject=case in ("lease", "resume-rejected"),
+        block=case in ("oserror", "message", "resume", "ready-only", "terminate"))
+    assert code == 0
+    _stuck(repo, wid, _STORED, capsys)
+    root = str(repo)
+    if case in ("lease", "unsupported", "oserror"):
+        return
+    if case == "resume-rejected":
+        assert run_worker_cli("worker", "resume", wid, "--repo-root", root) == 1
+        _stuck(repo, wid, _STORED, capsys)
+        return
+    if case == "terminate":
+        assert run_worker_cli("worker", "terminate", wid, "--repo-root", root) == 0
+        rec = ws.load_record(repo, wid)
+        assert rec.queued_message is None and ws.FLAG_UNDELIVERED not in rec.flags
+        return
+    if case == "message":
+        for path in (repo / "work").glob(f"prompt-{wid}-message-*.md"):
+            if path.is_dir():
+                path.rmdir()
+        assert run_worker_cli("worker", "message", wid, "--text", "B", "--repo-root", root) == 0
+        assert _prompt_text(repo, wid, "message") == f"{_STORED}\n\nB"
+    elif case == "resume":
+        assert run_worker_cli("worker", "resume", wid, "--repo-root", root) == 0
+        assert _prompt_text(repo, wid, "resume") == f"{_STORED}\n\n{ops.CONTINUE_PROMPT}"
+    else:
+        assert run_worker_cli("worker", "resume", wid, "--ready-only", "--repo-root", root) == 0
+        assert _prompt_text(repo, wid, "ready-only") == f"{_STORED}\n\n{READY_ONLY_PROMPT}"
+    rec = ws.load_record(repo, wid)
+    assert rec.queued_message is None and ws.FLAG_UNDELIVERED not in rec.flags
+    wait_for_worker(repo, wid)

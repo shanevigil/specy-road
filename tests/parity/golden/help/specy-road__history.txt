@@ -1,0 +1,29 @@
+$ specy-road history --help
+exit: 0
+--- stdout ---
+usage: specy-road history [-h] [--since DATE] [--archived] [--limit N] [--reverse] [--json]
+                          [--rebuild] [--repo-root DIR]
+                          [NODE_ID]
+
+How the roadmap got here: status changes, dependency edges, renumbering, and archived work,
+derived from git history. The two views are ordered differently on purpose: the roadmap-wide feed
+is newest first, because it reads like a changelog, and one node's timeline is oldest first,
+because it reads like a story. --reverse flips whichever you asked for.
+
+positional arguments:
+  NODE_ID          A node id (M1.2) or node_key; its timeline, oldest event first. Omit for a
+                   roadmap-wide feed, newest event first.
+
+options:
+  -h, --help       show this help message and exit
+  --since DATE     Only events on or after this ISO date, e.g. 2026-01-01.
+  --archived       Only archive/restore events — work that left the live graph.
+  --limit N        Keep only the N most recent events. Both views agree on which events those are;
+                   they differ only in the order they print.
+  --reverse        Flip the order of whichever view you asked for.
+  --json           Machine-readable output.
+  --rebuild        Discard the cache under .specyrd/cache/ and re-walk all history.
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

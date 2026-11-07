@@ -34,7 +34,8 @@ def _bwrap_starts() -> bool:
 
 pytestmark = pytest.mark.skipif(not _bwrap_starts(), reason="bwrap is missing or cannot start here")
 
-#: The fake harness: commits, writes READY and a REVIEW at the canonical path, then probes each write and read.
+#: The fake harness: commits, writes READY and a REVIEW at the canonical path, reads and edits the review records
+#: already there, then probes each write and read.
 FAKE = r'''
 import json, os, subprocess, sys
 spec = json.loads(sys.stdin.read())
@@ -48,6 +49,11 @@ open(os.path.join(spec["reviews"], "READY-opus.md"), "w").write(
     f"---\nnode_id: M1.1\nagent: opus\nbranch: feature/rm-thing\ncommit: {head}\nbase: {head}\n"
     "changed_paths: []\nverify: []\n---\n")
 open(os.path.join(spec["reviews"], "REVIEW-opus.md"), "w").write("---\nverdict: approve\n---\n")
+read = {}
+for p in spec["read"]:                      # the leaf's review records: readable, and an edit stays in the sandbox
+    read[p] = open(p).read()
+    with open(p, "a") as f:
+        f.write("edited\n")
 written = []
 for p in spec["probes"]:
     try:
@@ -70,7 +76,7 @@ for p in spec["persist"]:                   # the worker's own transcripts outli
     with open(p, "a") as f:
         f.write("state\n")
     persist[p] = open(p).read().count("state")
-print("PROBE " + json.dumps({"written": written, "seen": seen, "persist": persist}), flush=True)
+print("PROBE " + json.dumps({"written": written, "seen": seen, "persist": persist, "read": read}), flush=True)
 print(json.dumps({"type": "result", "subtype": "success", "result": "done", "session_id": "s-1"}), flush=True)
 '''
 
@@ -121,10 +127,11 @@ HARNESSES = {
                     "through": [".claude/.credentials.json"], "seeded": [".claude.json"],
                     "persist": [".claude/projects/-wt/s.jsonl"]},
     "cursor": {"env": {}, "files": [".cursor/hooks.json", ".cursor/cli-config.json", ".cursor/chats/c.db",
-                                    ".config/cursor/auth.json"],
+                                    ".config/cursor/auth.json", ".cursor/sandbox-policies/policy.json"],
                "refused": [".cursor/hooks.json"],
                "create": [".cursor/mcp.json", ".cursor/rules/r.mdc", ".cursor/skills/s/SKILL.md",
-                          ".config/cursor/cli.json", ".cursor/chats/c.db", ".cursor/chats/planted.md"],
+                          ".config/cursor/cli.json", ".cursor/chats/c.db", ".cursor/chats/planted.md",
+                          ".cursor/sandbox-policies/policy.json"],   # Cursor writes it on every start
                "through": [".config/cursor/auth.json"], "seeded": [".cursor/cli-config.json"],
                "persist": [".cursor/chats/x/store.db"]},
     "codex": {"env": {"CODEX_HOME": "codex-home"}, "files": ["codex-home/config.toml", "codex-home/sessions/s.jsonl",
@@ -147,15 +154,22 @@ def _harness_home(home: Path, harness: str) -> dict:
     return {k: str(home / v) for k, v in h["env"].items()}
 
 
+#: The leaf's review records before the turn, under ``work/reviews/M1.1``: the worker reads each.
+RECORDS = {"REVIEW-gpt.md": "---\nverdict: request-changes\n---\nblocking: fix A2\n",
+           "notes-coordinator.md": "rework A2\n", "history/0001-REVIEW-gpt.md": "---\nverdict: reject\n---\n"}
+
+
 def _turn(b: dict, rec: ws.WorkerRecord, marker: str, env: dict, *, resumed: bool) -> int:
     common, home, wt, h = b["common"], b["home"], b["wt"], HARNESSES[rec.harness]
-    spec = {"marker": marker, "reviews": str(reviews_dir(b["repo"], "M1.1")),
+    reviews = reviews_dir(b["repo"], "M1.1")
+    spec = {"marker": marker, "reviews": str(reviews), "read": [str(reviews / r) for r in RECORDS],
             "probes": [str(p) for p in (common / "config", common / "hooks" / "pre-commit",
                                         common / "worktrees" / wt.name / "commondir",
                                         common / "worktrees" / wt.name / "gitdir",
                                         common / "worktrees" / wt.name / "config.worktree", wt / ".git", b["repo"] / "src" / "a.py", home / ".bashrc",
                                         *(home / r for r in h["refused"]))],
-            "hidden": [str(home / ".ssh" / "id_ed25519"), str(home / ".config" / "gh" / "hosts.yml")],
+            "hidden": [str(home / ".ssh" / "id_ed25519"), str(home / ".config" / "gh" / "hosts.yml"),
+                       str(reviews / "linked.md")],
             "env": list(SECRETS),
             "create": [str(home / r) for r in h["create"]],
             "state": [str(home / r) for r in h["through"] + h["seeded"]],
@@ -180,6 +194,10 @@ def test_a_sandboxed_launch_and_resume_commit_hand_off_ready_and_reach_nothing_e
     before = _snapshot(guarded)
     rec = ws.create_record(b["repo"], "M1.1", harness, "opus", wt, branch="feature/rm-thing")
     reviews = reviews_dir(b["repo"], "M1.1")
+    for r, text in RECORDS.items():
+        (reviews / r).parent.mkdir(parents=True, exist_ok=True)
+        (reviews / r).write_text(text)
+    (reviews / "linked.md").symlink_to(home / ".bashrc")       # a link is not copied into the sandbox
     for turn, (marker, resumed) in enumerate([("launch.txt", False), ("resume.txt", True)], 1):
         assert _turn(b, rec, marker, env, resumed=resumed) == 0
         assert git(wt, "log", "-1", "--format=%s", "feature/rm-thing") == marker      # the commit is on the branch
@@ -187,7 +205,9 @@ def test_a_sandboxed_launch_and_resume_commit_hand_off_ready_and_reach_nothing_e
         assert (reviews / "READY-opus.md").is_file() and not (reviews / "REVIEW-opus.md").exists()
         probe = json.loads(next(line for line in reversed(wr.log_path(b["repo"], rec.worker_id).read_text()
                                                           .splitlines()) if line.startswith("PROBE "))[6:])
-        assert probe == {"written": [], "seen": [], "persist": {str(home / r): turn for r in h["persist"]}}
+        assert probe == {"written": [], "seen": [], "persist": {str(home / r): turn for r in h["persist"]},
+                         "read": {str(reviews / r): text for r, text in RECORDS.items()}}
+        assert {r: (reviews / r).read_text() for r in RECORDS} == RECORDS   # edited copies did not come back
         assert _snapshot(guarded) == before        # shared steering, created or not, and seeded config untouched
         assert (common / "worktrees" / wt.name / "config.worktree").read_bytes() == b""   # git reads it as no config
         for r in h["through"]:                     # auth files reach the user's

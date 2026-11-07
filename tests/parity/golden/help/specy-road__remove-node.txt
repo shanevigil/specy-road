@@ -1,0 +1,13 @@
+$ specy-road remove-node --help
+exit: 0
+--- stdout ---
+usage: specy-road remove-node [-h] [--dry-run] NODE_ID
+
+positional arguments:
+  NODE_ID
+
+options:
+  -h, --help  show this help message and exit
+  --dry-run   Rehearse on a scratch copy (same commit and validate as real removal); the live repo
+              is not written
+--- stderr ---

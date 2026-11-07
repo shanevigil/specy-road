@@ -1,0 +1,19 @@
+$ specy-road session start --help
+exit: 0
+--- stdout ---
+usage: specy-road session start [-h] [--path PATH [PATH ...]] [--note NOTE]
+                                [--ttl-hours TTL_HOURS] [--agent AGENT] [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --path PATH [PATH ...]
+                        Repo-relative paths or globs (several after one --path, or repeat the
+                        flag)
+  --note NOTE           One line on what you are doing
+  --ttl-hours TTL_HOURS
+  --agent AGENT         Session id (default: $SPECY_ROAD_AGENT_ID, else <user>-s<POSIX session
+                        id>)
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

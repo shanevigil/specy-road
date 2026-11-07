@@ -233,20 +233,34 @@ def kill_group(rec: WorkerRecord, repo_root: Path | None = None, *, grace: float
 
 
 def _end_group(rec: WorkerRecord, pgid: int, grace: float) -> None:
+    if not end_group(pgid, grace, confirmed=True):
+        raise WorkerError(f"{rec.worker_id}: process group {pgid} is still alive after SIGKILL")
+
+
+def end_group(pgid: int, grace: float = 5.0, *, confirmed: bool = False) -> bool:
+    """SIGTERM process group ``pgid``, SIGKILL it after ``grace`` seconds, and wait up to 2 s more; ``True`` when no
+    member is left (a group already gone is success). Never the caller's own group. A signal goes only while ``ps``
+    lists a member (a gone group's id can be reused); ``confirmed``: the caller verified a member itself
+    (:func:`kill_group`), so the first signal needs no listing. Used by :func:`kill_group` and by the reviewer
+    runners (M22.16), whose reviewer runs in a session of its own."""
+    if pgid <= 1 or pgid == os.getpgrp():
+        return False
     for sig, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 2.0)):
+        if not (confirmed or _group_members(pgid)):
+            return True
+        confirmed = False
         try:
             os.killpg(pgid, sig)
         except ProcessLookupError:
-            return
+            return True
         except OSError as e:
             raise WorkerError(f"cannot signal process group {pgid}: {e}") from None
         deadline = time.monotonic() + wait
         while time.monotonic() < deadline:
             if not _group_members(pgid):
-                return
+                return True
             time.sleep(0.1)
-    if _group_members(pgid):
-        raise WorkerError(f"{rec.worker_id}: process group {pgid} is still alive after SIGKILL")
+    return not _group_members(pgid)
 
 
 def _process_table() -> list[tuple[int, int, int, str]] | None:

@@ -45,9 +45,11 @@ from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified
 from specy_road.worker_runner_ready import all_ready_fingerprints, fresh_ready
 from specy_road.worker_state import (
     FLAG_STALLED,
+    FLAG_UNDELIVERED,
     WorkerError,
     WorkerRecord,
     _now,
+    add_flag,
     append_event,
     events_path,
     events_since,
@@ -88,10 +90,11 @@ def deliver_queued_message(repo_root: Path, worker_id: str, *, offline: bool = F
         mutate(repo_root, rec, lambda r: setattr(r, "queued_message", None))
         try:
             return _send(repo_root, rec, text, "message", offline)
-        except WorkerError as e:
+        except Exception as e:
             rec = load_record(repo_root, worker_id)
-            if rec.state != "terminated":
+            if rec.state != "terminated":   # terminate already dropped the text; it does not gain the flag
                 mutate(repo_root, rec, lambda r: setattr(r, "queued_message", text))
+                add_flag(repo_root, rec, FLAG_UNDELIVERED)
             append_event(repo_root, rec, "error", source="system", summary=f"queued message not delivered: {e}")
             raise
 
@@ -418,8 +421,8 @@ def _exit_state(repo_root: Path, rec: WorkerRecord, state: str) -> None:
 def _deliver_queued(repo_root: Path, worker_id: str) -> None:
     try:
         deliver_queued_message(repo_root, worker_id)
-    except WorkerError:
-        pass   # the failure is on the record; the coordinator sees it on the next sync
+    except Exception:
+        pass   # recorded on the worker; the wrapper still exits with the turn's code
 
 
 def main(argv: list[str] | None = None) -> None:

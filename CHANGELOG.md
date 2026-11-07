@@ -14,6 +14,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- A worker turn that moves the local integration ref or its remote-tracking ref, including a ref that appears
+  or disappears, is a post-run finding naming the ref and its before and after values. A ref absent at both
+  ends stays clean. A failed read is a check error, not a clean turn. A turn that moves only its own branch
+  stays clean.
+
 - `worker_sandbox` in `roadmap/git-workflow.yaml` (`bwrap`, `auto` or `off`; omitted means `off`, so a project
   opts in) runs each unattended worker turn's harness in a read-only bubblewrap sandbox on Linux. Writable: the
   leaf's linked worktree and the git objects, refs and logs. Each harness state directory is replaced by the
@@ -28,6 +33,23 @@ body. Keep section bodies focused; link to PRs for detail.
 ### Fixed
 
 - `specy-road upgrade` copies tracked files, untracked files git does not ignore, and files the refreshes read into its temporary directory. Gitignored paths such as `.env` files, virtualenvs, `node_modules` and nested repositories are not copied, on a real run or `--dry-run`, including when a symlink points at them. A directory that cannot be searched is left out of that copy, on a real run or `--dry-run`. A global excludes file applies to that copy on both paths. An ignored `roadmap-context.md` that is already current is not reported as a rewrite. `--dry-run` prints a line before that copy and builds it once, then reuses it for the preview.
+- A sandboxed worker turn can read its leaf's review records. The `work/reviews/<ID>/` outbox now starts with a
+  copy of the regular files already there (REVIEW, notes and `history/` records; links are not copied), so a
+  fix round sees its blocking review. Only `READY-*` files are still moved back, so an edited copy of a record
+  never reaches the reviews directory. Cursor turns start under the sandbox again: `~/.cursor/sandbox-policies/`
+  is no longer read-only, because Cursor writes its policy file there on every start. It is now the worker's own
+  state.
+- Reviewer runs (rc4 re-test D15c, D17, D18). A refused answer's one-line reason names the first
+  offending line whole, then `(N more; full text in work/reviews/<ID>/REJECTED-<model>.md)`, for the
+  first refusal and for a repair turn's, instead of the last 400 characters cut mid-word. A
+  `review delegate` turn (first or repair) whose last attempt ended with a capacity error has the
+  capacity reason alone, with no `line N of the final turn is not one JSON object`. `review delegate`
+  and `prompt --channel cli --run` start the reviewer in its own process group and end that group
+  (SIGTERM, SIGKILL after 5 s) when the reviewer exits or the run is interrupted, so a background
+  child such as Cursor's `worker-server` no longer outlives the run. The prompt goes on stdin from a
+  thread inside that guard, so a reviewer that exits or is interrupted before reading it no longer
+  strands the run.
+- A queued worker message that cannot be delivered (a lease the remote rejects or cannot take, a harness that cannot resume, or a prompt file that cannot be written) stays on the record and the worker gains `message_undelivered`. The next `worker message` or `worker resume` sends that text, a blank line, then its own prompt, and clears both only after the turn starts. `terminate` drops the text and clears the flag. The wrapper's exit code is unchanged.
 - `set-dependencies --deps` and `edit-node --set dependencies=` accept a display id or a node_key
   (mixed in one value) and store the node_key. An unknown token is still refused with
   `dependency 'X' is neither a node id nor a node_key in the roadmap`.

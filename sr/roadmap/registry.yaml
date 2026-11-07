@@ -83,40 +83,117 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-run-summary-and-process-tree
-    node_id: M22.16
-    branch: feature/rm-reviewer-run-summary-and-process-tree
+  - codename: constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
+    node_id: M16.1.4
+    branch: feature/rm-constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
     touch_zones:
-      - specy_road/review_record_write.py
-      - specy_road/review_delegate.py
-      - specy_road/worker_process.py
-      - tests/test_review_run_lows_rc5.py
-      - docs/orchestration-reviewer-output.md
+      - constitution/purpose.md
+      - constitution/principles.md
+      - docs/philosophy-and-scope.md
+      - AGENTS.md
+      - docs/toolkit-development.md
+      - sr/constitution/purpose.md
+      - sr/constitution/principles.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: gui-orch-view-model
+    node_id: M17.2
+    branch: feature/rm-gui-orch-view-model
+    touch_zones:
+      - gui/pm-gantt/src/orchestrationSnapshot.ts
+      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
+      - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: gui-acceptance-editing
+    node_id: M17.11
+    branch: feature/rm-gui-acceptance-editing
+    touch_zones:
+      - gui/pm-gantt/src/components/EditModal.tsx
+      - gui/pm-gantt/src/editModalSaveQueue.ts
+      - gui/pm-gantt/src/editModalSaveQueue.test.ts
+      - gui/pm-gantt/src/acceptanceEdit.ts
+      - gui/pm-gantt/src/acceptanceEdit.test.ts
+      - gui/pm-gantt/src/types.ts
+      - gui/pm-gantt/src/api.ts
+      - gui/pm-gantt/src/App.css
+      - specy_road/pm_gantt_static/
+      - tests/test_gui_app_mutations.py
+      - docs/pm-gui.md
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: queued-message-undelivered
-    node_id: M22.6
-    branch: feature/rm-queued-message-undelivered
+  - codename: terminate-and-finish-rollback-robustness
+    node_id: M22.20
+    branch: feature/rm-terminate-and-finish-rollback-robustness
     touch_zones:
-      - specy_road/worker_runner.py
-      - specy_road/worker_ops_message.py
-      - specy_road/worker_ops_lifecycle.py
-      - specy_road/worker_state.py
-      - specy_road/schemas/worker-record.schema.json
-      - tests/test_worker_queue_message.py
+      - specy_road/worker_process.py
+      - specy_road/finish_bookkeeping_undo.py
+      - tests/test_worker_terminate_descendants.py
+      - tests/test_finish_config_preflight.py
+      - tests/test_finish_merge_failure_undo.py
       - docs/orchestration-workers.md
       - CHANGELOG.md
+      - specy_road/worker_state.py
+      - specy_road/schemas/worker-record.schema.json
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: integration-refs-stay-put-during-a-turn
-    node_id: M22.45
-    branch: feature/rm-integration-refs-stay-put-during-a-turn
+  - codename: parity-harness-a-review-gate-decision-table-covering-every-review-policy
+    node_id: M16.1.2
+    branch: feature/rm-parity-harness-a-review-gate-decision-table-covering-every-review-policy
     touch_zones:
-      - specy_road/worker_turn_check.py
-      - tests/test_worker_turn_check.py
+      - tests/parity/review_gate/
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: worker-cost-and-stale-presence
+    node_id: M22.13
+    branch: feature/rm-worker-cost-and-stale-presence
+    touch_zones:
+      - specy_road/session_presence.py
+      - specy_road/worker_ops_lifecycle.py
+      - tests/test_worker_usage_shell_cli.py
+      - tests/test_session_presence.py
+      - docs/orchestration-workers.md
+      - CHANGELOG.md
+      - specy_road/worker_adapter_base.py
+      - specy_road/bundled_scripts/session_cli.py
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: review-inputs-identity-and-unreadable
+    node_id: M22.19
+    branch: feature/rm-review-inputs-identity-and-unreadable
+    touch_zones:
+      - specy_road/review_eligible.py
+      - specy_road/review_gate.py
+      - specy_road/review_policy_pin.py
+      - specy_road/review_caller.py
+      - specy_road/worker_state.py
+      - specy_road/review_rejected.py
+      - specy_road/review_gate_ready.py
+      - specy_road/review_files.py
+      - tests/test_review_eligible.py
+      - tests/test_review_gate_ready_author.py
+      - tests/test_review_policy_pin.py
+      - tests/test_review_record_caller.py
+      - tests/test_review_file_case.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: cursor-starts-under-the-sandbox
+    node_id: M22.47
+    branch: feature/rm-cursor-starts-under-the-sandbox
+    touch_zones:
+      - specy_road/worker_sandbox.py
+      - tests/test_worker_sandbox.py
+      - docs/orchestration-workers.md
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil

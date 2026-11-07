@@ -1,0 +1,16 @@
+$ specy-road brainstorm decide --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm decide [-h] --decision TEXT [--slug SLUG] [--repo-root DIR] IDEA_ID
+
+positional arguments:
+  IDEA_ID
+
+options:
+  -h, --help       show this help message and exit
+  --decision TEXT  The decision, as it should read under the anchor sheet's `## Decided policies`.
+  --slug SLUG      Session name (default: the only open session; required when several are).
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---
