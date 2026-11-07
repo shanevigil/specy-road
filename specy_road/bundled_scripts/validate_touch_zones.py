@@ -182,13 +182,6 @@ def _sheet_rel(zone: str, prefix: str) -> tuple[str, str] | None:
     return None
 
 
-def _sheet_exists(project_root: Path, rel: str) -> bool:
-    try:
-        return (project_root / rel).exists()
-    except (ValueError, OSError):
-        return True  # cannot tell reads as present, as in _zone_matches
-
-
 def notice_stale_sheet_zones(
     nodes: list[dict], project_root: Path, *, git_root: Path | None = None
 ) -> None:
@@ -205,7 +198,7 @@ def notice_stale_sheet_zones(
         zones = node.get("touch_zones")
         for zone in zones if isinstance(zones, list) else []:
             found = _sheet_rel(zone.strip(), prefix) if isinstance(zone, str) else None
-            if found is None or _sheet_exists(project_root, found[0]):
+            if found is None or _zone_matches(project_root, found[0]):
                 continue
             rel, form = found
             nid = node.get("id", "?")

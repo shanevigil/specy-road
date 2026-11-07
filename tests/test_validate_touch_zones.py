@@ -18,7 +18,7 @@ from specy_road.bundled_scripts.validate_touch_zones import (
     notice_stale_sheet_zones,
     warn_touch_zones_match_nothing,
 )
-from tests.move_node_helpers import NK_A1, base_fixture, git, run_cli
+from tests.move_node_helpers import NK_A1, base_fixture, commit_project, git, run_cli
 
 
 def _node(**over) -> dict:
@@ -195,6 +195,8 @@ def test_a_not_started_node_naming_files_it_will_create_is_quiet(tmp_path: Path,
     nodes = [_node(status="Not Started", touch_zones=["src/feature/new_module.py"])]
 
     assert _warn(nodes, tmp_path, capsys) == ""
+    notice_stale_sheet_zones(nodes, tmp_path)   # not a planning sheet: no stale-sheet notice either
+    assert capsys.readouterr() == ("", "")
 
 
 def test_a_started_subtree_is_judged_by_its_rollup(tmp_path: Path, capsys) -> None:
@@ -257,18 +259,11 @@ def test_a_zone_naming_a_missing_planning_sheet_gets_a_stdout_notice(
     current = f"planning/M1.1_alpha-work_{NK_A1}.md"
     gone = f"planning/M9.9_old-name_{NK_A1}.md"
     (project / gone).write_text("# old\n", encoding="utf-8")
-    (project / "roadmap" / "git-workflow.yaml").write_text(
-        "version: 1\nintegration_branch: main\nremote: origin\n"
-        "require_implementation_review_before_finish: false\n",
-        encoding="utf-8",
-    )
     for doc in ("constitution/purpose.md", "constitution/principles.md", "docs/supply-chain-security.md"):
         (project / doc).parent.mkdir(exist_ok=True)
         (project / doc).write_text("# doc\n", encoding="utf-8")   # the AGENTS.md load order
-    git(top, "init", "-q", "-b", "main")
     assert run_cli(project, "refresh-stubs").returncode == 0  # no AGENTS.md warning under --strict
-    git(top, "add", "-A")
-    git(top, "commit", "-q", "-m", "init")
+    commit_project(top, project)
     if staged:
         git(top, "rm", "-q", f"sr/{gone}")
     else:
@@ -298,17 +293,6 @@ def test_a_zone_naming_a_missing_planning_sheet_gets_a_stdout_notice(
         assert r.returncode == 0, r.stderr
 
 
-def test_a_not_started_missing_non_sheet_zone_gets_no_new_notice(
-    tmp_path: Path, capsys
-) -> None:
-    nodes = [_node(status="Not Started", touch_zones=["src/feature/new_module.py"])]
-
-    warn_touch_zones_match_nothing(nodes, tmp_path)
-    notice_stale_sheet_zones(nodes, tmp_path)
-
-    out = capsys.readouterr()
-    assert out.out == ""
-    assert out.err == ""
 
 
 def test_a_project_directory_named_planning_reads_a_zone_as_project_form_first(

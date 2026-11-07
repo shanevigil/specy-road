@@ -109,6 +109,18 @@ def git(top: Path, *args: str) -> None:
     )
 
 
+def commit_project(top: Path, project: Path) -> None:
+    """Make ``top`` a git repo on ``main`` holding ``project``, review gate off, all committed."""
+    (project / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\n"
+        "require_implementation_review_before_finish: false\n",
+        encoding="utf-8",
+    )
+    git(top, "init", "-q", "-b", "main")
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-m", "init")
+
+
 def run_cli(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
     """Run a `specy-road` command through the real dispatcher, on ``tmp``."""
     return subprocess.run(

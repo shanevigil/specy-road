@@ -20,6 +20,7 @@ from tests.move_node_helpers import (
     NK_A24,
     NK_B4,
     ids_by_key,
+    commit_project,
     git,
     nodes_by_key,
     run_cli,
@@ -229,11 +230,6 @@ def test_a_move_rewrites_zones_naming_the_moved_sheet_in_both_forms(tmp_path: Pa
     """A zone naming the node's own sheet follows the rename, as does a docs/<old id>/ zone."""
     top, root = tmp_path, tmp_path / "sr"
     wide_fixture(root)
-    (root / "roadmap" / "git-workflow.yaml").write_text(
-        "version: 1\nintegration_branch: main\nremote: origin\n"
-        "require_implementation_review_before_finish: false\n",
-        encoding="utf-8",
-    )
     old = f"planning/M1.2.2_inner-two_{NK_A22}.md"
     set_zones(root, {"M1.2.2": [old, f"sr/{old}", "docs/M1.2.2/"]})
     registry = root / "roadmap" / "registry.yaml"
@@ -242,9 +238,7 @@ def test_a_move_rewrites_zones_naming_the_moved_sheet_in_both_forms(tmp_path: Pa
         if entry["codename"] == "inner-two":
             entry["touch_zones"] = [old, f"sr/{old}", "docs/M1.2.2/"]
     registry.write_text(yaml.dump(data, sort_keys=False), encoding="utf-8")
-    git(top, "init", "-q", "-b", "main")
-    git(top, "add", "-A")
-    git(top, "commit", "-q", "-m", "init")
+    commit_project(top, root)
 
     r = run_move_node(root, "--repo-root", str(root), "M1.2.2", "--to-parent", "M2")
     assert r.returncode == 0, r.stderr
