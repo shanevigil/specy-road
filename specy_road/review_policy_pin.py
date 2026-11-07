@@ -205,12 +205,15 @@ def acceptance_path(root: Path, node_id: str) -> Path:
 
 def read_acceptance(root: Path, node_id: str) -> tuple[dict[str, Any] | None, str | None]:
     """``(acceptance, None)``, ``(None, None)`` when there is none, or ``(None, why)`` when it is present but
-    unreadable or invalid (the module's one rule; a directory or a symlink in its place counts as present)."""
+    unreadable or invalid (the module's one rule; a directory or a symlink in its place, dangling or not, counts as
+    present). The presence check is inside the boundary: an unreadable parent is invalid, never absent."""
     path = acceptance_path(root, node_id)
-    if not path.exists() and not path.is_symlink():
-        return None, None
     try:
         with _unreadable_as(ACCEPTANCE_NAME):
+            try:
+                path.lstat()
+            except FileNotFoundError:
+                return None, None
             check_handoff_read(path)
             data = yaml.safe_load(path.read_bytes().decode("utf-8"))
             schema = json.loads(_SCHEMA.read_text(encoding="utf-8"))

@@ -149,3 +149,34 @@ def test_delegate_refuses_a_ready_author_and_writes_nothing(tmp_path: Path, caps
     assert "opus wrote READY-opus.md on M1.1" in capsys.readouterr().err
     assert sorted(p.name for p in reviews_dir(repo, "M1.1").rglob("*")) == before
     assert not spec.with_name("calls.json").exists()   # no harness started
+
+
+ALIASED = TWO_FAMILIES.replace("{id: opus, family: anthropic, roles: [reviewer]}",
+                               "{id: opus, family: anthropic, roles: [reviewer], harness_model: claude-opus-x}")
+
+
+@pytest.mark.parametrize(("agent", "model"), [("Opus", "opus"), ("opus", "OPUS"),
+                                              ("claude-opus-x", "opus"), ("opus", "Claude-Opus-X")])
+def test_ready_author_and_record_model_are_compared_after_case_folding_and_roster_aliases(
+        tmp_path: Path, agent: str, model: str) -> None:
+    """M22.19: a case variant or roster alias on either side still excludes the executor; others still count."""
+    repo = make_review_repo(tmp_path, orchestration=ALIASED)
+    _ready(repo, agent)
+    _review(repo, model)
+    _review(repo, "sonnet")
+    _review(repo, "sol")
+    g = _gate(repo)
+    assert _why(g, model) == [f"{model} wrote READY-{agent}.md on this leaf; the executor never reviews its own leaf"]
+    assert g.passed and {a.model for a in g.approvals} == {"sonnet", "sol"}
+
+
+def test_a_ready_author_two_roster_entries_answer_to_closes_the_gate(tmp_path: Path) -> None:
+    roster = ALIASED.replace("{id: sonnet, family: anthropic, roles: [reviewer]}",
+                             "{id: sonnet, family: anthropic, roles: [reviewer], harness_model: claude-opus-x}")
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    _ready(repo, "claude-opus-x")
+    _review(repo, "sonnet")
+    _review(repo, "sol")
+    g = _gate(repo)
+    assert not g.passed and g.approval_count == 2
+    assert any("'claude-opus-x' names more than one roster entry (opus, sonnet)" in p for p in g.problems())

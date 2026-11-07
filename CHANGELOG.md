@@ -32,6 +32,15 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- The review gate compares READY authors and review-record models after one normalization: case-folded, and a
+  roster `harness_model` or profile alias mapped to the roster id. A READY naming `Opus` or the executor's alias
+  still excludes the executor's own review. A name two roster entries answer to, or a READY that is not valid
+  UTF-8, closes the gate with a problem naming it (no traceback). An unreadable parent of `POLICY-ACCEPTED.yaml`,
+  or a dangling link there, is an invalid acceptance, not a traceback. `review record` refuses a FIFO or other
+  non-regular worker record at once instead of hanging. `REJECTED-<model>.md` and `REVIEW-human.md` replace a
+  case-variant name (`rejected-opus.md`, `review-human.md`), and unreadable `REJECTED` markers are listed in any
+  case.
+
 - A sandboxed worker turn can read its leaf's review records. The `work/reviews/<ID>/` outbox now starts with a
   copy of the regular files already there (REVIEW, notes and `history/` records; links are not copied), so a
   fix round sees its blocking review. Only `READY-*` files are still moved back, so an edited copy of a record

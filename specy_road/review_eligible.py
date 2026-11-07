@@ -7,7 +7,9 @@ READY files as ``review_rca.rca_parties`` does:
 
 * not a reviewer role — no ``reviewer`` role and no active substitution covering the node;
 * the node's sensitivity is outside its roster ``may_process``;
-* executor of the leaf — it filed a READY before any valid review of its own on the leaf;
+* executor of the leaf — it filed a READY before any valid review of its own on the leaf (READY authors and record
+  models are compared after :class:`Identity`: case-folded, a roster ``harness_model`` or profile name mapped to
+  the roster ``id``; a name two roster entries answer to closes the gate);
 * wrote a fix commit on this leaf — it filed a READY after reviewing the leaf;
 * rejected record — its record at this commit is invalid or does not count, with the gate's reason;
 * same family as an approval already counted, under ``reviewers_distinct_families`` (not when its approval would
@@ -37,25 +39,63 @@ from specy_road.orchestrate_plan import (
     unavailability_reason,
 )
 from specy_road.orchestration_config import is_rostered_reviewer, substitute_for
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import HUMAN, ReviewFile, list_ready, list_review_history, list_reviews
 from specy_road.review_strong import item_label
 from specy_road.review_target import same_commit
 
 
-def writers(repo_root: Path, node_id: str, branch: str | None) -> dict[str, tuple[str, str]]:
+class Identity:
+    """One normalization for READY authors and review-record models: case-folded, then an exact roster ``id`` wins,
+    else a roster ``harness_model`` or a pinned profile's ``api_id``, file name or alias maps to the roster ``id``.
+    A name two or more entries answer to is ambiguous: it stays case-folded and :attr:`problems` names the entries
+    (:func:`writers` adds an unreadable READY there too: both close the gate)."""
+
+    def __init__(self, repo_root: Path, config: dict[str, Any] | None = None) -> None:
+        config = pinned_config(repo_root)[0] if config is None else config
+        self.ids: dict[str, set[str]] = {}
+        self.aliases: dict[str, set[str]] = {}
+        self.problems: list[str] = []
+        for entry in config.get("roster") or []:
+            rid = str(entry.get("id"))
+            self.ids.setdefault(rid.casefold(), set()).add(rid)
+            prof = pinned_profile_for_entry(repo_root, entry)
+            names = [entry.get("harness_model")]
+            if prof is not None and prof.ok:
+                aliases = prof.data.get("aliases")
+                names += [prof.api_id, prof.path.stem, *(aliases if isinstance(aliases, list) else [])]
+            for name in filter(None, names):
+                self.aliases.setdefault(str(name).casefold(), set()).add(rid)
+
+    def __call__(self, name: object) -> str:
+        key = str(name).casefold()
+        ids = self.ids.get(key) or self.aliases.get(key) or set()
+        if len(ids) > 1:
+            why = (f"{name!r} names more than one roster entry ({', '.join(sorted(ids))}); "
+                   "READY authorship cannot be decided: name the roster id")
+            self.problems += [] if why in self.problems else [why]
+        return next(iter(ids)) if len(ids) == 1 else key
+
+
+def writers(repo_root: Path, node_id: str, branch: str | None,
+            identity: Identity | None = None) -> dict[str, tuple[str, str]]:
     """Model -> (its READY file's name, why it wrote part of the change) for every model that filed a valid READY
     on the leaf; the gate (:func:`specy_road.review_gate.evaluate_gate`) never counts their records and
     ``review delegate`` refuses them. A READY written after the model's first valid review on the leaf
     is a fix; any other READY is the executor's (an executor that also files an approval stays the executor).
-    Filing times are file mtimes: ``history/`` copies are written once. A self-review (``authored_fix``) is invalid."""
+    Filing times are file mtimes: ``history/`` copies are written once. A self-review (``authored_fix``) is invalid.
+    Keys and models are compared after ``identity`` (:class:`Identity` over the pinned roster when omitted)."""
+    ident = identity or Identity(repo_root)
     first: dict[str, float] = {}
     for r in list_review_history(repo_root, node_id) + list_reviews(repo_root, node_id):
         if r.ok and (r.on_disk or r.path).is_file():
-            t = (r.on_disk or r.path).stat().st_mtime
-            first[r.data["model"]] = min(t, first.get(r.data["model"], t))
+            t, model = (r.on_disk or r.path).stat().st_mtime, ident(r.data["model"])
+            first[model] = min(t, first.get(model, t))
     out: dict[str, tuple[str, str]] = {}
     for r in list_ready(repo_root, node_id, branch):
-        agent = str(r.data.get("agent")) if r.ok else None
+        if r.errors[:1] and r.errors[0].startswith("cannot read:"):   # its author is unknown: never ignore it
+            ident.problems.append(f"{r.path.name} is unreadable ({r.errors[0]}); its author cannot be excluded")
+        agent = ident(r.data.get("agent")) if r.ok else None
         if agent and agent not in out:
             fix = agent in first and r.path.stat().st_mtime > first[agent]
             out[agent] = (r.path.name, f"wrote a fix commit on this leaf ({r.path.name})" if fix
@@ -64,16 +104,21 @@ def writers(repo_root: Path, node_id: str, branch: str | None) -> dict[str, tupl
 
 
 def reviews_to_judge(repo_root: Path, node: dict[str, Any], branch: str | None,
-                     ineligible: list[tuple[ReviewFile, str]]) -> list[ReviewFile]:
+                     ineligible: list[tuple[ReviewFile, str]], config: dict[str, Any] | None = None,
+                     problems: list[str] | None = None) -> list[ReviewFile]:
     """The node's review records the gate judges: a record whose model is one of :func:`writers` goes to
-    ``ineligible`` instead, whatever its validity, ``authored_fix``, verdict or signature (rc4 defect D3)."""
-    authors, out = writers(repo_root, node["id"], branch), []
+    ``ineligible`` instead, whatever its validity, ``authored_fix``, verdict or signature (rc4 defect D3).
+    Names are compared after :class:`Identity` over ``config``; an ambiguous name is added to ``problems``."""
+    ident = Identity(repo_root, config)
+    authors, out = writers(repo_root, node["id"], branch, ident), []
     for r in list_reviews(repo_root, node["id"], acceptance_ids(node)):
-        if (model := str(r.data.get("model"))) in authors:
-            ineligible.append((r, f"{model} wrote {authors[model][0]} on this leaf; "
+        if (key := ident((model := str(r.data.get("model"))))) in authors:
+            ineligible.append((r, f"{model} wrote {authors[key][0]} on this leaf; "
                                   "the executor never reviews its own leaf"))
         else:
             out.append(r)
+    if problems is not None:
+        problems += ident.problems
     return out
 
 
@@ -131,7 +176,8 @@ def reviewer_eligibility(repo_root: Path, node: dict[str, Any], gate: Any, branc
     """One row per roster entry while the gate is not met: ``model``, ``family``, ``eligible`` and ``reason``."""
     if gate.passed or gate.config_error or gate.commit is None:
         return []
-    config, authors, rejected = gate.config, writers(repo_root, node["id"], branch), _rejected(repo_root, gate)
+    config, rejected = gate.config, _rejected(repo_root, gate)
+    authors = writers(repo_root, node["id"], branch, Identity(repo_root, config))
     counting = {a.model for a in gate.approvals}
     rows = []
     for entry in config["roster"]:

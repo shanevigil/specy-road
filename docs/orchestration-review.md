@@ -27,6 +27,8 @@ The newest valid `READY-<agent>.md` for the node's registered branch lists verif
 
 The same READY file may declare optional `blocked_on`: a list of `{acceptance, reason}` naming acceptance ids (`A1`…`An` from the brief) the executor could not meet without deleting, skipping or weakening an existing test, or raising a baseline or cap. While that READY is current at the commit under review, `handoff status` reports `executor_blocked` (ahead of `blocked` and `escalated`, whose records and problems stay listed), prints one line per entry as `A<n>: <reason>`, and the gate stays unmet until the coordinator resolves the block (for example by amending the leaf on the integration branch) and the executor hands off again without `blocked_on`. A `blocked_on` on a READY for an earlier commit does not bind later commits; they are judged on their own records.
 
+A model that wrote a READY on the leaf never counts as its reviewer. READY `agent` values and review-record `model` values are compared after one normalization: case-folded, then an exact roster `id`, else a roster `harness_model` or the pinned profile's `api_id`, file name or alias, maps to that roster `id`. So `READY-Opus.md`, or a READY naming the executor's `harness_model`, still excludes the executor's review. A name that two roster entries answer to closes the gate with a problem naming both; name the roster id instead. A READY that cannot be read (not UTF-8, for example) closes the gate with a problem naming the file, since its author cannot be excluded. Authorship itself stays honour-system.
+
 The gate passes when no counted review blocks and the counted approvals reach
 `reviewers_required` (by distinct family when configured), and every
 `policy.strong_review` item the leaf's touch zones meet has a counted approval
@@ -83,7 +85,8 @@ leaf whose pin still matches is not listed and gets no file. It needs a
 terminal, the same as one node. An
 acceptance counts only for its node and the two digests it names, so a later
 change needs a new one; an invalid file is a gate problem, never an
-acceptance. A trailer that does not parse is a gate problem; a registration
+acceptance. So is a dangling `POLICY-ACCEPTED.yaml` link or a parent directory
+that cannot be read. A trailer that does not parse is a gate problem; a registration
 commit with no trailer (a claim made before this rule) is judged as before.
 
 Like READY files, the pin and the acceptance are honour-system: an agent set on
@@ -228,7 +231,8 @@ coordinator that can satisfy the gate alone is no gate.
 writes anything, it identifies the caller from the environment, never from anything the caller types:
 
 - **A worker.** `SPECY_ROAD_WORKER_ID` set (specy-road sets it for the harness it launches) must name a readable
-  worker record; one that cannot be read, decoded, parsed or validated exits 1 with no traceback. The record's model must be `M`; it wins over any harness marker the worker inherited.
+  worker record; one that cannot be read, decoded, parsed or validated exits 1 with no traceback. The record is
+  opened without blocking, so a FIFO or other non-regular file there is refused at once. The record's model must be `M`; it wins over any harness marker the worker inherited.
 - **A harness.** Exactly one of these markers, confirmed against the harness versions of the 2026-11-05 replay:
   Claude Code `CLAUDECODE=1` (2.1.318), Codex `CODEX_THREAD_ID` set (codex-cli 0.166.0), Cursor `CURSOR_AGENT=1`
   (agent 2026.11.05). `M`'s roster entry must run on that `harness`; an entry with no `harness`, or `generic`,
