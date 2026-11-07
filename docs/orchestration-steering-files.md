@@ -14,7 +14,11 @@ the same bytes. A checkout's `.git` is recorded the same way, by the gitdir and 
 | `git_hook` | the hooks directories: `core.hooksPath` when set (each value read from the config files below, relative to the checkout), else `<common-git-dir>/hooks` and `<worktree-gitdir>/hooks`. A value that only an `includeIf` names may not apply (its condition is not evaluated), so with no other value the default directories are watched as well. An empty `core.hooksPath` is a value that names no directory: it turns the defaults off, as in git, which then runs no hook from the git dir or the checkout (git 2.43 looks for `/<hook>`, which only root can write, and is not watched); direct entries only, not recursive: each regular file (a link followed) by name with its sha256, a subdirectory skipped. A hooks directory with more than 200 direct children is one `check_error` naming that directory on every comparison, changed or not (the listing stops reading after 201 entries) |
 | `git_config` | the bytes of the common `config` and `config.worktree` and every file they name by `include.path` or `includeIf.*.path` as `specy_road/git_config_text.py` reads them (conditions not evaluated, git's depth of 10). The finding also names the changed values of `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.path` and `includeIf.*.path` |
 
-Both are read from the filesystem only, at the turn's start and at its end; no git command is run for them.
+Both are read from the filesystem only, at the turn's start and at its end; no git command is run for them. Neither checkout is searched
+for: the worker's is the worktree its record names, and the main checkout is the one its common git dir belongs to
+(`<main checkout>/.git`), so a missing `.git` cannot make the turn read the checkout that holds the worktree. The
+turn takes this snapshot before its first git command; with no snapshot from the turn's start, no git command runs
+in that turn.
 
 **After each turn** the post-run check compares this snapshot before any post-turn git command: on a change it
 records the finding and a `git_probes_skipped` finding and runs none of the git probes, so `git status` never runs
@@ -34,7 +38,7 @@ the turn still ends with exactly one `post_run_check`.
 **An input that cannot be read.** One rule covers both classes: each file and directory is listed, read, decoded,
 parsed and hashed on its own, and any failure there (a permission error, a special file such as a FIFO, which is
 never opened for a blocking read, a dangling link or a link loop, a parsed file over 8 MiB, a file gone mid-read,
-the snapshot past its 30 s budget, a hooks directory over 200 entries) is one `check_error` finding naming that path and
+the snapshot past its 30 s budget, checked before and after each step, so a slow last step is a timeout too, a hooks directory over 200 entries) is one `check_error` finding naming that path and
 its class. What that path lists or includes is not compared at that end: a hook of an unreadable or over-cap hooks
 directory, or a file an unreadable config includes, is not reported as `absent`, since that end could not see it.
 The same holds for a hooks directory the config no longer names: its hooks are not reported, the config change is. The comparison goes

@@ -113,15 +113,38 @@ def test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_read
     assert "git_probes_skipped" in {f["kind"] for f in found}
 
 
-@pytest.mark.parametrize("snapshot", ["taken", "unavailable", "include_created", "include_link_created"])
+class _Clock:
+    """``time`` for the steering snapshot: still until call ``jump_at``, then past any deadline (counts its calls)."""
+    def __init__(self, jump_at: int | None = None) -> None:
+        self.calls, self.jump_at = 0, jump_at
+
+    def monotonic(self) -> float:
+        self.calls += 1
+        return 1000.0 if self.jump_at is not None and self.calls >= self.jump_at else 0.0
+
+
+@pytest.mark.parametrize("snapshot", ["taken", "unavailable", "include_created", "include_link_created",
+                                      "dotgit_missing_nested", "deadline_passed_in_final_operation"])
 def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, snapshot: str) -> None:
     """With no steering snapshot from the turn's start (whatever failed), the check fails closed: no git probe. An
     include the unchanged config already names, missing at the start and created by the turn (as a file, or as a
-    link to a file holding the value), is a change too."""
+    link to a file holding the value), is a change too. A worktree inside the main checkout whose ``.git`` is missing
+    at the start is not read as that checkout: no snapshot, no git command. A deadline passed during the snapshot's
+    final operation is a check_error naming the checkout it was reading, not a clean snapshot."""
     p = _layout(tmp_path)
     sentinel = tmp_path / "fsmonitor-ran"
-    rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
+    wt = p["leaf"]
+    if snapshot == "dotgit_missing_nested":
+        wt = p["repo"] / "work" / ".worktrees" / "nested"
+        git(p["repo"], "worktree", "add", "-q", "-b", "feature/rm-nested", str(wt), "dev")
+        (wt / ".git").unlink()
+    rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", wt, branch="feature/rm-thing")
+    if snapshot == "deadline_passed_in_final_operation":   # a clean turn's count of clock reads, then the same turn
+        dry = _Clock()
+        monkeypatch.setattr(steering_paths, "time", dry)
+        assert _turn(p["repo"], rec, _noop) == []
+        monkeypatch.setattr(steering_paths, "time", _Clock(jump_at=dry.calls))   # the end snapshot's last read
     if snapshot == "unavailable":
         def fail(_scope):
             raise OSError("the snapshot could not be taken")
@@ -135,21 +158,25 @@ def test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it(
         act = lambda: (made.write_text(f"[core]\n\tfsmonitor = touch {sentinel}\n"),  # noqa: E731
                        made == target and included.symlink_to(target))
     else:
-        act = lambda: git(p["leaf"], "config", "core.fsmonitor", f"touch {sentinel}")  # noqa: E731
+        act = lambda: git(wt, "config", "core.fsmonitor", f"touch {sentinel}")  # noqa: E731
     found = _turn(p["repo"], rec, act)
     assert not sentinel.exists()
-    if snapshot == "unavailable":   # one check_error per class naming the worktree, and the probes skipped
+    if snapshot in ("unavailable", "dotgit_missing_nested"):   # a check_error per class naming the worktree, probes skipped
         errors = [f for f in found if f["kind"] == "check_error"]
         assert sorted(e["class"] for e in errors) == ["git_config", "git_hook"]
-        assert {e["path"] for e in errors} == {str(p["leaf"])}
+        assert {e["path"] for e in errors} == {str(wt.resolve())}
         assert [f["kind"] for f in found if f["kind"] != "check_error"] == ["git_probes_skipped"]
+    elif snapshot == "deadline_passed_in_final_operation":   # the main checkout, read last, is not verified
+        [error] = [f for f in found if f["kind"] == "check_error"]
+        assert error["path"] == str(p["repo"] / ".git") and error["class"] == "git_config"
+        assert "TimeoutError" in error["error"] and "git_probes_skipped" in {f["kind"] for f in found}
     else:
         [steer] = [f for f in found if f["kind"] == "steering_file"]
         assert steer["class"] == "git_config"
         assert steer["path"] == str(real_path(included)) if snapshot != "taken" else steer["path"].endswith("/.git/config")
         assert "core.fsmonitor=unset" in steer["before"] and f"core.fsmonitor=touch {sentinel}" in steer["after"]
         assert "git_probes_skipped" in {f["kind"] for f in found}
-    subprocess.run(["git", "status"], cwd=p["leaf"], capture_output=True, check=False)
+    subprocess.run(["git", "status"], cwd=wt, capture_output=True, check=False)
     assert sentinel.exists()   # the scenario is real: the probe the check skipped would have run it
 
 
@@ -367,7 +394,7 @@ def _unresolvable(kind: str) -> Callable[[dict[str, Path]], tuple[Callable[[], N
             (leaf / ".git").write_text(f"gitdir: {p['tmp'] / 'nowhere'}\n")
         else:
             (gitdir / "commondir").write_text(f"{p['tmp'] / 'nowhere'}\n")
-        return _noop, {("check_error", leaf / ".git")}
+        return _noop, {("check_error", leaf)}   # no snapshot from the turn's start: one per class, naming the worktree
     return row
 
 
@@ -393,7 +420,8 @@ def test_a_container_one_end_could_not_list_is_its_one_finding_and_one_file_is_o
     act, expected = CONTAINER_ROWS[name](p)
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
     found = _turn(p["repo"], rec, act)
-    shown = {(k, path.relative_to(p["leaf"]).as_posix() if path.is_relative_to(p["leaf"]) else os.path.abspath(path))
+    shown = {(k, path.relative_to(p["leaf"]).as_posix() if path != p["leaf"] and path.is_relative_to(p["leaf"])
+              else os.path.abspath(path))
              for k, path in expected}   # as findings name them: worktree paths project-relative
     assert {(f["kind"], f["path"]) for f in found if "path" in f} == shown
     assert ("git_probes_skipped" in {f["kind"] for f in found}) is bool(expected)

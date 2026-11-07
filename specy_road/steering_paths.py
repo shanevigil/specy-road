@@ -41,7 +41,7 @@ from pathlib import Path
 
 from specy_road.git_config_text import read_chain, watched_values
 from specy_road.runtime_paths import prefix_within
-from specy_road.worktree_env import git_top, main_project_root
+from specy_road.worktree_env import main_project_root
 
 #: The sticky worker flag a ``steering_file`` finding sets; only ``worker reconcile`` (without ``--dismiss``) clears it.
 FLAG_STEERING = "steering_changed"
@@ -180,18 +180,26 @@ def _error(e: BaseException) -> str:
 
 
 def scope_for(repo_root: Path, worktree: Path) -> Scope:
-    """The worker's scope, taken at the turn's start from the filesystem (no git command)."""
-    m_root = resolved_path(main_project_root(Path(repo_root)))
-    m_top, w_top = git_top(m_root), git_top(Path(worktree))
-    return Scope(prefix_within(m_top, m_root), w_top, m_top)
+    """The worker's scope, taken at the turn's start from the filesystem (no git command). Neither checkout is
+    searched for (a missing ``.git`` must not select a checkout holding it): the worker's is the ``worktree`` its
+    record names, and the main checkout is the one its common git dir belongs to (``<main checkout>/.git``). Raises
+    when that cannot be read, so the turn has no snapshot and fails closed."""
+    w_top = resolved_path(Path(worktree))
+    common = _gitdirs(w_top)[1]
+    if common.name != ".git":
+        raise ValueError(f"common git dir {common} is not a checkout's .git")
+    m_top = common.parent
+    return Scope(prefix_within(m_top, resolved_path(main_project_root(Path(repo_root)))), w_top, m_top)
 
 
 def guarded(snap: Snapshot, scope: Scope, path: Path, cls: str, step: Callable[[], None]) -> None:
-    """Run one per-file or per-directory ``step``; any exception records ``path`` as unreadable for ``cls``
-    (the module's one rule) and the snapshot goes on."""
+    """Run one per-file or per-directory ``step``, which must start and finish within the snapshot's time budget;
+    any exception, or a step that ends past the budget, records ``path`` as unreadable for ``cls`` (the module's one
+    rule) and the snapshot goes on. Every read runs inside a step, so a snapshot that returns ended in time."""
     try:
         _in_time()
         step()
+        _in_time()
     except Exception as e:  # noqa: BLE001 — one rule: an unreadable input is reported, never fatal
         unreadable(snap, scope, path, cls, e)
 

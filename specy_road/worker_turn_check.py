@@ -160,13 +160,14 @@ class TurnWatch:
 
     def __init__(self, repo_root: Path, rec: WorkerRecord, *, now: Callable[[], datetime] = _utcnow) -> None:
         self.repo_root, self.rec, self.now = repo_root, rec, now
-        self.before = git_state(Path(rec.worktree))
         self.steering: SteeringWatch | None = None
         self.steering_error: str | None = None
-        try:   # the git-steering snapshot (M22.5); a failure is a finding, never a lost turn
+        try:   # the git-steering snapshot (M22.5) first; a failure is a finding, never a lost turn
             self.steering = SteeringWatch(repo_root, Path(rec.worktree))
         except Exception as e:  # noqa: BLE001
             self.steering_error = str(e)
+        # No git command in a turn whose git steering could not be read: its check skips the probes anyway.
+        self.before = git_state(Path(rec.worktree)) if self.steering else None
         self.proc: subprocess.Popen | None = None   # the harness, once started: what the watchdog stops
         self.denials: list[str] = []
         self.failed: str | None = None   # the last error no completed turn followed: the turn failed
