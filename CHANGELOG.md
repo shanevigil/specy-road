@@ -14,6 +14,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- A worker turn that moves the local integration ref or its remote-tracking ref, including a ref that appears
+  or disappears, is a post-run finding naming the ref and its before and after values. A ref absent at both
+  ends stays clean. A failed read is a check error, not a clean turn. A turn that moves only its own branch
+  stays clean.
+
 - `worker_sandbox` in `roadmap/git-workflow.yaml` (`bwrap`, `auto` or `off`; omitted means `off`, so a project
   opts in) runs each unattended worker turn's harness in a read-only bubblewrap sandbox on Linux. Writable: the
   leaf's linked worktree and the git objects, refs and logs. Each harness state directory is replaced by the

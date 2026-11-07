@@ -111,16 +111,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: integration-refs-stay-put-during-a-turn
-    node_id: M22.45
-    branch: feature/rm-integration-refs-stay-put-during-a-turn
-    touch_zones:
-      - specy_road/worker_turn_check.py
-      - tests/test_worker_turn_check.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
     node_id: M16.1.1
     branch: feature/rm-parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
