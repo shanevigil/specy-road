@@ -378,7 +378,7 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.39_ops-writers-refuse-links_f6a94a57-91ff-449b-997e-af12dedd41ee.md",
       "sibling_order": 37,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path",
       "touch_zones": [
         "specy_road/pm_publish.py",

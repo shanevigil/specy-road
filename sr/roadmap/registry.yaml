@@ -86,64 +86,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: ops-writers-refuse-links
-    node_id: M21.39
-    branch: feature/rm-ops-writers-refuse-links
-    touch_zones:
-      - specy_road/pm_publish.py
-      - specy_road/finish_land_deterministic.py
-      - specy_road/finish_bookkeeping_undo.py
-      - specy_road/finish_work_artifacts.py
-      - specy_road/history_cache.py
-      - specy_road/on_complete_pickup.py
-      - specy_road/bundled_scripts/brainstorm_session.py
-      - tests/test_ops_writers_refuse_links.py
-      - tests/test_pm_publish.py
-      - tests/test_finish_config_preflight.py
-      - docs/dev-workflow.md
-      - CHANGELOG.md
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: pending
-  - codename: ready-changelog-reminder
-    node_id: M22.7
-    branch: feature/rm-ready-changelog-reminder
-    touch_zones:
-      - specy_road/changelog_check.py
-      - specy_road/review_ready_merge.py
-      - tests/test_ready_changelog_warning.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: pending
-  - codename: verify-tells-a-blocking-404
-    node_id: M22.17
-    branch: feature/rm-verify-tells-a-blocking-404
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_verify.py
-      - tests/test_brainstorm_verify.py
-      - docs/brainstorming.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: sandbox-rc4-final-polish
-    node_id: M22.22
-    branch: feature/rm-sandbox-rc4-final-polish
-    touch_zones:
-      - gui/pm-gantt/src/components/MarkdownWorkspace.tsx
-      - gui/pm-gantt/src/components/ModalFrame.tsx
-      - gui/pm-gantt/src/components/EditModal.tsx
-      - gui/pm-gantt/src/components/PublishRoadmapModal.tsx
-      - gui/pm-gantt/src/planningSectionUtils.ts
-      - gui/pm-gantt/src/planningSectionUtils.test.ts
-      - gui/pm-gantt/src/markdownWorkspace.test.ts
-      - specy_road/pm_gantt_static/
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: move-rewrites-sheet-zones
     node_id: M22.2
     branch: feature/rm-move-rewrites-sheet-zones
@@ -172,6 +114,7 @@ entries:
       - tests/test_brainstorm_promote_judgement.py
       - CHANGELOG.md
       - tests/test_scaffold_planning.py
+      - tests/test_author_approach.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -187,34 +130,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: local-roster-and-codex-reviewer-isolation
-    node_id: M22.9
-    branch: feature/rm-local-roster-and-codex-reviewer-isolation
-    touch_zones:
-      - specy_road/roster_local.py
-      - specy_road/worker_adapter_codex.py
-      - tests/test_roster_worktree_dry_run.py
-      - tests/test_harness_launch.py
-      - docs/orchestration-roster.md
-      - docs/orchestration-reviewer-output.md
-      - CHANGELOG.md
-      - specy_road/review_record_write.py
-      - tests/test_review_record_write.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: accept-policy-for-all-open-claims
-    node_id: M22.34
-    branch: feature/rm-accept-policy-for-all-open-claims
-    touch_zones:
-      - specy_road/review_policy_pin.py
-      - specy_road/bundled_scripts/review_cli.py
-      - docs/orchestration-review.md
-      - tests/test_review_policy_pin.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: rc-publishes-wheel-url-and-project-urls
     node_id: M22.36
     branch: feature/rm-rc-publishes-wheel-url-and-project-urls
@@ -224,6 +139,7 @@ entries:
       - README.md
       - docs/install-release-candidates.md
       - CHANGELOG.md
+      - tests/test_release_harness.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -247,6 +163,73 @@ entries:
     touch_zones:
       - specy_road/bundled_scripts/doctor.py
       - tests/test_doctor.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: guidance-exclusion-closes-three-bypasses
+    node_id: M22.24
+    branch: feature/rm-guidance-exclusion-closes-three-bypasses
+    touch_zones:
+      - specy_road/orchestrate_assign.py
+      - specy_road/orchestration_pinned.py
+      - tests/test_guidance_bypass_roles.py
+      - docs/orchestration-roster.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: deps-ids-briefs-and-landed-branch
+    node_id: M22.14
+    branch: feature/rm-deps-ids-briefs-and-landed-branch
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_edit_fields.py
+      - specy_road/bundled_scripts/roadmap_crud_argparse.py
+      - specy_road/cli_usage.py
+      - tests/test_roadmap_crud_dependencies.py
+      - specy_road/finish_work_artifacts.py
+      - specy_road/bundled_scripts/abort_task_pickup.py
+      - tests/test_finish_work_cleanup.py
+      - tests/test_abort_task_pickup.py
+      - specy_road/bundled_scripts/finish_task.py
+      - tests/test_finish_merge_mode.py
+      - docs/git-workflow.md
+      - CHANGELOG.md
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - tests/test_gui_app_routes_nodes_errors.py
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: review-writers-refuse-links
+    node_id: M21.38
+    branch: feature/rm-review-writers-refuse-links
+    touch_zones:
+      - specy_road/review_lock.py
+      - specy_road/review_policy_pin.py
+      - specy_road/review_gate_ready.py
+      - specy_road/review_rejected.py
+      - specy_road/review_files.py
+      - specy_road/review_delegate.py
+      - specy_road/review_delegate_packet.py
+      - specy_road/review_write_check.py
+      - specy_road/managed_block.py
+      - tests/test_review_writers_refuse_links.py
+      - tests/test_writers_refuse_links_out.py
+      - tests/test_review_concurrent_writers.py
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/mark_implementation_reviewed.py
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: cursor-display-names-match-the-model
+    node_id: M22.40
+    branch: feature/rm-cursor-display-names-match-the-model
+    touch_zones:
+      - specy_road/model_names.py
+      - tests/test_model_names.py
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil

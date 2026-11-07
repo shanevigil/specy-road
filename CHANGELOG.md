@@ -17,12 +17,28 @@ body. Keep section bodies focused; link to PRs for detail.
   remote. The report calls that row advisory and says what to check: another clone's claim looks
   the same until it pushes its branch, so confirm that clone no longer holds the claim, then
   `specy-road registry-prune --remove <CODENAME>`. A row whose leaf is Complete is still removed.
+- PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
+  list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the
+  other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
+  also with focus in the editor. The Markdown editor configures its link extension once, so opening an edit dialog
+  no longer logs `[tiptap warn]: Duplicate extension names found: ['link']`.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.
 - `specy-road export --check` reports a stale `roadmap.md` as
   `drift: <path> no longer matches the roadmap. Run: specy-road export` and exits 1. The gitignore
   hint follows on the next line.
+- A local `roster_add` entry with a non-empty `preflight`, `channels.cli_resume` or `harness_bin`, or with
+  `cursor_force: true`, is refused unless that file sets `allow_local_cli: true`, naming the field in the same
+  message as `channels.cli`. Committed roster entries are unchanged.
+- A Codex reviewer passes the memory-off switches and an isolated `CODEX_HOME` (the profile home on a fresh turn,
+  the session's home on resume) for both `review delegate` and `prompt --channel cli --run`. A resumed turn still
+  passes `-m`. Claude and Cursor reviewers are unchanged.
+- `brainstorm verify` records `blocked`, not `not-found`, when a page returns 404 or 410 and that origin's root
+  is not 200 or cannot be fetched — a host that answers verify with 404 at its root is refusing the check. A root
+  of 200 keeps `not-found`. The root (https, the page's host as a URL spells it, an IPv6 literal in brackets,
+  effective port, path `/`) is requested once per origin per run, with the same public-https, redirect and size
+  rules, and a 200 page makes no extra request.
 - `group-nodes --into-new NEW_ID` (and `POST /api/outline/group`) accepts a `NEW_ID` that one of the listed nodes
   holds, as in `group-nodes M1.1 M1.2 M1.3 --into-new M1.2`: that node leaves the id in the same transaction, so a
   regroup into the ids the flat nodes occupy no longer needs a temporary id and a second `move-node --id`. An id held by
@@ -58,6 +74,17 @@ body. Keep section bodies focused; link to PRs for detail.
   in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
   is now refused: replace it with one of the two links above or a real directory.
   `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
+- **Security:** Publish, finish's landing and reviews copy, the pickup hint and the brainstorm lock follow the
+  same safe-write rule. GUI Publish refuses (HTTP 400, nothing written) an in-repo or dangling symlink at
+  `roadmap.md` or `roadmap-context.md`, with finish's sentence; the landing merge writes both files through the
+  rule. Finish walks the untracked summary's copy from the main checkout's project root, so a symlinked `work`,
+  `work/reviews` or `work/reviews/<node>` (also from a linked worktree) refuses finish before any write. A
+  symlinked `.specyrd` or `.specyrd/cache` is refused where the cache directory is made; the pickup hint
+  marker is checked with `lstat`, so a link there (live or dangling) is a one-line warning and is never read as
+  "already shown" or written through; `brainstorm` reports a linked lock as an error with exit 1. The
+  history cache (`.specyrd/cache/roadmap-history.json`) is written through the rule too: any path the rule
+  refuses (a link on it, or a file where a directory belongs) is one warning naming it, and `digest` carries
+  on with exit 0; other cache failures stay silent.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
@@ -306,6 +333,15 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road review accept-policy --all-open` asks once for every open claim whose pinned review policy differs from the integration branch. It prints each distinct set of changes once with the leaves it affects, and one typed confirmation writes each of those leaves its own `work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml` naming that leaf's pinned digest and the accepted digest. It still needs a terminal; one node id is unchanged. The prompt and the gate refusal say, in plain language, what changed, that the review rules changed after this work started, and what approving covers, with the raw change lines below, and name `specy_road.review_policy_pin` in the installed package. See docs/orchestration-review.md.
+- `specy-road ready` warns on stderr when a branch changes a product file and
+  adds no line under `## [Unreleased]` in `CHANGELOG.md`. The exit code and the
+  READY file are unchanged. A leaf whose acceptance or planning sheet contains
+  `no CHANGELOG entry` is exempt. Paths in the warning escape a backslash and
+  every non-printable character, so the warning stays one line. A file named
+  `tests` is a product path; only paths under `tests/` are excluded. A planning
+  sheet that cannot be read, including a symlink loop, stays silent. Only a blob
+  counts as `CHANGELOG.md` text; a tree or a gitlink stays silent.
 - `specy-road init project` ends a successful run with the next steps: set `integration_branch` and `remote` in
   `roadmap/git-workflow.yaml` (with the project prefix in a nested layout), commit the scaffold, and
   `specy-road validate` (`git init` first when the target is outside a repository). A `--dry-run` or a refused run
