@@ -189,7 +189,8 @@ entries:
       - specy_road/digest.py
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T12:20:27+00:00'
   - codename: gate-without-remote-head
     node_id: M22.12
     branch: feature/rm-gate-without-remote-head
