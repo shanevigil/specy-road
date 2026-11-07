@@ -41,7 +41,50 @@ The design change: each snapshot entry records its `parent`, the key of what lis
 
 **Design change:** a missing file is now part of the chain. `read_chain` lists it with its `FileNotFoundError`, and `_config_file` records it as an `absent` entry (with its parent). Every config file a readable config names is now recorded at each end, so a creation or deletion compares as present against `absent` directly, without depending on the container rule. A file that is no longer named at all (its includer changed) is still covered by the includer's own `git_config` finding, and a file under an unreadable includer by that includer's `check_error`, as before. Hooks never had this gap: their container is a hooks directory listed in full (`read:`), and a missing hooks directory is recorded as `read:absent`.
 
+## Rework 3 (block by `gpt-5.6-sol-high` on 8ab42769)
+
+This change is commit 598bfaad. The four findings fall into two classes.
+
+**Class A: a change of where a name leads was hidden, because entries were keyed by the file a link resolves to.** Three findings belong to this class: an include symlink created, the hooks-directory symlink retargeted, and a dangling include symlink. When a link changes, its key changes at that end. The entry it replaces then has no counterpart. Its parent (an including config, or the new hooks directory) is not a `read:` container at the other end, so `compared` drops both sides. A dangling link failed to open with `FileNotFoundError` and was recorded as `absent`. The same class reached a worktree's `.git` retargeted to a forged gitdir whose `commondir` points back: the configs compared equal, and the new gitdir's hooks had no counterpart. It also reached a `commondir` that is a dangling link, which read as missing (`exists()`).
+
+**Design change:**
+- A config file or hooks directory is still stored once, by its real path (A1).
+- Each name git reads it by that is not that real path (a symlink on the way, the name itself or a directory above it) is also recorded. That name is keyed by its normalized absolute path, with the value `link:<real path>`. A `git_config` link carries the watched values of the file it leads to. `steering_paths._link` does this.
+- A link that is created, removed or retargeted is therefore a change of the same key at both ends, whatever the real paths are.
+- A link that resolves to nothing (dangling, or a loop) is recorded as unreadable, so it becomes a `check_error`.
+- A checkout's `.git` container now holds `read:gitdir <gitdir> common <common>`. `compared` compares a container present at both ends by its value. So a `.git` that leads elsewhere is one finding.
+- A hooks directory that does not exist is recorded as `read:dir`, the same value as a listed one. Creating that directory is not a container change; its hooks still compare as before.
+- `commondir` is read whenever `lexists`, so a dangling one makes `.git` a `check_error`.
+
+**Class B: a value from an executor's file reached line-based text output unescaped.** This class covers finding 4. A config value can hold a newline (`\\n` unescapes to one), and so can a hook file's name. The new `steering_paths.one_line` escapes a backslash and every character that is not printable. It is applied where a finding becomes text:
+- the `summary` of `steering_finding` and `steering_error`;
+- each field of `worker reconcile`'s `path class before after` line.
+
+The JSON fields stay raw, because JSON escapes them and `merged` matches paths against porcelain.
+
 ## Probes
+
+Rework 3. Each probe below is a public turn (`TurnWatch` and `close_turn`) on the test layout; the script was kept outside the tree.
+
+- Include created as a symlink to a file holding `core.fsmonitor`, named by an unchanged config: one `steering_file` (the link name, `absent;core.fsmonitor=unset` to `link:...;core.fsmonitor=touch ...`), probes skipped, sentinel absent. Pass (new `include_link_created` row; fails at 8ab42769).
+- `core.hooksPath` symlink retargeted between two populated directories: one `steering_file` for the link. Pass (new `hooks_link_retargeted` row; fails at 8ab42769).
+- Dangling symlink as an included config: one `check_error` (`git_config`). Pass (new `dangling_symlink`/`git_config` row; fails at 8ab42769).
+- `sshCommand = "ssh\\nevil"`, then reconcile: one physical line for the finding. Pass (new `config_value_with_newline` row; fails at 8ab42769).
+- Worktree `.git` retargeted to a forged gitdir (`commondir` back to the common dir, a hook inside): one `steering_file` for `.git`, probes skipped. Pass (probe).
+- Include through a directory symlink (`dl/x.gitconfig`), with `dl` retargeted: one finding for the name. Pass (probe).
+- Include symlink retargeted between two files with the same bytes: one finding. Pass (probe).
+- Include symlink removed: one finding, `link:...` to `absent`. Pass (probe).
+- Default `.git/hooks` replaced by a symlink to another populated directory: one finding (`read:dir` to `link:...`). Pass (probe).
+- `hooksPath` a dangling link at both ends: one `check_error` per turn, probes skipped. Pass (probe). This fails closed on every turn while that link stays dangling, by the one rule.
+- `hooksPath` link turned into a loop: one `check_error`. Pass (probe).
+- `hooksPath` switched between two plain directories: still one `git_config` finding. Pass (probe; unchanged).
+- Common `config` a symlink, retargeted to a copy: one finding for the link, plus `absent`/created findings for the two real files, whose parent is the read `.git`. Pass (probe; each is one path).
+- Worktree gitdir `commondir` turned into a dangling link: one `check_error` for `.git`. Pass (probe).
+- Hook named `pre\ncommit` created: every summary and reconcile line is one physical line. Pass (probe).
+- Clean turn with an include link and a `hooksPath` link in place: no findings. Pass (probe).
+- Hook file links: not changed. A hook's value is the sha256 of what it resolves to (A1), so a retarget to different bytes is found. A retarget to identical bytes changes nothing git runs. Checked by reading the code.
+
+### Earlier rounds
 
 - `hooksPath` set unconditionally, hook written in the default `.git/hooks`: no finding (the `HOOKS_CONFIGS` rows now also write `ignored-by-git`). Pass.
 - `hooksPath` set only under a non-matching `includeIf`, hook in the default directory: still found. Pass (existing row).
@@ -73,8 +116,9 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 
 ## Verification
 
-- `pytest -q tests/test_steering_file_guard.py`: 24 passed (rework 2).
-- `pytest -q -n 4`: 5984 passed.
+- `pytest -q tests/test_steering_file_guard.py`: 28 passed (rework 3).
+- `pytest -q -n 4`: 5990 passed (rework 3).
+- Red/green (rework 3): with HEAD 8ab42769's `steering_paths.py`, `worker_turn_check.py` and `worker_reconcile.py`, the 4 new rows fail and the other 24 pass. With the change, all 28 pass.
 - `specy-road file-limits`: OK.
 - `ruff check` on the changed Python files: clean.
 - Red/green: with the four product files at base 7cc1b7c0, both new tests fail (`over_the_cap`, `unparsable_ready`). With this change, both pass.
@@ -107,4 +151,10 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 - Rework 2, `read_chain` lists a missing file with its `FileNotFoundError`, and `_config_file` records it as an `absent` entry: an include created or deleted under an unchanged includer compares (review finding).
 - Rework 2, test row `include_created` in `test_a_changed_fsmonitor_is_reported_before_any_git_command_could_run_it`: the public-turn regression the review asked for (sentinel absent, probes skipped).
 - Rework 2, test row `include_deleted` in `CONTAINER_ROWS`: the deletion side of the same class.
+- Rework 3, `steering_paths._link`: records each non-real name of a config file or hooks directory as `link:<real path>`, and a dangling or looping one as unreadable (review findings 1 to 3).
+- Rework 3, `steering_paths.compared` container branch: a container present at both ends compares by value, so a retargeted `.git` is a finding (same class, probe).
+- Rework 3, `.git` container value `read:gitdir <gitdir> common <common>`, and a missing hooks directory recorded as `read:dir`: what the container branch compares, without a finding for a hooks directory merely created.
+- Rework 3, `_gitdirs` reads `commondir` whenever `lexists`: a dangling one fails closed instead of reading as missing (same class, probe).
+- Rework 3, `steering_paths.one_line`, applied to the steering finding summaries and to reconcile's lines: one finding, one line (review finding 4).
+- Rework 3, test row `include_link_created` (fsmonitor test), `hooks_link_retargeted` (`CONTAINER_ROWS`), `dangling_symlink`/`git_config` (`UNREADABLE_ROWS`), and the `first` parametrization `config_value_with_newline` of the clean-turn reconcile test: one regression per review finding. `CONTAINER_ROWS` now names expected paths with `real_path`, which equals `resolve()` for the existing rows and keeps a link's own name.
 - Mocks: none added.
