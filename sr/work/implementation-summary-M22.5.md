@@ -1,13 +1,13 @@
 # Implementation summary: M22.5 `steering-file-guard`
 
-The branch already held the git-steering part of M21.7, after R30, R31 and R32 removed the other classes, finish's refusal and the launch denies (M22.30, M22.31 and M22.32 restore them). This change makes that code meet M22.5's acceptance. It is one commit, 77430a38, on top of base 7cc1b7c0.
+The branch already held the git-steering part of M21.7, after R30, R31 and R32 removed the other classes, finish's refusal and the launch denies (M22.30, M22.31 and M22.32 restore them). This change makes that code meet M22.5's acceptance. It is commit 77430a38 on top of base 7cc1b7c0, plus rework commit 50067050 for the `gpt-5.6-sol-high` block on 3efc97a7 (see Rework).
 
 ## What changed, per acceptance item
 
 - **A1 (filesystem only):** `steering_paths.scope_for` no longer asks git at the turn's start. `git_config_text.git_reads` (`rev-parse --git-path hooks`, `config --list --show-origin`) is removed, and `Scope.git_known` with it. The snapshot reads:
   - the common `config`, `config.worktree` and their `include.path` / `includeIf.*.path` files, using the existing parser;
   - the hooks directories.
-  The hooks directories are each `core.hooksPath` value **plus** `<common>/hooks` and `<worktree-gitdir>/hooks`. A1 says "hooksPath when set, else the defaults". I watch both on purpose: include conditions are not evaluated, so a `hooksPath` found only under an `includeIf` that does not hold would otherwise hide the directory git really uses. The existing `nonmatching_conditional_include` case covers this. The extra coverage only adds detection.
+  The hooks directories are `core.hooksPath` when set, else `<common>/hooks` and `<worktree-gitdir>/hooks` (rework 50067050). A `hooksPath` value that only an `includeIf` names may not apply, since conditions are not evaluated. If no other value exists, the defaults are watched as well. The existing `nonmatching_conditional_include` case covers that.
   Direct entries only: a regular file (a link followed) is stored as its sha256 and a subdirectory is skipped. The old `link:<text>@sha` and `dir`/`other` values are gone.
 - **A2 (cap):** a hooks directory is listed with `os.scandir` and `islice(201)`. If it has more than 200 entries, the directory itself is recorded as unreadable, so every comparison gives one `check_error` (class `git_hook`) and the git probes are skipped. This replaces the `capped` marker.
 - **A3 (fail closed):**
@@ -20,14 +20,47 @@ The branch already held the git-steering part of M21.7, after R30, R31 and R32 r
 - **A6:** all cases are in `tests/test_steering_file_guard.py` (see Added).
 - **A7:** none of M22.30, M22.31 or M22.32's code is on this branch. The docs name them as out of scope.
 
+## Rework (block by `gpt-5.6-sol-high` on 3efc97a7)
+
+The review found four defects, which fall into two classes.
+
+**Class 1: an entry's absence at one end was reported as a change when the thing that lists it was not read there.** Three of the findings are this class:
+- a hooks directory crossing the cap (200 to 201 entries) gave one error plus 200 stale "absent" findings;
+- a hooks directory replaced by a FIFO gave its error plus "absent" findings for the hooks it held;
+- a hooks directory the config stops naming reported its hooks as absent.
+
+The design change: each snapshot entry records its `parent`, the key of what listed or included it. A hook's parent is its hooks directory. An included config file's parent is the file that included it. A top-level config file's parent is the checkout's `.git`. Containers are recorded as `read:` markers when read in full: a hooks directory that is listed, or that does not exist (an empty listing), and `.git`. The new `steering_paths.compared(before, after, key)` treats an entry's absence at one end as a change only when its parent was read in full at that end. Otherwise the container's own `check_error` reports the gap, or, for a changed `hooksPath`, the config finding does. The rule is transitive: an unreadable `.git` or config file hides everything it would have led to. `_gitdirs` now raises on a missing or invalid `.git` instead of silently watching nothing, so that case fails closed.
+
+**Class 2: one file reached by two names was stored twice.** Config files are now keyed by the file they resolve to (`resolved_path`), not by `real_path` (which keeps the last component). Hooks directories were already resolved and deduplicated. Hooks stay keyed by name in their directory, because two names in one hooks directory are two hooks git runs.
+
+**A1 directory selection:** an unconditional `core.hooksPath` value now excludes `<common>/hooks` and `<worktree-gitdir>/hooks`. `read_chain` now returns `ConfigFile` (path, data, pairs, parent, conditional) so the snapshot knows each file's includer and whether only an `includeIf` reached it.
+
+## Probes
+
+- `hooksPath` set unconditionally, hook written in the default `.git/hooks`: no finding (the `HOOKS_CONFIGS` rows now also write `ignored-by-git`). Pass.
+- `hooksPath` set only under a non-matching `includeIf`, hook in the default directory: still found. Pass (existing row).
+- Hooks directory with 200 entries, one added (cap transition): exactly one `check_error` naming the directory. Pass (new row).
+- Hooks directory over the cap at both ends with one hook replaced: one `check_error`. Pass (existing test, and probe).
+- Hooks directory holding hooks replaced by a FIFO: one `check_error`, no absent hooks. Pass (new row).
+- Common config that includes a file becomes mode 000: one `check_error` for the config, the include not reported absent. Pass (new row).
+- Config naming `hooksPath` becomes mode 000: one `check_error`, the hooks under that directory and the default ones not reported. Pass (probe).
+- Worktree `.git` file becomes mode 000: one `check_error` (`.git`, `git_config`) plus `git_probes_skipped`, nothing else. Pass (probe).
+- `hooksPath` switched from X to Y, both holding hooks: one `git_config` finding, no hook findings. Pass (probe).
+- `hooksPath` names a missing directory and the turn creates it with a hook: the hook is reported as `absent` to sha256. Pass (probe; a missing directory counts as read and empty).
+- `<worktree-gitdir>/hooks` absent at the start, hook created there: reported. Pass (probe).
+- Hooks directory deleted: its hooks reported as absent (a real removal). Pass (probe).
+- One include reached by a symlink and by its target, target changed: one `git_config` finding. Pass (new row).
+- Hooks directory reached by two names (a `hooksPath` link to the default): one listing. Checked by reading the code (`resolved_path` plus `dict.fromkeys`), as before.
+- Red/green: with base 3efc97a7's `steering_paths.py`, `git_config_text.py` and `worker_turn_check.py`, all 4 new rows and 5 `HOOKS_CONFIGS` rows fail. With the change, all 22 pass.
+
 ## Touch zones
 
 The final list is the brief's list, unchanged. `specy_road/schemas/worker-record.schema.json` needed no change: it already lists `steering_changed` and describes it. No call site outside the zones changed.
 
 ## Verification
 
-- `pytest -q tests/test_steering_file_guard.py`: 18 passed.
-- `pytest -q -n 4`: 5980 passed.
+- `pytest -q tests/test_steering_file_guard.py`: 22 passed.
+- `pytest -q -n 4`: 5984 passed.
 - `specy-road file-limits`: OK.
 - `ruff check` on the changed Python files: clean.
 - Red/green: with the four product files at base 7cc1b7c0, both new tests fail (`over_the_cap`, `unparsable_ready`). With this change, both pass.
@@ -50,4 +83,11 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 - Test `test_a_hooks_directory_over_the_cap_fails_closed_even_when_a_replaced_hook_keeps_it_over` (A2, A6).
 - Test `test_an_unparsable_ready_through_the_worker_runner_still_ends_with_one_check_holding_the_config_change`: a fake `claude` on PATH writes a READY with byte FF and runs `git config` (A4, A6).
 - Changed tests (expectations only, to match the acceptance's value format): `unchanged_symlink_written_through` now compares sha256 values, not `link:` values. The `unavailable` snapshot case now expects one `check_error` per class plus `git_probes_skipped`.
+- Rework, `steering_paths.Entry.parent`, `READ` markers, `compared`: an absence counts as a change only where its container was read in full (review findings 3 and 4, and the hooksPath switch).
+- Rework, `steering_paths._config_file` keyed by `resolved_path`: one file reached by two names is one finding (review finding 2).
+- Rework, `_git_top` defaults only when every `hooksPath` value is `includeIf`-only: A1's selection (review finding 1).
+- Rework, `git_config_text.ConfigFile` and the `parent`/`conditional` of `read_chain`: give the snapshot each file's includer and condition.
+- Rework, `_gitdirs` raises on a missing or invalid `.git`: fail closed instead of silently watching nothing.
+- Rework, `HOOKS_CONFIGS` rows also write a hook in the default directory, asserted unreported when `hooksPath` applies (review finding 1).
+- Rework, test `test_a_container_one_end_could_not_list_is_its_one_finding_and_one_file_is_one_finding`, four rows: `hooks_over_cap`, `hooks_dir_becomes_fifo`, `including_config_unreadable`, `include_reached_by_two_names` (review findings 2 to 4).
 - Mocks: none added.
