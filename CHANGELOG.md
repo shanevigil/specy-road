@@ -54,6 +54,17 @@ body. Keep section bodies focused; link to PRs for detail.
   in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
   is now refused: replace it with one of the two links above or a real directory.
   `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
+- **Security:** Publish, finish's landing and reviews copy, the pickup hint and the brainstorm lock follow the
+  same safe-write rule. GUI Publish refuses (HTTP 400, nothing written) an in-repo or dangling symlink at
+  `roadmap.md` or `roadmap-context.md`, with finish's sentence; the landing merge writes both files through the
+  rule. Finish walks the untracked summary's copy from the main checkout's project root, so a symlinked `work`,
+  `work/reviews` or `work/reviews/<node>` (also from a linked worktree) refuses finish before any write. A
+  symlinked `.specyrd` or `.specyrd/cache` is refused where the cache directory is made; the pickup hint
+  marker is checked with `lstat`, so a link there (live or dangling) is a one-line warning and is never read as
+  "already shown" or written through; `brainstorm` reports a linked lock as an error with exit 1. The
+  history cache (`.specyrd/cache/roadmap-history.json`) is written through the rule too: any path the rule
+  refuses (a link on it, or a file where a directory belongs) is one warning naming it, and `digest` carries
+  on with exit 0; other cache failures stay silent.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
