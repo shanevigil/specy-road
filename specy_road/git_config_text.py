@@ -125,13 +125,12 @@ class ConfigFile(NamedTuple):
 
 def read_chain(path: Path, read: Callable[[Path], bytes] = Path.read_bytes, depth: int = 0,
                parent: Path | None = None, conditional: bool = False) -> list[ConfigFile]:
-    """``path`` and every file it includes, depth first. A file that does not exist is left out, as git leaves out
-    a missing include; one that cannot be read is listed with the exception in place of its bytes (the caller
-    reports it), and the rest of the chain is still read."""
+    """``path`` and every file it includes, depth first. A file that cannot be read is listed with the exception in
+    place of its bytes, and the rest of the chain is still read. A file that does not exist (git leaves out a missing
+    include) is listed too, with its ``FileNotFoundError``: the caller records it as absent, so a file created or
+    deleted under an unchanged including file still compares."""
     try:
         data = read(path)
-    except FileNotFoundError:
-        return []
     except Exception as e:  # noqa: BLE001 — reported by the caller, never fatal
         return [ConfigFile(path, e, [], parent, conditional)]
     pairs = parse_config(data.decode("utf-8", "replace"))

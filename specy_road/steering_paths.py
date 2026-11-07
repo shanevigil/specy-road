@@ -18,8 +18,9 @@ such as a FIFO, a dangling link or a link loop, a file over :data:`MAX_PARSE_BYT
 snapshot past :data:`SNAPSHOT_SECONDS`, a hooks directory over :data:`HOOKS_CAP` entries) records that path and its
 class as unreadable (an ``error:`` value) and the snapshot goes on with every other path. The comparison reports
 each such path as a ``check_error`` finding (path and class) and never as unchanged; it counts as git steering not
-verified, so no post-turn git command runs. Only a path that does not exist is ``absent``, and only where what
-lists or includes it was read in full at that end (:func:`compared`).
+verified, so no post-turn git command runs. Only a path that does not exist is ``absent``: a config file a read
+config names is recorded so, so its creation or deletion compares under an unchanged includer; an entry missing from
+one end altogether is compared only where what lists or includes it was read in full there (:func:`compared`).
 """
 
 from __future__ import annotations
@@ -243,10 +244,13 @@ def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, dotgit: s
     ``includeIf`` named it."""
     for f in read_chain(start, parse_bytes):
         real = resolved_path(f.path)
+        parent = str(resolved_path(f.parent)) if f.parent else dotgit
+        if isinstance(f.data, FileNotFoundError):   # recorded, so its creation compares under an unchanged includer
+            snap.setdefault(str(real), Entry(scope.display(real), "git_config", ABSENT, parent=parent))
+            continue
         if isinstance(f.data, Exception):
             unreadable(snap, scope, real, "git_config", f.data)
             continue
-        parent = str(resolved_path(f.parent)) if f.parent else dotgit
         snap.setdefault(str(real), Entry(scope.display(real), "git_config", hashlib.sha256(f.data).hexdigest(),
                                          tuple(sorted(watched_values(f.pairs).items())), parent))
         for k, v in f.pairs:

@@ -36,7 +36,9 @@ on for every other path, so their findings and the `steering_changed` flag are k
 never reported as unchanged, and it counts as git steering not verified, so no post-turn git command runs. With no
 snapshot from the turn's start (it could not be taken) or a comparison that fails, the check fails closed the same
 way: a `check_error` per class naming the worktree, and the git probes skipped. It never aborts the turn. Only a
-path that does not exist is `absent`; a missing include is left out, as git leaves it out.
+path that does not exist is `absent`. A config file that a readable config names but that does not exist (git
+leaves out a missing include) is recorded as `absent`, so its creation or deletion during the turn is a
+`steering_file` finding even when the file naming it is unchanged.
 
 **What the parser covers.** Git is never asked what it reads: the text parser (`specy_road/git_config_text.py`: a
 byte-order mark, CRLF, quoting, escapes, comments and continued lines as git reads them) decides which hooks
