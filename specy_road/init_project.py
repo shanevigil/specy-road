@@ -257,6 +257,20 @@ def _scaffold(
     return root, prefix, written, skipped, top is not None
 
 
+def _print_next_steps(root: Path, prefix: str, *, in_git: bool) -> None:
+    """Closing lines of a real run: set the branch, commit, then validate."""
+    steps = [
+        f"Set integration_branch and remote in {prefix}roadmap/git-workflow.yaml",
+        'git add -A && git commit -m "specy-road init"',
+        "specy-road validate",
+    ]
+    if not in_git:
+        steps.insert(0, "git init")
+    print(f"Next steps (run from {root}):")
+    for number, step in enumerate(steps, start=1):
+        print(f"  {number}. {step}")
+
+
 def run_init_project(
     target: Path | None,
     *,
@@ -317,14 +331,5 @@ def run_init_project(
     print(f"Initialized specy-road layout under {dst}")
     if prefix:
         print(f"Recorded project_root={prefix.rstrip('/')} in .specyrd/manifest.json")
-    steps = [
-        f"Set integration_branch and remote in {prefix}roadmap/git-workflow.yaml",
-        'git add -A && git commit -m "specy-road init"',
-        "specy-road validate",
-    ]
-    if not in_git:
-        steps.insert(0, "git init")
-    print(f"Next steps (run from {root}):")
-    for number, step in enumerate(steps, start=1):
-        print(f"  {number}. {step}")
+    _print_next_steps(root, prefix, in_git=in_git)
     return 0
