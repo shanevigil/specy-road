@@ -4,9 +4,13 @@
  * The dialog saves them through ``PATCH /api/nodes/{id}`` with one pair,
  * ``acceptance=<criteria joined by "\n">``: ``edit-node --set acceptance=``
  * semantics, one criterion per line, surrounding whitespace trimmed, empty
- * lines dropped, and an empty value removes the field. A newline inside one
- * criterion would split it in two on the server, so it is refused here.
+ * lines dropped, and an empty value removes the field. The server splits on
+ * every line boundary Python's ``str.splitlines()`` recognizes, so a criterion
+ * containing any of them would become two: it is refused here.
  */
+
+/** Python ``str.splitlines()`` boundaries: LF, VT, FF, CR, FS, GS, RS, NEL, LS, PS. */
+const LINE_BOUNDARY = /[\n\v\f\r\x1c-\x1e\x85\u2028\u2029]/;
 
 export const ACCEPTANCE_NEWLINE_MESSAGE =
   "A criterion is one line: a line break would split it in two. Add another criterion instead.";
@@ -19,7 +23,7 @@ export type AcceptanceEdit = { ok: true; value: string } | { ok: false; message:
  * saved value, so an unchanged list sends nothing.
  */
 export function acceptanceEdit(draft: readonly string[]): AcceptanceEdit {
-  if (draft.some((c) => /[\r\n]/.test(c))) {
+  if (draft.some((c) => LINE_BOUNDARY.test(c))) {
     return { ok: false, message: ACCEPTANCE_NEWLINE_MESSAGE };
   }
   const value = draft.map((c) => c.trim()).filter(Boolean).join("\n");
