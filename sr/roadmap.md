@@ -223,7 +223,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.24` | The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths | task | — | Not Started |
 | `M22.25` | Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment | task | — | Not Started |
 | `M22.26` | The post-run zone check matches zones written from the git root | task | — | Not Started |
-| `M22.27` | The old-log review usage test asserts on the run, not on a substring | task | — | Not Started |
+| `M22.27` | The old-log review usage test asserts on the run, not on a substring | task | — | Complete |
 | `M22.28` | upgrade does not warn about itself, and export's drift line says how to fix it | task | — | Not Started |
 | `M22.29` | safe_write and archive moves traverse by directory descriptor | task | — | Not Started |
 | `M22.30` | Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed | task | — | Not Started |
