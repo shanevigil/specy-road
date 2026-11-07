@@ -4,13 +4,15 @@
 :mod:`worker_runner` uses at its one harness launch. Under ``bwrap`` the whole filesystem is read-only except:
 
 * the leaf's linked worktree, and in the common git dir ``objects/``, ``refs/``, ``logs/`` and
-  ``worktrees/<name>/`` (its ``commondir`` and ``gitdir`` read-only again: rewriting them would steer the
-  coordinator's next git command in that tree);
+  ``worktrees/<name>/``. What points git at a repository or its config is read-only again: the worktree's
+  ``.git`` file, ``worktrees/<name>/commondir`` and ``gitdir``, and ``config.worktree`` (an empty file when the
+  user has none). Rewriting any of them would steer the coordinator's next git command in that tree;
 * a per-worker outbox mounted at the canonical ``work/reviews/<node>/``: after the turn the runner moves only
   ``READY-*`` files from it into the real directory and discards the rest;
-* the transcript, auth and runtime state of the worker's harness, with its shared settings, hooks, plugins and
-  skills read-only on top; configuration it must write that can hold launch instructions (``~/.claude.json``,
-  Cursor's ``cli-config.json``) is a per-worker copy kept beside the worker's record.
+* the harness's state directories, each replaced by the worker's own, with only the user's transcript and auth
+  entries written through and the user's settings, hooks, plugins, skills, rules and instruction files read-only
+  (:data:`HARNESS_STATE`); configuration it must write that can hold launch instructions (``~/.claude.json``,
+  Cursor's ``cli-config.json``) is a per-worker copy.
 
 ``~/.ssh`` and ``~/.config/gh`` are hidden behind an empty tmpfs, and ``SSH_AUTH_SOCK``, ``GH_TOKEN`` and
 ``GITHUB_TOKEN`` are dropped from the harness environment. ``/tmp`` is a private tmpfs; the network stays open.
@@ -32,6 +34,30 @@ from specy_road.worker_state import WorkerRecord, workers_dir
 HIDDEN_ENV = ("SSH_AUTH_SOCK", "GH_TOKEN", "GITHUB_TOKEN")
 #: Home directories hidden behind an empty tmpfs.
 HIDDEN_HOME = (".ssh", ".config/gh")
+
+#: The one rule for harness state. Per harness: its state directories, each ``(env var that relocates it, path
+#: under home, entries written through to the user's copy, entries read-only from the user's copy)``, and its seeded
+#: files ``(env var, path under home)``. A directory the worker sees is its own; only the named transcript and auth
+#: entries reach the user's, and the user's settings, hooks, plugins, skills, rules, MCP and instruction files
+#: are read-only. Anything else the harness writes, those names included when the user has none, stays the
+#: worker's. A seeded file is writable configuration that can carry launch instructions: a per-worker copy.
+HARNESS_STATE: dict[str, tuple[tuple[tuple[str | None, str, tuple[str, ...], tuple[str, ...]], ...],
+                               tuple[tuple[str | None, str], ...]]] = {
+    "claude-code": ((("CLAUDE_CONFIG_DIR", ".claude", ("projects", ".credentials.json"),
+                      ("settings.json", "settings.local.json", "hooks", "plugins", "skills", "agents", "commands",
+                       "output-styles", "CLAUDE.md")),
+                     (None, ".cache", (), ())),
+                    ((None, ".claude.json"), ("CLAUDE_CONFIG_DIR", ".claude/.claude.json"))),
+    "cursor": (((None, ".cursor", ("chats",),
+                 ("hooks", "hooks.json", "mcp.json", "plugins", "rules", "skills", "skills-cursor", "extensions",
+                  "sandbox-policies")),
+                (None, ".config/cursor", ("auth.json",), ()),
+                (None, ".cache", (), ())),
+               ((None, ".cursor/cli-config.json"),)),
+    "codex": ((("CODEX_HOME", ".codex", ("sessions", "auth.json"),
+                ("config.toml", "AGENTS.md", "hooks", "plugins", "rules", "skills")),),
+              ()),
+}
 
 NO_SANDBOX_WARNING = ("no worker sandbox on this host ({why}): the harness runs unsandboxed and can write the main "
                       "checkout, its git config and hooks, your home and other leaves' hand-offs "
@@ -94,14 +120,17 @@ def prepare(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> Box:
         shutil.rmtree(outbox, ignore_errors=True)
         outbox.mkdir(mode=0o700, parents=True)
         (common / "logs").mkdir(exist_ok=True)       # a commit's reflog goes here
-        harness = _harness_binds(*_harness_state(repo_root, rec, env))
+        harness = _harness_binds(repo_root, rec, env)
     except OSError as e:
         raise SandboxError(f"cannot set up the sandbox: {e}") from e
     tree = common / "worktrees" / name
     argv = [bwrap, "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp",
             "--die-with-parent", "--bind", str(wt), str(wt),
             *_binds("--bind", [common / "objects", common / "refs", common / "logs", tree]),
-            *_binds("--ro-bind", [tree / "commondir", tree / "gitdir"]),
+            # What points git at a repository or config, read-only; config.worktree empty when absent.
+            *_binds("--ro-bind", [wt / ".git", tree / "commondir", tree / "gitdir"]),
+            "--ro-bind", str(tree / "config.worktree") if (tree / "config.worktree").is_file() else os.devnull,
+            str(tree / "config.worktree"),
             "--bind", str(outbox), str(reviews), *harness]
     for d in HIDDEN_HOME:
         if (Path.home() / d).exists():
@@ -125,9 +154,10 @@ def _select(mode: str) -> str | Box:
     return Box("off", warning=NO_SANDBOX_WARNING.format(why=why))
 
 
-def _binds(flag: str, paths: list[Path]) -> list[str]:
-    """``flag p p`` for each path that exists: bwrap cannot make a mount point on the read-only root."""
-    return [a for p in paths if p.exists() for a in (flag, str(p), str(p))]
+def _binds(flag: str, paths: list[Path], *, at: list[Path] | None = None) -> list[str]:
+    """``flag src dest`` for each source that exists (``dest`` from ``at``, else the source itself): bwrap cannot
+    make a mount point on the read-only root."""
+    return [a for p, d in zip(paths, at or paths) if p.exists() for a in (flag, str(p), str(d))]
 
 
 def linked_worktree(worktree: Path) -> tuple[Path, Path, str]:
@@ -147,46 +177,47 @@ def linked_worktree(worktree: Path) -> tuple[Path, Path, str]:
         common = (gitdir / (gitdir / "commondir").read_text(encoding="utf-8").strip()).resolve()
     except OSError as e:
         raise SandboxError(f"{need}: {e}") from e
-    if not line.startswith("gitdir:") or gitdir.parent != common / "worktrees":
+    if not line.startswith("gitdir:") or gitdir.parent != common / "worktrees" or not (gitdir / "gitdir").is_file():
         raise SandboxError(need)
     return wt, common, gitdir.name
 
 
-def _harness_state(repo_root: Path, rec: WorkerRecord,
-                   env: dict[str, str]) -> tuple[list[Path], list[Path], list[tuple[Path, Path]]]:
-    """``(writable, read-only on top, (config, per-worker copy))`` for ``rec.harness``: its transcript, auth and
-    runtime state stay writable; its shared settings, hooks, plugins and skills do not."""
-    home = Path.home()
-    own = workers_dir(repo_root)   # the per-worker copies sit beside the record
-    if rec.harness == "claude-code":
-        conf = Path(env["CLAUDE_CONFIG_DIR"]) if env.get("CLAUDE_CONFIG_DIR") else home / ".claude"
-        state = conf / ".claude.json" if env.get("CLAUDE_CONFIG_DIR") else home / ".claude.json"
-        return ([conf, home / ".cache" / "claude-cli-nodejs"],
-                [conf / n for n in ("settings.json", "settings.local.json", "hooks", "plugins", "skills", "agents",
-                                    "commands", "output-styles", "CLAUDE.md")],
-                [(state, own / f"{rec.worker_id}.claude.json")])
-    if rec.harness == "cursor":
-        return ([home / ".cursor", home / ".config" / "cursor", home / ".cache" / "cursor-compile-cache"],
-                [home / ".cursor" / n for n in ("hooks", "hooks.json", "mcp.json", "plugins", "rules", "skills",
-                                                "skills-cursor", "extensions", "sandbox-policies")],
-                [(home / ".cursor" / "cli-config.json", own / f"{rec.worker_id}.cursor-cli-config.json")])
-    if rec.harness == "codex":
-        conf = Path(env.get("CODEX_HOME") or home / ".codex")
-        return ([conf, (conf / "auth.json").resolve()],   # the profile's auth.json links to the user's login
-                [conf / n for n in ("config.toml", "AGENTS.md", "hooks", "plugins", "rules", "skills")], [])
-    return [], [], []
+def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> list[str]:
+    """The bwrap arguments for ``rec.harness``'s state, by the rule in :data:`HARNESS_STATE`.
 
-
-def _harness_binds(rw: list[Path], ro: list[Path], copies: list[tuple[Path, Path]]) -> list[str]:
-    """The bwrap arguments for :func:`_harness_state`; a copy is made once, from the user's file, and kept."""
-    argv = [*_binds("--bind", rw), *_binds("--ro-bind", ro)]
-    for src, copy in copies:
-        if src.is_file():
+    Each state directory the user has is replaced by the worker's own (``work/.workers/<id>.state/``, kept across
+    its turns); into it go the user's write-through entries (writable) and steering entries (read-only), each only
+    when the user has it. A seeded file is copied from the user's once and bound writable over its path.
+    """
+    own = workers_dir(repo_root) / f"{rec.worker_id}.state"
+    dirs, seeds = HARNESS_STATE.get(rec.harness, ((), ()))
+    argv: list[str] = []
+    for var, rel, through, steering in dirs:
+        user = _state_path(env, var, rel)
+        if user.is_dir():
+            mine = own / rel.replace("/", "_")
+            mine.mkdir(parents=True, exist_ok=True)
+            argv += ["--bind", str(mine), str(user),
+                     *_binds("--bind", [(user / n).resolve() for n in through], at=[user / n for n in through]),
+                     *_binds("--ro-bind", [user / n for n in steering])]
+    for var, rel in seeds:
+        user = _state_path(env, var, rel)
+        copy = own / ("seed" + rel.replace("/", "_"))
+        if user.is_file():
             if not copy.is_file():
-                shutil.copyfile(src, copy)
+                own.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(user, copy)
                 copy.chmod(0o600)
-            argv += ["--bind", str(copy), str(src)]
+            argv += ["--bind", str(copy), str(user)]
     return argv
+
+
+def _state_path(env: dict[str, str], var: str | None, rel: str) -> Path:
+    """``rel`` under ``$var`` when the harness environment sets it (its first segment is the directory ``$var``
+    replaces), else under the home directory."""
+    if var and env.get(var):
+        return Path(env[var], *Path(rel).parts[1:])
+    return Path.home() / rel
 
 
 def _read_available(fd: int) -> bytes:

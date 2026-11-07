@@ -422,15 +422,28 @@ not wrapped. In a sandboxed turn (`bwrap`, or `auto` with bwrap present):
 - **A linked worktree is required.** A worker in the main checkout is refused before its harness starts,
   naming the need for a separate `--worktree`: the common git dir would otherwise have to be writable.
 - **Writable:** the leaf's worktree; in the common git dir `objects/`, `refs/`, `logs/` and `worktrees/<name>/`
-  (what a commit needs); a private tmpfs on `/tmp`; the harness's own transcript, auth and runtime state
-  (Claude Code: `$CLAUDE_CONFIG_DIR` or `~/.claude`, `~/.cache/claude-cli-nodejs`; Cursor: `~/.cursor`,
-  `~/.config/cursor`, `~/.cache/cursor-compile-cache`; Codex: the profile's `CODEX_HOME` and the `auth.json` it
-  links to).
-- **Read-only:** everything else. That includes the common `config`, `hooks/` and `info/`,
-  `worktrees/<name>/commondir` and `gitdir`, the main checkout, your home, the harness binaries, and inside the
-  harness's state its shared settings, hooks, plugins, skills, rules and MCP config. `~/.claude.json` and
-  Cursor's `cli-config.json` must stay writable but can carry launch instructions, so each worker gets its own
-  copy (`work/.workers/<id>.claude.json`, `<id>.cursor-cli-config.json`), made from yours on its first turn.
+  (what a commit needs); a private tmpfs on `/tmp`.
+- **Read-only:** everything else. That includes the common `config`, `hooks/` and `info/`, the main checkout,
+  your home and the harness binaries. Inside the writable parts, whatever points git at a repository or its
+  config is read-only again: the worktree's `.git` file, `worktrees/<name>/commondir` and `gitdir`, and
+  `worktrees/<name>/config.worktree`. When you have no `config.worktree`, the worker sees an empty, read-only one.
+  A worktree without its `gitdir` file is refused.
+- **Harness state: one rule.** Each state directory the harness uses is replaced by the worker's own
+  (`work/.workers/<id>.state/`, kept across its turns). Only the entries below reach your copy. The table in
+  `specy_road/worker_sandbox.py` (`HARNESS_STATE`) is authoritative.
+
+  | Harness | Directories replaced | Written through to yours (transcripts, auth) | Yours, read-only (when you have them) |
+  |---|---|---|---|
+  | `claude-code` | `$CLAUDE_CONFIG_DIR` or `~/.claude`; `~/.cache` | `projects/`, `.credentials.json` | `settings.json`, `settings.local.json`, `hooks/`, `plugins/`, `skills/`, `agents/`, `commands/`, `output-styles/`, `CLAUDE.md` |
+  | `cursor` | `~/.cursor`, `~/.config/cursor`, `~/.cache` | `chats/`, `auth.json` | `hooks/`, `hooks.json`, `mcp.json`, `plugins/`, `rules/`, `skills/`, `skills-cursor/`, `extensions/`, `sandbox-policies/` |
+  | `codex` | the profile's `CODEX_HOME` | `sessions/`, `auth.json` (the file it links to) | `config.toml`, `AGENTS.md`, `hooks/`, `plugins/`, `rules/`, `skills/` |
+
+  Anything else the harness writes stays the worker's. That includes the steering names above when you have
+  none, so a worker can configure only its own later turns, never yours. Two files must stay writable but can
+  carry launch instructions: `~/.claude.json` (or `$CLAUDE_CONFIG_DIR/.claude.json`) and Cursor's
+  `cli-config.json`. Each worker gets its own copy of these, made from yours on its first turn. If you have no
+  transcript directory yet, the worker's transcripts stay in its own state directory: its resumes find them, but
+  a human `--resume` in your home does not.
 - **Hidden:** `~/.ssh` and `~/.config/gh` (an empty tmpfs), and `SSH_AUTH_SOCK`, `GH_TOKEN` and `GITHUB_TOKEN`
   in the environment. This blocks the default push routes. It does not isolate other secrets.
 - **Hand-off:** `work/reviews/<ID>/` is a per-worker outbox (`work/.workers/<id>.outbox`), empty at each turn's
