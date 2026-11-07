@@ -308,7 +308,8 @@ body. Keep section bodies focused; link to PRs for detail.
   `no CHANGELOG entry` is exempt. Paths in the warning escape a backslash and
   every non-printable character, so the warning stays one line. A file named
   `tests` is a product path; only paths under `tests/` are excluded. A planning
-  sheet that cannot be read, including a symlink loop, stays silent.
+  sheet that cannot be read, including a symlink loop, stays silent. Only a blob
+  counts as `CHANGELOG.md` text; a tree or a gitlink stays silent.
 - `specy-road init project` ends a successful run with the next steps: set `integration_branch` and `remote` in
   `roadmap/git-workflow.yaml` (with the project prefix in a nested layout), commit the scaffold, and
   `specy-road validate` (`git init` first when the target is outside a repository). A `--dry-run` or a refused run

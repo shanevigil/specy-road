@@ -33,8 +33,14 @@ def trial_merge_warning(root: Path, node_id: str) -> list[str]:
 
 
 def _changelog_at(root: Path, rev: str) -> str | None:
-    """``CHANGELOG.md`` at ``rev``; ``""`` when that path is absent; None when the read failed."""
-    result = run(["show", f"{rev}:CHANGELOG.md"], root)
+    """Blob text of ``CHANGELOG.md`` at ``rev``.
+
+    One rule: ``git cat-file blob`` is the text. ``""`` when that path is absent.
+    None when git cannot answer or the object is not a blob (a tree or a gitlink,
+    reported as ``bad file``). A symlink is a blob, so the text is the link
+    target, not the file it names.
+    """
+    result = run(["cat-file", "blob", f"{rev}:CHANGELOG.md"], root)
     if result.ok:
         return result.out
     if result.failure:

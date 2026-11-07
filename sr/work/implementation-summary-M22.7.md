@@ -8,7 +8,7 @@ Final touch zones: `specy_road/changelog_check.py`, `specy_road/review_ready_mer
 
 ## Change
 
-`specy-road ready` still writes READY and returns the same exit code. After a successful write, next to the trial-merge lines, it prints one stderr warning when the branch changes a product path and `CHANGELOG.md`'s `## [Unreleased]` section at HEAD has no more non-blank lines than at the merge base. A missing changelog at the base counts as an empty section. No changelog or no that heading at HEAD, no product path, or the phrase `no CHANGELOG entry` in the leaf's acceptance or planning sheet stays silent. Git failing to run, or a changelog read failing for any reason other than the file being absent, prints nothing. A configured planning sheet that cannot be read as text, for any exception including a symlink loop, stays silent; an empty file is a successful read. A file named `tests` is a product path; only paths under `tests/` are not.
+`specy-road ready` still writes READY and returns the same exit code. After a successful write, next to the trial-merge lines, it prints one stderr warning when the branch changes a product path and `CHANGELOG.md`'s `## [Unreleased]` section at HEAD has no more non-blank lines than at the merge base. A missing changelog at the base counts as an empty section. No changelog or no that heading at HEAD, no product path, or the phrase `no CHANGELOG entry` in the leaf's acceptance or planning sheet stays silent. Git failing to run, or a changelog read failing for any reason other than the file being absent, prints nothing. Only a blob is changelog text: a tree or a gitlink is a failed read and stays silent, and a symlink blob is the link text. A configured planning sheet that cannot be read as text, for any exception including a symlink loop, stays silent; an empty file is a successful read. A file named `tests` is a product path; only paths under `tests/` are not.
 
 A product path is a changed path other than `CHANGELOG.md`, anything under `tests/`, and bookkeeping. Bookkeeping in a nested layout is every path under the project prefix (`sr/` here). Otherwise it is `is_trial_merge_bookkeeping` (`roadmap/`, `planning/`, `work/`, `roadmap.md`, `roadmap-context.md`). The warning names `## [Unreleased]`, up to three product paths, and how to exempt the leaf. A backslash or non-printable character in a displayed path is escaped, so that warning stays one line; other printable characters are kept.
 
@@ -21,13 +21,17 @@ A product path is a changed path other than `CHANGELOG.md`, anything under `test
 - `_unreleased_nonblank` — counts non-blank lines under `## [Unreleased]` up to the next `## ` heading, so editing an existing line does not count as a new entry.
 - `_unreleased_heading` — matches `## [Unreleased]` with only trailing space after it, so a version heading is a different section.
 - `_product` — drops `CHANGELOG.md`, paths under `tests/`, nested project paths, and unnested trial-merge bookkeeping. A file named `tests` stays a product path.
-- `_changelog_at` — reads `CHANGELOG.md` with `git show`; an absent path is empty text, and any other failure is no warning.
+- `_changelog_at` — reads `CHANGELOG.md` with `git cat-file blob`. An absent path is empty text. A tree or a gitlink is `bad file`, the same failed read as any other git error, so there is no warning. A symlink is a blob, so its text is the link target.
 - `_exempt_text` — joins the node's acceptance lines and its planning sheet so either can carry `no CHANGELOG entry`. Any exception from that read, including `RuntimeError` from a symlink loop, returns None.
 - `_changelog_warning` — after ready has written, resolves the target once, reads the diff and both changelog texts, and returns the warning line, if any, for the same print loop as the trial-merge notes.
 - `_sheet` — the fixture's one planning sheet, so the CLI cases can remove it, replace it with a directory, or empty it.
 - `_sheet_dir` — replaces that sheet with a directory for the unreadable-sheet CLI case.
 - `_commit_sheet_loop` — replaces that sheet with a committed symlink to itself for the `RuntimeError` CLI case.
-- `_with_base_changelog` — puts the same `[Unreleased]` text on the merge base for every CLI case except a changelog that is new on the branch.
+- `_with_base_changelog` — puts the same `[Unreleased]` text on the merge base for the CLI cases that start from a changelog file.
+- `_add_changelog_tree` — commits a directory named `CHANGELOG.md` with one child.
+- `_base_tree` — that directory is the merge base, then the branch replaces it with an empty `[Unreleased]` file.
+- `_head_tree` — the branch replaces the changelog file with a directory whose child is named `## [Unreleased]`.
+- `_head_gitlink` — the branch replaces the changelog file with a gitlink (object type `commit`).
 - `_STDERR` — the one stderr line, or none, expected for each CLI case, so the test does not grow a branch per case.
 
 ### Branches or guards
@@ -37,7 +41,7 @@ A product path is a changed path other than `CHANGELOG.md`, anything under `test
 - A missing heading at the base counts as zero lines — a changelog that is new on the branch, with an empty section, still warns.
 - A higher non-blank count at HEAD returns None — a line added under `[Unreleased]` is silent.
 - No product path returns None — tests-only, nested `sr/`-only, and unnested roadmap/planning/work changes stay silent.
-- `git show` that never ran, or failed for a reason other than the path being absent, returns None — the reminder stays advisory.
+- `git cat-file blob` that never ran, failed, or reports a non-blob (`bad file` for a tree or a gitlink) returns None — the reminder stays advisory. Absence of the path is still the only case turned into empty text.
 - Any `Exception` while reading a configured planning sheet returns None — missing path, directory, unreadable file, and a symlink loop share that one handler; an empty file does not. `KeyboardInterrupt` and `SystemExit` are not caught.
 - Acceptance that is not a list, or a planning path that is missing or not a string, still builds the exemption text from what is there.
 - `cmd_ready` prints the reminder only when ready already returned 0 — refusals and the READY file are unchanged.
@@ -49,7 +53,7 @@ A product path is a changed path other than `CHANGELOG.md`, anything under `test
 ### Tests
 
 - `test_missing_entry_warning` — one table for the pure function: package change with no entry (warns and names the section, at most three paths), an added line, an edited line, a line under a version heading only, a new changelog with an empty section, docs-only, tests-only, a root file named `tests` (warns), nested `sr/`-only, unnested bookkeeping, acceptance and sheet exemptions, no changelog, no heading, and a path containing a newline, carriage return, tab, another control character, a backslash, a line separator, and printable `é` (one printable line).
-- `test_ready_changelog_reminder` — ready CLI warns, stays silent when a line was added, warns when `CHANGELOG.md` is new at HEAD with an empty section, stays silent when the configured sheet is missing, a directory, or a committed symlink loop, still warns when that sheet is an empty file, and stays one stderr line when a product path contains a newline; each exits 0 with a valid READY file.
+- `test_ready_changelog_reminder` — ready CLI warns, stays silent when a line was added, warns when `CHANGELOG.md` is new at HEAD with an empty section, stays silent when the configured sheet is missing, a directory, or a committed symlink loop, still warns when that sheet is an empty file, stays one stderr line when a product path contains a newline, and stays silent when `CHANGELOG.md` is a tree at the merge base, a tree at HEAD, or a gitlink at HEAD; each exits 0 with a valid READY file.
 
 ## Fix round
 
@@ -73,3 +77,8 @@ A configured path that is not readable text was treated as an empty successful r
 - Same handler, missing file and directory (`missing-sheet`, `sheet-dir`): `OSError`, silent. Empty file (`empty-sheet`): successful read, warning still printed. `resolve_planning_path` resolves both the project root and the sheet inside that same try.
 - `_changelog_at` reads with `git show`, not `Path.resolve`, so a changelog symlink cannot raise `RuntimeError: Symlink loop`. A git failure there is already no warning, and absence is empty text.
 - Class: a path equal to a directory name was treated as inside that directory. Table row `tests` warns and names `tests`. `tests/test_a.py` stays silent. `tests2/a.py`, `work`, and `roadmap` warn, because only `tests/`, `work/`, and `roadmap/` are the directory forms. `CHANGELOG.md` stays excluded as the file A2 names. No other exact `tests` check remains in this change.
+- Class: a git object at `CHANGELOG.md` that is not a blob was printed by `git show` and parsed as changelog text. `git show` of a tree whose child is `## [Unreleased]` is a listing whose second line is that name, so the old read warned. `head-tree` now exits 0, writes READY, and prints no warning.
+- Same rule, tree at the merge base replaced by an empty `[Unreleased]` file (`base-tree`): `cat-file blob` says `bad file`, which is not absence, so the read is None and the reminder stays silent. Exit 0, READY written.
+- Same rule, gitlink (`head-gitlink`, object type `commit`): `cat-file blob` says `bad file` as well. `git show` of that gitlink would have printed the linked commit. Exit 0, READY written, no warning. Base and HEAD share `_changelog_at`, so a gitlink at the base takes the same path.
+- A symlink `CHANGELOG.md` is type `blob`. `cat-file blob` returns the link target (`f` in the probe), not the file it names. That limit is on `_changelog_at` and in the ready paragraph. An executable blob (`100755`) is still type `blob`, so its file text is the changelog.
+- `missing_entry_warning` still only sees text. No other reader of `CHANGELOG.md` in this change uses `git show`. `_changelog_at` complexity stays 3, and `cmd_ready` stays 3, the same as at the branch base.

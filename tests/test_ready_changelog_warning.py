@@ -87,6 +87,37 @@ def _with_base_changelog(repo: Path) -> None:
     git(repo, "merge", "-q", "--no-edit", "dev")
 
 
+def _add_changelog_tree(repo: Path, child: str) -> None:
+    path = repo / "CHANGELOG.md"
+    path.mkdir()
+    (path / child).write_text("child\n", encoding="utf-8")
+    git(repo, "add", "CHANGELOG.md")
+    git(repo, "commit", "-qm", "changelog tree")
+
+
+def _base_tree(repo: Path) -> None:
+    git(repo, "checkout", "-q", "dev")
+    _add_changelog_tree(repo, "readme")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "-q", "--no-edit", "dev")
+    git(repo, "rm", "-qr", "CHANGELOG.md")
+    commit_file(repo, "CHANGELOG.md", _EMPTY, "changelog file")
+
+
+def _head_tree(repo: Path) -> None:
+    _with_base_changelog(repo)
+    git(repo, "rm", "-q", "CHANGELOG.md")
+    _add_changelog_tree(repo, "## [Unreleased]")
+
+
+def _head_gitlink(repo: Path) -> None:
+    _with_base_changelog(repo)
+    sha = git(repo, "rev-parse", "HEAD")
+    git(repo, "rm", "-q", "CHANGELOG.md")
+    git(repo, "update-index", "--add", "--cacheinfo", f"160000,{sha},CHANGELOG.md")
+    git(repo, "commit", "-qm", "changelog gitlink")
+
+
 _WARNING = (
     "warning: ## [Unreleased] in CHANGELOG.md gained no line, but this branch changes "
     "{names}; write `no CHANGELOG entry` in the leaf's acceptance or planning sheet to exempt it"
@@ -101,23 +132,37 @@ _STDERR = {
     "empty-sheet": [_WARNING.format(names=_NAMES)],
     "newline-path": [_WARNING.format(names="docs/line\\nbreak.md, docs/x.md, src/a.py")],
     "sheet-loop": [],
+    "base-tree": [],
+    "head-tree": [],
+    "head-gitlink": [],
 }
 
 
 @pytest.mark.parametrize("mode", list(_STDERR))
 def test_ready_changelog_reminder(tmp_path: Path, capsys, mode: str) -> None:
     repo = make_review_repo(tmp_path)
-    if mode != "new":
-        _with_base_changelog(repo)
     {
-        "silent": lambda: commit_file(repo, "CHANGELOG.md", _ADDED, "changelog entry"),
+        "warns": lambda: _with_base_changelog(repo),
+        "silent": lambda: (
+            _with_base_changelog(repo),
+            commit_file(repo, "CHANGELOG.md", _ADDED, "changelog entry"),
+        ),
         "new": lambda: commit_file(repo, "CHANGELOG.md", _EMPTY, "changelog"),
-        "missing-sheet": lambda: _sheet(repo).unlink(),
-        "sheet-dir": lambda: _sheet_dir(repo),
-        "empty-sheet": lambda: _sheet(repo).write_text("", encoding="utf-8"),
-        "newline-path": lambda: commit_file(repo, "docs/line\nbreak.md", "x\n", "newline path"),
-        "sheet-loop": lambda: _commit_sheet_loop(repo),
-    }.get(mode, lambda: None)()
+        "missing-sheet": lambda: (_with_base_changelog(repo), _sheet(repo).unlink()),
+        "sheet-dir": lambda: (_with_base_changelog(repo), _sheet_dir(repo)),
+        "empty-sheet": lambda: (
+            _with_base_changelog(repo),
+            _sheet(repo).write_text("", encoding="utf-8"),
+        ),
+        "newline-path": lambda: (
+            _with_base_changelog(repo),
+            commit_file(repo, "docs/line\nbreak.md", "x\n", "newline path"),
+        ),
+        "sheet-loop": lambda: (_with_base_changelog(repo), _commit_sheet_loop(repo)),
+        "base-tree": lambda: _base_tree(repo),
+        "head-tree": lambda: _head_tree(repo),
+        "head-gitlink": lambda: _head_gitlink(repo),
+    }[mode]()
     capsys.readouterr()
     with pytest.raises(SystemExit) as caught:
         review_cli.main(["ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)])
