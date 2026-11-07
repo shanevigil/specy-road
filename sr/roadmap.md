@@ -211,7 +211,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.13` | Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone | task | — | Not Started |
 | `M22.14` | Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch | task | — | Complete |
 | `M22.15` | The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows | task | — | Complete |
-| `M22.16` | Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends | task | — | Not Started |
+| `M22.16` | Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends | task | — | Complete |
 | `M22.17` | brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist | task | — | Complete |
 | `M22.18` | The reviewer prompt asks for every required change in one pass, not just the first | task | — | Complete |
 | `M22.19` | Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names | task | — | Not Started |

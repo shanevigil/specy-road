@@ -146,7 +146,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.13` Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone `worker-cost-and-stale-presence` — task — **Not Started**
   - `M22.14` Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch `deps-ids-briefs-and-landed-branch` — task — **Complete**
   - `M22.15` The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows `sandbox-runbook-rc4-drift` — task — **Complete**
-  - `M22.16` Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends `reviewer-run-summary-and-process-tree` — task — **Not Started**
+  - `M22.16` Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends `reviewer-run-summary-and-process-tree` — task — **Complete**
   - `M22.17` brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist `verify-tells-a-blocking-404` — task — **Complete**
   - `M22.18` The reviewer prompt asks for every required change in one pass, not just the first `reviewer-lists-every-required-change` — task — **Complete**
   - `M22.19` Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names `review-inputs-identity-and-unreadable` — task — **Not Started**
@@ -310,7 +310,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.16` on `feature/rm-reviewer-run-summary-and-process-tree` since 2026-11-07
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 - `M22.45` on `feature/rm-integration-refs-stay-put-during-a-turn` since 2026-11-07
 - `M22.6` on `feature/rm-queued-message-undelivered` since 2026-11-07
@@ -322,15 +321,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 47 | 0 | 2.72 | 60% | 22 | 4 |
+| `CHANGELOG.md` **flagged** | 47 | 0 | 2.68 | 57% | 23 | 4 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 37 | 0 | 2.78 | 59% | 18 | 2 |
+| `docs` **flagged** | 37 | 0 | 2.73 | 57% | 19 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 46 | 0 | 2.74 | 59% | 22 | 4 |
-| `tests` **flagged** | 48 | 0 | 2.65 | 56% | 20 | 4 |
+| `specy_road` **flagged** | 46 | 0 | 2.70 | 57% | 23 | 4 |
+| `tests` **flagged** | 48 | 0 | 2.60 | 54% | 21 | 4 |
 | `suggested_prompts` | 2 | 0 | 1.00 | 0% | 3 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
