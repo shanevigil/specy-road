@@ -62,8 +62,35 @@ This change is commit 598bfaad. The four findings fall into two classes.
 
 The JSON fields stay raw, because JSON escapes them and `merged` matches paths against porcelain.
 
+## Fix round 1 (block by `gpt-5.6-sol-high` on cef67a38)
+
+First merged `origin/WIP/improvements-0-3-1` (c2c8f2e3, no conflicts). The fix is commit b4c69de9. The six findings fall into two classes.
+
+**Class C: a location git must read that cannot be followed was treated as absent.** This class covers five findings: a missing gitdir target, a missing `commondir` target, a dangling link above an include, a dangling link above a hooks directory, and a looping link above a hooks directory. Rework 3 only checked whether the name itself was a dangling link. A link higher up the path made `lexists(name)` false, so the name was recorded as `absent`. `_gitdirs` accepted any gitdir or common dir path. **Design change, one rule:** the new `steering_paths._unresolved(name)` finds the deepest part of the name that exists (the name itself, or a directory above it) and requires it to resolve. A dangling link, a loop or a part with no access is a path git cannot read: `_link` records it as a `check_error` under the name. This replaces Rework 3's dangling check on the last part only, so there is one rule for every config file and hooks-directory name. `_gitdirs` raises when the gitdir or common dir is not an existing directory, so `.git` is a `git_config` `check_error` and the git probes are skipped. A missing name under ordinary missing directories (no link) is still `absent`.
+
+**Class D: an empty `core.hooksPath` value was ignored.** The snapshot skipped empty values, so it watched the default directories, which git no longer uses then. With git 2.43, `git rev-parse --git-path hooks/pre-commit` gives `/pre-commit`, and a commit tries only `/pre-commit` (seen with strace). **Change:** an empty value is a value that names no directory (`None` in the `hooks` map). Like any unconditional value, it turns the defaults off. Only an empty value under an `includeIf` keeps them watched, as before. I do not watch `/`: only root can write there, and hashing every regular file at the filesystem root (a swap file, for example) would hit the time budget on every turn. The docstring and docs state this limit.
+
 ## Probes
 
+Fix round 1. Each probe is a public turn on the test layout, and the script was kept outside the tree. Six were new `CONTAINER_ROWS` rows; each fails at cef67a38 and passes at b4c69de9:
+- Empty `core.hooksPath`, then a hook written in the default `.git/hooks`: no finding, and the probes run (row `empty_hookspath`).
+- Include under a dangling directory link, clean turn: one `check_error` at the include (`git_config`) (row `include_under_dangling_link`).
+- `hooksPath` under a dangling directory link, clean turn: one `check_error` (`git_hook`) (row `hooks_under_dangling_link`).
+- `hooksPath` under a looping link, clean turn: one `check_error` (`git_hook`) (row `hooks_under_link_loop`).
+- Worktree `.git` naming a missing gitdir: one `check_error` for `.git`, probes skipped (row `gitdir_missing`).
+- `commondir` naming a missing directory: one `check_error` for `.git`, probes skipped (row `commondir_missing`).
+
+Other probes:
+- Include under a looping link: one `check_error`. Pass.
+- Link above an include made dangling during the turn: one `check_error`. Pass.
+- Missing include under ordinary missing directories (no link): clean, still `absent`. Pass.
+- Empty `hooksPath` only under a non-matching `includeIf`, hook written in the default directory: found, defaults still watched. Pass.
+- Empty `hooksPath` followed by `hooksPath = X`, hook written in X: found. Pass.
+- Worktree gitdir deleted during the turn: one `check_error` for `.git`, probes skipped. Pass.
+- Clean turn on the default layout: no findings. Pass.
+- All 13 Rework 3 probes re-run: same results as listed below. Pass.
+
+### Rework 3
 Rework 3. Each probe below is a public turn (`TurnWatch` and `close_turn`) on the test layout; the script was kept outside the tree.
 
 - Include created as a symlink to a file holding `core.fsmonitor`, named by an unchanged config: one `steering_file` (the link name, `absent;core.fsmonitor=unset` to `link:...;core.fsmonitor=touch ...`), probes skipped, sentinel absent. Pass (new `include_link_created` row; fails at 8ab42769).
@@ -116,6 +143,7 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 
 ## Verification
 
+- Fix round 1: `pytest -q tests/test_steering_file_guard.py`: 34 passed. The steering tests plus the test files that import the changed modules: 587 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with cef67a38's `steering_paths.py`, the 6 new rows fail and the other 28 pass.
 - `pytest -q tests/test_steering_file_guard.py`: 28 passed (rework 3).
 - `pytest -q -n 4`: 5990 passed (rework 3).
 - Red/green (rework 3): with HEAD 8ab42769's `steering_paths.py`, `worker_turn_check.py` and `worker_reconcile.py`, the 4 new rows fail and the other 24 pass. With the change, all 28 pass.
@@ -157,4 +185,8 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 - Rework 3, `_gitdirs` reads `commondir` whenever `lexists`: a dangling one fails closed instead of reading as missing (same class, probe).
 - Rework 3, `steering_paths.one_line`, applied to the steering finding summaries and to reconcile's lines: one finding, one line (review finding 4).
 - Rework 3, test row `include_link_created` (fsmonitor test), `hooks_link_retargeted` (`CONTAINER_ROWS`), `dangling_symlink`/`git_config` (`UNREADABLE_ROWS`), and the `first` parametrization `config_value_with_newline` of the clean-turn reconcile test: one regression per review finding. `CONTAINER_ROWS` now names expected paths with `real_path`, which equals `resolve()` for the existing rows and keeps a link's own name.
+- Fix round 1, `steering_paths._unresolved`: one rule. The deepest existing part of a name git reads must resolve, else `check_error` (class C). It replaces `_link`'s check on the last part only.
+- Fix round 1, `_gitdirs` directory check: a gitdir or common dir that is not an existing directory raises, so `.git` is a `check_error` (class C).
+- Fix round 1, `None` key in the `hooks` map for an empty `core.hooksPath`: the value turns the defaults off and names no directory (class D).
+- Fix round 1, test rows `empty_hookspath`, `include_under_dangling_link`, `hooks_under_dangling_link`, `hooks_under_link_loop`, `gitdir_missing` and `commondir_missing` in `CONTAINER_ROWS`. Their helpers are `_empty_hookspath`, `_unresolvable` and `_noop`. Two changes to the shared test: it now names expected paths as findings do (worktree paths project-relative, others `abspath`, so a name is not resolved through its dangling parent), and it requires `git_probes_skipped` exactly when a row expects a finding.
 - Mocks: none added.
