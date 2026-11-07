@@ -9,10 +9,16 @@
   user has none). Rewriting any of them would steer the coordinator's next git command in that tree;
 * a per-worker outbox mounted at the canonical ``work/reviews/<node>/``: after the turn the runner moves only
   ``READY-*`` files from it into the real directory and discards the rest;
-* the harness's state directories, each replaced by the worker's own, with only the user's transcript and auth
-  entries written through and the user's settings, hooks, plugins, skills, rules and instruction files read-only
-  (:data:`HARNESS_STATE`); configuration it must write that can hold launch instructions (``~/.claude.json``,
-  Cursor's ``cli-config.json``) is a per-worker copy.
+* the harness's state directories, each replaced by the worker's own (transcripts and sessions included), with
+  only the user's named auth *files* written through and the user's settings, hooks, plugins, skills, rules and
+  instruction files read-only (:data:`HARNESS_STATE`); configuration it must write that can hold launch
+  instructions (``~/.claude.json``, Cursor's ``cli-config.json``) is a per-worker copy.
+
+The rule for the home directory: **no directory of the user's is writable from the sandbox, and only the named
+auth files are.** Any writable directory is an open namespace (a transcript directory takes a ``memory/``
+file the harness reads as instructions just as well), so none is shared. The cost: a worker's transcripts and
+sessions stay in ``work/.workers/<id>.state/``, where its own resumes and the runner find them, and a human
+``--resume`` from the user's home does not.
 
 ``~/.ssh`` and ``~/.config/gh`` are hidden behind an empty tmpfs, and ``SSH_AUTH_SOCK``, ``GH_TOKEN`` and
 ``GITHUB_TOKEN`` are dropped from the harness environment. ``/tmp`` is a private tmpfs; the network stays open.
@@ -36,25 +42,26 @@ HIDDEN_ENV = ("SSH_AUTH_SOCK", "GH_TOKEN", "GITHUB_TOKEN")
 HIDDEN_HOME = (".ssh", ".config/gh")
 
 #: The one rule for harness state. Per harness: its state directories, each ``(env var that relocates it, path
-#: under home, entries written through to the user's copy, entries read-only from the user's copy)``, and its seeded
-#: files ``(env var, path under home)``. A directory the worker sees is its own; only the named transcript and auth
-#: entries reach the user's, and the user's settings, hooks, plugins, skills, rules, MCP and instruction files
-#: are read-only. Anything else the harness writes, those names included when the user has none, stays the
-#: worker's. A seeded file is writable configuration that can carry launch instructions: a per-worker copy.
+#: under home, auth files written through to the user's, entries read-only from the user's)``, and its seeded
+#: files ``(env var, path under home)``. A directory the worker sees is its own; only the named auth files reach
+#: the user's (a directory there is never bound writable), and the user's settings, hooks, plugins, skills, rules,
+#: MCP and instruction files are read-only. Anything else the harness writes, transcripts and sessions included,
+#: stays the worker's. A seeded file is writable configuration that can carry launch instructions: a per-worker
+#: copy.
 HARNESS_STATE: dict[str, tuple[tuple[tuple[str | None, str, tuple[str, ...], tuple[str, ...]], ...],
                                tuple[tuple[str | None, str], ...]]] = {
-    "claude-code": ((("CLAUDE_CONFIG_DIR", ".claude", ("projects", ".credentials.json"),
+    "claude-code": ((("CLAUDE_CONFIG_DIR", ".claude", (".credentials.json",),
                       ("settings.json", "settings.local.json", "hooks", "plugins", "skills", "agents", "commands",
                        "output-styles", "CLAUDE.md")),
                      (None, ".cache", (), ())),
                     ((None, ".claude.json"), ("CLAUDE_CONFIG_DIR", ".claude/.claude.json"))),
-    "cursor": (((None, ".cursor", ("chats",),
+    "cursor": (((None, ".cursor", (),
                  ("hooks", "hooks.json", "mcp.json", "plugins", "rules", "skills", "skills-cursor", "extensions",
                   "sandbox-policies")),
                 (None, ".config/cursor", ("auth.json",), ()),
                 (None, ".cache", (), ())),
                ((None, ".cursor/cli-config.json"),)),
-    "codex": ((("CODEX_HOME", ".codex", ("sessions", "auth.json"),
+    "codex": ((("CODEX_HOME", ".codex", ("auth.json",),
                 ("config.toml", "AGENTS.md", "hooks", "plugins", "rules", "skills")),),
               ()),
 }
@@ -77,6 +84,7 @@ class Box:
     warning: str | None = None
     outbox: Path | None = None
     reviews: Path | None = None
+    state: Path | None = None                   # the worker's own home for harness state (transcripts) when sandboxed
     pass_fds: tuple[int, ...] = ()              # bwrap's status pipe, write end, for ``Popen``
     _status: int | None = None
 
@@ -137,7 +145,8 @@ def prepare(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> Box:
             argv += ["--tmpfs", str(Path.home() / d)]
     for k in HIDDEN_ENV:
         env.pop(k, None)
-    return Box("bwrap", [*argv, "--chdir", str(wt)], outbox=outbox, reviews=reviews)
+    return Box("bwrap", [*argv, "--chdir", str(wt)], outbox=outbox, reviews=reviews,
+               state=state_home(repo_root, rec.worker_id))
 
 
 def _select(mode: str) -> str | Box:
@@ -186,10 +195,10 @@ def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> l
     """The bwrap arguments for ``rec.harness``'s state, by the rule in :data:`HARNESS_STATE`.
 
     Each state directory the user has is replaced by the worker's own (``work/.workers/<id>.state/``, kept across
-    its turns); into it go the user's write-through entries (writable) and steering entries (read-only), each only
-    when the user has it. A seeded file is copied from the user's once and bound writable over its path.
+    its turns); into it go the user's auth files (writable) and steering entries (read-only), each only when the
+    user has it, and an auth name the user has as a directory is not bound. A seeded file is copied from the user's once and bound writable over its path.
     """
-    own = workers_dir(repo_root) / f"{rec.worker_id}.state"
+    own = state_home(repo_root, rec.worker_id)
     dirs, seeds = HARNESS_STATE.get(rec.harness, ((), ()))
     argv: list[str] = []
     for var, rel, through, steering in dirs:
@@ -197,8 +206,9 @@ def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> l
         if user.is_dir():
             mine = own / rel.replace("/", "_")
             mine.mkdir(parents=True, exist_ok=True)
+            auth = [n for n in through if (user / n).resolve().is_file()]   # files only: never a directory
             argv += ["--bind", str(mine), str(user),
-                     *_binds("--bind", [(user / n).resolve() for n in through], at=[user / n for n in through]),
+                     *_binds("--bind", [(user / n).resolve() for n in auth], at=[user / n for n in auth]),
                      *_binds("--ro-bind", [user / n for n in steering])]
     for var, rel in seeds:
         user = _state_path(env, var, rel)
@@ -210,6 +220,13 @@ def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> l
                 copy.chmod(0o600)
             argv += ["--bind", str(copy), str(user)]
     return argv
+
+
+def state_home(repo_root: Path, worker_id: str) -> Path:
+    """The worker's own home for harness state: ``<state dir path under home>`` with ``/`` as ``_`` beneath it
+    (``.claude``, ``.cursor``, ``.config_cursor``), so ``ClaudeCode.transcript_limit(home=...)`` finds its
+    transcripts at ``.claude/projects``."""
+    return workers_dir(repo_root) / f"{worker_id}.state"
 
 
 def _state_path(env: dict[str, str], var: str | None, rel: str) -> Path:

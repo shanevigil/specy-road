@@ -428,22 +428,30 @@ not wrapped. In a sandboxed turn (`bwrap`, or `auto` with bwrap present):
   config is read-only again: the worktree's `.git` file, `worktrees/<name>/commondir` and `gitdir`, and
   `worktrees/<name>/config.worktree`. When you have no `config.worktree`, the worker sees an empty, read-only one.
   A worktree without its `gitdir` file is refused.
-- **Harness state: one rule.** Each state directory the harness uses is replaced by the worker's own
-  (`work/.workers/<id>.state/`, kept across its turns). Only the entries below reach your copy. The table in
-  `specy_road/worker_sandbox.py` (`HARNESS_STATE`) is authoritative.
+- **Harness state: one rule.** No directory in your home is writable from the sandbox; only the named auth
+  files are. Any writable directory is an open namespace: a transcript directory would take a
+  `projects/<project>/memory/MEMORY.md` that Claude reads as instructions just as readily as a transcript. So
+  each state directory the harness uses is replaced by the worker's own (`work/.workers/<id>.state/`, kept
+  across its turns). Only the entries below reach your copy. The table in `specy_road/worker_sandbox.py`
+  (`HARNESS_STATE`) is authoritative.
 
-  | Harness | Directories replaced | Written through to yours (transcripts, auth) | Yours, read-only (when you have them) |
+  | Harness | Directories replaced | Files written through to yours | Yours, read-only (when you have them) |
   |---|---|---|---|
-  | `claude-code` | `$CLAUDE_CONFIG_DIR` or `~/.claude`; `~/.cache` | `projects/`, `.credentials.json` | `settings.json`, `settings.local.json`, `hooks/`, `plugins/`, `skills/`, `agents/`, `commands/`, `output-styles/`, `CLAUDE.md` |
-  | `cursor` | `~/.cursor`, `~/.config/cursor`, `~/.cache` | `chats/`, `auth.json` | `hooks/`, `hooks.json`, `mcp.json`, `plugins/`, `rules/`, `skills/`, `skills-cursor/`, `extensions/`, `sandbox-policies/` |
-  | `codex` | the profile's `CODEX_HOME` | `sessions/`, `auth.json` (the file it links to) | `config.toml`, `AGENTS.md`, `hooks/`, `plugins/`, `rules/`, `skills/` |
+  | `claude-code` | `$CLAUDE_CONFIG_DIR` or `~/.claude`; `~/.cache` | `.credentials.json` | `settings.json`, `settings.local.json`, `hooks/`, `plugins/`, `skills/`, `agents/`, `commands/`, `output-styles/`, `CLAUDE.md` |
+  | `cursor` | `~/.cursor`, `~/.config/cursor`, `~/.cache` | `auth.json` (in `~/.config/cursor`) | `hooks/`, `hooks.json`, `mcp.json`, `plugins/`, `rules/`, `skills/`, `skills-cursor/`, `extensions/`, `sandbox-policies/` |
+  | `codex` | the profile's `CODEX_HOME` | `auth.json` (the file it links to) | `config.toml`, `AGENTS.md`, `hooks/`, `plugins/`, `rules/`, `skills/` |
 
-  Anything else the harness writes stays the worker's. That includes the steering names above when you have
-  none, so a worker can configure only its own later turns, never yours. Two files must stay writable but can
-  carry launch instructions: `~/.claude.json` (or `$CLAUDE_CONFIG_DIR/.claude.json`) and Cursor's
-  `cli-config.json`. Each worker gets its own copy of these, made from yours on its first turn. If you have no
-  transcript directory yet, the worker's transcripts stay in its own state directory: its resumes find them, but
-  a human `--resume` in your home does not.
+  Anything else the harness writes stays the worker's: its transcripts and sessions, and the steering names
+  above when you have none. A worker can configure and remember only for its own later turns, never yours. An
+  auth name that is a directory in your home is not bound. Two files must stay writable but can carry launch
+  instructions: `~/.claude.json` (or `$CLAUDE_CONFIG_DIR/.claude.json`) and Cursor's `cli-config.json`. Each
+  worker gets its own copy of these, made from yours on its first turn.
+
+  The cost is that a sandboxed worker's sessions live only in its state directory. Its own resumes find them
+  (the runner also reads Claude's transcript there for a usage limit). A human `claude --resume`, `agent
+  --resume` or `codex resume` from your home does not find them, so `worker handoff` of a sandboxed worker
+  cannot be resumed natively. Do not point a harness at the worker's state directory to get around this: the
+  worker could have put settings and hooks there.
 - **Hidden:** `~/.ssh` and `~/.config/gh` (an empty tmpfs), and `SSH_AUTH_SOCK`, `GH_TOKEN` and `GITHUB_TOKEN`
   in the environment. This blocks the default push routes. It does not isolate other secrets.
 - **Hand-off:** `work/reviews/<ID>/` is a per-worker outbox (`work/.workers/<id>.outbox`), empty at each turn's
@@ -454,8 +462,14 @@ not wrapped. In a sandboxed turn (`bwrap`, or `auto` with bwrap present):
   or `bwrap` exits before starting the harness, the worker ends `failed`, with the reason in an `error` event
   and bwrap's message in `<id>.log`. To run such a project unsandboxed, set `worker_sandbox: off`.
 
-**Known limits.** The network stays open, because harnesses need their APIs. Refs stay writable, so a worker can
-move a local branch other than its own. A nested repository's common git dir is not carved out, so a sandboxed
+**Known limits.** The network stays open, because harnesses need their APIs. The git directories a commit
+needs are shared and writable, so they are open namespaces too:
+- Refs stay writable, so a worker can move a local branch other than its own.
+- `objects/` takes any object, and an `info/alternates` file.
+- `worktrees/<name>/` takes in-progress rebase or merge state. A coordinator that runs `git rebase --continue`
+  in the worker's tree would carry out its todo list.
+
+Only the files git reads as configuration or as a pointer to a repository are held read-only there. A nested repository's common git dir is not carved out, so a sandboxed
 commit there fails. Codex's own `workspace-write` sandbox may still refuse git writes inside ours. Whether each
 harness refreshes its login under these binds is a smoke check, not a test: before relying on it, run a trivial
 leaf on Claude Code and on Cursor with `worker_sandbox: bwrap` and check that the turn authenticates, commits and

@@ -262,7 +262,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
     _close_box(repo_root, rec, box)   # READY leaves the outbox before the turn's READY check
     # A Claude result always carries usage, so none means no result line: a limit is then only in the transcript.
     if code != 0 and not usage_logged and isinstance(adapter, ClaudeCode):
-        _transcript_limit(repo_root, rec, adapter, launch, watch)
+        _transcript_limit(repo_root, rec, adapter, launch, watch, box.state)
     return _finish(repo_root, rec, code, before, before_all, usage_logged, watch, log_start)
 
 
@@ -313,9 +313,14 @@ def _not_started(repo_root: Path, rec: WorkerRecord, launch: Launch, watch: Turn
     return 127
 
 
-def _transcript_limit(repo_root: Path, rec: WorkerRecord, adapter: ClaudeCode, launch: Launch, watch: TurnWatch) -> None:
-    """Record a usage limit the session transcript names, for the post-run check to pause on."""
-    parsed = adapter.transcript_limit(launch.session_id or load_record(repo_root, rec.worker_id).provider_session_id)
+def _transcript_limit(repo_root: Path, rec: WorkerRecord, adapter: ClaudeCode, launch: Launch, watch: TurnWatch,
+                      home: Path | None = None) -> None:
+    """Record a usage limit the session transcript names, for the post-run check to pause on.
+
+    ``home``: the sandboxed worker's own state home, where its transcripts are; ``None`` reads the user's.
+    """
+    parsed = adapter.transcript_limit(launch.session_id or load_record(repo_root, rec.worker_id).provider_session_id,
+                                      home=home)
     if parsed:
         append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
                      summary=parsed.summary, detail=parsed.detail)

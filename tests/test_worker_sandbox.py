@@ -23,6 +23,7 @@ from specy_road import worker_state as ws
 from specy_road.git_workflow_config import worker_sandbox_mode
 from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import Launch
+from specy_road.worker_turn_check import PAUSED_BY_LIMIT
 
 
 def _bwrap_starts() -> bool:
@@ -60,10 +61,16 @@ for p in spec["create"]:                    # steering the user does not have: t
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "a") as f:
         f.write("planted\n")
-for p in spec["state"]:                     # transcripts, auth and seeded copies stay writable
+for p in spec["state"]:                     # auth files and seeded copies stay writable
     with open(p, "a") as f:
         f.write("state\n")
-print("PROBE " + json.dumps({"written": written, "seen": seen}), flush=True)
+persist = {}
+for p in spec["persist"]:                   # the worker's own transcripts outlive its turn
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, "a") as f:
+        f.write("state\n")
+    persist[p] = open(p).read().count("state")
+print("PROBE " + json.dumps({"written": written, "seen": seen, "persist": persist}), flush=True)
 print(json.dumps({"type": "result", "subtype": "success", "result": "done", "session_id": "s-1"}), flush=True)
 '''
 
@@ -99,27 +106,34 @@ def box(monkeypatch) -> dict:
     shutil.rmtree(base, ignore_errors=True)
 
 
-#: Per harness, paths under the temporary home: the user's files; steering the user has (writes refused) and
-#: lacks (creating it must not reach the home); transcripts and auth (writes reach the user's file); seeded
-#: configuration (writable, but a per-worker copy). Codex's profile home links its auth.json to ~/.codex.
+#: Per harness, paths under the temporary home: the user's files; steering the user has (writes refused);
+#: paths whose creation or append must not reach the home (absent steering, existing transcripts and new files in
+#: transcript directories: no directory is shared); auth files (writes reach the user's file); seeded
+#: configuration (writable, but a per-worker copy); transcripts the worker keeps across its turns. Codex's
+#: profile home links its auth.json to ~/.codex.
 HARNESSES = {
     "claude-code": {"env": {}, "files": [".claude/settings.json", ".claude/projects/t.jsonl", ".claude/.credentials.json",
                                          ".claude.json", ".cache/claude-cli-nodejs/log"],
                     "refused": [".claude/settings.json"],
                     "create": [".claude/settings.local.json", ".claude/hooks/h.sh", ".claude/skills/s/SKILL.md",
-                               ".claude/CLAUDE.md", ".cache/claude-cli-nodejs/log"],
-                    "through": [".claude/projects/t.jsonl", ".claude/.credentials.json"], "seeded": [".claude.json"]},
+                               ".claude/CLAUDE.md", ".cache/claude-cli-nodejs/log", ".claude/projects/t.jsonl",
+                               ".claude/projects/slug/memory/MEMORY.md", ".claude/projects/planted.md"],
+                    "through": [".claude/.credentials.json"], "seeded": [".claude.json"],
+                    "persist": [".claude/projects/-wt/s.jsonl"]},
     "cursor": {"env": {}, "files": [".cursor/hooks.json", ".cursor/cli-config.json", ".cursor/chats/c.db",
                                     ".config/cursor/auth.json"],
                "refused": [".cursor/hooks.json"],
                "create": [".cursor/mcp.json", ".cursor/rules/r.mdc", ".cursor/skills/s/SKILL.md",
-                          ".config/cursor/cli.json"],
-               "through": [".cursor/chats/c.db", ".config/cursor/auth.json"], "seeded": [".cursor/cli-config.json"]},
+                          ".config/cursor/cli.json", ".cursor/chats/c.db", ".cursor/chats/planted.md"],
+               "through": [".config/cursor/auth.json"], "seeded": [".cursor/cli-config.json"],
+               "persist": [".cursor/chats/x/store.db"]},
     "codex": {"env": {"CODEX_HOME": "codex-home"}, "files": ["codex-home/config.toml", "codex-home/sessions/s.jsonl",
                                                             ".codex/auth.json"],
               "refused": ["codex-home/config.toml"],
-              "create": ["codex-home/AGENTS.md", "codex-home/hooks/h", "codex-home/skills/s/SKILL.md"],
-              "through": ["codex-home/sessions/s.jsonl", "codex-home/auth.json"], "seeded": []},
+              "create": ["codex-home/AGENTS.md", "codex-home/hooks/h", "codex-home/skills/s/SKILL.md",
+                         "codex-home/sessions/s.jsonl", "codex-home/sessions/planted.md"],
+              "through": ["codex-home/auth.json"], "seeded": [],
+              "persist": ["codex-home/sessions/2026/r.jsonl"]},
 }
 
 
@@ -144,7 +158,8 @@ def _turn(b: dict, rec: ws.WorkerRecord, marker: str, env: dict, *, resumed: boo
             "hidden": [str(home / ".ssh" / "id_ed25519"), str(home / ".config" / "gh" / "hosts.yml")],
             "env": list(SECRETS),
             "create": [str(home / r) for r in h["create"]],
-            "state": [str(home / r) for r in h["through"] + h["seeded"]]}
+            "state": [str(home / r) for r in h["through"] + h["seeded"]],
+            "persist": [str(home / r) for r in h["persist"]]}
     return wr.run(b["repo"], rec.worker_id, Launch([sys.executable, "-c", FAKE], stdin=json.dumps(spec), env=env),
                   resumed=resumed)
 
@@ -161,7 +176,7 @@ def test_a_sandboxed_launch_and_resume_commit_hand_off_ready_and_reach_nothing_e
     env = _harness_home(home, harness)
     guarded = [common / "config", common / "hooks" / "pre-commit", common / "worktrees" / wt.name / "commondir",
                common / "worktrees" / wt.name / "gitdir", wt / ".git", b["repo"] / "src" / "a.py", home / ".bashrc",
-               *(home / r for r in h["refused"] + h["create"] + h["seeded"])]
+               *(home / r for r in h["refused"] + h["create"] + h["seeded"] + h["persist"])]
     before = _snapshot(guarded)
     rec = ws.create_record(b["repo"], "M1.1", harness, "opus", wt, branch="feature/rm-thing")
     reviews = reviews_dir(b["repo"], "M1.1")
@@ -172,10 +187,10 @@ def test_a_sandboxed_launch_and_resume_commit_hand_off_ready_and_reach_nothing_e
         assert (reviews / "READY-opus.md").is_file() and not (reviews / "REVIEW-opus.md").exists()
         probe = json.loads(next(line for line in reversed(wr.log_path(b["repo"], rec.worker_id).read_text()
                                                           .splitlines()) if line.startswith("PROBE "))[6:])
-        assert probe == {"written": [], "seen": []}
+        assert probe == {"written": [], "seen": [], "persist": {str(home / r): turn for r in h["persist"]}}
         assert _snapshot(guarded) == before        # shared steering, created or not, and seeded config untouched
         assert (common / "worktrees" / wt.name / "config.worktree").read_bytes() == b""   # git reads it as no config
-        for r in h["through"]:                     # transcripts and auth reach the user's files
+        for r in h["through"]:                     # auth files reach the user's
             assert (home / r).read_text().count("state") == turn
     launched = [e for e in ws.events_since(b["repo"], rec.worker_id) if e.type == "launched"]
     assert [e.detail["sandbox"] for e in launched] == ["bwrap", "bwrap"]
@@ -217,3 +232,16 @@ def test_worker_sandbox_is_off_unless_the_project_opts_in(tmp_path: Path, line: 
     (tmp_path / "roadmap" / "git-workflow.yaml").write_text(
         f"version: 1\nintegration_branch: dev\nremote: origin\n{line}")
     assert worker_sandbox_mode(tmp_path) == mode
+
+
+def test_a_sandboxed_claude_turn_that_stops_at_a_limit_is_read_from_the_workers_own_transcript(box) -> None:
+    """The transcript is the worker's (no user directory is writable), so the runner reads it there."""
+    b, sid = box, "7f1c0000-0000-4000-8000-000000000001"
+    (b["home"] / ".claude" / "projects").mkdir(parents=True)
+    entry = {"type": "assistant", "message": {"content": [{"type": "text", "text": "You've hit your usage limit"}]}}
+    transcript = b["home"] / ".claude" / "projects" / "-wt" / f"{sid}.jsonl"
+    code = (f"import os; os.makedirs({str(transcript.parent)!r}); "
+            f"open({str(transcript)!r}, 'w').write({json.dumps(entry)!r} + '\\n'); raise SystemExit(1)")
+    rec = ws.create_record(b["repo"], "M1.1", "claude-code", "opus", b["wt"], branch="feature/rm-thing")
+    assert wr.run(b["repo"], rec.worker_id, Launch([sys.executable, "-c", code], session_id=sid)) == 1
+    assert ws.load_record(b["repo"], rec.worker_id).state == PAUSED_BY_LIMIT and not transcript.exists()
