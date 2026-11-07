@@ -11,6 +11,7 @@ from pathlib import Path
 
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_integration import integration_worktree
+from specy_road.finish_work_artifacts import remove_main_checkout_pickup_files
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
@@ -157,6 +158,7 @@ def _remove_pickup_work_files(node_id: str, *, force: bool) -> None:
         if summary.is_file():
             summary.unlink()
             print(f"[ok] removed work/implementation-summary-{node_id}.md")
+    remove_main_checkout_pickup_files(ROOT, node_id)
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:

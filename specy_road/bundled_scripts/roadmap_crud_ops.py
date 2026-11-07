@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import re
 import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -319,6 +320,20 @@ def _planning_rename_plan(
     return src, dst
 
 
+def _dependency_set_as_keys(root: Path, raw: str) -> str:
+    """Display ids in a ``dependencies`` value become node_keys; a key is unchanged.
+
+    An empty value stays empty, so a clear still removes the field. An unknown
+    token raises the ``ValueError`` :func:`resolve_dependency_refs` already uses.
+    """
+    parts = [p for p in re.split(r"[\s,;]+", raw.strip()) if p]
+    if not parts:
+        return raw
+    from specy_road.bundled_scripts.roadmap_crud_dependency_ops import resolve_dependency_refs
+
+    return " ".join(resolve_dependency_refs(root, parts))
+
+
 def edit_node_set_pairs(
     root: Path,
     node_id: str,
@@ -356,6 +371,8 @@ def edit_node_set_pairs(
     nkeys |= _archived_node_keys_quiet(root)
     planning_dir_before = node.get("planning_dir")
     for k, v in pairs:
+        if k == "dependencies":
+            v = _dependency_set_as_keys(root, v)
         apply_set(
             node,
             k,

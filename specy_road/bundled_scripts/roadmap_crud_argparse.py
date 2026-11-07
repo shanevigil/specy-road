@@ -270,7 +270,7 @@ def _p_list_dependencies(sub: argparse._SubParsersAction) -> None:
 def _p_set_dependencies(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser(
         "set-dependencies",
-        help="Replace explicit dependencies (node_keys); same validation as PM GUI patch",
+        help="Replace explicit dependencies (KEY or ID); same validation as PM GUI patch",
     )
     sp.add_argument("node_id", metavar="NODE_ID")
     mx = sp.add_mutually_exclusive_group(required=True)
@@ -283,7 +283,7 @@ def _p_set_dependencies(sub: argparse._SubParsersAction) -> None:
         "--deps",
         dest="deps_raw",
         metavar="KEYS",
-        help="Space/comma/semicolon-separated dependency node_keys (same as edit-node dependencies=…)",
+        help="Space/comma/semicolon-separated KEY or ID values (same as edit-node dependencies=…)",
     )
     sp.set_defaults(func=cmd_set_dependencies)
 

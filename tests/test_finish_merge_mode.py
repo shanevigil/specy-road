@@ -104,11 +104,11 @@ def merge_mode_finish_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     return repo, bare
 
 
-def _finish_cli(repo: Path) -> subprocess.CompletedProcess[str]:
+def _finish_cli(repo: Path, *extra: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO)
     return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "finish-this-task", "--repo-root", str(repo)],
+        [sys.executable, "-m", "specy_road.cli", "finish-this-task", "--repo-root", str(repo), *extra],
         cwd=repo,
         capture_output=True,
         text=True,
@@ -175,3 +175,16 @@ def test_finish_merge_prints_push_disclosure_for_unrelated_dev_commit(
     assert total == added
     assert not_from == 1
     assert "[ok] merged feature/rm-thing into dev and pushed to origin" in result.stdout
+    assert result.stdout.rstrip().endswith(
+        "[ok] this checkout is still on feature/rm-thing (landed into dev); next: git switch dev"
+    )
+
+
+def test_finish_merge_omits_the_branch_line_when_the_branch_is_deleted(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """``--delete-branch`` leaves the checkout on the integration branch, so the line is absent."""
+    repo, _bare = merge_mode_finish_repo(tmp_path, monkeypatch)
+    result = _finish_cli(repo, "--delete-branch")
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "this checkout is still on" not in result.stdout

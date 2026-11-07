@@ -169,7 +169,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.14_deps-ids-briefs-and-landed-branch_121934a1-3ec8-416e-b66c-0305b77665b5.md",
       "sibling_order": 13,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_edit_fields.py",
@@ -277,11 +277,11 @@
     },
     {
       "acceptance": [
-        "git-workflow.yaml takes worker_sandbox: bwrap (required), auto (the default when omitted: bwrap on Linux where it is installed, else the warned path) or off (explicit). worker_runner runs every harness argv under it, at the single launch point",
+        "git-workflow.yaml takes worker_sandbox: bwrap (required), auto (bwrap on Linux where it is installed, else the warned path) or off. Omitted means off, so a project opts in. worker_runner runs every harness argv under the selected sandbox, at the single launch point",
         "A sandboxed turn needs a linked worktree distinct from the main checkout; otherwise the runner refuses before starting the harness and names the need for a separate --worktree",
         "Writable: the leaf worktree; the common dir's objects, refs, logs and worktrees/<name>; an outbox mounted at the canonical reviews path; and only the transcript, auth and runtime state each harness needs. Read-only: everything else, including common config, hooks, info, worktrees/<name>/commondir and gitdir, the main checkout, shared harness settings, hooks, plugins and skills. Configuration that must be writable and can hold launch instructions, such as ~/.claude.json, is a per-worker copy. ~/.ssh, ~/.config/gh, SSH_AUTH_SOCK, GH_TOKEN and GITHUB_TOKEN are not visible",
         "READY reaches work/reviews/<node> only through the outbox, moved by the runner; nothing else written there reaches the reviews directory",
-        "On a host with no sandbox available, auto warns on each unattended launch and runs as today. Where a sandbox is selected and available, a setup or start failure stops the turn and records the reason; running unsandboxed needs worker_sandbox: off. Docs state plainly what an unsandboxed host does not protect",
+        "With auto on a host where no sandbox is available, an unattended launch warns each time and runs as today. Where a sandbox is selected and available, a setup or start failure stops the turn and records the reason. Docs state plainly what an unsandboxed project does not protect, and how to opt in",
         "tests/test_worker_sandbox.py, skipped where bwrap is missing, drives one table-driven fake-harness launch and resume through the public runner with a temporary home: the commit is on the branch after the turn; a fresh READY reaches the canonical node directory and a REVIEW write does not; writes to common config, a hook, commondir, gitdir, the main checkout, home and shared harness settings are refused; dummy ssh, gh and env credentials are not visible; the main-checkout case refuses; a failed start stops the turn. Real harness authentication stays a recorded smoke check for Claude and Cursor. CHANGELOG [Unreleased] entry"
       ],
       "codename": "workers-run-in-a-sandbox",

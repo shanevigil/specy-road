@@ -219,17 +219,23 @@ def _last_line(result) -> str:
     ["--delete-branch", "--land-check-cmd", CHECK],
 ])
 def test_a_landed_finish_prints_its_outcome_last(tmp_path: Path, monkeypatch, options) -> None:
-    """A1 (review round 2): whatever runs after the landing (--delete-branch among it) prints before the outcome."""
+    """A landing still prints its outcome. With --delete-branch that line stays last; otherwise the checkout guidance is last."""
     repo, _bare = _repo(tmp_path, monkeypatch)
     result = _run(repo, ["-m", "specy_road.cli", "finish-this-task", *options])
     assert result.returncode == 0, result.stdout
-    assert _last_line(result) == f"[ok] merged {BRANCH} into dev and pushed to origin", result.stdout
+    outcome = f"[ok] merged {BRANCH} into dev and pushed to origin"
     if "--delete-branch" in options:
+        assert _last_line(result) == outcome, result.stdout
         assert f"[ok] deleted local branch {BRANCH}" in result.stdout
+    else:
+        assert outcome in result.stdout
+        assert _last_line(result) == (
+            f"[ok] this checkout is still on {BRANCH} (landed into dev); next: git switch dev"
+        ), result.stdout
 
 
 def test_a_retried_landing_prints_its_outcome_last(tmp_path: Path, monkeypatch) -> None:
-    """A1/A3: the retry path's landing and its "already merged" exit both end on the outcome."""
+    """A retry prints its outcome. With no --delete-branch the checkout guidance is last; with it the outcome stays last."""
     repo, bare = _repo(tmp_path, monkeypatch)
     hook = bare / "hooks" / "pre-receive"
     hook.write_text("#!/bin/sh\nexit 1\n")
@@ -238,7 +244,10 @@ def test_a_retried_landing_prints_its_outcome_last(tmp_path: Path, monkeypatch) 
     hook.unlink()
     landed = _run(repo, ["-m", "specy_road.cli", "finish-this-task", "--on-complete", "merge"])
     assert landed.returncode == 0, landed.stdout
-    assert _last_line(landed) == f"[ok] merged {BRANCH} into dev and pushed to origin", landed.stdout
+    assert f"[ok] merged {BRANCH} into dev and pushed to origin" in landed.stdout
+    assert _last_line(landed) == (
+        f"[ok] this checkout is still on {BRANCH} (landed into dev); next: git switch dev"
+    ), landed.stdout
     again = _run(repo, ["-m", "specy_road.cli", "finish-this-task", "--on-complete", "merge", "--delete-branch"])
     assert again.returncode == 0, again.stdout
     assert f"[ok] deleted local branch {BRANCH}" in again.stdout
@@ -407,7 +416,11 @@ def test_feature_checkout_failure_keeps_a_landed_finish(tmp_path: Path, monkeypa
     else:
         git(bare, "merge-base", "--is-ancestor", git(repo, "rev-parse", BRANCH), "dev")
         done = f"[ok] merged {BRANCH} into dev and pushed to origin"
-    assert _last_line(result) == done, result.stdout
+    assert done in result.stdout
+    # The hook fails after HEAD is already the feature branch, so the guidance is the final line.
+    assert _last_line(result) == (
+        f"[ok] this checkout is still on {BRANCH} (landed into dev); next: git switch dev"
+    ), result.stdout
 
 
 @pytest.mark.parametrize("tracked", [True, False], ids=["tracked", "untracked"])

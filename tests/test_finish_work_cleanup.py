@@ -5,8 +5,11 @@ from __future__ import annotations
 import shutil
 import subprocess
 
+import pytest
+
 from specy_road.finish_work_artifacts import (
     cleanup_work_artifacts,
+    remove_main_checkout_pickup_files,
     warn_if_pr_body_tracked,
     work_artifact_rel_paths,
     worker_logs_to_stage,
@@ -384,3 +387,288 @@ def test_finish_archives_committed_summary_in_bookkeeping_commit(
         text=True,
     ).stdout.splitlines()
     assert "work/done/implementation-summary-M1.1.md" in names
+
+
+def _git(repo, *args: str) -> None:
+    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True)
+
+
+def _linked(tmp_path, shape: str):
+    """``(main project, leaf project)`` with the leaf a linked worktree."""
+    top = tmp_path / "main"
+    top.mkdir()
+    _git(top, "init", "-q", "-b", "dev")
+    _git(top, "config", "user.email", "t@e.com")
+    _git(top, "config", "user.name", "T")
+    project = top / "sr" if shape == "nested" else top
+    if shape == "nested":
+        project.mkdir()
+    (project / "README.md").write_text("x\n", encoding="utf-8")
+    _git(top, "add", "-A")
+    _git(top, "commit", "-qm", "init")
+    leaf = tmp_path / "leaf"
+    _git(top, "worktree", "add", "-q", "-b", "feature/rm-thing", str(leaf), "dev")
+    return project, leaf / "sr" if shape == "nested" else leaf
+
+
+def _prefix(shape: str) -> str:
+    return "sr/" if shape == "nested" else ""
+
+
+@pytest.mark.parametrize("shape", ["embedded", "nested"])
+@pytest.mark.parametrize("kind", ["untracked", "tracked", "symlink", "work_link"])
+def test_linked_worktree_main_checkout_pickup_files(tmp_path, shape: str, kind: str, capsys) -> None:
+    """Untracked main copies go; a tracked copy, a symlink alias and a symlinked work/ stay."""
+    project, leaf = _linked(tmp_path, shape)
+    work = project / "work"
+    brief, prompt = work / "brief-M1.1.md", work / "prompt-M1.1.md"
+    notes = project / "notes.md"
+    notes.write_text("target\n", encoding="utf-8")
+    top = project if shape == "embedded" else project.parent
+    if kind == "work_link":
+        real = project / "elsewhere"
+        real.mkdir()
+        (real / "brief-M1.1.md").write_text("stay\n", encoding="utf-8")
+        work.symlink_to(real, target_is_directory=True)
+    elif kind == "tracked":
+        work.mkdir()
+        brief.write_text("tracked\n", encoding="utf-8")
+        prompt.write_text("tracked\n", encoding="utf-8")
+        _git(top, "add", "-A")
+        _git(top, "commit", "-qm", "track briefs")
+    elif kind == "symlink":
+        work.mkdir()
+        _git(top, "add", "notes.md" if shape == "embedded" else "sr/notes.md")
+        _git(top, "commit", "-qm", "target")
+        brief.symlink_to(notes)
+        prompt.write_text("drop\n", encoding="utf-8")
+    else:
+        work.mkdir()
+        brief.write_text("brief\n", encoding="utf-8")
+        prompt.write_text("prompt\n", encoding="utf-8")
+    (work / "notes.md").write_text("other\n", encoding="utf-8")
+    remove_main_checkout_pickup_files(leaf, "M1.1")
+    out = capsys.readouterr().out
+    other = work / "notes.md"
+    assert other.is_file() and other.read_text(encoding="utf-8") == "other\n"
+    if kind == "untracked":
+        assert not brief.exists() and not prompt.exists()
+        assert f"[ok] removed {_prefix(shape)}work/brief-M1.1.md" in out
+        assert f"[ok] removed {_prefix(shape)}work/prompt-M1.1.md" in out
+    elif kind == "tracked":
+        assert brief.read_text(encoding="utf-8") == "tracked\n"
+        assert prompt.read_text(encoding="utf-8") == "tracked\n"
+        assert "removed" not in out
+    elif kind == "symlink":
+        assert brief.is_symlink() and brief.read_text(encoding="utf-8") == "target\n"
+        assert notes.read_text(encoding="utf-8") == "target\n"
+        assert not prompt.exists()
+    else:
+        assert work.is_symlink()
+        assert (project / "elsewhere" / "brief-M1.1.md").read_text(encoding="utf-8") == "stay\n"
+        assert "removed" not in out
+
+
+def test_finish_from_a_linked_worktree_removes_main_copies_after_landing(tmp_path, monkeypatch, capsys) -> None:
+    """A landing that succeeds removes the main checkout's untracked brief and prompt."""
+    from tests.review_repo_helpers import delegate_layout
+
+    from specy_road.bundled_scripts import finish_task
+
+    repo, leaf, _bare = delegate_layout(tmp_path, monkeypatch)
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    (work / "brief-M1.1.md").write_text("brief\n", encoding="utf-8")
+    (work / "prompt-M1.1.md").write_text("prompt\n", encoding="utf-8")
+    (work / "notes.md").write_text("keep\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(leaf)])
+        raise SystemExit(0)
+    captured = capsys.readouterr()
+    assert (e.value.code or 0) == 0, captured.err
+    assert not (work / "brief-M1.1.md").exists()
+    assert not (work / "prompt-M1.1.md").exists()
+    assert (work / "notes.md").read_text(encoding="utf-8") == "keep\n"
+    assert captured.out.rstrip().endswith(
+        "[ok] this checkout is still on feature/rm-thing (landed into dev); next: git switch dev"
+    )
+
+
+def test_pr_finish_from_a_linked_worktree_keeps_main_checkout_copies(tmp_path, monkeypatch, capsys) -> None:
+    """A pr finish removes the main checkout's untracked brief and prompt and prints no checkout line."""
+    from tests.review_repo_helpers import commit_file, delegate_layout
+
+    from specy_road.bundled_scripts import finish_task
+
+    repo, leaf, _bare = delegate_layout(tmp_path, monkeypatch)
+    workflow = (leaf / "roadmap" / "git-workflow.yaml").read_text(encoding="utf-8")
+    commit_file(
+        leaf, "roadmap/git-workflow.yaml",
+        workflow.replace("on_complete: merge\n", "on_complete: pr\n"),
+        "pr mode",
+    )
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    (work / "brief-M1.1.md").write_text("brief\n", encoding="utf-8")
+    (work / "prompt-M1.1.md").write_text("prompt\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(leaf)])
+        raise SystemExit(0)
+    captured = capsys.readouterr()
+    assert (e.value.code or 0) == 0, captured.out + captured.err
+    assert not (work / "brief-M1.1.md").exists()
+    assert not (work / "prompt-M1.1.md").exists()
+    assert "this checkout is still on" not in captured.out
+
+
+def test_finish_refused_at_landing_keeps_main_checkout_copies(tmp_path, monkeypatch, capsys) -> None:
+    """A landing that fails leaves the main checkout's untracked brief and prompt."""
+    from tests.review_repo_helpers import delegate_layout
+
+    from specy_road.bundled_scripts import finish_task
+
+    repo, leaf, _bare = delegate_layout(tmp_path, monkeypatch)
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    (work / "brief-M1.1.md").write_text("brief\n", encoding="utf-8")
+    (work / "prompt-M1.1.md").write_text("prompt\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(leaf), "--land-check-cmd", "false"])
+    assert e.value.code == 1
+    captured = capsys.readouterr()
+    assert "land check failed" in captured.out + captured.err
+    assert "this checkout is still on" not in captured.out
+    assert (work / "brief-M1.1.md").read_text(encoding="utf-8") == "brief\n"
+    assert (work / "prompt-M1.1.md").read_text(encoding="utf-8") == "prompt\n"
+
+
+def _finish(leaf, capsys, *extra: str) -> str:
+    from specy_road.bundled_scripts import finish_task
+
+    with pytest.raises(SystemExit) as caught:
+        finish_task.main(["--repo-root", str(leaf), *extra])
+    out = capsys.readouterr().out
+    assert (caught.value.code or 0) == 0, out
+    return out
+
+
+def test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch(
+    tmp_path, monkeypatch, capsys,
+) -> None:
+    """A later merge finish removes the main copies and ends on the checkout line, landed or already merged.
+
+    A ``--delete-branch`` retry against a stale local ``dev``, whose config turns cleanup off, leaves
+    this checkout there; it still removes them, as the branch's config says, and prints no checkout line.
+    """
+    from tests.review_repo_helpers import commit_file, delegate_layout, git
+
+    from specy_road.bundled_scripts import finish_task
+
+    repo, leaf, bare = delegate_layout(tmp_path, monkeypatch)
+    workflow = (repo / "roadmap" / "git-workflow.yaml").read_text(encoding="utf-8")
+    stale_dev = commit_file(
+        repo, "roadmap/git-workflow.yaml",
+        workflow + "cleanup_work_artifacts_on_finish: false\n", "stale config",
+    )
+    git(repo, "reset", "-q", "--hard", "HEAD~1")
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    brief, prompt = work / "brief-M1.1.md", work / "prompt-M1.1.md"
+    brief.write_text("brief\n", encoding="utf-8")
+    prompt.write_text("prompt\n", encoding="utf-8")
+    (work / "notes.md").write_text("keep\n", encoding="utf-8")
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    hook.chmod(0o755)
+    monkeypatch.setattr(finish_task, "merge_undo_snapshot", lambda *_a, **_k: None)
+    with pytest.raises(SystemExit) as failed:
+        finish_task.main(["--repo-root", str(leaf)])
+    assert failed.value.code == 1
+    assert brief.is_file() and prompt.is_file()
+    hook.unlink()
+    guidance = (
+        "[ok] this checkout is still on feature/rm-thing (landed into dev); next: git switch dev"
+    )
+    landed = _finish(leaf, capsys)
+    assert "[ok] merged feature/rm-thing into dev and pushed to origin" in landed
+    assert not brief.exists() and not prompt.exists()
+    assert landed.rstrip().endswith(guidance)
+    brief.write_text("again\n", encoding="utf-8")
+    prompt.write_text("again\n", encoding="utf-8")
+    again = _finish(leaf, capsys)
+    assert "[ok] feature/rm-thing is already merged into dev on origin; nothing to do" in again
+    assert not brief.exists() and not prompt.exists()
+    assert (work / "notes.md").read_text(encoding="utf-8") == "keep\n"
+    assert again.rstrip().endswith(guidance)
+    git(repo, "reset", "-q", "--hard", stale_dev)
+    brief.write_text("stale\n", encoding="utf-8")
+    prompt.write_text("stale\n", encoding="utf-8")
+    deleted = _finish(leaf, capsys, "--delete-branch")
+    assert "[ok] feature/rm-thing is already merged into dev on origin" in deleted
+    assert git(leaf, "rev-parse", "HEAD") == stale_dev
+    assert not brief.exists() and not prompt.exists()
+    assert "this checkout is still on" not in deleted
+
+
+def test_linked_worktree_rollup_retry_clears_main_copies(tmp_path, monkeypatch, capsys) -> None:
+    """A rollup retry that lands removes the main copies and does not print the checkout line."""
+    import json
+
+    from tests.review_repo_helpers import commit_file, delegate_layout, git
+
+    from specy_road.bundled_scripts import finish_task
+    from specy_road.milestone_session import milestone_session_path, write_milestone_session
+
+    repo, leaf, bare = delegate_layout(tmp_path, monkeypatch)
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    doc = json.loads(chunk.read_text(encoding="utf-8"))
+    leaf_node = doc["nodes"][0]
+    leaf_node["parent_id"] = "M1"
+    parent = {
+        "id": "M1", "node_key": "22222222-2222-5222-8222-222222222222",
+        "codename": "roll", "title": "Roll", "type": "milestone",
+        "parent_id": None, "sibling_order": 1, "status": "In Progress",
+        "dependencies": [], "touch_zones": [], "goal": "Roll the leaves up.",
+        "planning_dir": "planning/M1_roll_22222222-2222-5222-8222-222222222222.md",
+        "milestone_execution": {
+            "state": "active", "rollup_branch": "feature/rm-roll",
+            "integration_branch": "dev", "remote": "origin",
+        },
+    }
+    doc["nodes"] = [parent, leaf_node]
+    commit_file(repo, "roadmap/phases/M1.json", json.dumps(doc), "parent milestone")
+    commit_file(repo, parent["planning_dir"], "# M1 Roll\n\n## Intent\n\nRoll up.\n", "parent sheet")
+    git(repo, "branch", "feature/rm-roll")
+    git(repo, "push", "-q", "origin", "dev", "feature/rm-roll")
+    git(leaf, "merge", "-q", "--no-edit", "dev")
+    write_milestone_session(
+        milestone_session_path(leaf / "work"),
+        parent_node_id="M1", parent_codename="roll",
+        integration_branch="dev", remote="origin",
+    )
+    git(repo, "checkout", "-q", "-b", "park")
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    brief, prompt = work / "brief-M1.1.md", work / "prompt-M1.1.md"
+    brief.write_text("brief\n", encoding="utf-8")
+    prompt.write_text("prompt\n", encoding="utf-8")
+    (work / "notes.md").write_text("keep\n", encoding="utf-8")
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text(
+        "#!/bin/sh\nwhile read old new ref; do\n"
+        "  case $ref in refs/heads/feature/rm-roll) exit 1 ;; esac\ndone\nexit 0\n",
+        encoding="utf-8",
+    )
+    hook.chmod(0o755)
+    with pytest.raises(SystemExit) as failed:
+        finish_task.main(["--repo-root", str(leaf)])
+    assert failed.value.code == 1
+    assert brief.is_file() and prompt.is_file()
+    hook.unlink()
+    capsys.readouterr()
+    git(leaf, "checkout", "-q", "feature/rm-thing")
+    out = _finish(leaf, capsys)
+    assert "landing it on feature/rm-roll" in out
+    assert not brief.exists() and not prompt.exists()
+    assert (work / "notes.md").read_text(encoding="utf-8") == "keep\n"
+    assert "this checkout is still on" not in out
