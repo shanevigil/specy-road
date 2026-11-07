@@ -31,7 +31,7 @@ from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_record_write import (Outcome, answer_scratch, close_review_run, replace_file, run_and_file,
                                             write_schema)
 from specy_road.review_files import project_of, reviews_dir
-from specy_road.review_write_check import handoff_ancestor_link
+from specy_road.review_write_check import path_ancestor_link
 from specy_road.review_model_check import resolve_effective_model
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.reviewer_auth import claude_launch_decision, launch_note
@@ -361,7 +361,7 @@ def close_cli_review_run(root: Path, t: ReviewTarget, model: str, opened: tuple[
     directory: the record is specy-road's own, and the log is always ``RUN-<model>.log`` beside it, never a path
     from file content."""
     path, run = opened
-    if handoff_ancestor_link(project_of(path)) is not None:   # planted during the run: do not write the log or the record
+    if path_ancestor_link(project_of(path), path) is not None:   # planted during the run: do not write the log or the record
         _run_launch_mode.set(None)
         return
     _finish_cli_review_run(root, t, model, path, run, filed, transcript)
@@ -369,7 +369,7 @@ def close_cli_review_run(root: Path, t: ReviewTarget, model: str, opened: tuple[
 
 def _finish_cli_review_run(root: Path, t: ReviewTarget, model: str, path: Path, run: dict[str, Any], filed: Outcome,
                            transcript: list[str]) -> None:
-    """Write the prompt run's log and close its record. The caller has already checked the hand-off ancestors."""
+    """Write the prompt run's log and close its record. The caller has already checked every ancestor from the owned root."""
     mode = _run_launch_mode.get()
     _run_launch_mode.set(None)
     if mode:

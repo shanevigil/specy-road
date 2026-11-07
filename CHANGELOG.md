@@ -22,6 +22,8 @@ body. Keep section bodies focused; link to PRs for detail.
   not) refuses the command and leaves the live record unwritten. After a reviewer run, a symlink planted at
   `work` or `work/reviews` is a review failure and is not read or written through: the gate does not count a
   record reached through that link, the run log is not opened, and `prompt --run`'s close does not raise.
+  That log check walks every ancestor from the saved project root, so a symlink planted at the node
+  directory is not opened either (`review delegate` and `prompt --run`).
   A symlink at the node directory is not listed either, and `mark-implementation-reviewed` refuses it
   before the gate, naming the path, without committing the registry. A relative `work/reviews/<node>`
   is owned by `.`, so the lock and the writers do not create `work/work` or follow a top-level `work` link.

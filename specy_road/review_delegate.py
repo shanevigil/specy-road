@@ -60,7 +60,7 @@ from specy_road.review_model_check import check_note, check_run, rostered
 from specy_road.review_record_write import (Outcome, ReviewRunBusy, answer_scratch, attempt_text,
                                             close_review_run, delegate_turn, file_review, final_answer, repair_prompt,
                                             review_run_lock, snapshot, write_schema)
-from specy_road.review_write_check import ancestor_symlink, handoff_ancestor_link
+from specy_road.review_write_check import ancestor_symlink, path_ancestor_link
 from specy_road.review_run_status import superseded_by
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.review_usage import add_parser as add_usage_parser, archive_round
@@ -128,9 +128,8 @@ def _no_model_refusal(model: str, harness: str) -> str:
 
 
 def _span_text(owned: Path, log: Path, attempt: dict[str, Any]) -> str:
-    """The attempt's log span. A symlink at ``work`` or ``work/reviews`` under the saved root yields ``""``: the log
-    is not opened."""
-    if handoff_ancestor_link(owned) is not None:
+    """The attempt's log span. A symlink at any ancestor from the saved root yields ``""``: the log is not opened."""
+    if path_ancestor_link(owned, log) is not None:
         return ""
     return attempt_text(log, attempt)
 

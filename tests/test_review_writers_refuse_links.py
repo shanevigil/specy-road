@@ -400,6 +400,47 @@ def test_a_reviewer_that_replaces_reviews_with_a_link_is_a_review_failure(tmp_pa
     assert _tree(outside) == before and _approvals(repo) == []
 
 
+_OLD_ATIME_NS = 1_000_000_000_000_000_000
+
+
+def _stamp(path: Path) -> int:
+    """Give ``path`` an old access time and return it. A later open moves it."""
+    os.utime(path, ns=(_OLD_ATIME_NS, _OLD_ATIME_NS))
+    return path.lstat().st_atime_ns
+
+
+def test_delegate_does_not_open_a_log_behind_a_replaced_node_directory(tmp_path: Path) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    outside = _outside(tmp_path)
+    log = outside / "RUN-opus.log"
+    log.write_bytes(b"outside-log\n")
+    opened = _stamp(log)
+    node = repo / "work" / "reviews" / "M1.1"
+    set_steps(repo, spec, {**verdict_step(repo), "symlink": {"path": str(node), "target": str(outside)}})
+
+    run = delegate(repo, "M1.1", "opus", sleep=lambda _s: None, retries=0)
+
+    assert run["outcome"] == "review_failure" and run["state"] == "incomplete"
+    assert log.lstat().st_atime_ns == opened and log.read_bytes() == b"outside-log\n"
+
+
+def test_prompt_run_does_not_open_a_log_behind_a_replaced_node_directory(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    outside = _outside(tmp_path)
+    log = outside / "RUN-opus.log"
+    log.write_bytes(b"outside-log\n")
+    opened = _stamp(log)
+    node = repo / "work" / "reviews" / "M1.1"
+    set_steps(repo, spec, {**verdict_step(repo), "symlink": {"path": str(node), "target": str(outside)}})
+
+    code = run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
+                    "--repo-root", str(repo))
+    err = capsys.readouterr().err
+
+    assert code == 1 and "review_failure" in err and "Traceback" not in err
+    assert log.lstat().st_atime_ns == opened and log.read_bytes() == b"outside-log\n"
+
+
 def test_prompt_run_does_not_follow_a_replaced_reviews_directory(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
     outside = _outside(tmp_path)

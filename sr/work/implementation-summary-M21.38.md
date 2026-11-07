@@ -60,7 +60,10 @@ Touch zones, unchanged: `specy_road/review_lock.py`, `specy_road/review_policy_p
 - `test_a_relative_hand_off_is_owned_by_the_directory_that_holds_work`: `project_of(Path("work/reviews/M1"))` is `.`, and the lock and `write_review` land under `work/reviews/M1`.
 - `test_a_relative_hand_off_does_not_follow_a_top_level_work_symlink`: the lock, `write_review`, `append_log` and `replace_file` on relative paths leave the outside tree unchanged.
 - `test_mark_reviewed_refuses_a_linked_node_before_the_gate`: a valid outside `REVIEW-human.md` behind a node symlink does not count, and `--yes` does not commit the registry.
-- `review_delegate._span_text`: the saved project root is checked before a delegate log span is opened.
+- `review_write_check.path_ancestor_link`: every ancestor of a path from a root, by `lstat`, final name excluded. `ancestor_symlink` is that walk from `project_of`.
+- `review_delegate._span_text` and `review_record_write._run_span`: that walk from the saved root before the log is opened. A symlink at the node directory yields `""`.
+- `test_delegate_does_not_open_a_log_behind_a_replaced_node_directory`: `review delegate` leaves an outside `RUN-opus.log` unopened (its access time) and unread.
+- `test_prompt_run_does_not_open_a_log_behind_a_replaced_node_directory`: `prompt --run` does the same, exits 1, and does not raise.
 - `review_record_write._run_span`: the same check before `prompt --run` reads its log.
 - `role_prompt_cli._finish_cli_review_run`: the prompt close's log write and record save, reached only when the hand-off ancestors are real.
 - `test_review_record_refuses_a_linked_marker_before_filing`: a dangling or live `REJECTED-<model>.md` on a successful filing writes no live record.
@@ -86,7 +89,10 @@ Touch zones, unchanged: `specy_road/review_lock.py`, `specy_road/review_policy_p
 - `handoff_closed` is that ancestor check or a symlink at the node directory. `reviews_listing` uses it, so `evaluate_gate` on a node linked at a valid `REVIEW-human.md` has no approvals and does not pass. `load_review` of that outside file is ok.
 - `mark-implementation-reviewed --yes` hits `_refuse_linked_handoff` before `evaluate_gate`: exit 1, the node path and `symlink` on stderr, no `Review policy` line, registry bytes and `HEAD` unchanged, no `.review-run.lock` outside.
 - `node_ids_with_reviews` still uses `is_dir`, so a linked node can appear by name. It does not read a review or commit the registry. `review_run_status`, `review_usage`, `rework_rca` and `review_deferral` open `reviews_dir` directly and are outside this leaf; the gate and the commit go through `reviews_listing` and `_refuse_linked_handoff`.
-- Delegate `_model_check`, `_attempts`, `_file` and `_close` read the log through `_span_text(before.owned, ...)`. The saved root is checked before `attempt_text`. The replaced-reviews delegate run stays `review_failure` and does not count the outside record.
-- `run_and_file` reads the log through `_run_span(before.owned, ...)`, so the prompt path does not open the log after the plant. `close_cli_review_run` returns before `replace_file` and `save_run`. The prompt run exits 1 with `review_failure` on stderr and no traceback.
-- `file_review` still decides `review_failure` from the post-run snapshot, which already refuses to walk a linked `work` or `work/reviews`. The new checks are the opens that used to happen before that snapshot.
+- Delegate `_model_check`, `_attempts`, `_file` and `_close` read the log through `_span_text(before.owned, ...)`. That walks every ancestor of the log from the saved root before `attempt_text`. A node directory the harness replaces with a symlink leaves the outside `RUN-opus.log` access time unchanged, and the run stays `review_failure`.
+- `run_and_file` reads the log through `_run_span(before.owned, ...)`, the same walk. `close_cli_review_run` uses it on the run record and returns before `replace_file` and `save_run`. `prompt --run` exits 1 with `review_failure`, no traceback, and the outside log's access time unchanged.
+- The post-run snapshot uses `handoff_closed` on the path saved before the run, so a node directory replaced by a symlink is not listed or read. `restore` still removes that symlink: it only returns early for `work` and `work/reviews`.
+- `file_review` still decides `review_failure` from that snapshot. The log was the open that used to happen before the snapshot, and only `work` and `work/reviews` were checked.
+- `path_ancestor_link` does not include the log file itself. A symlink at `RUN-<model>.log` is the final component; `append_log` still refuses to write through one. This round's open is the node directory.
+- A relative `path` keeps a relative `root`. `replace_file(Path("work/reviews/M1/notes.md"))` with `work` linked outside still raises `ELOOP`, and the outside tree is unchanged. An absolute log under a relative root is the case that joins the root to the current directory.
 - Zones added because the review named code that lives there: `specy_road/review_record_write.py` (`run_and_file`'s log read) and `specy_road/bundled_scripts/role_prompt_cli.py` (the prompt close that raised `ELOOP`).

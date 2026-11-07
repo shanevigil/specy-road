@@ -27,7 +27,9 @@ renames a fresh file over the path (a symlink at the path is replaced, not writt
 symlink at any ancestor from the project root, :func:`append_log` refuses to open through one, and
 :func:`real_dirs` turns a symlinked directory back into a real one first once that root has been checked.
 :meth:`Snapshot.restore` checks ``work`` and ``work/reviews`` with ``lstat`` before it touches the hand-off
-directory; a symlink at either is left unread and unwritten.
+directory; a symlink at either is left unread and unwritten. The snapshot after the run also stops when the
+node directory itself is a symlink. A log read walks every ancestor from the saved project root
+(:func:`path_ancestor_link`) and does not open the log when one of them is a symlink.
 """
 
 from __future__ import annotations
@@ -58,19 +60,32 @@ def _own_records(reviews: Path, model: str) -> list[Path]:
     return live + (sorted(hist.glob(f"*-{model}.md")) if hist.is_dir() else [])
 
 
-def ancestor_symlink(path: Path) -> Path | None:
-    """A symlink strictly between the project and ``path`` (the final name excluded), by ``lstat``."""
-    root = project_of(path)
+def path_ancestor_link(root: Path, path: Path) -> Path | None:
+    """A symlink strictly between ``root`` and ``path`` (the final name excluded), by ``lstat``.
+
+    ``None`` when ``path`` is not under ``root``. A relative ``path`` keeps a relative ``root``, so ``work``
+    in the current directory is the component checked. An absolute ``path`` under a relative ``root`` is
+    checked from the current directory. Nothing at or above ``root`` is opened, and no symlink is followed
+    to spell the root.
+    """
+    start = root
+    if not root.is_absolute() and path.is_absolute():
+        start = Path(os.path.normpath(Path.cwd() / root))
     try:
-        rel = path.parent.relative_to(root)
+        rel = path.parent.relative_to(start)
     except ValueError:
         return None
-    here = root
+    here = start
     for name in rel.parts:
         here = here / name
         if here.is_symlink():
             return here
     return None
+
+
+def ancestor_symlink(path: Path) -> Path | None:
+    """A symlink strictly between the project and ``path`` (the final name excluded), by ``lstat``."""
+    return path_ancestor_link(project_of(path), path)
 
 
 def handoff_ancestor_link(owned: Path) -> Path | None:
@@ -251,8 +266,8 @@ def snapshot(cwd: Path, reviews: Path, model: str, like: Snapshot | None = None)
         real = reviews.resolve()   # before the run: specy-road's own directory
         owned = project_of(reviews)
     handoff = PurePosixPath(real.relative_to(top).as_posix()) if real.is_relative_to(top) else None
-    link = handoff_ancestor_link(owned) if like is not None else None
-    if link is not None:   # work or work/reviews replaced by a symlink: do not read through it
+    link = handoff_closed(real) if like is not None else None
+    if link is not None:   # work, work/reviews or the node directory replaced by a symlink: do not read through it
         shown = str(link.relative_to(top)) if link.is_relative_to(top) else str(link)
         return Snapshot({**_status(top, handoff), shown: SYMLINK + _hash(link)}, {}, top, real, owned)
     state = {**_status(top, handoff), **_handoff(real, model, top)}

@@ -60,7 +60,7 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     OUTPUT_SCHEMA_NAME,
     Snapshot,
     append_log,
-    handoff_ancestor_link,
+    path_ancestor_link,
     replace_file,
     snapshot,
     written,
@@ -369,9 +369,9 @@ def delegate_turn(adapter: Any, harness: str, log: Path, cwd: Path, launch: Any)
 
 
 def _run_span(owned: Path, log: Path, span: list[Any]) -> str:
-    """The run's log span. A symlink at ``work`` or ``work/reviews`` under the root saved before the run yields
-    ``""``: the log is not opened."""
-    if handoff_ancestor_link(owned) is not None:
+    """The run's log span. A symlink at any ancestor from the root saved before the run yields ``""``: the log
+    is not opened."""
+    if path_ancestor_link(owned, log) is not None:
         return ""
     return run_text(log, *span)
 
