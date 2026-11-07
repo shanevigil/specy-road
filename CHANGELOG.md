@@ -16,7 +16,7 @@ body. Keep section bodies focused; link to PRs for detail.
 - An id-changing move (`move-node`, `indent`, `outdent`, `group-nodes`, `--renumber-outline`, and the PM GUI
   move, indent, outdent, group and `renumber_outline` reorder) rewrites `node` in the tracked
   `roadmap/decisions.yaml` for every entry whose node is an old id, any kind and status, one lookup so a
-  chain or a swap stays correct, in the same transaction as the chunks and registry. The file is written
+  chain, a swap, or a YAML alias of the same entry stays correct, in the same transaction as the chunks and registry. The node looked up is the one the entry had when the file was loaded. The file is written
   only when an entry changed. An absent ledger stays absent. A ledger that does not parse or fails its
   schema refuses the move before any write, as does a ledger that is not UTF-8 or cannot be opened
   (the error names `roadmap/decisions.yaml`). A falsy root (empty text, `[]`, `{}`, `null`, `false`, or `0`)

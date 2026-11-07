@@ -345,6 +345,59 @@ def test_renumber_outline_swaps_decision_nodes_in_one_lookup(tmp_path: Path) -> 
     assert by_id["Dd"]["summary"] == "was M2.1"
 
 
+def test_a_renumber_outline_swap_rewrites_a_yaml_aliased_entry_once(tmp_path: Path) -> None:
+    """A YAML alias is the same mapping twice; the swap uses the node it had when loaded."""
+    base_fixture(tmp_path)
+    path = tmp_path / "roadmap" / "decisions.yaml"
+    path.write_text(
+        "version: 1\n"
+        "entries:\n"
+        "  - &from_m1\n"
+        "    id: Da\n"
+        "    kind: decision\n"
+        "    summary: was M1\n"
+        "    asked: '2020-01-01'\n"
+        "    status: open\n"
+        "    node: M1\n"
+        "    why_now: why\n"
+        "    options:\n"
+        "      - {label: a, effect: b}\n"
+        "    recommendation: a\n"
+        "    recommendation_reason: r\n"
+        "    default_if_unanswered: a\n"
+        "  - *from_m1\n"
+        "  - &from_m2\n"
+        "    id: Db\n"
+        "    kind: decision\n"
+        "    summary: was M2\n"
+        "    asked: '2020-01-01'\n"
+        "    status: open\n"
+        "    node: M2\n"
+        "    why_now: why\n"
+        "    options:\n"
+        "      - {label: a, effect: b}\n"
+        "    recommendation: a\n"
+        "    recommendation_reason: r\n"
+        "    default_if_unanswered: a\n"
+        "  - *from_m2\n",
+        encoding="utf-8",
+    )
+    loaded = read_decisions(path)
+    assert loaded["entries"][0] is loaded["entries"][1]
+    assert loaded["entries"][2] is loaded["entries"][3]
+
+    r = run_move_node(
+        tmp_path, "--repo-root", str(tmp_path),
+        "M2", "--to-parent", "null", "--index", "0", "--renumber-outline",
+    )
+    assert r.returncode == 0, r.stderr
+
+    entries = read_decisions(path)["entries"]
+    assert [e["node"] for e in entries] == ["M2", "M2", "M1", "M1"]
+    assert [e["id"] for e in entries] == ["Da", "Da", "Db", "Db"]
+    assert [e["summary"] for e in entries] == ["was M1", "was M1", "was M2", "was M2"]
+
+
 # Text that is not a decisions document. Falsy roots are the class read_decisions
 # would replace with an empty ledger before a schema check.
 _INVALID_LEDGER_TEXT = {

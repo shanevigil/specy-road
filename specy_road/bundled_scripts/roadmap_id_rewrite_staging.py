@@ -179,22 +179,24 @@ def _stage_decision_ids(
 ) -> None:
     """Stage ``node`` rewrites in the tracked decision ledger.
 
-    Only when ``renamed`` is non-empty and the ledger exists. Each entry's
-    ``node`` is looked up once, so a chain or a swap keeps the id that entry
-    named. The file is staged only when an entry changed. A ledger that does
-    not parse, fails the decisions schema (including a falsy root, which is
-    not treated as an empty ledger), or cannot be read (not UTF-8, or
-    ``OSError``) raises ``ValueError`` naming it, before this plan stages
-    anything else.
+    Only when ``renamed`` is non-empty and the ledger exists. Every entry's
+    ``node`` is read before any entry is updated, then looked up once, so a
+    chain, a swap, or a YAML alias of the same mapping keeps the id that
+    entry had when loaded. The dump does not preserve anchors. The file is
+    staged only when an entry changed. A ledger that does not parse, fails
+    the decisions schema (including a falsy root, which is not treated as an
+    empty ledger), or cannot be read (not UTF-8, or ``OSError``) raises
+    ``ValueError`` naming it, before this plan stages anything else.
     """
     if not renamed:
         return
     doc = load_checked_decisions(root)
     if doc is None:
         return
+    original = [entry.get("node") for entry in doc["entries"]]
     changed = False
-    for entry in doc["entries"]:
-        new = renamed.get(entry.get("node"))
+    for entry, node in zip(doc["entries"], original):
+        new = renamed.get(node)
         if new is not None:
             entry["node"] = new
             changed = True

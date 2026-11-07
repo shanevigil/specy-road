@@ -145,7 +145,8 @@ a `senior` executor.
 Open questions for a person live in **`roadmap/decisions.yaml`** beside `registry.yaml`. The file is
 schema-validated (`schemas/decisions.schema.json`, copied by `init project` / `specy-road refresh-schemas`).
 An id-changing move rewrites `node` here for every entry whose `node` is an old id (any kind and
-status, one lookup so a chain or a swap stays correct), in the same transaction as the chunks,
+status, one lookup of the node it had when loaded, so a chain, a swap, or a YAML alias of the
+same entry stays correct), in the same transaction as the chunks,
 planning sheets and registry. The file is written only when an entry changed; an absent file stays
 absent; a file that does not parse, is not UTF-8, cannot be opened, or fails the schema refuses
 the move before any write. A falsy root (empty text, `[]`, `{}`, `null`, `false`, or `0`) fails that
