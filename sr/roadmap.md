@@ -235,6 +235,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.36` | Each RC publishes its wheel URL and install line, and the package links to the guide | task | — | Not Started |
 | `M22.37` | Test the Cursor CLI harness on the documented default | task | — | Not Started |
 | `M22.38` | doctor --fix never removes a claim that may belong to another clone | task | — | Not Started |
+| `M22.39` | Stalled workers are detected on every run and can be recovered in one command | task | — | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
