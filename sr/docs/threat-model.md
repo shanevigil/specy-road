@@ -10,7 +10,7 @@ It says what specy-road defends against, what it does not, and what risk we acce
 
 **The plain mistake.** The wrong file, a missed acceptance line, a report of work that did not happen.
 
-We do **not** defend against a deliberate attacker building a crafted exploit, or against a compromised machine or harness. Isolation is the planned answer to that tier, not more checks. A spike is deciding whether it lands before M16.
+We do **not** defend against a deliberate attacker building a crafted exploit, or against a compromised machine or harness. Isolation is the planned answer to that tier, not more checks. Linux gets it first, in M22.44, before M16; other platforms get a warning.
 
 ## In scope
 
@@ -50,7 +50,7 @@ Accepted, known gaps. An item moves up only when it is seen happening.
 
 | Limit | Why accepted | Would be closed by |
 |---|---|---|
-| Worker worktrees share the coordinator's git config and hooks, and Cursor workers run with `--force` on this host. A deliberately hostile worker could plant code there | Detected at turn end for the common cases; a real boundary needs isolation | Isolation (spike under way) |
+| Worker worktrees share the coordinator's git config and hooks, and Cursor workers run with `--force` on this host. A deliberately hostile worker could plant code there | Detected at turn end for the common cases; a real boundary needs isolation | Isolation (M22.44) |
 | Crafted git config: non-UTF-8 include paths, FIFO includes, `/` as `core.hooksPath` | Out of scope | Isolation |
 | Timed path swaps during safe writes | Out of scope | Isolation |
 | Unusual path spellings through a symlinked `work/` | Out of scope, unless a record would count as approval | Isolation |
