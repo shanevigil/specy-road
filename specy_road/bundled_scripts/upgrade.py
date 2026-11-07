@@ -32,18 +32,17 @@ a temporary mirror of the checkout that keeps its links; what they wrote there
 is the plan, which is then written into the checkout. ``--dry-run`` lists the
 same plan, writes it into a temporary copy instead and runs ``validate`` there;
 the checkout is never written, and the generated files it would write are
-listed as ``would write``. Every git call in the copy runs with every ``GIT_``
-variable of the caller's removed and no global or system git config, no hook
-and a timeout, so it never reaches the checkout's repository or runs a command
-the caller's config names. A failed ``git init``, ``add`` or ``commit`` in either
-temporary copy, the plan's included, stops the run with exit 2: nothing is
-written or validated. A generated file with a symlink on its path is refused, and ``digest``
-stays a next step, as it does when ``validate`` fails (nothing is regenerated
-from an invalid graph). The exit code is 1 when ``validate`` fails, a generated
-file is refused, or the safe-write rule refuses a stub, skill file, skill link
-or ignore file (printed ``error:``; that path is left as it is, the rest of the
-plan is applied), else 0. A refused ``AGENTS.md``, ``CLAUDE.md``, shipped doc,
-work template or profile stays a report line. Read validate's
+listed as ``would write``. Every git call runs with every ``GIT_`` variable of
+the caller's removed and a timeout; in the plan's mirror and the dry run's
+copy, git also reads no global or system config and runs no hook, and in the
+checkout the caller's own config files apply. The exit code is 2 when a git
+call it depends on fails or times out, 1 when ``validate`` fails or a write
+is refused, and 0 otherwise. A generated file with a symlink on its path is
+refused, and ``digest`` stays a next step, as it does when ``validate`` fails
+(nothing is regenerated from an invalid graph). A refused stub, skill file,
+skill link or ignore file is printed ``error:``; that path is left as it is,
+the rest of the plan is applied. A refused ``AGENTS.md``, ``CLAUDE.md``,
+shipped doc, work template or profile stays a report line. Read validate's
 notices for what the new version reports (held milestones among them).
 """
 
@@ -387,7 +386,8 @@ def _print_other_worktrees(checkout: Path) -> None:
 def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = False) -> int:
     """The upgrade's exit code; a git call it depends on failing prints why and is 2."""
     try:
-        return _upgrade(repo_root, dry_run=dry_run, prune=prune)
+        with scratch_environ(None):
+            return _upgrade(repo_root, dry_run=dry_run, prune=prune)
     except GitFailed as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
