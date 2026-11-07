@@ -234,28 +234,27 @@ def test_failure_before_the_commit_restores_the_tree(
     assert _state(repo) == before
 
 
-def test_staging_by_the_hook_is_kept_and_both_indexes_named(tmp_path: Path, monkeypatch) -> None:
-    """M22.20: a path the hook stages is not dropped by the index restore; both indexes are named."""
+@pytest.mark.parametrize("staged", ["notes.txt", "roadmap.md", "work/worker-logs/M1.1/hook.log"],
+                         ids=["unrelated-path", "path-finish-writes", "worker-logs-directory"])
+def test_staging_by_the_hook_is_saved_and_named(tmp_path: Path, monkeypatch, staged: str) -> None:
+    """M22.20: what the hook staged, on any path (one finish writes too), is in the index saved and named before
+    the one from before finish goes back; the restore is otherwise whole."""
     repo = _repo(tmp_path, monkeypatch)
-    (repo / "notes.txt").write_text("unrelated\n")
-    _pre_commit_hook(repo, "git add notes.txt")
-    files, staged, head = _state(repo)
+    _pre_commit_hook(repo, f"mkdir -p {Path(staged).parent} && echo 'hook bytes' > {staged} && git add -f {staged}")
+    before = _state(repo)
     result = _run(repo, ["-m", "specy_road.cli", "finish-this-task"])
     out = result.stdout + result.stderr
     assert result.returncode == 1, out
-    assert AGAIN in result.stderr and "Traceback" not in result.stderr, out
-    line = next(ln for ln in result.stderr.splitlines() if ln.startswith("error: could not restore the index:"))
-    assert "(notes.txt)" in line, line
-    saved = Path(line.split("the index from before finish is saved at ", 1)[1].split(";", 1)[0])
-    index = Path(git(repo, "rev-parse", "--git-path", "index"))
-    index = index if index.is_absolute() else repo / index
-    assert f"stays at {index}" in line, line
-    assert "notes.txt" in git(repo, "ls-files", "--", "notes.txt")   # the hook's staging is kept
+    assert AGAIN in result.stderr and "could not restore" not in result.stderr and "Traceback" not in out, out
+    line = next(ln for ln in result.stderr.splitlines() if ln.startswith("note: put the index from before finish"))
+    assert staged in line.split("staging changed since finish started: ", 1)[1], line
+    saved = Path(line.split(" is saved at ", 1)[1].split(": move it back", 1)[0])
     env = {**os.environ, "GIT_INDEX_FILE": str(saved)}
-    assert subprocess.run(["git", "ls-files", "-s"], cwd=repo, env=env, capture_output=True, text=True,
-                          check=True).stdout.strip() == staged   # the saved index is the one from before finish
-    on_disk = {n: e for n, e in _state(repo)[0].items() if e is not None}   # the kept index lists finish's paths
-    assert on_disk == {n: e for n, e in files.items() if e is not None} and git(repo, "rev-parse", "HEAD") == head
+    entry = subprocess.run(["git", "ls-files", "-s", "--", staged], cwd=repo, env=env, capture_output=True,
+                           text=True, check=True).stdout.split()
+    assert git(repo, "cat-file", "-p", entry[1]) == "hook bytes"   # the hook's staging, saved and named
+    on_disk = {n: e for n, e in _state(repo)[0].items() if n != staged}
+    assert (on_disk, *_state(repo)[1:]) == ({n: e for n, e in before[0].items() if n != staged}, *before[1:])
 
 
 def test_a_failed_restore_write_keeps_the_previous_bytes(tmp_path: Path, monkeypatch) -> None:

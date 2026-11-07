@@ -24,6 +24,7 @@ import secrets
 import signal
 import subprocess
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from specy_road.git_subprocess import git_text
@@ -214,11 +215,11 @@ def kill_group(rec: WorkerRecord, repo_root: Path | None = None, *, grace: float
     group is gone its id can be a new session leader's (pre-release review),
     and the verified process must be in the recorded group now (re-review N3).
     The group's descendants outside it (a command in a session of its own)
-    are listed before the first signal and get each signal with the group,
-    each only while its start time still matches (D6, M22.20); a zombie is
-    gone. When that listing fails the record gets ``descendants_unchecked``
-    (saved when ``repo_root`` is given) and the next call repeats the listing,
-    even with the group gone, until one succeeds (M22.20).
+    get each signal with the group (D6, M22.20; :class:`_Descendants`). The
+    record carries ``descendants_unchecked`` (saved when ``repo_root`` is
+    given) from the start of that pass until it ends with every listing read
+    and no survivor, so a failed or interrupted pass is repeated by the next
+    call, even with the group gone (M22.20).
     """
     if rec.descendants_unchecked and rec.pgid and not _group_members(rec.pgid) and not wrapper_alive(rec, repo_root):
         _end_with_descendants(rec, repo_root, rec.pgid, grace)   # the group went with the last terminate
@@ -237,18 +238,18 @@ def kill_group(rec: WorkerRecord, repo_root: Path | None = None, *, grace: float
 
 
 def _end_with_descendants(rec: WorkerRecord, repo_root: Path | None, pgid: int, grace: float, *,
-                 confirmed: bool = False) -> None:
-    """List the group's escaped descendants, end them with the group, and record whether the listing worked."""
-    escaped = _escaped_descendants(pgid, {rec.pgid, rec.pid, rec.harness_pid})   # before the first signal
-    if escaped is None:
-        _mark_unchecked(rec, repo_root, True)
-    if not end_group(pgid, grace, confirmed=confirmed, also=escaped):
+                          confirmed: bool = False) -> None:
+    """End the group and its escaped descendants together; clear the record's mark only when all is confirmed."""
+    found = _Descendants(pgid, {rec.pgid, rec.pid, rec.harness_pid})
+    _mark_unchecked(rec, repo_root, True)
+    found.live()   # the snapshot, before the first signal; end_group's own listing rechecks each pid's start
+    if not end_group(pgid, grace, confirmed=confirmed, outside=found.live):
         raise WorkerError(f"{rec.worker_id}: process group {pgid} is still alive after SIGKILL")
-    if escaped is None:
+    live = found.live()
+    if found.failed:
         raise WorkerError(f"{rec.worker_id}: process group {pgid} is gone, but `{' '.join(_INVENTORY)}` could not "
-                          "list its descendants outside the group; run `worker terminate` again to repeat that "
-                          "listing, or check for them by hand")
-    live = _still_running(rec, escaped)
+                          "list its descendants outside the group at every step; run `worker terminate` again to "
+                          "repeat that pass, or check for them by hand")
     if live:
         raise WorkerError(f"{rec.worker_id}: pid(s) {', '.join(map(str, live))} outside its process group "
                           "are still alive after SIGKILL")
@@ -265,26 +266,28 @@ def _mark_unchecked(rec: WorkerRecord, repo_root: Path | None, unchecked: bool) 
         mutate(repo_root, rec, lambda r: setattr(r, "descendants_unchecked", value))
 
 
-def end_group(pgid: int, grace: float = 5.0, *, confirmed: bool = False, also: dict[int, str] | None = None) -> bool:
+def end_group(pgid: int, grace: float = 5.0, *, confirmed: bool = False,
+              outside: Callable[[], list[int] | None] | None = None) -> bool:
     """SIGTERM process group ``pgid``, SIGKILL it after ``grace`` seconds, and wait up to 2 s more; ``True`` when no
     member is left (a group already gone is success). Never the caller's own group. A signal goes only while ``ps``
     lists a member (a gone group's id can be reused); ``confirmed``: the caller verified a member itself
-    (:func:`kill_group`), so the first signal needs no listing. ``also``: pids outside the group with their start
-    times, each signalled with the group while still listed with that start (the caller checks them afterwards).
-    Used by :func:`kill_group` and by the reviewer runners (M22.16), whose reviewer runs in a session of its own."""
+    (:func:`kill_group`), so the first signal needs no listing. ``outside``: called at every step for the pids
+    outside the group to signal with it (``None``: it cannot say, so the wait goes on); the caller checks them
+    afterwards. Used by :func:`kill_group` and by the reviewer runners (M22.16), whose reviewer runs in a session
+    of its own."""
     if pgid <= 1 or pgid == os.getpgrp():
         return False
-    also = also or {}
+    check = outside or list
     for sig, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 2.0)):
         group = confirmed or bool(_group_members(pgid))
         confirmed = False
-        outside = _listed(also)
-        if not group and not outside:
+        rest = check()
+        if not group and rest == []:
             return True
-        _signal(pgid if group else None, outside, sig)
+        _signal(pgid if group else None, rest or [], sig)
         deadline = time.monotonic() + wait
         while time.monotonic() < deadline:
-            if not _group_members(pgid) and not _listed(also):
+            if not _group_members(pgid) and check() == []:
                 return True
             time.sleep(0.1)
     return not _group_members(pgid)
@@ -329,53 +332,51 @@ def _process_table() -> list[tuple[int, int, int, str, str]] | None:
     return rows
 
 
-def _escaped_descendants(pgid: int, recorded: set[int | None] = frozenset()) -> dict[int, str] | None:
-    """Every transitive descendant (by parent pid) of the group's members that is outside the group, with its start.
+class _Descendants:
+    """The group's descendants outside it, listed again at every step of one terminate pass (M22.20).
 
     A harness's tool can start a command in a session of its own (Cursor's shell
-    tool does), so ``killpg`` never reaches it (D6). ``None`` when ``ps`` cannot say.
-    A ``recorded`` pid no process holds now also roots the walk: a process still
-    naming it as parent was not re-parented yet. One a live process holds is a
-    reused pid, never a root; a re-parented descendant is out of reach (M22.20).
+    tool does), so ``killpg`` never reaches it (D6). The rule, at every listing:
+    walk parent links from the group's members, from each pid already found that
+    still runs with its start time, and from each recorded pid no process holds
+    now (a process still naming it as parent was not re-parented yet; a held one
+    is a reused pid). Every process reached outside the group joins with its
+    start time, so a child forked during the grace by one already found is
+    signalled at the next step. A pid counts as running only with that start
+    time (a changed start is a reused pid) and not as a zombie. Limit: a process
+    re-parented before any listing reached it is out of reach.
     """
-    rows = _process_table()
-    if rows is None:
-        return None
-    children: dict[int, list[int]] = {}
-    for pid, ppid, _, _, _ in rows:
-        children.setdefault(ppid, []).append(pid)
-    info = {pid: (pg, start) for pid, _, pg, _, start in rows}
-    todo = [pid for pid, (pg, _) in info.items() if pg == pgid]
-    todo += [p for p in recorded if p and p > 1 and p not in info]
-    seen, out = set(todo), {}
-    while todo:
-        for child in children.get(todo.pop(), []):
-            if child not in seen:
-                seen.add(child)
-                todo.append(child)
-                if info[child][0] != pgid:
-                    out[child] = info[child][1]
-    return out
 
+    def __init__(self, pgid: int, recorded: set[int | None]) -> None:
+        self.pgid, self.recorded = pgid, {p for p in recorded if p and p > 1}
+        self.known: dict[int, str] = {}
+        self.failed = False   # some listing in this pass could not be read
 
-def _running(rows: list[tuple[int, int, int, str, str]], procs: dict[int, str]) -> list[int]:
-    """``procs`` still listed with their start time and not a zombie: a changed start is a reused pid, so gone."""
-    return sorted(pid for pid, _, _, stat, start in rows if procs.get(pid) == start and not stat.startswith("Z"))
+    def live(self) -> list[int] | None:
+        """List again, add what the walk reaches, and return the found pids still running; ``None``: ``ps`` failed."""
+        rows = _process_table()
+        if rows is None:
+            self.failed = True
+            return None
+        children: dict[int, list[int]] = {}
+        for pid, ppid, _, _, _ in rows:
+            children.setdefault(ppid, []).append(pid)
+        info = {pid: (pg, start) for pid, _, pg, _, start in rows}
+        todo = [pid for pid, (pg, _) in info.items() if pg == self.pgid]
+        todo += self._running(rows) + [p for p in self.recorded if p not in info]
+        seen = set(todo)
+        while todo:
+            for child in children.get(todo.pop(), []):
+                if child not in seen:
+                    seen.add(child)
+                    todo.append(child)
+                    if info[child][0] != self.pgid:
+                        self.known.setdefault(child, info[child][1])
+        return self._running(rows)
 
-
-def _listed(procs: dict[int, str]) -> list[int]:
-    """:func:`_running` now; ``[]`` when there is nothing to check or ``ps`` fails (the caller rechecks)."""
-    rows = _process_table() if procs else None
-    return [] if rows is None else _running(rows, procs)
-
-
-def _still_running(rec: WorkerRecord, procs: dict[int, str]) -> list[int]:
-    """:func:`_running` now; raise when ``ps`` cannot say."""
-    rows = _process_table()
-    if rows is None:
-        raise WorkerError(f"{rec.worker_id}: cannot recheck pid(s) {', '.join(map(str, sorted(procs)))} outside "
-                          f"its process group: `{' '.join(_INVENTORY)}` failed")
-    return _running(rows, procs)
+    def _running(self, rows: list[tuple[int, int, int, str, str]]) -> list[int]:
+        return sorted(pid for pid, _, _, stat, start in rows
+                      if self.known.get(pid) == start and not stat.startswith("Z"))
 
 
 # --- READY fingerprint (B3) and the checked-out branch (B12) ---------------

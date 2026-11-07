@@ -122,12 +122,12 @@ def leader(tmp_path: Path):
 
 
 def _seams(monkeypatch, leader_pid: int, *, before: str | None, after: str | None, stat: str = "S",
-           dies: bool = False) -> list[tuple[int, int]]:
+           dies: bool = False, outage: dict[str, int] | None = None) -> list[tuple[int, int]]:
     """Patch ``ps`` and ``os.kill``: a fake descendant of ``leader_pid`` outside its group.
 
     The inventory lists it started at ``before`` and every later read at ``after`` in state ``stat`` (``None``: not
-    listed); a ``before`` of ``None`` makes the first inventory unreadable. ``dies``: no longer listed once
-    signalled. Returns the signals sent to the fake pid.
+    listed); a ``before`` of ``None`` makes the first inventory unreadable, and while ``outage["on"]`` every read
+    after the first ``outage["ok"]`` fails. ``dies``: no longer listed once signalled. Returns the signals sent to the fake pid.
     """
     real_run, real_kill, sent, reads = subprocess.run, os.kill, [], []
 
@@ -137,7 +137,7 @@ def _seams(monkeypatch, leader_pid: int, *, before: str | None, after: str | Non
             return r
         first = not reads
         reads.append(args)
-        if first and before is None:
+        if (first and before is None) or (outage and outage["on"] and len(reads) > outage["ok"]):
             return subprocess.CompletedProcess(args, 1, "", "ps: unreadable")
         start = None if dies and sent else before if first else after
         row = f"{FAKE_PID} {leader_pid} {FAKE_PID} {'S' if first else stat} {start}\n" if start else ""
@@ -184,20 +184,23 @@ def test_a_same_start_survivor_raises_naming_its_pid(leader, monkeypatch, stat: 
     assert _gone(pid)
 
 
-def test_a_failed_inventory_is_repeated_by_the_next_terminate(tmp_path: Path, leader, monkeypatch) -> None:
-    """M22.20: the first terminate records ``descendants_unchecked`` and does not terminate the record; the second
-    lists the descendant (its parent link to the recorded harness still holds), signals it and clears the mark."""
+@pytest.mark.parametrize("ok", [0, 1], ids=["every-listing-fails", "fails-after-the-snapshot"])
+def test_a_failed_inventory_is_repeated_by_the_next_terminate(tmp_path: Path, leader, monkeypatch, ok: int) -> None:
+    """M22.20: a listing that fails at any step of the first terminate keeps ``descendants_unchecked`` and the record
+    not terminated; the second lists the descendant (its parent link to the recorded harness still holds), signals
+    it and clears the mark."""
     pid, fixture = leader
     repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "cursor", "m", repo)
     ws.mutate(repo, rec, lambda r: r.__dict__.update(state="running", pgid=pid, harness_pid=pid,
                                                      harness_start=fixture.harness_start))
-    start = "Thu Nov  5 10:00:00 2026"
-    sent = _seams(monkeypatch, pid, before=None, after=start, dies=True)
+    start, outage = "Thu Nov  5 10:00:00 2026", {"on": True, "ok": ok}
+    sent = _seams(monkeypatch, pid, before=start, after=start, dies=True, outage=outage)
     assert run_worker_cli("worker", "terminate", rec.worker_id, "--repo-root", str(repo)) != 0
     first = ws.load_record(repo, rec.worker_id)
     assert first.state == "running" and first.descendants_unchecked is True
     assert sent == [] and _gone(pid)   # the group was ended; its descendant was never listed
+    outage["on"] = 0
     assert run_worker_cli("worker", "terminate", rec.worker_id, "--repo-root", str(repo)) == 0
     second = ws.load_record(repo, rec.worker_id)
     assert second.state == "terminated" and not second.descendants_unchecked
@@ -256,6 +259,7 @@ def test_an_escaped_child_gets_sigterm_with_the_group_not_after_its_grace(tmp_pa
         forked = int(fork_file.read_text())
         assert float(term_at.read_text()) - began < 2.0   # with the group's SIGTERM, inside its 3 s grace
         assert forked != escaped and _gone(escaped)
+        assert _gone(forked)   # forked during the grace by a listed descendant: found at the next step, no survivor
     finally:
         _kill(forked)
         _kill(escaped)

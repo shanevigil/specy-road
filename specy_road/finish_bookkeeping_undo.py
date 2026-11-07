@@ -21,9 +21,11 @@ and unstaged edits survive.
 
 Every restore writes a temporary file beside the path and renames it over the
 path, with the regular file's recorded mode bits, so a failed write leaves
-the previous bytes in place and names the temporary file (M22.20). The index
-goes back only while nothing outside finish's own paths was staged since the
-snapshot; otherwise both versions are kept and named.
+the previous bytes in place and names the temporary file (M22.20). One rule
+for the index: when its staged entries changed since the snapshot (finish's
+own staging, or a hook's or another process's), the index as it is now is
+saved beside it and named before the snapshot's goes back, so no staging is
+dropped unnamed; when that copy cannot be written the index stays as it is.
 """
 
 from __future__ import annotations
@@ -259,9 +261,8 @@ class PreCommitSnapshot:
 
     The whole index, not per-path entries: ``git add <dir>`` reaches every entry
     under a directory, including ones absent from disk, so no path list bounds it.
-    ``index_entries`` is the staged entries (``git ls-files -s``, from the top);
-    ``owned`` the top-relative paths and directories finish itself stages, so a
-    staging change anywhere else keeps the index (M22.20).
+    ``index_entries`` is the staged entries (``git ls-files -s``, from the top),
+    which :func:`restore_pre_commit` compares (M22.20).
     """
 
     head: str     # HEAD when the snapshot was taken; once it moves, the commit happened
@@ -270,7 +271,6 @@ class PreCommitSnapshot:
     files: dict[str, tuple[str, str | bytes]] = field(default_factory=dict)
     modes: dict[str, int] = field(default_factory=dict)
     index_entries: frozenset[str] | None = None
-    owned: tuple[str, ...] = ()
 
 
 def pre_commit_paths(repo: Path, node_id: str, sess_path: Path | None) -> list[str]:
@@ -285,18 +285,13 @@ def pre_commit_paths(repo: Path, node_id: str, sess_path: Path | None) -> list[s
     return list(dict.fromkeys([*dests, *_cleanup_and_log_paths(root, node_id, sess_path)]))
 
 
-def snapshot_pre_commit(repo: Path, rels: list[str], owned_dirs: tuple[str, ...] = ()) -> PreCommitSnapshot:
-    """Record ``rels``' worktree bytes and modes (or absence; a directory is skipped) and the index.
-
-    ``owned_dirs``: directories (relative to ``repo``) whose every entry finish may stage, besides ``rels``.
-    """
+def snapshot_pre_commit(repo: Path, rels: list[str]) -> PreCommitSnapshot:
+    """Record ``rels``' worktree bytes and modes (or absence; a directory is skipped) and the index."""
     root = repo.resolve()
     index_path = root / git_ok(["rev-parse", "--git-path", "index"], root)[1]
-    prefix = git_ok(["rev-parse", "--show-prefix"], root)[1]
     snap = PreCommitSnapshot(head=git_ok(["rev-parse", "HEAD"], root)[1], index_path=index_path,
                              index_bytes=index_path.read_bytes() if index_path.is_file() else None,
-                             index_entries=_index_entries(root),
-                             owned=tuple(prefix + p for p in [*rels, *(d.rstrip("/") + "/" for d in owned_dirs)]))
+                             index_entries=_index_entries(root))
     for rel in rels:
         _record(root, rel, snap.files, snap.modes)
     return snap
@@ -312,41 +307,38 @@ def _index_entries(root: Path) -> frozenset[str] | None:
     return frozenset(r.stdout.decode("utf-8", "surrogateescape").split("\0")) - {""} if r.returncode == 0 else None
 
 
-def _foreign_staging(root: Path, snap: PreCommitSnapshot) -> list[str]:
-    """Paths staged or unstaged since the snapshot that finish does not own; one placeholder when unlistable."""
+def _save_changed_index(root: Path, snap: PreCommitSnapshot) -> None:
+    """When the staged entries changed since the snapshot, copy the index beside it and say where and what changed.
+
+    An index git cannot list counts as changed. A copy that cannot be written raises, so the caller keeps the index.
+    """
     now = _index_entries(root)
-    if now is None or snap.index_entries is None:
-        return ["(git ls-files could not list the index)"]
-    paths = {e.split("\t", 1)[-1] for e in now ^ snap.index_entries}
-    return sorted(p for p in paths if not any(p == o or (o.endswith("/") and p.startswith(o)) for o in snap.owned))
-
-
-def _keep_both_indexes(snap: PreCommitSnapshot, changed: list[str]) -> str:
-    """Save the snapshot's index beside the current one, which stays; say where each is."""
-    if snap.index_bytes is None:
-        before = "there was no index before finish"
-    else:
-        fd, name = tempfile.mkstemp(prefix=f"{snap.index_path.name}.before-finish.", dir=snap.index_path.parent)
+    if now is not None and now == snap.index_entries:
+        return
+    changed = ("unlistable" if now is None or snap.index_entries is None
+               else ", ".join(sorted({e.split("\t", 1)[-1] for e in now ^ snap.index_entries})))
+    try:
+        fd, name = tempfile.mkstemp(prefix=f"{snap.index_path.name}.left-by-finish.", dir=snap.index_path.parent)
         with os.fdopen(fd, "wb") as f:
-            f.write(snap.index_bytes)
-        before = f"the index from before finish is saved at {name}"
-    return (f"staging changed since finish started ({', '.join(changed)}), so the index was not put back: "
-            f"the current index (with that staging and finish's) stays at {snap.index_path}, and {before}; "
-            "keep the current one or move the saved one over it")
+            f.write(snap.index_path.read_bytes() if snap.index_path.is_file() else b"")
+    except OSError as e:
+        raise OSError(f"staging changed since finish started ({changed}) and the index could not be saved "
+                      f"({e}), so it stays as it is at {snap.index_path}") from e
+    print(f"note: put the index from before finish back at {snap.index_path}; the one it replaced (staging changed "
+          f"since finish started: {changed}) is saved at {name}: move it back over the index to keep that staging",
+          file=sys.stderr)
 
 
 def restore_pre_commit(repo: Path, snap: PreCommitSnapshot) -> dict[str, str]:
     """Put the index file and every snapshotted path's bytes back; return ``{path: why}`` for each that failed.
 
-    The index is kept as it is, with the snapshot's saved beside it, when staging outside
-    :attr:`PreCommitSnapshot.owned` changed since the snapshot (:func:`_keep_both_indexes`).
+    The index it replaces is saved and named first when its staged entries changed (:func:`_save_changed_index`).
     """
     root = repo.resolve()
     failed: dict[str, str] = {}
     try:
-        if changed := _foreign_staging(root, snap):
-            failed["the index"] = _keep_both_indexes(snap, changed)
-        elif snap.index_bytes is None:
+        _save_changed_index(root, snap)
+        if snap.index_bytes is None:
             snap.index_path.unlink(missing_ok=True)
         else:   # written beside it and renamed, so git never reads half an index
             tmp = snap.index_path.with_name(snap.index_path.name + ".specy-road-restore")
@@ -443,7 +435,7 @@ def bookkeeping_guard(repo: Path, node_id: str, sess_path: Path | None) -> Itera
     refuse_irregular_destinations_or_exit(repo, node_id)
     preflight_validate_or_exit(repo)
     try:
-        snap = snapshot_pre_commit(repo, pre_commit_paths(repo, node_id, sess_path), (f"{WORKER_LOGS_REL}/{node_id}",))
+        snap = snapshot_pre_commit(repo, pre_commit_paths(repo, node_id, sess_path))
     except (OSError, subprocess.SubprocessError, RuntimeError) as e:   # RuntimeError: a symlink loop (Python < 3.13)
         _nothing_changed([f"error: finish-this-task could not record the tree before writing: {_failed_step(e)}"])
     try:
