@@ -8,10 +8,11 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.decisions import read_decisions
+from specy_road.decisions import read_decisions, write_decisions
 from specy_road.runtime_paths import specy_road_package_dir
 from tests.helpers import DOGFOOD
 from tests.decisions_repo_helpers import SHEET, add_args, decisions_repo, run_decisions
+from tests.move_node_helpers import base_fixture, commit_project, run_cli
 
 SKILL = specy_road_package_dir() / "templates" / "specyrd" / "commands" / "specyrd-orchestrate.md"
 
@@ -179,3 +180,93 @@ def test_documented_search_kind_planning(tmp_path: Path) -> None:
     with pytest.raises(SystemExit) as exc:
         search_main(["search", "contract", "--kind", "planning", "--repo-root", str(dest)])
     assert int(exc.value.code or 0) == 0
+
+
+def _question(eid: str, kind: str, node: str | None, **extra: object) -> dict:
+    entry: dict = {
+        "id": eid, "kind": kind, "summary": eid, "asked": "2020-01-01", "status": "open",
+    }
+    if node is not None:
+        entry["node"] = node
+    if kind != "preference":
+        entry.update(
+            why_now="why",
+            options=[{"label": "a", "effect": "b"}],
+            recommendation="a",
+            recommendation_reason="r",
+            default_if_unanswered="a",
+        )
+    entry.update(extra)
+    return entry
+
+
+def _strict_repo(tmp_path: Path) -> Path:
+    base_fixture(tmp_path)
+    for doc in ("constitution/purpose.md", "constitution/principles.md", "docs/supply-chain-security.md"):
+        (tmp_path / doc).parent.mkdir(exist_ok=True)
+        (tmp_path / doc).write_text("# doc\n", encoding="utf-8")
+    assert run_cli(tmp_path, "refresh-stubs").returncode == 0
+    commit_project(tmp_path, tmp_path)
+    return tmp_path
+
+
+NOTICE = (
+    "roadmap: notice — roadmap/decisions.yaml names no live node:\n"
+    "  Dopen [decision] node M9.9\n"
+    "  Hopen [human-action] node M9.8\n"
+    "  Pact [preference] node M9.7"
+)
+
+
+def test_validate_notices_open_entries_naming_no_live_node(tmp_path: Path) -> None:
+    """One stdout notice under --strict; closed, expired, no-node and live-node stay silent."""
+    repo = _strict_repo(tmp_path)
+    write_decisions(repo / "roadmap" / "decisions.yaml", {"version": 1, "entries": [
+        _question("Dopen", "decision", "M9.9", asked="2020-01-01"),
+        _question("Hopen", "human-action", "M9.8", asked="2020-01-02"),
+        _question("Pact", "preference", "M9.7", asked="2020-01-03", expires="2099-12-31"),
+        _question("Dclosed", "decision", "M8.8", status="closed", answer="a", closed="2020-01-02"),
+        _question("Pexp", "preference", "M8.7", expires="2000-01-01"),
+        _question("Pnone", "preference", None, expires="2099-12-31"),
+        _question("Dlive", "decision", "M1.1", asked="2020-06-01"),
+    ]})
+
+    r = run_cli(repo, "validate", "--strict")
+
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.count(NOTICE) == 1
+    for silent in ("Dclosed", "Pexp", "Pnone", "Dlive", "M8.8", "M8.7"):
+        assert silent not in r.stdout
+
+
+_SILENT_LEDGER_TEXT = {
+    "yaml": "version: [\n",
+    "sequence": "- not-a-mapping\n",
+    "empty_sequence": "[]\n",
+}
+
+
+@pytest.mark.parametrize(
+    "case",
+    [*_SILENT_LEDGER_TEXT, "utf8", "unreadable"],
+)
+def test_validate_stays_silent_on_an_invalid_decision_ledger(tmp_path: Path, case: str) -> None:
+    repo = _strict_repo(tmp_path)
+    path = repo / "roadmap" / "decisions.yaml"
+    if case in _SILENT_LEDGER_TEXT:
+        path.write_text(_SILENT_LEDGER_TEXT[case], encoding="utf-8")
+    elif case == "utf8":
+        path.write_bytes(b"\xff\xfe not utf-8")
+    else:
+        path.write_text("version: 1\nentries: []\n", encoding="utf-8")
+        path.chmod(0)
+    try:
+        r = run_cli(repo, "validate", "--strict")
+    finally:
+        if case == "unreadable":
+            path.chmod(0o644)
+
+    assert r.returncode == 0, r.stderr
+    assert "PermissionError" not in r.stderr
+    assert "decisions.yaml" not in r.stdout
+    assert "decisions.yaml" not in r.stderr

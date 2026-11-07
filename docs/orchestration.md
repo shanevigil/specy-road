@@ -144,6 +144,18 @@ a `senior` executor.
 
 Open questions for a person live in **`roadmap/decisions.yaml`** beside `registry.yaml`. The file is
 schema-validated (`schemas/decisions.schema.json`, copied by `init project` / `specy-road refresh-schemas`).
+An id-changing move rewrites `node` here for every entry whose `node` is an old id (any kind and
+status, one lookup of the node it had when loaded, so a chain, a swap, or a YAML alias of the
+same entry stays correct), in the same transaction as the chunks,
+planning sheets and registry. The file is written only when an entry changed; an absent file stays
+absent; a file that does not parse, is not UTF-8, cannot be opened, or fails the schema refuses
+the move before any write. A falsy root (empty text, `[]`, `{}`, `null`, `false`, or `0`) fails that
+schema and is not treated as an empty ledger.
+`specy-road validate` prints one stdout notice listing each open decision or human-action and each
+active preference whose `node` is a non-empty string naming no live node. Closed entries, expired
+preferences and entries with no `node` are omitted, and `--strict` does not count the notice. A
+missing ledger, one that is not valid UTF-8 or cannot be opened, or a schema-invalid ledger adds
+nothing.
 Each **open** entry carries:
 
 | Field | Meaning |

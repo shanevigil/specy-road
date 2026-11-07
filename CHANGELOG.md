@@ -22,6 +22,25 @@ body. Keep section bodies focused; link to PRs for detail.
   not) refuses the command and leaves the live record unwritten. After a reviewer run, a symlink planted at
   `work` or `work/reviews` is a review failure and is not read or written through: the gate does not count a
   record reached through that link, the run log is not opened, and `prompt --run`'s close does not raise.
+- A Cursor display name that includes a context size immediately before a trailing effort, such as
+  `Claude Opus 5.5 300K High` or `GPT-5.6 Sol 1M High`, matches the catalog id it names (`claude-opus-5-5-high`,
+  `gpt-5.6-sol-high`). `Extra High` is `xhigh` only as that trailing suffix, and `fast` stays part of the identity.
+  A context-size token anywhere else stays part of the name (`Model 1M Series High` does not match
+  `model-series-high`), and `Extra High` elsewhere stays as written (`Extra High Model` does not match
+  `xhigh-model`). A different effort does not match, including when the profile lists every effort as an alias:
+  `GPT-5.6 Sol 1M Medium` against `gpt-5.6-sol-high` is a mismatch in the review check and the worker note. A
+  context size whose display name omits the effort word (`GPT-5.6 Sol 1M`, the medium name) does not match either.
+  A request that names no effort still accepts the profile's aliases.
+- An id-changing move (`move-node`, `indent`, `outdent`, `group-nodes`, `--renumber-outline`, and the PM GUI
+  move, indent, outdent, group and `renumber_outline` reorder) rewrites `node` in the tracked
+  `roadmap/decisions.yaml` for every entry whose node is an old id, any kind and status, one lookup so a
+  chain, a swap, or a YAML alias of the same entry stays correct, in the same transaction as the chunks and registry. The node looked up is the one the entry had when the file was loaded. The file is written
+  only when an entry changed. An absent ledger stays absent. A ledger that does not parse or fails its
+  schema refuses the move before any write, as does a ledger that is not UTF-8 or cannot be opened
+  (the error names `roadmap/decisions.yaml`). A falsy root (empty text, `[]`, `{}`, `null`, `false`, or `0`)
+  fails that schema and is not treated as an empty ledger. `validate` prints one stdout notice listing each open decision,
+  open human-action and active preference whose `node` names no live node; `--strict` does not count it.
+  A missing, unreadable (not UTF-8, or not openable) or schema-invalid ledger adds no notice.
 - `specy-road doctor --fix` leaves a registry row whose branch is in neither this clone nor the
   remote. The report calls that row advisory and says what to check: another clone's claim looks
   the same until it pushes its branch, so confirm that clone no longer holds the claim, then

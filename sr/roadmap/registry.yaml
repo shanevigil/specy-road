@@ -167,33 +167,8 @@ entries:
       - specy_road/bundled_scripts/review_cli.py
       - specy_road/bundled_scripts/role_prompt.py
       - specy_road/bundled_scripts/mark_implementation_reviewed.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: cursor-display-names-match-the-model
-    node_id: M22.40
-    branch: feature/rm-cursor-display-names-match-the-model
-    touch_zones:
-      - specy_road/model_names.py
-      - tests/test_model_names.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: decisions-follow-moves
-    node_id: M22.3
-    branch: feature/rm-decisions-follow-moves
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_id_rewrite_staging.py
-      - specy_road/bundled_scripts/roadmap_move_node.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/decisions.py
-      - tests/test_move_node_subtree.py
-      - tests/test_decisions.py
-      - docs/roadmap-authoring.md
-      - docs/orchestration.md
-      - CHANGELOG.md
+      - specy_road/review_record_write.py
+      - specy_road/bundled_scripts/role_prompt_cli.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -212,6 +187,18 @@ entries:
       - tests/test_upgrade_preview.py
       - CHANGELOG.md
       - specy_road/digest.py
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: gate-without-remote-head
+    node_id: M22.12
+    branch: feature/rm-gate-without-remote-head
+    touch_zones:
+      - specy_road/review_policy_ref.py
+      - tests/test_review_policy_ref_no_remote_head.py
+      - docs/orchestration.md
+      - CHANGELOG.md
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
