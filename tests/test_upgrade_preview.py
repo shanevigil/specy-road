@@ -22,7 +22,7 @@ from specy_road.bundled_scripts.upgrade import run_upgrade
 from specy_road.file_limits_engine import collect_tracked_files, run_file_limits_scan
 from specy_road.git_subprocess import GitResult
 from specy_road.init_project import run_init_project
-from tests.upgrade_repo_helpers import old_repo
+from tests.upgrade_repo_helpers import OLD_STUB, old_repo
 
 GIT_ID = ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"]
 
@@ -60,6 +60,29 @@ def test_a_tracked_file_a_new_rule_matches_is_reported_from_the_checkout(
         assert f".specyrd/AGENTS.local.md (.specyrd/AGENTS.local.md): {TRACKED_NOTE}" in out
         assert "git rm --cached -- .specyrd/AGENTS.local.md" in out
         assert REAL_HEADER in out and ESTIMATE_HEADER not in out
+
+
+def test_a_pruned_untracked_orphan_is_not_reported_as_hidden(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """``--prune`` deletes the orphan before the ignore note, so a deleted file is not reported as hidden."""
+    from specy_road.ignore_report import HIDDEN_NOTE, REAL_HEADER, TRACKED_NOTE
+
+    root = old_repo(tmp_path)
+    ignore = root / ".gitignore"
+    ignore.write_text(ignore.read_text(encoding="utf-8").replace(".specyrd/AGENTS.local.md\n", ""), encoding="utf-8")
+    (root / ".specyrd" / "AGENTS.local.md").write_text("local notes\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "reset", "-q", "--", OLD_STUB)
+    _git(root, "commit", "-qm", "scaffold")
+    assert OLD_STUB not in _git(root, "ls-files") and (root / OLD_STUB).is_file()
+    capsys.readouterr()
+
+    assert run_upgrade(root, prune=True) == 0
+
+    out = capsys.readouterr().out
+    assert f"removed {OLD_STUB}" in out and not (root / OLD_STUB).exists()
+    assert not any(OLD_STUB in line and HIDDEN_NOTE in line for line in out.splitlines())
+    assert f".specyrd/AGENTS.local.md (.specyrd/AGENTS.local.md): {TRACKED_NOTE}" in out
+    assert "git rm --cached -- .specyrd/AGENTS.local.md" in out and REAL_HEADER in out
 
 
 def test_header_names_the_install_and_a_dry_run_says_it_previews(tmp_path: Path, capsys) -> None:

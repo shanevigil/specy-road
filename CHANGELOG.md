@@ -20,7 +20,8 @@ body. Keep section bodies focused; link to PRs for detail.
   tilde fences: an opening fence has at most three spaces of indent and three or more of one character, and it
   closes only on a line of the same character, at least as long, with at most three spaces of indent and nothing
   after it but spaces. `specy-road upgrade` takes its ignore notice from the checkout around the `.gitignore`
-  write, so a tracked file a new rule matches stays tracked and the untrack command is printed; `--dry-run` labels
+  write, after every other plan change, so a tracked file a new rule matches stays tracked and the untrack
+  command is printed, and a file `--prune` deletes is not reported as hidden by that rule. `--dry-run` labels
   the mirror's notice as an estimate.
 - `specy-road doctor --fix` leaves a registry row whose branch is in neither this clone nor the
   remote. The report calls that row advisory and says what to check: another clone's claim looks
