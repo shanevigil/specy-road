@@ -90,7 +90,7 @@ body. Keep section bodies focused; link to PRs for detail.
   `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
 - **Security:** safe-write's writes (generated files, the strict managed blocks and the other writers on the rule)
   and `archive`'s planning-sheet moves walk by directory descriptor: each directory is opened without following a
-  link, relative to the one above, and the file is written and replaced in the directory the walk checked. A
+  link, relative to the one above, and the file is written, given its mode and times, and replaced in the directory the walk checked. A
   destination or a directory on the path swapped for a link between that check and the replace is refused and
   nothing outside changes, the project root itself included. `archive` walks to every planning sheet and its archived place
   that way before its first change, following an in-repo link (a chain of links or a linked directory included, so

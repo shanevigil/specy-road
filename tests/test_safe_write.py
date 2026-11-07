@@ -290,3 +290,44 @@ def test_a_root_swapped_for_a_link_before_it_is_opened_is_refused(
         safe_write.write(root, root / "made" / "f", "x") if operation == "write" else safe_write.mkdirs(root, root / "made")
     monkeypatch.undo()
     assert not list(outside.iterdir()) and not list((tmp_path / "p.real").iterdir())
+
+
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("operation", ["write", "copy"])
+def test_a_parent_swapped_after_the_temp_file_leaves_outside_metadata_alone(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
+    """A racer swaps the parent for a link out right after the temp file is made, and plants a file with the
+    temp file's name there: setting the temp file's mode (``write``) or mode and times (``copy``) leaves it be."""
+    parent, outside, src = tmp_path / "p" / "sub", tmp_path / "outside", tmp_path / "src"
+    parent.mkdir(parents=True)
+    outside.mkdir()
+    (parent / "f").write_bytes(OLD)
+    src.write_bytes(b"new\n")
+    os.chmod(src, 0o600)
+    os.utime(src, (1_000_000, 1_000_000))
+    real_open, planted = os.open, {}
+
+    def racing_open(path, flags, *args, **kwargs):
+        fd = real_open(path, flags, *args, **kwargs)
+        if flags & os.O_CREAT and flags & os.O_EXCL and not planted:   # the temp file, by name in its parent
+            parent.rename(parent.with_name("sub.real"))
+            parent.symlink_to(outside)
+            theirs = outside / os.fsdecode(path)
+            theirs.write_bytes(OLD)
+            os.chmod(theirs, 0o666)
+            planted[theirs] = os.stat(theirs)
+        return fd
+
+    monkeypatch.setattr(os, "open", racing_open)
+    monkeypatch.setattr(os, "supports_dir_fd", os.supports_dir_fd | {racing_open})
+    with pytest.raises(SafeWriteError, match=f"^{parent} is a symlink"):
+        if operation == "write":
+            safe_write.write(tmp_path / "p", parent / "f", "new\n", mode=0o600)
+        else:
+            safe_write.copy(tmp_path / "p", src, parent / "f")
+    monkeypatch.undo()
+    [(theirs, before)] = planted.items()
+    after = os.stat(theirs)
+    assert (after.st_mode, after.st_mtime_ns, theirs.read_bytes()) == (before.st_mode, before.st_mtime_ns, OLD)
+    assert sorted(p.name for p in outside.iterdir()) == [theirs.name]
+    assert sorted(p.name for p in (tmp_path / "p" / "sub.real").iterdir()) == ["f"]   # the temp file is gone

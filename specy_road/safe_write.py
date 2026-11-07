@@ -22,7 +22,8 @@ after ``a symlink``: the sentence finish's ``irregular_destination`` uses.
 Writes and moves (:func:`moving`) go by directory descriptor: the root is opened once and each
 directory below it with ``O_NOFOLLOW`` relative to the one above, so a link
 swapped in after the check fails the open. The temp file is created exclusively
-in the held parent and replaced there; right before the replace every held
+in the held parent, its mode and times are set through that parent (or its own
+descriptor), and it is replaced there; right before the replace every held
 directory's identity is compared with an ``lstat`` of its path, so a swap is
 refused, and one after that comparison can only land in the directory walked.
 Where ``os.supports_dir_fd`` lacks ``os.open`` or ``os.rename`` (Windows), the
@@ -334,6 +335,14 @@ def _old_mode(full: Path, dir_fd: int | None = None) -> int | None:
     return (os.lstat(full) if dir_fd is None else os.stat(full.name, dir_fd=dir_fd, follow_symlinks=False)).st_mode
 
 
+def _anchored(dir_fd: int, name: str, fd: int) -> str | int:
+    """The temp file as a mode or times call (``finish``) must name it: through the held directory
+    (``/proc/self/fd/<dir_fd>/<name>`` on Linux) or else by its own descriptor, never through the directory's
+    path, which a swap after the walk would send elsewhere."""
+    held = f"/proc/self/fd/{dir_fd}"
+    return f"{held}/{name}" if os.path.isdir(held) else fd
+
+
 def _replace(root: Path, path: Path | str, data: bytes, finish) -> Path:
     full = check(root, path, FILE)
     if not _dir_fds():   # M21.37's lstat re-check right before replace
@@ -357,11 +366,8 @@ def _replace(root: Path, path: Path | str, data: bytes, finish) -> Path:
         try:
             with os.fdopen(fd, "wb") as f:
                 f.write(data)
-            try:
-                finish(tmp, _old_mode(full, parent))
-            except OSError:
-                _recheck(full, held)   # a directory swapped under the temp file's path: name it
-                raise
+                f.flush()
+                finish(_anchored(parent, tmp.name, f.fileno()), _old_mode(full, parent))
             _recheck(full, held)
             os.replace(tmp.name, full.name, src_dir_fd=parent, dst_dir_fd=parent)
         except BaseException:
@@ -372,7 +378,7 @@ def _replace(root: Path, path: Path | str, data: bytes, finish) -> Path:
 
 
 def _keep_mode(mode: int | None):
-    def finish(tmp: Path, old: int | None) -> None:
+    def finish(tmp: Path | str | int, old: int | None) -> None:
         if mode is not None:
             os.chmod(tmp, mode)
         elif old is not None:   # a rewrite keeps the file's mode
