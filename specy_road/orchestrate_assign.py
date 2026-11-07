@@ -8,11 +8,13 @@ cheapest; with no rostered coordinator the session that runs the plan coordinate
 
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
+from specy_road.model_names import same_model
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_config import active_substitutions, harness_model
 from specy_road.orchestration_pinned import (
@@ -104,18 +106,69 @@ def unavailable_prompt_error(model: str, entry: dict[str, Any]) -> str:
     return f"{model!r} is unavailable ({unavailability_reason(entry) or 'availability'})"
 
 
+#: Roster keys that make an entry launch a model; a ``family: human`` entry without any of them (and with no profile
+#: found for it) is a person and keeps its exemption. ``channels.paste`` / ``subagent`` and ``preflight`` launch none.
+LAUNCH_KEYS = ("harness", "harness_model", "harness_bin", "profile")
+LAUNCH_CHANNELS = ("cli", "cli_resume")
+
+
+def _channels(entry: dict[str, Any]) -> dict[str, Any]:
+    return entry.get("channels") if isinstance(entry.get("channels"), dict) else {}
+
+
+def _copies(entry: dict[str, Any], profiles: tuple[Profile | None, ...]) -> list[Profile]:
+    return [p.for_id(entry.get("id")) or p for p in profiles if p is not None]
+
+
 def _launch_models(entry: dict[str, Any], *profiles: Profile | None) -> list[str]:
     """Every model the entry can launch, for each copy of its profile given: the profile's ``api_id`` (or the alias the
     entry's id matches), the id a default command passes (:func:`harness_model`: ``harness_model``, else that
-    ``api_id``, else the roster id), and the literal ``--model`` / ``-m`` of ``channels.cli`` / ``cli_resume`` (read,
-    never run)."""
-    channels = entry.get("channels") if isinstance(entry.get("channels"), dict) else {}
-    names = [command_model(str(channels[k])) or "" for k in ("cli", "cli_resume") if channels.get(k)]
-    copies = [p.for_id(entry.get("id")) or p for p in profiles if p is not None]
+    ``api_id``, else the roster id), and the literal ``--model`` / ``-m`` of ``channels.cli`` / ``cli_resume`` and of
+    each copy's ``access.cli`` (read, never run; ``worker delegate`` and ``prompt --channel cli`` run it)."""
+    channels = _channels(entry)
+    names = [command_model(str(channels[k])) or "" for k in LAUNCH_CHANNELS if channels.get(k)]
+    copies = _copies(entry, profiles)
     for prof in copies:
-        names += [prof.api_id, str(prof.data.get("api_id") or "")]
+        names += [prof.api_id, str(prof.data.get("api_id") or ""), command_model(prof.cli() or "") or ""]
     names += [harness_model(entry, prof.api_id) or "" for prof in copies] or [harness_model(entry) or ""]
     return [n for n in dict.fromkeys(names) if n]
+
+
+def _model_unreadable(command: str) -> bool:
+    """True when ``command`` passes a model flag :func:`command_model` cannot read: split as
+    ``role_prompt_cli.bypass_problem`` splits (backslash-newlines removed, POSIX ``shlex`` with ``punctuation_chars``
+    and no comment character; a command that cannot be split is unreadable), it has a ``--model``, ``--model=…``,
+    ``-m`` or ``-m<value>`` word and no literal model is read, or it has more than one such word."""
+    lexer = shlex.shlex(command.replace("\\\n", ""), posix=True, punctuation_chars=True)
+    lexer.whitespace_split, lexer.commenters = True, ""
+    try:
+        words = list(lexer)
+    except ValueError:
+        return True
+    flags = [w for w in words if w in ("--model", "-m") or w.startswith("--model=")
+             or w.startswith("-m") and not w.startswith("--")]
+    return bool(flags) and (len(flags) > 1 or command_model(command) is None)
+
+
+def _unreadable_field(entry: dict[str, Any], *profiles: Profile | None) -> str | None:
+    """The first of ``channels.cli``, ``channels.cli_resume`` and each profile copy's ``access.cli`` whose model flag
+    cannot be read (:func:`_model_unreadable`), else ``None``."""
+    channels = _channels(entry)
+    fields = [(f"channels.{k}", str(channels[k])) for k in LAUNCH_CHANNELS if channels.get(k)]
+    fields += [("access.cli", p.cli()) for p in _copies(entry, profiles) if p.cli()]
+    return next((name for name, cmd in fields if _model_unreadable(cmd)), None)
+
+
+def _is_person(entry: dict[str, Any], profile: Profile | None) -> bool:
+    """A ``family: human`` entry that launches nothing: no :data:`LAUNCH_KEYS`, no launch channel, no profile."""
+    return (entry.get("family") == "human" and profile is None and not any(entry.get(k) for k in LAUNCH_KEYS)
+            and not any(_channels(entry).get(k) for k in LAUNCH_CHANNELS))
+
+
+def _by_id(entry: dict[str, Any], src: GuidanceSource) -> Profile | None:
+    """The committed profile in ``src`` that answers to the entry's id: whether a human entry has a profile is read
+    from the same listing as the flags, never from a routing lookup that returns no profile when git fails."""
+    return next((p for p in src.profiles.values() if p.for_id(entry.get("id"))), None)
 
 
 def _source(config: dict[str, Any], profile: Profile | None, repo_root: Path | None) -> GuidanceSource:
@@ -128,38 +181,78 @@ def _source(config: dict[str, Any], profile: Profile | None, repo_root: Path | N
                           frozenset(str(e.get("id")) for e in roster if e.get(GUIDANCE_OPT_IN) is True))
 
 
+class _Hit(NamedTuple):
+    """``label``: ``model <name>`` or ``model unreadable in <field>``; ``record``: the flag's, when flagged."""
+    label: str
+    record: dict[str, Any] | None
+    error: str | None
+    opted_in: bool
+    field: str | None = None
+
+
+def _flagged(names: list[str], flags: dict[str, dict[str, Any]]) -> tuple[str, dict[str, Any]] | None:
+    """The first name with a flag, exactly or after :func:`~specy_road.model_names.same_model` (case, separators,
+    Cursor's ``cursor-`` prefix), and the matched key's record."""
+    for n in names:
+        key = n if n in flags else next((k for k in flags if same_model(n, k)), None)
+        if key is not None:
+            return n, flags[key]
+    return None
+
+
 def _guidance_hit(config: dict[str, Any], entry: dict[str, Any], profile: Profile | None,
-                  repo_root: Path | None) -> tuple[str, dict[str, Any] | None, str | None, bool] | None:
-    """``(model, record, error, opted_in)`` when signed reviews are on (in ``config`` or on the integration branch,
-    whichever turns them on) and a model the entry launches, by its routed profile or that profile's committed copy,
-    is flagged; or when the integration branch cannot be read while ``config`` has them on (``error``). The opt-in
-    is the committed roster's, never ``config``'s. ``None`` otherwise, and for a human entry."""
-    if entry.get("family") == "human":
-        return None
+                  repo_root: Path | None) -> _Hit | None:
+    """A :class:`_Hit` when signed reviews are on (in ``config`` or on the integration branch, whichever turns them
+    on) and a model the entry launches, by its routed profile or that profile's committed copy, is flagged, or a
+    model flag it passes cannot be read (``field``); or when the integration branch cannot be read while ``config``
+    has them on (``error``). The opt-in is the committed roster's, never ``config``'s. ``None`` otherwise, and for a
+    human entry that launches nothing (:func:`_is_person`).
+
+    One bounded rule for the human exemption: it is decided only from a successful read of the integration branch.
+    A read that fails refuses every entry, a person included, since whether a committed profile answers to its id
+    is then unknown. A routed profile, or a committed one answering to the id (:func:`_by_id`), makes it a model
+    entry, and that profile's models are its launch names."""
     src = _source(config, profile, repo_root)
     if not ((config.get("policy") or {}).get("signed_reviews") or src.signed):
         return None
-    names = _launch_models(entry, profile, src.committed(profile))
+    found = _by_id(entry, src)   # src.profiles is empty when the read failed
+    copies = (profile, src.committed(profile), found)
+    names = _launch_models(entry, *copies)
     if src.error:
-        return (names[0], None, src.error, False) if names else None
-    return next(((n, src.flags[n], None, str(entry.get("id")) in src.opt_ins) for n in names if n in src.flags), None)
+        return _Hit(f"model {names[0]}", None, src.error, False) if names else None
+    if _is_person(entry, profile or found):
+        return None
+    opted = str(entry.get("id")) in src.opt_ins
+    if hit := _flagged(names, src.flags):
+        return _Hit(f"model {hit[0]}", hit[1], None, opted)
+    if bad := _unreadable_field(entry, *copies):
+        return _Hit(f"model unreadable in {bad}", None, None, opted, bad)
+    return None
 
 
 def guidance_bypass_refusal(config: dict[str, Any], entry: dict[str, Any], profile: Profile | None,
                             repo_root: Path | None = None) -> str | None:
     """Why ``entry`` may not take the executor or reviewer role (``rca`` is a reviewer's; never the coordinator's):
-    signed reviews are on, a model it launches has a profile recording guidance bypass, and its committed roster
-    entry does not set :data:`GUIDANCE_OPT_IN`. ``None`` otherwise, and for an entry with no model (a human).
-    ``repo_root``: read the flags, opt-ins and policy from its integration branch (every toolkit caller passes it);
-    without it, the bundled flags and ``profile``'s own decide, with ``config`` as the committed roster (M21.44)."""
+    signed reviews are on, a model it launches has a profile recording guidance bypass or passes a model flag that
+    cannot be read, and its committed roster entry does not set :data:`GUIDANCE_OPT_IN`. ``None`` otherwise, and for
+    a human entry that launches nothing. ``repo_root``: read the flags, opt-ins and policy from its integration
+    branch (every toolkit caller passes it); without it, the bundled flags and ``profile``'s own decide, with
+    ``config`` as the committed roster (M21.44)."""
     hit = _guidance_hit(config, entry, profile, repo_root)
-    if hit is None or hit[3]:
+    if hit is None or hit.opted_in:
         return None
-    model, record, err, _opted = hit
-    head = f"{entry.get('id')} (model {model})"
-    if err:
-        return (f"{head} cannot be checked for recorded guidance bypass while policy.signed_reviews is on: {err}; "
-                "nothing is launched or counted until the integration branch's model profiles can be read")
+    head = f"{entry.get('id')} ({hit.label})"
+    if hit.error:
+        return (f"{head} cannot be checked for recorded guidance bypass while policy.signed_reviews is on: "
+                f"{hit.error}; nothing is launched or counted until the integration branch's model profiles can be "
+                "read")
+    if hit.field:
+        return (f"{head} is excluded from executor and reviewer roles while policy.signed_reviews is on: its "
+                f"{hit.field} passes a model flag specy-road cannot read (one simple command with one literal "
+                "--model / -m value is readable), so the model it launches cannot be checked for recorded guidance "
+                f"bypass. Pass the model as one literal --model <id>, or set {GUIDANCE_OPT_IN}: true on its "
+                "committed roster entry to use it at your own risk.")
+    record = hit.record   # set on every hit that has neither error nor field (_flagged's dict)
     return (f"{head} is excluded from executor and reviewer roles while policy.signed_reviews is on: its profile "
             f"records guidance bypass observed ({record.get('date')}, {record.get('harness')}: "
             f"{str(record.get('evidence') or '').strip()}). Set {GUIDANCE_OPT_IN}: true on its roster entry to use "
@@ -178,16 +271,19 @@ def guidance_bypass_warning(config: dict[str, Any], entry: dict[str, Any], profi
                             repo_root: Path | None = None) -> str | None:
     """The line an executor or reviewer launch prints, once, for an opted-in flagged entry; else ``None``."""
     hit = _guidance_hit(config, entry, profile, repo_root)
-    if hit is None or hit[2] or not hit[3]:
+    if hit is None or hit.error or not hit.opted_in:
         return None
-    model, record, _err, _opted = hit
-    return (f"warning: {entry.get('id')} (model {model}) opted in at its own risk: its profile records guidance "
-            f"bypass observed ({record.get('date')}, {record.get('harness')})")
+    head = f"warning: {entry.get('id')} ({hit.label}) opted in at its own risk"
+    if hit.field:
+        return f"{head}: its {hit.field} passes a model flag specy-road cannot read"
+    record = hit.record
+    return f"{head}: its profile records guidance bypass observed ({record.get('date')}, {record.get('harness')})"
 
 
 def guidance_bypass_lines(repo_root: Path) -> list[str]:
     """``validate`` / ``doctor``: one warning per executor or reviewer entry of the pinned roster that a model it
-    launches is flagged for, while signed reviews are on. An unreadable roster is left to the other checks."""
+    launches is flagged for (or whose model flag cannot be read), while signed reviews are on. An unreadable roster is
+    left to the other checks."""
     config, err = pinned_config(repo_root)
     if err:
         return []
@@ -196,10 +292,10 @@ def guidance_bypass_lines(repo_root: Path) -> list[str]:
         if not {"executor", "reviewer"} & set(entry.get("roles") or []):
             continue
         hit = _guidance_hit(config, entry, pinned_profile_for_entry(repo_root, entry), repo_root)
-        if hit is None or hit[2]:
+        if hit is None or hit.error:
             continue
-        head = f"warning: {entry.get('id')} (model {hit[0]})"
-        out.append(f"{head} opted in at its own risk" if hit[3] else
+        head = f"warning: {entry.get('id')} ({hit.label})"
+        out.append(f"{head} opted in at its own risk" if hit.opted_in else
                    f"{head} is excluded: set {GUIDANCE_OPT_IN}: true on its roster entry to use it at your own risk")
     return out
 
