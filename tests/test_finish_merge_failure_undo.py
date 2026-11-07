@@ -52,16 +52,12 @@ with mock.patch.object(fm, "land_on_integration", boom):
 
 def _repo(tmp_path: Path, monkeypatch, *, brief_link: bool = False) -> tuple[Path, Path]:
     repo, bare = merge_mode_finish_repo(tmp_path, monkeypatch)
-    git(repo, "checkout", "-q", "dev")   # the integration branch's config: a leaf's change to it is a steering file (M21.7)
     commit_file(
         repo, "roadmap/git-workflow.yaml",
         "version: 1\nintegration_branch: dev\nremote: origin\non_complete: merge\n"
         f"land_check_cmd: {CHECK!r}\n",
         "land check",
     )
-    git(repo, "push", "-q", "origin", "dev")
-    git(repo, "checkout", "-q", "feature/rm-thing")
-    git(repo, "merge", "-q", "--no-edit", "dev")
     commit_file(repo, "work/implementation-summary-M1.1.md", SUMMARY, "summary")
     if brief_link:   # an ignored brief symlink to an untracked file in the repo: cleanup deletes the target
         commit_file(repo, ".gitignore", (repo / ".gitignore").read_text() + "work/brief-M1.1.md\n", "ignore")

@@ -1,8 +1,8 @@
 """M21.7: executors cannot change the files that steer harnesses and specy-road unnoticed.
 
 One fake executor turn per steering class (a linked worktree, the main checkout beside it, ``.venv`` linked by
-``env_setup.link``, a second worktree holding the integration branch), the clean turn, the sticky flag and its
-listing by ``worker reconcile``, and finish's refusal.
+``env_setup.link``, a second worktree holding the integration branch), the clean turn, and the sticky flag and its
+listing by ``worker reconcile``.
 """
 
 from __future__ import annotations
@@ -16,13 +16,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import commit_file, delegate_layout, git, make_review_repo
+from tests.review_repo_helpers import commit_file, git, make_review_repo
 
 from specy_road import steering_paths
 from specy_road import worker_reconcile as wrc
 from specy_road import worker_state as ws
 from specy_road import worker_turn_check as tc
-from specy_road.bundled_scripts import finish_task
 from specy_road.git_config_text import parse_config
 from specy_road.steering_paths import FLAG_STEERING, real_path
 
@@ -221,42 +220,6 @@ def test_a_clean_turn_has_no_findings_and_leaves_the_flag_reconcile_lists_and_cl
     assert len(steering) == 1 and steering[0].startswith(".claude/settings.json harness absent ")
     assert FLAG_STEERING not in ws.load_record(repo, rec.worker_id).flags
     assert wrc.reconcile(repo, rec.worker_id)[1]["steering"] == []
-
-
-# --- finish --------------------------------------------------------------------------------------------------
-
-
-def _finish(root: Path) -> int:
-    with pytest.raises(SystemExit) as e:
-        finish_task.main(["--repo-root", str(root)])
-        raise SystemExit(0)
-    return e.value.code or 0
-
-
-def _set_zones(root: Path, zones: list[str]) -> None:
-    reg = root / "roadmap" / "registry.yaml"
-    doc = yaml.safe_load(reg.read_text())
-    doc["entries"][0]["touch_zones"] = zones
-    commit_file(root, "roadmap/registry.yaml", yaml.safe_dump(doc), "zones")
-
-
-@pytest.mark.parametrize("zoned", [False, True])
-def test_finish_refuses_an_unzoned_steering_file(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], zoned: bool) -> None:
-    repo, leaf, _bare = delegate_layout(tmp_path, monkeypatch)
-    if zoned:   # as edit-node would: the claim row on the integration branch, merged into the leaf
-        _set_zones(repo, ["src", ".claude/settings.json"])
-        git(leaf, "merge", "-q", "--no-edit", "dev")
-        git(repo, "push", "-q", "origin", "dev")
-    commit_file(leaf, ".claude/settings.json", '{"hooks": {}}\n', "harness settings")
-    before = git(leaf, "rev-parse", "HEAD")
-    code = _finish(leaf)
-    err = capsys.readouterr().err
-    if zoned:
-        assert code == 0 and "steering" not in err
-    else:
-        assert code == 1 and ".claude/settings.json (harness)" in err and "edit-node M1.1" in err
-        assert git(leaf, "rev-parse", "HEAD") == before   # refused before the bookkeeping commit
 
 
 # --- one rule for an input that cannot be read ---------------------------------------------------------------

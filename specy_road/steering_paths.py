@@ -6,14 +6,12 @@ something it does not control: the coordinator's harness (its config and hooks),
 the coordinator's shell (startup files, the interpreter ``env_setup.link`` shares), and the toolkit's own gate
 (``roadmap/orchestration.yaml`` and the other policy files, other leaves' registry rows, ``work/reviews/``).
 This module holds the one list (documented in docs/orchestration-steering-files.md, linked from
-docs/orchestration-workers.md) and the per-turn watch; :mod:`specy_road.steering_gate` holds its two other uses:
+docs/orchestration-workers.md) and the per-turn watch:
 
 - the snapshots (:func:`git_snapshot`, :func:`file_snapshot`) that the post-run check
   (:class:`~specy_road.worker_turn_check.SteeringWatch`) takes per worker turn, in the worktree and in the main
   checkout, and compares as ``steering_file`` findings. The git half is read from the filesystem only, so it is
   compared before any post-turn git command runs.
-- :func:`~specy_road.steering_gate.steering_or_exit`: finish's refusal of a branch that changes an in-tree steering path no touch zone
-  names exactly.
 
 Detection only: nothing here restores a changed file. Paths compare project-relative, as ``zone_matches``
 does, and one real path is stored once.
@@ -67,8 +65,6 @@ ABSENT = "absent"
 ERROR = "error:"
 #: Files this module parses (registry, git config) larger than this are unreadable, not parsed.
 MAX_PARSE_BYTES = 8 * 1024 * 1024
-#: The classes finish refuses on: in-tree steering paths a branch can land (``roadmap/registry.yaml`` never counts).
-FINISH_CLASSES = ("harness", "policy_tree", "shell_startup")
 
 
 def in_tree_class(rel: str, *, project: bool = True) -> str | None:
