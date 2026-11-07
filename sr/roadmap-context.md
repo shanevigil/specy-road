@@ -165,7 +165,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
   - `M22.32` Claude Code launch and resume deny edits to steering files `steering-claude-launch-denies` — task — **Not Started**
   - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
-  - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Not Started**
+  - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Complete**
   - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Not Started**
   - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Not Started**
   - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
@@ -313,7 +313,6 @@ Do not pick these up.
 - `M22.22` on `feature/rm-sandbox-rc4-final-polish` since 2026-11-07
 - `M22.28` on `feature/rm-upgrade-no-self-warning-export-drift-hint` since 2026-11-07
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
-- `M22.34` on `feature/rm-accept-policy-for-all-open-claims` since 2026-11-07
 - `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06

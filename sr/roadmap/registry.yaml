@@ -213,16 +213,3 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: accept-policy-for-all-open-claims
-    node_id: M22.34
-    branch: feature/rm-accept-policy-for-all-open-claims
-    touch_zones:
-      - specy_road/review_policy_pin.py
-      - specy_road/bundled_scripts/review_cli.py
-      - docs/orchestration-review.md
-      - tests/test_review_policy_pin.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T09:14:32+00:00'

@@ -476,7 +476,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.34_accept-policy-for-all-open-claims_59ad86eb-3b77-478d-ac05-ba61dabf8394.md",
       "sibling_order": 33,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "One accept-policy prompt covers every open claim",
       "touch_zones": [
         "specy_road/review_policy_pin.py",
