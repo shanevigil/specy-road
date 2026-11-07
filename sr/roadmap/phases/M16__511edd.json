@@ -111,7 +111,10 @@
       ],
       "codename": "one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate",
       "dependencies": [
-        "67af8a9a-a8ef-4724-9702-be691a497a55"
+        "67af8a9a-a8ef-4724-9702-be691a497a55",
+        "e129232c-a131-477e-bb91-12699f010034",
+        "855d9738-4b87-480b-8404-d6a1aa85c714",
+        "4d9737c0-0d3a-44b3-869f-4b782a04f2ba"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.5.4",

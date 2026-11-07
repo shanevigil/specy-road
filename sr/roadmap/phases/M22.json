@@ -18,7 +18,8 @@
         "tests/test_outline_group_cli.py: siblings M1.1, M1.2 (with child M1.2.1 and a registry claim on M1.2) and M1.3 grouped --into-new M1.2 give M1.1 -> M1.2.1, M1.2 -> M1.2.2, M1.2.1 -> M1.2.2.1 and M1.3 -> M1.2.3; the printed map omits the new parent; every renamed sheet holds its own node's text, the claim's node_id is M1.2.2, the graph validates once, and the same run with --rewrite-refs rewrites prose through that map. --into-new M1.2.1 (a descendant's id) is refused with the direct-child message. A refused case leaves the tree byte-for-byte unchanged",
         "POST /api/outline/group reaches this through group_nodes with unchanged request and response shapes; tests/test_gui_outline_contract.py gains one case for this input and its existing cases and the PM GUI Python API tests (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass unchanged",
         "group-nodes --into-new help and the group-nodes rule in docs/roadmap-authoring.md say NEW_ID may be an id one of the listed nodes holds; CHANGELOG [Unreleased] Fixed entry. Out of scope: move-node, indent and outdent, apply (M21.5), a GUI control",
-        "Estimated net line change (informational, not a gate): package about +35, tests about +60, docs about +3"
+        "Estimated net line change (informational, not a gate): package about +35, tests about +60, docs about +3",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
       ],
       "codename": "group-into-member-id",
       "dependencies": [],
@@ -45,7 +46,8 @@
         "validate prints one stdout notice line for each literal (non-glob) zone on a live node of any status that names a .md file directly under the planning dir, in either form, that does not exist in the working tree, naming the node, the zone and, when the zone's trailing _<node_key>.md matches a node, that node's current planning_dir. Staged or unstaged makes no difference. The notice never changes the exit code, also under --strict; existing zone diagnostics keep their stream and behaviour. A zone naming an existing sheet, a glob zone, or any other missing path keeps today's handling",
         "Tests: a move of a node whose zones name its own sheet in both forms plus a docs/<old id>/ zone (and a claim with the same zones) rewrites all of them, and validate prints no stale-sheet notice before or after git add of the rename (existing tracked-file notices may appear before staging); one table of hand-made zones over both forms, Not Started/In Progress/Complete and staged/unstaged gives the notice only for an absent literal sheet path, never for an existing sheet or a planning/*.md glob, and validate --strict still exits 0; a Not Started node with a missing non-sheet zone gets no new notice and empty stderr for that zone. The GUI outline contract test and the PM GUI Python API tests pass unchanged (shapes unchanged; the GUI paths share stage_id_rewrite)",
         "docs/roadmap-authoring.md (move-node rewrite list and the touch_zones row) states both; CHANGELOG [Unreleased] Fixed entry. Out of scope: rewriting zones on nodes outside the move's scope (the notice reports them), prose (M21.3), decisions (M22.3)",
-        "Estimated net line change (informational, not a gate): package about +50, tests about +80, docs about +4"
+        "Estimated net line change (informational, not a gate): package about +50, tests about +80, docs about +4",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
       ],
       "codename": "move-rewrites-sheet-zones",
       "dependencies": [
@@ -76,7 +78,8 @@
         "validate prints one stdout notice (exit code unchanged, also under --strict) listing each open decision or human-action entry (open_questions) and each active preference (active_preferences) in the tracked ledger whose node is a non-empty string naming no live node; entries without node, closed entries and expired preferences are not listed; no ledger, or an unreadable or schema-invalid one, adds nothing beyond today's output",
         "Tests: a move with the ledger holding an open entry, a closed entry and a preference on moved ids, plus one on an unmoved id, rewrites exactly the moved ones; a swap via --renumber-outline; a move refused by validation, and moves over an invalid-YAML ledger and a sequence-root ledger, each leave the tree byte-for-byte unchanged; one notice table lists an orphan open decision, open human-action and active preference once each and stays silent for a closed entry, an expired preference, a preference without node and a live-node reference, using fixed dates far from expiry or the now parameter, on stdout under --strict. The GUI outline contract test and the PM GUI Python API tests pass unchanged",
         "docs/roadmap-authoring.md (move-node rewrite list) and docs/orchestration.md (ledger section) state that moves rewrite node and what validate checks; CHANGELOG [Unreleased] Fixed entry. Out of scope: decisions.local.yaml, storing node_key in the ledger, schema changes, rewriting ids inside summary or answer text",
-        "Estimated net line change (informational, not a gate): package about +50, tests about +80, docs about +4"
+        "Estimated net line change (informational, not a gate): package about +50, tests about +80, docs about +4",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
       ],
       "codename": "decisions-follow-moves",
       "dependencies": [
@@ -141,7 +144,9 @@
         "Estimated net line change (informational, not a gate): package about +25, schema +1, tests about +80, docs about +3"
       ],
       "codename": "queued-message-undelivered",
-      "dependencies": [],
+      "dependencies": [
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+      ],
       "id": "M22.6",
       "node_key": "968d2065-95f2-4d33-8926-045da3b65990",
       "parent_id": "M22",
@@ -196,7 +201,9 @@
         "Estimated net line change (informational, not a gate): package about +12, tests about +40, docs about +1"
       ],
       "codename": "init-next-steps",
-      "dependencies": [],
+      "dependencies": [
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
+      ],
       "id": "M22.8",
       "node_key": "658d419c-acd2-4f8b-916e-ad673f082a75",
       "parent_id": "M22",
@@ -221,7 +228,9 @@
         "Estimated net line change (informational, not a gate): package about +15, tests about +50, docs about +3"
       ],
       "codename": "local-roster-and-codex-reviewer-isolation",
-      "dependencies": [],
+      "dependencies": [
+        "f6a968f0-f084-49e0-b5f1-c8132d45ea7f"
+      ],
       "id": "M22.9",
       "node_key": "d340dc53-ba74-45b4-a5c4-9f778862e8f0",
       "parent_id": "M22",
@@ -278,11 +287,13 @@
         "rename-refs protects backtick and tilde fences: an opening fence has at most three spaces of indent and three or more of one character; it closes only on a line of the same character, at least as long, with at most three spaces of indent and nothing after it but spaces; tests/test_rename_refs.py adds a tilde block, a four-backtick block holding a three-backtick line, an unclosed tilde fence, a fence indented by three spaces, and a fence-like line with trailing words that does not close the block; docs/roadmap-authoring.md's rename-refs paragraph states the rule",
         "A real upgrade takes its ignore observations from the checkout around the actual .gitignore write, so a tracked file a new rule matches is reported as still tracked with the untrack command; --dry-run labels the mirror-derived notice with ignore_report's estimate header; tested through run_upgrade",
         "CHANGELOG [Unreleased] Fixed. Out of scope: refusing the gate on a tally failure, other Markdown constructs, the scratch-git environment (M21.16)",
-        "Estimated net line change (informational, not a gate): package about +40, tests about +90, docs about +1"
+        "Estimated net line change (informational, not a gate): package about +40, tests about +90, docs about +1",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
       ],
       "codename": "reports-say-what-happened",
       "dependencies": [
-        "8177b36c-9fac-49f6-9017-a21798bb3630"
+        "8177b36c-9fac-49f6-9017-a21798bb3630",
+        "02c665e8-0e2a-44d5-b297-c82a5a288c41"
       ],
       "id": "M22.11",
       "node_key": "1d5c3b8f-8179-40d8-a04a-262e6f8765d9",
@@ -312,10 +323,14 @@
         "The error prints the exact command to run: `git remote set-head <remote> <name>`, noting that --auto fails when the remote's HEAD is unborn. It names a branch only when exactly one ref under refs/remotes/<remote>/, other than one whose tip is HEAD's commit, has a readable committed git-workflow.yaml whose integration_branch names itself (an empty or missing value does not count as main); with none or several it names no branch and says to run set-head with the remote's real default branch. The suggestion is text for the developer: the gate never trusts it. A malformed or non-mapping candidate config, or a failed ref enumeration, is never read as naming itself and gives no traceback",
         "tests/test_review_policy_ref_no_remote_head.py: the rc4 setup (git init --bare remote with an unborn HEAD, main pushed, no set-head) fails closed with a hint naming main, and after running that hint's command reads policy from origin/main with no config error; a pushed feature commit naming itself fails closed and its hint does not name the feature branch; a candidate with malformed YAML and one with non-mapping YAML fail closed and the hint names no branch, no traceback; with origin/HEAD set nothing changes (existing tests pass)",
         "docs/orchestration.md's policy-source paragraph states that the gate needs <remote>/HEAD, gives the set-head command and the --auto caveat; CHANGELOG [Unreleased] Fixed. Out of scope: running set-head for the user, repos without a remote",
-        "Estimated net line change (informational, not a gate): package about +15, tests about +70, docs about +3"
+        "Estimated net line change (informational, not a gate): package about +15, tests about +70, docs about +3",
+        "When validate's registry check treats the review switch as on only because the policy source cannot be read (review_gate.review_required's fail-closed branch), its error says the policy source could not be read and prints the same set-head command, instead of saying require_implementation_review_before_finish is true; tests/test_review_policy_ref_no_remote_head.py gains that validate case",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
       ],
       "codename": "gate-without-remote-head",
-      "dependencies": [],
+      "dependencies": [
+        "12d3e989-fce1-4dc5-8994-b865fcbafc24"
+      ],
       "id": "M22.12",
       "node_key": "4dfa0dbd-5b47-4b91-abc3-953669d35a8a",
       "parent_id": "M22",
@@ -327,7 +342,8 @@
         "specy_road/review_policy_ref.py",
         "tests/test_review_policy_ref_no_remote_head.py",
         "docs/orchestration.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/validate_roadmap_checks.py"
       ],
       "type": "task"
     },
@@ -337,10 +353,13 @@
         "finish-this-task and abort-task-pickup run from a linked worktree also remove the main checkout's <prefix>work/brief-<ID>.md and <prefix>work/prompt-<ID>.md (the project's work/ through project_prefix; sr/work/ in a nested layout) when each is a regular file git does not track there, printing each; a symlink or a symlinked work/ directory, a tracked copy, a file whose tracking git cannot establish, and every other file are left alone; finish removes them only after the landing succeeded, so a refused landing keeps them",
         "A merge or auto landing that succeeds and leaves the feature branch checked out (no --delete-branch) ends with '[ok] this checkout is still on <feature> (landed into <ib>); next: git switch <ib>', printed only when the current branch is <feature>; docs/git-workflow.md's merge entry says so",
         "Tests: tests/test_roadmap_crud_dependencies.py (ids, mixed, unknown refused with the existing sentence); tests/test_gui_app_routes_nodes_errors.py (PATCH /api/nodes/{id} with a display-id dependency stores its node_key; an unknown one is HTTP 400 with the graph unchanged); tests/test_finish_work_cleanup.py and tests/test_abort_task_pickup.py (linked worktree in embedded and nested layouts: untracked main copies removed, tracked kept, a symlink alias to a tracked file kept with its target; finish refused at landing keeps the main copies); tests/test_finish_merge_mode.py (line printed; absent with --delete-branch); CHANGELOG [Unreleased] Fixed. Out of scope: switching branches automatically, landing logic (M22.10)",
-        "Estimated net line change (informational, not a gate): package about +30, tests about +110, docs about +2"
+        "Estimated net line change (informational, not a gate): package about +30, tests about +110, docs about +2",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
       ],
       "codename": "deps-ids-briefs-and-landed-branch",
-      "dependencies": [],
+      "dependencies": [
+        "f6a94a57-91ff-449b-997e-af12dedd41ee"
+      ],
       "id": "M22.14",
       "node_key": "121934a1-3ec8-416e-b66c-0305b77665b5",
       "parent_id": "M22",
@@ -371,7 +390,7 @@
         "§1.1: export --check and digest --check exit 0 right after init project (init writes roadmap.md and roadmap-context.md); the 'exit 1 with missing' sentence and the extra export/digest step are gone",
         "§5: the second claim from one checkout is `do-next-available-task --allow-second-claim` (exit 6 without it), stated where 'Claim two leaves' is",
         "§2.6: the tamper step lists its three outcomes (a front-matter value byte: 'signature does not verify for <model>'; a notes-body byte: 'notes body does not match notes_sha256'; a schema-breaking edit such as an A1 value: schema-invalid) and that restoring the record makes the gate met again",
-        "§4.1: models list shows C/E/R scores and a trailing `stale` marker on a stale profile's line; models stale lists the reasons (exit 1 for a rostered profile researched over 180 days ago) and models show <id> prints them, checked against a profile with a fixed old research date; tests/test_docs_links.py passes (a link check only). Product unchanged",
+        "§4.1: models list shows C/E/R scores and a trailing `stale` marker on a stale profile's line; models stale lists the reasons (exit 1 for a rostered profile researched over 180 days ago) and models show <id> prints them, checked against a profile with a fixed old research date; product unchanged; docs only, with no named test (tests/test_doc_links.py checks the shipped templates' links, not this runbook)",
         "Estimated net line change (informational, not a gate): docs about +6"
       ],
       "codename": "sandbox-runbook-rc4-drift",
@@ -394,11 +413,14 @@
         "D17: when the last attempt of the initial turn or of a repair turn (immediate or resumed) ended with a capacity error, the final answer is not parsed and the run's reason is the capacity reason alone (no 'line N of the final turn is not one JSON object'); the run record is closed incomplete and the write tripwire still runs",
         "D18: both reviewer runners, run_logged (prompt --channel cli --run) and delegate_turn (review delegate), start the reviewer in a session of its own; when the direct child exits (watched apart from stdout EOF, so a background child holding the pipe does not block it), the run is interrupted, or output processing raises, specy-road sends that process group SIGTERM, then SIGKILL after a grace period, then drains the remaining output within a bound; it signals the group only while the group still has a member (a gone group's id can be reused), never the caller's own group, leaves worker_process.kill_group's identity checks unchanged, and treats an already-gone group as success",
         "Tests (tests/test_review_run_lows_rc5.py), fake harnesses with handshakes and bounded waits, no sleeps: refusal summary shapes (long first line, many lines) on the initial, immediate-repair and resumed-repair paths; four resource_exhausted errors on the initial turn and on a repair turn -> reason has no 'not one JSON object'; through each of the two runners, a fake reviewer that leaves a background child holding stdout in its group and exits -> the run ends and the child is gone; interrupt also ends it; a reviewer that leaves nothing -> no signal and no error. docs/orchestration-reviewer-output.md and CHANGELOG [Unreleased] Fixed",
-        "Estimated net line change (informational, not a gate): package about +35, tests about +110, docs about +4"
+        "Estimated net line change (informational, not a gate): package about +35, tests about +110, docs about +4",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
       ],
       "codename": "reviewer-run-summary-and-process-tree",
       "dependencies": [
-        "ef56f4ea-a868-4a22-b5a4-f6bccf890779"
+        "ef56f4ea-a868-4a22-b5a4-f6bccf890779",
+        "d340dc53-ba74-45b4-a5c4-9f778862e8f0",
+        "992a07fe-018e-4ff0-adc5-1675c130adb6"
       ],
       "id": "M22.16",
       "node_key": "e129232c-a131-477e-bb91-12699f010034",

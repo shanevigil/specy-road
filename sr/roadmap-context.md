@@ -152,11 +152,18 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.18` The reviewer prompt asks for every required change in one pass, not just the first `reviewer-lists-every-required-change` — task — **Not Started**
   - `M22.19` Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names `review-inputs-identity-and-unreadable` — task — **Not Started**
   - `M22.20` worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging `terminate-and-finish-rollback-robustness` — task — **Not Started**
-  - `M22.21` Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback, descriptor-anchored writes `preview-rollback-fidelity` — task — **Not Started**
-  - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, one GUI extra name, no self-warning in upgrade, export drift hint, Escape closes modals `sandbox-rc4-final-polish` — task — **Not Started**
+  - `M22.21` Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback `preview-rollback-fidelity` — task — **Not Started**
+  - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal `sandbox-rc4-final-polish` — task — **Not Started**
   - `M22.23` Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus `guidance-bypass-retest-cursor-grok-sol-opus` — task — **Not Started**
   - `M22.24` The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths `guidance-exclusion-closes-three-bypasses` — task — **Not Started**
   - `M22.25` Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment `upgrade-git-calls-share-one-environment` — task — **Not Started**
+  - `M22.26` The post-run zone check matches zones written from the git root `post-run-zone-check-git-root-zones` — task — **Not Started**
+  - `M22.27` The old-log review usage test asserts on the run, not on a substring `old-log-test-asserts-on-the-run` — task — **Not Started**
+  - `M22.28` upgrade does not warn about itself, and export's drift line says how to fix it `upgrade-no-self-warning-export-drift-hint` — task — **Not Started**
+  - `M22.29` safe_write and archive moves traverse by directory descriptor `safe-write-directory-descriptors` — task — **Not Started**
+  - `M22.30` Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed `steering-detection-other-classes` — task — **Not Started**
+  - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
+  - `M22.32` Claude Code launch and resume deny edits to steering files `steering-claude-launch-denies` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -222,6 +229,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M20` Agent safety and governance posture (after 0.3.1) `agent-safety-posture` — phase — **Not Started**
   - `M20.1` Posture advisor: plan the M20 leaves from the research `plan-m20-from-research` — task — **Not Started**
   - `M20.2` Probe each reviewer harness for instruction-file leakage into fresh sessions `fresh-reviewer-leak-probe` — task — **Not Started**
+- `M23` Post-0.3.1 field feedback `post-0-3-1-field-feedback` — phase — **Not Started**
 
 ## Open gates
 
@@ -237,7 +245,6 @@ Work behind these is deliberately held back until they clear.
 Someone deliberately dropped these. Check why before re-adding one.
 
 - 2026-11-06 `M21.40` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
-- 2026-11-06 `M21.39` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.43` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.44` stopped depending on `M21.38 Review writers and the review lock refuse any symlink on the path from the project root`
 - 2026-11-05 `M17.5` stopped depending on `M17.3 PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags`
@@ -261,7 +268,8 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.33` stopped depending on `M16.5.14 Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it`
 - 2026-11-05 `M16.33` stopped depending on `M16.4.5 One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points`
 - 2026-11-05 `M16.33` stopped depending on `M16.5.3 Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration`
-- _…and 45 earlier — `specy-road history --json`_
+- 2026-11-05 `M16.33` stopped depending on `M16.5.12 Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated`
+- _…and 44 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
