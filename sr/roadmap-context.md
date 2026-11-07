@@ -138,7 +138,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.4` New planning sheets no longer write the node's display id into their body `sheet-body-without-display-id` — task — **Not Started**
   - `M22.5` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
   - `M22.6` A queued worker message that cannot be delivered flags the worker and goes out with its next turn `queued-message-undelivered` — task — **Not Started**
-  - `M22.7` ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading `ready-changelog-reminder` — task — **Not Started**
+  - `M22.7` ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading `ready-changelog-reminder` — task — **Complete**
   - `M22.8` init project ends with the next steps: set the integration branch, commit the scaffold, validate `init-next-steps` — task — **Complete**
   - `M22.9` Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME `local-roster-and-codex-reviewer-isolation` — task — **Not Started**
   - `M22.10` reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping `finish-keeps-local-claim-and-landing` — task — **Complete**
@@ -317,7 +317,6 @@ Do not pick these up.
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
 - `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
-- `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
 - `M22.9` on `feature/rm-local-roster-and-codex-reviewer-isolation` since 2026-11-07
 
 ## Quality by area
@@ -326,15 +325,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 34 | 0 | 2.50 | 53% | 34 | 2 |
+| `docs` **flagged** | 32 | 0 | 2.78 | 56% | 34 | 3 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `CHANGELOG.md` | 39 | 0 | 2.10 | 38% | 31 | 2 |
+| `specy_road` **flagged** | 46 | 0 | 2.67 | 54% | 42 | 5 |
+| `tests` **flagged** | 49 | 0 | 2.61 | 53% | 42 | 5 |
+| `CHANGELOG.md` | 34 | 0 | 2.24 | 41% | 31 | 2 |
 | `planning` | 2 | 0 | 2.00 | 50% | 0 | 0 |
-| `specy_road` | 45 | 0 | 2.33 | 49% | 42 | 3 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 48 | 0 | 2.29 | 48% | 42 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

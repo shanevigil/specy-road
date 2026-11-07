@@ -183,7 +183,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.7_ready-changelog-reminder_3d3ddc19-998c-4d9e-9e79-bc5afa51e7ef.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading",
       "touch_zones": [
         "specy_road/changelog_check.py",
