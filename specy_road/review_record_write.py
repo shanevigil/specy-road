@@ -309,6 +309,41 @@ DRAIN_BOUND = 5.0
 _EOF = object()
 
 
+def _read_into(stdout: Any, got: queue.Queue) -> None:
+    try:
+        for line in stdout:
+            got.put(line)
+    except (OSError, ValueError):   # the pipe closed under the reader
+        pass
+    got.put(_EOF)
+
+
+def _group_lines(proc: subprocess.Popen, waiter: threading.Thread, got: queue.Queue) -> Iterator[str]:
+    """Lines until the direct child exits (or, after EOF, until it does), then the group ended and the rest of the
+    output, read for at most :data:`DRAIN_BOUND` seconds."""
+    eof = False
+    while waiter.is_alive() and not eof:
+        try:
+            item = got.get(timeout=0.1)
+        except queue.Empty:
+            continue
+        eof = item is _EOF
+        if not eof:
+            yield item
+    while waiter.is_alive():   # stdout closed but the child still runs
+        waiter.join(0.1)
+    end_group(proc.pid, GROUP_GRACE)
+    deadline = time.monotonic() + DRAIN_BOUND
+    while not eof:
+        try:
+            item = got.get(timeout=max(0.0, deadline - time.monotonic()))
+        except queue.Empty:
+            return
+        eof = item is _EOF
+        if not eof:
+            yield item
+
+
 @contextlib.contextmanager
 def reviewer_output(proc: subprocess.Popen) -> Iterator[Iterator[str]]:
     """``proc``'s output lines, for a reviewer started in a session of its own (``start_new_session``: its pid is
@@ -318,45 +353,12 @@ def reviewer_output(proc: subprocess.Popen) -> Iterator[Iterator[str]]:
     SIGKILL after :data:`GROUP_GRACE`, only while it has a member), then the rest of the output is read for at most
     :data:`DRAIN_BOUND` seconds."""
     assert proc.stdout is not None
-    stdout, got = proc.stdout, queue.Queue()
-
-    def read() -> None:
-        try:
-            for line in stdout:
-                got.put(line)
-        except (OSError, ValueError):   # the pipe closed under the reader
-            pass
-        got.put(_EOF)
-
+    got: queue.Queue = queue.Queue()
     waiter = threading.Thread(target=proc.wait, daemon=True)   # reaps the child, so a gone child lists no member
     waiter.start()
-    threading.Thread(target=read, daemon=True).start()
-
-    def lines() -> Iterator[str]:
-        eof = False
-        while waiter.is_alive() and not eof:
-            try:
-                item = got.get(timeout=0.1)
-            except queue.Empty:
-                continue
-            eof = item is _EOF
-            if not eof:
-                yield item
-        while waiter.is_alive():   # stdout closed but the child still runs
-            waiter.join(0.1)
-        end_group(proc.pid, GROUP_GRACE)
-        deadline = time.monotonic() + DRAIN_BOUND
-        while not eof:
-            try:
-                item = got.get(timeout=max(0.0, deadline - time.monotonic()))
-            except queue.Empty:
-                return
-            eof = item is _EOF
-            if not eof:
-                yield item
-
+    threading.Thread(target=_read_into, args=(proc.stdout, got), daemon=True).start()
     try:
-        yield lines()
+        yield _group_lines(proc, waiter, got)
     finally:   # a no-op after a normal end: the group has no member left
         end_group(proc.pid, GROUP_GRACE)
         waiter.join(GROUP_GRACE)
