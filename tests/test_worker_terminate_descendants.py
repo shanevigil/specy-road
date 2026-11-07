@@ -9,6 +9,7 @@ listing is repeated by the next ``terminate``.
 
 from __future__ import annotations
 
+import ctypes
 import os
 import signal
 import subprocess
@@ -69,14 +70,46 @@ def _kill(pid: int | None) -> None:
             pass
 
 
-@pytest.mark.parametrize("child_mode", ["default", "ignore"])
+PR_SET_CHILD_SUBREAPER = 36   # <linux/prctl.h>
+
+
+def _table() -> list[list[str]]:
+    out = subprocess.run(["ps", "-A", "-o", "pid=,ppid=,pgid=,stat="], capture_output=True, text=True).stdout
+    return [line.split() for line in out.splitlines()]
+
+
+def _live_members(pgid: int | None) -> list[str]:
+    """Processes in group ``pgid`` that are not zombies (a zombie is gone, only not yet reaped)."""
+    return [pid for pid, _, pg, stat in _table() if pg == str(pgid) and not stat.startswith("Z")]
+
+
+def _kept_zombies() -> list[int]:
+    return [int(pid) for pid, ppid, _, stat in _table() if ppid == str(os.getpid()) and stat.startswith("Z")]
+
+
+def _subreaper(on: bool) -> None:
+    """Make this process the subreaper of its descendants (Linux): an orphan re-parents here, and nothing waits."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(PR_SET_CHILD_SUBREAPER, int(on), 0, 0, 0) != 0:
+        raise OSError(ctypes.get_errno(), "prctl(PR_SET_CHILD_SUBREAPER)")
+
+
+@pytest.mark.parametrize("child_mode", [
+    "default",
+    "ignore",
+    pytest.param("subreaper", marks=pytest.mark.skipif(sys.platform != "linux", reason="PR_SET_CHILD_SUBREAPER")),
+])
 def test_terminate_ends_a_grandchild_in_its_own_session(tmp_path: Path, child_mode: str) -> None:
+    """``subreaper``: the test process is the grandchild's subreaper and never waits for it, so once the harness
+    dies the grandchild's zombie stays listed with its start time; it is no survivor (M22.20)."""
     repo, _ = make_worker_repo(tmp_path)
     harness = tmp_path / "escaping_harness.py"
     harness.write_text(HARNESS)
     ready = tmp_path / "grandchild.pid"
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     wrapper = grandchild = None
+    if child_mode == "subreaper":
+        _subreaper(True)
     try:
         wrapper = spawn(repo, rec, Launch([sys.executable, str(harness), str(ready), child_mode]))
         for _ in range(100):
@@ -92,11 +125,18 @@ def test_terminate_ends_a_grandchild_in_its_own_session(tmp_path: Path, child_mo
             assert run_worker_cli("worker", "terminate", rec.worker_id, "--repo-root", str(repo)) == 0
             assert ws.load_record(repo, rec.worker_id).state == "terminated"
         assert _gone(grandchild)
-        assert _gone(wrapper) and not subprocess.run(["ps", "-A", "-o", "pgid="], capture_output=True, text=True
-                                                     ).stdout.split().count(str(pgid))
+        if child_mode == "subreaper":   # the state the case names: a zombie, kept by this process
+            stat, ppid = subprocess.run(["ps", "-o", "stat=,ppid=", "-p", str(grandchild)], capture_output=True,
+                                        text=True).stdout.split()
+            assert stat.startswith("Z") and int(ppid) == os.getpid()
+        assert _gone(wrapper) and not _live_members(pgid)
     finally:
         _kill(grandchild)
         _kill(wrapper)
+        if child_mode == "subreaper":
+            _subreaper(False)
+            for pid in _kept_zombies():   # the grandchild's, and the harness's once its wrapper died first
+                os.waitpid(pid, 0)
 
 
 @pytest.fixture
@@ -121,11 +161,11 @@ def leader(tmp_path: Path):
         _kill(pid)
 
 
-def _seams(monkeypatch, leader_pid: int, *, before: str | None, after: str | None, stat: str = "S",
+def _seams(monkeypatch, leader_pid: int, *, before: str | None, after: str | None,
            dies: bool = False, outage: dict[str, int] | None = None) -> list[tuple[int, int]]:
     """Patch ``ps`` and ``os.kill``: a fake descendant of ``leader_pid`` outside its group.
 
-    The inventory lists it started at ``before`` and every later read at ``after`` in state ``stat`` (``None``: not
+    The inventory lists it started at ``before`` and every later read at ``after`` (``None``: not
     listed); a ``before`` of ``None`` makes the first inventory unreadable, and while ``outage["on"]`` every read
     after the first ``outage["ok"]`` fails. ``dies``: no longer listed once signalled. Returns the signals sent to the fake pid.
     """
@@ -140,7 +180,7 @@ def _seams(monkeypatch, leader_pid: int, *, before: str | None, after: str | Non
         if (first and before is None) or (outage and outage["on"] and len(reads) > outage["ok"]):
             return subprocess.CompletedProcess(args, 1, "", "ps: unreadable")
         start = None if dies and sent else before if first else after
-        row = f"{FAKE_PID} {leader_pid} {FAKE_PID} {'S' if first else stat} {start}\n" if start else ""
+        row = f"{FAKE_PID} {leader_pid} {FAKE_PID} S {start}\n" if start else ""
         return subprocess.CompletedProcess(args, 0, r.stdout + row, "")
 
     def kill(pid, sig):
@@ -169,18 +209,13 @@ def test_an_unreadable_inventory_raises_after_the_group_is_signalled(leader, mon
     assert _gone(pid)   # the group itself was still ended
 
 
-@pytest.mark.parametrize("stat", ["S", "Z"], ids=["running", "zombie-kept-by-a-subreaper"])
-def test_a_same_start_survivor_raises_naming_its_pid(leader, monkeypatch, stat: str) -> None:
-    """A zombie (its subreaper never waits for it) is gone, not a survivor (M22.20): terminate succeeds."""
+def test_a_same_start_survivor_raises_naming_its_pid(leader, monkeypatch) -> None:
     pid, rec = leader
     start = "Thu Nov  5 10:00:00 2026"
-    sent = _seams(monkeypatch, pid, before=start, after=start, stat=stat)
-    if stat == "Z":
+    sent = _seams(monkeypatch, pid, before=start, after=start)
+    with pytest.raises(WorkerError, match=f"{FAKE_PID}.*still alive after SIGKILL"):
         kill_group(rec, grace=0.3)
-    else:
-        with pytest.raises(WorkerError, match=f"{FAKE_PID}.*still alive after SIGKILL"):
-            kill_group(rec, grace=0.3)
-        assert {s for _, s in sent} == {signal.SIGTERM, signal.SIGKILL}
+    assert {s for _, s in sent} == {signal.SIGTERM, signal.SIGKILL}
     assert _gone(pid)
 
 
