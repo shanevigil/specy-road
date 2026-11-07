@@ -340,10 +340,43 @@ def _include_deleted(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[
     return extra.unlink, {("steering_file", extra)}
 
 
+def _noop() -> None:
+    return None
+
+
+def _empty_hookspath(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[str, Path]]]:
+    """An empty core.hooksPath is set: git runs no hook from the default directory, so a write there is no finding."""
+    config = p["repo"] / ".git" / "config"
+    config.write_text(config.read_text() + "[core]\n\thooksPath =\n")
+    return lambda: _write(p["repo"] / ".git" / "hooks" / "pre-commit", "#!/bin/sh\n"), set()
+
+
+def _unresolvable(kind: str) -> Callable[[dict[str, Path]], tuple[Callable[[], None], set[tuple[str, Path]]]]:
+    """A name git reads that it cannot follow, from the turn's start: a check_error on the clean turn."""
+    def row(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[str, Path]]]:
+        config, link, leaf = p["repo"] / ".git" / "config", p["tmp"] / "dl", p["leaf"]
+        link.symlink_to(link.name if kind.endswith("loop") else p["tmp"] / "nowhere")
+        if kind.startswith("include"):
+            config.write_text(config.read_text() + f"[include]\n\tpath = {link / 'x.gitconfig'}\n")
+            return _noop, {("check_error", link / "x.gitconfig")}
+        if kind.startswith("hooks"):
+            config.write_text(config.read_text() + f"[core]\n\thooksPath = {link / 'hooks'}\n")
+            return _noop, {("check_error", link / "hooks")}
+        gitdir = Path((leaf / ".git").read_text().removeprefix("gitdir:").strip())
+        if kind == "gitdir_missing":
+            (leaf / ".git").write_text(f"gitdir: {p['tmp'] / 'nowhere'}\n")
+        else:
+            (gitdir / "commondir").write_text(f"{p['tmp'] / 'nowhere'}\n")
+        return _noop, {("check_error", leaf / ".git")}
+    return row
+
+
 CONTAINER_ROWS = {"hooks_over_cap": _hooks_over_cap, "include_deleted": _include_deleted, "hooks_dir_becomes_fifo": _hooks_dir_becomes_fifo,
                   "including_config_unreadable": _including_config_unreadable,
                   "include_reached_by_two_names": _include_reached_by_two_names,
-                  "hooks_link_retargeted": _hooks_link_retargeted}
+                  "hooks_link_retargeted": _hooks_link_retargeted, "empty_hookspath": _empty_hookspath,
+                  **{k: _unresolvable(k) for k in ("include_under_dangling_link", "hooks_under_dangling_link",
+                                                   "hooks_under_link_loop", "gitdir_missing", "commondir_missing")}}
 
 
 @pytest.mark.parametrize("name", sorted(CONTAINER_ROWS))
@@ -351,12 +384,16 @@ def test_a_container_one_end_could_not_list_is_its_one_finding_and_one_file_is_o
         tmp_path: Path, name: str) -> None:
     """A hooks directory over the cap or unreadable, or a config file unreadable, after the turn: one check_error for
     it, not its former entries reported gone; one included file reached by two names: one finding; an include
-    deleted under its unchanged config: one finding; the hooks-directory link retargeted: one finding for the link."""
+    deleted under its unchanged config: one finding; the hooks-directory link retargeted: one finding for the link;
+    a name git reads that it cannot follow (a dangling or looping link above it, a missing gitdir or commondir target):
+    one check_error; a hook written where an empty core.hooksPath turned the default off: nothing, and the probes run."""
     if name == "including_config_unreadable" and os.geteuid() == 0:
         pytest.skip("root reads a mode-000 file")
     p = _layout(tmp_path)
     act, expected = CONTAINER_ROWS[name](p)
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
     found = _turn(p["repo"], rec, act)
-    assert {(f["kind"], f["path"]) for f in found if "path" in f} == {(k, str(real_path(path))) for k, path in expected}
-    assert "git_probes_skipped" in {f["kind"] for f in found}
+    shown = {(k, path.relative_to(p["leaf"]).as_posix() if path.is_relative_to(p["leaf"]) else os.path.abspath(path))
+             for k, path in expected}   # as findings name them: worktree paths project-relative
+    assert {(f["kind"], f["path"]) for f in found if "path" in f} == shown
+    assert ("git_probes_skipped" in {f["kind"] for f in found}) is bool(expected)

@@ -138,7 +138,8 @@ Snapshot = dict[str, Entry]   # keyed by the real path
 
 def _gitdirs(top: Path) -> tuple[Path, Path]:
     """``(worktree gitdir, common git dir)`` of the checkout at ``top``, read from ``.git`` without running git;
-    raises when ``.git`` names neither (the checkout's git steering cannot be read)."""
+    raises when ``.git`` names neither, or either is not an existing directory (the checkout's git steering cannot
+    be read: a missing gitdir or ``commondir`` target is unreadable, never an empty git dir)."""
     dotgit = top / ".git"
     if dotgit.is_dir():
         return resolved_path(dotgit), resolved_path(dotgit)
@@ -149,6 +150,9 @@ def _gitdirs(top: Path) -> tuple[Path, Path]:
     commondir = gitdir / "commondir"
     common = resolved_path(gitdir / parse_bytes(commondir).decode("utf-8").strip()) if os.path.lexists(commondir) \
         else gitdir   # a commondir that cannot be read (a dangling link included) raises, never reads as missing
+    for d in (gitdir, common):
+        if not d.is_dir():
+            raise NotADirectoryError(f"git dir {d} is not a directory")
     return gitdir, common
 
 
@@ -218,19 +222,28 @@ def compared(before: Snapshot, after: Snapshot, key: str) -> bool:
     return (b is not None or _read(before, e.parent)) and (a is not None or _read(after, e.parent))
 
 
+def _unresolved(name: Path) -> str | None:
+    """Why git could not follow ``name`` as far as it exists, else ``None``: the deepest part of it that exists (the
+    name itself, or a directory above it) must resolve. A link there that is dangling, a loop or unreadable is a
+    path git cannot read, never a file that is absent."""
+    part = next(a for a in (name, *name.parents) if os.path.lexists(a))
+    return None if os.path.exists(part) else f"{part} does not resolve (a dangling link, a loop or no access)"
+
+
 def _link(snap: Snapshot, scope: Scope, name: Path, cls: str, parent: str,
           values: tuple[tuple[str, str], ...] = ()) -> Path | None:
     """The real path ``name`` resolves to. When that is not ``name`` itself (a symlink on the way), ``name`` is also
     recorded, keyed by its normalized absolute path, as ``link:<real path>`` (with the watched ``values`` of what it
-    leads to), so creating, removing or retargeting the link compares. A link that resolves to nothing (dangling, or
-    a loop) is recorded as unreadable and ``None`` returned: the module's one rule."""
+    leads to), so creating, removing or retargeting the link compares. A name git cannot follow (:func:`_unresolved`:
+    a dangling or looping link, the name's own or a directory's above it) is recorded as unreadable and ``None``
+    returned: the module's one rule."""
     real, key = resolved_path(name), os.path.abspath(name)
-    if key == str(real):
+    why = _unresolved(Path(key))
+    if why is None and key == str(real):
         return real
-    dangling = os.path.lexists(name) and not os.path.exists(name)
-    value = _error(FileNotFoundError(f"link does not resolve: {real}")) if dangling else f"link:{real}"
-    snap.setdefault(key, Entry(scope.display(Path(key)), cls, value, () if dangling else values, parent))
-    return None if dangling else real
+    value = _error(FileNotFoundError(why)) if why else f"link:{real}"
+    snap.setdefault(key, Entry(scope.display(Path(key)), cls, value, () if why else values, parent))
+    return None if why else real
 
 
 def _add_hook(snap: Snapshot, scope: Scope, path: Path, parent: str) -> None:
@@ -271,7 +284,7 @@ def _hooks_dir(snap: Snapshot, scope: Scope, name: Path, parent: str) -> None:
 
 
 def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, dotgit: str,
-                 hooks: dict[Path, bool]) -> None:
+                 hooks: dict[Path | None, bool]) -> None:
     """One config file git reads and those it includes, each guarded and keyed by the file it resolves to (one
     file reached by two names is one entry); each ``core.hooksPath`` value goes to ``hooks`` with whether only an
     ``includeIf`` named it."""
@@ -290,8 +303,8 @@ def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, dotgit: s
         snap.setdefault(str(real), Entry(scope.display(real), "git_config", hashlib.sha256(f.data).hexdigest(),
                                          values, parent))
         for k, v in f.pairs:
-            if k == "core.hookspath" and v:
-                d = top / os.path.expanduser(v)
+            if k == "core.hookspath":   # an empty value is set too: it names no directory (None)
+                d = top / os.path.expanduser(v) if v else None
                 hooks[d] = hooks.get(d, True) and f.conditional
 
 
@@ -300,7 +313,9 @@ def git_snapshot(scope: Scope) -> Snapshot:
     file they name by ``include.path`` or ``includeIf.*.path`` (:mod:`specy_road.git_config_text`, conditions not
     evaluated), and the hooks directories: ``core.hooksPath`` when set (each value read, relative to the checkout),
     else ``<common>/hooks`` and ``<worktree-gitdir>/hooks``. A value only an ``includeIf`` names may not apply (its
-    condition is not evaluated), so with no other value the default directories are watched as well."""
+    condition is not evaluated), so with no other value the default directories are watched as well. An empty
+    ``core.hooksPath`` is a value too: it names no directory, and turns the defaults off as any other value does
+    (git then runs no hook git dir or checkout holds; git 2.43 looks for ``/<hook>``, which only root can write)."""
     global _until
     snap: Snapshot = {}
     _until = time.monotonic() + SNAPSHOT_SECONDS
@@ -316,9 +331,9 @@ def _git_top(snap: Snapshot, scope: Scope, top: Path) -> None:
     gitdir, common = _gitdirs(top)
     dotgit = real_path(top / ".git")   # where it leads is its value: a .git retargeted is a change of it
     snap[str(dotgit)] = Entry(scope.display(dotgit), "git_config", f"{READ}gitdir {gitdir} common {common}")
-    hooks: dict[Path, bool] = {}   # each core.hooksPath directory: whether only an includeIf named it
+    hooks: dict[Path | None, bool] = {}   # each core.hooksPath directory (None: empty): whether only an includeIf named it
     for start in dict.fromkeys((common / "config", common / "config.worktree", gitdir / "config.worktree")):
         _config_file(snap, scope, top, start, str(dotgit), hooks)
     default = [common / "hooks", gitdir / "hooks"] if all(hooks.values()) else []
-    for d in dict.fromkeys([*hooks, *default]):
+    for d in dict.fromkeys([*filter(None, hooks), *default]):
         _hooks_dir(snap, scope, d, str(dotgit))

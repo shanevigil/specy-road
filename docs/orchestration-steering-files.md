@@ -11,7 +11,7 @@ the same bytes. A checkout's `.git` is recorded the same way, by the gitdir and 
 
 | Class | What |
 |---|---|
-| `git_hook` | the hooks directories: `core.hooksPath` when set (each value read from the config files below, relative to the checkout), else `<common-git-dir>/hooks` and `<worktree-gitdir>/hooks`. A value that only an `includeIf` names may not apply (its condition is not evaluated), so with no other value the default directories are watched as well; direct entries only, not recursive: each regular file (a link followed) by name with its sha256, a subdirectory skipped. A hooks directory with more than 200 direct children is one `check_error` naming that directory on every comparison, changed or not (the listing stops reading after 201 entries) |
+| `git_hook` | the hooks directories: `core.hooksPath` when set (each value read from the config files below, relative to the checkout), else `<common-git-dir>/hooks` and `<worktree-gitdir>/hooks`. A value that only an `includeIf` names may not apply (its condition is not evaluated), so with no other value the default directories are watched as well. An empty `core.hooksPath` is a value that names no directory: it turns the defaults off, as in git, which then runs no hook from the git dir or the checkout (git 2.43 looks for `/<hook>`, which only root can write, and is not watched); direct entries only, not recursive: each regular file (a link followed) by name with its sha256, a subdirectory skipped. A hooks directory with more than 200 direct children is one `check_error` naming that directory on every comparison, changed or not (the listing stops reading after 201 entries) |
 | `git_config` | the bytes of the common `config` and `config.worktree` and every file they name by `include.path` or `includeIf.*.path` as `specy_road/git_config_text.py` reads them (conditions not evaluated, git's depth of 10). The finding also names the changed values of `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.path` and `includeIf.*.path` |
 
 Both are read from the filesystem only, at the turn's start and at its end; no git command is run for them.
@@ -42,8 +42,10 @@ on for every other path, so their findings and the `steering_changed` flag are k
 never reported as unchanged, and it counts as git steering not verified, so no post-turn git command runs. With no
 snapshot from the turn's start (it could not be taken) or a comparison that fails, the check fails closed the same
 way: a `check_error` per class naming the worktree, and the git probes skipped. It never aborts the turn. Only a
-path that does not exist is `absent`; a link that resolves to nothing (dangling, or a loop) where git would read a
-config file or hooks directory is a `check_error`, not `absent`. A config file that a readable config names but that does not exist (git
+path that does not exist is `absent`; a name git cannot follow as far as it exists (the name
+itself, or a directory above it, a dangling link, a loop or no access) where git would read a config file or hooks
+directory is a `check_error`, not `absent`, and so is a `.git` whose gitdir or `commondir` target is not an
+existing directory. A config file that a readable config names but that does not exist (git
 leaves out a missing include) is recorded as `absent`, so its creation or deletion during the turn is a
 `steering_file` finding even when the file naming it is unchanged.
 
