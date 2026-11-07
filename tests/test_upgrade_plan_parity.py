@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import tempfile
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -214,3 +215,26 @@ def test_sol_f2_a_refused_canonical_skill_is_unowned_in_both_manifests(
     assert dry == real == (1, [refusal, "error: required skill was refused"])
     assert owned_seen and not any(owned_seen)
     assert (tmp_path / "outside.md").read_text(encoding="utf-8") == "old skill\n"
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_link_climbing_past_the_root_creates_nothing_outside_the_copy(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, dry_run: bool
+) -> None:
+    """``notes -> ../../(past /)/<target>``: ``..`` stops at ``/`` in the checkout, so the mirror must not climb out."""
+    root = old_repo(tmp_path / "repo")
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "kept.md").write_text("theirs\n", encoding="utf-8")
+    (root / "notes").symlink_to("../" * (len(root.parts) + 1) + target.relative_to("/").as_posix())
+    assert (root / "notes" / "kept.md").read_text(encoding="utf-8") == "theirs\n"
+    scratch = tmp_path / "scratch"   # the mirror lives two levels under it, where that text's excess ``..`` lands
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+
+    assert run_upgrade(root, dry_run=dry_run) == 0
+
+    assert "Traceback" not in capsys.readouterr().err
+    assert list(scratch.iterdir()) == []
+    assert sorted(p.name for p in target.iterdir()) == ["kept.md"]
+    assert os.readlink(root / "notes").endswith(target.relative_to("/").as_posix())

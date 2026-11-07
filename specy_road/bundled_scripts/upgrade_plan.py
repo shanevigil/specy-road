@@ -104,7 +104,10 @@ class Mirror:
     checkout. Content the copy lacks (a target out of the checkout, or under
     ``skip``) is copied to its real path's place, and a link whose text names
     that place another way reaches it through one more link, which only a path
-    already outside the checkout can cross.
+    already outside the checkout can cross. A text whose ``..`` climbs past
+    ``/`` (where the checkout stops) would climb out of the mirror here, so
+    :meth:`build` gives that one link its target's place, absolutely; nothing
+    is ever made outside ``dest``.
 
     Invariant: ``safe_write`` and the skills-link rule see the same link shapes
     here as in the checkout, so ``upgrade``, ``upgrade --dry-run`` and
@@ -136,14 +139,22 @@ class Mirror:
         self._hardlinks.clear()
         self.outside.mkdir(parents=True)
         self._copy_dir(self.checkout, self.repo)
-        while self._links:   # every link of a round first, so content never lands where a link belongs
-            batch, self._links = self._links, []
-            for src, dst in batch:
-                text = os.readlink(src)
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                os.symlink(self.to_sandbox(Path(text)) if os.path.isabs(text) else text, dst)   # its own text, one hop
-            for src, _dst in batch:
-                self._ensure(Path(os.path.realpath(src)), self.to_sandbox(src.parent / os.readlink(src)))
+        made: list[tuple[Path, Path]] = []
+        while True:
+            while self._links:   # every link of a round first, so content never lands where a link belongs
+                batch, self._links = self._links, []
+                for src, dst in batch:
+                    text = os.readlink(src)
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    os.symlink(self.to_sandbox(Path(text)) if os.path.isabs(text) else text, dst)   # its own text, one hop
+                for src, _dst in batch:
+                    self._ensure(Path(os.path.realpath(src)), self.to_sandbox(src.parent / os.readlink(src)))
+                made += batch
+            escaping = [(src, dst) for src, dst in made if not self._inside(dst)]
+            if not escaping:
+                break
+            for src, dst in escaping:
+                self._contain(src, dst)
         template = self.dest / "no-template"
         template.mkdir()
         self.hooks.mkdir()
@@ -199,10 +210,31 @@ class Mirror:
         """
         if os.path.lexists(mapped) or ".git" in real.parts or not real.exists():
             return
+        where = Path(os.path.realpath(mapped))   # where the text lands in the mirror; out of it, build contains the link
+        if not where.is_relative_to(self.outside):
+            return
         home = self._place(real)
-        if not os.path.lexists(mapped):   # the text names the place another way (a ``..``, an alias)
-            mapped.parent.mkdir(parents=True, exist_ok=True)
-            os.symlink(home, mapped)
+        if not os.path.lexists(where):   # the text names the place another way (a ``..``, an alias)
+            where.parent.mkdir(parents=True, exist_ok=True)
+            os.symlink(home, where)
+
+    def _inside(self, path: Path) -> bool:
+        return Path(os.path.realpath(path)).is_relative_to(self.outside)
+
+    def _contain(self, src: Path, dst: Path) -> None:
+        """Point ``dst``, whose text climbs out of the mirror, at its real target's place in it.
+
+        A ``..`` past ``/`` stays at ``/`` in the checkout but climbs above
+        ``outside`` here, so such a text is given as that place, absolutely.
+        """
+        real = Path(os.path.realpath(src))
+        home = self.to_sandbox(real)
+        if os.readlink(dst) == str(home):   # contained once and still out: refuse rather than reach outside
+            raise safe_write.SafeWriteError(f"{src} resolves out of the upgrade's copy; nothing was written")
+        dst.unlink()
+        os.symlink(home, dst)
+        if os.path.exists(src) and ".git" not in real.parts:
+            self._place(real)
 
     def _place(self, real: Path) -> Path:
         """``real``'s place in the mirror, with its content copied there when missing."""
