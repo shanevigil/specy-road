@@ -20,6 +20,7 @@
 
 Touch zones: the listed zones plus `tests/move_node_helpers.py`, added with `specy-road edit-node M22.2 --add
 touch_zones=tests/move_node_helpers.py` in fix round 1 (commit `4d2e5083`) before editing it.
+No golden/parity file changed (A6 not triggered). `specy-road file-limits` passes.
 
 ## Fix round 1 (review gpt-5.6-sol-high at a357b7b8)
 
@@ -40,7 +41,6 @@ touch_zones=tests/move_node_helpers.py` in fix round 1 (commit `4d2e5083`) befor
 - Hint form: taken from the matched reading, so a checkout-form zone gets a checkout-form hint (table test asserts both).
 - Other duplicated git helpers added by this leaf: none left (grep for the helper body in tests/: only `move_node_helpers.git` from this leaf).
 - `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
-No golden/parity file changed (A6 not triggered). `specy-road file-limits` passes.
 
 ## Verification
 
