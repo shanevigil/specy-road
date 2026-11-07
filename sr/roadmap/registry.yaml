@@ -202,16 +202,3 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: upgrade-no-self-warning-export-drift-hint
-    node_id: M22.28
-    branch: feature/rm-upgrade-no-self-warning-export-drift-hint
-    touch_zones:
-      - specy_road/cli.py
-      - specy_road/bundled_scripts/export_roadmap_md.py
-      - tests/test_doctor_version_skew.py
-      - tests/test_export_roadmap_md.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T08:23:02+00:00'
