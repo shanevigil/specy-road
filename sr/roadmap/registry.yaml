@@ -130,16 +130,3 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: init-next-steps
-    node_id: M22.8
-    branch: feature/rm-init-next-steps
-    touch_zones:
-      - specy_road/init_project.py
-      - tests/test_init_project_reports.py
-      - tests/test_init_project.py
-      - docs/install-and-usage.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T07:30:26+00:00'

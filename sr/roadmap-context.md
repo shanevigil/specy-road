@@ -139,7 +139,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.5` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
   - `M22.6` A queued worker message that cannot be delivered flags the worker and goes out with its next turn `queued-message-undelivered` — task — **Not Started**
   - `M22.7` ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading `ready-changelog-reminder` — task — **Not Started**
-  - `M22.8` init project ends with the next steps: set the integration branch, commit the scaffold, validate `init-next-steps` — task — **Not Started**
+  - `M22.8` init project ends with the next steps: set the integration branch, commit the scaffold, validate `init-next-steps` — task — **Complete**
   - `M22.9` Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME `local-roster-and-codex-reviewer-isolation` — task — **Not Started**
   - `M22.10` reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping `finish-keeps-local-claim-and-landing` — task — **Not Started**
   - `M22.11` Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout `reports-say-what-happened` — task — **Not Started**
@@ -310,7 +310,6 @@ Do not pick these up.
 - `M22.1` on `feature/rm-group-into-member-id` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
-- `M22.8` on `feature/rm-init-next-steps` since 2026-11-07
 
 ## Quality by area
 

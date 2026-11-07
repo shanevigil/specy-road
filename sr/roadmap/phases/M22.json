@@ -209,7 +209,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.8_init-next-steps_658d419c-acd2-4f8b-916e-ad673f082a75.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "init project ends with the next steps: set the integration branch, commit the scaffold, validate",
       "touch_zones": [
         "specy_road/init_project.py",
