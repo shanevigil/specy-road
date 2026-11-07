@@ -210,16 +210,17 @@ def _repo_state(repo: Path) -> tuple:
             _git(repo, "diff", "--cached", "--name-only"), _snapshot(repo))
 
 
+@pytest.mark.parametrize("dry_run", [True, False])
 @pytest.mark.parametrize("env", [
     {"GIT_DIR": ".git", "GIT_WORK_TREE": "."},
     {"GIT_INDEX_FILE": ".git/index"},
     {"GIT_COMMON_DIR": ".git"},
     {"GIT_OBJECT_DIRECTORY": ".git/objects"},
 ], ids=lambda env: "+".join(env))
-def test_dry_run_never_touches_the_repository_a_git_variable_names(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, env: dict[str, str]
+def test_upgrade_never_touches_the_repository_a_git_variable_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, env: dict[str, str], dry_run: bool
 ) -> None:
-    """rc4 F1: inside a git hook the scratch copy's git add/commit landed in the caller's repository."""
+    """rc4 F1: a git variable naming a second repository must not receive the plan, in either run."""
     root = old_repo(tmp_path / "project")
     other = tmp_path / "other"
     other.mkdir()
@@ -232,9 +233,12 @@ def test_dry_run_never_touches_the_repository_a_git_variable_names(
     with monkeypatch.context() as m:
         for name, rel in env.items():
             m.setenv(name, str(other / rel))
-        assert run_upgrade(root, dry_run=True) == 0
+        assert run_upgrade(root, dry_run=dry_run) == 0
 
     assert _repo_state(other) == before
+    if not dry_run:
+        for rel in (".gitignore", ".cursorindexingignore", ".specyrd/manifest.json"):
+            assert (root / rel).is_file()
 
 
 def test_a_dry_run_whose_copy_has_no_git_validates_nothing(
@@ -283,11 +287,15 @@ def _marker_config(tmp_path: Path, marker: Path) -> dict[str, dict[str, str]]:
     }
 
 
+@pytest.mark.parametrize("dry_run", [True, False])
 @pytest.mark.parametrize("injected", ["fsmonitor", "filter", "hooks"])
-def test_git_config_count_runs_no_command_in_a_dry_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, injected: str
+def test_git_config_count_runs_no_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, injected: str, dry_run: bool
 ) -> None:
-    """rc4 final F1: five variables stripped left GIT_CONFIG_COUNT, and the scratch git ran what it named."""
+    """rc4 final F1: GIT_CONFIG_COUNT must not run the command it names, in either run.
+
+    A real run still writes its plan. HEAD, refs and the index stay as they were.
+    """
     root = _committed(old_repo(tmp_path / "project"))
     marker = tmp_path / "marker"
     config = _marker_config(tmp_path, marker)[injected]
@@ -298,30 +306,40 @@ def test_git_config_count_runs_no_command_in_a_dry_run(
         for n, (key, value) in enumerate(config.items()):
             m.setenv(f"GIT_CONFIG_KEY_{n}", key)
             m.setenv(f"GIT_CONFIG_VALUE_{n}", value)
-        assert run_upgrade(root, dry_run=True) == 0
+        assert run_upgrade(root, dry_run=dry_run) == 0
 
     assert not marker.exists()
-    assert _checkout_state(root) == before
+    after = _checkout_state(root)
+    if dry_run:
+        assert after == before
+    else:
+        assert after[:5] == before[:5] and after[6] == before[6]
 
 
+@pytest.mark.parametrize("dry_run", [True, False])
 @pytest.mark.parametrize("config_file", [".gitconfig", "xdg/git/config"])
 def test_the_callers_global_git_config_never_reaches_the_copy(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, config_file: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, config_file: str, dry_run: bool
 ) -> None:
-    """Dropping GIT_CONFIG_GLOBAL alone only sends git to the default files, validate's git calls included.
+    """The plan's mirror reads no global config, in a dry run or a real one. Validate's git calls included.
 
     A .gitignore the refresh rewrites also sends the plan's ignore note to git, in the plan's mirror.
+    The caller's ``core.fsmonitor`` appends ``$PWD`` to a marker: absent in a dry run, and only the
+    checkout's path in a real run.
     """
     root = old_repo(tmp_path / "project")
     (root / ".gitignore").write_text("*.log\n", encoding="utf-8")
     _committed(root)
     marker = tmp_path / "marker"
+    script = tmp_path / "fsmonitor.sh"
+    script.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$PWD\" >> {marker}\n", encoding="utf-8")
+    script.chmod(0o755)
     config = _marker_config(tmp_path, marker)
     home = tmp_path / "home"
     (home / config_file).parent.mkdir(parents=True, exist_ok=True)
     (home / config_file).write_text(
         "[specy]\n\tprobe = reached\n"
-        f"[core]\n\tfsmonitor = {config['fsmonitor']['core.fsmonitor']}\n"
+        f"[core]\n\tfsmonitor = {script}\n"
         f"\tattributesFile = {config['filter']['core.attributesFile']}\n"
         f"[filter \"evil\"]\n\tclean = \"{config['filter']['filter.evil.clean']}\"\n", encoding="utf-8")
     before = _checkout_state(root)
@@ -342,11 +360,17 @@ def test_the_callers_global_git_config_never_reaches_the_copy(
         m.setenv("XDG_CONFIG_HOME", str(home / "xdg"))
         m.setattr(upgrade, "validate_at", spied_validate)
         m.setattr(git_subprocess, "run", spied_run)
-        assert run_upgrade(root, dry_run=True) == 0
+        assert run_upgrade(root, dry_run=dry_run) == 0
 
-    assert not marker.exists()
-    assert _checkout_state(root) == before
-    assert probes == [None]
+    lines = marker.read_text(encoding="utf-8").splitlines() if marker.exists() else []
+    checkout = str(root.resolve())
+    if dry_run:
+        assert lines == []
+        assert _checkout_state(root) == before
+        assert probes == [None]
+    else:
+        assert lines and all(line == checkout for line in lines)
+        assert probes == ["reached"]
     # The checkout's own ls-files keeps the caller's config: their HOME, and no isolation.
     assert [env["HOME"] for env in live_envs] == [str(home)]
     assert not [k for k in live_envs[0] if k.startswith("GIT_")]
@@ -440,6 +464,36 @@ def test_a_failed_ls_files_writes_no_generated_file(
     assert f"error: git ls-files failed in {where} ({reason})" in err
     assert "roadmap-context.md (specy-road digest)" not in out
     assert not (root / "roadmap-context.md").exists()
+
+
+def test_a_timed_out_check_ignore_still_finishes_the_real_run(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The checkout's check-ignore timing out gives the scan no ignored set, and the run still exits 0."""
+    root = old_repo(tmp_path)
+    real_run = subprocess.run
+
+    def stub(args, **kw):
+        argv = list(args)
+        if argv and argv[0] == "git" and "-C" in argv and "check-ignore" in argv and "--stdin" in argv:
+            raise subprocess.TimeoutExpired(argv, git_subprocess.DEFAULT_TIMEOUT)
+        return real_run(args, **kw)
+
+    monkeypatch.setattr(subprocess, "run", stub)
+
+    assert run_upgrade(root) == 0
+
+    out, err = capsys.readouterr()
+    assert "== next" in out
+    assert "Traceback" not in out and "Traceback" not in err
+
+
+def test_upgrade_help_states_exit_2_when_a_git_call_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as caught:
+        upgrade.main(["--help"])
+    assert caught.value.code == 0
+    text = " ".join(capsys.readouterr().out.split())
+    assert "The exit code is 2 when a git call it depends on fails or times out" in text
 
 
 def test_ls_files_exit_1_means_untracked(tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch) -> None:

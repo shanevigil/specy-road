@@ -13,9 +13,12 @@ from pathlib import Path
 
 import pytest
 
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.validate_touch_zones import (
+    notice_stale_sheet_zones,
     warn_touch_zones_match_nothing,
 )
+from tests.move_node_helpers import NK_A1, base_fixture, commit_project, git, run_cli
 
 
 def _node(**over) -> dict:
@@ -192,6 +195,8 @@ def test_a_not_started_node_naming_files_it_will_create_is_quiet(tmp_path: Path,
     nodes = [_node(status="Not Started", touch_zones=["src/feature/new_module.py"])]
 
     assert _warn(nodes, tmp_path, capsys) == ""
+    notice_stale_sheet_zones(nodes, tmp_path)   # not a planning sheet: no stale-sheet notice either
+    assert capsys.readouterr() == ("", "")
 
 
 def test_a_started_subtree_is_judged_by_its_rollup(tmp_path: Path, capsys) -> None:
@@ -241,3 +246,68 @@ def test_a_misspelled_git_root_zone_still_warns(nested_project, capsys) -> None:
 
     assert "M1.1" in err
     assert "specy_road/typo.py" in err
+
+
+@pytest.mark.parametrize("staged", [False, True], ids=["unstaged", "staged"])
+@pytest.mark.parametrize("status", ["Not Started", "In Progress", "Complete"])
+def test_a_zone_naming_a_missing_planning_sheet_gets_a_stdout_notice(
+    tmp_path: Path, status: str, staged: bool
+) -> None:
+    """Only an absent literal sheet path, in either form, is noticed; --strict ignores it."""
+    top, project = tmp_path, tmp_path / "sr"
+    base_fixture(project)
+    current = f"planning/M1.1_alpha-work_{NK_A1}.md"
+    gone = f"planning/M9.9_old-name_{NK_A1}.md"
+    (project / gone).write_text("# old\n", encoding="utf-8")
+    for doc in ("constitution/purpose.md", "constitution/principles.md", "docs/supply-chain-security.md"):
+        (project / doc).parent.mkdir(exist_ok=True)
+        (project / doc).write_text("# doc\n", encoding="utf-8")   # the AGENTS.md load order
+    assert run_cli(project, "refresh-stubs").returncode == 0  # no AGENTS.md warning under --strict
+    commit_project(top, project)
+    if staged:
+        git(top, "rm", "-q", f"sr/{gone}")
+    else:
+        (project / gone).unlink()
+    zones = [gone, f"sr/{gone}", current, f"sr/{current}", "planning/*.md", "sr/planning/*.md"]
+    chunk = project / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n["id"] == "M1.1":
+            n.update(status=status, touch_zones=zones)
+        elif n["id"] == "M1" and status == "Complete":
+            n["status"] = status   # no stale-parent warning under --strict
+    write_json_chunk(chunk, nodes)
+
+    r = run_cli(project, "validate", "--strict")
+
+    notices = [ln for ln in r.stdout.splitlines() if "names a planning sheet" in ln]
+    assert notices == [
+        f"roadmap: notice — M1.1: touch zone {z!r} names a planning sheet that does not exist; "
+        f"M1.1's sheet is now {p + current!r} (specy-road edit-node M1.1 --set touch_zones=<paths>)"
+        for z, p in ((gone, ""), (f"sr/{gone}", "sr/"))
+    ]
+    assert "planning sheet" not in r.stderr
+    if status == "In Progress":   # keeps its existing stderr match-nothing warning
+        assert "match nothing in the working tree" in r.stderr
+    else:
+        assert r.returncode == 0, r.stderr
+
+
+
+
+def test_a_project_directory_named_planning_reads_a_zone_as_project_form_first(
+    tmp_path: Path, capsys
+) -> None:
+    """With the project at ``planning/``, ``planning/<file>.md`` is still a project-form sheet zone."""
+    project = tmp_path / "planning"
+    (project / "planning").mkdir(parents=True)
+    (project / "planning" / "here.md").write_text("# here\n", encoding="utf-8")
+    zones = ["planning/gone.md", "planning/planning/gone.md", "planning/here.md", "planning/planning/here.md"]
+
+    notice_stale_sheet_zones([_node(touch_zones=zones)], project, git_root=tmp_path)
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines == [
+        f"roadmap: notice — M1.1: touch zone {z!r} names a planning sheet that does not exist"
+        for z in zones[:2]
+    ]
