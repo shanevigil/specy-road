@@ -189,7 +189,8 @@
         "tests/repo/test_docs_shipped_commands.py",
         "sr/planning/M16.8.8_release-docs-0-3-1_15c488ad-2531-4d82-a3a9-363e626a3872.md",
         "sr/constitution/",
-        "sr/constraints/README.md"
+        "sr/constraints/README.md",
+        "tests/support/"
       ],
       "type": "task"
     },

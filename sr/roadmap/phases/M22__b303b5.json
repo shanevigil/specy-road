@@ -126,7 +126,11 @@
         "specy_road/bundled_scripts/worker_cli.py",
         "tests/test_worker_stall_recovery.py",
         "docs/orchestration-workers.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/bundled_scripts/grind_session.py",
+        "specy_road/worker_state.py",
+        "specy_road/schemas/worker-record.schema.json"
       ],
       "type": "task"
     },
@@ -194,7 +198,7 @@
     },
     {
       "acceptance": [
-        "specy-road ready refuses when HEAD equals the merge base, or when the tree has uncommitted changes inside the leaf's touch zones, and names the paths; a READY with blocked_on set is still written",
+        "specy-road ready, before any --run command, refuses when no implementation exists: an empty committed diff in the outer repository and in every configured nested repository the leaf's zones name; or uncommitted in-zone changes (staged, unstaged, deleted or non-ignored untracked, by the claim's zones), naming the paths. ready accepts --blocked-on A<n>=REASON, which permits an empty or dirty handoff. After --run commands, the same checks repeat and HEAD must not have moved; on failure no READY is written",
         "handoff status does not show ok or offer review for an existing READY whose commit equals its base",
         "tests/test_ready_empty_leaf.py covers no commits, a dirty zone path, a dirty path outside the zones, blocked_on, and an old empty READY; CHANGELOG [Unreleased] entry"
       ],
@@ -256,6 +260,7 @@
     {
       "acceptance": [
         "digest and digest --check give the same bytes from a fresh clone and from a checkout with a warm .specyrd/cache, on a history where a dependency edge is removed on a merged side branch",
+        "CACHE_VERSION is bumped so an old cache at this HEAD is rebuilt",
         "tests/test_digest_cold_warm.py builds that history and asserts both renders match, and that upgrade's render in a fresh worktree keeps the line; CHANGELOG [Unreleased] entry"
       ],
       "codename": "digest-is-the-same-cold-or-warm",
@@ -271,7 +276,9 @@
         "specy_road/history_index.py",
         "specy_road/history_cache.py",
         "tests/test_digest_cold_warm.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/history_git.py",
+        "specy_road/history_walk.py"
       ],
       "type": "task"
     },
