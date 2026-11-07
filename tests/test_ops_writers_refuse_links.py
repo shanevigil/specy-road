@@ -215,8 +215,8 @@ def test_resolve_deterministic_paths_refuses_a_linked_roadmap_md(tmp_path: Path,
 
 @pytest.mark.parametrize(
     ("linked", "from_worktree"),
-    [("work/reviews", False), ("work/reviews", True), ("work/reviews/M1.1", False), ("work", True)],
-    ids=["reviews-main", "reviews-from-worktree", "node", "work-from-worktree"],
+    [("work/reviews", False), ("work/reviews", True), ("work/reviews/M1.1", False), ("work", False), ("work", True)],
+    ids=["reviews-main", "reviews-from-worktree", "node", "work-main", "work-from-worktree"],
 )
 def test_finish_refuses_a_linked_reviews_base(tmp_path: Path, monkeypatch, linked: str, from_worktree: bool) -> None:
     """The untracked summary's copy is walked from the main checkout's project root: exit 1, nothing changed."""
@@ -233,6 +233,9 @@ def test_finish_refuses_a_linked_reviews_base(tmp_path: Path, monkeypatch, linke
     (outside / "theirs.md").write_bytes(THEIRS)
     link = main / linked
     link.parent.mkdir(parents=True, exist_ok=True)
+    if link.is_dir():   # main's own work/ (the committed brief): its contents move to the link's target
+        shutil.copytree(link, outside, dirs_exist_ok=True)
+        shutil.rmtree(link)
     link.symlink_to(outside, target_is_directory=True)
     before = (_git_state(repo), _git_state(main), _snapshot(outside), (repo / SUMMARY).read_bytes())
 

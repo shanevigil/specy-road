@@ -17,8 +17,11 @@ writes a ``.gitignore`` of ``*`` into it): the managed ``.gitignore`` block
 reaches only repos that ran ``refresh-stubs`` or ``init project``, and the
 first ``validate`` after an upgrade must not leave ``?? .specyrd/`` behind.
 
-Every failure here is silent by design. A read-only checkout, a missing
-directory, or a half-written file costs a rebuild, never a failed command.
+Every failure here costs a rebuild, never a failed command. A read-only
+checkout, a missing directory, or a half-written file is silent by design. A
+symlink on the cache path is the one exception that is not silent:
+:func:`save_cache` refuses it (the safe-write rule) and prints one warning
+naming the path, so a planted link is visible, and the command carries on.
 """
 
 from __future__ import annotations
