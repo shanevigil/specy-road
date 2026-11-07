@@ -150,7 +150,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.17` brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist `verify-tells-a-blocking-404` — task — **Complete**
   - `M22.18` The reviewer prompt asks for every required change in one pass, not just the first `reviewer-lists-every-required-change` — task — **Complete**
   - `M22.19` Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names `review-inputs-identity-and-unreadable` — task — **Not Started**
-  - `M22.20` worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging `terminate-and-finish-rollback-robustness` — task — **Not Started**
+  - `M22.20` worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging `terminate-and-finish-rollback-robustness` — task — **Complete**
   - `M22.21` Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback `preview-rollback-fidelity` — task — **Complete**
   - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal `sandbox-rc4-final-polish` — task — **Complete**
   - `M22.23` Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus `guidance-bypass-retest-cursor-grok-sol-opus` — task — **Not Started**
@@ -317,7 +317,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.13` on `feature/rm-worker-cost-and-stale-presence` since 2026-11-07
 - `M22.19` on `feature/rm-review-inputs-identity-and-unreadable` since 2026-11-07
-- `M22.20` on `feature/rm-terminate-and-finish-rollback-robustness` since 2026-11-07
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 - `M22.47` on `feature/rm-cursor-starts-under-the-sandbox` since 2026-11-07
 
@@ -328,17 +327,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 45 | 0 | 2.76 | 62% | 21 | 4 |
+| `CHANGELOG.md` **flagged** | 47 | 0 | 2.70 | 60% | 21 | 4 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 34 | 0 | 2.88 | 65% | 17 | 2 |
+| `docs` **flagged** | 36 | 0 | 2.81 | 61% | 17 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 44 | 0 | 2.77 | 61% | 21 | 4 |
-| `tests` **flagged** | 47 | 0 | 2.66 | 60% | 23 | 4 |
-| `AGENTS.md` | 1 | 0 | 1.00 | 0% | 0 | 0 |
-| `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
+| `specy_road` **flagged** | 46 | 0 | 2.72 | 59% | 21 | 4 |
+| `tests` **flagged** | 48 | 0 | 2.62 | 56% | 19 | 4 |
 | `suggested_prompts` | 2 | 0 | 1.00 | 0% | 3 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.

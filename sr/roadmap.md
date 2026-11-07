@@ -215,7 +215,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.17` | brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist | task | — | Complete |
 | `M22.18` | The reviewer prompt asks for every required change in one pass, not just the first | task | — | Complete |
 | `M22.19` | Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names | task | — | Not Started |
-| `M22.20` | worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging | task | — | Not Started |
+| `M22.20` | worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging | task | — | Complete |
 | `M22.21` | Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback | task | — | Complete |
 | `M22.22` | Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal | task | — | Complete |
 | `M22.23` | Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus | task | Human-led | Not Started |

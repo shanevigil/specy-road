@@ -59,7 +59,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.20_terminate-and-finish-rollback-robustness_17405142-e2fa-4516-83e2-e536820d1ec2.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging",
       "touch_zones": [
         "specy_road/worker_process.py",
