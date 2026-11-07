@@ -133,8 +133,12 @@ def active_preferences(doc: dict[str, Any], now: datetime | date | None = None) 
 def load_checked_decisions(root: Path) -> dict[str, Any] | None:
     """The tracked ledger, checked against the decisions schema.
 
-    ``None`` when ``roadmap/decisions.yaml`` is absent. A parse error, a
-    non-mapping root or schema errors raise ``ValueError`` naming that file.
+    ``None`` when ``roadmap/decisions.yaml`` is absent. A directory at that
+    path counts as absent, and ``decisions.local.yaml`` is not read. One
+    read-failure rule: a YAML parse error, or any ``UnicodeError`` or
+    ``OSError`` while reading the file (it is not UTF-8, or it cannot be
+    opened), plus a non-mapping root or schema errors, raise ``ValueError``
+    naming that file.
     """
     path = decisions_path(root)
     if not path.is_file():
@@ -142,7 +146,7 @@ def load_checked_decisions(root: Path) -> dict[str, Any] | None:
     name = DECISIONS_REL.as_posix()
     try:
         doc = read_decisions(path, missing_ok=False)
-    except yaml.YAMLError as e:
+    except (yaml.YAMLError, UnicodeError, OSError) as e:
         raise ValueError(f"{name}: {e}") from e
     if not isinstance(doc, dict):
         raise ValueError(f"{name}: root must be a mapping")
@@ -158,7 +162,9 @@ def notice_decisions_naming_no_node(
     """One stdout notice for open questions and active preferences naming no live node.
 
     Entries with no ``node``, closed entries and expired preferences are omitted.
-    An absent, unreadable or schema-invalid ledger prints nothing.
+    Every ``ValueError`` from :func:`load_checked_decisions` prints nothing:
+    a parse error, a file that is not UTF-8 or cannot be opened, a non-mapping
+    root, or schema errors. An absent ledger prints nothing.
     """
     try:
         doc = load_checked_decisions(root)

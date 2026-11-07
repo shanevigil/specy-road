@@ -253,6 +253,11 @@ def test_a_move_rewrites_zones_naming_the_moved_sheet_in_both_forms(tmp_path: Pa
     assert nodes_by_key(root)[NK_A22]["touch_zones"] == expected
     claims = {e["codename"]: e for e in yaml.safe_load(registry.read_text(encoding="utf-8"))["entries"]}
     assert claims["inner-two"]["touch_zones"] == expected
+    for _ in ("unstaged", "staged"):
+        v = run_cli(root, "validate")
+        assert v.returncode == 0, v.stderr
+        assert "names a planning sheet" not in v.stdout + v.stderr
+        git(top, "add", "-A")
 
 
 def _entry(eid: str, kind: str, node: str, *, status: str = "open", summary: str | None = None) -> dict:
@@ -340,7 +345,7 @@ def test_renumber_outline_swaps_decision_nodes_in_one_lookup(tmp_path: Path) -> 
     assert by_id["Dd"]["summary"] == "was M2.1"
 
 
-@pytest.mark.parametrize("kind", ["validation", "yaml", "sequence"])
+@pytest.mark.parametrize("kind", ["validation", "yaml", "sequence", "utf8", "unreadable"])
 def test_a_refused_move_leaves_the_tree_byte_for_byte_unchanged(tmp_path: Path, kind: str) -> None:
     wide_fixture(tmp_path)
     ledger = tmp_path / "roadmap" / "decisions.yaml"
@@ -348,6 +353,10 @@ def test_a_refused_move_leaves_the_tree_byte_for_byte_unchanged(tmp_path: Path, 
         ledger.write_text("version: [\n", encoding="utf-8")
     elif kind == "sequence":
         ledger.write_text("- not-a-mapping\n", encoding="utf-8")
+    elif kind == "utf8":
+        ledger.write_bytes(b"\xff\xfe not utf-8")
+    elif kind == "unreadable":
+        ledger.write_text("version: 1\nentries: []\n", encoding="utf-8")
     else:
         write_decisions(ledger, {"version": 1, "entries": [_entry("Dopen", "decision", "M1.2.2")]})
         chunk = tmp_path / "roadmap" / "phases" / "T.json"
@@ -358,8 +367,13 @@ def test_a_refused_move_leaves_the_tree_byte_for_byte_unchanged(tmp_path: Path, 
                 n["title"] = title
         write_json_chunk(chunk, nodes)
     before = tree_bytes(tmp_path)
-
-    r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.2.2", "--to-parent", "M2")
+    if kind == "unreadable":
+        ledger.chmod(0)
+    try:
+        r = run_move_node(tmp_path, "--repo-root", str(tmp_path), "M1.2.2", "--to-parent", "M2")
+    finally:
+        if kind == "unreadable":
+            ledger.chmod(0o644)
 
     assert r.returncode == 1
     assert tree_bytes(tmp_path) == before

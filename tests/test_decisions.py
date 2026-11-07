@@ -239,13 +239,29 @@ def test_validate_notices_open_entries_naming_no_live_node(tmp_path: Path) -> No
         assert silent not in r.stdout
 
 
-@pytest.mark.parametrize("text", ["version: [\n", "- not-a-mapping\n"], ids=["yaml", "sequence"])
-def test_validate_stays_silent_on_an_invalid_decision_ledger(tmp_path: Path, text: str) -> None:
+@pytest.mark.parametrize(
+    "case",
+    ["yaml", "sequence", "utf8", "unreadable"],
+)
+def test_validate_stays_silent_on_an_invalid_decision_ledger(tmp_path: Path, case: str) -> None:
     repo = _strict_repo(tmp_path)
-    (repo / "roadmap" / "decisions.yaml").write_text(text, encoding="utf-8")
-
-    r = run_cli(repo, "validate", "--strict")
+    path = repo / "roadmap" / "decisions.yaml"
+    if case == "yaml":
+        path.write_text("version: [\n", encoding="utf-8")
+    elif case == "sequence":
+        path.write_text("- not-a-mapping\n", encoding="utf-8")
+    elif case == "utf8":
+        path.write_bytes(b"\xff\xfe not utf-8")
+    else:
+        path.write_text("version: 1\nentries: []\n", encoding="utf-8")
+        path.chmod(0)
+    try:
+        r = run_cli(repo, "validate", "--strict")
+    finally:
+        if case == "unreadable":
+            path.chmod(0o644)
 
     assert r.returncode == 0, r.stderr
+    assert "PermissionError" not in r.stderr
     assert "decisions.yaml" not in r.stdout
     assert "decisions.yaml" not in r.stderr

@@ -182,8 +182,9 @@ def _stage_decision_ids(
     Only when ``renamed`` is non-empty and the ledger exists. Each entry's
     ``node`` is looked up once, so a chain or a swap keeps the id that entry
     named. The file is staged only when an entry changed. A ledger that does
-    not parse, is not a mapping or fails the decisions schema raises
-    ``ValueError`` naming it, before this plan stages anything else.
+    not parse, is not a mapping, fails the decisions schema, or cannot be
+    read (not UTF-8, or ``OSError``) raises ``ValueError`` naming it, before
+    this plan stages anything else.
     """
     if not renamed:
         return
