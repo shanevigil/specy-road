@@ -24,6 +24,8 @@ from specy_road.worker_models import mismatch_note
     ("Claude Opus 5.5 300K Extra High", "claude-opus-5-5-high", False),
     ("Grok 4.7 1M High", "grok-4.6-high", False),   # a different model
     ("GPT-5.6 Sol 1M High", "claude-opus-5-5-high", False),
+    ("Extra High Model", "xhigh-model", False),   # Extra High is not the trailing suffix
+    ("Model 1M Series High", "model-series-high", False),   # 1M is not immediately before the effort
 ])
 def test_cursor_display_name_matches_the_catalog_id_it_names(reported: str, slug: str, same: bool) -> None:
     assert same_model(reported, slug) is same
