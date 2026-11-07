@@ -1,6 +1,11 @@
 # Implementation summary: M21.39 — Publish, finish's land and reviews copy, the pickup hint refuse any symlink on the path
 
-Branch `feature/rm-ops-writers-refuse-links`, base `1be0ac40`. As the planning sheet asks, this is built ahead of M21.37: `feature/rm-safe-write-rule-setup-writers` is merged in (`e10c4597`), and only `safe_write`'s public API is used. Implementation commits: `22473dfe`, plus a one-line test-file spacing fix. M21.37's files are not edited. The review diff includes M21.37's files until that leaf lands on WIP; that is expected.
+Branch `feature/rm-ops-writers-refuse-links`. As the planning sheet asks, the first pass was built ahead of M21.37: `feature/rm-safe-write-rule-setup-writers` was merged in (`e10c4597`), and only `safe_write`'s public API is used. Implementation commits: `22473dfe`, plus a one-line test-file spacing fix. M21.37 has since landed on WIP, and WIP is merged into this branch (`56090bc9`, the rework base), so the review diff against WIP holds only this leaf's files. M21.37's files are not edited.
+
+## Rework (on base `56090bc9`)
+
+- **A6, history cache.** The first pass covered `ensure_cache_dir` but not `save_cache`, which still wrote with `tempfile.mkstemp` and `os.replace`. It now writes `roadmap-history.json` with `safe_write.write(root, ...)` from the project root, after `ensure_cache_dir`. A `SafeWriteError` prints one line, `warning: history cache not written: <refusal>`, on stderr and returns `False`. The other failures stay silent, as the module docstring promises. `tempfile` and `os` imports are gone. `history_index` and `digest` are unchanged: digest carries on and exits 0. Commit `e79de2b3`.
+- **CHANGELOG.** The WIP merge had put this leaf's `[Unreleased] Fixed` entry in the middle of M21.37's entry, which was duplicating one line and splitting the other. M21.37's text is now byte-identical to WIP, and this leaf's entry follows it with one added sentence for A6.
 
 ## What changed
 
@@ -25,7 +30,7 @@ The test rules forbid importing `_`-prefixed names, and they say to extend an ex
 
   Each row checks exit 1, the refusal naming the link, `nothing was changed`, no traceback, the worktree, index and HEAD of both checkouts unchanged, and the outside directory's contents unchanged.
 - **`resolve_deterministic_paths` called directly:** not duplicated. The `finish` writer row of `tests/test_writers_refuse_links_out.py::test_writer_refuses_a_link_out_of_its_root` (outside the zones; from M21.37) already calls it directly with `link_in` and `link_out`, among other layouts, and checks that the exception names the refusal and that the target bytes are unchanged.
-- **pickup and brainstorm:** `tests/test_ops_writers_refuse_links.py` (new).
+- **pickup, brainstorm and the history cache (A6):** `tests/test_ops_writers_refuse_links.py` (new). `test_digest_carries_on_past_a_linked_history_cache` runs `specy-road digest` on a committed copy of the dogfood fixture. It has three rows: `.specyrd/cache` linked out (a linked folder), `.specyrd/cache/.gitignore` dangling (a final link), and `roadmap-history.json` linked to an outside file (a final link, the one that only `save_cache` meets). Each row checks exit 0, stderr is exactly the one warning naming the link, the outside tree is unchanged, and the link is still a link.
 
 ## Red-green
 
@@ -35,7 +40,7 @@ With the seven package files reverted to the merged base and the tests kept, the
 - `test_brainstorm_add_idea_refuses_a_linked_lock`;
 - `test_finish_refuses_a_linked_reviews_base`: the `reviews-main`, `reviews-from-worktree` and `work-from-worktree` rows.
 
-That is 8 in all. They pass with the fix. The `node` row and the three Publish rows already passed on the merged base, through the old reviews-root walk and M21.37's `refused_generated_files`, so they pin existing behaviour.
+That is 8 in all. They pass with the fix. In the rework, with `history_cache.py` reverted to `56090bc9`, all three `test_digest_carries_on_past_a_linked_history_cache` rows fail: before the change there was no warning, and in the history-file row `os.replace` swapped the link for a file. The `node` row and the three Publish rows already passed on the merged base, through the old reviews-root walk and M21.37's `refused_generated_files`, so they pin existing behaviour.
 
 ## Touch zones (final)
 
@@ -43,7 +48,7 @@ These are as listed, with no additions. The callers outside the zones need no ch
 
 ## Verification
 
-- `python -m pytest -q -n 4`: 6047 passed.
+- `python -m pytest -q -n 6` (rework, on `56090bc9` plus `e79de2b3`): 6197 passed.
 - `specy-road file-limits`: OK.
 - `python -m ruff check specy_road tests/test_ops_writers_refuse_links.py tests/test_finish_config_preflight.py tests/test_pm_publish.py`: clean.
 
@@ -60,4 +65,6 @@ These are as listed, with no additions. The callers outside the zones need no ch
 - `tests/test_ops_writers_refuse_links.py`: `_tree`, `_refusal`, `_cache_out`, `_specyrd_out`, `_marker`. These are the arrange and inspect helpers for the rows.
 - `tests/test_ops_writers_refuse_links.py`: `test_pickup_hint_refuses_a_linked_marker_path`, 4 rows. A3/A4.
 - `tests/test_ops_writers_refuse_links.py`: `test_brainstorm_add_idea_refuses_a_linked_lock`. A3/A4.
+- `specy_road/history_cache.py`: `save_cache` writes through `safe_write.write`, with an `except SafeWriteError` branch that prints one warning. A6: no write through a link, and a refused cache path is named.
+- `tests/test_ops_writers_refuse_links.py`: `_history_file` and `_ignore_dangling` arrange helpers, and `test_digest_carries_on_past_a_linked_history_cache` with 3 rows. A6: the final-link and linked-folder rows.
 - Mocks: none.
