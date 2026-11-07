@@ -319,6 +319,33 @@ Commit `09093cc2`. `refresh_stubs_report.py` is now in the touch zones (the brie
 - Red-green: with the package files from `ab728acf`, all 11 loop rows, the 2 `cycle` refresh-stubs rows and the 2 `self-loop` m13_7 rows fail. With the fix they pass.
 - Full suite: 6146 passed (`pytest -n 4`). `ruff check specy_road tests`: pass. `specy-road file-limits`: OK.
 
+## Fix round 9 (review `grok-4.7-high` at `85466059`; `gpt-6.1-sol-low` at `e3f70e09`)
+
+Commit `906fc4f3`.
+
+- **grok's finding.** `specyrd init` wrote `.specyrd/README.md` with `Path.write_text`, after `mkdir`, outside the rule. A dangling link there created the outside target (exit 0). With `--force`, a link to an existing file had its target's bytes replaced. `refresh-stubs` already refused the same path.
+- **Class.** A path that `specyrd init` writes but `_refuse_unsafe_paths` does not check, and that is not written through `safe_write`. Every write in `run_init` needs both the preflight and a `safe_write` write.
+- **Fix.** `_refuse_unsafe_paths` now checks `.specyrd/manifest.json` and `.specyrd/README.md` before anything is written. `_write_readme_and_gui_stub` writes the README with `safe_write.write(repo_root, …)`, so its parent `mkdir` goes through the rule as well. A linked README gets `error: <path> is a symlink (to …), not a regular file`, exit 1, with or without `--force`, and nothing in the checkout or outside changes.
+- **Tests.** `test_specyrd_init_refuses_a_linked_manifest_or_ignore_file` gains the `readme-link-out` and `readme-dangling` layouts and a `force` parameter (10 rows, up from 3). The README rows also assert that the dangling target was never created. Red-green: with `specyrd_init.py` from `85466059`, all 4 README rows fail; with the fix they pass.
+- **Sol R1/R2.** Already resolved in round 7 by the exact-text rule; see the round 8 probes. No change this round.
+
+### Probes (fix round 9)
+
+- Every write in `specyrd_init.run_init`. Result:
+  - stubs, canonical skills and skill links: `check_install_paths` plus `install_stubs` and `ensure_link` (skills-link rule);
+  - manifest: preflight plus `safe_write.write`;
+  - README: fixed here;
+  - `.gitignore` and the Cursor ignore files: `check_ignore_files` plus the strict managed block;
+  - `AGENTS.md` and `CLAUDE.md`: `resolves_outside`, kept by A1;
+  - `~/.specy-road/gui-settings.json`: in `$HOME`, not in the checkout, so outside the rule's owned root. Unchanged.
+- The opt-in hooks of `specyrd init` (`--install-guard-hooks`, `--install-pre-push`), in `specy_road/specyrd_hooks.py` (**outside the touch zones**, not named in A2): `_write_json` (`.claude/settings.json` and similar), the hooks README under `.specyrd/hooks/<agent>/`, and `.git/hooks/pre-push` use `Path.write_text`, not the rule. Same class, but these writes only happen behind opt-in flags. Not changed here; a follow-up must add that file to the zones.
+- Remaining `write_text`, `write_bytes`, `mkdir`, `unlink`, `rmdir` and `copy` calls in the zoned modules. Result: each one is either on the rule, or behind a preflight (`archive_restore`, after `_preflight`; `upgrade_plan` apply, after `check_changes`), or allowed by the brief, or a temporary directory:
+  - allowed by the brief: `managed_block._plain_write` (the `resolves_outside` callers only) and `digest_cli` (an explicit absolute `-o` outside the checkout);
+  - temporary directories: the `upgrade_plan` mirror and the `refresh_stubs` dry-run copy.
+  - No other unchecked checkout write found.
+- `refresh-stubs` on a linked `.specyrd/README.md`: still exit 1 with `error:` (grok's probe). `specyrd init` and `refresh-stubs` now agree.
+- Full suite: 6153 passed (`pytest -n 4`). `ruff check specy_road tests`: pass. `specy-road file-limits`: OK.
+
 ## Touch zones
 
 All edits are inside the listed zones. No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
@@ -379,4 +406,5 @@ All edits are inside the listed zones. No file outside them needed changing, and
 - Fix round 6: `upgrade_plan.Mirror` layout (`repo = to_sandbox(checkout)`), round-based link creation, `_ensure` and `_place` (the class). Test: `test_every_entry_point_gives_the_same_skills_link_verdict` (42 rows, the single shape table); removed the round-5 alias test and the m13_7 skills-shape rows it covers.
 - Fix round 7: `specyrd_skills.SKILLS_LINK_TEXT` (the two allowed link texts, replacing `SKILLS_DIRS`); in `skill_path`, the exact-text branch (A1, removes the R1/R2 class); in `ensure_link`, the `link == canonical` guard (one skills directory linked to the other: no self-loop link, and dry and real runs agree). Tests: the shape table's `pair`, `absolute-pair`, `pair-under-linked-parent`, `relative-alias`, `dotdot-through-link` (R1) and `git-dir` (R2) rows, and the `OTHER_SKILLS` helper map; no mock.
 - Fix round 8: `safe_write.loop_refusal` (a loop met before the rule, as the rule's refusal; the class), `safe_write._loops` (its `stat` test) and `safe_write.refusal_of` (one boundary call for `exit_on_refusal` and `init project`); `refresh_stubs_report._refused` (the report resolves only a path the rule allows); `exit_on_refusal` at the `refresh-stubs`, `refresh-schemas` and `upgrade` mains and on `specyrd_init.run_init`; the loop branch in `upgrade_plan.make_plan` (names the checkout's path). Tests: the `cycle` shape row (6), the m13_7 `self-loop` parameter (2), `test_a_symlink_loop_on_a_managed_path_is_refused_without_a_traceback` (11 rows: each a traceback before) and `test_a_symlink_loop_is_refused_as_the_looping_link` (3); no mock.
+- Fix round 9: the `.specyrd/README.md` check in `specyrd_init._refuse_unsafe_paths` and its `safe_write.write` (grok: a linked README was written through). Tests: the `readme-link-out` and `readme-dangling` layouts and the `force` parameter in `test_specyrd_init_refuses_a_linked_manifest_or_ignore_file` (7 more rows); no mock.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
