@@ -303,6 +303,7 @@ Do not pick these up.
 - `M21.37` on `feature/rm-safe-write-rule-setup-writers` since 2026-11-06
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
 - `M22.26` on `feature/rm-post-run-zone-check-git-root-zones` since 2026-11-06
+- `M22.27` on `feature/rm-old-log-test-asserts-on-the-run` since 2026-11-06
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area

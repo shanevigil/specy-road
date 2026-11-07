@@ -147,3 +147,11 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
+  - codename: old-log-test-asserts-on-the-run
+    node_id: M22.27
+    branch: feature/rm-old-log-test-asserts-on-the-run
+    touch_zones:
+      - tests/test_review_usage.py
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
