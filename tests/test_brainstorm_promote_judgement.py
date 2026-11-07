@@ -58,7 +58,7 @@ def test_references_list_overlaps_by_id_and_relation(repo: Path) -> None:
 
     assert "- Overlaps existing node M0.1 (adjacent)" in refs
     assert "- Overlaps existing node M0.2 (prerequisite)" in refs
-    assert f"Roadmap chunk for `{node_id}`" in refs
+    assert "Roadmap chunk: the node this sheet's file name names" in refs
 
 
 def test_approach_lists_critics_and_verdict_as_constraints(repo: Path) -> None:
