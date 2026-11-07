@@ -460,6 +460,30 @@
         "tests/test_review_record_write.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road review accept-policy --all-open lists every open claim whose pinned review policy differs from the integration branch, prints each distinct set of changes once with the leaves it affects, and on one typed confirmation writes each leaf its own POLICY-ACCEPTED.yaml naming its pinned digest and the accepted digest",
+        "It keeps every existing safeguard: it needs a terminal, an acceptance still counts only for its node and two digests, a later policy change needs a new one, and the single-node form behaves as today",
+        "tests/test_review_policy_pin.py covers two leaves pinned to different digests, a leaf with no change, a refusal without a terminal and a wrong confirmation; docs/orchestration-review.md describes it; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "accept-policy-for-all-open-claims",
+      "dependencies": [],
+      "id": "M22.34",
+      "node_key": "59ad86eb-3b77-478d-ac05-ba61dabf8394",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.34_accept-policy-for-all-open-claims_59ad86eb-3b77-478d-ac05-ba61dabf8394.md",
+      "sibling_order": 33,
+      "status": "Not Started",
+      "title": "One accept-policy prompt covers every open claim",
+      "touch_zones": [
+        "specy_road/review_policy_pin.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "docs/orchestration-review.md",
+        "tests/test_review_policy_pin.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
