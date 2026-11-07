@@ -21,9 +21,11 @@ from specy_road import safe_write
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import role_prompt
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
-from specy_road.review_delegate import delegate
+from specy_road.review_delegate import delegate, run_states
 from specy_road.review_delegate_packet import ensure_packet
-from specy_road.review_files import archive_review, load_review, project_of, review_path, reviews_dir, write_review
+from specy_road.review_files import (
+    archive_review, list_review_history, list_reviews, load_review, project_of, review_path, reviews_dir, write_review,
+)
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_lock import review_run_lock
 from specy_road.review_policy_pin import pinned_message
@@ -383,6 +385,25 @@ def _approvals(repo: Path) -> list[str]:
     target = resolve_target(repo, "M1.1", None)
     gate = evaluate_gate(repo, target.node, target.commit, branch=(target.entry or {}).get("branch"))
     return [a.model for a in gate.approvals]
+
+
+def test_a_record_in_the_closed_fallback_is_not_an_approval(tmp_path: Path) -> None:
+    repo, _spec = delegate_repo(tmp_path)
+    head = git(repo, "rev-parse", "HEAD")
+    text = review_text(head, model="opus")
+    sentinel = repo / ".handoff-closed"
+    (sentinel / "history").mkdir(parents=True)
+    record = sentinel / "REVIEW-opus.md"
+    record.write_text(text)
+    (sentinel / "history" / "old-opus.md").write_text(text)
+    (sentinel / "RUN-opus.json").write_text('{"model": "opus", "state": "complete"}\n')
+    outside = _outside(tmp_path)
+    _replace(repo / "work" / "reviews", outside, directory=True)
+    assert load_review(record).ok
+
+    assert list_reviews(repo, "M1.1") == [] and list_review_history(repo, "M1.1") == []
+    assert run_states(repo, "M1.1", head) == [] and _approvals(repo) == []
+    assert record.read_text() == text
 
 
 def test_a_reviewer_that_replaces_reviews_with_a_link_is_a_review_failure(tmp_path: Path) -> None:

@@ -299,15 +299,16 @@ def load_review(path: Path, acceptance_ids: list[str] | None = None) -> ReviewFi
 def reviews_listing(repo_root: Path, node_id: str) -> Path:
     """The hand-off directory to list.
 
-    When ``work``, ``work/reviews`` or the node directory is a symlink, this is a path that is not a
-    directory, so a caller's ``is_dir`` check lists nothing and does not follow the link. Nothing above
-    the project is inspected.
+    When ``work``, ``work/reviews`` or the node directory is a symlink, this is ``os.devnull``. That path
+    is not a directory, so a caller's ``is_dir`` check lists nothing. No directory in the project is read,
+    including a ``<project>/.handoff-closed`` someone planted a record in. Nothing above the project is
+    inspected.
     """
     from specy_road.review_write_check import handoff_closed
 
     d = reviews_dir(repo_root, node_id)
     if handoff_closed(d) is not None:
-        return project_of(d) / ".handoff-closed"
+        return Path(os.devnull)
     return d
 
 

@@ -24,8 +24,9 @@ body. Keep section bodies focused; link to PRs for detail.
   record reached through that link, the run log is not opened, and `prompt --run`'s close does not raise.
   That log check walks every ancestor from the saved project root, so a symlink planted at the node
   directory is not opened either (`review delegate` and `prompt --run`).
-  A symlink at the node directory is not listed either, and `mark-implementation-reviewed` refuses it
-  before the gate, naming the path, without committing the registry. A relative `work/reviews/<node>`
+  A symlink at the node directory is not listed either. A closed listing reads no project directory, so a
+  record planted at `<project>/.handoff-closed` is not an approval. `mark-implementation-reviewed` refuses a
+  node link before the gate, naming the path, without committing the registry. A relative `work/reviews/<node>`
   is owned by `.`, so the lock and the writers do not create `work/work` or follow a top-level `work` link.
 - With `refs/remotes/<remote>/HEAD` missing, the review gate still fails closed. The error says to run
   `git remote set-head <remote> <name>` and notes that `--auto` fails when the remote's HEAD is unborn.
