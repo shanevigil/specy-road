@@ -30,7 +30,7 @@ cd "sr/work/.worktrees/$WT/sr" || exit 2
 review_once "${R1:-cursor-grok-4.6-high}" "$LOG/$ID-r1.log"
 cd "$ROOT"
 V=$(grep -m1 '^verdict' "sr/work/reviews/$ID/REVIEW-${R1:-cursor-grok-4.6-high}.md" 2>/dev/null | awk '{print $2}')
-if [ "$V" != "approve" ]; then echo "$ID: grok ${V:-no-record}"; exit 5; fi
+if [ "$V" != "approve" ]; then echo "$ID: ${R1:-cursor-grok-4.6-high} ${V:-no-record}"; exit 5; fi
 cd "sr/work/.worktrees/$WT/sr" || exit 2
 review_once "${R2:-gpt-5.6-sol-high}" "$LOG/$ID-r2.log"
 cd "$ROOT"
