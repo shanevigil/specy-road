@@ -159,7 +159,8 @@ entries:
       - tests/move_node_helpers.py
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T09:43:22+00:00'
   - codename: sheet-body-without-display-id
     node_id: M22.4
     branch: feature/rm-sheet-body-without-display-id
