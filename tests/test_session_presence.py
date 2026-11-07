@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+import yaml
 
 from tests.review_repo_helpers import NODE, git, make_review_repo
 
@@ -276,12 +277,19 @@ def test_a_session_whose_worktree_or_branch_is_gone_stops_counting(
     assert f"(stale: {reason})" in out and out.count("stale:") == 1
 
 
-def test_a_session_with_a_non_string_worktree_stays_live(tmp_path: Path) -> None:
+@pytest.mark.parametrize("worktree, branch", [
+    (None, "gone"), ([1, 2], "gone"), ("", "gone"),                   # the branch alone would read as gone
+    ("{missing}", None), ("{missing}", [1, 2]), ("{missing}", ""),    # the worktree alone would read as gone
+])
+def test_a_session_missing_either_field_keeps_the_expiry_rule(tmp_path: Path, capsys, worktree, branch) -> None:
     repo = make_review_repo(tmp_path)
     s = sp.start_session(repo, "alice", paths=["src"])
-    s.path.write_text(s.path.read_text().replace(f"worktree: {s.worktree}", "worktree: [1, 2]"))
-    assert sp.load_session(s.path).worktree == [1, 2]
+    if worktree == "{missing}":
+        worktree = str(tmp_path / "missing")
+    s.path.write_text(yaml.safe_dump({**s.to_dict(), "worktree": worktree, "branch": branch}))
     assert [x.agent for x in sp.list_sessions(repo)] == ["alice"]
+    assert _cli("session", "list", "--all", "--repo-root", str(repo)) == 0
+    assert "stale:" not in capsys.readouterr().out
 
 
 def test_terminate_ends_only_the_workers_own_session(tmp_path: Path, monkeypatch) -> None:
