@@ -63,3 +63,38 @@ acceptance item, so I left them unchanged. The doc needs a zone to be corrected.
 - No new test functions. The existing `test_a_sandboxed_launch_and_resume_commit_hand_off_ready_and_reach_nothing_else`
   gains the seeded records and the read-and-edit probe (A1, A2), and the Cursor `sandbox-policies` file case (A3).
 - `RECORDS` (test module constant): the records seeded into the reviews directory and expected back unchanged.
+
+## Fix round 1 (review `gpt-5.6-sol-high` at `fc481e53`): stopped, the fix is outside the touch zones
+
+I merged `origin/WIP/improvements-0-3-1` (`c64ca716`; no conflicts). The merge did not change
+`worker_sandbox.py` or `tests/test_worker_sandbox.py`.
+
+The review record could not be read from this sandbox: `sr/work/reviews/M22.46/` looked empty here. I worked
+from the findings quoted in the fix-round message.
+
+Both blocking findings are one class: **operator docs that describe the sandbox's outbox and Cursor's state
+entries, left stale by A1 and A3.** Their only instances are in `docs/orchestration-workers.md`:
+
+- line 441: the Cursor row lists `sandbox-policies/` as read-only;
+- line 457: the Hand-off bullet says the outbox is "empty at each turn's start".
+
+`docs/orchestration-workers.md` is not a touch zone of this leaf. The fix round says to stop and name such a
+path, so I made no doc edit. **Coordinator:** add `docs/orchestration-workers.md` to M22.46's touch zones, then
+re-run the fix round. The two edits are:
+
+- line 441: drop `sandbox-policies/` from the Cursor row's read-only list;
+- line 457: say the outbox starts with a copy of the regular files already in `work/reviews/<ID>/` (links
+  excluded), and that only `READY-*` is moved back, so edited copies are discarded.
+
+## Probes
+
+- `grep -rn "sandbox-policies\|outbox"` over `docs/`, `README.md`, `suggested_prompts/` and `specy_road/*.md`:
+  the only stale mentions are `docs/orchestration-workers.md:441` and `:457`. The other outbox hits are the
+  unrelated ops outbox (`worker_outbox.py`, design notes, line 44).
+- Docstrings in `worker_sandbox.py` (module and `HARNESS_STATE`): already describe the seeded outbox and no
+  longer list `sandbox-policies`. Current.
+- CHANGELOG `[Unreleased]` / Fixed entry: matches A1 to A3. Current.
+- Merged tree: `tests/test_worker_sandbox.py` with bwrap running (the `/var/tmp` redirect wrapper above):
+  13 passed.
+- `ruff check specy_road tests scripts`: all checks passed.
+- `specy-road file-limits`: OK.
