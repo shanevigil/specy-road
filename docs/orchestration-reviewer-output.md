@@ -103,6 +103,11 @@ specy-road decides the outcome:
   is never a third turn. Neither kind gets a repair turn after a capacity
   failure or a non-zero exit, and an unreadable run log, a write (still a
   review failure) and a chore reviewer get none.
+  A refusal's one-line reason (the first one, and a repair turn's) is
+  `rerun requested: review record refused the output: <first offending line, whole> (N more; full text in
+  work/reviews/<ID>/REJECTED-<model>.md)`. A turn (first or repair) whose last attempt
+  ended with a capacity error has no answer to read: the run's reason is the
+  capacity reason alone, and the write check still runs.
 - **recorded** — specy-road writes the notes to `notes-<model>.md` and `review record` files
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
   copy an interactive filing gets. Under `policy.signed_reviews`, pass the
@@ -198,7 +203,15 @@ one leaf share its hand-off directory, so they take turns: a second run while
 one holds `.review-run.lock` is refused at once, before it writes its prompt,
 run record, schema or answer file. The reviewer's process gets
 `PYTHONDONTWRITEBYTECODE=1`, `PYTEST_ADDOPTS=-p no:cacheprovider` and
-`GIT_OPTIONAL_LOCKS=0`, so re-running tests and `git status` write nothing. A
+`GIT_OPTIONAL_LOCKS=0`, so re-running tests and `git status` write nothing.
+Both runners (`review delegate` and `prompt --channel cli --run`) start the
+reviewer in a session and process group of its own. When its main process
+exits (a background child still holding its output does not delay this), or
+the run is interrupted (Ctrl-C reaches specy-road, not the reviewer) or fails
+while reading output, specy-road sends that group SIGTERM, then SIGKILL after
+5 s, and reads the rest of the output for at most 5 s more. It signals only
+while the group has a member and never its own group; a process that left the
+group with its own session before the reviewer exited is not reached. A
 prompt specy-road does not read back (`paste`, `subagent`) asks for the same
 object and still has the reviewer file it with `review record`.
 

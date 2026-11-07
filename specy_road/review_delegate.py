@@ -57,9 +57,10 @@ from specy_road.review_eligible import writers
 from specy_road.review_files import reviews_dir, reviews_listing
 from specy_road.review_answer import stream_lines
 from specy_road.review_model_check import check_note, check_run, rostered
+from specy_road.review_answer import Rerun
 from specy_road.review_record_write import (Outcome, ReviewRunBusy, answer_scratch, attempt_text,
-                                            close_review_run, delegate_turn, file_review, final_answer, repair_prompt,
-                                            review_run_lock, snapshot, write_schema)
+                                            close_review_run, delegate_turn, file_review, final_answer, refusal_summary,
+                                            repair_prompt, review_run_lock, snapshot, write_schema)
 from specy_road.review_write_check import ancestor_symlink, path_ancestor_link
 from specy_road.review_run_status import superseded_by
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
@@ -252,12 +253,14 @@ def _repair_prompts(repo_root: Path, node_id: str, model: str, text: str, refusa
 
 def _file(repo_root: Path, node_id: str, model: str, reviews: Path, h: _Harness, run: dict[str, Any],
           before: Any, cwd: Path, ref: str | None, sign_key: Path | None, answer: Path) -> Outcome:
-    """File the last attempt's answer, its model checked from that attempt's own log span, against ``before``."""
+    """File the last attempt's answer, its model checked from that attempt's own log span, against ``before``. A
+    last attempt that ended with a capacity error has no answer (M22.16, D17): an empty rerun reason, so the run's
+    reason is the capacity reason alone; the write check still runs."""
     attempt = run["attempts"][-1] if run["attempts"] else {}
     reported, model_check = _model_check(repo_root, model, h.log, attempt, before.owned)
     run["reported_model"] = reported
-    return file_review(repo_root, node_id, model, reviews, answer=final_answer(
-        h.adapter, _span_text(before.owned, h.log, attempt), answer),
+    return file_review(repo_root, node_id, model, reviews, answer=Rerun("") if attempt.get("capacity") else
+                       final_answer(h.adapter, _span_text(before.owned, h.log, attempt), answer),
         before=before, after=snapshot(cwd, reviews, model, before).with_symlinks(h.replaced), ref=ref,
         launch_mode=h.launch_mode, sign_key=sign_key, model_check=model_check)
 
@@ -286,7 +289,8 @@ def _repair(repo_root: Path, node_id: str, model: str, reviews: Path, h: _Harnes
     before = snapshot(cwd, reviews, model)
     reason = _attempts(h, run, path, prompts, session, retries, backoff, sleep, before.owned)   # marked repair
     filed = _file(repo_root, node_id, model, reviews, h, run, before, cwd, ref, sign_key, answer)
-    if filed.state != "recorded":   # the first refusal stays in the reason, whatever ended the repair turn
+    # the first refusal stays in the reason, whatever ended the repair turn; after a capacity error none (D17)
+    if filed.state != "recorded" and filed.reason:
         filed = replace(filed, reason=f"{first.reason}; after the repair turn, {filed.reason}")
     return reason, filed
 
@@ -345,7 +349,7 @@ def _delegate_locked(repo_root: Path, t: ReviewTarget, node_id: str, model: str,
         failure = _answer_failure(filed)
         if failure and "refusal" in run:   # the resumed repair turn failed again: no further turn
             first = (run["refusal"] if run.get("refusal_kind") == "parse" else
-                     f"rerun requested: review record refused the output: {run['refusal'][-400:]}")
+                     refusal_summary(run["refusal"], node_id, model))
             filed = replace(filed, reason=f"{first}; after the repair turn, {filed.reason}")
         elif failure and last.get("exit") == 0 and not last.get("capacity"):   # one repair turn, after a clean attempt
             reason, filed = _repair(repo_root, node_id, model, reviews, h, run, path, cwd, text, filed, failure,

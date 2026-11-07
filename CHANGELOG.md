@@ -14,6 +14,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- Reviewer runs (rc4 re-test D15c, D17, D18). A refused answer's one-line reason names the first
+  offending line whole, then `(N more; full text in work/reviews/<ID>/REJECTED-<model>.md)`, for the
+  first refusal and for a repair turn's, instead of the last 400 characters cut mid-word. A
+  `review delegate` turn (first or repair) whose last attempt ended with a capacity error has the
+  capacity reason alone, with no `line N of the final turn is not one JSON object`. `review delegate`
+  and `prompt --channel cli --run` start the reviewer in its own process group and end that group
+  (SIGTERM, SIGKILL after 5 s) when the reviewer exits or the run is interrupted, so a background
+  child such as Cursor's `worker-server` no longer outlives the run.
 - `set-dependencies --deps` and `edit-node --set dependencies=` accept a display id or a node_key
   (mixed in one value) and store the node_key. An unknown token is still refused with
   `dependency 'X' is neither a node id nor a node_key in the roadmap`.
