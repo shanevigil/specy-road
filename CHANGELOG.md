@@ -291,6 +291,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road init project` ends a successful run with the next steps: set `integration_branch` and `remote` in
+  `roadmap/git-workflow.yaml` (with the project prefix in a nested layout), commit the scaffold, and
+  `specy-road validate` (`git init` first when the target is outside a repository). A `--dry-run` or a refused run
+  prints none.
 - `policy.red_green` in `roadmap/orchestration.yaml` (default false) and
   `specy-road review red-green <NODE_ID>`: each Python test function the leaf
   adds or changes runs with pytest by node id in a detached temporary worktree

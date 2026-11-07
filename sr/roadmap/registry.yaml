@@ -130,18 +130,6 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: init-next-steps
-    node_id: M22.8
-    branch: feature/rm-init-next-steps
-    touch_zones:
-      - specy_road/init_project.py
-      - tests/test_init_project_reports.py
-      - tests/test_init_project.py
-      - docs/install-and-usage.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: finish-keeps-local-claim-and-landing
     node_id: M22.10
     branch: feature/rm-finish-keeps-local-claim-and-landing
