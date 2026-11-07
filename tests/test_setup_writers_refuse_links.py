@@ -77,6 +77,8 @@ INIT_LAYOUTS = {
     "schemas-parent-link": ("schemas", lambda repo, out: out),
     "in-repo-link": (SCHEMA, lambda repo, out: repo / "mine.json"),
     "gitignore-in-repo-link": (".gitignore", lambda repo, out: repo / "mine.json"),
+    "manifest-link-out": (".specyrd/manifest.json", lambda repo, out: out / "theirs.json"),
+    "specyrd-parent-link": (".specyrd", lambda repo, out: out),
 }
 
 

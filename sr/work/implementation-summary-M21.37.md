@@ -368,6 +368,64 @@ Commit `b86b42ce`. `specy_road/specyrd_hooks.py` is now in the touch zones.
 - Remaining `write_text`, `mkdir`, `unlink`, `copy`, `chmod` and `replace` calls across all zoned modules (grep). Result: the same set as round 9, minus `specyrd_hooks`, which no longer has any.
 - Full suite before the final split: 6162 passed, plus 1 file-limits failure (`run_init` at 81 lines). That was fixed by moving the hook list into `_refuse_unsafe_paths`. After the fix, the file-limits, setup-writers, guard-hooks and doc-link tests all pass (203). `ruff check specy_road tests`: pass. `specy-road file-limits`: OK.
 
+## Writer audit (coordinator, round 10): stopped, needs `specy_road/history_cache.py`
+
+Method: for every entry point I read the call graph. I also ran each one under `strace` (`openat` with a write flag, `mkdir`, `rename`, `symlink`, `unlink`, `rmdir`, `chmod`) in a scratch repo. The runs were `init project`, then `init project --force`; `specyrd init --ai claude-code --install-orchestration-hooks --install-pre-push-hook --extras gui`, then `--ai cursor` and `--ai codex` with the hooks, and `--ai generic --force`; `refresh-stubs --prune`; `refresh-schemas`; `export`; `digest`; and `digest -o docs/d.md`. A write on the rule shows as a `.<name>.<hex>.tmp` file renamed onto the destination. Any other written path is in the table below with its reason.
+
+| Writer | Path(s) | Entry points | On the rule? | Why |
+|---|---|---|---|---|
+| `init_project._copy_templates` → `safe_write.copy` | every template file (`roadmap/`, `schemas/`, `constitution/`, `docs/`, …) | init project | yes, each checked before the first copy | A2 |
+| `init_project._write_generated` → `generated_files.regenerate_generated_files` → `safe_write.write` | `roadmap.md`, `roadmap-context.md` | init project; pickup and upgrade also reach it | yes; with `--force` checked before the first write, without it a present name (a dangling link included) is skipped | A2 |
+| `export_roadmap_md.reexport_roadmap_md` and `main` → `safe_write.write` | `roadmap.md` | export | yes | A2 |
+| `digest_cli._write_output` → `safe_write.write` | `roadmap-context.md`, a relative or in-checkout `-o` | digest | yes | A2 |
+| `digest_cli._write_output`, plain write | an explicit absolute `-o` outside the checkout | digest | deliberately not | A2: the person's own destination |
+| **`history_cache.save_cache` / `ensure_cache_dir`** (`mkdir`, `write_text`, `mkstemp` + `os.replace`) | `.specyrd/cache/`, `.specyrd/cache/.gitignore`, `.specyrd/cache/roadmap-history.json` | digest (through `render_digest` → `history_index`); init project `--force`, pickup and upgrade (through `regenerate_generated_files`) | **no** | **outside the touch zones.** Reproduced: with `.specyrd/cache` linked to an outside directory, `digest` writes `roadmap-history.json` and `.gitignore` there, exit 0; with `.specyrd/cache/.gitignore` a dangling link, it creates the outside target |
+| `refresh_schemas.refresh_schemas` → `safe_write.copy` | `schemas/*.json` | refresh-schemas, upgrade | yes, all checked before the first copy | A2 |
+| `specyrd_init._save_manifest` → `safe_write.write` | `.specyrd/manifest.json` | specyrd init, init project (`_record_layout`), refresh-stubs | yes; specyrd init and init project check it before the first write; refresh-stubs writes it last, and a refusal is exit 1 | A2 |
+| `specyrd_init._write_readme_and_gui_stub` → `safe_write.write` | `.specyrd/README.md` | specyrd init | yes, checked before the first write | A2 (round 9) |
+| `specyrd_init._write_readme_and_gui_stub`, plain write | `~/.specy-road/gui-settings.json` | specyrd init `--extras gui` | deliberately not | in `$HOME`, not in a tree specy-road owns; written only when absent; not named by A1 or A2 |
+| `specyrd_skills.install_stubs` → `safe_write.write` (through `skill_path`) | canonical `SKILL.md` files, generic stub files | specyrd init, refresh-stubs (`_write_if_changed`) | yes, under the skills-link rule; specyrd init checks all of them first (`check_install_paths`) | A1, A2 |
+| `specyrd_skills.ensure_link` (`os.symlink`, `unlink`, `rmtree` of its own copied fallback, `_symlinks_work` probe) | `.claude/skills/<name>` links | specyrd init, refresh-stubs | the path is checked by `skill_path` (every ancestor real, and the skills-link text); the link itself is created by `os.symlink` | A1/A2: "the is_link_path branch keeps ensure_link"; its copy fallback goes through `safe_write.write` |
+| `refresh_stubs._prune` (`safe_write.remove`, `prune_empty`; `shutil.rmtree` of a real orphan directory after `check`) | recorded orphans, verbatim `.cursor`/`.codex` skill copies | refresh-stubs `--prune`, upgrade `--prune` | yes; every orphan is checked before the first delete | A2 |
+| `agent_ignores.apply_agent_ignores` → strict `managed_block` → `safe_write.write` | `.gitignore`, `.cursorindexingignore` | init project, specyrd init, refresh-stubs | yes; init and specyrd init check both first (`check_ignore_files`) | A1 |
+| `agents_md_block.apply_agents_files` (`resolves_outside`, `mkdir`, `write_text`) | `AGENTS.md`, `.specyrd/AGENTS.md`, `.specyrd/AGENTS.team.md` | init project, specyrd init, refresh-stubs | deliberately not | A1 keeps `resolves_outside` for `agents_md_block`: a link out is a `refused` report line; an in-repo alias is kept |
+| `agent_guide_block.apply_agent_guide_block` (`resolves_outside`) | `CLAUDE.md` | specyrd init `--ai claude-code`, refresh-stubs | deliberately not | A1, as above |
+| `specyrd_hooks._write_json` → `safe_write.write` | `.claude/settings.json`, `.codex/hooks.json`, `.cursor/hooks.json` | specyrd init `--install-orchestration-hooks` | yes, checked before the first write (`hook_destinations`) | round 10, Sol-high |
+| `specyrd_hooks.install_orchestration_hooks` → `safe_write.write` | `.specyrd/hooks/<agent>/README.md` | same | yes, as above | round 10 |
+| `specyrd_hooks.install_pre_push_hook` → `safe_write.write` | `.git/hooks/pre-push` | specyrd init `--install-pre-push-hook` | yes, as above | round 10 |
+| `refresh_stubs._block_previews` | a temporary directory | refresh-stubs `--diff` | n/a | temporary directory; reads the checkout only |
+
+Regression rows, one per writer class, final link and linked parent:
+
+| Writer class | Final symlink | Symlinked parent |
+|---|---|---|
+| template copy | `test_init_project_refuses_a_link[final-link-out]` | `[docs-parent-link]`, `[schemas-parent-link]` |
+| schema copy | `test_schema_refresh_and_upgrade_refuse_a_linked_schema[schema-link-out]` | `[schemas-dir-link]` |
+| manifest | `test_specyrd_init_refuses_a_linked_manifest_or_ignore_file[file-link-out]`, and new `test_init_project_refuses_a_link[manifest-link-out]` | `[specyrd-dir-link]`, and new `test_init_project_refuses_a_link[specyrd-parent-link]` |
+| `.specyrd/README.md` | `[readme-link-out]` | `[specyrd-dir-link]` (the same directory) |
+| ignore files | `[gitignore-in-repo-link]` (init and specyrd init) | n/a: they sit at the git root |
+| generated files | `test_export_and_digest_refuse_a_linked_output[*-final-link-out]`, the pickup rows | `test_digest_refuses_a_linked_relative_output[parent-link]`; `roadmap.md` itself sits at the project root |
+| stubs and skill files | `test_managed_writes_refuse_a_symlink_out_of_the_repo` (SKILL.md, refresh and specyrd) | its `.claude/skills` and `.agents/skills` dir rows; the shape table; the m13_7 linked-generic-parent rows |
+| skill links | n/a: a link is the kind expected at that name, and a foreign one is `skipped (not ours)` | the shape table (`outward`, `relative-alias`, `pair-under-linked-parent`, …) |
+| hook files | `test_specyrd_init_refuses_a_linked_hook_destination[*-final]` | `[*-parent]` |
+| prune | `test_safe_write` (a symlink orphan is removed as an entry, its target intact) | `test_upgrade_prune_refuses_an_orphan_under_a_linked_directory` |
+| archive restore | `[chunk-out]`, `[origin-linked]`, `[stored-linked]` | `[phases-linked]`, `[unpack-linked]` |
+| history cache | **none: out of zone** | **none: out of zone** |
+
+### Needed to proceed
+
+- Add `specy_road/history_cache.py` to the touch zones. Then `ensure_cache_dir` and `save_cache` would go through `safe_write.mkdirs` and `safe_write.write` from the project root. The digest rows would gain a linked `.specyrd/cache` (parent) and a linked `.specyrd/cache/roadmap-history.json` (final). One design question for the coordinator: does a refused cache abort `digest` with exit 1, or is it skipped as a cache? Today a failed `save_cache` returns `False` and the digest goes on.
+- **Same writer, other leaves.** `ensure_cache_dir` is also called by `on_complete_pickup` (the pickup-orchestration hint: M21.39 names "pickup hint"), `brainstorm_session` (lock), `search_index` and `context_notice_cache` (validate). Fixing it once in `history_cache.py` closes it for all of them. I recommend this leaf, because `digest` is one of its entry points. If not, M21.39 is the natural owner, through the pickup hint.
+- No writer reachable from these entry points belongs to M21.38 (review writers).
+
+### Probes (writer audit)
+
+- The `strace` runs listed above, in a scratch repo: every write path is in the table. Result: the only writer that is neither on the rule nor deliberately excluded is the history cache.
+- `digest` with `.specyrd/cache` linked to an outside directory. Result: `roadmap-history.json` and `.gitignore` were written outside, exit 0.
+- `digest` with `.specyrd/cache/.gitignore` a dangling link to outside. Result: the outside target was created, exit 0.
+- `export` and `refresh-schemas` (already current) under `strace`. Result: no write other than their outputs.
+- An incident during the audit: my first `strace` run inherited `SPECY_ROAD_REPO_ROOT` (this worktree's `sr/`). `init project --force` and `digest -o docs/d.md` therefore wrote into the worktree's `sr/`. I restored the 18 modified tracked files with `git checkout HEAD --` and removed the 7 new untracked files they created. The precondition status was clean before, and none of those files is ignored. The precondition check is clean again. The main checkout was not touched (checked by ctime). The rerun unset the variable and checked the worktree's status before and after: unchanged.
+
 ## Touch zones
 
 All edits are inside the listed zones (`specy_road/specyrd_hooks.py` added in round 10). No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
@@ -430,4 +488,5 @@ All edits are inside the listed zones (`specy_road/specyrd_hooks.py` added in ro
 - Fix round 8: `safe_write.loop_refusal` (a loop met before the rule, as the rule's refusal; the class), `safe_write._loops` (its `stat` test) and `safe_write.refusal_of` (one boundary call for `exit_on_refusal` and `init project`); `refresh_stubs_report._refused` (the report resolves only a path the rule allows); `exit_on_refusal` at the `refresh-stubs`, `refresh-schemas` and `upgrade` mains and on `specyrd_init.run_init`; the loop branch in `upgrade_plan.make_plan` (names the checkout's path). Tests: the `cycle` shape row (6), the m13_7 `self-loop` parameter (2), `test_a_symlink_loop_on_a_managed_path_is_refused_without_a_traceback` (11 rows: each a traceback before) and `test_a_symlink_loop_is_refused_as_the_looping_link` (3); no mock.
 - Fix round 9: the `.specyrd/README.md` check in `specyrd_init._refuse_unsafe_paths` and its `safe_write.write` (grok: a linked README was written through). Tests: the `readme-link-out` and `readme-dangling` layouts and the `force` parameter in `test_specyrd_init_refuses_a_linked_manifest_or_ignore_file` (7 more rows); no mock.
 - Fix round 10: `specyrd_hooks.hook_destinations`, used by the preflight; the `guard_hooks` and `pre_push` arguments of `specyrd_init._refuse_unsafe_paths`; the safe-write calls and the pre-check before the harness JSON is read in `specyrd_hooks`; the pre-push mode branch, so the file keeps its own mode or the umask's, plus execute bits. Test: `test_specyrd_init_refuses_a_linked_hook_destination` (10 rows); no mock.
+- Writer audit: the `manifest-link-out` and `specyrd-parent-link` rows in `INIT_LAYOUTS` (the init-project manifest class, final and parent; they pass on the current code, coverage only); no helper, no mock.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
