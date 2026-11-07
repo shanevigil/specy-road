@@ -10,7 +10,7 @@
  */
 
 /** Python ``str.splitlines()`` boundaries: LF, VT, FF, CR, FS, GS, RS, NEL, LS, PS. */
-const LINE_BOUNDARY = /[\n\v\f\r\x1c-\x1e\x85\u2028\u2029]/;
+const LINE_BOUNDARIES = new Set(["\n", "\v", "\f", "\r", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029"]);
 
 export const ACCEPTANCE_NEWLINE_MESSAGE =
   "A criterion is one line: a line break would split it in two. Add another criterion instead.";
@@ -23,7 +23,7 @@ export type AcceptanceEdit = { ok: true; value: string } | { ok: false; message:
  * saved value, so an unchanged list sends nothing.
  */
 export function acceptanceEdit(draft: readonly string[]): AcceptanceEdit {
-  if (draft.some((c) => LINE_BOUNDARY.test(c))) {
+  if (draft.some((c) => [...c].some((ch) => LINE_BOUNDARIES.has(ch)))) {
     return { ok: false, message: ACCEPTANCE_NEWLINE_MESSAGE };
   }
   const value = draft.map((c) => c.trim()).filter(Boolean).join("\n");

@@ -55,7 +55,7 @@ plus a few inline layout styles.
   did not refuse. `_nonempty_lines` uses Python's `str.splitlines()`, which splits on LF, VT, FF, CR,
   CR LF, FS, GS, RS, NEL, LS and PS. The dialog refused only CR and LF, so a pasted U+2028 or U+2029
   reached the PATCH and the server split it into separate criteria without warning.
-- **Fix (design, not an instance patch):** `acceptanceEdit.ts` now has one table, `LINE_BOUNDARY`, which
+- **Fix (design, not an instance patch):** `acceptanceEdit.ts` now has one character set, `LINE_BOUNDARIES` (a set, not a regex, so eslint's `no-control-regex` needs no exemption), which
   is exactly the `str.splitlines()` set; the docstring states that rule. It is the only check on the save
   path, and it uses the existing refusal message. The refusal test is parametrized over all 11 boundaries
   (CR LF included). The static assets were rebuilt.
@@ -64,7 +64,7 @@ plus a few inline layout styles.
 ## Probes
 
 - The full `str.splitlines()` set, enumerated over every code point in Python, is exactly
-  `\n \v \f \r \x1c \x1d \x1e \x85 \u2028 \u2029`. Result: `LINE_BOUNDARY` covers each of them,
+  `\n \v \f \r \x1c \x1d \x1e \x85 \u2028 \u2029`. Result: `LINE_BOUNDARIES` covers each of them,
   and the vitest rows pass for each.
 - The server's parser: `_nonempty_lines("a\u2028b")` returns `['a', 'b']`, which confirms the reported
   split. Result: the dialog now refuses that value before any PATCH.
@@ -84,7 +84,7 @@ plus a few inline layout styles.
 
 - `acceptanceEdit.ts` `acceptanceEdit()` and `ACCEPTANCE_NEWLINE_MESSAGE`: a pure helper that builds the
   PATCH value and refuses a line break (A1, A2).
-- `acceptanceEdit.ts` `LINE_BOUNDARY` table (the Python `str.splitlines()` set): the server would split a
+- `acceptanceEdit.ts` `LINE_BOUNDARIES` set (the Python `str.splitlines()` set): the server would split a
   criterion on any of these boundaries (fix round 1, R1).
 - `EditModal.tsx` `AcceptanceSection` component: the per-criterion fields and their add, remove and move
   controls (A1).
