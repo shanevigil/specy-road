@@ -13,6 +13,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
+  list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the
+  other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
+  also with focus in the editor. The Markdown editor configures its link extension once, so opening an edit dialog
+  no longer logs `[tiptap warn]: Duplicate extension names found: ['link']`.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.
