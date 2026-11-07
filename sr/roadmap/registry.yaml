@@ -96,21 +96,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: workers-run-in-a-sandbox
-    node_id: M22.44
-    branch: feature/rm-workers-run-in-a-sandbox
-    touch_zones:
-      - specy_road/worker_sandbox.py
-      - specy_road/worker_runner.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - specy_road/git_workflow_config.py
-      - tests/test_worker_sandbox.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T20:31:52+00:00'
   - codename: upgrade-mirror-skips-ignored-files
     node_id: M22.35
     branch: feature/rm-upgrade-mirror-skips-ignored-files
