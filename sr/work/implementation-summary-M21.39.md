@@ -26,7 +26,7 @@ Branch `feature/rm-ops-writers-refuse-links`. As the planning sheet asks, the fi
 
 ## Fix round 2 (on `4ae8b281`, WIP merged)
 
-`gpt-5.6-sol-high` blocked `24f8f4ba` with two prose findings, both fixed in the commit after `4ae8b281`. The class is prose in this leaf's zones that still describes behaviour from before this leaf (a link was skipped, or failed silently) when the code now refuses it or warns.
+`gpt-5.6-sol-high` blocked `24f8f4ba` with two prose findings, both fixed in `fd52c277`. The class is prose in this leaf's zones that still describes behaviour from before this leaf (a link was skipped, or failed silently) when the code now refuses it or warns.
 
 - **`docs/dev-workflow.md` step 6.** It said a summary under a symlinked `work/` "is skipped with a warning". Finish writes under `work/` (`work/pr-body-<id>.md`, `work/done/`), so a symlinked `work/` is a write destination: preflight refuses it before the first write and names the path. The step now says so, and keeps "a symlinked summary is skipped with a warning", which is still true (the summary is a source, not a destination). A new `work-main` row in `test_finish_refuses_a_linked_reviews_base` pins the `work/` claim from the main checkout; the `work-from-worktree` row already covered a worktree.
 - **`history_cache` module docstring.** It said "Every failure here is silent by design." It now says every failure costs a rebuild and never a failed command, and names the one exception that is not silent: `save_cache` warns once, naming the path, for a symlink on the cache path.
