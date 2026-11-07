@@ -267,6 +267,8 @@ def _skills_link(repo: Path, outside: Path, skills: str, shape: str) -> tuple[st
     (tools / "deep" / "nested").mkdir()
     shutil.copytree(real, tools / "skills")   # the decoy a lexical ``bounce/..`` names
     (repo / "alias").symlink_to("tools")
+    if shape == "cycle":   # the right text both ways: each skills directory links to the other
+        (repo / other).symlink_to(f"../{skills}")
     if shape == "pair-under-linked-parent":   # the right text, but the other skills directory's parent is a link
         shutil.rmtree(repo / Path(other).parent, ignore_errors=True)
         (repo / Path(other).parent).symlink_to(Path("tools") / "deep")
@@ -274,6 +276,7 @@ def _skills_link(repo: Path, outside: Path, skills: str, shape: str) -> tuple[st
         "pair": f"../{other}",
         "absolute-pair": str(repo / other),
         "pair-under-linked-parent": f"../{other}",
+        "cycle": f"../{other}",
         "relative-alias": "../tools/deep/skills",
         "relative-chained": "../tools/hop/skills",
         "absolute-under-linked-ancestor": str(repo / "alias" / "deep" / "skills"),
@@ -291,6 +294,7 @@ SKILLS_LINK_SHAPES = {   # shape -> allowed; the one table of skills-directory l
     "pair": True,
     "absolute-pair": False,
     "pair-under-linked-parent": False,
+    "cycle": False,
     "relative-alias": False,
     "relative-chained": False,
     "absolute-under-linked-ancestor": False,
@@ -334,6 +338,10 @@ def test_every_entry_point_gives_the_same_skills_link_verdict(
                    " .agents/skills -> ../.claude/skills or .claude/skills -> ../.agents/skills)")
         if shape == "pair-under-linked-parent" and skills == ".claude/skills":   # the canonical files are refused
             refusal = f"error: {repo / '.agents'} is a symlink (to tools/deep), not a directory"   # first, so no link
+        if shape == "cycle" and skills == ".claude/skills":   # the canonical files' link is refused first
+            refusal = (f"error: {repo / '.agents/skills'} is a symlink (to ../.claude/skills), not a real directory"
+                       " or a link to ../.claude/skills (the skills directories may link only"
+                       " .agents/skills -> ../.claude/skills or .claude/skills -> ../.agents/skills)")
         assert code == 1 and refusal in err.splitlines(), err
         assert "Traceback" not in err
         assert _tree(*watched) == before and os.readlink(repo / skills) == text
@@ -346,6 +354,37 @@ def test_every_entry_point_gives_the_same_skills_link_verdict(
                                   and (d / "SKILL.md").is_file() for d in skill_dirs)
     else:
         assert canonical.read_text(encoding="utf-8") == "stale\n"
+
+
+LOOP_RUNNERS = {
+    **SKILLS_RUNNERS,
+    "specyrd init": lambda repo: run_init(target=repo, agent="claude-code", dry_run=False, force=False,
+                                          ai_commands_dir=None, write_claude_md=True),
+    "init project --force": lambda repo: run_init_project(repo, force=True, profiles="none"),
+}
+
+
+LOOP_ROWS = [   # (the path linked to itself, a command that writes there); each failed with a traceback before
+    *(("AGENTS.md", runner) for runner in LOOP_RUNNERS),
+    ("CLAUDE.md", "specyrd init"),
+    *((".specyrd", runner) for runner in SKILLS_RUNNERS),
+    (".agents/skills/specyrd-brief", "refresh-stubs"),
+    (".agents/skills/specyrd-brief", "upgrade"),
+]
+
+
+@pytest.mark.parametrize(("rel", "runner"), LOOP_ROWS)
+def test_a_symlink_loop_on_a_managed_path_is_refused_without_a_traceback(
+        tmp_path: Path, capsys, rel: str, runner: str) -> None:
+    """A link to itself is a symlink on the path like any other: ``error:`` naming it, exit 1, nothing changed."""
+    repo, outside = _inited(tmp_path)
+    run_init(target=repo, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None, write_claude_md=True)
+    _relink(repo / rel, Path(Path(rel).name))
+    capsys.readouterr()
+    # A refused skill drops out of the manifest (test_upgrade_plan_parity, Sol F2): watch the skills, not the manifest.
+    watched = [repo / ".agents", repo / ".claude"] if rel.startswith(".agents/") else [repo]
+
+    _refused(lambda: LOOP_RUNNERS[runner](repo), capsys, repo / rel, *watched, outside)
 
 
 def test_refresh_stubs_refuses_a_linked_stub_and_still_makes_the_skill_links(tmp_path: Path, capsys) -> None:

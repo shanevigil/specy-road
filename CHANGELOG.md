@@ -25,7 +25,8 @@ body. Keep section bodies focused; link to PRs for detail.
   any other link is refused), `--prune` (an
   orphan under a linked directory), `.gitignore` and `.cursorindexingignore`,
   and `restore-archive` (every path checked before its first change) refuse it,
-  naming `<path> is a symlink (to <target>), not <kind>`; the commands exit 1. `upgrade` checks every change before its first one, so a schema linked out
+  naming `<path> is a symlink (to <target>), not <kind>`; the commands exit 1, a symlink loop on the path
+  (a link to itself, or the two skills directories linked to each other) included, without a traceback. `upgrade` checks every change before its first one, so a schema linked out
   of the checkout no longer overwrites the outside file; it exits 1 on a
   refusal (a generated file, stub, skill file or skill link) even when `validate`
   passes, in a real run and in `--dry-run`. Behaviour changes: an in-repo symlink at

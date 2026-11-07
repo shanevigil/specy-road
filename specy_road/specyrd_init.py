@@ -283,6 +283,7 @@ def _maybe_install_specyrd_hooks(
         install_pre_push_hook(repo_root, dry_run=dry_run, written=written)
 
 
+@safe_write.exit_on_refusal()   # a refusal, or a symlink loop met before the rule: error, exit 1
 def run_init(
     *,
     target: Path,

@@ -151,7 +151,7 @@ directory or other path with any symlink on it, prints `error: <path> is a
 symlink (to <target>), not <kind>` and writes nothing (`--dry-run` included).
 `init project`, `refresh-schemas`, `refresh-stubs`, `specyrd init`, `export` and
 `digest` refuse the same way and exit 1: any symlink on the path they write,
-pointing out of the project or inside it, dangling or not, is refused rather than
+pointing out of the project or inside it, dangling or looping, is refused rather than
 followed. One exception: an agent skills directory itself may be a symlink to the other
 one, with exactly this link text: `.claude/skills -> ../.agents/skills` or
 `.agents/skills -> ../.claude/skills`, the other being a real directory; the

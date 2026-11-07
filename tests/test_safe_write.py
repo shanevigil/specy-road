@@ -129,6 +129,32 @@ def test_the_message_names_the_link_target(tmp_path: Path) -> None:
     assert str(e.value) == f"{tmp_path / 'roadmap.md'} is a symlink (to payload.md), not a regular file"
 
 
+def _resolve_error(path: Path) -> BaseException:
+    try:
+        path.resolve()   # pathlib's RuntimeError before Python 3.13, ELOOP after
+    except (OSError, RuntimeError) as e:
+        return e
+    raise AssertionError("no loop")
+
+
+LOOP_ERRORS = {   # how code that reads, resolves or makes a directory meets a loop -> the error it raises
+    "read": lambda p: pytest.raises(OSError, (p / "f").read_text).value,
+    "resolve": lambda p: _resolve_error(p / "f"),
+    "mkdir": lambda p: pytest.raises(FileExistsError, p.mkdir, exist_ok=True).value,
+}
+
+
+@pytest.mark.parametrize("met_by", list(LOOP_ERRORS))
+def test_a_symlink_loop_is_refused_as_the_looping_link(tmp_path: Path, met_by: str) -> None:
+    """The CLI boundary (``exit_on_refusal``) gives a loop the rule's refusal, so no command prints a traceback."""
+    (tmp_path / "loop").symlink_to("loop")
+    refusal = safe_write.loop_refusal(LOOP_ERRORS[met_by](tmp_path / "loop"))
+    assert str(refusal) == f"{tmp_path / 'loop'} is a symlink (to loop), not a directory" or (
+        met_by == "mkdir" and str(refusal) == f"{tmp_path / 'loop'} is a symlink (to loop), not a regular file or a directory")
+    (tmp_path / "file").write_text("x")
+    assert safe_write.loop_refusal(pytest.raises(FileExistsError, (tmp_path / "file").mkdir).value) is None
+
+
 def test_mkdirs_and_write_create_missing_parents_and_keep_a_files_mode(tmp_path: Path) -> None:
     (tmp_path / "a").mkdir()
     assert safe_write.mkdirs(tmp_path, tmp_path / "a" / "b") == tmp_path / "a" / "b"   # an existing real dir is fine

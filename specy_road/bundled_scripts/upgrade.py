@@ -434,8 +434,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     try:
-        code = run_upgrade(args.repo_root, dry_run=args.dry_run, prune=args.prune)
-    except (ValueError, SafeWriteError) as e:
+        with safe_write.exit_on_refusal():   # a refusal, or a symlink loop met before the rule
+            code = run_upgrade(args.repo_root, dry_run=args.dry_run, prune=args.prune)
+    except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
     raise SystemExit(code)

@@ -149,8 +149,9 @@ def main(argv: list[str] | None = None) -> None:
     root = (args.repo_root or default_user_repo_root()).resolve()
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(root)}
     try:
-        written = refresh_schemas(root, dry_run=args.dry_run)
-    except (ValueError, safe_write.SafeWriteError) as e:
+        with safe_write.exit_on_refusal():
+            written = refresh_schemas(root, dry_run=args.dry_run)
+    except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
     if not written:

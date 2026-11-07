@@ -269,8 +269,11 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
         try:
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
                 declined = refresh(mirror.to_sandbox(project.resolve()), mirror.repo)
-        except OSError as e:
-            raise _named_in_checkout(e, real)
+        except (OSError, RuntimeError) as e:   # a symlink loop in the mirror is the checkout's: refused, named there
+            refusal = safe_write.loop_refusal(e)
+            if refusal is None and not isinstance(e, OSError):
+                raise
+            raise _named_in_checkout(refusal or e, real) from e
         finally:
             for buf, stream in ((out, sys.stdout), (err, sys.stderr)):
                 stream.write(real(buf.getvalue()))

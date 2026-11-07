@@ -351,10 +351,12 @@ def main(argv: list[str] | None = None) -> None:
     root = _resolve_root(args.repo_root)
     dry_run = args.dry_run or args.diff
     prefix = _prefix(root, project_root(args.repo_root))
-    print_migration(root / prefix, prefix)
     try:
-        written, orphans = refresh_stubs(root, dry_run=dry_run, project=project_root(args.repo_root), prune=args.prune)
-    except (ValueError, safe_write.SafeWriteError) as e:
+        with safe_write.exit_on_refusal():
+            print_migration(root / prefix, prefix)
+            written, orphans = refresh_stubs(root, dry_run=dry_run, project=project_root(args.repo_root),
+                                             prune=args.prune)
+    except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
     if not _load_manifest(root).get("agents"):

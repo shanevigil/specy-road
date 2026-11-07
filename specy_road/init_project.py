@@ -295,8 +295,8 @@ def run_init_project(
 
     try:
         root, prefix, written, skipped = _scaffold(src, dst, selection, dry_run=dry_run, force=force)
-    except safe_write.SafeWriteError as e:
-        print(f"error: {e}", file=sys.stderr)
+    except (OSError, RuntimeError) as e:   # a refusal, or a symlink loop met before the rule
+        print(f"error: {safe_write.refusal_of(e)}", file=sys.stderr)
         return 1
 
     verb = "would write" if dry_run else "wrote"

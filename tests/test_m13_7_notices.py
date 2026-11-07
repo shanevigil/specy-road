@@ -8,6 +8,7 @@ is pinned in ``test_session_presence.py``.)
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -132,17 +133,23 @@ def test_a_generic_dir_with_parentheses_or_odd_characters_is_reported_whole(
         assert f"{verb} {rel_dir}/{name}" in out
 
 
-def _generic_linked_parent(tmp_path: Path) -> tuple[Path, Path]:
-    """A stub under a linked directory that is not an agent skills directory."""
-    repo = _generic_repo(tmp_path, "docs/team (commands)", link_to="actual")
-    return repo, repo / "docs" / "team (commands)"
+def _generic_linked_parent(tmp_path: Path, self_loop: bool) -> tuple[Path, Path]:
+    """A stub under a linked directory that is not an agent skills directory (to ``actual``, or to itself)."""
+    repo = _generic_repo(tmp_path, "docs/team (commands)", link_to=None if self_loop else "actual")
+    link = repo / "docs" / "team (commands)"
+    if self_loop:
+        shutil.rmtree(link)
+        link.symlink_to(link.name)
+    return repo, link
 
 
+@pytest.mark.parametrize("self_loop", [False, True], ids=["to-actual", "self-loop"])
 @pytest.mark.parametrize("dry_run", [True, False])
 def test_a_stub_under_a_linked_directory_that_is_not_a_skills_directory_is_refused(
-        tmp_path: Path, capsys, dry_run: bool) -> None:
-    """M21.37: only an agent skills directory may be a link; skills-link shapes are in test_setup_writers_refuse_links."""
-    repo, link = _generic_linked_parent(tmp_path)
+        tmp_path: Path, capsys, dry_run: bool, self_loop: bool) -> None:
+    """M21.37: only an agent skills directory may be a link; skills-link shapes are in test_setup_writers_refuse_links.
+    A link loop is refused like any link, without a traceback."""
+    repo, link = _generic_linked_parent(tmp_path, self_loop)
     before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
 
     with pytest.raises(SystemExit) as e:
