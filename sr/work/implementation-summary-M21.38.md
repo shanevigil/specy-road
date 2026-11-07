@@ -26,6 +26,7 @@ Touch zones, unchanged: `specy_road/review_lock.py`, `specy_road/review_policy_p
 - `archive_review` guard: `history/` and the copy are checked before the directory is made.
 - `ensure_packet` guard: the packet is checked from the project root, then written with `safe_write.write`.
 - `write_human_approval` and `cmd_accept_policy` guard: the record and `POLICY-ACCEPTED.yaml` are written with `safe_write.write`.
+- `_write_acceptances` after the WIP merge: M22.34's `--all-open` and plain-language text stay, and every acceptance file is checked with `safe_write` before any of them is written. A symlink or a held lock still writes nothing.
 - `Snapshot.restore` branch: return without reading, deleting or writing when `work` or `work/reviews` is a symlink.
 - post-run `snapshot` branch: record that symlink and skip the hand-off walk and record read.
 - `replace_file` guard: `ELOOP` for any ancestor symlink; a final symlink is still replaced.

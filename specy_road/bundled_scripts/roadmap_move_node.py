@@ -57,6 +57,7 @@ from specy_road.bundled_scripts.roadmap_id_rewrite_staging import (
     _stage_merged_nodes,
     _stage_planning_moves,
     _stage_registry_ids,
+    sheet_path_map,
 )
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_outline_ops import (
@@ -114,15 +115,16 @@ def stage_id_rewrite(
     ``rewrite_refs`` also rewrites the map's ids in prose (``rename-refs``).
     """
     renamed = {o: n for o, n in old_to_new.items() if o != n}
-    _rewrite_touch_zones(scope, renamed)
     sheet_moves = plan_planning_artifact_moves(scope)
+    sheets = sheet_path_map(root, sheet_moves)
+    _rewrite_touch_zones(scope, renamed, sheets)
 
     plan = AtomicWritePlan(root)
     _stage_planning_moves(plan, root, sheet_moves, nodes, renamed if rewrite_refs else None)
     _stage_merged_nodes(plan, root, nodes)
     if new_parent is not None:
         new_parent.stage(plan, nodes)
-    _stage_registry_ids(plan, root, renamed, claims_in_map_only=claims_in_map_only)
+    _stage_registry_ids(plan, root, renamed, sheets, claims_in_map_only=claims_in_map_only)
     plan.commit(lambda: run_validate_raise(root))
 
 

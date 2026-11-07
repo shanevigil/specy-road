@@ -11,7 +11,8 @@ whose review loop is not converging and has no root-cause analysis for it is
 ``escalated`` (exit 1), with the trigger named (``review_rca``).
 With ``policy.max_fix_rounds`` set, a leaf that spent that many blocking rounds is ``fix_round_budget_spent``
 (exit 1) with its next command; ``review defer`` applies an RCA's deferral (:mod:`review_defer`, human-only).
-``review accept-policy`` accepts a review policy change made since the claim (:mod:`review_policy_pin`, human-only).
+``review accept-policy`` accepts a review policy change made since the claim (:mod:`review_policy_pin`, human-only);
+``--all-open`` asks once for every open claim whose pin differs and writes one acceptance file per leaf.
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``. It refuses an approve whose

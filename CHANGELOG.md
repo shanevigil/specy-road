@@ -20,6 +20,21 @@ body. Keep section bodies focused; link to PRs for detail.
   launched. `review record` checks the live record and `history/` before it writes or clears a rejection
   marker. After a reviewer run, a symlink planted at `work` or `work/reviews` is a review failure and is
   not read or written through.
+- PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
+  list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the
+  other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
+  also with focus in the editor. The Markdown editor configures its link extension once, so opening an edit dialog
+  no longer logs `[tiptap warn]: Duplicate extension names found: ['link']`.
+- A move that renames planning sheets (`move-node`, `indent`, `outdent`, `group-nodes` and the PM UI's move, indent,
+  outdent, group and `renumber_outline` reorder) also rewrites a touch zone equal to a renamed sheet's old path, as
+  `planning/<sheet>` or `sr/planning/<sheet>`, on the nodes and claims it already rewrites. `validate` prints a stdout
+  notice for each literal zone, on a node of any status, naming a planning sheet that is not in the working tree, with
+  the node's current sheet when the name's `node_key` matches; `--strict` does not count it.
+- New planning sheets no longer write the node's display id into the body. The feature and gate templates'
+  References line is `Roadmap chunk: the node this sheet's file name names`, and brainstorm promote's Approach
+  placeholder keeps the `<ID>` token instead of substituting the display id, so a sheet from add-node,
+  scaffold-planning, group-nodes, brainstorm promote or the PM GUI add does not repeat the id the file name
+  already carries. Pickup's skip reason still names the id. Existing sheets keep their line.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.
@@ -32,6 +47,11 @@ body. Keep section bodies focused; link to PRs for detail.
 - A Codex reviewer passes the memory-off switches and an isolated `CODEX_HOME` (the profile home on a fresh turn,
   the session's home on resume) for both `review delegate` and `prompt --channel cli --run`. A resumed turn still
   passes `-m`. Claude and Cursor reviewers are unchanged.
+- `brainstorm verify` records `blocked`, not `not-found`, when a page returns 404 or 410 and that origin's root
+  is not 200 or cannot be fetched — a host that answers verify with 404 at its root is refusing the check. A root
+  of 200 keeps `not-found`. The root (https, the page's host as a URL spells it, an IPv6 literal in brackets,
+  effective port, path `/`) is requested once per origin per run, with the same public-https, redirect and size
+  rules, and a 200 page makes no extra request.
 - `group-nodes --into-new NEW_ID` (and `POST /api/outline/group`) accepts a `NEW_ID` that one of the listed nodes
   holds, as in `group-nodes M1.1 M1.2 M1.3 --into-new M1.2`: that node leaves the id in the same transaction, so a
   regroup into the ids the flat nodes occupy no longer needs a temporary id and a second `move-node --id`. An id held by
@@ -81,9 +101,14 @@ body. Keep section bodies focused; link to PRs for detail.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
-  Upgrade's git calls time out after 60 s. A failed `git init`, `add` or `commit` in a temporary copy, the plan's
-  included (so a real run too), prints `error: git <command> failed in the temporary copy (<reason>)` and exits 2
-  without writing or validating, and so does a failed
+  Upgrade's git calls, a real run and `--dry-run` alike, time out after 60 s. That includes the checkout's
+  `git check-ignore` (`file_limits_engine.git_ignored_paths`). The spawns a run reaches are `git_subprocess.run`
+  (the plan mirror's `init`, the dry-run copy's `add` and `commit`, `ls-files` on `roadmap.md`, and `worktree list`),
+  `ignore_report`'s git for the refresh's ignore note, and `runtime_paths.git_path` (`rev-parse` for the project and
+  checkout roots); each passes a timeout. A real run drops every `GIT_*` variable too, and isolates only the plan's
+  mirror, so the checkout still reads the caller's own config files. A failed `git init`, `add` or `commit` in a
+  temporary copy, the plan's included (so a real run too), prints `error: git <command> failed in the temporary copy
+  (<reason>)` and exits 2 without writing or validating, and so does a failed
   `ls-files` on `roadmap.md` (in a real run it names the checkout), before a generated file is written.
   `GIT_CEILING_DIRECTORIES` no longer hides a tracked `roadmap.md`.
 - `specy-road digest`, `digest --check` and `digest -o -` with no roadmap manifest print the one line
@@ -326,6 +351,15 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road review accept-policy --all-open` asks once for every open claim whose pinned review policy differs from the integration branch. It prints each distinct set of changes once with the leaves it affects, and one typed confirmation writes each of those leaves its own `work/reviews/<NODE_ID>/POLICY-ACCEPTED.yaml` naming that leaf's pinned digest and the accepted digest. It still needs a terminal; one node id is unchanged. The prompt and the gate refusal say, in plain language, what changed, that the review rules changed after this work started, and what approving covers, with the raw change lines below, and name `specy_road.review_policy_pin` in the installed package. See docs/orchestration-review.md.
+- `specy-road ready` warns on stderr when a branch changes a product file and
+  adds no line under `## [Unreleased]` in `CHANGELOG.md`. The exit code and the
+  READY file are unchanged. A leaf whose acceptance or planning sheet contains
+  `no CHANGELOG entry` is exempt. Paths in the warning escape a backslash and
+  every non-printable character, so the warning stays one line. A file named
+  `tests` is a product path; only paths under `tests/` are excluded. A planning
+  sheet that cannot be read, including a symlink loop, stays silent. Only a blob
+  counts as `CHANGELOG.md` text; a tree or a gitlink stays silent.
 - `specy-road init project` ends a successful run with the next steps: set `integration_branch` and `remote` in
   `roadmap/git-workflow.yaml` (with the project prefix in a nested layout), commit the scaffold, and
   `specy-road validate` (`git init` first when the target is outside a repository). A `--dry-run` or a refused run
