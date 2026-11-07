@@ -13,6 +13,16 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `set-dependencies --deps` and `edit-node --set dependencies=` accept a display id or a node_key
+  (mixed in one value) and store the node_key. An unknown token is still refused with
+  `dependency 'X' is neither a node id nor a node_key in the roadmap`.
+- `finish-this-task` and `abort-task-pickup`, run from a linked worktree, also remove the main
+  checkout's untracked `work/brief-<ID>.md` and `work/prompt-<ID>.md` (`sr/work/` when the project
+  is nested). A symlink, a symlinked `work/` directory, a tracked copy, and a file whose tracking
+  git cannot establish are left alone. Finish removes the main checkout's copies only after the
+  landing succeeds.
+- A merge or auto landing that leaves this checkout on the feature branch ends with
+  `[ok] this checkout is still on <feature> (landed into <integration>); next: git switch <integration>`.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.

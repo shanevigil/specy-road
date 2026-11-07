@@ -25,6 +25,7 @@ from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
     cleanup_work_artifacts,
+    remove_main_checkout_pickup_files,
     warn_if_pr_body_tracked,
     worker_logs_to_stage,
 )
@@ -306,6 +307,21 @@ def _bookkeeping_commit_phase(
         git_run(ROOT, "push", "-u", args.remote, branch)
 
 
+def _drop_main_pickup_files(args: argparse.Namespace, node_id: str) -> None:
+    """The main checkout's untracked brief and prompt, only once finish has succeeded."""
+    if should_cleanup_work_artifacts_on_finish(ROOT, no_cleanup_work_cli=args.no_cleanup_work):
+        remove_main_checkout_pickup_files(ROOT, node_id)
+
+
+def _say_still_on_feature(args: argparse.Namespace, on_mode: str, branch: str, ib: str) -> None:
+    """After a merge or auto landing that left this checkout on the feature branch."""
+    if on_mode not in ("merge", "auto") or args.delete_branch:
+        return
+    if current_branch(ROOT) != branch:
+        return
+    print(f"[ok] this checkout is still on {branch} (landed into {ib}); next: git switch {ib}")
+
+
 def _end_leaf_workers(node_id: str) -> None:
     """The finished leaf's idle and completed workers can get no fix round now: terminate them (each records a
     ``terminated`` event) so their ``max_workers`` slots free. Best effort: a failure here never fails the finish."""
@@ -377,6 +393,7 @@ def _finish_locked(args) -> None:
         ib=ib,
         gw_remote=gw_remote,
     ):
+        _drop_main_pickup_files(args, node_id)
         return
 
     apply_on_complete_mode(
@@ -393,6 +410,8 @@ def _finish_locked(args) -> None:
         pr_body_path=pr_body_path,
         undo=undo,
     )
+    _drop_main_pickup_files(args, node_id)
+    _say_still_on_feature(args, on_mode, branch, ib)
 
 
 if __name__ == "__main__":

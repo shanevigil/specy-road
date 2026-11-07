@@ -88,7 +88,7 @@ USAGE_TEXT = (
     "\n"
     "Roadmap editing:\n"
     "  list-dependencies <NODE_ID>\n"
-    "  set-dependencies <NODE_ID> (--clear | --deps \"KEY …\")\n"
+    "  set-dependencies <NODE_ID> (--clear | --deps \"KEY or ID …\")\n"
     "  add-dependency <NODE_ID> <DEP>  — DEP is a display id or node_key; stores the node_key\n"
     "  remove-dependency <NODE_ID> <DEP_NODE_KEY>\n"
     "  apply CHANGES.yaml   — run add-node / edit-node / add-dependency entries in order,\n"

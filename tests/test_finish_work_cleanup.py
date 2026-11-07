@@ -5,8 +5,11 @@ from __future__ import annotations
 import shutil
 import subprocess
 
+import pytest
+
 from specy_road.finish_work_artifacts import (
     cleanup_work_artifacts,
+    remove_main_checkout_pickup_files,
     warn_if_pr_body_tracked,
     work_artifact_rel_paths,
     worker_logs_to_stage,
@@ -384,3 +387,129 @@ def test_finish_archives_committed_summary_in_bookkeeping_commit(
         text=True,
     ).stdout.splitlines()
     assert "work/done/implementation-summary-M1.1.md" in names
+
+
+def _git(repo, *args: str) -> None:
+    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True)
+
+
+def _linked(tmp_path, shape: str):
+    """``(main project, leaf project)`` with the leaf a linked worktree."""
+    top = tmp_path / "main"
+    top.mkdir()
+    _git(top, "init", "-q", "-b", "dev")
+    _git(top, "config", "user.email", "t@e.com")
+    _git(top, "config", "user.name", "T")
+    project = top / "sr" if shape == "nested" else top
+    if shape == "nested":
+        project.mkdir()
+    (project / "README.md").write_text("x\n", encoding="utf-8")
+    _git(top, "add", "-A")
+    _git(top, "commit", "-qm", "init")
+    leaf = tmp_path / "leaf"
+    _git(top, "worktree", "add", "-q", "-b", "feature/rm-thing", str(leaf), "dev")
+    return project, leaf / "sr" if shape == "nested" else leaf
+
+
+def _prefix(shape: str) -> str:
+    return "sr/" if shape == "nested" else ""
+
+
+@pytest.mark.parametrize("shape", ["embedded", "nested"])
+@pytest.mark.parametrize("kind", ["untracked", "tracked", "symlink", "work_link"])
+def test_linked_worktree_main_checkout_pickup_files(tmp_path, shape: str, kind: str, capsys) -> None:
+    """Untracked main copies go; a tracked copy, a symlink alias and a symlinked work/ stay."""
+    project, leaf = _linked(tmp_path, shape)
+    work = project / "work"
+    brief, prompt = work / "brief-M1.1.md", work / "prompt-M1.1.md"
+    notes = project / "notes.md"
+    notes.write_text("target\n", encoding="utf-8")
+    top = project if shape == "embedded" else project.parent
+    if kind == "work_link":
+        real = project / "elsewhere"
+        real.mkdir()
+        (real / "brief-M1.1.md").write_text("stay\n", encoding="utf-8")
+        work.symlink_to(real, target_is_directory=True)
+    elif kind == "tracked":
+        work.mkdir()
+        brief.write_text("tracked\n", encoding="utf-8")
+        prompt.write_text("tracked\n", encoding="utf-8")
+        _git(top, "add", "-A")
+        _git(top, "commit", "-qm", "track briefs")
+    elif kind == "symlink":
+        work.mkdir()
+        _git(top, "add", "notes.md" if shape == "embedded" else "sr/notes.md")
+        _git(top, "commit", "-qm", "target")
+        brief.symlink_to(notes)
+        prompt.write_text("drop\n", encoding="utf-8")
+    else:
+        work.mkdir()
+        brief.write_text("brief\n", encoding="utf-8")
+        prompt.write_text("prompt\n", encoding="utf-8")
+    (work / "notes.md").write_text("other\n", encoding="utf-8")
+    remove_main_checkout_pickup_files(leaf, "M1.1")
+    out = capsys.readouterr().out
+    other = work / "notes.md"
+    assert other.is_file() and other.read_text(encoding="utf-8") == "other\n"
+    if kind == "untracked":
+        assert not brief.exists() and not prompt.exists()
+        assert f"[ok] removed {_prefix(shape)}work/brief-M1.1.md" in out
+        assert f"[ok] removed {_prefix(shape)}work/prompt-M1.1.md" in out
+    elif kind == "tracked":
+        assert brief.read_text(encoding="utf-8") == "tracked\n"
+        assert prompt.read_text(encoding="utf-8") == "tracked\n"
+        assert "removed" not in out
+    elif kind == "symlink":
+        assert brief.is_symlink() and brief.read_text(encoding="utf-8") == "target\n"
+        assert notes.read_text(encoding="utf-8") == "target\n"
+        assert not prompt.exists()
+    else:
+        assert work.is_symlink()
+        assert (project / "elsewhere" / "brief-M1.1.md").read_text(encoding="utf-8") == "stay\n"
+        assert "removed" not in out
+
+
+def test_finish_from_a_linked_worktree_removes_main_copies_after_landing(tmp_path, monkeypatch, capsys) -> None:
+    """A landing that succeeds removes the main checkout's untracked brief and prompt."""
+    from tests.review_repo_helpers import delegate_layout
+
+    from specy_road.bundled_scripts import finish_task
+
+    repo, leaf, _bare = delegate_layout(tmp_path, monkeypatch)
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    (work / "brief-M1.1.md").write_text("brief\n", encoding="utf-8")
+    (work / "prompt-M1.1.md").write_text("prompt\n", encoding="utf-8")
+    (work / "notes.md").write_text("keep\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(leaf)])
+        raise SystemExit(0)
+    captured = capsys.readouterr()
+    assert (e.value.code or 0) == 0, captured.err
+    assert not (work / "brief-M1.1.md").exists()
+    assert not (work / "prompt-M1.1.md").exists()
+    assert (work / "notes.md").read_text(encoding="utf-8") == "keep\n"
+    assert captured.out.rstrip().endswith(
+        "[ok] this checkout is still on feature/rm-thing (landed into dev); next: git switch dev"
+    )
+
+
+def test_finish_refused_at_landing_keeps_main_checkout_copies(tmp_path, monkeypatch, capsys) -> None:
+    """A landing that fails leaves the main checkout's untracked brief and prompt."""
+    from tests.review_repo_helpers import delegate_layout
+
+    from specy_road.bundled_scripts import finish_task
+
+    repo, leaf, _bare = delegate_layout(tmp_path, monkeypatch)
+    work = repo / "work"
+    work.mkdir(exist_ok=True)
+    (work / "brief-M1.1.md").write_text("brief\n", encoding="utf-8")
+    (work / "prompt-M1.1.md").write_text("prompt\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(leaf), "--land-check-cmd", "false"])
+    assert e.value.code == 1
+    captured = capsys.readouterr()
+    assert "land check failed" in captured.out + captured.err
+    assert "this checkout is still on" not in captured.out
+    assert (work / "brief-M1.1.md").read_text(encoding="utf-8") == "brief\n"
+    assert (work / "prompt-M1.1.md").read_text(encoding="utf-8") == "prompt\n"
