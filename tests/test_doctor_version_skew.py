@@ -124,3 +124,19 @@ def test_doctor_emits_the_skew_warning(tmp_path: Path) -> None:
 
     assert proc.returncode != 0
     assert proc.stderr.count("older install earlier on PATH") == 1
+
+
+def test_upgrade_does_not_warn_to_run_itself_when_the_agents_block_is_older(tmp_path: Path) -> None:
+    _write_agents_block(tmp_path, written_by="0.0.1")
+    warning = (
+        f"AGENTS.md block written by specy-road 0.0.1, "
+        f"running {__version__}; run `specy-road upgrade`."
+    )
+
+    upgrade = _cli("upgrade", "--repo-root", str(tmp_path), "--help")
+    validate = _cli("validate", "--repo-root", str(tmp_path), "--help")
+
+    assert upgrade.returncode == 0
+    assert warning not in upgrade.stderr
+    assert validate.returncode == 0
+    assert warning in validate.stderr

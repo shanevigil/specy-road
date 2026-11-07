@@ -18,6 +18,12 @@ body. Keep section bodies focused; link to PRs for detail.
   other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
   also with focus in the editor. The Markdown editor configures its link extension once, so opening an edit dialog
   no longer logs `[tiptap warn]: Duplicate extension names found: ['link']`.
+- `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
+  `validate` and the other commands print that warning when a managed block was written by another
+  toolkit version.
+- `specy-road export --check` reports a stale `roadmap.md` as
+  `drift: <path> no longer matches the roadmap. Run: specy-road export` and exits 1. The gitignore
+  hint follows on the next line.
 - `group-nodes --into-new NEW_ID` (and `POST /api/outline/group`) accepts a `NEW_ID` that one of the listed nodes
   holds, as in `group-nodes M1.1 M1.2 M1.3 --into-new M1.2`: that node leaves the id in the same transaction, so a
   regroup into the ids the flat nodes occupy no longer needs a temporary id and a second `move-node --id`. An id held by
