@@ -7,6 +7,7 @@ project file pushed over its cap with no word from upgrade.
 
 from __future__ import annotations
 
+import json
 import shlex
 import shutil
 import subprocess
@@ -22,6 +23,8 @@ from specy_road.bundled_scripts.upgrade import run_upgrade
 from specy_road.file_limits_engine import collect_tracked_files, run_file_limits_scan
 from specy_road.git_subprocess import GitResult
 from specy_road.init_project import run_init_project
+from specy_road.digest import render_digest
+from tests.test_digest_quality import land
 from tests.upgrade_repo_helpers import OLD_STUB, old_repo
 
 GIT_ID = ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"]
@@ -318,6 +321,53 @@ def _committed(root: Path) -> Path:
     return root
 
 
+def _landed_leaf(root: Path) -> Path:
+    """M1.1 landed with a tally and the digest committed current, its Quality by area read from that history."""
+    _git(root, "symbolic-ref", "HEAD", "refs/heads/main")
+    chunk = root / "roadmap" / "phases" / "M1.json"
+    doc = json.loads(chunk.read_text(encoding="utf-8"))
+    doc["nodes"][1]["status"] = "Complete"
+    chunk.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    _committed(root)
+    land(root, "project-setup", "M1.1 rounds=1 blocks=0 approvals=1 integrity=0 rca=0 findings=none")
+    return root
+
+
+def _shallow_clone(root: Path, tmp_path: Path) -> Path:
+    clone = tmp_path / "shallow"
+    subprocess.run(["git", "clone", "-q", "--depth=1", root.as_uri(), str(clone)], check=True, capture_output=True)
+    return clone
+
+
+@pytest.mark.parametrize("history", [lambda root, tmp: root, _shallow_clone], ids=["full", "shallow"])
+def test_dry_run_and_real_run_agree_on_a_current_digest(tmp_path: Path, capsys, history) -> None:
+    """The dry run reads the checkout's history, so a digest with Quality by area is current in both."""
+    root = history(_landed_leaf(old_repo(tmp_path / "repo")), tmp_path)
+    digest = root / "roadmap-context.md"
+    digest.write_text(render_digest(root), encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "digest")
+    assert "## Quality by area" in digest.read_text(encoding="utf-8")
+    git_files = _snapshot_git(root)
+    capsys.readouterr()
+
+    assert run_upgrade(root, dry_run=True) == 0
+
+    out = capsys.readouterr().out
+    assert "would write roadmap-context.md" not in out and "generated files already current" in out
+    assert "OK: roadmap-context.md matches the roadmap." in out
+    assert _snapshot_git(root) == git_files
+
+    current = digest.read_bytes()
+    assert run_upgrade(root) == 0
+    assert "wrote roadmap-context.md" not in capsys.readouterr().out
+    assert digest.read_bytes() == current
+
+
+def _snapshot_git(root: Path) -> dict[Path, bytes]:
+    return {p: p.read_bytes() for p in (root / ".git").rglob("*") if p.is_file()}
+
+
 def _checkout_state(root: Path) -> tuple:
     return (*_repo_state(root), _git(root, "for-each-ref"))
 
@@ -514,6 +564,34 @@ def test_a_failed_ls_files_writes_no_generated_file(
     assert f"error: git ls-files failed in {where} ({reason})" in err
     assert "roadmap-context.md (specy-road digest)" not in out
     assert not (root / "roadmap-context.md").exists()
+
+
+@pytest.mark.parametrize("failure", sorted(FAILURES))
+@pytest.mark.parametrize("call, command, where", [
+    pytest.param(["rev-parse"], "rev-parse", "the checkout", id="git-paths"),
+    pytest.param(["for-each-ref"], "for-each-ref", "the checkout", id="refs"),
+    pytest.param(["remote"], "remote", "the checkout", id="remotes"),
+    pytest.param(["remote", "add"], "remote add", "the temporary copy", id="remote-add"),
+])
+def test_a_failed_history_step_stops_the_dry_run(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, call: list[str], command: str, where: str, failure: str
+) -> None:
+    root = _committed(old_repo(tmp_path))
+    _git(root, "remote", "add", "origin", str(root))
+    files = _snapshot(root)
+    result, reason = FAILURES[failure]
+    run = git_subprocess.run
+
+    def stub(args: list[str], cwd: Path, **kw: object) -> GitResult:
+        hit = args[:2] == call if len(call) > 1 else args[0] == call[0] and kw.get("env")
+        return result if hit else run(args, cwd, **kw)
+
+    monkeypatch.setattr(git_subprocess, "run", stub)
+
+    assert run_upgrade(root, dry_run=True) == 2
+
+    assert f"error: git {command} failed in {where} ({reason})" in capsys.readouterr().err
+    assert _snapshot(root) == files
 
 
 def test_a_timed_out_check_ignore_still_finishes_the_real_run(

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import shutil
 import sys
 import tempfile
@@ -264,8 +265,27 @@ def _dirs_under(paths: list[Path]) -> set[Path]:
     return {d for p in paths if p.is_dir() for d in [p, *p.rglob("*")] if d.is_dir()}
 
 
-def _restore(paths: list[Path], before: dict[Path, bytes], dirs: set[Path]) -> None:
-    """Put ``paths`` back byte-for-byte: drop new files, rewrite changed ones.
+def _snapshot(paths: list[Path], root: Path) -> dict[Path, bytes | str]:
+    """Each file under ``paths`` as its bytes, each link to a file as its text.
+
+    An archive moves a linked sheet's target and unlinks the link, so a target
+    in the repo is kept too, wherever it is. One outside the repo is never
+    moved (the archive refuses it) and never written back.
+    """
+    out: dict[Path, bytes | str] = {}
+    for f in _files_under(paths):
+        if f.is_symlink():
+            out[f] = os.readlink(f)
+            target = f.resolve()
+            if target.is_relative_to(root.resolve()):
+                out[target] = target.read_bytes()
+        else:
+            out[f] = f.read_bytes()
+    return out
+
+
+def _restore(paths: list[Path], before: dict[Path, bytes | str], dirs: set[Path]) -> None:
+    """Put ``paths`` back as they were: drop new files, rewrite changed ones, recreate links as links.
 
     Folders the batch created (``roadmap/archive/`` on a first archive) go too,
     once emptied; ``dirs`` are the ones that were there before.
@@ -273,10 +293,15 @@ def _restore(paths: list[Path], before: dict[Path, bytes], dirs: set[Path]) -> N
     for f in _files_under(paths):
         if f not in before:
             f.unlink()
-    for f, data in before.items():
-        if not f.is_file() or f.read_bytes() != data:
+    for f, was in before.items():
+        if isinstance(was, str):
+            if not f.is_symlink() or os.readlink(f) != was:
+                f.unlink(missing_ok=True)
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.symlink_to(was)
+        elif not f.is_file() or f.read_bytes() != was:
             f.parent.mkdir(parents=True, exist_ok=True)
-            f.write_bytes(data)
+            f.write_bytes(was)
     for d in sorted(_dirs_under(paths) - dirs, key=lambda d: len(d.parts), reverse=True):
         if not any(d.iterdir()):
             d.rmdir()
@@ -290,7 +315,7 @@ def _apply_in_place(changes: list[object], root: Path) -> str:
     graph does not validate.
     """
     paths = _batch_paths(root)
-    before = {f: f.read_bytes() for f in _files_under(paths)}
+    before = _snapshot(paths, root)
     dirs = _dirs_under(paths)
     try:
         return _run_changes(changes, root)

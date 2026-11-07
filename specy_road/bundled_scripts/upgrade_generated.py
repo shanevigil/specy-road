@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import shutil
 from pathlib import Path
 
 from specy_road import git_subprocess
@@ -62,11 +63,43 @@ def scratch_environ(tmp: Path | None):
         os.environ.update(saved)
 
 
+def use_live_history(copy: Path, live: Path, caller_env: dict[str, str]) -> None:
+    """Give the scratch repository ``copy`` the history of ``live``, so its digest reads what the real run reads.
+
+    The digest asks git through the directory it renders: commits and trailers from ``HEAD``, and the milestone
+    hold from the integration ref a remote's tracking refs name. So ``copy`` takes ``live``'s ``HEAD``, refs and
+    remote names; a shallow checkout's boundary too, or its log would fail on the missing parents. Objects are
+    read through ``objects/info/alternates``, which git never writes to, and nothing else links to ``live``: the
+    copy's own config, index and new objects stay in the copy, and its remotes are never fetched.
+
+    The questions go to the checkout under ``caller_env``, as in :func:`regenerate`.
+    """
+    def ask(*args: str) -> str:
+        r = git_subprocess.run(list(args), live, env=caller_env)
+        checked(r, args[0], "the checkout")
+        return r.out
+
+    objects, shallow, head = (live / line for line in ask(
+        "rev-parse", "--git-path", "objects", "--git-path", "shallow", "--git-path", "HEAD").splitlines())
+    refs = ask("for-each-ref", "--format=%(objectname) %(refname)")
+    remotes = ask("remote").split()
+    git_dir = copy / ".git"
+    (git_dir / "objects" / "info" / "alternates").write_text(f"{objects.resolve()}\n", encoding="utf-8")
+    shutil.rmtree(git_dir / "refs")
+    (git_dir / "refs").mkdir()
+    (git_dir / "packed-refs").write_text(refs, encoding="utf-8")
+    shutil.copyfile(head, git_dir / "HEAD")
+    if shallow.is_file():
+        shutil.copyfile(shallow, git_dir / "shallow")
+    for name in remotes:
+        checked(git_subprocess.run(["remote", "add", name, str(live)], copy), "remote add")
+
+
 def regenerate(project: Path, tracked_in: Path, verb: str, caller_env: dict[str, str]) -> bool:
     """Write each drifted generated file into ``project``: the digest, and ``roadmap.md`` if ``tracked_in`` tracks it.
 
     ``tracked_in`` is the checkout's project: a dry run renders and writes into its
-    copy, whose single commit tracks everything. A path the safe-write rule
+    copy, whose index tracks everything. A path the safe-write rule
     refuses (a symlink of any kind) is refused before it is read; the rest are compared as bytes, so a
     file that is not UTF-8 is drifted, not an error. Returns whether a path was refused.
 
