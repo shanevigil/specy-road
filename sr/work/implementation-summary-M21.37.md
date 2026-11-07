@@ -368,7 +368,7 @@ Commit `b86b42ce`. `specy_road/specyrd_hooks.py` is now in the touch zones.
 - Remaining `write_text`, `mkdir`, `unlink`, `copy`, `chmod` and `replace` calls across all zoned modules (grep). Result: the same set as round 9, minus `specyrd_hooks`, which no longer has any.
 - Full suite before the final split: 6162 passed, plus 1 file-limits failure (`run_init` at 81 lines). That was fixed by moving the hook list into `_refuse_unsafe_paths`. After the fix, the file-limits, setup-writers, guard-hooks and doc-link tests all pass (203). `ruff check specy_road tests`: pass. `specy-road file-limits`: OK.
 
-## Writer audit (coordinator, round 10): stopped, needs `specy_road/history_cache.py`
+## Writer audit (coordinator, round 10)
 
 Method: for every entry point I read the call graph. I also ran each one under `strace` (`openat` with a write flag, `mkdir`, `rename`, `symlink`, `unlink`, `rmdir`, `chmod`) in a scratch repo. The runs were `init project`, then `init project --force`; `specyrd init --ai claude-code --install-orchestration-hooks --install-pre-push-hook --extras gui`, then `--ai cursor` and `--ai codex` with the hooks, and `--ai generic --force`; `refresh-stubs --prune`; `refresh-schemas`; `export`; `digest`; and `digest -o docs/d.md`. A write on the rule shows as a `.<name>.<hex>.tmp` file renamed onto the destination. Any other written path is in the table below with its reason.
 
@@ -379,7 +379,7 @@ Method: for every entry point I read the call graph. I also ran each one under `
 | `export_roadmap_md.reexport_roadmap_md` and `main` → `safe_write.write` | `roadmap.md` | export | yes | A2 |
 | `digest_cli._write_output` → `safe_write.write` | `roadmap-context.md`, a relative or in-checkout `-o` | digest | yes | A2 |
 | `digest_cli._write_output`, plain write | an explicit absolute `-o` outside the checkout | digest | deliberately not | A2: the person's own destination |
-| **`history_cache.save_cache` / `ensure_cache_dir`** (`mkdir`, `write_text`, `mkstemp` + `os.replace`) | `.specyrd/cache/`, `.specyrd/cache/.gitignore`, `.specyrd/cache/roadmap-history.json` | digest (through `render_digest` → `history_index`); init project `--force`, pickup and upgrade (through `regenerate_generated_files`) | **no** | **outside the touch zones.** Reproduced: with `.specyrd/cache` linked to an outside directory, `digest` writes `roadmap-history.json` and `.gitignore` there, exit 0; with `.specyrd/cache/.gitignore` a dangling link, it creates the outside target |
+| **`history_cache.save_cache` / `ensure_cache_dir`** (`mkdir`, `write_text`, `mkstemp` + `os.replace`) | `.specyrd/cache/`, `.specyrd/cache/.gitignore`, `.specyrd/cache/roadmap-history.json` | digest (through `render_digest` → `history_index`); init project `--force`, pickup and upgrade (through `regenerate_generated_files`) | no: **owned by M21.39** (coordinator decision 2026-11-06; M21.39's acceptance on WIP covers `save_cache` and `ensure_cache_dir`), not changed here | outside this leaf's touch zones. Reproduced: with `.specyrd/cache` linked to an outside directory, `digest` writes `roadmap-history.json` and `.gitignore` there, exit 0; with `.specyrd/cache/.gitignore` a dangling link, it creates the outside target |
 | `refresh_schemas.refresh_schemas` → `safe_write.copy` | `schemas/*.json` | refresh-schemas, upgrade | yes, all checked before the first copy | A2 |
 | `specyrd_init._save_manifest` → `safe_write.write` | `.specyrd/manifest.json` | specyrd init, init project (`_record_layout`), refresh-stubs | yes; specyrd init and init project check it before the first write; refresh-stubs writes it last, and a refusal is exit 1 | A2 |
 | `specyrd_init._write_readme_and_gui_stub` → `safe_write.write` | `.specyrd/README.md` | specyrd init | yes, checked before the first write | A2 (round 9) |
@@ -410,17 +410,16 @@ Regression rows, one per writer class, final link and linked parent:
 | hook files | `test_specyrd_init_refuses_a_linked_hook_destination[*-final]` | `[*-parent]` |
 | prune | `test_safe_write` (a symlink orphan is removed as an entry, its target intact) | `test_upgrade_prune_refuses_an_orphan_under_a_linked_directory` |
 | archive restore | `[chunk-out]`, `[origin-linked]`, `[stored-linked]` | `[phases-linked]`, `[unpack-linked]` |
-| history cache | **none: out of zone** | **none: out of zone** |
+| history cache | none here: owned by M21.39 | none here: owned by M21.39 |
 
-### Needed to proceed
+### History cache: owned by M21.39
 
-- Add `specy_road/history_cache.py` to the touch zones. Then `ensure_cache_dir` and `save_cache` would go through `safe_write.mkdirs` and `safe_write.write` from the project root. The digest rows would gain a linked `.specyrd/cache` (parent) and a linked `.specyrd/cache/roadmap-history.json` (final). One design question for the coordinator: does a refused cache abort `digest` with exit 1, or is it skipped as a cache? Today a failed `save_cache` returns `False` and the digest goes on.
-- **Same writer, other leaves.** `ensure_cache_dir` is also called by `on_complete_pickup` (the pickup-orchestration hint: M21.39 names "pickup hint"), `brainstorm_session` (lock), `search_index` and `context_notice_cache` (validate). Fixing it once in `history_cache.py` closes it for all of them. I recommend this leaf, because `digest` is one of its entry points. If not, M21.39 is the natural owner, through the pickup hint.
+- Coordinator decision (2026-11-06): `history_cache.save_cache` and `ensure_cache_dir` belong to M21.39, whose acceptance on WIP now covers them. They are not changed in this leaf. The same helper is also used by the pickup hint (`on_complete_pickup`), the brainstorm lock, `search_index` and `context_notice_cache`.
 - No writer reachable from these entry points belongs to M21.38 (review writers).
 
 ### Probes (writer audit)
 
-- The `strace` runs listed above, in a scratch repo: every write path is in the table. Result: the only writer that is neither on the rule nor deliberately excluded is the history cache.
+- The `strace` runs listed above, in a scratch repo: every write path is in the table. Result: the only writer that is neither on the rule nor deliberately excluded is the history cache, which M21.39 owns.
 - `digest` with `.specyrd/cache` linked to an outside directory. Result: `roadmap-history.json` and `.gitignore` were written outside, exit 0.
 - `digest` with `.specyrd/cache/.gitignore` a dangling link to outside. Result: the outside target was created, exit 0.
 - `export` and `refresh-schemas` (already current) under `strace`. Result: no write other than their outputs.
