@@ -105,3 +105,76 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
+  - codename: group-into-member-id
+    node_id: M22.1
+    branch: feature/rm-group-into-member-id
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_outline_group.py
+      - specy_road/bundled_scripts/roadmap_move_node.py
+      - tests/test_outline_group_cli.py
+      - tests/test_gui_outline_contract.py
+      - docs/roadmap-authoring.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: ready-changelog-reminder
+    node_id: M22.7
+    branch: feature/rm-ready-changelog-reminder
+    touch_zones:
+      - specy_road/changelog_check.py
+      - specy_road/review_ready_merge.py
+      - tests/test_ready_changelog_warning.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+    started: '2026-11-06'
+    owner: savigil
+    implementation_review: pending
+  - codename: init-next-steps
+    node_id: M22.8
+    branch: feature/rm-init-next-steps
+    touch_zones:
+      - specy_road/init_project.py
+      - tests/test_init_project_reports.py
+      - tests/test_init_project.py
+      - docs/install-and-usage.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: finish-keeps-local-claim-and-landing
+    node_id: M22.10
+    branch: feature/rm-finish-keeps-local-claim-and-landing
+    touch_zones:
+      - specy_road/reconcile_branch.py
+      - specy_road/finish_pr_merge.py
+      - specy_road/finish_modes.py
+      - specy_road/finish_land_local.py
+      - specy_road/finish_land_integration.py
+      - tests/test_reconcile_branch.py
+      - tests/test_finish_merge_failure_undo.py
+      - docs/git-workflow-parallel-prs.md
+      - docs/git-workflow.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: sandbox-runbook-rc4-drift
+    node_id: M22.15
+    branch: feature/rm-sandbox-runbook-rc4-drift
+    touch_zones:
+      - docs/agentic-sandbox-runbook.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: verify-tells-a-blocking-404
+    node_id: M22.17
+    branch: feature/rm-verify-tells-a-blocking-404
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_verify.py
+      - tests/test_brainstorm_verify.py
+      - docs/brainstorming.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending

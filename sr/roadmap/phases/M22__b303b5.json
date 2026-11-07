@@ -93,6 +93,35 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "sweep_stalled also flags a running worker that never produced output, measured from its launch, and worker sync, worker list and doctor all show stalled workers with how long they have been silent",
+        "specy-road worker recover ends a stalled worker, keeps its worktree and commits, and resumes the native session with the continue prompt, or says why it cannot; it runs once and exits: no daemon, no background loop",
+        "Recovery is bounded: a retry limit per worker from policy, one recovery at a time per leaf, never a second live worker on a leaf, and a worker past the limit stops as needing a person with its last output named",
+        "grind-session calls the same recovery on its own loop; a stalled worker no longer waits for a person to notice",
+        "tests/test_worker_stall_recovery.py covers silent output, no output at all, a recovered worker, the retry limit and a leaf with a live worker; docs/orchestration-workers.md describes it; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "worker-stall-recovery",
+      "dependencies": [
+        "17405142-e2fa-4516-83e2-e536820d1ec2",
+        "968d2065-95f2-4d33-8926-045da3b65990"
+      ],
+      "id": "M22.39",
+      "node_key": "0b69a82d-d3b0-454d-93de-338c1f10836f",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.39_worker-stall-recovery_0b69a82d-d3b0-454d-93de-338c1f10836f.md",
+      "sibling_order": 38,
+      "status": "Not Started",
+      "title": "Stalled workers are detected on every run and can be recovered in one command",
+      "touch_zones": [
+        "specy_road/worker_ops_slots.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "tests/test_worker_stall_recovery.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

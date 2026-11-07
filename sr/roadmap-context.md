@@ -170,6 +170,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Not Started**
   - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
   - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Not Started**
+  - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -307,7 +308,13 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.39` on `feature/rm-ops-writers-refuse-links` since 2026-11-06
+- `M22.1` on `feature/rm-group-into-member-id` since 2026-11-06
+- `M22.10` on `feature/rm-finish-keeps-local-claim-and-landing` since 2026-11-07
+- `M22.15` on `feature/rm-sandbox-runbook-rc4-drift` since 2026-11-07
+- `M22.17` on `feature/rm-verify-tells-a-blocking-404` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
+- `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
+- `M22.8` on `feature/rm-init-next-steps` since 2026-11-07
 
 ## Quality by area
 
