@@ -12,12 +12,18 @@
   included, and `lstat`s the final name relative to the parent. A swap is refused, and the temp file is unlinked
   through the parent descriptor. Where `os.supports_dir_fd` lacks `os.open`, `os.rename`, `os.stat`, `os.mkdir`
   or `os.unlink`, or `O_DIRECTORY`/`O_NOFOLLOW` are missing (Windows), the M21.37 code path runs unchanged.
-- `specy_road/archive_ops.py`: `_move_planning_sheets` follows one rule (fix round 1). Each name is resolved once,
-  as at the base commit, so in-repo links are followed as before: the sheet, its archived place, and the parent
-  of an origin link. `_refuse_links_out` has already refused links out. The move then goes through
-  `safe_write.move`'s descriptor walk from those resolved names, so a link that appears on them afterwards is
-  refused, and so is a name that resolves outside the root (`_locate`). The dangling origin link is removed with
-  `safe_write.remove`.
+- `specy_road/archive_ops.py` and `safe_write.moving` (fix round 2): `apply_archive` walks to every planning sheet
+  and its archived place **before its first change**, using `safe_write.moving(root, origin, stored)` in an
+  `ExitStack`, and renames through the held directories only after the chunk edits. `moving` follows one bounded
+  rule. A link below the root on either path, the sheet's own included, is followed during the descriptor walk
+  itself: its target is read with `os.readlink(name, dir_fd=<held dir>)` and spelled lexically from there. A `..`
+  may not climb above the root, at most `MAX_LINKS` (40) links are followed per step, and a link out of the root
+  is refused (`<link> is a symlink (to X), not a link to a path under <root>`). No `resolve()` runs before the
+  walk. The walk ends with the identity re-check, so a swap during it is refused before the roadmap changes; the
+  rename re-checks again. When the origin is a link, the rename unlinks that entry through its held parent. The
+  public `move` from rounds 0 and 1 is replaced by `moving`. Without `dir_fd` (Windows), `moving` resolves names
+  when it renames and applies M21.37's re-check. Destination directories (`roadmap/archive/planning/<id>/`) are
+  made during the walk, so a refusal can leave that empty directory behind.
 - CHANGELOG `[Unreleased]` Fixed: one **Security** entry, updated to the rule above.
 
 ## Fix round 1 (review `gpt-5.6-sol-high` at `0969d830`)
@@ -32,7 +38,37 @@
   The `os.readlink` join from round 0 is gone. Tests: `test_planning_sheets_move_out_of_the_flat_planning_dir`
   parametrized `link-chain` and `linked-dir`, through public `archive_node`.
 
+## Fix round 2 (review `gpt-5.6-sol-high` at `84a5a37b`)
+
+- **Finding 1, archive operands resolved before the walk.** The class is any name on an archive move path that
+  was resolved or followed by path outside the descriptor walk: source, destination, the origin link, and that
+  link's parent. Fix: one rule in `safe_write.moving`, described above. Following links is now part of the walk,
+  so no operand is resolved beforehand, and the origin link is unlinked through its held parent.
+- **Finding 2, refusal before any archive mutation.** Fix: the sheets are walked and checked before the archive
+  chunk is written. Test: `test_a_directory_swapped_for_a_link_before_a_sheet_moves_is_refused` now covers five
+  cases: sheet parent, archive directory, linked sheet's parent, linked target's parent, and the linked sheet's
+  parent swapped after the target directory opens (the reviewer's timing). Each asserts the roadmap is
+  byte-identical, no archive chunk exists, outside is unchanged, and the sheet and its link remain. All five fail
+  at `84a5a37b`.
+- **Findings 3 and 4, write/copy metadata finishing by temp path: NOT DONE, blocked outside the touch zones.**
+  Anchoring `finish` to the held temp descriptor (`os.chmod(fd)`, `shutil.copystat(src, fd)`; verified to work
+  on Linux) breaks `tests/test_setup_writers_refuse_links.py::test_an_ignore_file_linked_right_before_replace_is_an_error`
+  (lines 436-443). Its `os.chmod` racer calls `Path(tmp).name` and `Path(tmp).parent` on the argument, so an int
+  raises `TypeError` in all 5 parametrized cases (reproduced). Using `os.fchmod` instead means that racer never
+  fires, and the test's `code == 1` assertion fails. Needed: add `tests/test_setup_writers_refuse_links.py` to
+  the touch zones so its racer can find the destination from the repo path (`repo / ".gitignore"`) instead of
+  the temp file's path. The behaviour the test checks stays the same. Then make the fd change and add the
+  reviewer's outside-matching-temp-name test. Per the leaf rules I stopped there and did not edit that file.
+
 ## Probes
+
+- Round 2: linked sheet whose link loops (`a.md -> b.md -> a.md`): refused before any change (by `_refuse_links_out`'s resolve, as at base); no chunk written.
+- Round 2: sheet linked out of the repository: refused before any change by `_refuse_links_out`; the outside file is kept.
+- Round 2: archive then restore with a link chain: the origin comes back as a regular file with the original bytes.
+- Round 2: no-`dir_fd` fallback (`os.supports_dir_fd` without `os.open`/`os.rename`) with a sheet linked through a linked directory: the final target moves, and the origin link and target are gone.
+- Round 2: shapes `sheet`, `in-repo-link`, `link-chain`, `linked-dir` through `archive_node`: all still pass (descriptor-following walk, no `resolve()`).
+- Round 2: an absolute link target spelled through a non-resolved alias of the root (e.g. macOS `/tmp` vs `/private/tmp`) is refused as out of the root, because `_locate` anchors on the resolved root during the walk. This is a documented limit of the bounded rule; there is no test.
+- Round 2: the metadata class (`finish` by temp path) is still open: see findings 3 and 4 above. The window only opens after a directory swap; one swap leaves the random temp name absent outside (ENOENT, re-checked into a refusal). It needs a matching entry planted outside, which the reviewer did.
 
 - Root swapped right before it is opened, `write` into a new subdirectory and `mkdirs`: both refused, nothing outside (tests above; with round-0 package files both fail).
 - Root swapped right before it is opened for a **dangling** link: `write` and `mkdirs` refused, nothing created outside (inline probe).
@@ -55,15 +91,16 @@
   (outside the zones) reads `Path(tmp).parent` in its `os.chmod` wrapper. If `finish` fails because of a swap,
   `_recheck` runs first so the error is the rule's refusal.
 - `remove`, `prune_empty` and `open_lock` are unchanged: neither the acceptance criterion nor the plan names them.
-- Net line change against base: package +134/-38, tests +150/-6, above A2's informational estimate. Most of the
+- Net line change against base: package +228/-59, tests +164/-6, above A2's informational estimate. Most of the
   difference is the Windows fallback kept beside the descriptor path in `_replace` and `move`.
-- Touch zones are confirmed as listed; no file outside them changed. Merged `origin/WIP/improvements-0-3-1`
-  first, with no conflicts.
+- Touch zones: no file outside them changed. Round 2 needs `tests/test_setup_writers_refuse_links.py` added (see
+  findings 3 and 4). Merged `origin/WIP/improvements-0-3-1` first in each round, with no conflicts.
 
 ## Verification
 
 - `python -m pytest -q -n 4` (full suite, after the merge and fix): 6287 passed.
-- Targeted: `tests/test_safe_write.py`, `tests/test_archive_ops.py`, the archive suites,
+- Round 2 targeted (403 passed): the list below plus `tests/test_history_cache.py`, `tests/test_generate_brief.py`, `tests/test_digest.py`.
+- Round 1 targeted: `tests/test_safe_write.py`, `tests/test_archive_ops.py`, the archive suites,
   `tests/test_setup_writers_refuse_links.py`, `tests/test_writers_refuse_links_out.py` and
   `tests/test_ops_writers_refuse_links.py`: 333 passed.
 - `ruff check specy_road tests scripts`, `specy-road file-limits`, `scripts/check_test_private_imports.py`: pass.
@@ -82,12 +119,21 @@
 - `_replace` descriptor branch: writes and replaces through the held parent; the old path-based branch is kept for no-`dir_fd` platforms.
 - `_replace` `except OSError` around `finish`: turns a chmod or copystat failure caused by a swap into the rule's refusal.
 - `mkdirs` descriptor branch: directories are created through the walk, not by path.
-- `safe_write.move` (public): the archive sheet move under the rule, by descriptor with the M21.37 fallback.
-- `archive_ops`: names resolved once (sheet, stored, origin link's parent), then moved and removed by `safe_write`; this keeps the base's in-repo link behaviour.
+- `safe_write.moving` (public context manager): walks to an archive move's source and destination now, following in-root links through held descriptors, and yields the rename; the M21.37 fallback without `dir_fd`.
+- `safe_write.MAX_LINKS`: the bound on links followed per step.
+- `safe_write._open_dir`: one directory open (`O_NOFOLLOW`, optional create), shared by every walk; it returns the refusing kind so a caller can follow.
+- `_held` `follow` parameter: a link below the root is re-walked from the root through `_relinked`; without it, a link is refused as before.
+- `safe_write._relinked`: a link's target read through its held directory, spelled lexically from there; a target out of the root is refused naming the link.
+- `safe_write._close`: closes the held descriptors when the walk restarts or ends.
+- `safe_write._hold_file`: holds a file's parent, following its own link too (the source and destination of `moving`).
+- `safe_write._move_by_path`: `moving`'s no-`dir_fd` rename (names resolved, M21.37 re-check, origin link removed).
+- `_recheck` `expected` parameter: the origin link entry is re-checked as a regular file or a symlink.
+- `archive_ops._hold_planning_sheets`: walks every sheet before the first change; replaces `_move_planning_sheets`.
 - Test `test_a_link_swapped_in_right_before_replace_is_refused`, parametrized `dir_fd` (descriptors / no-dir-fd): the no-dir-fd id checks that M21.37's re-check still refuses.
 - Test helper `swap_at_open` (wraps public `os.open`, adds itself to `os.supports_dir_fd`; swaps right after an open, or right before one with `before=True`): the racer.
 - Test `test_a_link_swapped_in_after_the_walk_is_refused` (generated file, managed block, nested file x destination/parent): the plan's first three table rows.
 - Test `test_a_root_swapped_for_a_link_before_it_is_opened_is_refused` (`write`, `mkdirs`): review finding 1.
-- Test `test_a_directory_swapped_for_a_link_before_a_sheet_moves_is_refused` (sheet parent / archive planning dir): the plan's archive row.
+- Test `test_a_directory_swapped_for_a_link_before_a_sheet_moves_is_refused` (5 cases, including the linked-sheet shapes and the reviewer's timing): the plan's archive row plus round-2 finding 2, asserting no roadmap change.
+- Test helper `_roadmap` (module-local): the roadmap part of the snapshot, for the "before any mutation" assertion.
 - Test `test_planning_sheets_move_out_of_the_flat_planning_dir`, parametrized `in-repo-link`, `link-chain`, `linked-dir`: in-repo linked sheets still move their final target (review finding 2).
 - Test helper `_link_sheet` (module-local): builds the three linked-sheet shapes.
