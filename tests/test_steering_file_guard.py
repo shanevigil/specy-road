@@ -96,7 +96,13 @@ def test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_read
         real.write_text("#!/bin/sh\n")
         (hooks / "pre-commit").symlink_to(real)
     rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
-    found = _turn(p["repo"], rec, lambda: _write(hooks / "pre-commit", "#!/bin/sh\nevil\n"))   # through a link if one
+    ignored = p["repo"] / ".git" / "hooks" / "ignored-by-git"   # in a default directory git does not use here
+
+    def act() -> None:
+        _write(hooks / "pre-commit", "#!/bin/sh\nevil\n")   # through a link if one
+        if hooks == d:
+            _write(ignored, "#!/bin/sh\n")
+    found = _turn(p["repo"], rec, act)
     [steer] = [f for f in found if f["kind"] == "steering_file"]
     assert steer["class"] == "git_hook" and steer["path"] == str(hooks.resolve() / "pre-commit")
     if name == "unchanged_symlink_written_through":   # the link is unchanged; the file it resolves to is not
@@ -257,3 +263,57 @@ def test_an_unparsable_ready_through_the_worker_runner_still_ends_with_one_check
     assert done.detail == {"exit": 0, "ready": False} and "READY file invalid" in done.summary
     after = ws.load_record(repo, rec.worker_id)
     assert FLAG_STEERING in after.flags and after.state == "idle"
+
+
+def _hooks_over_cap(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[str, Path]]]:
+    hooks = p["repo"] / ".git" / "hooks"
+    for i in range(200 - len(list(hooks.iterdir()))):
+        _write(hooks / f"extra-{i}", "#!/bin/sh\n")
+    return lambda: _write(hooks / "one-more", "#!/bin/sh\n"), {("check_error", hooks)}
+
+
+def _hooks_dir_becomes_fifo(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[str, Path]]]:
+    hooks = p["repo"] / ".git" / "hooks"
+    _write(hooks / "pre-commit", "#!/bin/sh\n")
+
+    def act() -> None:
+        for child in hooks.iterdir():
+            child.unlink()
+        hooks.rmdir()
+        os.mkfifo(hooks)
+    return act, {("check_error", hooks)}
+
+
+def _including_config_unreadable(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[str, Path]]]:
+    config, extra = p["repo"] / ".git" / "config", p["tmp"] / "extra.gitconfig"
+    extra.write_text("[specy]\n\tincluded = 1\n")
+    config.write_text(config.read_text() + f"[include]\n\tpath = {extra}\n")
+    return lambda: config.chmod(0), {("check_error", config)}
+
+
+def _include_reached_by_two_names(p: dict[str, Path]) -> tuple[Callable[[], None], set[tuple[str, Path]]]:
+    config, extra, alias = p["repo"] / ".git" / "config", p["tmp"] / "extra.gitconfig", p["tmp"] / "alias.gitconfig"
+    extra.write_text("[specy]\n\tincluded = 1\n")
+    alias.symlink_to(extra)
+    config.write_text(config.read_text() + f"[include]\n\tpath = {alias}\n\tpath = {extra}\n")
+    return lambda: extra.write_text("[core]\n\tfsmonitor = true\n"), {("steering_file", extra)}
+
+
+CONTAINER_ROWS = {"hooks_over_cap": _hooks_over_cap, "hooks_dir_becomes_fifo": _hooks_dir_becomes_fifo,
+                  "including_config_unreadable": _including_config_unreadable,
+                  "include_reached_by_two_names": _include_reached_by_two_names}
+
+
+@pytest.mark.parametrize("name", sorted(CONTAINER_ROWS))
+def test_a_container_one_end_could_not_list_is_its_one_finding_and_one_file_is_one_finding(
+        tmp_path: Path, name: str) -> None:
+    """A hooks directory over the cap or unreadable, or a config file unreadable, after the turn: one check_error for
+    it, not its former entries reported gone; one included file reached by two names: one finding."""
+    if name == "including_config_unreadable" and os.geteuid() == 0:
+        pytest.skip("root reads a mode-000 file")
+    p = _layout(tmp_path)
+    act, expected = CONTAINER_ROWS[name](p)
+    rec = ws.create_record(p["repo"], "M1.1", "claude-code", "opus", p["leaf"], branch="feature/rm-thing")
+    found = _turn(p["repo"], rec, act)
+    assert {(f["kind"], f["path"]) for f in found if "path" in f} == {(k, str(path.resolve())) for k, path in expected}
+    assert "git_probes_skipped" in {f["kind"] for f in found}

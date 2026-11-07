@@ -11,7 +11,7 @@ relative to the including file, ``~`` is expanded. A malformed line is skipped, 
 
 The parser decides coverage: only files are read, never git, so this is all the check knows of what git reads.
 Each watched config file's change is reported by the digest of its bytes, and the parser adds the hooks directories
-(every ``core.hooksPath`` value) and every include it finds. Its limit: a hooks directory or config file git would
+(every ``core.hooksPath`` value, and whether only an ``includeIf`` names it) and every include it finds. Its limit: a hooks directory or config file git would
 use only because of a change made during the turn is not watched itself; that change is, by its file's digest.
 
 Split from :mod:`specy_road.steering_paths` for the file limit.
@@ -22,6 +22,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from pathlib import Path
+from typing import NamedTuple
 
 
 #: git's own include depth limit.
@@ -107,26 +108,38 @@ def parse_config(text: str) -> list[tuple[str, str]]:
     return out
 
 
-def _includes(pairs: list[tuple[str, str]]) -> list[str]:
-    return [v for k, v in pairs if k == "include.path" or (k.startswith("includeif.") and k.endswith(".path"))]
+def _includes(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    return [(k, v) for k, v in pairs if k == "include.path" or (k.startswith("includeif.") and k.endswith(".path"))]
 
 
-def read_chain(path: Path, read: Callable[[Path], bytes] = Path.read_bytes,
-               depth: int = 0) -> list[tuple[Path, bytes | Exception, list[tuple[str, str]]]]:
-    """``(file, bytes, pairs)`` for ``path`` and every file it includes, depth first. A file that does not exist
-    is left out, as git leaves out a missing include; one that cannot be read is listed with the exception in
-    place of its bytes (the caller reports it), and the rest of the chain is still read."""
+class ConfigFile(NamedTuple):
+    """One config file of a chain: its bytes (or the exception that stopped reading it), its pairs, the file that
+    included it (``None`` for the chain's start) and whether any ``includeIf`` on the way named it (its values may
+    not apply, since conditions are not evaluated)."""
+    path: Path
+    data: bytes | Exception
+    pairs: list[tuple[str, str]]
+    parent: Path | None
+    conditional: bool
+
+
+def read_chain(path: Path, read: Callable[[Path], bytes] = Path.read_bytes, depth: int = 0,
+               parent: Path | None = None, conditional: bool = False) -> list[ConfigFile]:
+    """``path`` and every file it includes, depth first. A file that does not exist is left out, as git leaves out
+    a missing include; one that cannot be read is listed with the exception in place of its bytes (the caller
+    reports it), and the rest of the chain is still read."""
     try:
         data = read(path)
     except FileNotFoundError:
         return []
     except Exception as e:  # noqa: BLE001 — reported by the caller, never fatal
-        return [(path, e, [])]
+        return [ConfigFile(path, e, [], parent, conditional)]
     pairs = parse_config(data.decode("utf-8", "replace"))
-    out: list[tuple[Path, bytes | Exception, list[tuple[str, str]]]] = [(path, data, pairs)]
+    out = [ConfigFile(path, data, pairs, parent, conditional)]
     if depth < MAX_INCLUDE_DEPTH:
-        for inc in _includes(pairs):
-            out += read_chain(path.parent / os.path.expanduser(inc), read, depth + 1)
+        for key, inc in _includes(pairs):
+            out += read_chain(path.parent / os.path.expanduser(inc), read, depth + 1, path,
+                              conditional or key != "include.path")
     return out
 
 

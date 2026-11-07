@@ -18,7 +18,8 @@ such as a FIFO, a dangling link or a link loop, a file over :data:`MAX_PARSE_BYT
 snapshot past :data:`SNAPSHOT_SECONDS`, a hooks directory over :data:`HOOKS_CAP` entries) records that path and its
 class as unreadable (an ``error:`` value) and the snapshot goes on with every other path. The comparison reports
 each such path as a ``check_error`` finding (path and class) and never as unchanged; it counts as git steering not
-verified, so no post-turn git command runs. Only a path that does not exist is ``absent``.
+verified, so no post-turn git command runs. Only a path that does not exist is ``absent``, and only where what
+lists or includes it was read in full at that end (:func:`compared`).
 """
 
 from __future__ import annotations
@@ -46,6 +47,9 @@ HOOKS_CAP = 200
 ABSENT = "absent"
 #: The prefix of a value that could not be read (:func:`guarded`).
 ERROR = "error:"
+#: The prefix of a container's value (a checkout's ``.git``, a hooks directory) read in full: what an entry's
+#: ``parent`` names. An entry's absence at one end is a change only when its parent is read there (:func:`compared`).
+READ = "read:"
 #: Files this module parses (``.git`` files, git config) larger than this are unreadable, not parsed.
 MAX_PARSE_BYTES = 8 * 1024 * 1024
 #: One snapshot's time budget: every path read after it is spent is unreadable (a timeout), never skipped.
@@ -114,21 +118,21 @@ class Entry:
     cls: str
     value: str
     values: tuple[tuple[str, str], ...] = ()   # git_config only: the watched keys' values
+    parent: str | None = None   # the key of what listed or included it: a hooks directory, a config file, ``.git``
 
 
 Snapshot = dict[str, Entry]   # keyed by the real path
 
 
-def _gitdirs(top: Path) -> tuple[Path, Path] | None:
-    """``(worktree gitdir, common git dir)`` of the checkout at ``top``, read from ``.git`` without running git."""
+def _gitdirs(top: Path) -> tuple[Path, Path]:
+    """``(worktree gitdir, common git dir)`` of the checkout at ``top``, read from ``.git`` without running git;
+    raises when ``.git`` names neither (the checkout's git steering cannot be read)."""
     dotgit = top / ".git"
     if dotgit.is_dir():
         return resolved_path(dotgit), resolved_path(dotgit)
-    if not dotgit.exists():
-        return None
     line = parse_bytes(dotgit).decode("utf-8").strip()
     if not line.startswith("gitdir:"):
-        return None
+        raise ValueError("no gitdir: line")
     gitdir = resolved_path(top / line.removeprefix("gitdir:").strip())
     commondir = gitdir / "commondir"
     common = resolved_path(gitdir / parse_bytes(commondir).decode("utf-8").strip()) if commondir.exists() else gitdir
@@ -181,7 +185,24 @@ def unreadable(snap: Snapshot, scope: Scope, path: Path, cls: str, e: BaseExcept
     snap[str(real)] = Entry(scope.display(real), cls, _error(e))
 
 
-def _add_hook(snap: Snapshot, scope: Scope, path: Path) -> None:
+def _read(snap: Snapshot, key: str | None) -> bool:
+    """Whether the container ``key`` (``None``: the snapshot itself) was read in full in ``snap``."""
+    return key is None or (key in snap and snap[key].value.startswith(READ))
+
+
+def compared(before: Snapshot, after: Snapshot, key: str) -> bool:
+    """Whether ``key`` compares as a steering file: not a container, and present at both ends or absent at one
+    where what lists it was read in full. Otherwise its absence is a gap in what that end could see (a hooks
+    directory unreadable or over the cap, a config file unreadable, a hooks directory no longer the one the
+    config names), not a change: that container's own ``check_error``, or the config change, reports it."""
+    b, a = before.get(key), after.get(key)
+    e = a or b
+    if e is None or any(x and x.value.startswith(READ) for x in (b, a)):
+        return False
+    return (b is not None or _read(before, e.parent)) and (a is not None or _read(after, e.parent))
+
+
+def _add_hook(snap: Snapshot, scope: Scope, path: Path, parent: str) -> None:
     """Record one hooks-directory entry once (by its real path), read under the one rule."""
     real = real_path(path)
     if str(real) in snap:
@@ -192,40 +213,54 @@ def _add_hook(snap: Snapshot, scope: Scope, path: Path) -> None:
     except Exception as e:  # noqa: BLE001 — one rule: an unreadable input is reported, never fatal
         value = _error(e)
     if value is not None:
-        snap[str(real)] = Entry(scope.display(real), "git_hook", value)
+        snap[str(real)] = Entry(scope.display(real), "git_hook", value, parent=parent)
 
 
 def _hooks_dir(snap: Snapshot, scope: Scope, d: Path) -> None:
     """Direct entries of hooks directory ``d``, not recursive; over :data:`HOOKS_CAP` the directory itself is
-    unreadable (so every comparison fails closed), and the listing stops after ``HOOKS_CAP + 1`` entries."""
+    unreadable (so every comparison fails closed), and the listing stops after ``HOOKS_CAP + 1`` entries. A
+    directory that does not exist is read in full: empty."""
+    key = str(real_path(d))
+
     def each() -> None:
+        if not os.path.lexists(d):
+            snap[key] = Entry(scope.display(Path(key)), "git_hook", READ + ABSENT)
+            return
         with os.scandir(d) as it:
             names = [e.name for e in itertools.islice(it, HOOKS_CAP + 1)]
         if len(names) > HOOKS_CAP:
             raise OSError(f"hooks directory has more than {HOOKS_CAP} entries")
+        snap[key] = Entry(scope.display(Path(key)), "git_hook", READ + "dir")
         for name in sorted(names):
-            _add_hook(snap, scope, d / name)
-    if os.path.lexists(d):
-        guarded(snap, scope, d, "git_hook", each)
+            _add_hook(snap, scope, d / name, key)
+    guarded(snap, scope, d, "git_hook", each)
 
 
-def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, hooks: list[Path]) -> None:
-    """One config file git reads and those it includes, each guarded; their ``core.hooksPath`` values go to ``hooks``."""
-    for path, data, pairs in read_chain(start, parse_bytes):
-        if isinstance(data, Exception):
-            unreadable(snap, scope, path, "git_config", data)
+def _config_file(snap: Snapshot, scope: Scope, top: Path, start: Path, dotgit: str,
+                 hooks: dict[Path, bool]) -> None:
+    """One config file git reads and those it includes, each guarded and keyed by the file it resolves to (one
+    file reached by two names is one entry); each ``core.hooksPath`` value goes to ``hooks`` with whether only an
+    ``includeIf`` named it."""
+    for f in read_chain(start, parse_bytes):
+        real = resolved_path(f.path)
+        if isinstance(f.data, Exception):
+            unreadable(snap, scope, real, "git_config", f.data)
             continue
-        real = real_path(path)
-        snap.setdefault(str(real), Entry(scope.display(real), "git_config", hashlib.sha256(data).hexdigest(),
-                                         tuple(sorted(watched_values(pairs).items()))))
-        hooks += [top / os.path.expanduser(v) for k, v in pairs if k == "core.hookspath" and v]
+        parent = str(resolved_path(f.parent)) if f.parent else dotgit
+        snap.setdefault(str(real), Entry(scope.display(real), "git_config", hashlib.sha256(f.data).hexdigest(),
+                                         tuple(sorted(watched_values(f.pairs).items())), parent))
+        for k, v in f.pairs:
+            if k == "core.hookspath" and v:
+                d = top / os.path.expanduser(v)
+                hooks[d] = hooks.get(d, True) and f.conditional
 
 
 def git_snapshot(scope: Scope) -> Snapshot:
     """Git steering, from the filesystem only: per checkout, the common ``config``, ``config.worktree`` and every
     file they name by ``include.path`` or ``includeIf.*.path`` (:mod:`specy_road.git_config_text`, conditions not
-    evaluated), and the hooks directories: each ``core.hooksPath`` value read (relative to the checkout) and, since
-    an include's condition is not evaluated, ``<common>/hooks`` and ``<worktree-gitdir>/hooks`` as well."""
+    evaluated), and the hooks directories: ``core.hooksPath`` when set (each value read, relative to the checkout),
+    else ``<common>/hooks`` and ``<worktree-gitdir>/hooks``. A value only an ``includeIf`` names may not apply (its
+    condition is not evaluated), so with no other value the default directories are watched as well."""
     global _until
     snap: Snapshot = {}
     _until = time.monotonic() + SNAPSHOT_SECONDS
@@ -238,12 +273,12 @@ def git_snapshot(scope: Scope) -> Snapshot:
 
 
 def _git_top(snap: Snapshot, scope: Scope, top: Path) -> None:
-    dirs = _gitdirs(top)
-    if not dirs:
-        return
-    gitdir, common = dirs
-    hooks: list[Path] = []
+    gitdir, common = _gitdirs(top)
+    dotgit = real_path(top / ".git")
+    snap[str(dotgit)] = Entry(scope.display(dotgit), "git_config", READ + "gitdir")
+    hooks: dict[Path, bool] = {}   # each core.hooksPath directory: whether only an includeIf named it
     for start in dict.fromkeys((common / "config", common / "config.worktree", gitdir / "config.worktree")):
-        _config_file(snap, scope, top, start, hooks)
-    for d in dict.fromkeys(resolved_path(h) for h in [*hooks, common / "hooks", gitdir / "hooks"]):
+        _config_file(snap, scope, top, start, str(dotgit), hooks)
+    default = [common / "hooks", gitdir / "hooks"] if all(hooks.values()) else []
+    for d in dict.fromkeys(resolved_path(h) for h in [*hooks, *default]):
         _hooks_dir(snap, scope, d)

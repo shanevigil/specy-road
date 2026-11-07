@@ -2,12 +2,12 @@
 
 Some files an executor can write are later read or run by trusted code outside it: git runs the hooks and reads
 the config in the common git dir, which every worktree of the repository shares. The one list is `specy_road/steering_paths.py`; the worker flags and the post-run check are in [orchestration-workers.md](orchestration-workers.md). For each worker
-turn it is snapshotted in the worker's worktree and in the main checkout (one real path is stored once; paths are
-named project-relative in the worker's tree, as `zone_matches` compares them, and absolute elsewhere):
+turn it is snapshotted in the worker's worktree and in the main checkout (one real path is stored once: a config
+file by the file it resolves to, so one file reached by two names is one entry; paths are named project-relative in the worker's tree, as `zone_matches` compares them, and absolute elsewhere):
 
 | Class | What |
 |---|---|
-| `git_hook` | the hooks directories: each `core.hooksPath` value read from the config files below (relative to the checkout), and `<common-git-dir>/hooks` and `<worktree-gitdir>/hooks` as well, since an include's condition is not evaluated; direct entries only, not recursive: each regular file (a link followed) by name with its sha256, a subdirectory skipped. A hooks directory with more than 200 direct children is one `check_error` naming that directory on every comparison, changed or not (the listing stops reading after 201 entries) |
+| `git_hook` | the hooks directories: `core.hooksPath` when set (each value read from the config files below, relative to the checkout), else `<common-git-dir>/hooks` and `<worktree-gitdir>/hooks`. A value that only an `includeIf` names may not apply (its condition is not evaluated), so with no other value the default directories are watched as well; direct entries only, not recursive: each regular file (a link followed) by name with its sha256, a subdirectory skipped. A hooks directory with more than 200 direct children is one `check_error` naming that directory on every comparison, changed or not (the listing stops reading after 201 entries) |
 | `git_config` | the bytes of the common `config` and `config.worktree` and every file they name by `include.path` or `includeIf.*.path` as `specy_road/git_config_text.py` reads them (conditions not evaluated, git's depth of 10). The finding also names the changed values of `core.hooksPath`, `core.fsmonitor`, `core.sshCommand`, `include.path` and `includeIf.*.path` |
 
 Both are read from the filesystem only, at the turn's start and at its end; no git command is run for them.
@@ -28,7 +28,10 @@ the turn still ends with exactly one `post_run_check`.
 **An input that cannot be read.** One rule covers both classes: each file and directory is listed, read, decoded,
 parsed and hashed on its own, and any failure there (a permission error, a special file such as a FIFO, which is
 never opened for a blocking read, a dangling link or a link loop, a parsed file over 8 MiB, a file gone mid-read,
-the snapshot past its 30 s budget) is one `check_error` finding naming that path and its class. The comparison goes
+the snapshot past its 30 s budget, a hooks directory over 200 entries) is one `check_error` finding naming that path and
+its class. What that path lists or includes is not compared at that end: a hook of an unreadable or over-cap hooks
+directory, or a file an unreadable config includes, is not reported as `absent`, since that end could not see it.
+The same holds for a hooks directory the config no longer names: its hooks are not reported, the config change is. The comparison goes
 on for every other path, so their findings and the `steering_changed` flag are kept. A path that cannot be read is
 never reported as unchanged, and it counts as git steering not verified, so no post-turn git command runs. With no
 snapshot from the turn's start (it could not be taken) or a comparison that fails, the check fails closed the same

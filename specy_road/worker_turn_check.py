@@ -90,7 +90,9 @@ def _git_config_side(value: str, mine: dict[str, str], keys: list[str]) -> str:
 
 def steering_changes(before: Snapshot, after: Snapshot) -> list[dict[str, Any]]:
     """One finding per entry that changed or could not be read at either end (steering_paths' one rule): a
-    ``steering_file`` finding (a missing entry is ``absent``), or a ``check_error`` naming the path and class."""
+    ``check_error`` naming the path and class, or a ``steering_file`` finding (a missing entry is ``absent``) for
+    an entry :func:`~specy_road.steering_paths.compared` keeps: an entry missing where what lists it could not be
+    read is covered by that container's ``check_error``, not reported as gone."""
     out = []
     for key in sorted(before.keys() | after.keys()):
         b, a = before.get(key), after.get(key)
@@ -98,6 +100,8 @@ def steering_changes(before: Snapshot, after: Snapshot) -> list[dict[str, Any]]:
         e = a or b
         if ERROR in (bv[:len(ERROR)], av[:len(ERROR)]):
             out.append(steering_error(e.path, e.cls, av if av.startswith(ERROR) else bv))
+        elif not sp.compared(before, after, key):
+            continue
         elif bv != av and e.cls == "git_config":
             bd, ad = dict(b.values if b else ()), dict(a.values if a else ())
             keys = sorted(k for k in bd.keys() | ad.keys() if bd.get(k) != ad.get(k))
