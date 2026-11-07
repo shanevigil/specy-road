@@ -111,31 +111,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: deps-ids-briefs-and-landed-branch
-    node_id: M22.14
-    branch: feature/rm-deps-ids-briefs-and-landed-branch
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_edit_fields.py
-      - specy_road/bundled_scripts/roadmap_crud_argparse.py
-      - specy_road/cli_usage.py
-      - tests/test_roadmap_crud_dependencies.py
-      - specy_road/finish_work_artifacts.py
-      - specy_road/bundled_scripts/abort_task_pickup.py
-      - tests/test_finish_work_cleanup.py
-      - tests/test_abort_task_pickup.py
-      - specy_road/bundled_scripts/finish_task.py
-      - tests/test_finish_merge_mode.py
-      - docs/git-workflow.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - tests/test_gui_app_routes_nodes_errors.py
-      - tests/test_finish_merge_failure_undo.py
-      - specy_road/finish_modes.py
-      - specy_road/finish_milestone_rollout.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T19:10:24+00:00'
   - codename: review-writers-refuse-links
     node_id: M21.38
     branch: feature/rm-review-writers-refuse-links
