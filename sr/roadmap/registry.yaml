@@ -117,7 +117,8 @@ entries:
       - tests/test_upgrade_plan_parity.py
     started: '2026-11-06'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T06:55:01+00:00'
   - codename: ops-writers-refuse-links
     node_id: M21.39
     branch: feature/rm-ops-writers-refuse-links
