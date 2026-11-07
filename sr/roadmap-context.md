@@ -311,6 +311,7 @@ Do not pick these up.
 - `M22.10` on `feature/rm-finish-keeps-local-claim-and-landing` since 2026-11-07
 - `M22.17` on `feature/rm-verify-tells-a-blocking-404` since 2026-11-07
 - `M22.18` on `feature/rm-reviewer-lists-every-required-change` since 2026-11-07
+- `M22.2` on `feature/rm-move-rewrites-sheet-zones` since 2026-11-07
 - `M22.22` on `feature/rm-sandbox-rc4-final-polish` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
