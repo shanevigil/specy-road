@@ -304,7 +304,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.11_reports-say-what-happened_1d5c3b8f-8179-40d8-a04a-262e6f8765d9.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout",
       "touch_zones": [
         "specy_road/review_tally.py",
