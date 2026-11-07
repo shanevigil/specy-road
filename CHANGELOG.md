@@ -15,8 +15,9 @@ body. Keep section bodies focused; link to PRs for detail.
 
 - `brainstorm verify` records `blocked`, not `not-found`, when a page returns 404 or 410 and that origin's root
   is not 200 or cannot be fetched — a host that answers verify with 404 at its root is refusing the check. A root
-  of 200 keeps `not-found`. The root (https, the page's host and effective port, path `/`) is requested once per
-  origin per run, with the same public-https, redirect and size rules, and a 200 page makes no extra request.
+  of 200 keeps `not-found`. The root (https, the page's host as a URL spells it, an IPv6 literal in brackets,
+  effective port, path `/`) is requested once per origin per run, with the same public-https, redirect and size
+  rules, and a 200 page makes no extra request.
 - `group-nodes --into-new NEW_ID` (and `POST /api/outline/group`) accepts a `NEW_ID` that one of the listed nodes
   holds, as in `group-nodes M1.1 M1.2 M1.3 --into-new M1.2`: that node leaves the id in the same transaction, so a
   regroup into the ids the flat nodes occupy no longer needs a temporary id and a second `move-node --id`. An id held by

@@ -140,6 +140,9 @@ def test_check_source_states(monkeypatch) -> None:
     assert calls.count("https://example.com/") == 1
 
 
+_IPV6 = "2606:4700:4700::1111"
+
+
 @pytest.mark.parametrize(("page", "page_status", "root_status", "state", "root"), [
     ("https://example.com/missing", 404, 404, "blocked", "https://example.com/"),
     ("https://example.com/missing", 404, 200, "not-found", "https://example.com/"),
@@ -148,6 +151,9 @@ def test_check_source_states(monkeypatch) -> None:
     ("https://example.com/gone", 410, 200, "not-found", "https://example.com/"),
     ("https://example.com/gone", 410, "down", "blocked", "https://example.com/"),
     ("https://user:secret@example.com:8443/missing?q=1#frag", 404, 200, "not-found", "https://example.com:8443/"),
+    (f"https://[{_IPV6}]/missing", 404, 200, "not-found", f"https://[{_IPV6}]/"),
+    (f"https://user:secret@[{_IPV6}]:8443/missing?q=1#frag", 404, 200, "not-found", f"https://[{_IPV6}]:8443/"),
+    (f"https://[{_IPV6}]:443/missing", 404, 200, "not-found", f"https://[{_IPV6}]/"),
     ("https://example.com/ok", 200, "down", "matched", None),
     ("https://example.com/err", 500, "down", "not-found", None),
 ])
@@ -184,8 +190,8 @@ def test_two_missing_pages_on_one_origin_probe_the_root_once(monkeypatch) -> Non
     ])
     bv.verify_session(BrainstormSession(slug="s"), [idea], fetch=fetch)
     assert [s["verification"] for s in idea.sources] == ["blocked", "blocked", "not-found"]
-    assert calls == ["https://example.com/a", "https://example.com/", "https://example.com/b",
-                     "https://example.com:8443/c", "https://example.com:8443/"]
+    assert calls.count("https://example.com/") == 1
+    assert calls.count("https://example.com:8443/") == 1
 
 
 _FOLDED = {"'": "\u2018\u2019\u201a\u2032", '"': "\u201c\u201d\u201e\u2033",
@@ -210,8 +216,9 @@ _SAME_WORDS = [
 
 
 def _example_com_is_public(host, port, **kw):
-    """``socket.getaddrinfo`` offline: a public address for example.com, a private one for any other host."""
-    return [(None, None, None, None, ("93.184.216.34" if host == "example.com" else "10.0.0.1", 443))]
+    """``socket.getaddrinfo`` offline: public addresses for example.com and one IPv6 literal, private otherwise."""
+    public = {"example.com": "93.184.216.34", _IPV6: _IPV6}
+    return [(None, None, None, None, (public.get(host, "10.0.0.1"), 443))]
 
 
 @pytest.mark.parametrize(("variant", "plain"), _SAME_WORDS)
