@@ -288,10 +288,6 @@ def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path
     assert "push" in calls
 
 
-def _git(repo, *args: str) -> None:
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True)
-
-
 def _claim_leaf(tmp_path, shape: str):
     """A claimed leaf in a linked worktree; the main checkout is on ``park``, not ``dev``."""
     from tests.review_repo_helpers import make_layout_finish_repo

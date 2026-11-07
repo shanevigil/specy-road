@@ -14,9 +14,9 @@
 
 ## Touch zones (final)
 
-Unchanged from the brief: `specy_road/bundled_scripts/roadmap_edit_fields.py`, `specy_road/bundled_scripts/roadmap_crud_argparse.py`, `specy_road/cli_usage.py`, `tests/test_roadmap_crud_dependencies.py`, `specy_road/finish_work_artifacts.py`, `specy_road/bundled_scripts/abort_task_pickup.py`, `tests/test_finish_work_cleanup.py`, `tests/test_abort_task_pickup.py`, `specy_road/bundled_scripts/finish_task.py`, `tests/test_finish_merge_mode.py`, `docs/git-workflow.md`, `CHANGELOG.md`, `specy_road/bundled_scripts/roadmap_crud_ops.py`, `tests/test_gui_app_routes_nodes_errors.py`.
+`specy_road/bundled_scripts/roadmap_edit_fields.py`, `specy_road/bundled_scripts/roadmap_crud_argparse.py`, `specy_road/cli_usage.py`, `tests/test_roadmap_crud_dependencies.py`, `specy_road/finish_work_artifacts.py`, `specy_road/bundled_scripts/abort_task_pickup.py`, `tests/test_finish_work_cleanup.py`, `tests/test_abort_task_pickup.py`, `specy_road/bundled_scripts/finish_task.py`, `tests/test_finish_merge_mode.py`, `docs/git-workflow.md`, `CHANGELOG.md`, `specy_road/bundled_scripts/roadmap_crud_ops.py`, `tests/test_gui_app_routes_nodes_errors.py`, `tests/test_finish_merge_failure_undo.py`.
 
-`roadmap_edit_fields.py` stayed in the list because the brief names it and the dependency parser there is what the resolved keys still go through. No file outside the list was edited. `docs/roadmap-authoring.md` and `docs/pm-workflow.md` still describe `set-dependencies` as taking node_keys; the sheet leaves `docs/roadmap-authoring.md` to M22.11, and neither file is in this leaf's zones.
+The last path was added with `specy-road edit-node` before that file was edited. The same command rewrote the claim's `touch_zones` in `roadmap/registry.yaml` so the row matches the node. `roadmap_edit_fields.py` stayed in the list because the brief names it and the dependency parser there is what the resolved keys still go through. `docs/roadmap-authoring.md` and `docs/pm-workflow.md` still describe `set-dependencies` as taking node_keys; the sheet leaves `docs/roadmap-authoring.md` to M22.11, and neither file is in this leaf's zones.
 
 A6 is not binding: `M16.1.1` and `M16.1.2` are Not Started. No file under `tests/parity/` changed.
 
@@ -32,7 +32,7 @@ A6 is not binding: `M16.1.1` and `M16.1.2` are Not Started. No file under `tests
 - `_say_still_on_feature`: the closing line after a merge or auto landing.
 - `_deps` (test): one `run_crud` call with `--repo-root`.
 - `_git`, `_linked`, `_prefix` (finish cleanup tests): a linked worktree in the embedded and nested layouts.
-- `_git`, `_claim_leaf`, `_open_leaf`, `_place_main_copies` (abort tests): a claimed leaf whose main checkout is not on the integration branch, so abort can check that branch out in the worktree.
+- `_claim_leaf`, `_open_leaf`, `_place_main_copies` (abort tests): a claimed leaf whose main checkout is not on the integration branch, so abort can check that branch out in the worktree. They call the module's existing `_git`.
 
 ### Branches or guards
 
@@ -58,3 +58,15 @@ none
 - `test_abort_from_a_linked_worktree_cleans_the_main_checkout`: the same four file kinds from `abort-task-pickup` in both layouts.
 - `test_finish_merge_prints_push_disclosure_for_unrelated_dev_commit`: extended so the successful merge ends with the checkout line.
 - `test_finish_merge_omits_the_branch_line_when_the_branch_is_deleted`: the line is absent with `--delete-branch`.
+
+## Fix round
+
+The checkout guidance is printed after the landing outcome whenever this checkout is still on the feature branch. Three tests in `tests/test_finish_merge_failure_undo.py` still required the outcome to be the final line on that path: a merge with no `--delete-branch`, and a landing whose post-checkout hook fails after HEAD is already the feature branch (`land: local` and push). Each still asserts its outcome line, and the final line is the guidance. `--delete-branch`, the retried landing, and the already-merged follow-up still end on their outcome lines. The second `_git` in `tests/test_abort_task_pickup.py` was removed; those tests use the helper already at the top of the file.
+
+## Probes
+
+- Class "a successful merge whose stdout must end on the landing outcome": re-ran `tests/test_finish_merge_failure_undo.py` before the edit; the only failures were `test_a_landed_finish_prints_its_outcome_last` with no `--delete-branch`, and `test_feature_checkout_failure_keeps_a_landed_finish` for `local` and `push`. Each stdout already ended with the checkout guidance. The `--delete-branch` rows, the retried landing, and the already-merged follow-up still ended on their outcome lines, so those assertions stayed.
+- Other finish tests that name a landing outcome (`tests/test_finish_merge_mode.py`, `tests/test_finish_work_cleanup.py`, `tests/test_prerelease_s2.py`, `tests/test_prerelease_s5.py`, `tests/test_finish_on_complete_override.py`, `tests/test_finish_pr_mode_merge.py`, `tests/test_branch_cleanup.py`): they use `in`, or they already require the guidance as the final line (`endswith`). No other `_last_line` or `endswith` requires the outcome to be last.
+- `test_restore_failure_after_reset_saves_a_copy` asserts `still on` is absent from the undo error of a failed landing. That test passed, so the guidance is not on that path.
+- Class "a later function definition shadows an earlier helper in the same module": the only doubled name this leaf added is `_git` in `tests/test_abort_task_pickup.py`. `tests/test_finish_work_cleanup.py` and `tests/test_finish_merge_mode.py` each define `_git` once, in their own module. The later abort definition was deleted. Its callers do not read command output, so the earlier `cwd=` helper covers them.
+- `specy-road digest --check` fails on the quality-by-area table. Rendering the digest at the merge commit and again with this zone edit produced the same text, so the drift was already on the merged branch and this edit does not change `roadmap-context.md`.
