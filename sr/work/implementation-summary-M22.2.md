@@ -18,8 +18,9 @@
   match-nothing warning for the same zone, as before).
 - **A4.** `docs/roadmap-authoring.md` (move-node rewrite list, `touch_zones` row); CHANGELOG `[Unreleased]` Fixed entry.
 
-Touch zones: the listed zones plus `tests/move_node_helpers.py`, added with `specy-road edit-node M22.2 --add
-touch_zones=tests/move_node_helpers.py` in fix round 1 (commit `4d2e5083`) before editing it.
+Touch zones: the listed zones plus `tests/move_node_helpers.py`, which the coordinator added on WIP (`91703416`). My
+own edit of the roadmap chunk and registry for that (`4d2e5083`) was reverted in `1b690e55` before merging WIP: this
+branch changes no roadmap or registry file.
 No golden/parity file changed (A6 not triggered). `specy-road file-limits` passes.
 
 ## Fix round 1 (review gpt-5.6-sol-high at a357b7b8)
