@@ -80,6 +80,7 @@ entries:
       - tests/test_upgrade_preview.py
       - docs/upgrading.md
       - CHANGELOG.md
+      - specy_road/sibling_repos.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -125,22 +126,6 @@ entries:
       - CHANGELOG.md
       - specy_road/worker_state.py
       - specy_road/schemas/worker-record.schema.json
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: worker-cost-and-stale-presence
-    node_id: M22.13
-    branch: feature/rm-worker-cost-and-stale-presence
-    touch_zones:
-      - specy_road/session_presence.py
-      - specy_road/worker_ops_lifecycle.py
-      - tests/test_worker_usage_shell_cli.py
-      - tests/test_session_presence.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-      - specy_road/worker_adapter_base.py
-      - specy_road/bundled_scripts/session_cli.py
-      - tests/test_session_overlap.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

@@ -23,7 +23,8 @@
         "tests/test_upgrade.py",
         "tests/test_upgrade_preview.py",
         "docs/upgrading.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/sibling_repos.py"
       ],
       "type": "task"
     },

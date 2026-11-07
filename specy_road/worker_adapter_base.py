@@ -20,12 +20,12 @@ from specy_road.worker_adapter_parsers import (
     _snip,
     _tokens,
     apply_roster_price_estimate,
-    model_from_argv,
     placeholder_problem,
     project_root_from_worktree,
     substitute_prompt,
     worktree_from_argv,
 )
+from specy_road.worker_models import launch_model
 
 
 @dataclass(frozen=True)
@@ -223,7 +223,7 @@ class Adapter:
         parsed = self.parse(line)
         if not parsed or parsed.usage is None or parsed.usage.get("cost_usd") is not None:
             return [parsed] if parsed else []
-        model = model_from_argv(launch.argv)
+        model = launch_model(launch.argv)   # a channels.cli runs as `sh -c <command>`: its literal -m counts
         if not model:
             return [parsed]
         usage = apply_roster_price_estimate(

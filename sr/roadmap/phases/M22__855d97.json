@@ -192,7 +192,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.13_worker-cost-and-stale-presence_99ad0839-6c85-4631-b67b-80ef2d3b3c57.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone",
       "touch_zones": [
         "specy_road/session_presence.py",
