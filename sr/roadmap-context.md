@@ -140,7 +140,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.6` A queued worker message that cannot be delivered flags the worker and goes out with its next turn `queued-message-undelivered` — task — **Not Started**
   - `M22.7` ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading `ready-changelog-reminder` — task — **Not Started**
   - `M22.8` init project ends with the next steps: set the integration branch, commit the scaffold, validate `init-next-steps` — task — **Complete**
-  - `M22.9` Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME `local-roster-and-codex-reviewer-isolation` — task — **Not Started**
+  - `M22.9` Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME `local-roster-and-codex-reviewer-isolation` — task — **Complete**
   - `M22.10` reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping `finish-keeps-local-claim-and-landing` — task — **Complete**
   - `M22.11` Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout `reports-say-what-happened` — task — **Not Started**
   - `M22.12` The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing `gate-without-remote-head` — task — **Not Started**
@@ -320,7 +320,6 @@ Do not pick these up.
 - `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
-- `M22.9` on `feature/rm-local-roster-and-codex-reviewer-isolation` since 2026-11-07
 
 ## Quality by area
 
@@ -328,15 +327,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 35 | 0 | 2.54 | 54% | 34 | 2 |
+| `docs` **flagged** | 36 | 0 | 2.50 | 53% | 34 | 2 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 3.00 | 100% | 1 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `CHANGELOG.md` | 40 | 0 | 2.15 | 40% | 31 | 2 |
+| `CHANGELOG.md` | 41 | 0 | 2.12 | 39% | 31 | 2 |
 | `planning` | 1 | 0 | 1.00 | 0% | 0 | 0 |
-| `specy_road` | 46 | 0 | 2.37 | 50% | 42 | 3 |
+| `specy_road` | 46 | 0 | 2.33 | 48% | 41 | 3 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 48 | 0 | 2.31 | 48% | 42 | 3 |
+| `tests` | 48 | 0 | 2.27 | 46% | 41 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

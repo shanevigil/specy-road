@@ -168,22 +168,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: local-roster-and-codex-reviewer-isolation
-    node_id: M22.9
-    branch: feature/rm-local-roster-and-codex-reviewer-isolation
-    touch_zones:
-      - specy_road/roster_local.py
-      - specy_road/worker_adapter_codex.py
-      - tests/test_roster_worktree_dry_run.py
-      - tests/test_harness_launch.py
-      - docs/orchestration-roster.md
-      - docs/orchestration-reviewer-output.md
-      - CHANGELOG.md
-      - specy_road/review_record_write.py
-      - tests/test_review_record_write.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: accept-policy-for-all-open-claims
     node_id: M22.34
     branch: feature/rm-accept-policy-for-all-open-claims

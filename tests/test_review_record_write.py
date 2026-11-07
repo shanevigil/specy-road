@@ -21,6 +21,7 @@ from specy_road.model_profiles import load_profile
 from specy_road.review_delegate import DelegateError, delegate
 from specy_road.review_record_write import output_schema, review_run_lock, reviewer_env, snapshot, written
 from specy_road.worker_adapter_base import file_instruction
+from specy_road.worker_adapter_codex import profile_home
 from specy_road.worker_adapters import Codex, Cursor, Unsupported, reviewer_cli
 
 M87_NOTE = Path(__file__).resolve().parents[1] / "docs" / "design-notes" / "M8.7-runtime-verification-harness-facts.md"
@@ -209,13 +210,17 @@ def test_codex_reviewer_runs_read_only_with_the_output_schema(tmp_path: Path) ->
     prompt, schema, out = tmp_path / "p.md", tmp_path / "s.json", tmp_path / "OUTPUT-sol.json"
     prompt.write_text("review it")
     fresh = Codex().reviewer_launch(prompt, "gpt-6.1-sol", tmp_path, "high", schema=schema, output=out)
+    memory = ["-c", "features.memories=false", "-c", "memories.use_memories=false",
+              "-c", "memories.generate_memories=false"]
     assert fresh.argv == ["codex", "exec", "--json", "-m", "gpt-6.1-sol", "-c", "model_reasoning_effort=high",
-                          "-c", "sandbox_mode=read-only", "-c", "approval_policy=never",
+                          "-c", "sandbox_mode=read-only", "-c", "approval_policy=never", *memory,
                           "--output-schema", str(schema), "-o", str(out), "-"]
+    assert fresh.env == {"CODEX_HOME": str(profile_home("gpt-6.1-sol"))}
     assert fresh.stdin == "review it"
     resumed = Codex().reviewer_launch(prompt, "gpt-6.1-sol", tmp_path, session=("t1", True), schema=schema, output=out)
     assert resumed.argv == ["codex", "exec", "resume", "--json", "-m", "gpt-6.1-sol", "-c", "sandbox_mode=read-only",
-                            "-c", "approval_policy=never", "t1", "-"]
+                            "-c", "approval_policy=never", *memory, "t1", "-"]
+    assert resumed.env == {"CODEX_HOME": str(profile_home("gpt-6.1-sol"))}
     assert "sandbox_mode=read-only" in M87_NOTE.read_text(encoding="utf-8")
 
 
@@ -228,15 +233,26 @@ def test_a_codex_review_delegate_files_the_verdict_from_its_output_file(tmp_path
     (reviews / "PACKET.md").write_text("# Review packet\n")
     bin_dir, spec = tmp_path / "bin", tmp_path / "codex-spec.json"
     bin_dir.mkdir()
-    (bin_dir / "codex").write_text(FAKE_CODEX.format(python=sys.executable))
+    script = FAKE_CODEX.format(python=sys.executable).replace(
+        'open(spec["calls"], "w").write(json.dumps(sys.argv[1:]))',
+        'open(spec["calls"], "w").write(json.dumps({"argv": sys.argv[1:], '
+        '"CODEX_HOME": os.environ.get("CODEX_HOME")}))')
+    (bin_dir / "codex").write_text(script)
     (bin_dir / "codex").chmod(0o755)
     spec.write_text(json.dumps({"calls": str(tmp_path / "codex-calls.json"),
                                 "answer": review_output(git(repo, "rev-parse", "HEAD"), model="sol")}))
+    user_home = tmp_path / "user-codex"
+    user_home.mkdir()
+    monkeypatch.setenv("CODEX_HOME", str(user_home))   # the caller's home: the launch must replace it
     monkeypatch.setenv("FAKE_CODEX_SPEC", str(spec))
     monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
     run = delegate(repo, "M1.1", "sol", sleep=lambda s: None)
     assert run["state"] == "complete" and run["outcome"] == "recorded", run["reason"]
-    argv = json.loads((tmp_path / "codex-calls.json").read_text())
+    seen = json.loads((tmp_path / "codex-calls.json").read_text())
+    argv = seen["argv"]
+    assert seen["CODEX_HOME"] == str(profile_home("sol"))
+    for flag in ("features.memories=false", "memories.use_memories=false", "memories.generate_memories=false"):
+        assert argv[argv.index(flag) - 1] == "-c"
     assert "sandbox_mode=read-only" in argv and "--force" not in argv
     schema = json.loads(Path(argv[argv.index("--output-schema") + 1]).read_text())
     assert strict_problems(schema) == []                                    # OpenAI strict mode accepts it
