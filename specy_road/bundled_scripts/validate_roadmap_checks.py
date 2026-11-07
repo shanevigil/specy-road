@@ -30,6 +30,7 @@ from specy_road.bundled_scripts.validate_registry_overlap import (
     warn_registry_touch_zone_overlap,
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
+from specy_road.decisions import notice_decisions_naming_no_node
 from specy_road.node_kinds import is_gate
 
 
@@ -364,6 +365,7 @@ def run_validation(
     top = git_root(r) or r
     warn_touch_zones_match_nothing(nodes, r, git_root=top)
     notice_stale_sheet_zones(nodes, r, git_root=top)   # stdout: --strict does not count it
+    notice_decisions_naming_no_node(r, id_set)   # stdout: --strict does not count it
     warn_untracked_zones(nodes, r, claims=registry.get("entries") or [], show_all=show_all)
     warn_summary_rule(r, nodes)   # implementation_summary: commit against a .gitignore that ignores summaries (M15.22)
     warn_authoring_gaps(nodes, r, gate, show_all=show_all, strict_authoring=strict_authoring)
