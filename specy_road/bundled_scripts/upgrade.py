@@ -231,8 +231,8 @@ def _check(
     rule refused) fails the run (exit 1).
     The generated files are done only when validate passed (so they were
     regenerated), nothing was refused, and ``digest --check`` passes; otherwise
-    ``specy-road digest`` stays a next step. ``before_digest`` runs after
-    validate and before the digest is first rendered.
+    ``specy-road digest`` stays a next step. ``before_digest`` runs once
+    validate has passed, before the digest is regenerated.
     """
     _section("validate")
     try:
@@ -240,9 +240,9 @@ def _check(
         valid = True
     except SystemExit as e:
         valid = not e.code
-    before_digest()
     generated_refused = False
     if valid:
+        before_digest()
         _section("generated files")
         generated_refused = regenerate(project, tracked_in, verb, caller_env)
     _section("digest --check")
