@@ -38,6 +38,16 @@ body. Keep section bodies focused; link to PRs for detail.
 - A presence session stops counting as live once its recorded worktree is gone or its branch is deleted;
   `session list --all` marks it `stale: worktree gone` or `stale: branch gone`. `worker terminate` ends the
   presence session the worker's harness started in its worktree, and leaves other agents' sessions alone.
+- Worker terminate and finish rollback (rc4 final review, M22.20). `worker terminate` lists the
+  group's escaped descendants at every step and signals them with the group's SIGTERM and SIGKILL,
+  not after its grace, so a child one of them forks during the grace is caught too; a zombie
+  descendant or group member is no survivor; `descendants_unchecked` stays on the worker record
+  until a pass ends with every `ps` listing read and no survivor, and the next `terminate` repeats
+  the pass instead of marking the worker terminated (a process already re-parented stays out of
+  reach). finish's rollback writes each file to a temporary file and renames it into place (a
+  failed write keeps the previous bytes and names the temporary file), restores file modes, and,
+  when the staged entries changed since it started, saves and names the index it replaces.
+
 - A sandboxed worker turn can read its leaf's review records. The `work/reviews/<ID>/` outbox now starts with a
   copy of the regular files already there (REVIEW, notes and `history/` records; links are not copied), so a
   fix round sees its blocking review. Only `READY-*` files are still moved back, so an edited copy of a record
