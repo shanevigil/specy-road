@@ -343,7 +343,9 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--worktree", type=Path, metavar="PATH",
                    help="Reviewer --channel cli: run in this checkout instead of the worktree that has the leaf's "
                         "claimed branch checked out")
-    p.add_argument("-o", "--output", type=Path)
+    p.add_argument("-o", "--output", type=Path,
+                   help="Prompt file. A relative path is relative to the current directory; after that, a path "
+                        "inside the project follows the safe-write rule and a path outside is a plain write")
     p.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     p.add_argument("--context-feedback", action="store_true",
                    help="Executor only: ask for the pilot's three-line context-feedback block "
@@ -383,10 +385,14 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(1) from None
 
 
-def _in_project(root: Path, path: Path) -> bool:
-    """``path`` spelled under ``root``, ``.`` and ``..`` collapsed, without following a symlink."""
-    base = root if root.is_absolute() else Path.cwd() / root
-    full = path if path.is_absolute() else base / path
+def _spelled(path: Path) -> Path:
+    """``path`` with ``.`` and ``..`` collapsed, without following a symlink.
+
+    A relative path is relative to the cwd, which is where a plain write creates it. An absolute path stays
+    absolute. The inside-project choice is made only after this, so ``-o relative.md`` is never joined to the
+    project first.
+    """
+    full = path if path.is_absolute() else Path.cwd() / path
     parts: list[str] = []
     for name in full.parts:
         if name == "..":
@@ -394,18 +400,27 @@ def _in_project(root: Path, path: Path) -> bool:
                 parts.pop()
         elif name != ".":
             parts.append(name)
-    full = Path(*parts)
+    return Path(*parts)
+
+
+def _in_project(root: Path, path: Path) -> bool:
+    """``path`` after :func:`_spelled` lies under the spelled project root."""
+    base = _spelled(root)
+    full = _spelled(path)
     return full == base or base in full.parents
 
 
 def _write_prompt(root: Path, out: Path, text: str) -> None:
-    """The prompt file. Inside the project it goes through the safe-write rule; an explicit ``-o`` outside stays
-    the caller's own write."""
-    if _in_project(root, out):
-        safe_write.write(root, out, text)
+    """Write the prompt at its cwd-relative destination.
+
+    Inside the project the spelled path goes through the safe-write rule; outside, it is the caller's own write.
+    """
+    dest = _spelled(out)
+    if _in_project(root, dest):
+        safe_write.write(_spelled(root), dest, text)
         return
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text, encoding="utf-8")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(text, encoding="utf-8")
 
 
 def _launch_warning(ns: argparse.Namespace, config: dict, entry: dict, prof: Profile | None, root: Path) -> None:

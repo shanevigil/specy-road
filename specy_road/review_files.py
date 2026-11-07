@@ -100,18 +100,38 @@ def review_path(repo_root: Path, node_id: str, model: str) -> Path:
     return reviews_dir(repo_root, node_id) / f"{REVIEW_PREFIX}{model}.md"
 
 
-def project_of(path: Path) -> Path:
-    """The project directory that holds ``work/`` on ``path``.
+def _work_index(parts: tuple[str, ...]) -> int | None:
+    """The hand-off ``work``: the last one followed by ``reviews``, else the last ``work``.
 
-    A hand-off path is ``<project>/work/...``. A path with no ``work`` component
-    (a unit test's bare directory) is two parents up, so the check still sees
-    the directory the file sits in.
+    An earlier directory also named ``work`` is above the project. There is no
+    other spelling: a ``work`` after ``reviews``, or a ``work`` that is not the
+    hand-off pair, is not the one ``reviews.parents[2]`` names.
     """
-    parts = path.parts
-    if "work" in parts:
-        i = parts.index("work")
-        return Path(*parts[:i]) if i else Path(parts[0])
-    return path.parents[2] if len(path.parents) > 2 else path.parent
+    handoff = None
+    last = None
+    for i, name in enumerate(parts):
+        if name != "work":
+            continue
+        last = i
+        if i + 1 < len(parts) and parts[i + 1] == "reviews":
+            handoff = i
+    return handoff if handoff is not None else last
+
+
+def project_of(path: Path) -> Path:
+    """The project directory that holds the hand-off ``work/``.
+
+    That ``work`` is the last component named ``work`` immediately followed by
+    ``reviews`` (``<project>/work/reviews/<node>``, so the node directory's
+    ``parents[2]``). A path under ``work/`` with no ``reviews`` uses the last
+    ``work``. A path with no ``work`` (a unit test's bare directory) is two
+    parents up, so the check still sees the directory the file sits in. A
+    ``work`` that is the first component has no parent; that component is the root.
+    """
+    i = _work_index(path.parts)
+    if i is None:
+        return path.parents[2] if len(path.parents) > 2 else path.parent
+    return Path(*path.parts[:i]) if i else Path(path.parts[0])
 
 
 def _unlink_case_variant(directory: Path, name: str) -> None:

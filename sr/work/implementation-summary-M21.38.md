@@ -1,6 +1,6 @@
 # M21.38 — Review writers and the review lock refuse any symlink on the path
 
-Review writers and `review_run_lock` now use `safe_write` from the project directory that holds `work/` (`project_of`: the parent of the `work` component, which is `reviews.parents[2]` for a hand-off directory). A symlink at `work`, `work/reviews`, `work/reviews/<node>`, or at the lock, record, marker, acceptance, packet or prompt file is refused before any write or launch. `SafeWriteError` is translated at the CLI to `error: <message>` on stderr, exit 1, no traceback.
+Review writers and `review_run_lock` now use `safe_write` from the project directory that holds the hand-off `work/` (`project_of`: the parent of the last `work` followed by `reviews`, which is `parents[2]` of `work/reviews/<node>` even when an earlier directory is also named `work`). A symlink at `work`, `work/reviews`, `work/reviews/<node>`, or at the lock, record, marker, acceptance, packet or prompt file is refused before any write or launch. `SafeWriteError` is translated at the CLI to `error: <message>` on stderr, exit 1, no traceback.
 
 `review record` checks the live `REVIEW-<model>.md` and `history/` before it writes the record or clears `REJECTED-<model>.md`. After a reviewer run, `Snapshot` keeps that project root and `restore` (and the post-run snapshot) lstat `work` and `work/reviews` before any traversal; a symlink at either is a `review_failure` and is not read, deleted or written through. Below a verified root, `replace_file` still replaces a final link and `real_dirs` still removes reviewer-planted links.
 
@@ -10,15 +10,17 @@ Touch zones, unchanged: `specy_road/review_lock.py`, `specy_road/review_policy_p
 
 ## Added
 
-- `review_files.project_of`: one way to name the project directory that holds `work/`, so every writer checks from that root.
+- `review_files._work_index`: the hand-off `work` is the last one followed by `reviews`, else the last `work`, so an earlier directory named `work` is not the project.
+- `review_files.project_of`: the parent of that `work`, so every writer checks from the hand-off project. No `work` at all stays two parents up.
 - `review_files._unlink_case_variant`: the case-variant loop unlinks only an `lstat` regular file or symlink entry, and only after the path has been checked.
 - `review_write_check.ancestor_symlink`: `replace_file` and `append_log` refuse a symlink at any ancestor from the project root, not only the parent.
 - `review_write_check.handoff_ancestor_link`: `Snapshot.restore` and the post-run snapshot lstat `work` and `work/reviews` before they traverse.
 - `review_delegate._save`: skip `save_run` when an ancestor is a symlink, so its mkdir (outside this leaf) does not create a directory through a replaced `work/reviews`.
 - `review_delegate._prompt_path`: the four delegate prompt file names in one place.
 - `review_delegate._prompt_pair`: both files of a pair are checked before either is written, so a link at the second name writes nothing and launches nothing.
-- `role_prompt._in_project`: an explicit `-o` outside the project stays a plain write; the check is lexical, so a symlink at `work` is still inside and is refused.
-- `role_prompt._write_prompt`: the in-project prompt file goes through `safe_write` before launch.
+- `role_prompt._spelled`: a relative path is cwd-relative, with `.` and `..` collapsed and no symlink followed, before any inside-project choice.
+- `role_prompt._in_project`: the spelled destination under the spelled project root. A symlink at `work` is still inside and is refused.
+- `role_prompt._write_prompt`: the spelled in-project path goes through `safe_write`; an explicit `-o` outside stays a plain write of that same destination.
 - `review_run_lock` guard: `safe_write.mkdirs` and `safe_write.open_lock` replace `mkdir` and `open`, so a symlink at `work`, `work/reviews`, the node or the lock raises before `flock`.
 - `write_rejected` guard: `safe_write.check` from the project root before any mkdir; a refusal is printed and the record refusal still returns.
 - `_review_record_finish` guard: the live record and `history/` are checked before `write_review` and before `clear_rejected`.
@@ -50,3 +52,18 @@ Touch zones, unchanged: `specy_road/review_lock.py`, `specy_road/review_policy_p
 - `test_a_reviewer_that_replaces_reviews_with_a_link_is_a_review_failure`: a fake reviewer replacing `work/reviews` after launch leaves the outside tree unchanged and the run is `review_failure`.
 - `test_write_rejected_refuses_a_linked_ancestor_before_mkdir`: `write_rejected` itself refuses a linked `work` before mkdir.
 - `test_writers_refuse_links_out.py` packet row: `ensure_packet` now raises `SafeWriteError`, which that row catches.
+- `test_the_owned_root_is_the_hand_off_project_when_an_earlier_directory_is_named_work`: the hand-off node, a file under it, a `work/` path with no `reviews`, and a bare path with no `work`.
+- `test_prompt_o_relative_is_cwd_relative_before_the_safe_write_choice`: `-o relative.md` and `-o nested/relative.md` from a cwd outside the project, then `-o work/from-cwd.md` from the project.
+
+## Probes
+
+- `project_of` of `.../workspaces/work/repo/work/reviews/M1.1` and of `REVIEW-opus.md` under it returns `repo`, the node directory's `parents[2]`. The earlier `work` is not the hand-off. `write_review` then writes that file.
+- `project_of` of `.../workspaces/work/repo/work/prompt.md` (a `work` with no `reviews`) returns `repo`, the last `work`. Same rule, not only the hand-off pair.
+- `project_of` of a bare `tmp/M1.1/REVIEW-opus.md` with no `work` is still two parents up. `tests/test_review_file_case.py` still passes.
+- Callers of `project_of`: `review_lock`, `write_review`, `archive_review`, `write_rejected`, `_review_record_finish`, `ensure_packet`, `write_human_approval`, `_write_acceptances`, `ancestor_symlink`, and `snapshot`. None of them searches for a component named `work`. They use this one root.
+- `handoff_ancestor_link` walks `work` and `work/reviews` under the root `snapshot` stored from `project_of`. It does not pick an earlier `work`.
+- Delegate prompt files are `repo_root / "work" / <name>` written with `safe_write` root `repo_root`. A directory named `work` outside the repo is above that root. Not this class.
+- `prompt -o relative.md` and `prompt -o nested/relative.md` from a cwd outside the project create those files under the cwd. `repo/relative.md` and `repo/nested` are absent.
+- `prompt -o work/from-cwd.md` with the cwd at the project creates `work/from-cwd.md` inside it, so a relative path is cwd-relative and then classified.
+- The default prompt path, used when `-o` is omitted, is `root / "work" / prompt-<node>-<role>-<model>.md`. It is a project path, not a cwd-relative user path. Unchanged.
+- The only user-supplied output path in this leaf is `prompt -o`. No other writer classifies a relative path by joining it to the project.

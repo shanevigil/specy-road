@@ -396,3 +396,38 @@ def test_write_rejected_refuses_a_linked_ancestor_before_mkdir(tmp_path: Path, c
     err = capsys.readouterr().err
     assert str(repo / "work") in err and "Traceback" not in err
     assert got == node / "REJECTED-opus.md" and _tree(outside) == before
+
+
+def test_the_owned_root_is_the_hand_off_project_when_an_earlier_directory_is_named_work(tmp_path: Path) -> None:
+    project = tmp_path / "consumer" / "workspaces" / "work" / "repo"
+    node = project / "work" / "reviews" / "M1.1"
+    record = node / "REVIEW-opus.md"
+    bare = tmp_path / "M1.1" / "REVIEW-opus.md"
+
+    assert project_of(node) == project == node.parents[2]
+    assert project_of(record) == project
+    assert project_of(project / "work" / "prompt.md") == project
+    assert project_of(bare) == bare.parents[2]
+    node.mkdir(parents=True)
+    write_review(record, "ok\n")
+    assert record.read_text() == "ok\n"
+
+
+def test_prompt_o_relative_is_cwd_relative_before_the_safe_write_choice(tmp_path: Path, monkeypatch) -> None:
+    repo, _spec = delegate_repo(tmp_path)
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    monkeypatch.chdir(outside)
+
+    code = run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "-o", "relative.md",
+                    "--repo-root", str(repo))
+    nested = run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "-o", "nested/relative.md",
+                      "--repo-root", str(repo))
+
+    assert code == 0 and nested == 0
+    assert (outside / "relative.md").is_file() and (outside / "nested" / "relative.md").is_file()
+    assert not (repo / "relative.md").exists() and not (repo / "nested").exists()
+    monkeypatch.chdir(repo)
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "-o", "work/from-cwd.md",
+                    "--repo-root", str(repo)) == 0
+    assert (repo / "work" / "from-cwd.md").is_file()
