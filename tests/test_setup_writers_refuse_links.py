@@ -423,6 +423,36 @@ def test_a_symlink_loop_on_a_managed_path_is_refused_without_a_traceback(
     _refused(lambda: LOOP_RUNNERS[runner](repo), capsys, repo / rel, *watched, outside)
 
 
+@pytest.mark.parametrize("runner", list(LOOP_RUNNERS))
+def test_an_ignore_file_linked_right_before_replace_is_an_error(
+        tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, runner: str) -> None:
+    """The re-check before replace refuses a ``.gitignore`` a racer linked out: ``error:``, exit 1, no write out."""
+    repo, outside = _inited(tmp_path)
+    (repo / ".gitignore").write_text("node_modules/\n", encoding="utf-8")   # its managed block is now missing
+    theirs = outside / "theirs.json"
+    before = theirs.read_bytes()
+    chmod = os.chmod
+
+    def swap(tmp, mode: int, **kw) -> None:   # the last step before the re-check: a racer links the destination
+        chmod(tmp, mode, **kw)
+        if Path(tmp).name.startswith("..gitignore."):   # safe_write.write's temp file for .gitignore
+            dest = Path(tmp).parent / ".gitignore"
+            dest.unlink()
+            dest.symlink_to(theirs)
+
+    monkeypatch.setattr(os, "chmod", swap)
+    capsys.readouterr()
+    try:
+        code = LOOP_RUNNERS[runner](repo)
+    except SystemExit as e:
+        code = e.code
+    err = capsys.readouterr().err
+    assert code == 1, err
+    assert any(ln.startswith("error: ") and ".gitignore is a symlink" in ln for ln in err.splitlines()), err
+    assert "Traceback" not in err
+    assert theirs.read_bytes() == before
+
+
 def test_refresh_stubs_refuses_a_linked_stub_and_still_makes_the_skill_links(tmp_path: Path, capsys) -> None:
     repo, outside = _inited(tmp_path)
     run_init(target=repo, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None)

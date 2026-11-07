@@ -14,6 +14,7 @@ from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report  # noqa: F401 — re-exported
 from specy_road.agent_ignores import apply_and_report, check_ignore_files
 from specy_road.agents_md_block import apply_agents_and_report
+from specy_road.managed_block import raise_rule_refusal
 from specy_road.specyrd_hooks import hook_destinations
 from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refresh_stubs
     SKILLS_REL,
@@ -288,6 +289,12 @@ def _maybe_install_specyrd_hooks(
         install_pre_push_hook(repo_root, dry_run=dry_run, written=written)
 
 
+def _apply_ignores(repo_root: Path, prefix: str, written: list[str], *, dry_run: bool) -> None:
+    """Both ignore-file blocks; one linked after the preflight is refused right before replace and raised."""
+    apply_and_report(repo_root, prefix, written, dry_run=dry_run)
+    raise_rule_refusal(written)
+
+
 @safe_write.exit_on_refusal()   # a refusal, or a symlink loop met before the rule: error, exit 1
 def run_init(
     *,
@@ -347,7 +354,7 @@ def run_init(
     # omitted them is what let the CLAUDE.md overwrite go unnoticed.
     if write_claude_md:
         apply_guide_and_report(repo_root, prefix, written, agent=agent, dry_run=dry_run)
-    apply_and_report(repo_root, prefix, written, dry_run=dry_run)
+    _apply_ignores(repo_root, prefix, written, dry_run=dry_run)
     if project is not None:   # no roadmap yet: `init project` writes the block when it scaffolds one
         apply_agents_and_report(project, written, dry_run=dry_run, prefix=prefix)
     elif write_claude_md and agent in GUIDE_AGENTS:   # the CLAUDE.md imports must name files that exist

@@ -13,7 +13,7 @@ from specy_road.agent_ignores import apply_and_report, check_ignore_files
 from specy_road.agents_md_block import apply_agents_files
 from specy_road.generated_files import GENERATED_COMMITTED, regenerate_generated_files
 from specy_road.harness_instruction_files import AGENTS_MD
-from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
+from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, raise_rule_refusal
 from specy_road.model_profiles import PROFILES_REL, load_profile
 from specy_road.runtime_paths import (
     git_root,
@@ -250,6 +250,7 @@ def _scaffold(
     _apply_agents_md(dst, prefix, written, dry_run=dry_run)
     seed = "" if prefix else (src / _GITIGNORE).read_text(encoding="utf-8")
     apply_and_report(root, prefix, written, dry_run=dry_run, gitignore_seed=seed)
+    raise_rule_refusal(written)   # an ignore file linked after the preflight, refused right before replace
     if top is not None:
         _record_layout(top, prefix, written, dry_run=dry_run)
     _write_generated(dst, prefix, written, skipped, dry_run=dry_run, force=force)

@@ -102,6 +102,16 @@ def rule_refusal(outcome: str) -> str | None:
     return outcome.removeprefix("refused: ") if outcome.startswith("refused: ") and outcome != REFUSED else None
 
 
+def raise_rule_refusal(written: list[str]) -> None:
+    """Raise ``SafeWriteError`` for the first :func:`rule_refusal` among ``written``'s outcomes, if any.
+
+    For a command that stops on the rule (``init project``, ``specyrd init``): the
+    re-check right before replace refuses a link swapped in after its preflight.
+    """
+    if why := next((w for e in written if (w := rule_refusal(getattr(e, "outcome", "")))), None):
+        raise safe_write.SafeWriteError(why)
+
+
 def render_block(
     lines: list[str], *, note: str = "", style: MarkerStyle = HASH
 ) -> str:
@@ -192,8 +202,10 @@ def _write(path: Path, text: str, outcome: str, dry_run: bool = False, strict: b
     if dry_run:
         return outcome
     write = _strict_write if strict else _plain_write
-    try:   # strict: ``_read`` checked the rule already, so a refusal here is a race and reads as failed
+    try:   # strict: a refusal here is the re-check before replace catching a race; it is still the rule's
         write(path, text)
+    except safe_write.SafeWriteError as e:
+        return f"refused: {e}"
     except OSError:
         return FAILED
     return outcome
