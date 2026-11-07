@@ -143,3 +143,13 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
+  - codename: gui-orch-view-model
+    node_id: M17.2
+    branch: feature/rm-gui-orch-view-model
+    touch_zones:
+      - gui/pm-gantt/src/orchestrationSnapshot.ts
+      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
+      - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
