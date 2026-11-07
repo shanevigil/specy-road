@@ -153,14 +153,39 @@ def test_delegate_refuses_a_ready_author_and_writes_nothing(tmp_path: Path, caps
 
 ALIASED = TWO_FAMILIES.replace("{id: opus, family: anthropic, roles: [reviewer]}",
                                "{id: opus, family: anthropic, roles: [reviewer], harness_model: claude-opus-x}")
+#: opus pins a profile whose file name (custom-model), declared api_id (vendor-model) and alias (opus) all differ.
+CUSTOM = "model-profiles/custom/custom-model.md"
+PROFILED = TWO_FAMILIES.replace("{id: opus, family: anthropic, roles: [reviewer]}",
+                                f"{{id: opus, family: anthropic, roles: [reviewer], profile: {CUSTOM}}}")
+_TEMPLATE = Path(__file__).resolve().parent.parent / "specy_road/templates/project/model-profiles/anthropic-claude"
 
 
-@pytest.mark.parametrize(("agent", "model"), [("Opus", "opus"), ("opus", "OPUS"),
-                                              ("claude-opus-x", "opus"), ("opus", "Claude-Opus-X")])
+def _profiled_repo(tmp_path: Path, roster: str) -> Path:
+    """A review repo on ``roster``; under PROFILED, the custom profile committed on the integration branch only."""
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    if roster == PROFILED:
+        text = (_TEMPLATE / "claude-opus-5-5.md").read_text(encoding="utf-8")
+        head, rest = text.split("aliases:\n", 1)
+        text = head.replace("api_id: claude-opus-5-5", "api_id: vendor-model") + "aliases:\n  - opus\n" + \
+            rest[rest.index("checkpoint:"):]
+        git(repo, "checkout", "-q", "dev")
+        (repo / CUSTOM).parent.mkdir(parents=True)
+        (repo / CUSTOM).write_text(text, encoding="utf-8")
+        git(repo, "add", CUSTOM)
+        git(repo, "commit", "-qm", "profile")
+        git(repo, "checkout", "-q", "feature/rm-thing")
+    return repo
+
+
+@pytest.mark.parametrize(("roster", "agent", "model"), [
+    (ALIASED, "Opus", "opus"), (ALIASED, "opus", "OPUS"),                 # case variants
+    (ALIASED, "claude-opus-x", "opus"), (ALIASED, "opus", "Claude-Opus-X"),   # harness_model
+    (PROFILED, "vendor-model", "opus"), (PROFILED, "opus", "custom-model"),   # declared api_id, file name
+])
 def test_ready_author_and_record_model_are_compared_after_case_folding_and_roster_aliases(
-        tmp_path: Path, agent: str, model: str) -> None:
-    """M22.19: a case variant or roster alias on either side still excludes the executor; others still count."""
-    repo = make_review_repo(tmp_path, orchestration=ALIASED)
+        tmp_path: Path, roster: str, agent: str, model: str) -> None:
+    """M22.19: a case variant or an entry's name on either side still excludes the executor; others still count."""
+    repo = _profiled_repo(tmp_path, roster)
     _ready(repo, agent)
     _review(repo, model)
     _review(repo, "sonnet")
@@ -175,24 +200,25 @@ SHARED = ALIASED.replace("{id: sonnet, family: anthropic, roles: [reviewer]}",
 #: One entry's exact id is another entry's harness_model: an exact id has no precedence.
 COLLIDE = TWO_FAMILIES.replace("{id: sonnet, family: anthropic, roles: [reviewer]}",
                                "{id: sonnet, family: anthropic, roles: [reviewer], harness_model: opus}")
+_TWO = "names more than one roster entry (opus, sonnet)"
 
 
-@pytest.mark.parametrize(("roster", "agent", "name"), [
-    (SHARED, "claude-opus-x", "claude-opus-x"),   # READY: an alias two entries share
-    (COLLIDE, "opus", "opus"),                    # READY: one entry's id, the other's alias
-    (COLLIDE, "sonnet", "opus"),                  # record: opus may be sonnet, the READY author
-    (COLLIDE, "astra", None),                     # record: colliding, but no READY author shares it
+@pytest.mark.parametrize(("roster", "agent", "problem", "counted"), [
+    (SHARED, "claude-opus-x", f"'claude-opus-x' {_TWO}", ["sol"]),   # READY: an alias two entries share
+    (COLLIDE, "opus", f"'opus' {_TWO}", ["sol"]),                    # READY: one entry's id, the other's alias
+    (COLLIDE, "sonnet", f"'opus' {_TWO}", ["sol"]),                  # record: opus may be sonnet, the READY author
+    (COLLIDE, "astra", f"'opus' {_TWO}", ["opus", "sol"]),           # record: colliding, whoever the author is
+    (PROFILED, "vendor-model", "roster entry 'opus': its profile's names cannot be known", ["opus", "sol"]),   # refused
 ])
-def test_a_name_two_roster_entries_answer_to_closes_the_gate(tmp_path: Path, roster: str, agent: str,
-                                                             name: str | None) -> None:
-    repo = make_review_repo(tmp_path, orchestration=roster)
+def test_authorship_that_cannot_be_decided_closes_the_gate(tmp_path: Path, roster: str, agent: str, problem: str,
+                                                          counted: list[str]) -> None:
+    repo = _profiled_repo(tmp_path, roster)
+    if roster == PROFILED:   # a working-tree edit: dispatch refuses the profile, so its names are unknown
+        (repo / CUSTOM).parent.mkdir(parents=True)
+        (repo / CUSTOM).write_text("---\napi_id: something-else\n---\n", encoding="utf-8")
     _ready(repo, agent)
     _review(repo, "opus")
     _review(repo, "sol")
     g = _gate(repo)
-    problem = f"{name!r} names more than one roster entry (opus, sonnet)"
-    if name is None:
-        assert g.passed and not any("more than one roster entry" in p for p in g.problems())
-    else:
-        assert not g.passed and [a.model for a in g.approvals] == ["sol"]
-        assert any(problem in p for p in g.problems())
+    assert not g.passed and sorted(a.model for a in g.approvals) == counted
+    assert any(problem in p for p in g.problems())

@@ -33,11 +33,10 @@ body. Keep section bodies focused; link to PRs for detail.
 ### Fixed
 
 - The review gate compares READY authors and review-record models after one normalization: case-folded, and a
-  name stands for every roster entry whose id, `harness_model` or profile alias it is. An exact id gets no
-  precedence. A READY naming `Opus` or the executor's alias still excludes the executor's own review. A READY
-  name two roster entries answer to closes the gate with a problem naming both. So does a record name, when one
-  of those entries wrote a READY. A READY that is not valid UTF-8 closes the gate too, with a problem naming it
-  (no traceback). An unreadable parent of `POLICY-ACCEPTED.yaml`,
+  name stands for every roster entry whose id, `harness_model`, or profile `api_id`, file name or alias it is. An
+  exact id gets no precedence. A READY naming `Opus` or the executor's alias still excludes the executor's own
+  review. A READY or record name two roster entries have closes the gate with a problem naming both. So does a
+  roster entry whose pinned profile is refused, and a READY that is not valid UTF-8 (no traceback). An unreadable parent of `POLICY-ACCEPTED.yaml`,
   or a dangling link there, is an invalid acceptance, not a traceback. `review record` refuses a FIFO or other
   non-regular worker record at once instead of hanging. `REJECTED-<model>.md` and `REVIEW-human.md` replace a
   case-variant name (`rejected-opus.md`, `review-human.md`), and unreadable `REJECTED` markers are listed in any

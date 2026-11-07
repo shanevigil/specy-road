@@ -9,7 +9,7 @@ READY files as ``review_rca.rca_parties`` does:
 * the node's sensitivity is outside its roster ``may_process``;
 * executor of the leaf — it filed a READY before any valid review of its own on the leaf (READY authors and record
   models are compared by :class:`Identity`: case-folded, every roster entry whose id, ``harness_model`` or profile
-  name it is; a name two roster entries answer to closes the gate);
+  name it is; a name two roster entries have, or a refused profile, closes the gate);
 * wrote a fix commit on this leaf — it filed a READY after reviewing the leaf;
 * rejected record — its record at this commit is invalid or does not count, with the gate's reason;
 * same family as an approval already counted, under ``reviewers_distinct_families`` (not when its approval would
@@ -46,16 +46,17 @@ from specy_road.review_target import same_commit
 
 
 class Identity:
-    """One rule for READY ``agent`` and review-record ``model`` names: a name may be every roster entry whose ``id``,
-    ``harness_model``, or pinned profile ``api_id``, file name or alias equals it case-folded, exact ids and aliases
-    together (an exact id has no precedence); a name no entry answers to is only itself, case-folded.
+    """One rule for READY ``agent`` and review-record ``model`` names.
 
-    A READY author is excluded under every entry it may be. A name two or more entries answer to closes the gate
-    with a problem naming them (:attr:`problems`): always for a READY author, and for a record only when one of its
-    entries is a READY author (a record no READY author shares a name with is judged by its exact id, as always).
-    Limit: names that collide on a roster (two efforts on one ``harness_model``) cannot be told apart, so the gate
-    stays closed for such a READY until the roster names differ. :func:`writers` adds an unreadable READY to
-    :attr:`problems` too."""
+    An entry's names are its roster ``id`` and ``harness_model`` and, when it has a pinned profile
+    (:func:`~specy_road.orchestration_pinned.pinned_profile_for_entry`), that profile's declared ``api_id``, file
+    name and ``aliases``. A name, case-folded, may be every entry that has it: exact ids and aliases together, no
+    precedence; a name no entry has is only itself. A READY author is excluded under every entry it may be.
+
+    Any of these closes the gate with a problem (:attr:`problems`): a READY or record name two or more entries
+    have; an entry whose pinned profile is refused (its names cannot be known); an unreadable READY
+    (:func:`writers`). Limit: entries that share a name cannot be told apart, so a roster where they do keeps the
+    gate closed for any READY or record using that name until the names differ."""
 
     def __init__(self, repo_root: Path, config: dict[str, Any] | None = None) -> None:
         config = pinned_config(repo_root)[0] if config is None else config
@@ -64,11 +65,13 @@ class Identity:
         for entry in config.get("roster") or []:
             rid = str(entry.get("id"))
             prof = pinned_profile_for_entry(repo_root, entry)
-            names = [rid, entry.get("harness_model")]
-            if prof is not None and prof.ok:
-                aliases = prof.data.get("aliases")
-                names += [prof.api_id, prof.path.stem, *(aliases if isinstance(aliases, list) else [])]
-            for name in filter(None, names):
+            if prof is not None and not prof.ok:
+                self.problems.append(f"roster entry {rid!r}: its profile's names cannot be known "
+                                     f"({'; '.join(prof.errors)}); READY authorship cannot be decided")
+            data = prof.data if prof is not None else {}
+            aliases = data.get("aliases") if isinstance(data.get("aliases"), list) else []
+            stem = [prof.path.stem] if prof is not None and prof.ok else []
+            for name in filter(None, [rid, entry.get("harness_model"), data.get("api_id"), *stem, *aliases]):
                 self.names.setdefault(str(name).casefold(), set()).add(rid)
 
     def __call__(self, name: object) -> set[str]:
@@ -120,8 +123,8 @@ def reviews_to_judge(repo_root: Path, node: dict[str, Any], branch: str | None,
     ident = Identity(repo_root, config)
     authors, out = writers(repo_root, node["id"], branch, ident), []
     for r in list_reviews(repo_root, node["id"], acceptance_ids(node)):
-        if hit := sorted((ids := ident(model := str(r.data.get("model")))) & authors.keys()):
-            ident.ambiguous(model, ids)
+        ident.ambiguous(model := str(r.data.get("model")), ids := ident(model))
+        if hit := sorted(ids & authors.keys()):
             ineligible.append((r, f"{model} wrote {authors[hit[0]][0]} on this leaf; "
                                   "the executor never reviews its own leaf"))
         else:
