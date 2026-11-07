@@ -207,8 +207,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.8` | init project ends with the next steps: set the integration branch, commit the scaffold, validate | task | — | Complete |
 | `M22.9` | Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME | task | — | Complete |
 | `M22.10` | reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping | task | — | Complete |
-| `M22.11` | Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout | task | — | Not Started |
-| `M22.12` | The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing | task | — | Not Started |
+| `M22.11` | Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout | task | — | Complete |
+| `M22.12` | The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing | task | — | Complete |
 | `M22.13` | Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone | task | — | Not Started |
 | `M22.14` | Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch | task | — | Not Started |
 | `M22.15` | The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows | task | — | Complete |
@@ -220,7 +220,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.21` | Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback | task | — | Not Started |
 | `M22.22` | Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal | task | — | Complete |
 | `M22.23` | Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus | task | Human-led | Not Started |
-| `M22.24` | The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths | task | — | Not Started |
+| `M22.24` | The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths | task | — | Complete |
 | `M22.25` | Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment | task | — | Complete |
 | `M22.26` | The post-run zone check matches zones written from the git root | task | — | Complete |
 | `M22.27` | The old-log review usage test asserts on the run, not on a substring | task | — | Complete |

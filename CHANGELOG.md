@@ -23,6 +23,22 @@ body. Keep section bodies focused; link to PRs for detail.
   landing succeeds.
 - A merge or auto landing that leaves this checkout on the feature branch ends with
   `[ok] this checkout is still on <feature> (landed into <integration>); next: git switch <integration>`.
+- With `refs/remotes/<remote>/HEAD` missing, the review gate still fails closed. The error says to run
+  `git remote set-head <remote> <name>` and notes that `--auto` fails when the remote's HEAD is unborn.
+  It names `<name>` only when exactly one other remote-tracking ref has a readable committed
+  `git-workflow.yaml` whose `integration_branch` names itself; otherwise it names no branch. When
+  `validate` treats the review switch as on only because that policy source cannot be read, the registry
+  error says the policy source could not be read and prints the same command.
+- A review tally that cannot be read prints one stderr line and a `Review-tally: <ID> unreadable` trailer. A line
+  break in the exception text becomes a space, so that report stays one physical line. The digest counts that leaf
+  as unreadable, apart from a leaf with no tally. Both stay in the leaf totals and out of the rates; the footnote
+  about leaves landed before tallies were recorded covers only a missing tally. `rename-refs` protects backtick and
+  tilde fences: an opening fence has at most three spaces of indent and three or more of one character, and it
+  closes only on a line of the same character, at least as long, with at most three spaces of indent and nothing
+  after it but spaces. `specy-road upgrade` takes its ignore notice from the checkout around the `.gitignore`
+  write, after every other plan change, so a tracked file a new rule matches stays tracked and the untrack
+  command is printed, and a file `--prune` deletes is not reported as hidden by that rule. `--dry-run` labels
+  the mirror's notice as an estimate.
 - A Cursor display name that includes a context size immediately before a trailing effort, such as
   `Claude Opus 5.5 300K High` or `GPT-5.6 Sol 1M High`, matches the catalog id it names (`claude-opus-5-5-high`,
   `gpt-5.6-sol-high`). `Extra High` is `xhigh` only as that trailing suffix, and `fast` stays part of the identity.
@@ -474,7 +490,14 @@ body. Keep section bodies focused; link to PRs for detail.
   offered by `handoff status`, and its records do not count at the gate. The roster key
   `allow_guidance_bypass_model: true` (committed roster only; a `roster_add` entry is refused) lets it back in at the
   developer's own risk, with a warning on every executor or reviewer launch; `validate` and `doctor` warn for each
-  flagged entry. The coordinator role, and everything with `signed_reviews` off, are unchanged.
+  flagged entry. The coordinator role, and everything with `signed_reviews` off, are unchanged. M22.24 closes
+  four ways around it: a `family: human` entry (committed or `roster_add`) with any launch configuration (`harness`,
+  `harness_model`, `harness_bin`, `profile`, `channels.cli` / `cli_resume`, or a profile found by its id) is judged
+  like a model entry; the profile's `access.cli` model counts, committed copy included; the committed-profile scan
+  reads `ls-tree -z`, so a flagged profile at a path git quotes (`café.md`) is found; names compare after
+  normalising (`COMPOSER-2.5`, `cursor-composer-2.5`), and a model flag specy-road cannot read (a list, pipeline,
+  substitution, variable, attached `-m` value or two flags) refuses the entry unless its committed roster opts in.
+  The rule covers declared configuration, not a model hidden in a script, wrapper or environment variable.
 - The `specyrd-brainstorm` skill (description and first paragraph, in every
   harness's rendered copy) and `suggested_prompts/brainstorm-roadmap.md` Phase 1
   say to make `specy-road brainstorm start` the next tool call after reading the
