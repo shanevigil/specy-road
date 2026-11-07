@@ -292,7 +292,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.27_old-log-test-asserts-on-the-run_cbc35919-d31f-4840-bc69-c62c76e0693f.md",
       "sibling_order": 26,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The old-log review usage test asserts on the run, not on a substring",
       "touch_zones": [
         "tests/test_review_usage.py"
