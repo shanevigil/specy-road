@@ -159,12 +159,3 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: sandbox-runbook-rc4-drift
-    node_id: M22.15
-    branch: feature/rm-sandbox-runbook-rc4-drift
-    touch_zones:
-      - docs/agentic-sandbox-runbook.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T07:46:26+00:00'

@@ -401,7 +401,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.15_sandbox-runbook-rc4-drift_d63c7276-a8d1-44cc-b9d7-d0f866c7e240.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows",
       "touch_zones": [
         "docs/agentic-sandbox-runbook.md"
