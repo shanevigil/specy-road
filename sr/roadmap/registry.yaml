@@ -116,7 +116,8 @@ entries:
       - CHANGELOG.md
     started: '2026-11-06'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T09:24:34+00:00'
   - codename: verify-tells-a-blocking-404
     node_id: M22.17
     branch: feature/rm-verify-tells-a-blocking-404
