@@ -71,6 +71,7 @@ def test_approach_lists_critics_and_verdict_as_constraints(repo: Path) -> None:
     assert "- value critic: only large merchants gain" in approach
     assert "- Verdict (strong): Principle 3; overlap with M0.1 is adjacent only" in approach
     assert approach.strip().endswith(promote_placeholder(node_id))
+    assert node_id not in _sheet(repo, node_id)
 
 
 def test_approach_is_only_the_placeholder_without_critics_or_verdict(repo: Path) -> None:
@@ -79,9 +80,11 @@ def test_approach_is_only_the_placeholder_without_critics_or_verdict(repo: Path)
 
     node_id = promote_session(repo, s)[0].node_id
 
-    approach = _section(_sheet(repo, node_id), "Approach")
+    text = _sheet(repo, node_id)
+    approach = _section(text, "Approach")
     assert "converge pass" not in approach
     assert approach.strip() == promote_placeholder(node_id)
+    assert node_id not in text
 
 
 def test_the_seeded_sheet_still_counts_as_unauthored(repo: Path) -> None:
