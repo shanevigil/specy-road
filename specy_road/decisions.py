@@ -74,7 +74,7 @@ def _validator(schema_path: Path) -> Draft202012Validator:
     return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 
-def schema_errors(doc: dict[str, Any], schema_path: Path | None = None) -> list[str]:
+def schema_errors(doc: Any, schema_path: Path | None = None) -> list[str]:
     path = schema_path or bundled_schema_path()
     if not path.is_file():
         return [f"missing schema at {path}"]
@@ -128,6 +128,61 @@ def active_preferences(doc: dict[str, Any], now: datetime | date | None = None) 
     """Open, unexpired preferences, oldest first; expired ones are dropped, not closed."""
     prefs = [e for e in open_entries(doc) if preference_active(e, now)]
     return sorted(prefs, key=lambda e: ((e.get("asked") or ""), e.get("id") or ""))
+
+
+def load_checked_decisions(root: Path) -> dict[str, Any] | None:
+    """The tracked ledger, checked against the decisions schema.
+
+    ``None`` when ``roadmap/decisions.yaml`` is absent. A directory at that
+    path counts as absent, and ``decisions.local.yaml`` is not read. The raw
+    YAML value is what the schema sees. A falsy root (empty text, ``[]``,
+    ``{}``, ``null``, ``false``, or ``0``) is schema-invalid and is not
+    replaced with an empty ledger. :func:`read_decisions` still does that
+    replacement for other callers; this function does not call it. A YAML
+    parse error, or any ``UnicodeError`` or ``OSError`` while reading, raises
+    ``ValueError`` naming the file, as do schema errors.
+    """
+    path = decisions_path(root)
+    if not path.is_file():
+        return None
+    name = DECISIONS_REL.as_posix()
+    try:
+        with path.open(encoding="utf-8") as f:
+            doc = yaml.safe_load(f)
+    except (yaml.YAMLError, UnicodeError, OSError) as e:
+        raise ValueError(f"{name}: {e}") from e
+    errs = schema_errors(doc, schema_path_for_write(root))
+    if errs:
+        raise ValueError(f"{name}: " + "; ".join(errs))
+    return doc
+
+
+def notice_decisions_naming_no_node(
+    root: Path, live_ids: set[str], now: datetime | date | None = None
+) -> None:
+    """One stdout notice for open questions and active preferences naming no live node.
+
+    Entries with no ``node``, closed entries and expired preferences are omitted.
+    Every ``ValueError`` from :func:`load_checked_decisions` prints nothing:
+    a parse error, a file that is not UTF-8 or cannot be opened, or a value
+    the schema rejects, including a falsy root. An absent ledger prints nothing.
+    """
+    try:
+        doc = load_checked_decisions(root)
+    except ValueError:
+        return
+    if doc is None:
+        return
+    rows = []
+    for entry in (*open_questions(doc), *active_preferences(doc, now)):
+        node = entry.get("node")
+        if isinstance(node, str) and node and node not in live_ids:
+            rows.append(f"{entry['id']} [{entry['kind']}] node {node}")
+    if rows:
+        print(
+            "roadmap: notice — roadmap/decisions.yaml names no live node:\n  "
+            + "\n  ".join(rows)
+        )
 
 
 def plan_preferences(root: Path, now: datetime | date | None = None) -> tuple[list[dict[str, Any]], str | None]:
