@@ -1,244 +1,53 @@
-# Implementation summary: M21.7 `steering-file-guard`
+# Implementation summary: M22.5 `steering-file-guard`
 
-Executors can no longer change the files that steer harnesses and specy-road without it being noticed.
-The work: detection after each turn, a refusal at finish, and per-file denies when a Claude Code executor launches. Nothing restores a changed file.
+The branch already held the git-steering part of M21.7, after R30, R31 and R32 removed the other classes, finish's refusal and the launch denies (M22.30, M22.31 and M22.32 restore them). This change makes that code meet M22.5's acceptance. It is one commit, 77430a38, on top of base 7cc1b7c0.
 
-## Touch zones (final list)
+## What changed, per acceptance item
 
-The listed zones plus `specy_road/schemas/worker-record.schema.json`, which the coordinator added for the flag enum (1da375e1). Two new files sit **outside** the zones. Both are splits forced by the 400-line cap in `sr/constraints/file-limits.yaml`, which plain `specy-road file-limits` uses. Please add them to the zones:
+- **A1 (filesystem only):** `steering_paths.scope_for` no longer asks git at the turn's start. `git_config_text.git_reads` (`rev-parse --git-path hooks`, `config --list --show-origin`) is removed, and `Scope.git_known` with it. The snapshot reads:
+  - the common `config`, `config.worktree` and their `include.path` / `includeIf.*.path` files, using the existing parser;
+  - the hooks directories.
+  The hooks directories are each `core.hooksPath` value **plus** `<common>/hooks` and `<worktree-gitdir>/hooks`. A1 says "hooksPath when set, else the defaults". I watch both on purpose: include conditions are not evaluated, so a `hooksPath` found only under an `includeIf` that does not hold would otherwise hide the directory git really uses. The existing `nonmatching_conditional_include` case covers this. The extra coverage only adds detection.
+  Direct entries only: a regular file (a link followed) is stored as its sha256 and a subdirectory is skipped. The old `link:<text>@sha` and `dir`/`other` values are gone.
+- **A2 (cap):** a hooks directory is listed with `os.scandir` and `islice(201)`. If it has more than 200 entries, the directory itself is recorded as unreadable, so every comparison gives one `check_error` (class `git_hook`) and the git probes are skipped. This replaces the `capped` marker.
+- **A3 (fail closed):**
+  - Every read opens the file with `O_NONBLOCK`, then `fstat` must show a regular file. A FIFO, socket or device is a `check_error` and never blocks, including one swapped in after a stat.
+  - A 30 s snapshot budget (`SNAPSHOT_SECONDS`) is checked before each step and per 1 MiB chunk while hashing. A path read after the budget runs out is a `check_error` (`TimeoutError`).
+  - With no snapshot from the turn's start, or a comparison that raises, the check records one `check_error` per class naming the worktree, plus `git_probes_skipped`. Before, that path had no path or class and no `git_probes_skipped`.
+  - `git_probes_skipped` is now the shared constant `PROBES_SKIPPED`.
+- **A4 (runner order):** `worker_runner._finish` now runs `close_turn` before `fresh_ready`. If `fresh_ready` raises (invalid UTF-8 in a READY), `ready` is false. On exit 0, the turn's `completion` event then reads `exit 0; READY file invalid: <error>`; `exit_event` is not called, because its summary would parse the READY again. A non-zero exit still goes through `exit_event`, which does not read READY.
+- **A5 (sticky flag):** this already worked and is unchanged. `steering_changed` is in the record's `flags`, which `worker status --json` and `handoff status --json` print, and the schema's flag enum already lists it. `worker reconcile` prints one `path class before after` line per finding and clears the flag.
+- **A6:** all cases are in `tests/test_steering_file_guard.py` (see Added).
+- **A7:** none of M22.30, M22.31 or M22.32's code is on this branch. The docs name them as out of scope.
 
-- `specy_road/steering_gate.py`: finish's refusal (`zones_or_exit`, `steering_or_exit`, `steering_hits`) and the Claude Code denies (`claude_denies`). With them inside, `steering_paths.py` was 465 lines.
-- `specy_road/git_config_text.py` (fix round 1): the git-config(1) text parser and include follower behind the git snapshot (R1); in `steering_paths.py` it would have pushed that file past 400 lines.
-- `docs/orchestration-steering-files.md`: the steering-file list and its rules. `docs/orchestration-workers.md` was already at 400 lines. It now carries the list in short form, in its existing post-run paragraph (no lines added), and links to the new doc from that paragraph and its flag and reconcile rows.
+## Touch zones
 
-`finish_task.py` was also at 400 lines. Its implementation-check call became one `zones_or_exit` call, which runs `implementation_or_exit` and then `steering_or_exit`, so the file did not grow.
+The final list is the brief's list, unchanged. `specy_road/schemas/worker-record.schema.json` needed no change: it already lists `steering_changed` and describes it. No call site outside the zones changed.
 
-## Acceptance
+## Verification
 
-- **A1:** `specy_road/steering_paths.py` holds the list:
-  - harness config and hooks, at the git root and the project root;
-  - git hooks: `core.hooksPath` when set, else `<common>/hooks` and `<worktree-gitdir>/hooks`; direct entries with sha256, or `capped` past 200;
-  - git config: the common `config` and `config.worktree`, read as bytes plus the watched keys, parsed without git;
-  - the three policy files, in the tree and via `cat-file` at `refs/heads/<integration_branch>` (no fetch);
-  - other leaves' registry `entries` items;
-  - `work/reviews/` files except `<node>/READY-*`;
-  - root shell startup files;
-  - `env_setup.link` `bin/` entries: name, type, link text and `@sha256` of the resolved file.
-
-  It snapshots these in the worker's worktree and in the main checkout. Entries are keyed by real path, so each is stored once. They are named project-relative in the worker's tree, git-root-relative outside its project, and absolute elsewhere (the main checkout and the git dir when the worker is in a linked worktree).
-- **A2:** `close_turn` (through `_turn_findings`) compares the git snapshot first. On a change it adds a `git_probes_skipped` finding and runs no `git status`, `stash`, `merge-base` or blob read.
-  - Each change is one `steering_file` finding with `path`, `class`, `before` and `after`. For `git_config`, both sides are the file digest followed by `;key=value` for each changed watched key (`unset` when the key is absent).
-  - That finding replaces any `porcelain` or `committed_outside_zones` mention of the same path.
-  - Symlinks come from the porcelain of both checkouts: a link that is new or retargeted during the turn and resolves outside the worker's git root is a finding.
-  - The flag `steering_changed` is sticky: `close_turn` never clears it. It shows in `rec.flags`, which both `worker status --json` and `handoff status --json` `workers[]` emit via `to_dict`.
-  - `worker reconcile` without `--dismiss` puts the steering findings recorded since the last reconcile into `delta.steering`. It prints one shell-quoted `path class before after` line per finding, then clears the flag.
-- **A3:** `steering_or_exit` diffs against the merge base with `base_ref` and `changed_paths`, as the implementation check does. It refuses changes to harness, `policy_tree` and `shell_startup` paths unless a zone equals the path, in either its project-relative or git-root-relative form. `roadmap/registry.yaml` is not a finish class. The message names each path and gives `edit-node` and revert as the next steps.
-- **A4:** `claude_denies` adds `--disallowedTools` with `Edit(./<rel>)` and `Write(./<rel>)` to launch and resume. It covers the in-tree steering files present at launch, plus `.claude/settings.json`, `.claude/settings.local.json` and the three policy files (with the project prefix). Exact zone paths are skipped, and there is no glob. A custom `channels.cli` returns before this, so its argv is unchanged. `orchestration-harness-launch.md` documents Cursor's built-in block and Codex `workspace-write`. `orchestration-review.md` "What the gate cannot stop" says what M21.7 adds and what stays with M20.
-- **A5:** `tests/test_steering_file_guard.py` covers:
-  - nine parametrized classes, each giving exactly one `steering_file` finding with no porcelain or `committed_outside_zones` mention of that path;
-  - the `core.fsmonitor` sentinel: absent after the check, then created by a real `git status`, which proves the case is real;
-  - a clean turn (its READY, its own registry entry, in-zone code) giving `[]`, while the flag stays set and reconcile lists the finding and then clears it;
-  - the finish land/refuse pair together with the argv check;
-  - a custom CLI command whose argv is unchanged.
-
-  `specy-road file-limits` passes.
-
-## Behaviour notes and limits
-
-- **Two fixtures changed in setup only.** `tests/test_finish_merge_failure_undo.py` (`_repo`) and `tests/test_finish_work_cleanup.py` (`test_an_opted_in_completed_worker_goes_through_review_to_finish`) used to commit `roadmap/git-workflow.yaml` on the leaf branch. A3 now correctly refuses that. They now commit the config on `dev` and merge it into the leaf. No assertion changed.
-- **Other writers show up too.** Other workers and the coordinator also write some steering paths during a turn (their own READY, review records and registry rows). Those writes are reported as well. The docs say so.
-- **The next turn's start is not guarded.** It still runs `git status` (`git_state` in `TurnWatch.__init__`), and after a `core.fsmonitor` change that would run the changed command. The sticky flag and reconcile are the human's signal. Blocking a resume is not part of this leaf's acceptance.
-- **Cost.** A snapshot of this repository (3,700 review files) takes about 0.5 s at each end of a turn.
-
-## Fix round 1 (review `gpt-6.1-sol-low` at c4d9c4de)
-
-The `origin/WIP/improvements-0-3-1` merge went in first (5c0949a8), with no conflicts.
-
-- **R1, class: git config read differently from how git reads it.** The line-based reader kept trailing comments, mishandled quotes and escapes, and never followed includes. As a result, the check watched a hooks directory git does not use. It is replaced by `git_config_text.parse_config`, which implements git-config(1) syntax. `read_chain` follows `include.path` and `includeIf.*.path` to git's depth of 10, without evaluating conditions, so the result is a superset of what git reads. `git_snapshot` hashes every file in that chain and watches each `core.hooksPath` value it sets, or the default directories when none is set. Still without running git.
-- **R2, class: a per-checkout class implemented for only one checkout.** `review_file` read only the main checkout, and so did `env_bin`. Both now go through `scope.tops`, like the tree, git and registry classes. Entries are still keyed by real path, so the worker's linked `.venv` and its main-checkout source stay a single entry. The own-READY exemption applies in both checkouts.
-- **R3, class: one path reached by two detectors.** Overlaps: a harness or shell file that is also a new escaping symlink, and a `core.hooksPath` inside `.claude/hooks` (git_hook plus harness), which before this fix came from two separate snapshots. These are no longer patched per detector. A single `SteeringWatch.merged` (it replaces `without_steering_paths`) keeps one `steering_file` per path, choosing the first class in `CLASSES` order. It also drops porcelain and committed-outside-zones mentions of that path.
-
-## Probes
-
-- `git config --file` (oracle) compared with `parse_config` for three `core.hooksPath` spellings: a trailing `#` comment; a quoted value containing `#` and `;`, followed by a `;` comment; an escaped `"` plus a backslash continuation. Result: equal, asserted in the new test.
-- New tests run against the round-0 `steering_paths.py` and `worker_turn_check.py` in a scratch worktree. Result: all 5 new cases fail there (3 spellings, forged REVIEW in the worktree, escaping symlink at `.claude/settings.json`) and pass now.
-- `core.hooksPath` set only in a file named by `[include] path`, with a hook written there during the turn. Result: one `git_hook` finding (probe script, not kept as a test).
-- `core.hooksPath = .claude/hooks` with a hook written there. Result: one finding, class `harness`, with no duplicate `git_hook` (probe script).
-- Every snapshot class against "both checkouts": tree, git, registry and symlink already covered both; reviews and env_bin were fixed here. `policy_blob` reads one ref shared by both, so it is correctly read once.
-- Other parsers of git files in the change: `_gitdirs` reads only the `gitdir:` line and `commondir`. Result: no config syntax involved.
-- Other merge points for findings: `_turn_findings` is the only place steering findings are combined. Result: it now ends in `merged`.
-- Full suite after the merge: 5,032 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
-
-## Fix round 2 (review `gpt-6.1-sol-low` at e84e9049)
-
-The `origin/WIP/improvements-0-3-1` merge went in first, with no conflicts.
-
-These findings are new input shapes of one open-ended problem: reading git config without running git. So rather than chase each shape, the fix states one bounded rule, in the `git_config_text` docstring, the `git_snapshot` docstring and docs/orchestration-steering-files.md.
-
-The rule: what depends on the parse is bounded. A config file's change is always reported by the digest of its bytes. The hooks directories watched are `<common>/hooks` and `<worktree-gitdir>/hooks` always, plus every `core.hooksPath` value read. So a value read wrongly, or an `includeIf` condition left unevaluated, can only add a watched directory; it can never drop the default one. This is a deliberate superset of A1's "hooksPath when set, else the defaults".
-
-- **R1, class: bytes git accepts before the syntax proper.** `parse_config` now drops a leading UTF-8 BOM. It is the only entry point, so files reached through includes get the same treatment.
-- **R2, class: a hooks directory chosen by a condition the snapshot does not evaluate.** Removed by the rule above: the defaults are no longer replaced by a candidate value.
-- **Test.** The parametrized hooks test has two new shapes: a BOM before the first section, and an `includeIf "gitdir:/nowhere/"` naming a hooksPath. It now asks git, run in the worker checkout with conditions evaluated, which hooks directory is in use, and writes the hook there. It requires exactly one `git_hook` finding with that exact path, plus `git_probes_skipped`.
-
-## Probes (round 2)
-
-- The new BOM and nonmatching-include cases, run against round-1 `steering_paths.py` and `git_config_text.py` in a scratch worktree: both fail there and pass now. (A first version of the BOM case passed on round-1 code, because the BOM did not precede the hooksPath section; the test now puts that section first.)
-- Git accepts a BOM-prefixed config: the test's `git config --get core.hooksPath` returns the directory.
-- Other readers in the change that could meet a BOM: `yaml.safe_load` of the registry handles one (probe returned the parsed entries). The `.git` gitdir line and `commondir` are written by git itself and carry none.
-- Other decisions taken on a parsed value: the hooks directories (now a superset) and which includes are followed (already every one, conditions not evaluated). Displayed `;key=value` values only describe a finding; detection is by digest.
-- Targeted tests: 104 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
-
-## Fix round 3 (review `gpt-6.1-sol-low` at 3d391a47)
-
-The `origin/WIP/improvements-0-3-1` merge went in first (registry rows only), with no conflicts.
-
-- **R1, class: coverage decided by my own git-config parser.** This is the third input shape of the same open-ended problem (comments, then a BOM, now a CRLF continuation). The fix removes the parser from the decision instead of patching the shape. At the turn's start, before the executor acts, `git_config_text.git_reads` asks git itself which hooks directory it uses (`rev-parse --git-path hooks`). It also asks which config files it reads (`config --list --show-origin --includes`: global, system, local, worktree and their includes, with conditions evaluated). `scope_for` stores the answer in `Scope.git_known`. After the turn those files and directories are compared from the filesystem only, as before. The parser only adds candidates: the defaults, every `hooksPath` value and every include, unevaluated. It also now reads CRLF as LF, as git's reader does.
-
-  The one bounded rule and its limit are in the `git_config_text` docstring and in docs/orchestration-steering-files.md ("What git is asked, and when"): a directory or file git would use only because of a change made during the turn is not watched itself; the change is, by its file's digest. The reviewer's flagged claim ("parsing errors can only add watched directories") is removed from the docs and the docstrings.
-- **R2, class: the check falls through to the unsafe path when its own baseline is missing.** `_turn_findings` now fails closed in one place. A missing start snapshot and a failed git-steering comparison raise into the same `except`, which records `check_error … git probes skipped` and runs no git command. The separate `sw is None` branch is gone, so the function has fewer branches than in round 2.
-
-  Its sources of failure were also audited and fixed. Every `.resolve()` on an executor-controlled path became `_resolved` (`os.path.realpath`, which never raises): gitdir, commondir, hooksPath, `env_setup.link` bin and porcelain links, where a link loop raised `RuntimeError` on Python 3.11. A registry whose `entries` is not a list no longer raises (the reviewer's trigger).
-
-## Probes (round 3)
-
-- The new `crlf_continuation` shape and `snapshot=unavailable` case, run against round-2 `steering_paths.py`, `git_config_text.py` and `worker_turn_check.py` in a scratch worktree: both fail there and pass now.
-- A `hooksPath` that only git knows: set in a global config through `GIT_CONFIG_GLOBAL`, which the parser never reads. A hook written there gives one `git_hook` finding plus `git_probes_skipped`, so coverage no longer depends on the parser (probe script).
-- `entries: 42` in the worker's registry plus a symlink loop in the main `.venv/bin`: `TurnWatch` still takes its snapshot (`steering_error` None) (probe script).
-- `git config --list --show-origin --name-only -z` output shape (origin and name pairs, origins relative to the checkout) checked on git 2.43 before relying on it.
-- Every `.resolve()` in `steering_paths.py`: 0 left. Other raising paths: `_value`, `_hooks_dir`, `tree_files` and the env_bin `iterdir` already catch `OSError`.
-- Every place that takes a git-steering decision: `git_snapshot` (now git-named plus candidates) and `_turn_findings` (now one fail-closed `except`). `rest_changes` runs only after that gate.
-- Full suite: 5,036 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
-
-## Merge with M15.36 (coordinator, after fix round 3)
-
-`origin/WIP/improvements-0-3-1` conflicted in `specy_road/worker_adapter_claude.py`, but only in the import block. The merge (f3c06d1e) keeps both features. Launch and resume now pass M15.36's explicit worker mode (`_worker_mode`: `--bare` plus its settings path, or `--setting-sources user,project,local`) and then this leaf's `claude_denies` rules, ahead of `EXECUTOR_PERMISSIONS`. The two flag sets do not collide: `--setting-sources` takes a single value, and `--allowedTools` still ends the `--disallowedTools` list. M15.36's auth preflight lives in `worker_ops_launch.py`, which merged cleanly. The round-3 items are present after the merge: CRLF read as LF in `parse_config`, and fail-closed `_turn_findings`.
-
-Tests after the merge:
-- Targeted, for both areas (the steering guard, the turn check, the adapters, Claude worker auth, reviewer auth, the config dir, roster dry-run and the finish fixtures): 186 passed.
-- Full suite: 5,098 passed.
-- `ruff check specy_road tests scripts`: clean.
+- `pytest -q tests/test_steering_file_guard.py`: 18 passed.
+- `pytest -q -n 4`: 5980 passed.
 - `specy-road file-limits`: OK.
+- `ruff check` on the changed Python files: clean.
+- Red/green: with the four product files at base 7cc1b7c0, both new tests fail (`over_the_cap`, `unparsable_ready`). With this change, both pass.
 
-## Fix round 4 (review `gpt-6.1-sol-low` at a3e1a12b)
+## Notes for reviewers
 
-The `origin/WIP/improvements-0-3-1` merge went in first, with no conflicts.
-
-- **R1, class: an entry that is a symlink, recorded by its link text only.** A write through an unchanged link (into the file it resolves to) left the value unchanged. `env_bin` already handled this with its own copy of the rule; hooks, harness, shell startup, policy and review files did not. Rather than add another per-class branch, `_value` is now the one rule every class compares:
-  - a regular file: its sha256;
-  - a link: `link:<text>`, plus `@<sha256>` of what it resolves to when that is a regular file;
-  - anything else: `dir`, `other` (a fifo or a socket), or `absent`.
-
-  `_env_bin` lost its special branch and now calls `_add` like the other classes. `_links`, the porcelain symlink detector, reads link text with `os.readlink`, so its comparison of link targets does not change with content. Enumeration stays bounded: hooks are direct entries only, and a link to a directory is not walked. That bound is stated in `_value`'s docstring and the docs.
-
-## Probes (round 4)
-
-- The new hooks-test shape `unchanged_symlink_written_through`: a default-hooks `pre-commit` linked to a file, written through the link, run against the round-3 `steering_paths.py` in a scratch worktree. It fails there and passes now: one `git_hook` finding with the same link text and a different `@sha256`, plus `git_probes_skipped`.
-- The same write-through on the other classes: a pre-existing `.claude/settings.json`, `.envrc` and worktree `work/reviews/M1.1/REVIEW-x.md`, each a link to a file outside, written through. Result: one finding each (`harness`, `shell_startup`, `review_file`) (probe script).
-- The bound: a hooks-directory entry that links to a directory, with a file written inside that directory. Result: no finding, as documented. Git runs only hook files named directly in the hooks directory, never one inside a subdirectory, so this is inert.
-- Other places that read through or record links: the git config chain and the registry read file contents, which already follow links. The `env_setup.link` venv write-through case (A5) still passes under the single rule. `worker_turn_check._content` (porcelain, not steering) is unchanged: steering paths found in porcelain are replaced by their `steering_file` finding.
-- Targeted tests: 187 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK (`steering_paths.py` at 400 lines after shortening `_value`'s own new docstring).
-
-## Fix round 5 (coordinator, final; Sol's round-4 R1 folded in)
-
-The `origin/WIP/improvements-0-3-1` merge went in first, with no conflicts.
-
-**The class.** One input makes the steering check abort, or quietly skip part of its work. Sol's round-4 R1 (invalid UTF-8 in `registry.yaml` aborts `file_snapshot` and drops the findings already collected) is the fourth instance, after CRLF parsing, an unavailable snapshot and symlinked hooks.
-
-The audit found two shapes still live:
-- **Abort:** the registry decode, `load_git_workflow_config` raising inside `scope_for`, and the `.git` file decode.
-- **Quiet skip (fail open):** `except OSError: return` on hooks and bin listings, `read_chain` dropping unreadable config, `os.walk` without `onerror`, and a YAML error treated as "no rows".
-
-**The one rule** (module docstring of `steering_paths.py`, and docs/orchestration-steering-files.md "An input that cannot be read"):
-- Every per-file and per-directory step (list, read, decode, parse, hash) runs on its own, through `guarded` / `unreadable`, or through `_add`'s guarded value.
-- Any exception there records that path and its class with an `error:` value, and the snapshot goes on.
-- `worker_turn_check.steering_changes` reports such a path as one `check_error` finding with `path`, `class` and `error`, never as unchanged.
-- In the git half that finding makes `_turn_findings` skip every post-turn git command, as a change does.
-- Only a path that does not exist is `absent`. A missing include, including a dangling one, is left out, as git does.
-- Dangling links and link loops are unreadable: `_value` stats through the link.
-- Parsed files over 8 MiB (`MAX_PARSE_BYTES`) are unreadable. Hashing is streamed (`hashlib.file_digest`), so size never fails a hash.
-
-Where it applies:
-- `scope_for` guards the workflow file: unreadable, it is a scope problem that every snapshot reports (`policy_tree`), and the classes that need it go without.
-- `read_chain` returns the exception in place of a file's bytes.
-- Walks pass `onerror`, and an unlistable directory is recorded.
-- The porcelain-link step reports a checkout git could not list.
-
-Collected findings and the sticky `steering_changed` flag are never discarded.
-
-**Layout.** `SteeringWatch`, the comparison (`steering_changes`, `steering_finding`, `steering_error`), `_links` and `merged` moved from `steering_paths.py` to `worker_turn_check.py`, which is in the zones, so `steering_paths.py` stays under 400 lines. `real_path`, `resolved_path` and `blobs` became public, because `worker_turn_check` uses them.
-
-## Probes (round 5)
-
-- The table test `test_an_unreadable_steering_input_is_one_check_error_and_the_rest_is_still_compared` (16 rows, listed below), run against the round-4 code (848ce88c) in a scratch worktree: all 16 fail there and pass now.
-- Shapes outside the table, by probe script, each with an unrelated harness change in the same turn. Each gave one `check_error` for that path and class, the unrelated `steering_file` finding, and the flag:
-  - invalid UTF-8 in the main `roadmap/git-workflow.yaml` (`scope_for`'s read): `policy_tree`;
-  - a 9 MiB `registry.yaml`: `registry`;
-  - an unlistable `.claude/hooks/` directory: `harness`;
-  - an unlistable `.git/hooks/` directory: `git_hook`, plus `git_probes_skipped`.
-- Every remaining `except` in the steering code: `guarded`, `_add`, `scope_for`, `read_chain`, `_links` (readlink: "not a link") and `_turn_findings`. None returns silently except `FileNotFoundError` in `read_chain` (a missing file, as git) and `_links` on a non-link.
-- Combinations left out of the table, because the kind is not a failure there:
-  - invalid UTF-8 or malformed YAML in a hashed (not parsed) harness file, hook or bin entry: it is bytes, and a change to them is a `steering_file`;
-  - a dangling include: git leaves it out too.
-- Existing tests unchanged and passing. None is superseded exactly: the round-3 "snapshot unavailable" case covers a whole-snapshot failure, which the per-path rule does not reach.
-- Full suite: 5,342 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
-
-The 16 table rows:
-- `registry`: invalid UTF-8, malformed YAML, unreadable, dangling link, link loop.
-- harness file, hook and env bin: unreadable, dangling link, link loop.
-- git config include: unreadable, link loop.
-
-## Fix round 6 (coordinator; Sol R1)
-
-The coordinator merged WIP into the branch before this round (1b7c23db).
-
-- **R1, class: a git-read steering value compared after text decoding, so not byte-exact.** `blobs()` hashed `git cat-file` output that `git_subprocess.run` had decoded as text with newlines normalized. An LF→CRLF-only policy commit on the local integration branch therefore left the value unchanged.
-
-  Now one `git ls-tree -z --full-tree refs/heads/<integration_branch> -- <the three policy paths>` reads each file's blob object id: from the object store, byte-exact, with no hook run and no text decoding. The value is `blob:<oid>`. A missing branch (`show-ref --verify` fails) gives `absent`; a tree git cannot list gives the round-5 unreadable value, so a `check_error`. This is still git asked after the git-half gate (`rest_changes` with `git_ok`), as before. It is one git call where there were three.
-
-## Probes (round 6)
-
-- The new `CASES` row `policy_blob_crlf_only_from_second_worktree` (dev's `roadmap/git-workflow.yaml` with every LF turned CRLF and nothing else, committed from the second worktree with no fetch), run against the round-5 `steering_paths.py` in a scratch worktree: it fails there and passes now. Through the existing table it asserts exactly one `steering_file` finding, class `policy_blob`, path `dev:roadmap/git-workflow.yaml`, with before ≠ after.
-- Every other comparison in the change, for decoded or normalized input:
-  - In-tree, review, hook and env_bin files: `_value` hashes raw bytes, streamed.
-  - git config: the raw-byte digest is compared; the decode is only for parsing the watched keys and includes.
-  - `.git` and `commondir` are decoded only to locate directories.
-  - The porcelain `_content` hashes bytes.
-  - Registry rows are compared as parsed `entries` items, a semantic comparison by A1's definition ("entries items whose node_id is another leaf"). A CRLF-only edit to `registry.yaml` changes no row.
-- The existing `policy_blob_from_second_worktree` row and the clean turn (no policy change) are still exactly as before: `blob:<oid>` is stable when nothing changes.
-- `scripts/check_clones.py`: 9 current, 9 baselined, 0 new. Targeted tests: 204 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
-
-## Fix round 6, correction (coordinator: A2 value format)
-
-A2 requires `steering_file` before and after values to be SHA-256 hex digests. Round 6 had recorded `blob:<oid>`. Byte-exact detection is kept, and the value now has the right format:
-- `blobs()` still asks `git ls-tree -z --full-tree` which blob each policy file is at the local integration branch tip.
-- `_blob_sha` then reads that blob's raw bytes with `git cat-file blob <oid>` through `subprocess.run` in bytes mode (`git_subprocess.run` decodes text), with no decoding or newline normalization, and hashes them with `hashlib.sha256`.
-- A blob git cannot give is unreadable under the round-5 rule.
-
-To keep `steering_paths.py` at 395 lines after the new helper, the git-config key semantics (`GIT_CONFIG_KEYS`, `_watched`, `watched_values`) moved to `git_config_text.py`, beside the parser. The docs' `policy_blob` row now states the value.
-
-## Probes (round 6 correction)
-
-- The extended per-class test, which now asserts the `policy_blob` value format (64 lowercase hex characters, or `absent` for the roster file that is new on `dev`; both sides hex for the CRLF row), run against the committed round-6 code (0b28fc26, `blob:<oid>`): both `policy_blob` rows fail there and pass now. The LF→CRLF row still yields exactly one `policy_blob` finding.
-- Other `steering_file` values against A2's format: files are SHA-256 (streamed); links are `link:<text>`, plus `@<sha256>` for a regular-file target; git config is a SHA-256 followed by the changed watched keys; registry rows are the SHA-256 of the row's JSON. A1/A2's list (sha256, `link:<target>`, `absent`, git_config values) covers these; `@<sha256>` was added in round 4 for write-through detection.
-- No remaining user of `GIT_CONFIG_KEYS` or `watched_values` outside the two modules (grep).
-- Targeted tests: 204 passed. `scripts/check_clones.py`: 9 current, 9 baselined, 0 new. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK.
+- I dropped a `fifo` row for `git_config` (a FIFO as an included config). With that FIFO in place before the turn, git's own `git status` at the turn's start blocks on it (300 s), before any of this code runs. The snapshot side of a FIFO is covered by the `fifo` hook row.
+- The turn-start `git_state` (`git status` and others in `TurnWatch.__init__`) still runs before the next turn. If the previous turn changed `core.fsmonitor`, it runs under it. That turn was already flagged `steering_changed`, and refusing the next turn is outside this leaf (M22.31 refuses at finish).
 
 ## Added
 
-- `specy_road/steering_paths.py`: the list, `Scope` and snapshots per class, `changes`, `SteeringWatch` with `git_changes`, `rest_changes` and `without_steering_paths`, and `config_values`, a no-git config reader. Required by A1 and A2.
-- `specy_road/steering_gate.py`: `steering_hits`, `steering_or_exit` and `zones_or_exit` (A3), and `claude_denies` (A4). A file-limit split.
-- `worker_turn_check._turn_findings`: compares git steering first, then runs or skips the git probes, then compares the rest and removes duplicates (A2). Adds a `git_probes_skipped` finding as the skip mark.
-- `worker_turn_check.git_findings` gained an optional `after` argument, so the porcelain read once is reused for the symlink check.
-- `TurnWatch.steering` and `steering_error`: the snapshot at turn start. A failure becomes a `check_error` finding and never loses the turn's record.
-- `worker_reconcile.steering_findings`, `delta["steering"]` and the lines in `reconcile_lines`: required by A2.
-- `FLAG_STEERING = "steering_changed"`: the schema enum value and its description sentence.
-- `docs/orchestration-steering-files.md`: a file-limit split of the docs.
-- Tests: `tests/test_steering_file_guard.py` covers A5. Helpers: `_layout`, a linked worktree with a linked `.venv` and a second worktree on `dev`; `_turn`, which brackets one turn with `TurnWatch` and `close_turn`; plus `_write`, `_registry_add_other`, `_commit_policy_from_second`, `_finish`, `_set_zones` and `_denies`. No mocks.
-- Fix round 1: `git_config_text.py` (`parse_config`, `read_chain`, and helpers `_eol`, `_section`, `_value`, `_includes`) for R1. `steering_paths.watched_values` replaces `config_values` (display only). `SteeringWatch.merged` replaces `without_steering_paths` (R3). Tests: the parametrized `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` (R1, with git as oracle); two new `CASES` entries, `forged_review_in_worktree` (R2) and `escaping_symlink_at_harness_path` (R3), plus the `_link` helper; the clean turn also writes its own READY in the worker checkout (R2 exemption).
-- Fix round 2: no new helpers. The leading-BOM strip in `parse_config` and the superset in `git_snapshot` replace the earlier "hooksPath else defaults" choice. The round-1 test `test_a_hook_in_the_configured_hooks_path_is_found_however_git_config_spells_it` became `test_a_hook_in_the_hooks_directory_git_uses_is_found_however_the_config_reads`, with five shapes and git deciding the directory in use.
-- Fix round 3: `git_config_text.git_reads` (git, at turn start only) and `Scope.git_known` (R1); `steering_paths._resolved`, which never raises; the CRLF line in `parse_config`. Tests: the `crlf_continuation` shape in `HOOKS_CONFIGS`, and the fsmonitor test parametrized over `snapshot` (`taken` / `unavailable`; the latter makes the public `steering_paths.file_snapshot` raise with monkeypatch, R2).
-- Fix round 4: no new helper. `_value` now carries the link-resolution rule and `_env_bin`'s copy of it was removed. Test: the `unchanged_symlink_written_through` shape in `HOOKS_CONFIGS`, with `DEFAULT_HOOKS` naming the two shapes where git uses the default directory.
-- Fix round 5: `steering_paths.guarded`, `unreadable`, `_error`, `_walk`, `_list`, `parse_bytes`, `_digest`, `_config_file`, `_git_top`, `_registry_rows`, `Scope.problems`, `ERROR` and `MAX_PARSE_BYTES` (the one rule). `read_chain` gained a `read` parameter and returns exceptions. `worker_turn_check.steering_error` and `SteeringWatch.link_errors`. Test: the 16-row table (`UNREADABLE_ROWS`, with `_unreadable_as` and `_where` helpers).
-- Fix round 6: `blobs` finds blobs with `ls-tree`; the correction adds `steering_paths._blob_sha` (SHA-256 of a blob's raw bytes) and moves `GIT_CONFIG_KEYS`, `_watched` and `watched_values` to `git_config_text.py` (file cap). Test: the `policy_blob_crlf_only_from_second_worktree` `CASES` row, with `_commit_policy_from_second(crlf_only=True)`.
-- `tests/test_finish_work_cleanup._config_on_dev`: keeps the changed test under the 80-line function cap, which the fixture fix above would otherwise have exceeded.
+- `steering_paths._open_regular`: opens without blocking and refuses anything that is not a regular file once open (FIFO or special file, or a swap after stat; A3).
+- `steering_paths._in_time`, `SNAPSHOT_SECONDS`, `_until`: the snapshot time budget, so a timeout is a `check_error` (A3).
+- `steering_paths._hook_value`, `_add_hook`: a hook's value is the sha256 of the regular file it resolves to, and a subdirectory is skipped (A1, A3). They replace `_value` and `_add`.
+- `steering_paths._hooks_dir` cap branch: more than 200 entries raises, so the directory is a `check_error` on every comparison; the listing stops at 201 (A2).
+- `worker_turn_check.PROBES_SKIPPED`: one `git_probes_skipped` finding, also recorded when there is no snapshot (A3).
+- `worker_turn_check._turn_findings` no-snapshot branch: one `check_error` per class naming the worktree (A3).
+- `worker_runner._finish` try/except around `fresh_ready`: an unparsable READY is the turn's completion error, and the check runs before it (A4).
+- Test row `fifo` for a hook in `UNREADABLE_ROWS`: a special file fails closed without blocking (A3).
+- Test `test_a_hooks_directory_over_the_cap_fails_closed_even_when_a_replaced_hook_keeps_it_over` (A2, A6).
+- Test `test_an_unparsable_ready_through_the_worker_runner_still_ends_with_one_check_holding_the_config_change`: a fake `claude` on PATH writes a READY with byte FF and runs `git config` (A4, A6).
+- Changed tests (expectations only, to match the acceptance's value format): `unchanged_symlink_written_through` now compares sha256 values, not `link:` values. The `unavailable` snapshot case now expects one `check_error` per class plus `git_probes_skipped`.
+- Mocks: none added.
