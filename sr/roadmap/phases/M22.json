@@ -28,7 +28,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.1_group-into-member-id_8b9893d1-675f-4d25-9d6a-a1f13e9f3f67.md",
       "sibling_order": 0,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "group-nodes accepts a new parent id held by one of the nodes it groups",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_outline_group.py",

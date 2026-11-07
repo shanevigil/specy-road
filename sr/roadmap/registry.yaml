@@ -105,20 +105,6 @@ entries:
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
-  - codename: group-into-member-id
-    node_id: M22.1
-    branch: feature/rm-group-into-member-id
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_outline_group.py
-      - specy_road/bundled_scripts/roadmap_move_node.py
-      - tests/test_outline_group_cli.py
-      - tests/test_gui_outline_contract.py
-      - docs/roadmap-authoring.md
-      - CHANGELOG.md
-    started: '2026-11-06'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T07:39:59+00:00'
   - codename: ready-changelog-reminder
     node_id: M22.7
     branch: feature/rm-ready-changelog-reminder
