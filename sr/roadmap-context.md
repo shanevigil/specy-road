@@ -317,6 +317,7 @@ Do not pick these up.
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
 - `M22.38` on `feature/rm-doctor-fix-keeps-other-clones-claims` since 2026-11-07
 - `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
+- `M22.40` on `feature/rm-cursor-display-names-match-the-model` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
