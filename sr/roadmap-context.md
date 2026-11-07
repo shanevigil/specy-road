@@ -318,6 +318,7 @@ Do not pick these up.
 - `M22.19` on `feature/rm-review-inputs-identity-and-unreadable` since 2026-11-07
 - `M22.31` on `feature/rm-steering-finish-refusal` since 2026-11-07
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
+- `M22.39` on `feature/rm-worker-stall-recovery` since 2026-11-07
 - `M22.47` on `feature/rm-cursor-starts-under-the-sandbox` since 2026-11-07
 
 ## Quality by area
