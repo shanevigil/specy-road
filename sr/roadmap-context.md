@@ -171,7 +171,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
   - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Complete**
   - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Not Started**
-  - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Not Started**
+  - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -315,7 +315,6 @@ Do not pick these up.
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
 - `M22.3` on `feature/rm-decisions-follow-moves` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
-- `M22.40` on `feature/rm-cursor-display-names-match-the-model` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 
 ## Quality by area
@@ -324,14 +323,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs` **flagged** | 35 | 0 | 2.51 | 54% | 25 | 2 |
+| `docs` **flagged** | 34 | 0 | 2.50 | 53% | 20 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 46 | 0 | 2.35 | 52% | 36 | 3 |
-| `CHANGELOG.md` | 43 | 0 | 2.16 | 47% | 30 | 2 |
+| `specy_road` **flagged** | 46 | 0 | 2.35 | 52% | 31 | 3 |
+| `CHANGELOG.md` | 44 | 0 | 2.18 | 48% | 30 | 2 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 47 | 0 | 2.28 | 49% | 34 | 3 |
+| `tests` | 47 | 0 | 2.28 | 49% | 29 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

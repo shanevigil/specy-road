@@ -13,6 +13,15 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A Cursor display name that includes a context size immediately before a trailing effort, such as
+  `Claude Opus 5.5 300K High` or `GPT-5.6 Sol 1M High`, matches the catalog id it names (`claude-opus-5-5-high`,
+  `gpt-5.6-sol-high`). `Extra High` is `xhigh` only as that trailing suffix, and `fast` stays part of the identity.
+  A context-size token anywhere else stays part of the name (`Model 1M Series High` does not match
+  `model-series-high`), and `Extra High` elsewhere stays as written (`Extra High Model` does not match
+  `xhigh-model`). A different effort does not match, including when the profile lists every effort as an alias:
+  `GPT-5.6 Sol 1M Medium` against `gpt-5.6-sol-high` is a mismatch in the review check and the worker note. A
+  context size whose display name omits the effort word (`GPT-5.6 Sol 1M`, the medium name) does not match either.
+  A request that names no effort still accepts the profile's aliases.
 - `specy-road doctor --fix` leaves a registry row whose branch is in neither this clone nor the
   remote. The report calls that row advisory and says what to check: another clone's claim looks
   the same until it pushes its branch, so confirm that clone no longer holds the claim, then

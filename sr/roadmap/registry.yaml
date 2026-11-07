@@ -170,16 +170,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: cursor-display-names-match-the-model
-    node_id: M22.40
-    branch: feature/rm-cursor-display-names-match-the-model
-    touch_zones:
-      - specy_road/model_names.py
-      - tests/test_model_names.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: decisions-follow-moves
     node_id: M22.3
     branch: feature/rm-decisions-follow-moves
