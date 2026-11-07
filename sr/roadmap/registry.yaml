@@ -150,7 +150,8 @@ entries:
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-07T23:53:41+00:00'
   - codename: cursor-starts-under-the-sandbox
     node_id: M22.47
     branch: feature/rm-cursor-starts-under-the-sandbox
