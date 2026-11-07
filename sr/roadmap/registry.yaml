@@ -173,3 +173,25 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
+  - codename: review-inputs-identity-and-unreadable
+    node_id: M22.19
+    branch: feature/rm-review-inputs-identity-and-unreadable
+    touch_zones:
+      - specy_road/review_eligible.py
+      - specy_road/review_gate.py
+      - specy_road/review_policy_pin.py
+      - specy_road/review_caller.py
+      - specy_road/worker_state.py
+      - specy_road/review_rejected.py
+      - specy_road/review_gate_ready.py
+      - specy_road/review_files.py
+      - tests/test_review_eligible.py
+      - tests/test_review_gate_ready_author.py
+      - tests/test_review_policy_pin.py
+      - tests/test_review_record_caller.py
+      - tests/test_review_file_case.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
