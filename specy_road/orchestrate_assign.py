@@ -252,7 +252,7 @@ def guidance_bypass_refusal(config: dict[str, Any], entry: dict[str, Any], profi
                 "--model / -m value is readable), so the model it launches cannot be checked for recorded guidance "
                 f"bypass. Pass the model as one literal --model <id>, or set {GUIDANCE_OPT_IN}: true on its "
                 "committed roster entry to use it at your own risk.")
-    record = hit.record or {}
+    record = hit.record   # set on every hit that has neither error nor field (_flagged's dict)
     return (f"{head} is excluded from executor and reviewer roles while policy.signed_reviews is on: its profile "
             f"records guidance bypass observed ({record.get('date')}, {record.get('harness')}: "
             f"{str(record.get('evidence') or '').strip()}). Set {GUIDANCE_OPT_IN}: true on its roster entry to use "
@@ -276,7 +276,7 @@ def guidance_bypass_warning(config: dict[str, Any], entry: dict[str, Any], profi
     head = f"warning: {entry.get('id')} ({hit.label}) opted in at its own risk"
     if hit.field:
         return f"{head}: its {hit.field} passes a model flag specy-road cannot read"
-    record = hit.record or {}
+    record = hit.record
     return f"{head}: its profile records guidance bypass observed ({record.get('date')}, {record.get('harness')})"
 
 

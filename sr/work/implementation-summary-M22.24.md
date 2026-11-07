@@ -17,6 +17,7 @@ Base `4a1a8674`. Fix commit `fc3a691b`. Touch zones unchanged and accurate. All 
 - **A4, docs and CHANGELOG.** `docs/orchestration-roster.md` gets the bounded-rule paragraph, and the launch-name list now names the roster id and `access.cli`. The existing `[Unreleased]` Security bullet in `CHANGELOG.md` is extended; no version heading was added.
 - **Fix round 1** (review `gpt-5.6-sol-high` at `6a43da70`). Class: a profile listing parsed newline by newline, which git quotes under `core.quotePath`, so a non-ASCII profile path is dropped. The flag scan was fixed in round 0; the routing scan `_committed_profile_paths` was not. An implicit `café.md` matching a `family: human` reviewer was then routed as no profile, and `_is_person` exempted it. Design change: one helper, `_listed_profiles` (`ls-tree -r -z --name-only`), now serves both the routing scan and `_committed_source`, so the two cannot diverge.
 - **Fix round 2** (review `gpt-5.6-sol-high` at `461eb03f`). Class: the human exemption was decided before the integration branch was read, from a routing lookup that returns *no profile* when git fails, so a listing or blob failure counted as "no profile" and exempted the entry. Design change: `_guidance_hit` decides the exemption from one place, the guidance source. A failed read refuses every entry, a person included. With a successful read, a routed profile or a committed one answering to the entry's id (`_by_id`, read from the same listing as the flags) makes it a model entry, and that profile's names are its launch names. The bounded rule is stated in `_guidance_hit`'s docstring and in `docs/orchestration-roster.md`.
+- **Fix round 3** (review `gpt-5.6-sol-high` at `38ae4e1a`). Class: unreachable defensive fallbacks added by this leaf, which could hide a broken invariant. Removed both `hit.record or {}` lines, in `guidance_bypass_refusal` and `guidance_bypass_warning`. A hit with neither `error` nor `field` comes only from `_flagged`, whose record comes from `flags_of`, which always stores a dict. This is the same direct `record.get` the merge base used.
 - A non-UTF-8 listing still fails through the existing path.
 
 ## Probes
@@ -34,10 +35,21 @@ Base `4a1a8674`. Fix commit `fc3a691b`. Touch zones unchanged and accurate. All 
 - (Round 2) Outside git (`repo_root` given, no integration branch): `_worktree_source` holds the working tree's profiles, so `_by_id` sees the same set `profile_for_entry` does. Without a `repo_root`, `src.profiles` is empty and the behaviour is unchanged.
 - Profiles outside git (`_worktree_source`, `profile_for_entry`) use `rglob`, which has no quoting. Not affected.
 
+- (Round 3) Each fallback the leaf added in `orchestrate_assign.py` and `orchestration_pinned.py`, checked for whether an input reaches it:
+  - `hit.record or {}` ×2: unreachable. **Removed.**
+  - `command_model(...) or ""` in `_launch_models`: reachable, because `command_model` returns `None` for a command with no readable flag. Kept.
+  - `prof.cli() or ""`: reachable for a profile with no `access.cli`, or `access.cli: none`. Kept.
+  - `except ValueError` in `_model_unreadable`: reachable on an unbalanced quote, which has a test row. Kept.
+  - `_listed_profiles(...) or ()` in `_committed_profile_paths`: reachable on a git failure (the listing-failure test row). Kept.
+  - `_channels`' `isinstance` check: moved verbatim from the merge base's `_launch_models`, not added.
+  - `_by_id` and `_is_person`: no fallback.
+- (Round 3) `_Hit` construction sites: `record` is set only from `_flagged`, and it is `None` exactly when `error` or `field` is set. Both readers branch on `error`/`field` before reading `record`.
+
 ## Verification
 
 - `pytest -n 4 -q`: 6230 passed. `-n 4` was used instead of `-n auto` because the brief asks to cap workers on a shared machine.
 - `pytest -n 4 -q tests/test_guidance_bypass_roles.py`: 65 passed.
+- Fix round 3 (the merge was already up to date): the same targeted run passed 171. Ruff is clean and file-limits is OK.
 - Fix round 2 (the merge was already up to date): the targeted run (the round-1 set plus `test_review_round6_policy.py`) passed 171. Ruff is clean and file-limits is OK. Red/green: both `test_an_unreadable_integration_branch_profile_refuses` rows fail with `orchestrate_assign.py` at `461eb03f`.
 - Fix round 1, after merging `origin/WIP/improvements-0-3-1`: the targeted run (guidance, aliases, worktree dry run, models-and-prompt, dynamic-routing-reviewers) passed 155. `ruff check specy_road tests scripts` is clean and `specy-road file-limits` is OK.
 - Red/green: with the two source files reverted to base, 28 of the new rows in that file fail and 37 pass, the 37 being the existing rows plus passing controls. With the fix, all pass.
