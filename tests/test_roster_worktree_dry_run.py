@@ -183,6 +183,33 @@ def test_roster_add_cli_needs_allow_local_cli(tmp_path: Path) -> None:
     assert err is None and {"mini", "opus2"} <= {e["id"] for e in cfg["roster"]}
 
 
+#: A local command field, and the entry that sets it. ``{marker}`` is a file the command would create if it ran.
+_LOCAL_COMMANDS = [
+    ("preflight", "  - {{id: mini, family: mistral, roles: [executor], preflight: 'touch {marker}'}}\n"),
+    ("channels.cli_resume",
+     "  - {{id: mini, family: mistral, roles: [executor], channels: {{cli_resume: 'touch {marker} {{session}}'}}}}\n"),
+    ("harness_bin", "  - {{id: mini, family: mistral, roles: [executor], harness_bin: '{marker}'}}\n"),
+    ("cursor_force",
+     "  - {{id: mini, family: cursor, roles: [executor], harness: cursor, cursor_force: true}}\n"),
+]
+
+
+@pytest.mark.parametrize(("field", "entry"), _LOCAL_COMMANDS, ids=[f for f, _e in _LOCAL_COMMANDS])
+@pytest.mark.parametrize("allow", ["absent", "false", "true"])
+def test_roster_add_command_fields_need_allow_local_cli(tmp_path: Path, field: str, entry: str, allow: str) -> None:
+    marker = tmp_path / "ran"
+    repo = plan_repo(tmp_path / "repo")
+    prefix = "" if allow == "absent" else f"allow_local_cli: {allow}\n"
+    _local(repo, prefix + "roster_add:\n" + entry.format(marker=marker))
+    cfg, err = pinned_config(repo)
+    assert not marker.exists()   # the refusal is at merge, before preflight or the resume command runs
+    if allow == "true":
+        assert err is None and "mini" in {e["id"] for e in cfg["roster"]}
+    else:
+        assert err and f"sets {field}" in err and "allow_local_cli: true" in err
+        assert "mini" not in {e["id"] for e in cfg["roster"]}
+
+
 def test_roster_add_entries_are_schema_checked(tmp_path: Path) -> None:
     repo = plan_repo(tmp_path)
     _local(repo, "roster_add:\n  - {id: mini}\n")

@@ -13,6 +13,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A local `roster_add` entry with a non-empty `preflight`, `channels.cli_resume` or `harness_bin`, or with
+  `cursor_force: true`, is refused unless that file sets `allow_local_cli: true`, naming the field in the same
+  message as `channels.cli`. Committed roster entries are unchanged.
+- A Codex reviewer passes the memory-off switches and an isolated `CODEX_HOME` (the profile home on a fresh turn,
+  the session's home on resume) for both `review delegate` and `prompt --channel cli --run`. A resumed turn still
+  passes `-m`. Claude and Cursor reviewers are unchanged.
 - `group-nodes --into-new NEW_ID` (and `POST /api/outline/group`) accepts a `NEW_ID` that one of the listed nodes
   holds, as in `group-nodes M1.1 M1.2 M1.3 --into-new M1.2`: that node leaves the id in the same transaction, so a
   regroup into the ids the flat nodes occupy no longer needs a temporary id and a second `move-node --id`. An id held by

@@ -3,8 +3,9 @@
 The local file is gitignored and already overlays availability (``roster:``). ``roster_add`` lists whole
 entries that planning and delegation on this clone use after the pinned roster's: an added id that the
 pinned roster already has is refused (a local entry never overrides a committed one), and so is an entry
-with a command to run (``channels.cli``, or a profile whose ``access.cli`` is set) unless the same file
-sets ``allow_local_cli: true``. An entry may never set ``allow_guidance_bypass_model`` (M21.44): that opt-in
+with a command to run (a non-empty ``channels.cli``, ``channels.cli_resume``, ``preflight`` or ``harness_bin``,
+``cursor_force: true``, or a profile whose ``access.cli`` is set) unless the same file sets ``allow_local_cli: true``.
+An entry may never set ``allow_guidance_bypass_model`` (M21.44): that opt-in
 counts only on the committed roster. Nothing here is shared with other clones, and the review gate reads only
 the committed roster.
 """
@@ -71,6 +72,22 @@ def _never_local(entry: dict[str, Any], rid: str, committed: set[str]) -> str | 
     return None
 
 
+def _local_command_field(entry: dict[str, Any]) -> str | None:
+    """A field that chooses what this clone runs, named the way the refusal names ``channels.cli``."""
+    channels = entry.get("channels") or {}
+    if channels.get("cli"):
+        return "channels.cli"
+    if entry.get("preflight"):
+        return "preflight"
+    if channels.get("cli_resume"):
+        return "channels.cli_resume"
+    if entry.get("harness_bin"):
+        return "harness_bin"
+    if entry.get("cursor_force") is True:
+        return "cursor_force"
+    return None
+
+
 def merge_local_roster(repo_root: Path, config: dict[str, Any],
                        profile_for: Callable[[dict[str, Any]], Profile | None]) -> str | None:
     """Append this clone's ``roster_add`` entries to ``config['roster']`` (in place), or say why not.
@@ -88,8 +105,8 @@ def merge_local_roster(repo_root: Path, config: dict[str, Any],
             return f"{where}/{i}: {rid!r} {why}"
         if allow:
             continue
-        if (entry.get("channels") or {}).get("cli"):
-            return (f"{where}/{i}: {rid!r} sets channels.cli, a command this clone would run; "
+        if field := _local_command_field(entry):
+            return (f"{where}/{i}: {rid!r} sets {field}, a command this clone would run; "
                     f"set {ALLOW_LOCAL_CLI_KEY}: true in the same file to allow it")
         prof = profile_for(entry)
         if prof is not None and prof.ok and prof.cli():
