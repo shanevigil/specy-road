@@ -8,6 +8,7 @@ chunk outright. All three must round-trip back to a byte-identical tree.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -15,9 +16,11 @@ import pytest
 
 from specy_road.archive_index import load_archive_index
 from specy_road.archive_ops import archive_node
-from specy_road.archive_plan import plan_archive
+from specy_road.archive_plan import plan_archive, planning_moves
 from specy_road.archive_restore import restore_archive
+from specy_road.safe_write import SafeWriteError
 from tests.helpers import DOGFOOD
+from tests.test_safe_write import swap_after_open
 
 
 @pytest.fixture()
@@ -117,16 +120,49 @@ def _move_node(repo: Path, src: str, dst: str, node_id: str) -> None:
     (base / dst).write_text(json.dumps(d, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def test_planning_sheets_move_out_of_the_flat_planning_dir(repo: Path) -> None:
-    """`validate` forbids subdirectories under planning/, so sheets park in the archive."""
+@pytest.mark.parametrize("linked", [False, True], ids=["sheet", "in-repo-link"])
+def test_planning_sheets_move_out_of_the_flat_planning_dir(repo: Path, linked: bool) -> None:
+    """`validate` forbids subdirectories under planning/, so sheets park in the archive.
+
+    An in-repo linked sheet moves its target, and the link goes with it.
+    """
+    [move] = planning_moves(plan_archive(repo, "M0.1"))
+    origin, kept = repo / move["origin"], repo / "docs" / "kept.md"
+    text = origin.read_bytes()
+    if linked:
+        kept.parent.mkdir(exist_ok=True)
+        origin.rename(kept)
+        origin.symlink_to(Path("..", "docs", "kept.md"))
     rec = archive_node(repo, "M0.1")
 
     moves = rec["planning"]
     assert len(moves) == 1
-    assert not (repo / moves[0]["origin"]).exists()
-    assert (repo / moves[0]["stored"]).is_file()
+    assert not os.path.lexists(repo / moves[0]["origin"]) and not kept.exists()
+    assert (repo / moves[0]["stored"]).is_file() and not (repo / moves[0]["stored"]).is_symlink()
+    assert (repo / moves[0]["stored"]).read_bytes() == text
     assert moves[0]["stored"].startswith("roadmap/archive/planning/")
     assert not any(p.is_dir() for p in (repo / "planning").iterdir())
+
+
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("swapped", ["planning", "roadmap/archive/planning"], ids=["sheet-parent", "archive-dir"])
+def test_a_directory_swapped_for_a_link_before_a_sheet_moves_is_refused(
+        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, swapped: str) -> None:
+    """A racer swaps the sheet's directory or the archive's planning directory for a link out after the walk
+    reaches it: the move is refused, nothing outside changes and the sheet stays where it was."""
+    [move] = planning_moves(plan_archive(repo, "M0.1"))
+    name, outside, raced = Path(move["origin"]).name, tmp_path / "outside", repo / swapped
+    text = (repo / move["origin"]).read_bytes()
+    outside.mkdir()
+    (outside / name).write_bytes(b"theirs\n")
+    swap_after_open(monkeypatch, raced, raced, outside)
+
+    with pytest.raises(SafeWriteError, match=f"^{raced} is a symlink \\(to {outside}\\), not a directory$"):
+        archive_node(repo, "M0.1")
+    monkeypatch.undo()
+    assert {p.name: p.read_bytes() for p in outside.iterdir()} == {name: b"theirs\n"}
+    sheet_dir = repo / ("planning.real" if swapped == "planning" else "planning")
+    assert (sheet_dir / name).read_bytes() == text
 
 
 @pytest.mark.parametrize(

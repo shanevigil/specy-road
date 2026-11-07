@@ -19,10 +19,14 @@ What the final component may be depends on the operation:
 A refusal reads ``"<path> is <kind>, not <expected>"``, with ``(to <readlink>)``
 after ``a symlink``: the sentence finish's ``irregular_destination`` uses.
 
-Writes are atomic: a temp file is created exclusively in the verified parent,
-and the destination and parent are checked again with ``lstat`` right before
-``os.replace``. Descriptor-anchored traversal (``openat`` per component) would
-close the remaining race; it is not done here.
+Writes and moves go by directory descriptor: the root is opened once and each
+directory below it with ``O_NOFOLLOW`` relative to the one above, so a link
+swapped in after the check fails the open. The temp file is created exclusively
+in the held parent and replaced there; right before the replace every held
+directory's identity is compared with an ``lstat`` of its path, so a swap is
+refused, and one after that comparison can only land in the directory walked.
+Where ``os.supports_dir_fd`` lacks ``os.open`` or ``os.rename`` (Windows), the
+destination and parent are checked again with ``lstat`` right before ``os.replace``.
 """
 
 from __future__ import annotations
@@ -50,10 +54,10 @@ class SafeWriteError(OSError):
     """A path the safe-write rule refuses; ``str()`` is the one-line reason."""
 
 
-def _kind(path: Path, expected: str) -> str | None:
-    """``path``'s kind by ``lstat``, or ``None`` when it is absent."""
+def _kind(path: Path, expected: str, dir_fd: int | None = None) -> str | None:
+    """``path``'s kind by ``lstat`` (its name in ``dir_fd`` when given), or ``None`` when it is absent."""
     try:
-        mode = os.lstat(path).st_mode
+        mode = (os.lstat(path) if dir_fd is None else os.stat(path.name, dir_fd=dir_fd, follow_symlinks=False)).st_mode
     except FileNotFoundError:
         return None
     except OSError as e:
@@ -203,6 +207,38 @@ def refused(root: Path, path: Path | str, expected: str | None = FILE) -> str | 
     return None
 
 
+def _dir_fds() -> bool:
+    """Whether this platform walks and replaces by directory descriptor (not Windows); ``os.replace`` takes
+    descriptors where ``os.rename`` does (``renameat``), and only ``os.rename`` is listed."""
+    return hasattr(os, "O_DIRECTORY") and hasattr(os, "O_NOFOLLOW") and {
+        os.open, os.rename, os.stat, os.mkdir, os.unlink} <= os.supports_dir_fd
+
+
+@contextlib.contextmanager
+def _held(base: Path, parts: tuple[str, ...], create: bool):
+    """Open ``base``, then each directory of ``parts`` without following a link, relative to the one above
+    (made first when ``create``); yields ``[(path, descriptor), ...]`` from the root down, all held open."""
+    held: list[tuple[Path, int]] = []
+    try:
+        held.append((base, os.open(base, os.O_RDONLY | os.O_DIRECTORY)))
+        for name in parts:
+            here, parent = held[-1][0] / name, held[-1][1]
+            if create:
+                with contextlib.suppress(FileExistsError):
+                    os.mkdir(name, dir_fd=parent)
+            try:
+                held.append((here, os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)))
+            except OSError:
+                kind = _kind(here, DIRECTORY, parent)
+                if kind in (None, DIRECTORY):
+                    raise
+                raise _refusal(here, kind, DIRECTORY) from None
+        yield held
+    finally:
+        for _path, fd in held:
+            os.close(fd)
+
+
 def mkdirs(root: Path, d: Path | str) -> Path:
     """Create ``d`` and its missing parents; an existing real directory is fine.
 
@@ -210,6 +246,9 @@ def mkdirs(root: Path, d: Path | str) -> Path:
     """
     base, parts = _locate(root, d)
     base.mkdir(parents=True, exist_ok=True)
+    if _dir_fds():
+        with _held(base, parts, create=True):
+            return base.joinpath(*parts)
     here = base
     for name in parts:
         here = here / name
@@ -226,48 +265,82 @@ def mkdirs(root: Path, d: Path | str) -> Path:
     return here
 
 
-def _recheck(full: Path) -> None:
-    """The parent is still a real directory and ``full`` absent or a regular file, right before replace."""
-    parent = _kind(full.parent, DIRECTORY)
-    if parent != DIRECTORY:
-        raise _refusal(full.parent, parent or "absent", DIRECTORY)
-    kind = _kind(full, FILE)
+def _recheck(full: Path, held: list[tuple[Path, int]] | None = None) -> None:
+    """Right before replace: each ``held`` directory is still the one walked (without, the parent is a real
+    directory by ``lstat``), and ``full`` absent or a regular file."""
+    for path, fd in held or [(full.parent, None)]:
+        kind = _kind(path, DIRECTORY)
+        if kind != DIRECTORY:
+            raise _refusal(path, kind or "absent", DIRECTORY)
+        if fd is not None and not os.path.samestat(os.lstat(path), os.fstat(fd)):
+            raise SafeWriteError(f"{path} is a different directory, not the one walked")
+    kind = _kind(full, FILE, held[-1][1] if held else None)
     if kind not in (None, FILE):
         raise _refusal(full, kind, FILE)
 
 
-def _temp(parent: Path, name: str) -> tuple[int, Path]:
-    """A new file created exclusively in ``parent``, mode ``0o666`` less the umask (as ``write_text`` makes)."""
+def _temp(parent: Path, name: str, dir_fd: int | None = None) -> tuple[int, Path]:
+    """A new file created exclusively in ``parent`` (its descriptor ``dir_fd`` when given), mode ``0o666``
+    less the umask (as ``write_text`` makes)."""
     while True:
         tmp = parent / f".{name}.{secrets.token_hex(6)}.tmp"
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
         try:
-            return os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o666), tmp
+            return os.open(tmp if dir_fd is None else tmp.name, flags, 0o666, dir_fd=dir_fd), tmp
         except FileExistsError:
             continue
 
 
+def _old_mode(full: Path, dir_fd: int | None = None) -> int | None:
+    """``full``'s mode when it is a regular file, so a rewrite keeps it."""
+    if _kind(full, FILE, dir_fd) != FILE:
+        return None
+    return (os.lstat(full) if dir_fd is None else os.stat(full.name, dir_fd=dir_fd, follow_symlinks=False)).st_mode
+
+
 def _replace(root: Path, path: Path | str, data: bytes, finish) -> Path:
     full = check(root, path, FILE)
-    mkdirs(root, full.parent)
-    fd, tmp = _temp(full.parent, full.name)
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
-        finish(tmp, full)
-        _recheck(full)
-        os.replace(tmp, full)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+    if not _dir_fds():   # M21.37's lstat re-check right before replace
+        mkdirs(root, full.parent)
+        fd, tmp = _temp(full.parent, full.name)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+            finish(tmp, _old_mode(full))
+            _recheck(full)
+            os.replace(tmp, full)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
+        return full
+    base, parts = _locate(root, full)
+    base.mkdir(parents=True, exist_ok=True)
+    with _held(base, parts[:-1], create=True) as held:
+        parent = held[-1][1]
+        fd, tmp = _temp(full.parent, full.name, parent)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+            try:
+                finish(tmp, _old_mode(full, parent))
+            except OSError:
+                _recheck(full, held)   # a directory swapped under the temp file's path: name it
+                raise
+            _recheck(full, held)
+            os.replace(tmp.name, full.name, src_dir_fd=parent, dst_dir_fd=parent)
+        except BaseException:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(tmp.name, dir_fd=parent)
+            raise
     return full
 
 
 def _keep_mode(mode: int | None):
-    def finish(tmp: Path, full: Path) -> None:
+    def finish(tmp: Path, old: int | None) -> None:
         if mode is not None:
             os.chmod(tmp, mode)
-        elif _kind(full, FILE) == FILE:   # a rewrite keeps the file's mode
-            os.chmod(tmp, stat.S_IMODE(os.lstat(full).st_mode))
+        elif old is not None:   # a rewrite keeps the file's mode
+            os.chmod(tmp, stat.S_IMODE(old))
     return finish
 
 
@@ -281,7 +354,25 @@ def write(root: Path, path: Path | str, data: str | bytes, mode: int | None = No
 
 def copy(root: Path, src: Path | str, dst: Path | str) -> Path:
     """:func:`write` ``src``'s bytes to ``dst``, keeping its mode and times (as ``shutil.copy2``)."""
-    return _replace(root, dst, Path(src).read_bytes(), lambda tmp, _full: shutil.copystat(src, tmp))
+    return _replace(root, dst, Path(src).read_bytes(), lambda tmp, _old: shutil.copystat(src, tmp))
+
+
+def move(root: Path, src: Path | str, dst: Path | str) -> Path:
+    """Rename the regular file ``src`` to ``dst`` (absent or a regular file), each reached as spelled under
+    ``root`` by the rule; missing parents of ``dst`` are made by :func:`mkdirs`."""
+    source, target = check(root, src, FILE), check(root, dst, FILE)
+    if not _dir_fds():   # M21.37's lstat re-check right before replace
+        mkdirs(root, target.parent)
+        _recheck(source)
+        _recheck(target)
+        os.replace(source, target)
+        return target
+    base, parts = _locate(root, source)
+    with _held(base, parts[:-1], create=False) as froms, _held(base, _locate(root, target)[1][:-1], True) as tos:
+        _recheck(source, froms)
+        _recheck(target, tos)
+        os.replace(source.name, target.name, src_dir_fd=froms[-1][1], dst_dir_fd=tos[-1][1])
+    return target
 
 
 def remove(root: Path, path: Path | str) -> bool:

@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from specy_road import safe_write
+from specy_road.generated_files import regenerate_generated_files
+from specy_road.init_project import run_init_project
+from specy_road.managed_block import apply_managed_block
 from specy_road.safe_write import SafeWriteError
 
 OLD = b"old\n"
@@ -178,7 +182,11 @@ def test_prune_empty_stops_at_a_link_or_a_non_empty_directory(tmp_path: Path) ->
     assert (tmp_path / "linked").is_symlink() and (tmp_path / "target").is_dir()
 
 
-def test_a_link_swapped_in_right_before_replace_is_refused(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("dir_fd", [True, False], ids=["descriptors", "no-dir-fd"])
+def test_a_link_swapped_in_right_before_replace_is_refused(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dir_fd: bool) -> None:
+    if not dir_fd:   # as on Windows: M21.37's lstat re-check is the guard
+        monkeypatch.setattr(os, "supports_dir_fd", os.supports_dir_fd - {os.open, os.rename, os.replace})
     path, theirs = tmp_path / "root" / "f", tmp_path / "theirs"
     path.parent.mkdir()
     path.write_bytes(OLD)
@@ -196,3 +204,69 @@ def test_a_link_swapped_in_right_before_replace_is_refused(tmp_path: Path, monke
     monkeypatch.undo()
     assert theirs.read_bytes() == OLD and path.is_symlink()
     assert sorted(p.name for p in path.parent.iterdir()) == ["f"]   # the temp file is gone
+
+
+def swap_after_open(monkeypatch: pytest.MonkeyPatch, opened: Path, swapped: Path, to: Path) -> None:
+    """A racer between the walk and the replace: once ``opened`` is opened as a directory, ``swapped`` is moved
+    to ``<name>.real`` and a symlink to ``to`` takes its place (once)."""
+    real_open, aside = os.open, swapped.with_name(swapped.name + ".real")
+
+    def racing_open(path, flags, *args, **kwargs):
+        fd = real_open(path, flags, *args, **kwargs)
+        if flags & os.O_DIRECTORY and not os.path.lexists(aside) and os.path.isdir(opened) \
+                and os.path.samestat(os.fstat(fd), os.lstat(opened)):
+            swapped.rename(aside)
+            swapped.symlink_to(to)
+        return fd
+
+    monkeypatch.setattr(os, "open", racing_open)
+    monkeypatch.setattr(os, "supports_dir_fd", os.supports_dir_fd | {racing_open})
+
+
+def _generated(tmp_path: Path):
+    root = tmp_path / "p"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    assert run_init_project(root, profiles="none") == 0
+    return root / "roadmap.md", lambda: regenerate_generated_files(root)
+
+
+def _managed(tmp_path: Path):
+    path = tmp_path / "p" / ".gitignore"
+    path.parent.mkdir()
+    path.write_bytes(OLD)
+    return path, lambda: apply_managed_block(path, ["x"], strict=True)
+
+
+def _nested(tmp_path: Path):
+    path = tmp_path / "p" / "sub" / "f"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(OLD)
+    return path, lambda: safe_write.write(tmp_path / "p", path, "new\n")
+
+
+# writer -> setup returning (destination, run); the generated file and the managed block sit in the root itself
+RACED_WRITERS = {"generated file": _generated, "managed block": _managed, "nested file": _nested}
+
+
+@pytest.mark.skipif(not hasattr(os, "O_DIRECTORY"), reason="no directory descriptors here")
+@pytest.mark.parametrize("swapped", ["destination", "parent"])
+@pytest.mark.parametrize("writer", list(RACED_WRITERS))
+def test_a_link_swapped_in_after_the_walk_is_refused(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, writer: str, swapped: str) -> None:
+    path, run = RACED_WRITERS[writer](tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / path.name).write_bytes(OLD)
+    target = path if swapped == "destination" else path.parent
+    swap_after_open(monkeypatch, path.parent, target, outside / path.name if swapped == "destination" else outside)
+    try:
+        result = run()
+    except SafeWriteError as e:
+        result = f"refused: {e}"
+    monkeypatch.undo()
+
+    assert str(result).startswith(f"refused: {target} is a symlink (to {outside}")
+    assert {p.name: p.read_bytes() for p in outside.iterdir()} == {path.name: OLD}
+    real = path.parent if swapped == "destination" else path.parent.with_name(path.parent.name + ".real")
+    assert not [p.name for p in real.iterdir() if p.name.endswith(".tmp")]   # the temp file is gone

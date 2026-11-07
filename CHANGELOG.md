@@ -48,6 +48,13 @@ body. Keep section bodies focused; link to PRs for detail.
   in-repository alias such as `.claude/skills -> ../tools/skills` was followed and
   is now refused: replace it with one of the two links above or a real directory.
   `AGENTS.md`/`CLAUDE.md` aliases and the per-skill `.claude/skills/` links are unchanged.
+- **Security:** safe-write's writes (generated files, the strict managed blocks and the other writers on the rule)
+  and `archive`'s planning-sheet moves walk by directory descriptor: each directory is opened without following a
+  link, relative to the one above, and the file is written and replaced in the directory the walk checked. A
+  destination or a directory on the path swapped for a link between that check and the replace is refused and
+  nothing outside changes; `archive` moves a sheet by the path as spelled (an in-repo linked sheet still moves its
+  target) instead of a path resolved beforehand. Where the platform has no directory descriptors (Windows), the
+  `lstat` re-check right before the replace remains the guard.
 - **Security:** `specy-road upgrade --dry-run` drops every `GIT_*` variable for its temporary copy, not five, and the
   copy reads no global or system git config, so a caller's `GIT_CONFIG_COUNT`, `$HOME/.gitconfig` or XDG config can no
   longer run a `core.fsmonitor`, `filter.<x>.clean` or `core.hooksPath` command. The copy has no hooks and no template.
