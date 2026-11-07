@@ -9,6 +9,7 @@ the emptied sources from ``includes``, and the graph shrinks.
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
@@ -58,28 +59,19 @@ def _apply_chunk_edits(root: Path, plan: ArchivePlan) -> bool:
     return changed
 
 
-def _move_planning_sheets(root: Path, plan: ArchivePlan) -> list[dict[str, str]]:
-    """Move each planning sheet into the archive; skip any that is already gone.
-
-    One rule: each name (the sheet, its archived place, an origin link) is
-    resolved once, so in-repo links are followed as before
-    (:func:`_refuse_links_out` has refused links out). The move then goes by
-    the safe-write rule's descriptor walk from those names, so a link that
-    appears on them afterwards, or a name resolved out of ``root``, is refused.
+def _hold_planning_sheets(stack: contextlib.ExitStack, root: Path, plan: ArchivePlan) -> list[tuple[dict, Any]]:
+    """Walk to each planning sheet and its archived place before the archive changes anything; skip any
+    sheet that is already gone. Returns ``(move, rename)`` pairs; each rename runs later through the
+    directories held now (:func:`specy_road.safe_write.moving`: in-repo links followed as spelled, a link
+    out or a swap refused).
     """
     from specy_road.archive_plan import planning_moves
 
-    moved: list[dict[str, str]] = []
-    for move in planning_moves(plan):
-        origin = root / move["origin"]
-        src = origin.resolve()
-        if not src.is_file():
-            continue
-        safe_write.move(root, src, (root / move["stored"]).resolve())
-        if origin.is_symlink():  # left dangling, it would read as an orphan sheet
-            safe_write.remove(root, origin.parent.resolve() / origin.name)
-        moved.append(move)
-    return moved
+    return [
+        (move, stack.enter_context(safe_write.moving(root, root / move["origin"], root / move["stored"])))
+        for move in planning_moves(plan)
+        if (root / move["origin"]).is_file()
+    ]
 
 
 def _refuse_links_out(root: Path, plan: ArchivePlan) -> None:
@@ -110,17 +102,20 @@ def apply_archive(root: Path, plan: ArchivePlan) -> dict[str, Any]:
     from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 
     _refuse_links_out(root, plan)
-    chunks_dir = archive_chunks_dir(root)
-    chunks_dir.mkdir(parents=True, exist_ok=True)
-    chunk_path = chunks_dir / f"{plan.archive_id}.json"
-    write_json_chunk(chunk_path, list(plan.nodes))
-    chunk_rel = chunk_path.resolve().relative_to(root.resolve()).as_posix()
+    with contextlib.ExitStack() as stack:
+        sheets = _hold_planning_sheets(stack, root, plan)   # a refusal here comes before any change
+        chunks_dir = archive_chunks_dir(root)
+        chunks_dir.mkdir(parents=True, exist_ok=True)
+        chunk_path = chunks_dir / f"{plan.archive_id}.json"
+        write_json_chunk(chunk_path, list(plan.nodes))
+        chunk_rel = chunk_path.resolve().relative_to(root.resolve()).as_posix()
 
-    _apply_chunk_edits(root, plan)
-    moved = _move_planning_sheets(root, plan)
+        _apply_chunk_edits(root, plan)
+        for _move, rename in sheets:
+            rename()
 
     record = build_record(plan, chunk_rel=chunk_rel)
-    record["planning"] = moved
+    record["planning"] = [move for move, _rename in sheets]
     doc = load_archive_index(root)
     doc.setdefault("records", []).append(record)
     write_archive_index(root, doc)

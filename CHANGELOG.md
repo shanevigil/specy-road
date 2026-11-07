@@ -84,9 +84,10 @@ body. Keep section bodies focused; link to PRs for detail.
   and `archive`'s planning-sheet moves walk by directory descriptor: each directory is opened without following a
   link, relative to the one above, and the file is written and replaced in the directory the walk checked. A
   destination or a directory on the path swapped for a link between that check and the replace is refused and
-  nothing outside changes, the project root itself included. `archive` still names a sheet and its archived place by
-  resolving them once (an in-repo linked sheet, a chain of links or a linked directory included, moves its final
-  target), then moves by that walk, so a link that appears on those names afterwards is refused. Where the platform
+  nothing outside changes, the project root itself included. `archive` walks to every planning sheet and its archived place
+  that way before its first change, following an in-repo link (a chain of links or a linked directory included, so
+  the sheet's final target moves as before) through the directory that holds it and refusing a link out, and then
+  moves the sheets through the directories it holds; a swap is refused before the roadmap changes. Where the platform
   has no directory descriptors (Windows), the `lstat` re-check right before the replace remains the guard.
 - **Security:** Publish, finish's landing and reviews copy, the pickup hint and the brainstorm lock follow the
   same safe-write rule. GUI Publish refuses (HTTP 400, nothing written) an in-repo or dangling symlink at
