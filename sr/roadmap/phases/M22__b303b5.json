@@ -333,6 +333,28 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A sandboxed turn can read the existing regular files in work/reviews/<node>, including REVIEW and notes files, so a fix round sees its blocking review; links are not copied",
+        "Only READY-* files are delivered back after the turn: a changed copy of a REVIEW or notes file does not reach the reviews directory",
+        "tests/test_worker_sandbox.py covers both through the public runner; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "sandboxed-workers-can-read-their-reviews",
+      "dependencies": [],
+      "id": "M22.46",
+      "node_key": "43366e49-21ee-4162-8748-cd1ec4b0b76f",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.46_sandboxed-workers-can-read-their-reviews_43366e49-21ee-4162-8748-cd1ec4b0b76f.md",
+      "sibling_order": 45,
+      "status": "Not Started",
+      "title": "Sandboxed workers can read their leaf's review records",
+      "touch_zones": [
+        "specy_road/worker_sandbox.py",
+        "tests/test_worker_sandbox.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
