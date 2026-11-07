@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -11,6 +14,8 @@ import pytest
 from tests.review_repo_helpers import NODE, git, make_review_repo
 
 from specy_road import session_presence as sp
+from specy_road import worker_ops
+from specy_road import worker_state as ws
 from specy_road.bundled_scripts import review_cli, session_cli
 from specy_road.bundled_scripts.do_next_prompt import print_pickup_header
 
@@ -246,3 +251,59 @@ def test_cli_end_with_an_explicit_id_never_falls_back(tmp_path: Path, capsys, mo
     assert _cli("session", "end", "--agent", "frank-x", "--repo-root", str(repo)) == 0
     assert capsys.readouterr().out.count("no record") == 2
     assert [s.agent for s in sp.list_sessions(repo)] == ["frank-s101"]
+
+
+@pytest.mark.parametrize("gone, reason", [("worktree", "worktree gone"), ("branch", "branch gone"),
+                                          ("both", "worktree gone")])
+def test_a_session_whose_worktree_or_branch_is_gone_stops_counting(
+        tmp_path: Path, capsys, gone: str, reason: str) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    sp.start_session(wt, "bob", paths=["src"], worktree=wt)
+    sp.start_session(repo, "alice", paths=["docs"])   # on dev in the main checkout: both exist, still live
+    if gone in ("worktree", "both"):
+        git(repo, "worktree", "remove", "--force", str(wt))
+    if gone in ("branch", "both"):
+        if gone == "branch":
+            git(wt, "checkout", "-q", "--detach")
+        git(repo, "branch", "-q", "-D", "feature/rm-thing")
+    assert [s.agent for s in sp.list_sessions(repo)] == ["alice"]
+    assert sp.conflicts(repo, ["src/a.py"]) == [] and sp.conflicts(repo, ["docs/x.md"])
+    assert _cli("session", "list", "--all", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert f"(stale: {reason})" in out and out.count("stale:") == 1
+
+
+def test_a_session_with_a_non_string_worktree_stays_live(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    s = sp.start_session(repo, "alice", paths=["src"])
+    s.path.write_text(s.path.read_text().replace(f"worktree: {s.worktree}", "worktree: [1, 2]"))
+    assert sp.load_session(s.path).worktree == [1, 2]
+    assert [x.agent for x in sp.list_sessions(repo)] == ["alice"]
+
+
+def test_terminate_ends_only_the_workers_own_session(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    env = {k: v for k, v in os.environ.items() if k != "SPECY_ROAD_AGENT_ID"}   # what the runner passes on
+    # The harness's `session start`, from a process that leads its own POSIX session as the wrapper does.
+    proc = subprocess.Popen([sys.executable, "-c", "import sys; from specy_road.bundled_scripts import session_cli; "
+                             "session_cli.main(sys.argv[1:])", "session", "start", "--path", "src",
+                             "--repo-root", str(wt)], cwd=wt, env=env, start_new_session=True,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    assert proc.wait(timeout=60) == 0
+    own = f"{sp.current_user()}-s{proc.pid}"
+    sp.start_session(wt, "peer", paths=["docs"], worktree=wt)
+    sp.start_session(repo, own.replace("-s", "-x"), paths=["x"])
+    peer_bytes = sp.session_path(repo, "peer").read_bytes()
+    assert sp.session_path(repo, own).is_file()
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", wt)
+    ws.mutate(repo, rec, lambda r: setattr(r, "pgid", proc.pid))   # gone now: nothing left to signal
+    worker_ops.terminate(repo, rec.worker_id)
+    assert not sp.session_path(repo, own).exists()
+    assert sp.session_path(repo, "peer").read_bytes() == peer_bytes
+    assert sorted(s.agent for s in sp.list_sessions(repo)) == sorted(["peer", own.replace("-s", "-x")])
