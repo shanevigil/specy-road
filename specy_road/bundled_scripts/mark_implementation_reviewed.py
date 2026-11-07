@@ -199,6 +199,25 @@ def _print_gate(gate: GateResult) -> None:
     print()
 
 
+def _approval_failure(node_id: str, error: BaseException) -> str:
+    """Why a human-approval write was refused, for the ``error:`` line."""
+    if isinstance(error, SigningError):
+        return f"could not sign: {error}"
+    if isinstance(error, ReviewRunBusy):
+        return filing_busy(node_id)
+    return str(error)
+
+
+def _write_human_or_exit(node: dict, commit: str, sign_key: Path | None) -> Path:
+    """Write the human approval, or exit 1 with ``error:`` and no traceback."""
+    try:
+        return write_human_approval(ROOT, node, commit, sign_key)
+    except (SigningError, ReviewRunBusy, safe_write.SafeWriteError) as e:
+        # a reviewer run holds the hand-off directory, or a symlink is on the path: nothing written
+        print(f"error: {_approval_failure(node['id'], e)}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
 def _gate_or_human_approval(
     args: argparse.Namespace,
     node: dict,
@@ -233,18 +252,7 @@ def _gate_or_human_approval(
                               approve_label=_APPROVE_AS_HUMAN):
             print("Aborted (registry unchanged).")
             raise SystemExit(0)
-        try:
-            written = write_human_approval(ROOT, node, gate.commit, sign_key)
-        except (SigningError, ReviewRunBusy, safe_write.SafeWriteError) as e:
-            # a reviewer run holds the hand-off directory, or a symlink is on the path: nothing written
-            if isinstance(e, SigningError):
-                why = f"could not sign: {e}"
-            elif isinstance(e, ReviewRunBusy):
-                why = filing_busy(node["id"])
-            else:
-                why = str(e)
-            print(f"error: {why}", file=sys.stderr)
-            raise SystemExit(1) from None
+        written = _write_human_or_exit(node, gate.commit, sign_key)
         # From a linked worktree the review lands in the main worktree.
         print(f"[ok] wrote {written.relative_to(ROOT) if written.is_relative_to(ROOT) else written}")
         gate = evaluate_gate(ROOT, node, gate.commit, branch=branch)

@@ -31,6 +31,8 @@ Touch zones, unchanged: `specy_road/review_lock.py`, `specy_road/review_policy_p
 - `replace_file` guard: `ELOOP` for any ancestor symlink; a final symlink is still replaced.
 - `append_log` guard: return `devnull` and do not mkdir when an ancestor is a symlink.
 - CLI guards: `cmd_review_record`, `cmd_review_record_locked`, `cmd_accept_policy`, `role_prompt.main`, `_gate_or_human_approval` and `cmd_review_delegate` print `error: <message>` and exit 1 on `SafeWriteError`.
+- `_approval_failure`: the same stderr reasons the gate printed inline for `SigningError`, `ReviewRunBusy` and `SafeWriteError`.
+- `_write_human_or_exit`: that try/except, so `_gate_or_human_approval` stays within the complexity limit. Same exit 1 and no traceback.
 - mocks: none
 - `test_the_lock_refuses_a_symlink_before_any_filing`: the five callers times the five lock layouts, path on stderr, no traceback, nothing launched.
 - `test_review_record_refuses_a_linked_live_record`: a dangling or live `REVIEW-<model>.md` link is refused and the outside file is unchanged.
