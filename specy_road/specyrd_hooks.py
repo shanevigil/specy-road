@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import stat
 from importlib import resources
 from pathlib import Path
 from typing import Any
 
+from specy_road import safe_write
 from specy_road.specyrd_skills import _package_templates_dir
 
 HOOKS_REL = Path("templates/specyrd/hooks")
@@ -17,6 +19,16 @@ _HARNESS_HOOK_FILES = {
     "codex": (Path("codex") / "hooks.json", Path(".codex") / "hooks.json"),
     "cursor": (Path("cursor") / "hooks.json", Path(".cursor") / "hooks.json"),
 }
+
+
+def hook_destinations(repo_root: Path, agent: str, *, guard_hooks: bool, pre_push: bool) -> list[Path]:
+    """Every path the opt-in hook installs would write, for a preflight before ``specyrd init`` changes anything."""
+    out: list[Path] = []
+    if guard_hooks and agent in _HARNESS_HOOK_FILES:
+        out += [repo_root / _HARNESS_HOOK_FILES[agent][1], repo_root / ".specyrd" / "hooks" / agent / "README.md"]
+    if pre_push:
+        out.append(repo_root / ".git" / "hooks" / PRE_PUSH_NAME)
+    return out
 
 
 def _hooks_template_dir() -> Path:
@@ -49,11 +61,10 @@ def _load_json(path: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def _write_json(path: Path, data: dict[str, Any], *, dry_run: bool) -> None:
+def _write_json(repo_root: Path, path: Path, data: dict[str, Any], *, dry_run: bool) -> None:
     if dry_run:
         return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    safe_write.write(repo_root, path, json.dumps(data, indent=2) + "\n")
 
 
 def install_orchestration_hooks(
@@ -70,16 +81,15 @@ def install_orchestration_hooks(
         return
     src_rel, dest_rel = pair
     snippet = _load_json(_hooks_template_dir() / src_rel)
-    dest = repo_root / dest_rel
+    dest = safe_write.check(repo_root, repo_root / dest_rel)   # read below only once it is no link
     merged = _merge_json_dict(_load_json(dest), snippet)
-    _write_json(dest, merged, dry_run=dry_run)
+    _write_json(repo_root, dest, merged, dry_run=dry_run)
     written.append(str(dest.relative_to(repo_root)))
     readme = _hooks_template_dir() / "README.md"
     if readme.is_file():
         target = repo_root / ".specyrd" / "hooks" / agent / "README.md"
         if not dry_run:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(readme.read_text(encoding="utf-8"), encoding="utf-8")
+            safe_write.write(repo_root, target, readme.read_text(encoding="utf-8"))
         written.append(str(target.relative_to(repo_root)))
 
 
@@ -98,8 +108,13 @@ def install_pre_push_hook(
         return
     if not script.is_file():
         raise FileNotFoundError(f"missing hook template {script}")
-    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest = safe_write.check(repo_root, dest)
+    if dest.is_file():   # no link (checked): keep the file's own mode, as write_text did
+        mode = stat.S_IMODE(os.lstat(dest).st_mode)
+    else:
+        umask = os.umask(0o022)
+        os.umask(umask)
+        mode = 0o666 & ~umask
     text = script.read_text(encoding="utf-8")
-    dest.write_text(text, encoding="utf-8")
-    dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    safe_write.write(repo_root, dest, text, mode=mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     written.append(rel)

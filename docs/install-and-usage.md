@@ -150,7 +150,9 @@ path it would change, and one that leads out of the checkout, or a schema, stub
 directory or other path with any symlink on it, prints `error: <path> is a
 symlink (to <target>), not <kind>` and writes nothing (`--dry-run` included).
 `init project`, `refresh-schemas`, `refresh-stubs`, `specyrd init`, `export` and
-`digest` refuse the same way and exit 1: any symlink on the path they write,
+`digest` refuse the same way and exit 1 (`specyrd init` also for the files
+`--install-guard-hooks` and `--install-pre-push` write, checked before its first write):
+any symlink on the path they write,
 pointing out of the project or inside it, dangling or looping, is refused rather than
 followed. One exception: an agent skills directory itself may be a symlink to the other
 one, with exactly this link text: `.claude/skills -> ../.agents/skills` or

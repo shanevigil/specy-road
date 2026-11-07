@@ -177,6 +177,33 @@ def test_specyrd_init_refuses_a_linked_manifest_or_ignore_file(tmp_path: Path, c
     assert not (outside / "made.md").exists()
 
 
+HOOK_DESTINATIONS = [   # (agent, the file an opt-in hook install writes)
+    ("claude-code", ".claude/settings.json"), ("codex", ".codex/hooks.json"), ("cursor", ".cursor/hooks.json"),
+    ("claude-code", ".specyrd/hooks/claude-code/README.md"), ("cursor", ".git/hooks/pre-push"),
+]
+
+
+@pytest.mark.parametrize("linked", ["final", "parent"])
+@pytest.mark.parametrize(("agent", "rel"), HOOK_DESTINATIONS)
+def test_specyrd_init_refuses_a_linked_hook_destination(tmp_path: Path, capsys, agent: str, rel: str,
+                                                        linked: str) -> None:
+    repo, outside = _inited(tmp_path)
+    dest = repo / rel
+    if linked == "final":
+        path, target = dest, outside / "theirs.json"
+    else:   # the destination's parent, its files copied out so a followed write would change them
+        path, target = dest.parent, outside / "hookdir"
+        shutil.copytree(path, target) if path.is_dir() else target.mkdir()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _relink(path, target)
+    git_hooks = sorted(p.name for p in (repo / ".git" / "hooks").iterdir()) if linked == "final" else None
+
+    _refused(lambda: run_init(target=repo, agent=agent, dry_run=False, force=True, ai_commands_dir=None,
+                              install_guard_hooks=True, install_pre_push=True), capsys, path, repo, outside)
+    if git_hooks is not None:   # _tree leaves .git out: no hook was written beside the refused one
+        assert sorted(p.name for p in (repo / ".git" / "hooks").iterdir()) == git_hooks
+
+
 GENERATED_LAYOUTS = {
     "final-link-out": lambda repo, out, name: _relink(repo / name, out / "theirs.json") or repo / name,
     "dangling": lambda repo, out, name: _relink(repo / name, out / "made.md") or repo / name,

@@ -24,7 +24,9 @@ body. Keep section bodies focused; link to PRs for detail.
   as `.claude/skills -> ../.agents/skills` or `.agents/skills -> ../.claude/skills`,
   any other link is refused), `--prune` (an
   orphan under a linked directory), `.gitignore` and `.cursorindexingignore`,
-  and `restore-archive` (every path checked before its first change) refuse it,
+  the opt-in hook installs (`--install-guard-hooks`: the harness settings or hooks file and
+  `.specyrd/hooks/<agent>/README.md`; `--install-pre-push`: `.git/hooks/pre-push`, all checked before `specyrd init`'s
+  first write), and `restore-archive` (every path checked before its first change) refuse it,
   naming `<path> is a symlink (to <target>), not <kind>`; the commands exit 1, a symlink loop on the path
   (a link to itself, or the two skills directories linked to each other) included, without a traceback. `upgrade` checks every change before its first one, so a schema linked out
   of the checkout no longer overwrites the outside file; it exits 1 on a
