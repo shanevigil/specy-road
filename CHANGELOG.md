@@ -13,6 +13,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road doctor --fix` leaves a registry row whose branch is in neither this clone nor the
+  remote. The report calls that row advisory and says what to check: another clone's claim looks
+  the same until it pushes its branch, so confirm that clone no longer holds the claim, then
+  `specy-road registry-prune --remove <CODENAME>`. A row whose leaf is Complete is still removed.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.
