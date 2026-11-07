@@ -86,19 +86,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: safe-write-directory-descriptors
-    node_id: M22.29
-    branch: feature/rm-safe-write-directory-descriptors
-    touch_zones:
-      - specy_road/safe_write.py
-      - specy_road/archive_ops.py
-      - tests/test_safe_write.py
-      - tests/test_archive_ops.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T18:26:33+00:00'
   - codename: rc-publishes-wheel-url-and-project-urls
     node_id: M22.36
     branch: feature/rm-rc-publishes-wheel-url-and-project-urls

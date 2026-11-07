@@ -339,7 +339,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.29_safe-write-directory-descriptors_0bcbdc19-743c-4037-9bbb-089c6a3f0cb4.md",
       "sibling_order": 28,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "safe_write and archive moves traverse by directory descriptor",
       "touch_zones": [
         "specy_road/safe_write.py",
