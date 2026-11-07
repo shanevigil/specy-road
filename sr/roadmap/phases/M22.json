@@ -480,7 +480,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.18_reviewer-lists-every-required-change_f6a968f0-f084-49e0-b5f1-c8132d45ea7f.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The reviewer prompt asks for every required change in one pass, not just the first",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt.py",
