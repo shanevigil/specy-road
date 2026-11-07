@@ -49,6 +49,7 @@ FLAG_RECONCILE = "needs_reconcile"
 FLAG_ORPHAN = "wrapper_gone_harness_alive"   # the wrapper died; its harness or process group did not
 FLAG_STALLED = "stalled"   # running, and no stdout for policy.stall_after_seconds; the next output line clears it
 FLAG_UNDELIVERED = "message_undelivered"   # a queued follow-up could not be delivered; the next message or resume sends it
+FLAG_NEEDS_PERSON = "needs_person"   # stalled past its recovery limit; cleared once it is no longer stalled (M22.39)
 MAILBOX_FLAG = "FLAG"   # work/.workers/FLAG: replaced by every append_event; `sync --wait` stats only this file
 _ID = re.compile(r"^w-[0-9]{4,}$")
 
@@ -87,6 +88,7 @@ class WorkerRecord:
     descendants_unchecked: bool | None = None  # terminate could not list escaped descendants; terminate repeats
     queued_message: str | None = None  # a follow-up from ``worker message`` while the wrapper was still running
     limit_reset_at: str | None = None  # while paused_by_limit: when the usage limit lifts (worker_turn_check)
+    recoveries: int | None = None      # `worker recover` runs on this worker so far; bounded by policy (M22.39)
     toolkit_version: str | None = None
     unknown_fields: dict[str, Any] = field(default_factory=dict, repr=False)  # a newer schema's, kept on save
 

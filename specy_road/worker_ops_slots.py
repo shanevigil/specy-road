@@ -1,4 +1,5 @@
-"""Slot checks behind ``specy-road worker``: dead wrappers, stalled workers, and the ``max_workers`` cap (slice 7c).
+"""Slot checks behind ``specy-road worker``: dead wrappers, stalled workers and their recovery (M22.39), and the
+``max_workers`` cap (slice 7c).
 
 Split from :mod:`specy_road.worker_ops` for the file limit; callers reach
 these through that module.
@@ -15,13 +16,19 @@ from specy_road.worker_lease import max_workers, slot_error
 from specy_road.worker_orphans import holding_slots
 from specy_road.worker_process import wrapper_gone
 from specy_road.worker_state import (
+    FLAG_NEEDS_PERSON,
     FLAG_STALLED,
+    WorkerError,
     WorkerRecord,
     add_flag,
     append_event,
     clear_flag,
     events_since,
     list_records,
+    load_record,
+    mutate,
+    require_writer,
+    workers_dir,
     workers_lock,
 )
 
@@ -31,29 +38,141 @@ def sweep_dead_wrappers(repo_root: Path) -> list[WorkerRecord]:
     return [r for r in list_records(repo_root, active_only=True) if _wrapper_gone(repo_root, r)]
 
 
+#: Recoveries one worker gets when ``policy.max_fix_rounds`` is unset (M22.39).
+DEFAULT_RECOVERIES = 3
+#: Events that start a turn: a running worker with no ``last_output_at`` yet is silent since the latest one.
+_LAUNCH_EVENTS = frozenset({"started", "message", "resumed", "launched"})
+
+
+def _policy(repo_root: Path) -> dict:
+    config, _err = pinned_config(repo_root)   # unreadable: the defaults, still a signal
+    return config.get("policy") or {}
+
+
+def silent_seconds(repo_root: Path, rec: WorkerRecord, now: datetime) -> int | None:
+    """Seconds a ``running`` worker has been silent: since ``last_output_at``, or since the turn's launch when the
+    harness never wrote one (M22.39); ``None`` for any other state."""
+    if rec.state != "running":
+        return None
+    since = rec.last_output_at or next(
+        (e.at for e in reversed(events_since(repo_root, rec.worker_id)) if e.type in _LAUNCH_EVENTS), rec.created)
+    return int((now - datetime.fromisoformat(since)).total_seconds())
+
+
+def last_output(repo_root: Path, worker_id: str) -> str | None:
+    """The summary of the worker's last event parsed from the harness."""
+    return next((e.summary for e in reversed(events_since(repo_root, worker_id)) if e.source == "worker"), None)
+
+
 def sweep_stalled(repo_root: Path, *, now: datetime | None = None) -> list[WorkerRecord]:
     """Flag each ``running`` worker silent for ``policy.stall_after_seconds`` with one ``stalled`` event per
-    silence (the wrapper's next output write clears the flag; so does leaving ``running``); returns those flagged."""
-    config, _err = pinned_config(repo_root)   # unreadable: the default threshold, still a signal
-    limit = int((config.get("policy") or {}).get("stall_after_seconds", DEFAULT_POLICY["stall_after_seconds"]))
+    silence (the wrapper's next output write clears the flag; so does leaving ``running``); returns those flagged.
+    A worker that never wrote output is measured from its launch (M22.39)."""
+    limit = int(_policy(repo_root).get("stall_after_seconds", DEFAULT_POLICY["stall_after_seconds"]))
     now = now or datetime.now(timezone.utc)
     out = []
     with workers_lock(repo_root):
         for rec in list_records(repo_root):   # failed and terminated too: a closed worker keeps no stall
-            silent = (int((now - datetime.fromisoformat(rec.last_output_at)).total_seconds())
-                      if rec.state == "running" and rec.last_output_at else None)
+            silent = silent_seconds(repo_root, rec, now)
             if silent is None or silent < limit:
-                if FLAG_STALLED in rec.flags:
-                    clear_flag(repo_root, rec, FLAG_STALLED)
+                for flag in (FLAG_STALLED, FLAG_NEEDS_PERSON):
+                    if flag in rec.flags:
+                        clear_flag(repo_root, rec, flag)
                 continue
             if FLAG_STALLED in rec.flags:
                 continue
-            last = next((e.summary for e in reversed(events_since(repo_root, rec.worker_id)) if e.source == "worker"), None)
+            last = last_output(repo_root, rec.worker_id)
             append_event(repo_root, rec, "stalled", source="system",
                          summary=f"no output for {silent}s (policy.stall_after_seconds {limit}); last: {last or '-'}",
                          detail={"silent_seconds": silent, "last_output_at": rec.last_output_at, "last_summary": last})
             add_flag(repo_root, rec, FLAG_STALLED)
             out.append(rec)
+    return out
+
+
+def stalled_workers(repo_root: Path, *, now: datetime | None = None) -> list[dict]:
+    """After a sweep, each stalled worker: id, leaf, seconds silent, recoveries used and allowed."""
+    now = now or datetime.now(timezone.utc)
+    sweep_stalled(repo_root, now=now)
+    limit = recovery_limit(repo_root)
+    return [{"worker_id": r.worker_id, "node_id": r.node_id, "silent_seconds": silent_seconds(repo_root, r, now),
+             "recoveries": r.recoveries or 0, "recovery_limit": limit, "needs_person": FLAG_NEEDS_PERSON in r.flags}
+            for r in list_records(repo_root) if FLAG_STALLED in r.flags]
+
+
+def stall_lines(stalls: list[dict]) -> list[str]:
+    """One line per stalled worker, with how long it has been silent and what to run."""
+    return [f"stalled: {s['worker_id']} ({s['node_id']}) silent {s['silent_seconds']}s, recoveries "
+            f"{s['recoveries']}/{s['recovery_limit']} — "
+            + ("needs a person (`worker status`, then `worker terminate` or wait)" if s["needs_person"]
+               else f"`specy-road worker recover {s['worker_id']}`") for s in stalls]
+
+
+def recovery_limit(repo_root: Path) -> int:
+    """Recoveries per worker: ``policy.max_fix_rounds``, else :data:`DEFAULT_RECOVERIES`."""
+    return int(_policy(repo_root).get("max_fix_rounds") or DEFAULT_RECOVERIES)
+
+
+def recover(repo_root: Path, worker_id: str, *, offline: bool = False,
+            now: datetime | None = None) -> WorkerRecord:
+    """``worker recover``: end a stalled worker's process group, keep its worktree and commits, and resume its
+    native session with the continue prompt. One shot under the workers lock, so two recoveries never overlap;
+    refused (nothing ended) when the worker is not stalled, another live worker holds its leaf, or it cannot be
+    resumed; past :func:`recovery_limit` it is flagged ``needs_person`` with its last output named (M22.39)."""
+    from specy_road.worker_adapters import adapter_for   # noqa: PLC0415
+    from specy_road.worker_ops_message import CONTINUE_PROMPT, _send   # noqa: PLC0415 — it imports this module
+    from specy_road.worker_process import kill_group, process_alive, require_branch   # noqa: PLC0415
+
+    with workers_lock(repo_root):
+        sweep_stalled(repo_root, now=now)
+        rec = load_record(repo_root, worker_id)
+        if FLAG_STALLED not in rec.flags:
+            raise WorkerError(f"{worker_id} is not stalled ({rec.state}); nothing to recover")
+        other = next((r for r in list_records(repo_root, active_only=True)
+                      if r.node_id == rec.node_id and r.worker_id != worker_id), None)
+        if other:
+            raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}, {other.state}); "
+                              f"{worker_id} is left as it is")
+        limit, last = recovery_limit(repo_root), last_output(repo_root, worker_id) or "-"
+        if (rec.recoveries or 0) >= limit:
+            if FLAG_NEEDS_PERSON not in rec.flags:
+                append_event(repo_root, rec, "error", source="system",
+                             summary=f"stalled after {limit} recoveries; needs a person; last output: {last}")
+                add_flag(repo_root, rec, FLAG_NEEDS_PERSON)
+            raise WorkerError(f"{worker_id} needs a person: stalled after {limit} recoveries "
+                              f"(policy.max_fix_rounds, default {DEFAULT_RECOVERIES}); last output: {last}")
+        require_writer(rec)
+        if not adapter_for(rec.harness).caps.resume or not rec.provider_session_id:
+            raise WorkerError(f"{worker_id} has no native session it can resume; it is left running — "
+                              "`worker terminate` it and `worker delegate --rework` instead")
+        require_branch(rec)
+        n = (rec.recoveries or 0) + 1
+        mutate(repo_root, rec, lambda r: setattr(r, "recoveries", n))   # counted before anything can fail
+        append_event(repo_root, rec, "error", source="system",
+                     summary=f"stalled; recovery {n} of {limit}: ending its processes and resuming; last output: {last}")
+        if process_alive(rec, repo_root):
+            kill_group(rec, repo_root)   # the wrapper's group; the worktree and its commits are untouched
+        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "recover", offline,
+                     no_queue=True)
+
+
+def recover_stalled(repo_root: Path) -> list[dict]:
+    """Recover each stalled worker not already waiting for a person: what ``grind-session`` runs on its loop.
+    One entry per worker tried: ``worker_id``, ``node_id``, ``outcome`` (``recovered``, ``needs_person`` or
+    ``refused``) and ``detail``."""
+    out: list[dict] = []
+    if not workers_dir(repo_root).is_dir():   # no worker was ever launched here: nothing to sweep or create
+        return out
+    for s in stalled_workers(repo_root):
+        if s["needs_person"]:
+            continue
+        try:
+            recover(repo_root, s["worker_id"])
+            outcome, detail = "recovered", f"resumed after {s['silent_seconds']}s of silence"
+        except Exception as e:  # noqa: BLE001 — one worker's refusal must not stop the loop
+            outcome = "needs_person" if "needs a person" in str(e) else "refused"
+            detail = str(e)
+        out.append({"worker_id": s["worker_id"], "node_id": s["node_id"], "outcome": outcome, "detail": detail})
     return out
 
 
