@@ -49,6 +49,7 @@ notices for what the new version reports (held milestones among them).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import shlex
 import sys
@@ -64,12 +65,12 @@ from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, select
 from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
 from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
 from specy_road.bundled_scripts.upgrade_generated import GitFailed, checked, regenerate, scratch_environ
-from specy_road.bundled_scripts.upgrade_plan import Mirror, apply_plan, conflicts, make_plan
+from specy_road.bundled_scripts.upgrade_plan import Mirror, Plan, apply_plan, conflicts, make_plan
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
 from specy_road.git_subprocess import git_text
-from specy_road.ignore_report import scratch_git_env
+from specy_road.ignore_report import attempt, observe, observed, print_matches, scratch_git_env
 from specy_road.init_project import project_template_root
 from specy_road import safe_write
 from specy_road.managed_block import refused_link, rule_refusal
@@ -286,7 +287,7 @@ def _report_line_caps(before: dict[str, tuple[int, int]], after: dict[str, tuple
             print(line)
 
 
-def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool):
+def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool, defer_ignore: bool = False):
     real = project.resolve()
 
     def refresh(sandbox_project: Path, sandbox_checkout: Path) -> dict[str, str]:
@@ -298,20 +299,39 @@ def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool):
             existence_project=real,
         )
 
-    return make_plan(checkout, project, refresh)
+    return make_plan(checkout, project, refresh, defer_ignore=defer_ignore)
+
+
+def _writes_gitignore(plan: Plan) -> bool:
+    """Whether the plan replaces the checkout's top-level ``.gitignore``."""
+    return any(e.action == "write" and e.path == ".gitignore" for e in plan.entries)
+
+
+@contextlib.contextmanager
+def _checkout_ignore_note(checkout: Path, plan: Plan):
+    """Print the ignore note from the checkout, observed just before the ``.gitignore`` write and read just after."""
+    before = attempt(lambda: observe(checkout)) if _writes_gitignore(plan) else None
+    try:
+        yield
+    finally:
+        if before is not None:
+            found = before if isinstance(before, str) else attempt(lambda: observed(checkout, before))
+            print_matches(found, estimated=False)
 
 
 def _apply(project: Path, checkout: Path, *, prune: bool) -> bool:
     """Make the plan, write it into the checkout, then check its writes against the line caps.
 
     Returns whether the plan has an ``error`` entry (applied as nothing, the rest applied).
+    The plan's mirror has an empty index, so the ignore note is taken here, around the write.
     """
     before = _capped_lines(project)
-    plan = _plan(project, checkout, preview=False, prune=prune)
+    plan = _plan(project, checkout, preview=False, prune=prune, defer_ignore=True)
     stale = conflicts(plan)
     if stale:
         raise ValueError(f"{', '.join(stale)} changed while the upgrade ran; nothing was written, run it again")
-    apply_plan(plan)
+    with _checkout_ignore_note(checkout, plan):
+        apply_plan(plan)
     copy_missing_work_templates(project)
     _report_line_caps(before, _capped_lines(project))
     return any(e.action == "error" for e in plan.entries)

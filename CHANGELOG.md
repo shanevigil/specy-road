@@ -13,6 +13,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A review tally that cannot be read prints one stderr line and a `Review-tally: <ID> unreadable` trailer, and the
+  digest counts that leaf as unreadable, apart from a leaf with no tally. Both stay in the leaf totals and out of
+  the rates; the footnote about leaves landed before tallies were recorded covers only a missing tally.
+  `rename-refs` protects backtick and tilde fences: an opening fence has at most three spaces of indent and three
+  or more of one character, and it closes only on a line of the same character, at least as long, with at most
+  three spaces of indent and nothing after it but spaces. `specy-road upgrade` takes its ignore notice from the
+  checkout around the `.gitignore` write, so a tracked file a new rule matches stays tracked and the untrack
+  command is printed; `--dry-run` labels the mirror's notice as an estimate.
 - PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
   list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the
   other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,

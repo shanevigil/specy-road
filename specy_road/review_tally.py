@@ -20,6 +20,8 @@ the same ``HEAD``:
   brought in (:func:`merge_tally`).
 * **No tally.** A completed leaf whose gate commit carries no trailer (landed before it existed) counts as landed
   and is left out of every rate.
+* **Unreadable.** A ``Review-tally: <id> unreadable`` trailer (the records could not be read) counts as landed,
+  apart from no tally, and is left out of every rate. The digest shows that count on its own.
 * **Policy.** ``quality_window``, ``quality_area_depth`` and ``quality_threshold`` are read from
   ``roadmap/orchestration.yaml`` as committed at ``HEAD`` (:func:`quality_policy`), never from a local overlay.
 """
@@ -27,6 +29,7 @@ the same ``HEAD``:
 from __future__ import annotations
 
 import re
+import sys
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,6 +39,8 @@ from specy_road.git_subprocess import git_stdout, git_text
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 TRAILER = "Review-tally"
+#: Second field of a trailer whose counts could not be read. Not a missing trailer.
+UNREADABLE = "unreadable"
 #: The subject ``finish-this-task`` gives the merge that lands a leaf (``finish_land_deterministic``).
 _FINISH = re.compile(r"^Merge branch 'feature/rm-(?P<codename>[^']+)' into (?P<into>\S+)$")
 _REVERTS = re.compile(r"^This reverts commit (?P<sha>[0-9a-f]{40})\b", re.M)
@@ -90,19 +95,25 @@ def format_tally(node_id: str, tally: dict[str, Any]) -> str:
 
 
 def tally_trailers(repo_root: Path, gate: Any) -> list[str]:
-    """The gate commit's ``Review-tally`` line for a passed :class:`~specy_road.review_gate.GateResult`; none when
-    the records cannot be read (the leaf then counts as no tally)."""
+    """The gate commit's ``Review-tally`` line for a passed :class:`~specy_road.review_gate.GateResult`.
+
+    When the records cannot be read, one stderr line and an unreadable trailer; the gate still closes.
+    """
     try:
         return [format_tally(gate.node_id, leaf_tally(repo_root, gate))]
-    except Exception:  # noqa: BLE001 - the tally is a record for the digest, never a reason to refuse the gate
-        return []
+    except Exception as exc:  # noqa: BLE001 - the tally is a record for the digest, never a reason to refuse the gate
+        print(f"review tally: {type(exc).__name__}: {exc}; the leaf's quality numbers will be missing", file=sys.stderr)
+        return [f"{TRAILER}: {gate.node_id} {UNREADABLE}"]
 
 
-def parse_tally(line: str) -> tuple[str, dict[str, int]] | None:
-    """``(node id, counts)`` from one trailer line, or ``None`` when it is not a well-formed tally."""
+def parse_tally(line: str) -> tuple[str, dict[str, int] | str] | None:
+    """``(node id, counts)`` from one trailer line, ``(node id, unreadable)`` when the counts could not be read,
+    or ``None`` when it is not a well-formed tally."""
     m = _TALLY.match(line.strip())
     if not m:
         return None
+    if m["fields"].strip() == UNREADABLE:
+        return m["node"], UNREADABLE
     fields = {f["key"]: f["value"] for f in _FIELD.finditer(m["fields"])}
     if not all(fields.get(k, "").isdigit() for k in _COUNTS):
         return None
@@ -149,8 +160,11 @@ def completed_leaves(root: Path) -> list[tuple[str, str]]:
     return list(leaves.items())
 
 
-def merge_tally(root: Path, codename: str, merge: str) -> dict[str, int] | None:
-    """The newest tally on ``codename``'s gate commit among the commits ``merge`` brought in; ``None`` without one."""
+def merge_tally(root: Path, codename: str, merge: str) -> dict[str, int] | str | None:
+    """The newest tally on ``codename``'s gate commit among the commits ``merge`` brought in.
+
+    ``None`` when that commit carries no trailer; :data:`UNREADABLE` when the trailer says so.
+    """
     subject = f"chore(rm-{codename}): {_GATE}"
     out = git_stdout(["log", "--topo-order", "--format=%x1e%B", "--fixed-strings", f"--grep={subject}",
                       f"{merge}^1..{merge}^2"], root)
@@ -185,6 +199,7 @@ class AreaQuality:
     area: str
     leaves: int = 0
     no_tally: int = 0
+    unreadable: int = 0
     rounds: int = 0
     blocked_leaves: int = 0
     integrity: int = 0
@@ -193,7 +208,7 @@ class AreaQuality:
 
     @property
     def tallied(self) -> int:
-        return self.leaves - self.no_tally
+        return self.leaves - self.no_tally - self.unreadable
 
     @property
     def mean_rounds(self) -> float | None:
@@ -205,7 +220,7 @@ class AreaQuality:
         return self.blocked_leaves / self.tallied if self.tallied else None
 
 
-def _window(root: Path, nodes: list[dict[str, Any]], size: int) -> list[tuple[list[str], dict[str, int] | None]]:
+def _window(root: Path, nodes: list[dict[str, Any]], size: int) -> list[tuple[list[str], dict[str, int] | str | None]]:
     """The last ``size`` completed leaves with touch zones, newest first: ``(zones, tally or None)``."""
     from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 
@@ -225,7 +240,8 @@ def _window(root: Path, nodes: list[dict[str, Any]], size: int) -> list[tuple[li
 
 def area_quality(root: Path, nodes: list[dict[str, Any]]) -> list[AreaQuality]:
     """Per-area quality over the window, flagged areas first, then by name; empty only when no completed leaf with
-    touch zones exists. Leaves with no tally are counted as landed and left out of the rates."""
+    touch zones exists. Leaves with no tally, and leaves whose tally is unreadable, are counted as landed and left
+    out of the rates."""
     policy = quality_policy(root)
     window = _window(root, nodes, int(policy["quality_window"]))
     depth, prefix = int(policy["quality_area_depth"]), project_prefix(root)
@@ -236,6 +252,9 @@ def area_quality(root: Path, nodes: list[dict[str, Any]]) -> list[AreaQuality]:
             a.leaves += 1
             if counts is None:
                 a.no_tally += 1
+                continue
+            if counts == UNREADABLE:
+                a.unreadable += 1
                 continue
             a.rounds += counts["rounds"]
             a.blocked_leaves += counts["blocks"] > 0

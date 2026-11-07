@@ -35,6 +35,33 @@ def _snapshot(root: Path) -> dict[Path, bytes]:
     return {p: p.read_bytes() for p in root.rglob("*") if p.is_file() and ".git" not in p.parts}
 
 
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_tracked_file_a_new_rule_matches_is_reported_from_the_checkout(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], dry_run: bool
+) -> None:
+    """A real run observes the checkout around the write; a dry run labels the mirror's note as an estimate."""
+    from specy_road.ignore_report import ESTIMATE_HEADER, REAL_HEADER, TRACKED_NOTE
+
+    root = old_repo(tmp_path)
+    ignore = root / ".gitignore"
+    ignore.write_text(ignore.read_text(encoding="utf-8").replace(".specyrd/AGENTS.local.md\n", ""), encoding="utf-8")
+    local = root / ".specyrd" / "AGENTS.local.md"
+    local.write_text("local notes\n", encoding="utf-8")
+    _committed(root)
+    capsys.readouterr()
+
+    assert run_upgrade(root, dry_run=dry_run) == 0
+
+    out = capsys.readouterr().out
+    assert ".specyrd/AGENTS.local.md" in _git(root, "ls-files")
+    if dry_run:
+        assert ESTIMATE_HEADER in out and REAL_HEADER not in out
+    else:
+        assert f".specyrd/AGENTS.local.md (.specyrd/AGENTS.local.md): {TRACKED_NOTE}" in out
+        assert "git rm --cached -- .specyrd/AGENTS.local.md" in out
+        assert REAL_HEADER in out and ESTIMATE_HEADER not in out
+
+
 def test_header_names_the_install_and_a_dry_run_says_it_previews(tmp_path: Path, capsys) -> None:
     root = old_repo(tmp_path)
     capsys.readouterr()

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
 from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
 
@@ -12,7 +14,7 @@ from specy_road import orchestrate_plan as op
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, write_human_approval
-from specy_road.review_tally import leaf_areas, parse_tally, tally_trailers
+from specy_road.review_tally import UNREADABLE, leaf_areas, parse_tally, tally_trailers
 
 
 TALLY = "Review-tally: M1.1 rounds=2 blocks=1 approvals=1 integrity=0 rca=0 findings=boundary:1,correctness:2"
@@ -75,6 +77,25 @@ def test_a_human_approval_with_no_history_copy_is_one_round(tmp_path: Path) -> N
 def test_parse_tally_rejects_a_malformed_line() -> None:
     assert parse_tally("Review-tally: M1.1 rounds=x blocks=0 integrity=0 rca=0") is None
     assert parse_tally("Reviewed-by: human (human) approve abc") is None
+
+
+def test_a_failed_tally_is_visible_and_the_gate_still_closes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """leaf_tally raising prints one stderr line and an unreadable trailer; mark-implementation-reviewed still commits."""
+    repo = _gate_repo(tmp_path)
+    head = _two_rounds(repo)
+
+    def boom(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise RuntimeError("records missing")
+
+    monkeypatch.setattr("specy_road.review_tally.leaf_tally", boom)
+    trailer = f"Review-tally: M1.1 {UNREADABLE}"
+    assert _mark_reviewed(repo) == [f"Reviewed-by: human (human) approve {head}", trailer]
+    assert capsys.readouterr().err.splitlines() == [
+        "review tally: RuntimeError: records missing; the leaf's quality numbers will be missing"
+    ]
+    assert parse_tally(trailer) == ("M1.1", UNREADABLE)
 
 
 def test_leaf_areas_take_the_first_components_relative_to_the_project() -> None:
