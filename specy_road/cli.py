@@ -361,7 +361,7 @@ def _repo_root_from_argv(args: list[str]) -> Path | None:
 
 
 def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
-    if cmd == "doctor" or cmd not in _known_commands():
+    if cmd in ("doctor", "upgrade") or cmd not in _known_commands():
         return
     warn_if_running_version_older(project_root(_repo_root_from_argv(rest)))
 

@@ -68,7 +68,8 @@
         "tests/test_move_node_subtree.py",
         "tests/test_validate_touch_zones.py",
         "docs/roadmap-authoring.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/move_node_helpers.py"
       ],
       "type": "task"
     },
