@@ -241,3 +241,13 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
+  - codename: doctor-fix-keeps-other-clones-claims
+    node_id: M22.38
+    branch: feature/rm-doctor-fix-keeps-other-clones-claims
+    touch_zones:
+      - specy_road/bundled_scripts/doctor.py
+      - tests/test_doctor.py
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending

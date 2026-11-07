@@ -315,6 +315,7 @@ Do not pick these up.
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
 - `M22.34` on `feature/rm-accept-policy-for-all-open-claims` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
+- `M22.38` on `feature/rm-doctor-fix-keeps-other-clones-claims` since 2026-11-07
 - `M22.4` on `feature/rm-sheet-body-without-display-id` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 - `M22.7` on `feature/rm-ready-changelog-reminder` since 2026-11-06
