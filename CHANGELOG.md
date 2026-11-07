@@ -12,6 +12,19 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Added
+
+- `worker_sandbox` in `roadmap/git-workflow.yaml` (`bwrap`, `auto` or `off`; omitted means `off`, so a project
+  opts in) runs each unattended worker turn's harness in a read-only bubblewrap sandbox on Linux. Writable: the
+  leaf's linked worktree and the git objects, refs and logs. Each harness state directory is replaced by the
+  worker's own (transcripts and sessions included). Only your named auth files are written through, never a
+  directory, and your settings, hooks, plugins, skills and rules are read-only. A worker cannot add steering or
+  memory to your home. `work/reviews/<ID>/` is
+  a per-worker outbox, and the runner moves only `READY-*` from it. Hidden: `~/.ssh`, `~/.config/gh`,
+  `SSH_AUTH_SOCK`, `GH_TOKEN` and `GITHUB_TOKEN`. A sandboxed turn outside a linked worktree, or one whose
+  sandbox does not start, is refused and recorded. `auto` on a host without bwrap warns on each launch and runs
+  unsandboxed. See `docs/orchestration-workers.md` (Worker sandbox).
+
 ### Fixed
 
 - `specy-road upgrade` copies tracked files, untracked files git does not ignore, and files the refreshes read into its temporary directory. Gitignored paths such as `.env` files, virtualenvs, `node_modules` and nested repositories are not copied, on a real run or `--dry-run`, including when a symlink points at them. A global excludes file applies to that copy on both paths. An ignored `roadmap-context.md` that is already current is not reported as a rewrite. `--dry-run` prints a line before that copy and builds it once, then reuses it for the preview.
@@ -25,6 +38,26 @@ body. Keep section bodies focused; link to PRs for detail.
   landing succeeds.
 - A merge or auto landing that leaves this checkout on the feature branch ends with
   `[ok] this checkout is still on <feature> (landed into <integration>); next: git switch <integration>`.
+- **Security:** review writers and the review lock follow the safe-write rule from the project
+  directory that holds `work/`. A symlink at `work`, `work/reviews`, `work/reviews/<node>`, or at the
+  lock, record, marker, acceptance, packet or prompt file (dangling or inside the project) refuses the
+  command with `error: <path> is a symlink ...` and exit 1, before anything is written or a reviewer is
+  launched. `review record` checks the live record and `history/` before it writes or clears a rejection
+  marker. A successful filing also checks `REJECTED-<model>.md` first, so a symlink there (dangling or
+  not) refuses the command and leaves the live record unwritten. After a reviewer run, a symlink planted at
+  `work` or `work/reviews` is a review failure and is not read or written through: the gate does not count a
+  record reached through that link, the run log is not opened, and `prompt --run`'s close does not raise.
+  That log check walks every ancestor from the saved project root, so a symlink planted at the node
+  directory is not opened either (`review delegate` and `prompt --run`).
+  A symlink at the node directory is not listed either. A closed listing reads no project directory, so a
+  record planted at `<project>/.handoff-closed` is not an approval. `mark-implementation-reviewed` refuses a
+  node link before the gate, naming the path, without committing the registry. A relative `work/reviews/<node>`
+  is owned by `.`, so the lock and the writers do not create `work/work` or follow a top-level `work` link.
+  Readers apply the same rule: a symlink at a `REVIEW-*.md`, `READY-*.md`, `RCA-*.md`, `RED-GREEN.md`,
+  `PRE-EXISTING.md`, `POLICY-ACCEPTED.yaml` or `history/` copy, or a symlinked `history/`, is never read
+  as that file, so `mark-implementation-reviewed --yes` does not count a linked `REVIEW-human.md` and an
+  earlier approval behind a linked history copy does not count. A failed reviewer run does not restore a
+  symlinked record as a real file holding the link's target.
 - With `refs/remotes/<remote>/HEAD` missing, the review gate still fails closed. The error says to run
   `git remote set-head <remote> <name>` and notes that `--auto` fails when the remote's HEAD is unborn.
   It names `<name>` only when exactly one other remote-tracking ref has a readable committed

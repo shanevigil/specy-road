@@ -95,7 +95,9 @@
         "constraints/README.md",
         ".github/workflows/validate.yml",
         "pyproject.toml",
-        "sr/constraints/README.md"
+        "sr/constraints/README.md",
+        "requirements-ci.in",
+        "requirements-ci.txt"
       ],
       "type": "task"
     },
@@ -289,7 +291,8 @@
         "tests/parity/golden/",
         "tests/test_upgrade_file_limits_notice.py",
         "sr/constraints/file-limits.yaml",
-        "sr/constraints/README.md"
+        "sr/constraints/README.md",
+        "scripts/line_width_baseline.py"
       ],
       "type": "task"
     },
@@ -330,7 +333,8 @@
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
         "constraints/test-private-imports-baseline.txt",
-        "constraints/clone-baseline.json"
+        "constraints/clone-baseline.json",
+        "specy_road/review_policy_pin.py"
       ],
       "type": "task"
     },

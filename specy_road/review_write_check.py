@@ -23,8 +23,13 @@ never makes a symlink in the hand-off directory, so any symlink there after the 
 subdirectory, or a file at an excluded name) is a review failure, and :meth:`Snapshot.restore` removes it.
 
 specy-road's own writes there once the reviewer has started never follow a symlink either: :func:`replace_file`
-renames a fresh file over the path (a symlink at the path is replaced, not written through), :func:`append_log`
-refuses to open a symlink, and :func:`real_dirs` turns a symlinked directory back into a real one first.
+renames a fresh file over the path (a symlink at the path is replaced, not written through) and refuses a
+symlink at any ancestor from the project root, :func:`append_log` refuses to open through one, and
+:func:`real_dirs` turns a symlinked directory back into a real one first once that root has been checked.
+:meth:`Snapshot.restore` checks ``work`` and ``work/reviews`` with ``lstat`` before it touches the hand-off
+directory; a symlink at either is left unread and unwritten. The snapshot after the run also stops when the
+node directory itself is a symlink. A log read walks every ancestor from the saved project root
+(:func:`path_ancestor_link`) and does not open the log when one of them is a symlink.
 """
 
 from __future__ import annotations
@@ -32,13 +37,14 @@ from __future__ import annotations
 import errno
 import hashlib
 import os
+import stat
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from specy_road.git_subprocess import git_stdout, git_text
-from specy_road.review_files import HISTORY_DIRNAME, REVIEW_PREFIX
+from specy_road.review_files import HISTORY_DIRNAME, REVIEW_PREFIX, project_of
 
 OUTPUT_SCHEMA_NAME = "review-output.schema.json"
 LOCK_NAME = ".review-run.lock"
@@ -47,20 +53,77 @@ SYMLINK = "symlink "
 
 
 def _own_records(reviews: Path, model: str) -> list[Path]:
-    """This model's live record, in any case, and its ``history/`` copies."""
+    """This model's live record, in any case, and its ``history/`` copies: regular files by ``lstat`` only, so a
+    restore never turns a link's target bytes into a record; a symlinked ``history/`` is not listed."""
     live = [p for p in reviews.iterdir() if p.name.lower() == f"{REVIEW_PREFIX}{model}.md".lower()] \
         if reviews.is_dir() else []
     hist = reviews / HISTORY_DIRNAME
-    return live + (sorted(hist.glob(f"*-{model}.md")) if hist.is_dir() else [])
+    copies = sorted(hist.glob(f"*-{model}.md")) if hist.is_dir() and not hist.is_symlink() else []
+    return [p for p in live + copies if stat.S_ISREG(os.lstat(p).st_mode)]
+
+
+def path_ancestor_link(root: Path, path: Path) -> Path | None:
+    """A symlink strictly between ``root`` and ``path`` (the final name excluded), by ``lstat``.
+
+    ``None`` when ``path`` is not under ``root``. A relative ``path`` keeps a relative ``root``, so ``work``
+    in the current directory is the component checked. An absolute ``path`` under a relative ``root`` is
+    checked from the current directory. Nothing at or above ``root`` is opened, and no symlink is followed
+    to spell the root.
+    """
+    start = root
+    if not root.is_absolute() and path.is_absolute():
+        start = Path(os.path.normpath(Path.cwd() / root))
+    try:
+        rel = path.parent.relative_to(start)
+    except ValueError:
+        return None
+    here = start
+    for name in rel.parts:
+        here = here / name
+        if here.is_symlink():
+            return here
+    return None
+
+
+def ancestor_symlink(path: Path) -> Path | None:
+    """A symlink strictly between the project and ``path`` (the final name excluded), by ``lstat``."""
+    return path_ancestor_link(project_of(path), path)
+
+
+def handoff_ancestor_link(owned: Path) -> Path | None:
+    """A symlink at ``work`` or ``work/reviews`` under ``owned``, by ``lstat``.
+
+    ``None`` when either directory is absent or a real directory. ``owned`` of ``.`` is the current directory,
+    so a relative hand-off is checked there. Nothing below them is opened.
+    """
+    here = owned
+    for name in ("work", "reviews"):
+        here = here / name
+        if here.is_symlink():
+            return here
+        try:
+            if not stat.S_ISDIR(os.lstat(here).st_mode):
+                return None
+        except FileNotFoundError:
+            return None
+    return None
+
+
+def handoff_closed(reviews: Path) -> Path | None:
+    """A symlink at ``work``, ``work/reviews``, or ``reviews`` itself (the node directory), by ``lstat``.
+
+    Readers treat a hit as "do not list". Nothing inside a linked directory is opened.
+    """
+    return handoff_ancestor_link(project_of(reviews)) or (reviews if reviews.is_symlink() else None)
 
 
 def replace_file(path: Path, data: bytes | str) -> None:
     """Make ``path`` a regular file holding ``data`` without following a symlink at ``path``: write a temporary file
     created exclusively beside it, then rename it over ``path`` (a rename replaces a symlink, never its target). A
-    symlinked parent directory is refused (``ELOOP``): the write would land wherever it points. Callers pass paths
-    they derive themselves (node id, model, hand-off directory), never a path read from a file."""
-    if path.parent.is_symlink():
-        raise OSError(errno.ELOOP, "refusing to write through a symlinked directory", str(path.parent))
+    symlink at any ancestor from the project root is refused (``ELOOP``): the write would land wherever it points.
+    Callers pass paths they derive themselves (node id, model, hand-off directory), never a path read from a file."""
+    if (link := ancestor_symlink(path)) is not None:
+        raise OSError(errno.ELOOP, "refusing to write through a symlinked directory", str(link))
     raw = data.encode("utf-8") if isinstance(data, str) else data
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:
@@ -73,8 +136,11 @@ def replace_file(path: Path, data: bytes | str) -> None:
 
 
 def append_log(path: Path) -> Any:
-    """``path`` opened for appending text, untranslated, but never through a symlink: one there (a reviewer's) is not
-    written through, the turn's output goes nowhere, and the tripwire reports the symlink."""
+    """``path`` opened for appending text, untranslated, but never through a symlink: one there (a reviewer's), or
+    at any ancestor from the project root, is not written through, the turn's output goes nowhere, and the tripwire
+    reports the symlink."""
+    if ancestor_symlink(path) is not None:
+        return open(os.devnull, "a", encoding="utf-8", newline="")
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o644)
@@ -153,11 +219,13 @@ def _handoff(reviews: Path, model: str, top: Path) -> dict[str, str]:
 @dataclass
 class Snapshot:
     """What the tripwire compares; ``records`` keeps this model's own record bytes, ``top`` the checkout and
-    ``reviews`` the hand-off directory, both fixed by the snapshot before the run (:func:`snapshot`)."""
+    ``reviews`` the hand-off directory, both fixed by the snapshot before the run (:func:`snapshot`). ``owned``
+    is the project directory that holds ``work/``, also fixed then."""
     state: dict[str, str]
     records: dict[Path, bytes] = field(default_factory=dict)
     top: Path = Path()
     reviews: Path = Path()
+    owned: Path = Path()
 
     def with_symlinks(self, paths: list[Path]) -> Snapshot:
         """This snapshot plus symlinks specy-road found at its own files during the run and replaced rather than
@@ -172,6 +240,8 @@ class Snapshot:
         files back as they were (:func:`replace_file`): a record the run filed itself never counts. ``reviews`` is
         the caller's path; the place fixed before the run (:attr:`reviews`) is used when the snapshot has one."""
         reviews = self.reviews if self.reviews != Path() else reviews
+        if handoff_ancestor_link(self.owned) is not None:   # a linked work or work/reviews: do not touch it
+            return
         for link in sorted(_symlinks(reviews), key=lambda q: len(q.parts), reverse=True):
             link.unlink()
         for p in self.records:
@@ -192,13 +262,18 @@ def snapshot(cwd: Path, reviews: Path, model: str, like: Snapshot | None = None)
     the run passes it as ``like`` and reuses both, so nothing the reviewer could have changed is resolved or
     followed. Each entry's path is then compared as text."""
     if like is not None:
-        top, real = like.top, like.reviews
+        top, real, owned = like.top, like.reviews, like.owned
     else:
         top = Path(git_text(["rev-parse", "--show-toplevel"], cwd) or os.path.abspath(cwd))
         real = reviews.resolve()   # before the run: specy-road's own directory
+        owned = project_of(reviews)
     handoff = PurePosixPath(real.relative_to(top).as_posix()) if real.is_relative_to(top) else None
+    link = handoff_closed(real) if like is not None else None
+    if link is not None:   # work, work/reviews or the node directory replaced by a symlink: do not read through it
+        shown = str(link.relative_to(top)) if link.is_relative_to(top) else str(link)
+        return Snapshot({**_status(top, handoff), shown: SYMLINK + _hash(link)}, {}, top, real, owned)
     state = {**_status(top, handoff), **_handoff(real, model, top)}
-    return Snapshot(state, {p: p.read_bytes() for p in _own_records(real, model)}, top, real)
+    return Snapshot(state, {p: p.read_bytes() for p in _own_records(real, model)}, top, real, owned)
 
 
 def written(before: Snapshot, after: Snapshot) -> list[str]:

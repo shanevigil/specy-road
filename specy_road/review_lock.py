@@ -9,10 +9,13 @@ own write (:mod:`specy_road.review_write_check`).
 from __future__ import annotations
 
 import contextlib
+import os
 import time
 from collections.abc import Iterator
 from pathlib import Path
 
+from specy_road import safe_write
+from specy_road.review_files import project_of
 from specy_road.review_write_check import LOCK_NAME
 
 #: Seconds a filing (``review record``, the human approval) waits for the leaf's lock before it refuses.
@@ -34,9 +37,10 @@ def review_run_lock(reviews: Path, wait: float = 0) -> Iterator[None]:
     """One reviewer run or filing per leaf at a time: the hand-off directory is shared, so a second writer's files
     would read as the first run's writes. Retries for up to ``wait`` seconds, then raises :class:`ReviewRunBusy`
     (at once by default, rather than wait for a whole review)."""
-    reviews.mkdir(parents=True, exist_ok=True)
+    owned = project_of(reviews)
+    safe_write.mkdirs(owned, reviews)   # a symlink at work, work/reviews or the node directory is refused here
     deadline = time.monotonic() + wait
-    with (reviews / LOCK_NAME).open("a+") as f:
+    with os.fdopen(safe_write.open_lock(owned, reviews / LOCK_NAME), "a+") as f:
         while True:
             try:
                 try:

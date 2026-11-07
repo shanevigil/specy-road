@@ -13,10 +13,13 @@ from typing import Any
 
 import yaml
 
-from specy_road.managed_block import refused_link
+from specy_road import safe_write
 from specy_road.orphaned_claims import relative_age
 from specy_road.orchestration_config import substitute_for
-from specy_road.review_files import archive_review, list_reviews, render_front_matter, review_path, reviews_dir, write_review
+from specy_road.review_files import (
+    HISTORY_DIRNAME, archive_review, list_reviews, project_of, render_front_matter, review_path, reviews_dir,
+    write_review,
+)
 from specy_road.review_gate import evaluate_gate, rerun_problem
 from specy_road.review_record_rules import check_record
 from specy_road.reviewer_run_failure import gate_policy_summary
@@ -33,16 +36,20 @@ def rejected_path(reviews: Path, model: str) -> Path:
 
 
 def write_rejected(reviews: Path, model: str, commit: str, reason: str) -> Path:
-    """Write or replace the refusal marker for ``model`` at ``commit``; ``reason`` is the full stderr message."""
-    reviews.mkdir(parents=True, exist_ok=True)
+    """Write or replace the refusal marker for ``model`` at ``commit``; ``reason`` is the full stderr message.
+
+    The marker is checked from the project root before any directory is made. A symlink is not written through;
+    the refusal being recorded keeps its own error and exit code.
+    """
+    path = rejected_path(reviews, model)
+    try:
+        safe_write.check(project_of(path), path)
+    except safe_write.SafeWriteError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return path
     refused_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     body = reason if reason.endswith("\n") else reason + "\n"
-    path = rejected_path(reviews, model)
-    why = refused_link(reviews, path, any_link=True)
-    if why:   # the refusal being recorded keeps its own error and exit code
-        print(f"error: {why}", file=sys.stderr)
-        return path
-    path.write_text(render_front_matter({"commit": commit, "refused_at": refused_at}, body), encoding="utf-8")
+    safe_write.write(project_of(path), path, render_front_matter({"commit": commit, "refused_at": refused_at}, body))
     return path
 
 
@@ -212,6 +219,11 @@ def _review_record_signed_data(ns: Any, root: Path, rec: dict, gate: Any, entry:
 def _review_record_finish(root: Path, ns: Any, t: Any, gate: Any, entry: dict, rec: dict, data: dict,
                           trace: ReviewRecordTrace, relabel: Any) -> int:
     dest = review_path(root, ns.node_id, ns.model)
+    owned = project_of(dest)
+    # Every path this filing writes or clears, before the first write: a linked history/ or a linked marker leaves both.
+    safe_write.check(owned, dest)
+    safe_write.check(owned, dest.parent / HISTORY_DIRNAME, safe_write.DIRECTORY)
+    safe_write.check(owned, rejected_path(trace.reviews, ns.model))
     text = render_front_matter(data, rec["body"])
     write_review(dest, text)   # replaces a record filed as review-<model>.md, whatever the filesystem's case rules
     clear_rejected(trace.reviews, ns.model)

@@ -70,46 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: review-writers-refuse-links
-    node_id: M21.38
-    branch: feature/rm-review-writers-refuse-links
-    touch_zones:
-      - specy_road/review_lock.py
-      - specy_road/review_policy_pin.py
-      - specy_road/review_gate_ready.py
-      - specy_road/review_rejected.py
-      - specy_road/review_files.py
-      - specy_road/review_delegate.py
-      - specy_road/review_delegate_packet.py
-      - specy_road/review_write_check.py
-      - specy_road/managed_block.py
-      - tests/test_review_writers_refuse_links.py
-      - tests/test_writers_refuse_links_out.py
-      - tests/test_review_concurrent_writers.py
-      - docs/orchestration-reviewer-output.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/review_record_write.py
-      - specy_road/bundled_scripts/role_prompt_cli.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: workers-run-in-a-sandbox
-    node_id: M22.44
-    branch: feature/rm-workers-run-in-a-sandbox
-    touch_zones:
-      - specy_road/worker_sandbox.py
-      - specy_road/worker_runner.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - specy_road/git_workflow_config.py
-      - tests/test_worker_sandbox.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: upgrade-mirror-skips-ignored-files
     node_id: M22.35
     branch: feature/rm-upgrade-mirror-skips-ignored-files
@@ -119,6 +79,44 @@ entries:
       - tests/test_upgrade.py
       - tests/test_upgrade_preview.py
       - docs/upgrading.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: reviewer-run-summary-and-process-tree
+    node_id: M22.16
+    branch: feature/rm-reviewer-run-summary-and-process-tree
+    touch_zones:
+      - specy_road/review_record_write.py
+      - specy_road/review_delegate.py
+      - specy_road/worker_process.py
+      - tests/test_review_run_lows_rc5.py
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: queued-message-undelivered
+    node_id: M22.6
+    branch: feature/rm-queued-message-undelivered
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_ops_message.py
+      - specy_road/worker_ops_lifecycle.py
+      - specy_road/worker_state.py
+      - specy_road/schemas/worker-record.schema.json
+      - tests/test_worker_queue_message.py
+      - docs/orchestration-workers.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: integration-refs-stay-put-during-a-turn
+    node_id: M22.45
+    branch: feature/rm-integration-refs-stay-put-during-a-turn
+    touch_zones:
+      - specy_road/worker_turn_check.py
+      - tests/test_worker_turn_check.py
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
