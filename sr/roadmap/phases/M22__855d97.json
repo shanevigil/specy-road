@@ -456,7 +456,8 @@
         "specy_road/worker_adapter_codex.py",
         "specy_road/worker_adapter_claude.py",
         "tests/test_harness_launch.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_review_record_write.py"
       ],
       "type": "task"
     }
