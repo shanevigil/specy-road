@@ -7,8 +7,9 @@
   ``worktrees/<name>/``. What points git at a repository or its config is read-only again: the worktree's
   ``.git`` file, ``worktrees/<name>/commondir`` and ``gitdir``, and ``config.worktree`` (an empty file when the
   user has none). Rewriting any of them would steer the coordinator's next git command in that tree;
-* a per-worker outbox mounted at the canonical ``work/reviews/<node>/``: after the turn the runner moves only
-  ``READY-*`` files from it into the real directory and discards the rest;
+* a per-worker outbox mounted at the canonical ``work/reviews/<node>/``, seeded with a copy of the regular files
+  already there (links are not copied) so a fix round reads its review records: after the turn the runner moves
+  only ``READY-*`` files from it into the real directory and discards the rest, edited copies included;
 * the harness's state directories, each replaced by the worker's own (transcripts and sessions included), with
   only the user's named auth *files* written through and the user's settings, hooks, plugins, skills, rules and
   instruction files read-only (:data:`HARNESS_STATE`); configuration it must write that can hold launch
@@ -56,8 +57,7 @@ HARNESS_STATE: dict[str, tuple[tuple[tuple[str | None, str, tuple[str, ...], tup
                      (None, ".cache", (), ())),
                     ((None, ".claude.json"), ("CLAUDE_CONFIG_DIR", ".claude/.claude.json"))),
     "cursor": (((None, ".cursor", (),
-                 ("hooks", "hooks.json", "mcp.json", "plugins", "rules", "skills", "skills-cursor", "extensions",
-                  "sandbox-policies")),
+                 ("hooks", "hooks.json", "mcp.json", "plugins", "rules", "skills", "skills-cursor", "extensions")),
                 (None, ".config/cursor", ("auth.json",), ()),
                 (None, ".cache", (), ())),
                ((None, ".cursor/cli-config.json"),)),
@@ -127,6 +127,7 @@ def prepare(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> Box:
         reviews.mkdir(parents=True, exist_ok=True)   # a mount point must exist: the root is read-only
         shutil.rmtree(outbox, ignore_errors=True)
         outbox.mkdir(mode=0o700, parents=True)
+        _seed_outbox(reviews, outbox)
         (common / "logs").mkdir(exist_ok=True)       # a commit's reflog goes here
         harness = _harness_binds(repo_root, rec, env)
     except OSError as e:
@@ -249,6 +250,20 @@ def _read_available(fd: int) -> bytes:
     finally:
         os.close(fd)
     return out
+
+
+def _seed_outbox(reviews: Path, outbox: Path) -> None:
+    """Copy the regular files under ``reviews`` into ``outbox``, keeping the layout; a link is not followed or
+    copied."""
+    for top, dirs, files in os.walk(reviews):
+        here = Path(top)
+        dest = outbox / here.relative_to(reviews)
+        dirs[:] = [d for d in dirs if not (here / d).is_symlink()]
+        for d in dirs:
+            (dest / d).mkdir(mode=0o700)
+        for f in files:
+            if (here / f).is_file() and not (here / f).is_symlink():
+                shutil.copy2(here / f, dest / f)
 
 
 def _deliver_ready(outbox: Path, reviews: Path) -> None:

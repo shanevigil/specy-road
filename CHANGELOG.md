@@ -27,6 +27,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A sandboxed worker turn can read its leaf's review records. The `work/reviews/<ID>/` outbox now starts with a
+  copy of the regular files already there (REVIEW, notes and `history/` records; links are not copied), so a
+  fix round sees its blocking review. Only `READY-*` files are still moved back, so an edited copy of a record
+  never reaches the reviews directory. Cursor turns start under the sandbox again: `~/.cursor/sandbox-policies/`
+  is no longer read-only, because Cursor writes its policy file there on every start. It is now the worker's own
+  state.
 - `set-dependencies --deps` and `edit-node --set dependencies=` accept a display id or a node_key
   (mixed in one value) and store the node_key. An unknown token is still refused with
   `dependency 'X' is neither a node id nor a node_key in the roadmap`.
