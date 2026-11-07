@@ -386,7 +386,14 @@ body. Keep section bodies focused; link to PRs for detail.
   offered by `handoff status`, and its records do not count at the gate. The roster key
   `allow_guidance_bypass_model: true` (committed roster only; a `roster_add` entry is refused) lets it back in at the
   developer's own risk, with a warning on every executor or reviewer launch; `validate` and `doctor` warn for each
-  flagged entry. The coordinator role, and everything with `signed_reviews` off, are unchanged.
+  flagged entry. The coordinator role, and everything with `signed_reviews` off, are unchanged. M22.24 closes
+  four ways around it: a `family: human` entry (committed or `roster_add`) with any launch configuration (`harness`,
+  `harness_model`, `harness_bin`, `profile`, `channels.cli` / `cli_resume`, or a profile found by its id) is judged
+  like a model entry; the profile's `access.cli` model counts, committed copy included; the committed-profile scan
+  reads `ls-tree -z`, so a flagged profile at a path git quotes (`café.md`) is found; names compare after
+  normalising (`COMPOSER-2.5`, `cursor-composer-2.5`), and a model flag specy-road cannot read (a list, pipeline,
+  substitution, variable, attached `-m` value or two flags) refuses the entry unless its committed roster opts in.
+  The rule covers declared configuration, not a model hidden in a script, wrapper or environment variable.
 - The `specyrd-brainstorm` skill (description and first paragraph, in every
   harness's rendered copy) and `suggested_prompts/brainstorm-roadmap.md` Phase 1
   say to make `specy-road brainstorm start` the next tool call after reading the

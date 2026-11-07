@@ -145,8 +145,9 @@ the model was seen going around specy-road's guidance. The shipped flag is on **
 about that model, not about the Cursor harness, and `composer-2` is not flagged.
 
 While `policy.signed_reviews` is on, an entry is flagged when any model it can launch (its profile's
-`api_id` or alias, `harness_model`, or a literal `--model` / `-m` in `channels.cli` or `cli_resume`)
-matches a flagged profile on the integration branch or in the bundled set; a project or branch copy
+`api_id` or alias, `harness_model`, the roster id, or a literal `--model` / `-m` in `channels.cli`,
+`cli_resume` or the profile's `access.cli`) matches a flagged profile on the integration branch or in
+the bundled set; a project or branch copy
 without the field does not clear it, and the committed copy of the entry's profile names its model even
 when the working tree's copy differs. A git or file read that fails while reading those profiles
 refuses the entry rather than reading as "not flagged"; a committed profile whose front matter does not
@@ -157,6 +158,24 @@ reviewer entry:
 ```text
 warning: composer-2.5 (model composer-2.5) is excluded: set allow_guidance_bypass_model: true on its roster entry to use it at your own risk
 ```
+
+The rule is bounded: it covers declared configuration, not a model hidden in a custom command. It
+reads the profile's `api_id` and aliases, `harness_model`, the roster id, and the literal model flag of
+`channels.cli`, `channels.cli_resume` and the profile's `access.cli` (every committed copy included),
+and compares names after normalising (case and separators, and Cursor's `cursor-` prefix, so
+`COMPOSER-2.5`, `Composer_2.5` and `cursor-composer-2.5` all match `composer-2.5`). A model flag it
+cannot read is refused as `<id> (model unreadable in <field>)`: a command readable for this is one
+simple command with one literal `--model <id>`, `--model=<id>` or `-m <id>`, so a flag inside a list
+or pipeline (`cd . && agent --model …`), a substitution or variable (`"$(printf …)"`, `"$M"`), an
+attached `-m<id>`, two model flags, or a command that cannot be split (an unbalanced quote) is
+refused, and only the committed opt-in admits it. A `family: human` entry is exempt only without
+launch configuration: one that sets `harness`, `harness_model`, `harness_bin`, `profile`,
+`channels.cli` or `channels.cli_resume`, or whose id finds a profile, is judged like a model entry,
+committed or `roster_add` alike (`channels.paste`, `channels.subagent` and `preflight` launch no
+model). The rule does not see a model chosen inside a script, wrapper or alias the command runs, by
+an environment variable, by a harness's own config file, or by a harness's default when no model is
+passed; nor an abbreviated long option (`--mod`). The coordinator role, how signatures are verified,
+and the roster schema are unchanged.
 
 To use it anyway, at your own risk, set the opt-in on its entry in the committed roster:
 

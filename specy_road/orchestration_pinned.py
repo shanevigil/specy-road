@@ -360,11 +360,13 @@ def _committed_text(repo_root: Path, sha: str, rel: str) -> tuple[str | None, st
 
 
 def _committed_source(repo_root: Path, sha: str) -> GuidanceSource:
-    listing = git_text(["ls-tree", "-r", "--name-only", sha, "--", PROFILES_REL.as_posix()], repo_root)
+    """NUL-delimited ``ls-tree -z``: under ``core.quotePath`` a plain listing quotes a non-ASCII name
+    (``"model-profiles/caf\\303\\251.md"``), which the ``.md`` filter would drop with its flag."""
+    listing = git_stdout(["ls-tree", "-r", "-z", "--name-only", sha, "--", PROFILES_REL.as_posix()], repo_root)
     if listing is None:
         return _failed(repo_root, f"cannot list {PROFILES_REL.as_posix()}/ on the integration branch ({sha[:12]})")
     texts = {}
-    for rel in (r for r in listing.splitlines() if r.endswith(".md") and not r.endswith("/README.md")):
+    for rel in (r for r in listing.split("\0") if r.endswith(".md") and not r.endswith("/README.md")):
         text, err = _committed_text(repo_root, sha, rel)
         if err:
             return _failed(repo_root, err)

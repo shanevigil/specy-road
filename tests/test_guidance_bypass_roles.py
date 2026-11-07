@@ -43,14 +43,17 @@ print(json.dumps({"type": "result", "subtype": "success", "result": "done", "ses
 
 
 def roster(*, signed: bool = True, opt_in: bool = False, rid: str = "composer-2.5", extra: str = "",
-           cli: str = "{harness}", roles: str = "[executor, reviewer]", key: str = DUMMY_KEY,
-           harness: str = "generic") -> str:
-    """human (coordinator, reviewer), the entry under test, and an unflagged executor and reviewer ``sol``."""
+           cli: str | None = "{harness}", resume: str | None = None, roles: str = "[executor, reviewer]",
+           key: str = DUMMY_KEY, harness: str = "generic") -> str:
+    """human (coordinator, reviewer), the entry under test, and an unflagged executor and reviewer ``sol``.
+    ``cli=None``: the entry has no ``channels``; ``resume``: its ``channels.cli_resume``."""
     opt = "\n    allow_guidance_bypass_model: true" if opt_in else ""
+    channels = "" if cli is None else (f"    channels: {{cli: '{cli}'"
+                                       + (f", cli_resume: '{resume}'" if resume else "") + "}\n")
     return ("version: 1\nroster:\n"
             "  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
             f"  - id: {rid}\n    family: cursor\n    roles: {roles}\n    harness: {harness}\n"
-            f"    channels: {{cli: '{cli}'}}\n    preflight: 'touch ../PREFLIGHT-RAN'\n"
+            f"{channels}    preflight: 'touch ../PREFLIGHT-RAN'\n"
             f"    public_key: '{key}'{opt}{extra}\n"
             f"  - {{id: sol, family: openai, roles: [executor, reviewer], public_key: '{DUMMY_KEY}'}}\n"
             f"policy: {{reviewers_required: 1, signed_reviews: {'true' if signed else 'false'}}}\n")
@@ -138,11 +141,14 @@ def checks(repo: Path, capfd, monkeypatch) -> tuple[str, str]:
 
 # ---- the decision table: flag x signed_reviews x opt-in, per role ----
 
-@pytest.mark.parametrize("flagged, signed", [(False, False), (False, True), (True, False)])
+@pytest.mark.parametrize("flagged, signed, cli", [
+    (False, False, "{harness}"), (False, True, "{harness}"), (True, False, "{harness}"),
+    (False, False, '{harness} --model "$(printf composer-2.5)"'),   # unreadable, but signed reviews are off
+])
 def test_unchanged_unless_a_flagged_model_meets_signed_reviews(tmp_path: Path, capfd, monkeypatch, flagged: bool,
-                                                                 signed: bool) -> None:
+                                                                 signed: bool, cli: str) -> None:
     rid = "composer-2.5" if flagged else "composer-2"
-    orchestration = roster(signed=signed, rid=rid)
+    orchestration = roster(signed=signed, rid=rid, cli=cli)
     repo = guidance_repo(tmp_path, orchestration)
     a = plan(tmp_path, orchestration, capfd)
     assert a["executor"] == rid and not any("guidance bypass" in n for n in a["notes"])
@@ -247,17 +253,21 @@ def test_a_branch_or_drifted_copy_never_clears_a_committed_flag(tmp_path: Path, 
     assert not row["eligible"] and "my-model (model my-model) " + EXCLUDED in row["reason"]
 
 
-@pytest.mark.parametrize("extra, cli, rid", [
-    ("\n    harness_model: composer-2.5", "{harness}", "my-cursor"),
-    ("", "agent -p --model composer-2.5 {prompt}", "my-cursor"),
-    ("", "{harness}", "composer-2.5-fast"),
+@pytest.mark.parametrize("extra, cli, rid, model", [
+    ("\n    harness_model: composer-2.5", "{harness}", "my-cursor", "composer-2.5"),
+    ("", "agent -p --model composer-2.5 {prompt}", "my-cursor", "composer-2.5"),
+    ("", "{harness}", "composer-2.5-fast", "composer-2.5-fast"),
+    ("\n    harness_model: COMPOSER-2.5", "{harness}", "my-cursor", "COMPOSER-2.5"),   # names compare normalised
+    ("\n    harness_model: cursor-composer-2.5", "{harness}", "my-cursor", "cursor-composer-2.5"),
+    ("", "agent -p --model Composer_2.5 {prompt}", "my-cursor", "Composer_2.5"),
 ])
-def test_every_model_an_entry_launches_is_matched(tmp_path: Path, capfd, extra: str, cli: str, rid: str) -> None:
+def test_every_model_an_entry_launches_is_matched(tmp_path: Path, capfd, extra: str, cli: str, rid: str,
+                                                  model: str) -> None:
     profile = unflagged((BUNDLED / "composer-2.5.md").read_text()).replace("composer-2.5", "my-cursor")
     repo = guidance_repo(tmp_path, roster(rid=rid, extra=extra, cli=cli), profile=profile)
     assert prompt(repo, "executor", model=rid) == 1
     err = capfd.readouterr().err
-    assert EXCLUDED in err and f"{rid} (model composer-2.5" in err
+    assert EXCLUDED in err and f"{rid} (model {model}) " in err
 
 
 def test_an_uncommitted_opt_in_does_not_admit_the_model(tmp_path: Path, capfd) -> None:
@@ -269,12 +279,16 @@ def test_an_uncommitted_opt_in_does_not_admit_the_model(tmp_path: Path, capfd) -
 def test_an_unreadable_integration_branch_profile_refuses(tmp_path: Path, capfd) -> None:
     """A git read that fails is a refusal, never a missing flag."""
     text = (BUNDLED / "composer-2.5.md").read_text().replace("composer-2.5", "my-model")
-    repo = guidance_repo(tmp_path, roster(rid="my-model"), profile=text)
+    human = "{id: human, family: human, roles: [coordinator, reviewer]"
+    repo = guidance_repo(tmp_path, roster(rid="my-model").replace(human, f"{human}, public_key: '{DUMMY_KEY}'"),
+                         profile=text)
     blob = git(repo, "rev-parse", f"dev:{COMPOSER}")
     (repo / ".git" / "objects" / blob[:2] / blob[2:]).unlink()   # a loose object: the fixture never packs
     assert prompt(repo, "executor", model="sol") == 1
     err = capfd.readouterr().err
     assert f"cannot read {COMPOSER} on the integration branch" in err and launched(tmp_path) == (False, False)
+    rows = {r["model"]: r for r in status(repo, capfd)["reviewer_eligibility"]}
+    assert rows["human"]["eligible"] and not rows["my-model"]["eligible"]   # a person with no launch keys is exempt
 
 
 def test_composer_2_is_not_flagged(tmp_path: Path, capfd) -> None:
@@ -406,3 +420,142 @@ def test_a_non_boolean_opt_in_is_a_schema_error(tmp_path: Path, capfd) -> None:
     capfd.readouterr()
     assert prompt(repo, "executor") == 1
     assert "allow_guidance_bypass_model" in capfd.readouterr().err
+
+
+# ---- M22.24: human entries that launch a model, profile access.cli, quoted paths, unreadable model flags ----
+
+PERSON = "  - id: person\n    family: human\n    roles: [executor]\n    preflight: 'touch ../PREFLIGHT-RAN'\n"
+
+
+@pytest.mark.parametrize("via", ["worker delegate", "prompt"])
+@pytest.mark.parametrize("local", [False, True])
+@pytest.mark.parametrize("launch", [
+    "    harness: cursor\n    harness_model: composer-2.5\n",
+    f"    profile: {COMPOSER}\n",
+    "    channels: {cli: '{harness} --model composer-2.5'}\n",
+])
+def test_a_human_entry_that_launches_a_model_is_judged_like_one(tmp_path: Path, capfd, via: str, local: bool,
+                                                                launch: str) -> None:
+    """``family: human`` is exempt only as a person: any launch key makes it a model entry (a local one included)."""
+    entry = PERSON + launch
+    base = roster()
+    repo = guidance_repo(tmp_path, base if local else base.replace("policy:", entry + "policy:"),
+                         profile=(BUNDLED / "composer-2.5.md").read_text())
+    if local:
+        harness = f"{sys.executable} {tmp_path / 'harness.py'} {tmp_path / 'HARNESS-RAN'} {{prompt}}"
+        (repo / "roadmap" / "orchestration.local.yaml").write_text(
+            "allow_local_cli: true\nroster_add:\n" + entry.replace("{harness}", harness))
+    capfd.readouterr()
+    code = worker_delegate(repo, "--model", "person") if via == "worker delegate" else \
+        prompt(repo, "executor", model="person")
+    err = capfd.readouterr().err
+    assert code == 1 and "person (model composer-2.5) " + EXCLUDED in err
+    assert launched(tmp_path) == (False, False)
+
+
+SAFE = "model-profiles/custom/safe.md"
+
+
+def safe_profile(cli: str) -> str:
+    """An unflagged profile ``api_id: safe`` whose ``access.cli`` is ``cli``."""
+    text = unflagged((BUNDLED / "composer-2.5.md").read_text()).replace("composer-2.5", "safe")
+    return text.replace('  cli: agent -p --force "<prompt>"\n', f"  cli: {cli}\n")
+
+
+@pytest.mark.parametrize("drift", [False, True])
+@pytest.mark.parametrize("via", ["worker delegate", "prompt"])
+def test_a_profile_access_cli_model_is_matched(tmp_path: Path, capfd, via: str, drift: bool) -> None:
+    """A generic executor with no ``channels.cli`` runs its profile's ``access.cli``; the committed copy counts even
+    when the working tree's copy sets ``access.cli: none``."""
+    orchestration = roster(rid="safe-exec", cli=None, extra=f"\n    profile: {SAFE}")
+    repo = guidance_repo(tmp_path, orchestration)
+    (repo / SAFE).parent.mkdir(parents=True)
+    (repo / SAFE).write_text(safe_profile("agent -p --model composer-2.5 {prompt}"))
+    on_dev(repo, "safe profile")
+    if drift:
+        (repo / SAFE).write_text(safe_profile("none"))
+    capfd.readouterr()
+    code = run_worker_cli("worker", "delegate", "M1.1", "--model", "safe-exec", "--repo-root", str(repo)) \
+        if via == "worker delegate" else prompt(repo, "executor", "--run", "--channel", "cli", model="safe-exec")
+    err = capfd.readouterr().err
+    assert code == 1 and "safe-exec (model composer-2.5) " + EXCLUDED in err
+    assert launched(tmp_path) == (False, False)
+
+
+def test_a_flag_on_a_profile_at_a_quoted_path_is_found(tmp_path: Path, capfd, monkeypatch) -> None:
+    """``core.quotePath`` (git's default, forced here over a developer's own config) quotes ``café.md`` in a plain
+    listing; the flag of that explicitly routed, project-only profile must still be read."""
+    for k, v in {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.quotePath", "GIT_CONFIG_VALUE_0": "true"}.items():
+        monkeypatch.setenv(k, v)
+    rel = "model-profiles/custom/café.md"
+    repo = guidance_repo(tmp_path, roster(rid="my-model", extra=f"\n    profile: {rel}"))
+    (repo / rel).parent.mkdir(parents=True)
+    (repo / rel).write_text((BUNDLED / "composer-2.5.md").read_text().replace("composer-2.5", "my-model"))
+    on_dev(repo, "a profile at a quoted path")
+    capfd.readouterr()
+    assert prompt(repo, "executor", model="my-model") == 1
+    assert "my-model (model my-model) is excluded" in capfd.readouterr().err
+
+
+UNREADABLE = "passes a model flag specy-road cannot read"
+
+
+@pytest.mark.parametrize("cli, resume, field", [
+    ('{harness} --model "$(printf composer-2.5)"', None, "channels.cli"),
+    ("cd . && {harness} --model composer-2.5", None, "channels.cli"),
+    ('{harness} --model "$M"', None, "channels.cli"),
+    ("{harness} -mcomposer-2.5", None, "channels.cli"),
+    ("{harness} --model safe -m composer-2.5", None, "channels.cli"),
+    ('{harness} --model "composer-2.5', None, "channels.cli"),   # an unbalanced quote
+    ("{harness}", '{harness} {session} --model "$(printf composer-2.5)"', "channels.cli_resume"),
+])
+def test_an_unreadable_model_flag_is_refused(tmp_path: Path, capfd, cli: str, resume: str | None,
+                                            field: str) -> None:
+    repo = guidance_repo(tmp_path, roster(rid="my-agent", cli=cli, resume=resume))
+    capfd.readouterr()
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "my-agent", "--repo-root", str(repo)) == 1
+    err = capfd.readouterr().err
+    assert f"my-agent (model unreadable in {field}) is excluded" in err and f"its {field} {UNREADABLE}" in err
+    assert launched(tmp_path) == (False, False)
+
+
+def test_an_unreadable_local_command_is_refused_and_a_committed_opt_in_admits_it(tmp_path: Path, capfd,
+                                                                                  monkeypatch) -> None:
+    """The review's case: a local ``roster_add`` entry with ``allow_local_cli`` and a substituted model."""
+    cli = f'{sys.executable} {tmp_path / "harness.py"} {tmp_path / "HARNESS-RAN"} {{prompt}} --model "$(printf x)"'
+    repo = guidance_repo(tmp_path, roster())
+    (repo / "roadmap" / "orchestration.local.yaml").write_text(
+        f"allow_local_cli: true\nroster_add:\n  - id: local-x\n    family: cursor\n    roles: [executor]\n"
+        f"    channels: {{cli: '{cli}'}}\n")
+    capfd.readouterr()
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "local-x", "--repo-root", str(repo)) == 1
+    assert "local-x (model unreadable in channels.cli) is excluded" in capfd.readouterr().err
+    assert launched(tmp_path) == (False, False)
+    opted = guidance_repo(tmp_path / "opt", roster(rid="my-agent", opt_in=True,
+                                                   cli='{harness} --model "$(printf composer-2.5)"'))
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "my-agent", "--json",
+                          "--repo-root", str(opted)) == 0
+    out, err = capfd.readouterr()
+    wait_for_worker(opted, json.loads(out)["worker_id"])
+    assert err.count(f"warning: my-agent (model unreadable in channels.cli) opted in at its own risk: "
+                     f"its channels.cli {UNREADABLE}") == 1
+    assert launched(tmp_path / "opt") == (True, True)
+    v, d = checks(opted, capfd, monkeypatch)
+    line = "warning: my-agent (model unreadable in channels.cli) opted in at its own risk"
+    assert v.count(line) == 1 and d.count(line) == 1
+
+
+def test_no_shipped_profile_is_refused_but_the_flagged_one(tmp_path: Path, capfd, monkeypatch) -> None:
+    """One generic executor per bundled profile, each running its own ``access.cli``: only composer-2.5 is excluded."""
+    root = BUNDLED.parent
+    rels = sorted(p.relative_to(root.parent).as_posix() for p in root.rglob("*.md") if p.name != "README.md")
+    entries = "".join(f"  - {{id: e{i}, family: f{i}, roles: [executor], profile: {rel}}}\n"
+                      for i, rel in enumerate(rels))
+    repo = guidance_repo(tmp_path, roster().replace("policy:", entries + "policy:"))
+    shutil.copytree(root, repo / "model-profiles")
+    on_dev(repo, "every shipped profile")
+    v, _d = checks(repo, capfd, monkeypatch)
+    excluded = [ln for ln in v.splitlines() if "is excluded" in ln]
+    flagged = f"e{rels.index(COMPOSER)} (model composer-2.5)"
+    assert len(excluded) == 2 and any(flagged in ln for ln in excluded), excluded   # plus roster()'s own entry
+    assert "unreadable" not in v
