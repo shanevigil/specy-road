@@ -45,6 +45,7 @@ from specy_road.bundled_scripts.do_next_task_virtual_complete import (
 from specy_road.bundled_scripts.do_next_finished_unmerged import finished_unmerged_ids
 from specy_road.bundled_scripts.do_next_task_held_claim import refuse_second_claim, validate_or_exit
 from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.review_policy_pin import pinned_message
 from specy_road.do_next_milestone_pickup import (
     exit_no_leaves_under_parent as _exit_no_leaves_under_parent,
     resolve_milestone_parent_filter as _resolve_milestone_parent_filter,
@@ -237,10 +238,10 @@ def _finalize_pickup(
 
     brief_path = _write_brief(node, nodes)
     reg = read_registry(registry_path(ROOT))
-    commit_msg = registration_commit_message(
+    commit_msg = pinned_message(ROOT, registration_commit_message(   # review policy pinned at claim (M21.30)
         codename,
         include_ci_skip=include_ci_skip,
-    )
+    ))
     register_claim(
         ROOT, node, branch, reg, commit_msg,
         git_runner=lambda *a: git_run(ROOT, *a),

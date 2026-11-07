@@ -19,6 +19,7 @@ from specy_road.git_workflow_config import (
 from specy_road.steering_gate import zones_or_exit
 from specy_road.finish_task_gates import human_acceptance_or_exit
 from specy_road.planning_scaffold_check import scaffold_planning_or_exit
+from specy_road.review_policy_pin import pin_holds_or_exit
 from specy_road.review_gate import gate_holds_at_head_or_exit, review_required, trial_merge_or_exit
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
@@ -39,7 +40,7 @@ from specy_road.finish_modes import (
     merge_landing_preflight,
 )
 from specy_road.finish_pr_merge import pr_merge_integration_or_exit
-from specy_road.finish_bookkeeping_undo import merge_undo_snapshot
+from specy_road.finish_bookkeeping_undo import bookkeeping_guard, merge_undo_snapshot
 from specy_road.finish_on_complete_override import on_complete_override_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
@@ -137,6 +138,7 @@ def _validate_export_digest() -> None:
 
 def _impl_review_or_exit(entry: dict, node: dict) -> None:
     node_id = node["id"]
+    pin_holds_or_exit(ROOT, node)   # before the switch: turning it off after the claim is a policy change too
     if not review_required(ROOT):
         return
     if entry.get("implementation_review") == "approved":
@@ -345,25 +347,22 @@ def _finish_locked(args) -> None:
     work_dir, sess_path, on_mode = ctx["work_dir"], ctx["sess_path"], ctx["on_mode"]
     ib, gw_remote = ctx["ib"], ctx["gw_remote"]
 
-    # F-015: snapshot the work-packet brief + impl-summary into a PR body
-    # markdown BEFORE the cleanup pass deletes the source files. Only when
-    # a PR/MR is actually expected (on_mode == 'pr' or 'auto').
-    pr_body_path = _maybe_write_pr_body(
-        on_mode=on_mode,
-        work_dir=work_dir,
-        node_id=node_id,
-        node=node,
-        codename=codename,
-        branch=branch,
-        integration_branch=ib,
-    )
+    # M21.28: validate first; a failure before the bookkeeping commit puts every path back.
+    with bookkeeping_guard(ROOT, node_id, sess_path):
+        # F-015: snapshot the work-packet brief + impl-summary into a PR body
+        # markdown BEFORE the cleanup pass deletes the source files. Only when
+        # a PR/MR is actually expected (on_mode == 'pr' or 'auto').
+        pr_body_path = _maybe_write_pr_body(
+            on_mode=on_mode, work_dir=work_dir, node_id=node_id, node=node,
+            codename=codename, branch=branch, integration_branch=ib,
+        )
 
-    undo = merge_undo_snapshot(ROOT, branch, ctx)   # M15.40: a failed merge landing restores this
-    _bookkeeping_commit_phase(
-        args, codename, node_id, branch, reg,
-        pr_body_path=pr_body_path, sess_path=sess_path,
-        pr_integration=(ib, gw_remote) if on_mode == "pr" and not ctx["rollup"] else None,
-    )
+        undo = merge_undo_snapshot(ROOT, branch, ctx)   # M15.40: a failed merge landing restores this
+        _bookkeeping_commit_phase(
+            args, codename, node_id, branch, reg,
+            pr_body_path=pr_body_path, sess_path=sess_path,
+            pr_integration=(ib, gw_remote) if on_mode == "pr" and not ctx["rollup"] else None,
+        )
     _end_leaf_workers(node_id)
     mr_manual = merge_request_requires_manual_approval(ROOT)
 

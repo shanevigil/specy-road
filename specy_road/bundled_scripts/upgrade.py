@@ -16,7 +16,9 @@ order, and nothing else:
 4. ``refresh-stubs``    — IDE skills and the managed blocks (``--prune`` deletes
    the stubs this version no longer installs, and ``.cursor``/``.codex`` copies
    of the skills that are links or verbatim stubs)
-5. ``validate``, then ``digest --check``
+5. ``validate``, then ``digest --check``; in between, when validate passes, it
+   writes ``roadmap-context.md`` (``specy-road digest``) when missing or drifted
+   and ``roadmap.md`` (``specy-road export``) when tracked and drifted
 
 It first prints the running version, its ``sys.prefix`` and every
 ``specy-road``/``specyrd`` on PATH. After writing it names each file its own
@@ -29,17 +31,22 @@ anything outside a managed block are never touched. The refreshes run once, on
 a temporary mirror of the checkout that keeps its links; what they wrote there
 is the plan, which is then written into the checkout. ``--dry-run`` lists the
 same plan, writes it into a temporary copy instead and runs ``validate`` there;
-the checkout is never written. The exit
-code is ``validate``'s: a missing or drifted digest is reported, not failed.
-Read validate's notices for what the new version reports (held milestones
-among them), then run ``specy-road digest``.
+the checkout is never written, and the generated files it would write are
+listed as ``would write``. Every git call in the copy runs with every ``GIT_``
+variable of the caller's removed and no global or system git config, no hook
+and a timeout, so it never reaches the checkout's repository or runs a command
+the caller's config names. A failed ``git init``, ``add`` or ``commit`` in either
+temporary copy, the plan's included, stops the run with exit 2: nothing is
+written or validated. A generated file whose path leads out of the project is refused, and ``digest``
+stays a next step, as it does when ``validate`` fails (nothing is regenerated
+from an invalid graph). The exit code is ``validate``'s. Read validate's
+notices for what the new version reports (held milestones among them).
 """
 
 from __future__ import annotations
 
 import argparse
 import os
-import subprocess
 import shlex
 import shutil
 import sys
@@ -48,17 +55,19 @@ from pathlib import Path
 
 import yaml
 
-from specy_road import __version__
+from specy_road import __version__, git_subprocess
 from specy_road.agents_md_block import load_order_paths, print_migration, render_rules
 from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, selection_notice
 from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
 from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
+from specy_road.bundled_scripts.upgrade_generated import GitFailed, checked, regenerate, scratch_environ
 from specy_road.bundled_scripts.upgrade_plan import Mirror, apply_plan, conflicts, make_plan
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
 from specy_road.git_subprocess import git_text
+from specy_road.ignore_report import scratch_git_env
 from specy_road.init_project import project_template_root
 from specy_road.managed_block import resolves_outside
 from specy_road.runtime_paths import add_repo_root_arg, git_root, project_root, source_scan_root
@@ -186,17 +195,31 @@ def _refresh(
     return _report_stubs_declined(project, checkout, preview=preview, prune=prune, declined_docs=declined_docs)
 
 
-def _check(project: Path) -> tuple[bool, bool]:
-    """``(validate passed, digest current)``; both print their own detail."""
+def _check(
+    project: Path, tracked_in: Path, verb: str, caller_env: dict[str, str],
+) -> tuple[bool, bool]:
+    """``(validate passed, generated files done)``; each step prints its own detail.
+
+    The generated files are done only when validate passed (so they were
+    regenerated), nothing was refused, and ``digest --check`` passes; otherwise
+    ``specy-road digest`` stays a next step.
+    """
     _section("validate")
     try:
         validate_at(project)
         valid = True
     except SystemExit as e:
         valid = not e.code
+    refused = False
+    if valid:
+        _section("generated files")
+        refused = regenerate(project, tracked_in, verb, caller_env)
     _section("digest --check")
     ns = argparse.Namespace(output=DEFAULT_OUTPUT, check=True, repo_root=project)
-    return valid, cmd_digest(ns) == 0
+    # A digest that is a link out is never read (regenerate printed its refusal): not current.
+    outside = resolves_outside(project, project / DEFAULT_OUTPUT)
+    current = not outside and cmd_digest(ns) == 0
+    return valid, valid and current and not refused
 
 
 def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
@@ -265,23 +288,38 @@ def _apply(project: Path, checkout: Path, *, prune: bool) -> None:
     _report_line_caps(before, _capped_lines(project))
 
 
+def _commit_copy(copy: Mirror) -> None:
+    """One commit of the copy, for validate reads git (tracked files for touch zones, ignore rules).
+
+    A file the mirror could not read stays out of it, or ``git add`` would exit
+    non-zero on a checkout the real run handles. ``--allow-empty``: a copy git
+    ignores whole has nothing to commit, and that is no failure.
+    """
+    if not (copy.repo / ".git").is_dir():
+        raise GitFailed("git init failed in the temporary copy (no .git was created)")
+    hooks = ["-c", f"core.hooksPath={copy.hooks}"]
+    skipped = [f":(exclude,literal){p.relative_to(copy.repo).as_posix()}"
+               for p in copy.unreadable if p.is_relative_to(copy.repo)]
+    checked(git_subprocess.run([*hooks, "add", "-A", "--ignore-errors", "--", ".", *skipped], copy.repo), "add")
+    checked(git_subprocess.run(
+        [*hooks, "-c", "user.name=specy-road", "-c", "user.email=upgrade@specy-road.invalid",
+         "-c", "commit.gpgsign=false", "commit", "-q", "--no-verify", "--allow-empty", "-m", "upgrade preview"],
+        copy.repo), "commit")
+
+
 def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
     """Make the same plan, write it into a temporary copy of the checkout, and validate the copy."""
-    plan = _plan(project, checkout, preview=True, prune=prune)
-    _section("applying the refreshes to a temporary copy, then validating it")
-    with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-") as tmp, scratch_environ(Path(tmp)) as caller_env:
+        plan = _plan(project, checkout, preview=True, prune=prune)
+        _section("applying the refreshes to a temporary copy, then validating it")
         copy = Mirror(checkout, Path(tmp), project / "work").build()
-        # validate reads git (tracked files for touch zones, ignore rules): one commit of the copy.
-        for cmd in (["add", "-A", "--ignore-errors"],
-                    ["-c", "user.name=specy-road", "-c", "user.email=upgrade@specy-road.invalid",
-                     "-c", "commit.gpgsign=false", "commit", "-q", "--no-verify", "-m", "upgrade preview"]):
-            subprocess.run(["git", "-C", str(copy.repo), *cmd], check=False, capture_output=True)
+        _commit_copy(copy)
         copy_project = copy.to_sandbox(project.resolve())
         before = _capped_lines(copy_project)
         apply_plan(plan, copy.to_sandbox)
         copy_missing_work_templates(copy_project, existence_root=project)
         _report_line_caps(before, _capped_lines(copy_project))
-        valid, _digest_ok = _check(copy_project)
+        valid, _digest_ok = _check(copy_project, project, "would write", caller_env)
     changed = plan.changed_since()
     if changed:
         print(f"error: dry run modified {', '.join(changed)} in {checkout}; this is a bug in specy-road upgrade,"
@@ -315,6 +353,15 @@ def _print_other_worktrees(checkout: Path) -> None:
 
 
 def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = False) -> int:
+    """The upgrade's exit code; a git call it depends on failing prints why and is 2."""
+    try:
+        return _upgrade(repo_root, dry_run=dry_run, prune=prune)
+    except GitFailed as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+
+def _upgrade(repo_root: Path | None, *, dry_run: bool, prune: bool) -> int:
     project = project_root(repo_root)
     checkout = _resolve_root(repo_root)
     if dry_run:
@@ -325,7 +372,7 @@ def run_upgrade(repo_root: Path | None, *, dry_run: bool = False, prune: bool = 
     if dry_run:
         return _dry_run(project, checkout, prune=prune)
     _apply(project, checkout, prune=prune)
-    valid, digest_ok = _check(project)
+    valid, digest_ok = _check(project, project, "wrote", scratch_git_env())
     _section("next")
     steps = list(CHECKLIST)
     if not digest_ok:

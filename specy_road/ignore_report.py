@@ -53,11 +53,13 @@ UNTRACK_LABEL = "  to stop tracking them, run from the git root (specy-road neve
 #: What to do about a tracked file a new rule matches: printed after the command, which is never run for you.
 UNTRACK_HINT = ("  keep tracking a file meant to be shared (the rule only hides new files); "
                 "untrack one that is session scratch")
-#: Variables that would point a git call in a scratch repository back at the checkout (set inside git hooks).
-_REPO_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY")
 
 Match = tuple[str, str, str]   # (path, rule, note)
 T = TypeVar("T")
+
+#: The scratch directory of a running dry run: until cleared, :func:`_git` (only ever in scratch repositories
+#: then) reads no caller config. :func:`scratch_git_env` alone would drop the isolation ``os.environ`` holds.
+_isolated: Path | None = None
 
 
 class IgnoreCheckSkipped(Exception):
@@ -72,10 +74,31 @@ def attempt(fn: Callable[[], T]) -> T | str:
         return str(e) or type(e).__name__
 
 
+def scratch_git_env(isolate: Path | None = None) -> dict[str, str]:
+    """``os.environ`` without any ``GIT_`` variable; with ``isolate``, no global or system git config either.
+
+    Without ``isolate`` git still reads the default global and system files, which
+    is right for the caller's own checkout. With it, ``GIT_CONFIG_GLOBAL`` names an
+    empty file in that scratch directory: the environment for a scratch repository.
+    """
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    if isolate is not None:
+        empty = isolate / "empty-gitconfig"
+        empty.touch()
+        env |= {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(empty)}
+    return env
+
+
+def isolate_git(scratch: Path | None) -> None:
+    """Make :func:`_git` read no caller config, from the empty file in ``scratch``, until called with ``None``."""
+    global _isolated
+    _isolated = scratch
+
+
 def _git(args: list[str], cwd: Path, *, stdin: bytes | None = None, ok: tuple[int, ...] = (0,)) -> bytes:
     """Raw stdout bytes of ``git <args>``; :class:`IgnoreCheckSkipped` on any other exit."""
-    env = {k: v for k, v in os.environ.items() if k not in _REPO_ENV}
-    r = subprocess.run(["git", *args], cwd=cwd, input=stdin, capture_output=True, check=False, timeout=60, env=env)
+    r = subprocess.run(["git", *args], cwd=cwd, input=stdin, capture_output=True, check=False, timeout=60,
+                       env=scratch_git_env(_isolated))
     if r.returncode not in ok:
         lines = os.fsdecode(r.stderr).strip().splitlines()
         command = next(a for i, a in enumerate(args) if not a.startswith("-") and (i == 0 or args[i - 1] != "-c"))

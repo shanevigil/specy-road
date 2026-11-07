@@ -2,9 +2,9 @@
 
 After an RCA was accepted, ``worker delegate --rework`` used to send only the blocking reviews, one of which
 proposed the opposite design. :func:`governing_rca` finds the leaf's accepted ``RCA-<round>.md`` — valid
-under :func:`review_rca.loop_state`'s checks, and, for ``defer_findings``, applied by ``review defer`` (the
-M12.1 next-step rules in :mod:`review_next_step`) — when it was filed after at least one carried blocking
-review. :func:`rca_lines` renders its design and required changes first, with the sentence that overrules a
+under :func:`review_rca.loop_state`'s checks, and, for ``defer_findings``, with its marker in effect
+(:func:`review_deferral.rca_deferral`, the rule the gate and :mod:`review_next_step` apply) — when it
+was filed after at least one carried blocking review. :func:`rca_lines` renders its design and required changes first, with the sentence that overrules a
 contradicting review fix; :func:`filed` marks each review as filed before or after it.
 
 "Filed" is filing provenance: a file's modification time, which ``review record`` (``REVIEW-*.md``) and the
@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road.review_deferral import marker_path
+from specy_road.review_deferral import rca_deferral
 from specy_road.review_files import (
     HISTORY_DIRNAME,
     RCA_PREFIX,
@@ -89,7 +89,7 @@ def governing_rca(root: Path, node_id: str, blocks: list[ReviewFile]) -> RcaDoc 
     loop = loop_state(root, node_id)
     oldest = min(filed_at(r) for r in blocks)
     accepted = [r for r in loop.rcas if r.ok and (r.data["recommended_action"]["type"] != "defer_findings"
-                                                    or marker_path(root, node_id, r.path.name).exists())]
+                                                    or rca_deferral(root, node_id, r.path.name) == [])]
     rec = max(accepted, key=filed_at, default=None)
     if rec is None or filed_at(rec) <= oldest:
         return None

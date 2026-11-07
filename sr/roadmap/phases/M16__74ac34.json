@@ -3,10 +3,10 @@
     {
       "acceptance": [
         "Before the switch, tests/parity/checks_migration/ records at pickup, for baseline_cmd, land_check_cmd, verify_cmd and the review-before-finish switch, the legacy rows: absent, blank, set, overridden on the CLI (`--verify-cmd`, `--verify`), and disabled on the CLI where an option exists; each records the commands run, their arguments, cwd, added environment, the evidence recorded, and the executor and reviewer prompt text that names the verify command with its appended test paths. A hand-written `checks:` equivalent of each row is committed beside it; after the switch each equivalent gives its row's recorded result, and mixed-form precedence (new form wins, one validate notice) has its own test",
-        "Before the switch, this sheet fixes the `checks:` entry schema: its fields (name, run, when, plus the fields M16.52 and M16.22 add), which are required, their defaults, the order entries run within one `when:` stage, CLI precedence for `--verify-cmd` and `--verify`, and the policy key the review-before-finish switch migrates to; the other lines are checked against it",
+        "Before the switch, this sheet fixes the `checks:` entry schema: its fields (name, run, when, plus the fields M16.4.6 and M16.5.14 add), which are required, their defaults, the order entries run within one `when:` stage, CLI precedence for `--verify-cmd` and `--verify`, and the policy key the review-before-finish switch migrates to; the other lines are checked against it",
         "`checks:` in git-workflow.yaml names each command once with `when:` (baseline, ready, land, prompt); one reader replaces the three key readers; every table row gives the same commands, arguments, cwd, environment, evidence and prompt text from either form; with both forms present the new form wins and validate prints one notice",
         "`upgrade` rewrites the old keys and writes the policy equivalent of the review-before-finish switch, so every row's effective requirement is unchanged; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release with one notice for the old form",
-        "No zone filter is added to migrated entries; ratchet_paths and ready's failed-command evidence (M15.24) mean what they meant at pickup; the M16.1 decision table is unchanged",
+        "No zone filter is added to migrated entries; ratchet_paths and ready's failed-command evidence (M15.24) mean what they meant at pickup; the M16.1.2 decision table is unchanged",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
         "Estimated net line change (informational, not a gate): package about -100 (three readers become one)"
       ],
@@ -15,11 +15,11 @@
         "511edd44-2972-41b1-8639-3e686acdf63a"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.14",
+      "id": "M16.4.5",
       "node_key": "74ac34a2-084a-4dd3-84ec-ac37b20dd983",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.14_one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points_74ac34a2-084a-4dd3-84ec-ac37b20dd983.md",
-      "sibling_order": 14,
+      "parent_id": "M16.4",
+      "planning_dir": "planning/M16.4.5_one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points_74ac34a2-084a-4dd3-84ec-ac37b20dd983.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points",
       "touch_zones": [
@@ -53,20 +53,21 @@
         "Before any reader switches, tests/parity/orchestration_state/ holds one fixture repo per row: a fresh manual executor claim with no worker, a claim with a live worker, a worker that exited clean, a worker that exited failed, a claim abandoned under M15.26's delivered rule, a claim with a review record and no worker, a worker with no leaf (chore), one leaf with two worktrees, and an unreadable worker state file; each row records `worker list`, `orchestrate plan --json` and doctor output and cleanup eligibility at pickup",
         "`orchestration.state.snapshot(repo_root)` is read-only and returns exactly the fields listed in tests/fixtures/orchestration_snapshot_v1.json: `schema: 1`; per leaf key the claim (codename, branch, registered_at), workers (id, harness, model, status, pid_alive, started_at, ended_at), worktrees (path, branch, dirty) and reviews (model, verdict, commit, fresh_for_head); leafless workers; and status from the vocabulary and truth table in this sheet; the truth table, committed in this leaf's first commit before any package change, fixes the status for simultaneous workers, manual presence, a READY tip and unreadable inputs, and an unreadable source sets only its own fields to `unknown` without dropping readable ones",
         "`worker list`, `orchestrate plan` and doctor's claim checks read the snapshot, and every row gives the same output and cleanup eligibility as at pickup; M15.26's delivered reporting and slot rules hold for every row, manual claims included, and the snapshot's status adds no exemption",
-        "The layering gate fails when the review gate, a CLI entry point or a gui_app module adds an import of an orchestration module other than `specy_road.orchestration`; imports present at pickup are baselined and may only shrink; when a later leaf moves one of those consumers, its baseline entries follow the recorded module rename (M16.36's rule) instead of counting as new imports",
+        "The layering gate fails when the review gate, a CLI entry point or a gui_app module adds an import of an orchestration module other than `specy_road.orchestration`; imports present at pickup are baselined and may only shrink; when a later leaf moves one of those consumers, its baseline entries follow the recorded module rename (M16.2.6's rule) instead of counting as new imports. Before the first module lands in specy_road/orchestration/, constraints/file-limits.yaml's applies_to_globs gains `specy_road/orchestration/**/*.py`, so the 1,000-line file cap, the 80-line function cap and the 750-line warning cover every later move into it",
         "docs/orchestration.md documents the snapshot fields as the read-only interface for other consumers (the PM GUI work is phase M17); writes stay in today's modules; no GUI change",
-        "Estimated net line change (informational, not a gate): package about -100"
+        "Estimated net line change (informational, not a gate): package about -100",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui",
       "dependencies": [
         "3ae67e69-01ea-46bc-a70c-2642964c6e0c"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.15",
+      "id": "M16.3.1",
       "node_key": "fba72c3a-24a5-4c6b-b174-0e581d8b8450",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.15_orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui_fba72c3a-24a5-4c6b-b174-0e581d8b8450.md",
-      "sibling_order": 15,
+      "parent_id": "M16.3",
+      "planning_dir": "planning/M16.3.1_orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui_fba72c3a-24a5-4c6b-b174-0e581d8b8450.md",
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI",
       "touch_zones": [
@@ -83,60 +84,30 @@
         "docs/orchestration.md",
         "tests/fixtures/orchestration_snapshot_v1.json",
         "tests/parity/orchestration_state/",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "The worker modules (adapters, runner, lease, lock, state, reconcile, ops, outbox, process, sessions, usage, witness, exit, schema) move under specy_road/orchestration/workers/ with `git mv`; code outside imports them through specy_road.orchestration; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
-        "The worker test files pass with only import paths, patch targets and recorded fixture-path relocations edited (the summary shows that every changed test line is one of those); no assertion changes; real subprocess, lease-race and crash-recovery tests are kept as they are",
-        "Parity harness, decision table and the M16.15 state table unchanged",
-        "Estimated net line change (informational, not a gate): package about -50"
-      ],
-      "codename": "worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only",
-      "dependencies": [
-        "449eeb3e-1874-4b25-841c-2b1fed8e2363"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.16",
-      "node_key": "51f22f17-0d11-4dc4-8709-d39d406991c5",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.16_worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only_51f22f17-0d11-4dc4-8709-d39d406991c5.md",
-      "sibling_order": 16,
-      "status": "Not Started",
-      "title": "Worker runtime moves into orchestration/workers with import-path edits only",
-      "touch_zones": [
-        "specy_road/orchestration/workers/",
-        "specy_road/worker_*.py",
-        "specy_road/bundled_scripts/worker_cli*.py",
-        "specy_road/bundled_scripts/worker_hook.py",
         "tests/",
-        "specy_road/",
-        "scripts/line_width_baseline.json",
-        "scripts/ruff_quality_baseline.json",
-        "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/file-limits.yaml",
+        "sr/constraints/file-limits.yaml"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "tool_call_guard and its shapes, the role guard, role env and session presence move under specy_road/orchestration/guard/; orchestration_guard_adapters and orchestration_role_guard fold into orchestration_guard_cli and session_overlap into session_cli (Appendix A); a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string (expected callers: do_next_prompt, review_cli, doctor_worktrees, orphaned_claims and worker_cli); classifier logic is unchanged (M16.48 introduces the tables)",
+        "tool_call_guard and its shapes, the role guard, role env and session presence move under specy_road/orchestration/guard/; orchestration_guard_adapters and orchestration_role_guard fold into orchestration_guard_cli and session_overlap into session_cli (Appendix A); a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string (expected callers: do_next_prompt, review_cli, doctor_worktrees, orphaned_claims and worker_cli); classifier logic is unchanged (M16.5.8 introduces the tables)",
         "The guard tests pass with only import paths and patch targets edited, so the guard CLI and the three harness hook adapters give the same verdicts and output",
         "Parity harness unchanged",
         "Estimated net line change (informational, not a gate): package about -80"
       ],
       "codename": "shared-checkout-guard-and-session-presence-move-into-orchestration",
       "dependencies": [
-        "66711ba8-3d38-427a-bf76-fdc3989e0c75"
+        "66711ba8-3d38-427a-bf76-fdc3989e0c75",
+        "99ad0839-6c85-4631-b67b-80ef2d3b3c57"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.18",
+      "id": "M16.5.7",
       "node_key": "a536eb60-74a5-4a71-9556-d9cb752c881b",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.18_shared-checkout-guard-and-session-presence-move-into-orchestration_a536eb60-74a5-4a71-9556-d9cb752c881b.md",
-      "sibling_order": 18,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.7_shared-checkout-guard-and-session-presence-move-into-orchestration_a536eb60-74a5-4a71-9556-d9cb752c881b.md",
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "Shared-checkout guard and session presence move into orchestration",
       "touch_zones": [
@@ -153,14 +124,15 @@
         "specy_road/",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "Before the move, tests/parity/grind/ holds a table built from existing tests: resume in flight, each limit (leaves, limit waits, wait hours, empty retries), event log lines, `--step pickup` and `--step finish`, and exit codes 3 and 6; each row asserts the outcome at pickup",
-        "Grind session (plan, step, limits, events, in-flight, implement) lives under specy_road/orchestration/grind/; grind_session_limits and grind_session_step fold into grind_session, which stays within the 1,000-line cap (not squashed to get under the 750-line warning); the grind plan computes readiness with RoadmapIndex and reports claims from the M16.15 snapshot; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string (expected callers: cli, doctor_worktrees, finish_modes, worktree_prune, do_next_task and roadmap_crud_dependency_ops)",
+        "Grind session (plan, step, limits, events, in-flight, implement) lives under specy_road/orchestration/grind/; grind_session_limits and grind_session_step fold into grind_session, which stays within the 1,000-line cap (not squashed to get under the 750-line warning); the grind plan computes readiness with RoadmapIndex and reports claims from the M16.3.1 snapshot; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string (expected callers: cli, doctor_worktrees, finish_modes, worktree_prune, do_next_task and roadmap_crud_dependency_ops)",
         "Grind plan output on the dogfood fixture, compared before and after on the same committed fixture and refs with a fixed clock and normalised temporary paths, is byte-identical; the grind table, parity harness and state table unchanged",
         "Estimated net line change (informational, not a gate): package about -200"
       ],
@@ -169,11 +141,11 @@
         "b198c24c-78e4-4336-8b94-1289d80826de"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.19",
+      "id": "M16.5.9",
       "node_key": "275b701c-4eb9-4214-ae77-7ab34a7d197a",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.19_grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings_275b701c-4eb9-4214-ae77-7ab34a7d197a.md",
-      "sibling_order": 19,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.9_grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings_275b701c-4eb9-4214-ae77-7ab34a7d197a.md",
+      "sibling_order": 8,
       "status": "Not Started",
       "title": "Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings",
       "touch_zones": [
@@ -186,7 +158,8 @@
         "specy_road/",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -195,7 +168,7 @@
         "For each optional policy (delta, resumed delta, red-green, pre-existing, deferral, RCA escalation, strong review, agreement), the script reports three counts separately from sr/work/reviews (history included): replayable (record, config and commit reconstructed from git at the review's time, with that provenance listed), cited-only (a reason code names the policy but the outcome cannot be replayed) and unknown; one case is one node_key, commit and review round with its full record set, and a replayable case is compared with only the selected policy disabled",
         "For replayable cases it counts how many outcomes the policy changed, per the policy-to-evaluator table in this sheet (each policy's public evaluator and the outcome fields compared): a gate block it caused, an approval it refused to count, an RCA escalation or a deferral it forced; a change in the suggested next step alone is not counted as a gate outcome",
         "The counts and a keep or deprecate recommendation per policy are attached to this sheet; an unused or unknown policy is not thereby a removal candidate",
-        "human: the maintainer records a decision per policy in this sheet before M16.21 starts; 'deprecate' means a validate notice in rc5 only, and removing a policy needs a separate leaf the maintainer authorises after M16",
+        "human: the maintainer records a decision per policy in this sheet before M16.5.12 starts; 'deprecate' means a validate notice in rc5 only, and removing a policy needs a separate leaf the maintainer authorises after M16",
         "No package code changes",
         "Estimated net line change (informational, not a gate): package 0; scripts about +120 (extends review_effort_study.py)"
       ],
@@ -204,24 +177,24 @@
         "de3d165f-d76a-4430-b54e-9dea18809691"
       ],
       "execution_milestone": "Mixed",
-      "id": "M16.20",
+      "id": "M16.1.6",
       "node_key": "68912bae-f046-43f9-8576-a97d7c2577c8",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.20_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md",
-      "sibling_order": 20,
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.6_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "Review-policy evidence: how often each optional review policy changed a gate outcome",
       "touch_zones": [
         "scripts/review_effort_study.py",
-        "sr/planning/M16.20_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md"
+        "sr/planning/M16.1.6_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "review_ready_merge, review_bookkeeping, review_gate_agreement, review_strong, review_resumed_delta and review_policy_ref fold into the gate and policy modules, review_eligible's remainder and review_next_step into review_cli, and review_defer (CLI) and review_deferral (rules) are renamed so the names say which is which; each merged module is at most 1,000 lines (not squashed to get under the 750-line warning) and the summary records each resulting file's line count; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string, except validate's deprecation notice (A2)",
-        "Each policy the maintainer marked deprecated in M16.20 keeps its behaviour and its decision-table rows; validate prints one notice when a deprecated policy is in use; no policy is removed in M16",
-        "The M16.1 rows for `review record` filed from a reviewer's final message are unchanged",
+        "Each policy the maintainer marked deprecated in M16.1.6 keeps its behaviour and its decision-table rows; validate prints one notice when a deprecated policy is in use; no policy is removed in M16",
+        "The M16.1.2 rows for `review record` filed from a reviewer's final message are unchanged",
         "Moved files are rewrapped and leave the width baseline; no function rises above its merge-base complexity; parity harness unchanged",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: a module or command rename as old name -> new name, removed at the 0.3.1 final tag under option A; a policy deprecation as a notice whose removal needs a separately authorised leaf after M16; no version heading is written",
         "Estimated net line change (informational, not a gate): package about -250"
@@ -229,14 +202,17 @@
       "codename": "fold-the-review-gate-and-escalation-fragments-and-mark-the-policies-the-evidence-did-not-keep-as-deprecated",
       "dependencies": [
         "6434cf7b-842b-4532-96e3-1821655a5fb5",
-        "68912bae-f046-43f9-8576-a97d7c2577c8"
+        "68912bae-f046-43f9-8576-a97d7c2577c8",
+        "3d3ddc19-998c-4d9e-9e79-bc5afa51e7ef",
+        "4dfa0dbd-5b47-4b91-abc3-953669d35a8a",
+        "855d9738-4b87-480b-8404-d6a1aa85c714"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.21",
+      "id": "M16.5.12",
       "node_key": "5fa51e45-9e09-4119-826d-43c6d304f243",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.21_fold-the-review-gate-and-escalation-fragments-and-mark-the-policies-the-evidence-did-not-keep-as-deprecated_5fa51e45-9e09-4119-826d-43c6d304f243.md",
-      "sibling_order": 21,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.12_fold-the-review-gate-and-escalation-fragments-and-mark-the-policies-the-evidence-did-not-keep-as-deprecated_5fa51e45-9e09-4119-826d-43c6d304f243.md",
+      "sibling_order": 11,
       "status": "Not Started",
       "title": "Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated",
       "touch_zones": [
@@ -253,7 +229,8 @@
         "specy_road/",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -262,7 +239,7 @@
         "complexity_delta scores every Python function in the leaf's diff and its merge-base version with ruff C901 at max-complexity 0 (so every score is visible), waivers ignored; a function is matched by qualified name within its file, following git rename detection for moved files; a function with no such match whose name equals exactly one function removed from another file in the same diff is matched to that function; any other function is new",
         "`ready` and the review packet list each matched function whose score rose (any increase, as the maintainer's rule states), each new function over the configured limit, and each added `noqa: C901`; a moved function whose score did not change is not listed",
         "A `checks:` entry sets report or block; `ready` records the result in its evidence with the commit it scored; in block mode `ready` refuses with the list and the fix, and the gate refuses an approval when the result for the approved commit is failed, missing or for another commit; a missing ruff blocks with an install hint (report mode records skipped)",
-        "A table test covers growth below the limit, an unchanged moved function, a renamed file, a function extracted into another file, a new function under and over the limit, an added waiver, a stale and a missing result, and ruff missing in each mode; the M16.1 decision table gains the block rows",
+        "A table test covers growth below the limit, an unchanged moved function, a renamed file, a function extracted into another file, a new function under and over the limit, an added waiver, a stale and a missing result, and ruff missing in each mode; the M16.1.2 decision table gains the block rows",
         "sr/roadmap/git-workflow.yaml enables it in block mode",
         "Estimated net line change (informational, not a gate): package about +150 (requested by the maintainer)"
       ],
@@ -271,11 +248,11 @@
         "93190765-913e-4da9-b5c5-70c258e2c285"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.22",
+      "id": "M16.5.14",
       "node_key": "7b52d543-e78c-4e74-bcd1-24d5a8b3034b",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.22_post-fix-refactor-gate-ready-and-the-review-packet-report-any-complexity-growth-and-policy-can-block-on-it_7b52d543-e78c-4e74-bcd1-24d5a8b3034b.md",
-      "sibling_order": 22,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.14_post-fix-refactor-gate-ready-and-the-review-packet-report-any-complexity-growth-and-policy-can-block-on-it_7b52d543-e78c-4e74-bcd1-24d5a8b3034b.md",
+      "sibling_order": 13,
       "status": "Not Started",
       "title": "Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it",
       "touch_zones": [
@@ -304,11 +281,11 @@
         "7b52d543-e78c-4e74-bcd1-24d5a8b3034b"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.23",
+      "id": "M16.6.3",
       "node_key": "73c323a0-9890-48b5-b0fd-6d1f1232e08a",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.23_tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them_73c323a0-9890-48b5-b0fd-6d1f1232e08a.md",
-      "sibling_order": 23,
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.3_tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them_73c323a0-9890-48b5-b0fd-6d1f1232e08a.md",
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them",
       "touch_zones": [
@@ -337,11 +314,11 @@
         "a0733044-eec3-4411-bec8-e6f31fac6456"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.24",
+      "id": "M16.6.5",
       "node_key": "33af9de4-c487-4e4e-ac48-253ffb8483f1",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.24_tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only_33af9de4-c487-4e4e-ac48-253ffb8483f1.md",
-      "sibling_order": 24,
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.5_tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only_33af9de4-c487-4e4e-ac48-253ffb8483f1.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "Tests: files move into unit, flows, cli, gui and repo lanes, moves only",
       "touch_zones": [
@@ -355,7 +332,7 @@
     {
       "acceptance": [
         "scripts/test_dedupe_worklist.py reads the lean_metrics --contexts output (its commit recorded in each file) and writes candidate rows to tests/support/dedupe/review-gate.csv, worker.csv, pickup-finish.csv and rest.csv: the identical-arc groups and the pairs with Jaccard 0.95 or more, by stable test item id. The executor then records for every candidate an action (delete, fold or keep) and, for delete or fold, the surviving test, the assertion in it that covers the removed one and the fold destination; reviewers check those columns, and an undecided row is keep",
-        "No removal row in any worklist targets another row's surviving test; this leaf commits the four worklists and changes no test and no roadmap node; the planner sets planned_test_changes on M16.56 to M16.59 from them after this leaf merges, outside its diff",
+        "No removal row in any worklist targets another row's surviving test; this leaf commits the four worklists and changes no test and no roadmap node; the planner sets planned_test_changes on M16.7.2 to M16.7.5 from them after this leaf merges, outside its diff",
         "Estimated net line change (informational, not a gate): scripts about +150"
       ],
       "codename": "tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it",
@@ -363,11 +340,11 @@
         "41b1d9c3-a6d6-4cc4-adf1-b365ed06b0f9"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.25",
+      "id": "M16.7.1",
       "node_key": "3c8001e2-d1c2-4365-a0f2-be80807504ee",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.25_tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it_3c8001e2-d1c2-4365-a0f2-be80807504ee.md",
-      "sibling_order": 25,
+      "parent_id": "M16.7",
+      "planning_dir": "planning/M16.7.1_tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it_3c8001e2-d1c2-4365-a0f2-be80807504ee.md",
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it",
       "touch_zones": [
@@ -378,7 +355,7 @@
     },
     {
       "acceptance": [
-        "Before edits, this sheet lists each reference in constraints/test-private-imports-baseline.txt with its resolution: a public seam in a named production module, or the test rewritten to a public interface; production code changes only in the modules that list names, and only to add those seams (expected: the runner, the clock (M16.4), the LLM client factory (M16.10) and the process command-line reader); no test monkeypatches or imports a `_`-prefixed name, and the baseline file is empty",
+        "Before edits, this sheet lists each reference in constraints/test-private-imports-baseline.txt with its resolution: a public seam in a named production module, or the test rewritten to a public interface; production code changes only in the modules that list names, and only to add those seams (expected: the runner, the clock (M16.2.2), the LLM client factory (M16.3.4) and the process command-line reader); no test monkeypatches or imports a `_`-prefixed name, and the baseline file is empty",
         "Logical timeout and stall tests use the injectable clock instead of `time.sleep`; real process and race tests synchronise with explicit events or bounded waits; the child-process blocking fixtures that still sleep are listed in a committed allowlist, and a test fails on `time.sleep` in tests/ outside it",
         "Estimated net line change (informational, not a gate): tests about -500; package about +30 (seams)"
       ],
@@ -387,11 +364,11 @@
         "25cffd57-e38b-4ebf-a4c0-d2edea799baa"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.26",
+      "id": "M16.7.6",
       "node_key": "2f89d103-fb28-4584-a17e-3364cc5b1a99",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.26_tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock_2f89d103-fb28-4584-a17e-3364cc5b1a99.md",
-      "sibling_order": 26,
+      "parent_id": "M16.7",
+      "planning_dir": "planning/M16.7.6_tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock_2f89d103-fb28-4584-a17e-3364cc5b1a99.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "Tests: public seams replace private-name patches, and no test sleeps on the wall clock",
       "touch_zones": [
@@ -416,11 +393,11 @@
         "fce532e1-9ed0-4da1-9f16-2465c6e73df0"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.27",
+      "id": "M16.1.9",
       "node_key": "142b5d57-8272-439f-93a1-0aa3dc7cf88d",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.27_tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold_142b5d57-8272-439f-93a1-0aa3dc7cf88d.md",
-      "sibling_order": 27,
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.9_tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold_142b5d57-8272-439f-93a1-0aa3dc7cf88d.md",
+      "sibling_order": 8,
       "status": "Not Started",
       "title": "Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold",
       "touch_zones": [
@@ -430,46 +407,52 @@
     },
     {
       "acceptance": [
+        "human: the maintainer has chosen the suite's effectiveness measures (e.g. coverage floor, mutation score on named core modules, regression-catch evidence) from the research item sr/research/agentic-unit-testing.md, recorded in this sheet",
         "At most 50 collected test items start `specy-road`, `specyrd` or `python -m specy_road` in a subprocess, counted per item by a test hook; git commands and worker child processes are not counted, and real worker-process and race tests stay as they are",
-        "All other CLI tests call `main(argv)` in process through tests/support run_cli",
+        "All other CLI tests call `main(argv)` in process through tests/support run_cli, so coverage contexts and mutation runs see the code each test exercises without subprocess capture",
         "Repo-consistency tests still run in CI (in a separate job if moved)",
-        "The median of three full-suite runs with the M16.2 settings, on the machine M16.2 recorded, is at most half the M16.2 baseline time and is recorded in the summary; suite time is never a CI failure; 35 s is printed by lean_metrics and not gated; coverage stays at or above fail_under",
+        "Each effectiveness measure the A1 decision names is measured at this leaf's merge base and at its head with the same settings; both values are recorded in the summary, and the head value is not below the merge-base value nor below any threshold the decision sets; coverage stays at or above fail_under",
+        "Full-suite wall time (median of three runs with the M16.1.7 settings) is recorded in the summary for information only; it is never an acceptance threshold, a review finding or a CI failure (maintainer, 2026-11-05)",
         "Estimated net line change (informational, not a gate): tests about -500"
       ],
-      "codename": "tests-a-cli-smoke-lane-of-at-most-50-subprocess-items-everything-else-in-process-suite-time-halved",
+      "codename": "tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the",
       "dependencies": [
         "e99367d9-1efa-4aec-850b-bd88121d9757"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.28",
+      "id": "M16.7.8",
       "node_key": "79115c79-0035-4781-9d38-d5a3b117631d",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.28_tests-a-cli-smoke-lane-of-at-most-50-subprocess-items-everything-else-in-process-suite-time-halved_79115c79-0035-4781-9d38-d5a3b117631d.md",
-      "sibling_order": 28,
+      "parent_id": "M16.7",
+      "planning_dir": "planning/M16.7.8_tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the_79115c79-0035-4781-9d38-d5a3b117631d.md",
+      "sibling_order": 7,
       "status": "Not Started",
-      "title": "Tests: a CLI smoke lane of at most 50 subprocess items, everything else in process, suite time halved",
+      "title": "Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses",
       "touch_zones": [
         "tests/",
         "pyproject.toml",
-        ".github/workflows/validate.yml"
+        ".github/workflows/validate.yml",
+        "sr/planning/M16.7.8_tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the_79115c79-0035-4781-9d38-d5a3b117631d.md"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "purpose.md says specy-road governs a repository's plan, its multi-agent execution (workers, roster, review delegation, grind) and its review trail, and states the not-list in this sheet word for word",
-        "principles.md is split into product invariants and engineering rules for this repo; 'no daemon', 'leave model choice to the team' and 'does not reinvent agent tooling' are reworded to what the product does (the PM GUI server and detached workers are explicit; model profiles are data the team chooses from)",
+        "principles.md is split into product invariants and engineering rules for this repo; principle 5 keeps 'no daemon and no MCP server' and names the PM GUI as a local server the user starts and detached workers as processes a command launches, neither a coordination daemon nor an MCP server; 'leave model choice to the team' and 'does not reinvent agent tooling' are reworded to what the product does (model profiles are data the team chooses from)",
         "docs/philosophy-and-scope.md shrinks to what is opinionated and what is not, linking purpose.md; AGENTS.md and docs/toolkit-development.md no longer say the toolkit roadmap is 'intentionally not defined': they say it lives under sr/ on the WIP line and is not in the tree on main",
-        "Estimated net line change (informational, not a gate): docs about -150"
+        "Estimated net line change (informational, not a gate): docs about -150",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions",
-      "dependencies": [],
+      "dependencies": [
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+      ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.29",
+      "id": "M16.1.4",
       "node_key": "42e6f078-5c8e-4ac2-b6bc-519cdac7c399",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.29_constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions_42e6f078-5c8e-4ac2-b6bc-519cdac7c399.md",
-      "sibling_order": 29,
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.4_constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions_42e6f078-5c8e-4ac2-b6bc-519cdac7c399.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions",
       "touch_zones": [
@@ -477,7 +460,9 @@
         "constitution/principles.md",
         "docs/philosophy-and-scope.md",
         "AGENTS.md",
-        "docs/toolkit-development.md"
+        "docs/toolkit-development.md",
+        "sr/constitution/purpose.md",
+        "sr/constitution/principles.md"
       ],
       "type": "task"
     }

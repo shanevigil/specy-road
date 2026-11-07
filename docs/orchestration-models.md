@@ -20,9 +20,11 @@ entry points at its profile with `profile:`, and names
 the `harness` (`claude-code`, `codex`, `cursor`, `generic`) that
 `specy-road worker delegate` launches it on — a Claude model under Cursor's
 agent is a `cursor` worker ([orchestration-workers.md](orchestration-workers.md)). A repo scaffolded
-by an older version gets them with `specy-road refresh-profiles`, which adds
-what is missing and never overwrites your edited copies (`--only` matches a
-front-matter `api_id` or file stem, and adds every matching missing profile).
+by an older version gets them with `specy-road refresh-profiles`, which by
+default adds the missing profiles a roster entry in `roadmap/orchestration.yaml`
+names (`--profiles all` adds every missing shipped profile) and never
+overwrites your edited copies (`--only` matches a front-matter `api_id` or file
+stem, and adds every matching missing profile).
 The facts come
 from model-run research no human has verified, so read the README's provenance
 section before copying a CLI line into production.
@@ -37,6 +39,26 @@ of them resolves to that profile, its notes included in `prompt`:
 api_id: claude-opus-5-5
 aliases: [claude-opus-5-5-high, claude-opus-5-5-max]   # harness ids for this model
 ```
+
+### Guidance bypass observed
+
+A profile can record that its model was seen going around specy-road's guidance:
+
+```yaml
+guidance_bypass_observed:
+  date: 2026-11-06        # YYYY-MM-DD, a real date
+  harness: cursor         # claude-code | codex | cursor | generic: where it was observed
+  evidence: >-            # non-blank: what was seen, in how many runs
+    CR1: faked a terminal with `script` to run the human approval, merged and pushed (2 of 3 runs). …
+```
+
+Any other shape (null, a list, a missing or extra key, an impossible date, another harness, blank or
+non-string evidence) makes the profile invalid. `models show` prints the date, harness and evidence
+(`--json`: under `front_matter`). The shipped **composer-2.5** profile carries it (its alias
+`composer-2.5-fast` too), from the 2026-11-05/06 replay through Cursor; the finding is about that model,
+not the Cursor harness, and `composer-2` is not flagged. While `policy.signed_reviews` is on, an entry
+that launches a flagged model is excluded from the executor and reviewer roles unless it opts in:
+[orchestration-roster.md](orchestration-roster.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
 
 A profile's `access.launch_mode` pins how much of its harness a Claude Code
 worker gets: `full` (the default when absent) or `bare`. Any other value makes
@@ -277,7 +299,9 @@ which counts as drift. Examples are a folded or literal `cli`, a flow
 `access: { … }`, or another indentation. `--render` names each such profile and
 exits 1; fix it by hand or take the toolkit's copy with `--force`.
 
-A plain `refresh-profiles` still copies only missing files, and also prints
+A plain `refresh-profiles` still copies only missing files (by default the
+ones a roster entry names; `--profiles all` for every shipped one, `--only` for
+one), and also prints
 any drift without failing. To re-render the shipped copies after editing the
 fixture, run `--render --repo-root specy_road/templates/project` from a
 toolkit checkout.

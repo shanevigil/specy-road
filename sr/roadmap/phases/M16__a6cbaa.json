@@ -2,27 +2,28 @@
   "nodes": [
     {
       "acceptance": [
-        "Before any reader changes, tests/parity/roster_forms/ holds the toolkit's sr/roadmap/orchestration.yaml as of pickup and a 0.3.1-shaped sample (a human entry, a manual reviewer, claude-code, codex and cursor entries, a dynamic-routing entry with and without `pinned`, and an orchestration.local.yaml with an availability patch and a `roster_add` entry), and records per entry: check_assignment's result for each M16.47 corpus row, the family attestation for an approval, the launch argv and added environment the harness adapter builds for an executor and a reviewer turn, the role-prompt text, and `orchestrate plan --json`",
-        "orchestration.schema.json accepts `version: 1` (today's flat entry, unchanged) and `version: 2`: core fields id, family, roles, may_process, public_key, available, paused_until, unavailable_until, family_pinned, class and subagent_family_lock at entry level (class and the family lock are eligibility inputs, so they stay core), and an optional `run:` object whose schema branch is chosen by `run.harness` (claude-code, codex, cursor, generic) and holds harness_bin, harness_model, profile, routing, billing_route, channels, preflight and cursor_force (cursor only, M16.69) under today's names; each branch accepts only the fields in this sheet's per-harness table, which the planner fills before dispatch from each adapter's and role_prompt's reads, and refuses another with a message naming the field and the harness; a valid and an invalid fixture per branch, and a human and a manual-reviewer entry without `run:`, are committed",
+        "Before any reader changes, tests/parity/roster_forms/ holds the toolkit's sr/roadmap/orchestration.yaml as of pickup and a 0.3.1-shaped sample (a human entry, a manual reviewer, claude-code, codex and cursor entries, a dynamic-routing entry with and without `pinned`, and an orchestration.local.yaml with an availability patch and a `roster_add` entry), and records per entry: check_assignment's result for each M16.5.4 corpus row, the family attestation for an approval, the launch argv and added environment the harness adapter builds for an executor and a reviewer turn, the role-prompt text, and `orchestrate plan --json`",
+        "orchestration.schema.json accepts `version: 1` (today's flat entry, unchanged) and `version: 2`: core fields id, family, roles, may_process, public_key, available, paused_until, unavailable_until, family_pinned, class and subagent_family_lock at entry level (class and the family lock are eligibility inputs, so they stay core), and an optional `run:` object whose schema branch is chosen by `run.harness` (claude-code, codex, cursor, generic) and holds harness_bin, harness_model, profile, routing, billing_route, channels, preflight and cursor_force (cursor only, M21.15) under today's names; each branch accepts only the fields in this sheet's per-harness table, which the planner fills before dispatch from each adapter's and role_prompt's reads, and refuses another with a message naming the field and the harness; a valid and an invalid fixture per branch, and a human and a manual-reviewer entry without `run:`, are committed",
         "One loader returns the same entry model from either form, and every roster reader (eligibility, worker and review delegate, role prompt, orchestrate plan and assign, models, validate) reads that model; every parity row gives the same result from each version-1 roster and from the hand-written version-2 equivalent committed beside it",
         "The review gate and review_gate_ready read core fields only; the family attestation (today's routing_problem: family_pinned, else the run block's routing, harness, channels.cli `--model`, harness_model and the profile's api_id) is a function of `specy_road.orchestration` with the same result on every parity and decision-table row; the layering gate fails when a review_gate module imports the roster's run model",
-        "validate accepts both forms for one release and prints one notice for a version-1 file that names `specy-road upgrade`; a version-2 entry with a run field at entry level is an error naming the field and `run:`; the M16.0 dogfood validate golden gains only that notice line",
+        "validate accepts both forms for one release and prints one notice for a version-1 file that names `specy-road upgrade`; a version-2 entry with a run field at entry level is an error naming the field and `run:`; the M16.1.1 dogfood validate golden gains only that notice line",
         "orchestration.local.yaml keeps today's rule that `roster:` patches set only available, paused_until and unavailable_until; `roster_add` entries are read in either form during the window (an entry with `run:` is version 2, otherwise version 1; an entry with both `run:` and an entry-level run field is an error naming the field) and refused, as today, when they add a command without allow_local_cli; the gate still reads only the committed roster",
-        "roster_generate (behind `validate --generate-orchestration`) writes the file version it is asked for, a new file is version 2, and no writer appends an entry in the other form to an existing file; module paths in this leaf's zones resolve through M16.17's destination list",
-        "No file is rewritten in this leaf (M16.64 migrates); the parity harness, the M16.1 decision table, the M16.47 eligibility corpus and the M16.15 state table are unchanged",
+        "roster_generate (behind `validate --generate-orchestration`) writes the file version it is asked for, a new file is version 2, and no writer appends an entry in the other form to an existing file; module paths in this leaf's zones resolve through M16.5.3's destination list",
+        "No file is rewritten in this leaf (M16.5.6 migrates); the parity harness, the M16.1.2 decision table, the M16.5.4 eligibility corpus and the M16.3.1 state table are unchanged",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
-        "Estimated net line change (informational, not a gate): package about +150 while both forms are read; M16.62 removes the version-1 path"
+        "Estimated net line change (informational, not a gate): package about +150 while both forms are read; M16.8.3 removes the version-1 path"
       ],
       "codename": "roster-core-and-run-block",
       "dependencies": [
-        "e8394512-cb8d-4a53-9206-936dbe2a67d2"
+        "e8394512-cb8d-4a53-9206-936dbe2a67d2",
+        "d340dc53-ba74-45b4-a5c4-9f778862e8f0"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.63",
+      "id": "M16.5.5",
       "node_key": "a6cbaac4-954f-42dc-811b-81b9edb6922c",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.63_roster-core-and-run-block_a6cbaac4-954f-42dc-811b-81b9edb6922c.md",
-      "sibling_order": 63,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.5_roster-core-and-run-block_a6cbaac4-954f-42dc-811b-81b9edb6922c.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "Roster entries split into core fields and a typed run: block, read in both forms",
       "touch_zones": [
@@ -51,10 +52,10 @@
       "acceptance": [
         "`upgrade` rewrites a version-1 roadmap/orchestration.yaml to version 2: core fields stay at entry level, `pinned` becomes `family_pinned`, every other harness field moves under `run:` with `harness` first; entry order, ids, values, `policy`, `substitutions` and every other top-level key are unchanged; a comment on the line immediately above a key, or on the same line after it, is on the line immediately above, or on the same line after, that same key in the after file, and no other comment line is dropped; the YAML shapes the rewrite supports are a committed table, and a file outside it is reported and left byte-identical",
         "`roster_add` entries in roadmap/orchestration.local.yaml are rewritten the same way when that file exists; its `roster:` availability patches are left as they are",
-        "Applying twice gives the same files; `--dry-run` writes nothing and lists the rewrite in the upgrade report (M16.12); a version-2 file is left untouched; a file the rewrite cannot read is reported and left unchanged",
-        "tests/parity/roster_forms/ holds before and after files for the toolkit's own sr/roadmap/orchestration.yaml and the 0.3.1-shaped sample: upgrade on each before file writes exactly its committed after file, each after file validates with no notice, and each gives the same M16.63 parity rows as its before file",
-        "The project template's roadmap/orchestration.yaml and the dogfood fixture's roadmap/orchestration.yaml are version 2, so init project writes the new form; the M16.0 dogfood validate golden is back to its pickup text and the rc3-shaped `upgrade --dry-run` golden differs only by the roster rewrite lines",
-        "docs/upgrading.md shows a roster entry before and after and says version 1 is read until the alias window closes (M16.61, M16.62); the toolkit's live sr/roadmap/orchestration.yaml is not rewritten in this leaf (the running coordinator reads it): the maintainer runs upgrade on it after merge",
+        "Applying twice gives the same files; `--dry-run` writes nothing and lists the rewrite in the upgrade report (M16.4.2); a version-2 file is left untouched; a file the rewrite cannot read is reported and left unchanged",
+        "tests/parity/roster_forms/ holds before and after files for the toolkit's own sr/roadmap/orchestration.yaml and the 0.3.1-shaped sample: upgrade on each before file writes exactly its committed after file, each after file validates with no notice, and each gives the same M16.5.5 parity rows as its before file",
+        "The project template's roadmap/orchestration.yaml and the dogfood fixture's roadmap/orchestration.yaml are version 2, so init project writes the new form; the M16.1.1 dogfood validate golden is back to its pickup text and the rc3-shaped `upgrade --dry-run` golden differs only by the roster rewrite lines",
+        "docs/upgrading.md shows a roster entry before and after and says version 1 is read until the alias window closes (M16.8.2, M16.8.3); the toolkit's live sr/roadmap/orchestration.yaml is not rewritten in this leaf (the running coordinator reads it): the maintainer runs upgrade on it after merge",
         "CHANGELOG.md's [Unreleased] section records the roster migration (version 1 -> version 2, `pinned` -> `family_pinned`) and that version 1 is removed at the 0.3.1 final tag; no version heading is written",
         "Estimated net line change (informational, not a gate): package about +120 (migration code)"
       ],
@@ -63,11 +64,11 @@
         "a6cbaac4-954f-42dc-811b-81b9edb6922c"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.64",
+      "id": "M16.5.6",
       "node_key": "66711ba8-3d38-427a-bf76-fdc3989e0c75",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.64_roster-upgrade-to-run-block_66711ba8-3d38-427a-bf76-fdc3989e0c75.md",
-      "sibling_order": 64,
+      "parent_id": "M16.5",
+      "planning_dir": "planning/M16.5.6_roster-upgrade-to-run-block_66711ba8-3d38-427a-bf76-fdc3989e0c75.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "upgrade migrates rosters to core fields plus run:",
       "touch_zones": [
@@ -86,21 +87,23 @@
     },
     {
       "acceptance": [
-        "Before the pass, this sheet commits the E1-E8 checklist with each step's commands or routes and its expected result, and records which harness logins the maintainer has. The pass runs from a wheel built from the branch head in a clean virtual environment and covers: install, init project, the M16.0 leaf loop with on_complete merge and pr, upgrade on an rc3-shaped and an rc5-shaped repo, worker delegate and review delegate once each on claude-code, codex and cursor (or one sheet line per harness recording that the maintainer has no login for it), grind-session on the dogfood fixture, doctor --prune, the PM GUI server's read-only routes named in the checklist, and validate, export --check and digest --check on sr/ and the dogfood fixture; each step's result is recorded, and a skipped step names its reason and the maintainer's disposition",
-        "Every failure, and every feedback item the maintainer collects in this round, is an intake entry in this sheet with disposition `fix-before-0.3.1` or `after`; this leaf adds no roadmap node: the planner adds each fix leaf and its M16.66 dependency afterwards",
+        "Before the pass, this sheet commits the E1-E8 checklist with each step's commands or routes and its expected result, and records which harness logins the maintainer has. The pass runs from a wheel built from the branch head in a clean virtual environment and covers: install, init project, the M16.1.1 leaf loop with on_complete merge and pr, upgrade on an rc3-shaped and an rc5-shaped repo, worker delegate and review delegate once each on claude-code, codex and cursor (or one sheet line per harness recording that the maintainer has no login for it), grind-session on the dogfood fixture, doctor --prune, the PM GUI server's read-only routes named in the checklist, and validate, export --check and digest --check on sr/ and the dogfood fixture; each step's result is recorded, and a skipped step names its reason and the maintainer's disposition",
+        "Every failure, and every feedback item the maintainer collects in this round, is an intake entry in this sheet with disposition `fix-before-0.3.1` or `after`; this leaf adds no roadmap node: the planner adds each fix leaf and its M16.8.9 dependency afterwards",
         "This leaf changes no product code; fixes land in their own leaves",
-        "Estimated net line change (informational, not a gate): 0"
+        "Estimated net line change (informational, not a gate): 0",
+        "The checklist has a row: an rc3-era claim still in flight when the new wheel is installed finishes under it",
+        "A run outside the agentic sandbox labels each result 'not sandbox: no MCP, reset or egress check', and those items stay open until a sandbox run"
       ],
       "codename": "e2e-pass-and-fix-round",
       "dependencies": [
         "d0c9dfae-8a1b-46f5-9e40-0686ecb1a67d"
       ],
       "execution_milestone": "Human-led",
-      "id": "M16.65",
+      "id": "M16.8.4",
       "node_key": "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.65_e2e-pass-and-fix-round_08ceae7d-08a4-4aa3-80ea-e0f74cd512e0.md",
-      "sibling_order": 65,
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.4_e2e-pass-and-fix-round_08ceae7d-08a4-4aa3-80ea-e0f74cd512e0.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1",
       "touch_zones": [
@@ -115,21 +118,26 @@
         "15c488ad-2531-4d82-a3a9-363e626a3872",
         "3d08dc0a-5e36-45e6-9c64-2afb0bf110c5",
         "4830d6a5-8004-46b8-b748-e7194f614aa2",
+        "8bd87465-78a7-41ee-b934-79f6bbec766c",
         "b47e4275-a0ab-4165-ad9e-9a27cc522791",
+        "be53d706-287c-4f1f-bb62-8ff1da6c2dfe",
         "c44976af-41a0-4627-8789-16dcf49dd12b",
         "d0994708-469d-46e8-ac14-3cc7105bbf6e",
         "e08a12a0-17fd-4251-b596-5a46e1e9335d",
         "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
         "f0e9d130-9b74-479d-a401-ccee402e63a4",
         "f533afb6-f6fb-4394-9beb-d8a5c49ed95d",
-        "f8ad690d-5f67-4493-bd07-62324d09cdb2"
+        "f8ad690d-5f67-4493-bd07-62324d09cdb2",
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
+        "992a07fe-018e-4ff0-adc5-1675c130adb6",
+        "f6a94a57-91ff-449b-997e-af12dedd41ee"
       ],
       "execution_milestone": "Human-led",
-      "id": "M16.66",
+      "id": "M16.8.9",
       "node_key": "2dce21fe-f676-42e5-a9a2-cd58a333d5fa",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.66_ready-to-tag-0-3-1_2dce21fe-f676-42e5-a9a2-cd58a333d5fa.md",
-      "sibling_order": 66,
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.9_ready-to-tag-0-3-1_2dce21fe-f676-42e5-a9a2-cd58a333d5fa.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "Gate: ready to tag 0.3.1",
       "touch_zones": [],
@@ -145,11 +153,11 @@
       "codename": "move-node-keeps-other-ids",
       "dependencies": [],
       "execution_milestone": "Agentic-led",
-      "id": "M16.67",
+      "id": "M21.13",
       "node_key": "4830d6a5-8004-46b8-b748-e7194f614aa2",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.67_move-node-keeps-other-ids_4830d6a5-8004-46b8-b748-e7194f614aa2.md",
-      "sibling_order": 67,
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.13_move-node-keeps-other-ids_4830d6a5-8004-46b8-b748-e7194f614aa2.md",
+      "sibling_order": 11,
       "status": "Complete",
       "title": "move-node changes only the moved subtree's ids; whole-outline renumber becomes explicit",
       "touch_zones": [
@@ -169,11 +177,11 @@
       "codename": "finish-resolves-inherited-roadmap-conflicts",
       "dependencies": [],
       "execution_milestone": "Agentic-led",
-      "id": "M16.68",
+      "id": "M21.14",
       "node_key": "f0e9d130-9b74-479d-a401-ccee402e63a4",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.68_finish-resolves-inherited-roadmap-conflicts_f0e9d130-9b74-479d-a401-ccee402e63a4.md",
-      "sibling_order": 68,
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.14_finish-resolves-inherited-roadmap-conflicts_f0e9d130-9b74-479d-a401-ccee402e63a4.md",
+      "sibling_order": 12,
       "status": "Complete",
       "title": "finish resolves roadmap chunk conflicts the branch only inherited",
       "touch_zones": [
@@ -188,17 +196,17 @@
       "acceptance": [
         "The cursor adapter's default worker launch and resume (worker_adapter_cursor.py) no longer pass --force: they pass --trust plus Cursor's sandbox (--sandbox enabled), the narrower command docs/orchestration-workers.md already documents; --force is used only when the roster entry opts in explicitly (one named, documented field, e.g. run/permission opt-in), never by default; plan review 2026-11-05 (Sol, adopted): for built-in Cursor executor commands the roster field cursor_force is boolean, defaults false, and applies on launch and resume; false emits --trust --sandbox enabled without --force, true emits --trust --force without --sandbox enabled; custom channels.cli commands keep their explicit argv and are outside this guarantee; plan and doctor warn once per cursor_force=true Cursor entry (including unassigned ones); launch events record the effective permission flags",
         "Before the change lands, the executor verifies with the real agent CLI in a fresh linked worktree that a typical leaf turn works under the new default: edit a file, run the targeted pytest, and git commit on the leaf branch; the results (pass, or the exact refusal) are recorded in the implementation summary. If git commit or tests cannot run inside Cursor's sandbox, the leaf documents that as a known limitation (as for Codex) and the opt-in path, rather than restoring --force by default; plan review 2026-11-05 (Sol, adopted): record the agent version, exact smoke-test commands and each edit/pytest/commit outcome in the implementation summary; if sandboxed tests or commits are refused, opt the toolkit's Composer/Grok executor entries into cursor_force and record the temporary exception in sr/roadmap/decisions.yaml",
-        "When a roster entry opts into --force, orchestrate plan and doctor print one warning naming the entry and the risk (every command not explicitly denied is allowed; see docs/research agent-safety-posture-2026-11-05 and CR1), and the launch argv shown in logs makes the opt-in visible; plan review 2026-11-05 (Grok, adopted): the warning also fires for a cursor entry whose channels.cli or cli_resume contains --force or --yolo; the worker launched event detail includes the permission flags actually passed; M16.63's roster run: field list gains cursor_force (note for M16.63, no edit here)",
+        "When a roster entry opts into --force, orchestrate plan and doctor print one warning naming the entry and the risk (every command not explicitly denied is allowed; see docs/research agent-safety-posture-2026-11-05 and CR1), and the launch argv shown in logs makes the opt-in visible; plan review 2026-11-05 (Grok, adopted): the warning also fires for a cursor entry whose channels.cli or cli_resume contains --force or --yolo; the worker launched event detail includes the permission flags actually passed; M16.5.5's roster run: field list gains cursor_force (note for M16.5.5, no edit here)",
         "Tests pin the default argv (no --force, has --trust and --sandbox enabled) for launch and resume, the opt-in argv, and the warning. docs/orchestration-workers.md and the CHANGELOG [Unreleased] section describe the new default and the opt-in. Out of scope: Claude Code and Codex launch flags (M15.36, M20)"
       ],
       "codename": "cursor-workers-no-force-by-default",
       "dependencies": [],
       "execution_milestone": "Agentic-led",
-      "id": "M16.69",
+      "id": "M21.15",
       "node_key": "3d08dc0a-5e36-45e6-9c64-2afb0bf110c5",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.69_cursor-workers-no-force-by-default_3d08dc0a-5e36-45e6-9c64-2afb0bf110c5.md",
-      "sibling_order": 69,
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.15_cursor-workers-no-force-by-default_3d08dc0a-5e36-45e6-9c64-2afb0bf110c5.md",
+      "sibling_order": 13,
       "status": "Complete",
       "title": "Cursor workers launch sandboxed without --force unless the roster opts in",
       "touch_zones": [
@@ -221,7 +229,7 @@
     },
     {
       "acceptance": [
-        "move-node <ID> --to-parent <P> takes --id <NEW> or --fill-gaps; the two are mutually exclusive and either one with --renumber-outline is refused (each refusal exits 1 naming the reason and writes nothing). NEW must match ^M[0-9]+(\\.[0-9]+)*$, be P plus exactly one numeric segment (Mk at the root) and be absent from every node outside the moved subtree. --fill-gaps picks the smallest unused child suffix under P starting at 1 (at the root: starting at 0 when M0 exists, else 1), ignoring the moved subtree. Both renumber only the moved subtree (M16.67)",
+        "move-node <ID> --to-parent <P> takes --id <NEW> or --fill-gaps; the two are mutually exclusive and either one with --renumber-outline is refused (each refusal exits 1 naming the reason and writes nothing). NEW must match ^M[0-9]+(\\.[0-9]+)*$, be P plus exactly one numeric segment (Mk at the root) and be absent from every node outside the moved subtree. --fill-gaps picks the smallest unused child suffix under P starting at 1 (at the root: starting at 0 when M0 exists, else 1), ignoring the moved subtree. Both renumber only the moved subtree (M21.13)",
         "One implementation for CLI and GUI: /outline/move, /nodes/{id}/indent and /nodes/{id}/outdent share move_node and renumber only the moved subtree by default (today move_node_outline passes renumber_outline=True); /outline/reorder writes sibling_order only, through one AtomicWritePlan, and changes no id (today reorder_siblings renumbers every id and persists before validating). Whole-outline renumber happens only when a request passes the new optional renumber_outline: true; /outline/move also accepts optional new_id and fill_gaps; indent/outdent treat an omitted body as renumber_outline=false and accept an optional JSON body",
         "PM GUI add-node (maintainer 2026-11-05): _canonical_ids_after_add stops renumbering the whole outline; the new node takes the next free id under its parent (or a requested free id) and no other node's id changes",
         "A new contract test pins today's shapes: POST /outline/move and /outline/reorder 200 {ok: \"true\"}; /nodes/{id}/indent and /outdent 200 {ok: true, changed: bool}, with and without a body; DELETE /nodes/{id} 200 {ok: \"true\", node_id}; POST /nodes/add 200 {ok: \"true\", id}; unknown node or node_key 400; other refusals 400 with a string detail. The existing PM GUI API tests (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass; CLI tests cover --id taken, malformed, under the wrong parent, combined with --fill-gaps, and --fill-gaps",
@@ -321,7 +329,7 @@
         "specy-road remove-node <ID> [--dry-run] removes the node and its planning sheet in one transaction only when its status is Not Started and it has no children, no registry claim and no dependents; otherwise it exits 1 listing every blocker (each child id, the claim's codename and branch, each dependent id), writing nothing (today can_hard_remove skips claims and status and stops at the first blocker)",
         "--dry-run runs the same checks, prints the node id and planning-sheet path it would remove, exits 0 when eligible or 1 listing every blocker, and changes no bytes; a refused real removal also performs no self-heal write (today delete_roadmap_node_hard heals before checking)",
         "The PM GUI's DELETE /nodes/{id} and archive-node --hard-remove call the same function, so the GUI also refuses claimed or started nodes; the response shape is unchanged (200 {ok, node_id}; 400 detail names the blockers). PM GUI gates: the Python API tests for the PM GUI server (tests/test_gui_app*.py, tests/test_roadmap_gui_*.py) pass and the M21.1 contract test passes unchanged; any new request field is optional and additive",
-        "Tests cover each blocker, dry-run (eligible and blocked, byte-identical tree), a successful removal (chunk entry and sheet gone, graph validates) and the GUI DELETE contract; docs/roadmap-authoring.md and cli_usage name remove-node as the supported path. Out of scope: retiring or renaming archive-node (M16.45), the reversible archive command"
+        "Tests cover each blocker, dry-run (eligible and blocked, byte-identical tree), a successful removal (chunk entry and sheet gone, graph validates) and the GUI DELETE contract; docs/roadmap-authoring.md and cli_usage name remove-node as the supported path. Out of scope: retiring or renaming archive-node (M16.4.4), the reversible archive command"
       ],
       "codename": "remove-node",
       "dependencies": [
@@ -365,14 +373,15 @@
       "parent_id": "M21",
       "planning_dir": "planning/M21.5_apply-restructure-ops_c44976af-41a0-4627-8789-16dcf49dd12b.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "apply CHANGES.yaml expresses moves, grouping and removals, rehearsed by --dry-run and validated once",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/roadmap_crud_argparse.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/roadmap_apply_entries.py"
       ],
       "type": "task"
     },
@@ -405,36 +414,36 @@
     },
     {
       "acceptance": [
-        "A new specy_road/steering_paths.py holds one list, documented in docs/orchestration-workers.md, and snapshots it per worker in the worktree and the main checkout: harness config and hooks (.claude/settings*.json, .claude/hooks/**, .codex/**, .cursor/*.json, .cursor/hooks/**); git steering read from the filesystem only, namely the hooks directory (core.hooksPath when set, else <common-git-dir>/hooks and <worktree-gitdir>/hooks) as direct regular-file names with sha256, non-recursive, or the marker capped past 200 children, plus the bytes of the common config and config.worktree; roadmap/orchestration.yaml, roadmap/orchestration.local.yaml and roadmap/git-workflow.yaml in the tree and as blobs at the local integration branch tip; roadmap/registry.yaml entries items whose node_id is another leaf; work/reviews/ files except the leaf's own READY; root .bashrc, .bash_profile, .profile, .zshrc, .zshenv, .envrc; and for each env_setup.link target its bin/ entry names, types, link text and resolved regular-file sha256. Paths compare project-relative as zone_matches does, one real path stored once.",
-        "close_turn compares the git-steering snapshot before any post-turn git command; on a change it records the finding and marks the git probes skipped without running them. Each change is one steering_file finding with path, class (harness, git_hook, git_config, policy_tree, policy_blob, registry, review_file, shell_startup, env_bin, symlink), before and after (sha256, link:<target>, absent, or for git_config the changed values of core.hooksPath, core.fsmonitor, core.sshCommand, include.path, includeIf.*.path), replacing any porcelain or committed_outside_zones finding for that path. A symlink finding is a porcelain entry in either checkout, new or retargeted during the turn, whose target resolves outside the worker's git root; there is no directory walk, and gitignored paths and links created then removed within a turn are out of scope, as the docs state. A sticky worker flag steering_changed shows in worker status --json flags and handoff status --json workers[].flags; a clean turn leaves it set; worker reconcile <id> without --dismiss prints one path class before after line per steering_file finding recorded while it was set, then clears it.",
-        "finish-this-task refuses, before its bookkeeping commit, a leaf whose branch diff against the merge base changes an in-tree steering path (harness config and hooks, the three roadmap policy files, root shell startup files) unless a touch zone names that exact path (a directory or glob zone does not count); roadmap/registry.yaml is ignored. The message names each path and the next step: add that exact path to touch_zones with specy-road edit-node and get it reviewed, or revert it.",
-        "Claude Code launch and resume append --disallowedTools Edit(./<rel>) and Write(./<rel>) for each in-tree steering file present at launch plus .claude/settings.json, .claude/settings.local.json and the three roadmap policy files, skipping any path a touch zone names exactly, with no parent glob, so no rule matches an exempt path. New files, shell writes, the common git dir and the main checkout stay detection-only, and a channels.cli argv is unchanged. docs/orchestration-harness-launch.md states that Cursor already blocks .cursor/*.json, .vscode/** and .git/hooks/** and that Codex workspace-write refuses writes outside the workspace but allows in-tree steering files, neither argv changed; docs/orchestration-review.md 'What the gate cannot stop' states what this leaf adds and what stays with M20.",
-        "Tests: a fake executor turn yields exactly one steering_file finding, and no porcelain or committed_outside_zones finding for that path, for each of: .claude/settings.json, .cursor/hooks.json, a hook in the common git dir, core.fsmonitor set to a command that would create a sentinel file (git probes skipped, sentinel absent), .envrc, a write through an unchanged linked .venv/bin/python symlink, a symlink whose target leaves the worktree, another leaf's registry entries item, a forged work/reviews REVIEW file, and roadmap/orchestration.yaml committed onto the local integration branch from a second worktree with no fetch. A turn writing only its READY, its own registry entry and in-zone code is clean. With .claude/settings.json named exactly in zones the leaf lands and no argv rule matches that path; without it finish refuses naming the path and the argv denies it. specy-road file-limits passes. Out of scope: OS isolation, signing, the M20 posture model and doctor probes, and restoring a changed file."
+        "specy_road/steering_paths.py holds the git-steering part of the steering list, documented in docs/orchestration-steering-files.md and docs/orchestration-workers.md, snapshotted for each worker turn from the filesystem only: the hooks directory (core.hooksPath when set, else <common-git-dir>/hooks and <worktree-gitdir>/hooks) as direct regular-file names with sha256, not recursive, and the bytes of the common config and config.worktree with the files they name by include.path or includeIf.*.path as specy_road/git_config_text.py reads them. Paths compare project-relative as zone_matches does, one real path stored once",
+        "A hooks directory with more than 200 direct children fails closed on every comparison, changed or not: one check_error naming that directory with class git_hook, and the git probes marked skipped; the listing stops reading after 201 entries. This replaces the single `capped` marker, which is the same before and after a hook is replaced in a directory that stays over the cap",
+        "close_turn compares that snapshot before any post-turn git command. On a change it records one steering_file finding per path (class git_hook or git_config; before and after a sha256, absent, or for git_config the digest with the changed values of core.hooksPath, core.fsmonitor, core.sshCommand, include.path and includeIf.*.path), replacing any porcelain or committed_outside_zones finding for that path; on an unreadable input, a special file or a timeout it records a check_error naming the path and class; either way it marks the git probes skipped and runs none of them. With no snapshot from the turn's start it fails closed the same way. It never aborts the turn and never passes silently",
+        "The post-turn inspection runs on worker_runner's finalization path before READY is parsed: the check runs before fresh_ready, and a READY that cannot be parsed (invalid UTF-8 included) is a completion error of the turn, not an exception, so the turn still ends with exactly one post_run_check holding the git-steering findings",
+        "A sticky worker flag steering_changed shows in worker status --json flags and handoff status --json workers[].flags; a clean turn leaves it set; worker reconcile <id> without --dismiss prints one path class before after line per steering_file finding recorded while it was set, then clears it",
+        "Tests in tests/test_steering_file_guard.py: a hook in the common git dir; core.fsmonitor set to a command that would create a sentinel file (git probes skipped, sentinel absent), with the snapshot taken and with git_snapshot raising; an unreadable config and an unreadable hook, each failing closed; a clean turn after a turn that added a hook (flag kept; reconcile lists that hook as git_hook and clears the flag); a hooks directory that starts with 201 entries and has one hook replaced while staying above 200, which flags the turn; and, through the public worker runner, a turn whose fake executor writes a READY containing byte FF and changes the common config, which ends with exactly one post_run_check holding the git_config finding and the sticky flag",
+        "The other classes are M22.30, finish's refusal is M22.31 and the Claude Code launch denies are M22.32; this branch holds none of their code. Ends with one full Sol sweep of the merged result; specy-road file-limits passes. Out of scope: OS isolation, signing, the M20 posture model and doctor probes, and restoring a changed file"
       ],
       "codename": "steering-file-guard",
-      "dependencies": [],
+      "dependencies": [
+        "148aa830-5bad-4086-8d27-9c6748b58ed5"
+      ],
       "execution_milestone": "Agentic-led",
-      "id": "M21.7",
+      "id": "M22.5",
       "node_key": "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf",
-      "parent_id": "M21",
-      "planning_dir": "planning/M21.7_steering-file-guard_ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf.md",
-      "sibling_order": 6,
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.5_steering-file-guard_ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "Executors cannot change the files that steer harnesses and specy-road unnoticed",
       "touch_zones": [
         "specy_road/steering_paths.py",
         "specy_road/worker_turn_check.py",
+        "specy_road/worker_runner.py",
         "specy_road/worker_reconcile.py",
-        "specy_road/worker_adapter_claude.py",
-        "specy_road/bundled_scripts/finish_task.py",
-        "docs/orchestration-workers.md",
-        "docs/orchestration-harness-launch.md",
-        "docs/orchestration-review.md",
-        "tests/",
+        "specy_road/git_config_text.py",
         "specy_road/schemas/worker-record.schema.json",
-        "specy_road/steering_gate.py",
+        "docs/orchestration-workers.md",
         "docs/orchestration-steering-files.md",
-        "specy_road/git_config_text.py"
+        "tests/test_steering_file_guard.py"
       ],
       "type": "task"
     },
@@ -442,21 +451,23 @@
       "acceptance": [
         "Before the switch, a table in this sheet maps every flag and mode of refresh-stubs, refresh-schemas and refresh-profiles (including refresh-profiles' `--only API_ID` and its --check, --render and --capture modes) to an upgrade invocation; `upgrade --only stubs|schemas|profiles` selects a component, and profile selection uses a separate option the table names; each row gives the same files and output as the old invocation; the three commands stay as hidden one-release aliases with one deprecation line and are rows of tests/parity/command_map.yaml, which also lists upgrade's allowed help and report differences",
         "`upgrade` prints one report with four fixed sections (files added or changed, schema refreshes, profile refreshes, notices) built only from data the refresh steps compute at pickup; the before and after `upgrade --dry-run` outputs on the rc3-shaped fixture are committed, and the set of reported lines is the same, only headings and grouping differ",
-        "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` a hidden one-release alias and a map row; the update scenarios (M16.53) pass under both names",
+        "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` a hidden one-release alias and a map row; the update scenarios (M16.1.10) pass under both names",
         "M13.11's extra report sections are not part of this leaf; docs, templates and suggested_prompts use the new names; goldens differ only for map rows",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
-        "Estimated net line change (informational, not a gate): package about -200"
+        "Estimated net line change (informational, not a gate): package about -200",
+        "refresh-stubs and refresh-schemas refusals exit 1 in a real and a dry run, as after M21.37"
       ],
       "codename": "upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update",
       "dependencies": [
-        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f"
+        "b5ca5d95-58a9-472c-9f90-0004d0fbd46f",
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.12",
+      "id": "M16.4.2",
       "node_key": "fcb9f89a-2bad-423c-8d52-eb748967a367",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.12_upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update_fcb9f89a-2bad-423c-8d52-eb748967a367.md",
-      "sibling_order": 12,
+      "parent_id": "M16.4",
+      "planning_dir": "planning/M16.4.2_upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update_fcb9f89a-2bad-423c-8d52-eb748967a367.md",
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update",
       "touch_zones": [

@@ -1,19 +1,68 @@
 ## Intent
 
-0.3.2 makes orchestration visible: the PM GUI shows workers, claims, reviews and worktrees for each leaf. It was moved out of M16 by the maintainer (2026-11-05): M16 delivers only the read-only orchestration snapshot interface (M16.15) and the folded PM UI server (M16.42) that this phase builds on.
+0.3.1 makes orchestration visible in the PM GUI: workers, claims and holds, worktrees and reviews for each leaf, read-only. The maintainer moved this phase from 0.3.2 into 0.3.1 (2026-11-05 evening): it runs largely in parallel with the M16 refactor, because the React code under gui/pm-gantt/ barely overlaps M16's Python work, and the M16.8.9 "ready to tag 0.3.1" gate depends on this phase.
+
+Out of scope for 0.3.1: any GUI action that changes orchestration state (stop or message a worker, prune a worktree, release a claim, approve a review) unless the maintainer names one at M17.1; M18.22's supervision rows (stalled loop, stuck review queue), which come after 0.3.1; changes to the existing Workers drawer beyond a link into it.
+
+## Release map
+
+| Release | What it contains |
+| --- | --- |
+| rc4 | M21 (rc4 stabilization) |
+| rc5 | M16 (lean core) + M22 (rc5 fixes) |
+| 0.3.1 | the M16.8.9 "ready to tag 0.3.1" gate + M17 (PM GUI orchestration view, built in parallel with M16) + the rc5 fixes; then the maintainer's tag (gate M16.8.10) |
+| after 0.3.1 | M18, M19, M20 (each depends on gate M16.8.10, "0.3.1 tagged") |
+
+Milestone numbers are not release order; dependencies are. (Maintainer ruling, 2026-11-05 evening.)
 
 ## Approach
 
-- The GUI reads only `specy_road.orchestration`'s snapshot, whose fields are fixed by tests/fixtures/orchestration_snapshot_v1.json (`schema: 1`). It imports no worker_* or gui_app_routes_workers internals; a field the GUI needs that the snapshot lacks is a change to the snapshot interface with a new schema number, not a side import.
-- This phase owns the existing sections of docs/pm-gui.md (M16.31 only appends sections for brainstorm and LLM review).
-- M17.1 is a placeholder the maintainer turns into dispatchable leaves after M16.15 and M16.42 merge; nothing in this phase starts before that.
+- **Two lanes.** Frontend leaves (M17.2-M17.5) start as soon as the maintainer clears the M17.1 design gate: they build against a mock snapshot under gui/pm-gantt/src/fixtures/ whose required fields mirror M16.3.1's v1 field list, and test only pure view-model code with vitest. Backend leaves wait for M16's code chain: M17.6 (snapshot schema 2: the optional fields the panels need) on M16.3.1, M17.7 (`GET /api/orchestration`) on M16.3.7 and M17.6. Frontend order is M17.2, M17.3, M17.4, M17.5 (M17.5 after M17.4: both edit the view model). M17.8 joins the lanes (docs, CHANGELOG, live wiring) after M16.6.1; M17.9 is the coordinator's GUI acceptance run on the agentic sandbox.
+- **One read path.** The GUI reads only `specy_road.orchestration`'s snapshot (`orchestration.state.snapshot(repo_root)`, v1 fixture tests/fixtures/orchestration_snapshot_v1.json committed by M16.3.1). It imports no worker_* or gui_app_routes_workers internals; a field the GUI needs that the snapshot lacks is a snapshot change with a new schema number (M17.6), not a side import. The route serves the snapshot unchanged; display ids come from the outline the GUI already loads.
+- **Compatibility.** Every existing `/api/` route keeps its response shape; the new route is additive; schema 2 only adds optional fields; a GUI served by an older server (404 on `/api/orchestration`) looks exactly as it does today. Contract tests (M17.7) tie the GUI mock, the server fixture and the route together.
+- **Read-only first.** No mutating action in 0.3.1 unless the maintainer names one at M17.1; it would then be its own leaf calling the CLI's existing command.
+- **Docs.** This phase owns docs/pm-gui.md's existing sections (M16.6.1 only appends brainstorm and LLM-review sections).
+- **Testing on the sandbox.** M17.9 runs a scripted browser test on an agentic-sandbox VM (MCP tools claim_workspace, vm_start, sbvm_exec, sbvm_run_browser_test, sbvm_screenshot) against a built wheel and a seeded fixture repo. The coordinator runs it, not CI and not a worker, and asks the maintainer before using the sandbox.
+- **Sign-off (2026-11-06).** M17.1 is complete: read-only plus copy-CLI buttons; a 15 s poll only while the drawer is open; holds are the hold list plus open gates. The 0.3.1 GUI also gains acceptance editing (M17.11), a group-siblings action (M17.12) and the selection-lag fix (M17.13); they edit the roadmap through existing routes and change no orchestration state. The sandbox run (M17.9) waits on gate M17.10.
 
 ## Tasks / checklist
 
-- [ ] M17.1 — 0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface
+- [x] M17.1 — Gate: maintainer signs off the information design and the read-only scope (2026-11-06)
+- [ ] M17.2 — Snapshot types, mock snapshot and view model (frontend, after M17.1)
+- [ ] M17.3 — Orchestration drawer: workers per leaf (frontend)
+- [ ] M17.4 — Leaf detail: worktrees, READY, reviews, gate state (frontend)
+- [ ] M17.5 — Outline badges for claims, holds and review state (frontend)
+- [ ] M17.6 — Snapshot schema 2 (backend, after M16.3.1)
+- [ ] M17.7 — `GET /api/orchestration` and contract tests (backend, after M16.3.7)
+- [ ] M17.8 — Docs, CHANGELOG and live wiring
+- [ ] M17.9 — GUI acceptance on the agentic sandbox (coordinator)
+- [ ] M17.10 — Gate: sandbox use approved for M17.9 (maintainer; M17.1 question 7)
+- [ ] M17.11 — Acceptance editing in the node edit dialog (M17.1 questions 9 and 11)
+- [ ] M17.12 — Group-siblings outline action calling /api/outline/group (question 9)
+- [ ] M17.13 — Row click selects at once: the ~225 ms selection lag fixed (question 10)
+
+## Plan review (2026-11-05)
+
+Critiques: sr/work/plan-reviews/m17-plan/critique-grok.md (G1-G26) and critique-sol.md (R1-R16), lenses item logic, testability, GUI/API, security, alignment; both returned block. Per-leaf decision tables are on each leaf sheet. No leaf added or removed; dependency changes: M17.5 -> M17.4 (was M17.3), M17.8 + M16.6.1.
+
+| Area | Findings | Decision |
+|---|---|---|
+| Contract types and vocabulary | G3, G5, G11, G12, G13, G15, G17, R2, R9 | Accepted: outline join, gate.state = `handoff status` label, integer counters, null as "—", flags verbatim, full v2 fixture, exported key-path lists, formatRelativeAge, listed test rows |
+| Blocked badge source | G4, R8 | Adapted: optional ready.blocked_on plus gate.state; count from gate.blocks or blocked_on |
+| Freshness | G6, R5 | Accepted: fresh_for_head only |
+| Drawer interfaces | G7, G8, G16, R3, R4, R6, R7 | Accepted / adapted: initialWorkerId, filterLeafId, injected-fetch loader rows and a source-import check; no DOM test library |
+| Route shape | G2, R12, R13 | G2 accepted (snapshot unchanged), R12 rejected (duplicate contract), R13 accepted |
+| Security (snapshot and route) | G19, G20, R10, R11, G23 + planner | Accepted: field-local unknown for malformed bytes, fsmonitor/hooks disabled with no optional locks, POST 403 under --read-only, loopback CORS unchanged, no secret, env value or config-dir path in the body |
+| Ordering and zones | G1, G9, G10, G14, G18, R1 | Accepted |
+| Sandbox leaf | G21, G22, G24, R14, R15 | G21 deferred to question 7; the rest accepted or adapted |
+| Alignment | G25, G26, R16 | Accepted: M16 phase, M16.8 and M16.3.1 sheets now say M17 is 0.3.1, parallel with M16 |
+
+Open product questions (1-8) are listed in M17.1's sheet with the default each leaf assumes. All eleven were answered on 2026-11-06 (M17.1's Sign-off section); the leaves follow the answers.
 
 ## References
 
-- M16.15 (snapshot interface and v1 fixture), M16.42 (PM UI server fold)
+- M16.3.1 (snapshot fields, status vocabulary, v1 fixture), M16.3.7 (PM UI server fold), M16.6.1 (docs/pm-gui.md appends)
+- docs/pm-gui.md (Workers drawer, read-only JSON API), specy_road/gui_app_routes_workers.py, gui/pm-gantt/src/components/WorkersDrawer.tsx
+- M18.22 (supervision rows the GUI may show after 0.3.1)
 - `sr/docs/research/slimming-2026-11-05/RECOMMENDATION.md` section 3.1 (D1)
 - No `shared/` contract applies.

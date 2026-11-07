@@ -6,8 +6,9 @@ and is the only place they live: ``specy-road review defer`` calls it before wri
 (:func:`apply_deferrals`) calls it again on every applied marker each time it evaluates, from the same
 evidence (:func:`deferral_evidence`). A ``DEFERRAL-<round>.yaml`` marker is a cache of what a human applied,
 never an authority: it is shape-checked where it is read (:func:`load_markers`), a malformed one resolves
-nothing and is reported, and a block counts as resolved only while the marker's decision is closed in
-``roadmap/decisions.yaml`` and its items still qualify. The fix-round budget's next step is
+nothing and is reported, and a block counts as resolved only while the marker is in effect
+(:func:`deferral_in_effect`): bound to the valid RCA it names and to the closed decision ``review defer``
+recorded for it in ``roadmap/decisions.yaml``, with items that still qualify. The fix-round budget's next step is
 :mod:`specy_road.review_next_step`. Design: ``docs/design-notes/review-loop-rca.md``.
 """
 
@@ -225,36 +226,94 @@ def write_marker(path: Path, data: dict[str, Any]) -> None:
     path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
-def _closed_decisions(repo_root: Path, node_id: str) -> set[str]:
-    """Closed decision ids of the node; an unreadable ledger closes nothing, so every block keeps counting."""
+def answer_item(x: dict[str, Any]) -> str:
+    """How ``review defer`` names one deferred item in its decision's answer (``commit`` already full), and
+    what :func:`deferral_in_effect` looks for there."""
+    return (f"{x['finding']} (reviewer {x['reviewer']!r}, commit {x['commit']}, {x['category']} on "
+            f"{x['acceptance_id']}, input class {x['input_class']!r})")
+
+
+_ITEM_KEYS = ("reviewer", "finding", "category", "acceptance_id", "input_class")
+
+
+def _items_match(repo_root: Path, ours: list[dict[str, Any]], theirs: list[dict[str, Any]]) -> bool:
+    """One to one: equal on :data:`_ITEM_KEYS`, and commits that name the same commit."""
+    free = list(theirs)
+    for x in ours:
+        hit = next((y for y in free if all(x[k] == y.get(k) for k in _ITEM_KEYS)
+                    and same_commit(repo_root, str(x["commit"]), str(y.get("commit")))), None)
+        if hit is None:
+            return False
+        free.remove(hit)
+    return not free
+
+
+def _decision_problems(repo_root: Path, node_id: str, m: Marker) -> list[str]:
+    """Why the decision ``m`` names is not the closed one ``review defer`` recorded for this deferral."""
+    did, rca = m.data["decision"], m.data["rca"]
     try:
         doc = read_decisions(decisions_path(repo_root))
-    except (OSError, yaml.YAMLError):
-        return set()
+    except (OSError, UnicodeDecodeError, yaml.YAMLError):
+        return [f"decision {did}: the ledger cannot be read"]
     entries = doc.get("entries") if isinstance(doc, dict) else None
-    return {e.get("id") for e in entries or [] if isinstance(e, dict) and e.get("status") == "closed"
-            and e.get("node") == node_id}
+    e = next((e for e in entries or [] if isinstance(e, dict) and e.get("id") == did), None)
+    if e is None or e.get("status") != "closed" or e.get("node") != node_id or e.get("kind") != "decision":
+        return [f"decision {did} is no closed decision of {node_id}"]
+    answer = str(e.get("answer") or "")
+    if (not str(e.get("why_now") or "").startswith(f"{rca} recommends defer_findings")
+            or not answer.startswith("Deferred by ") or f"from {rca}:" not in answer):
+        return [f"decision {did} was not recorded by `review defer` for {rca}"]
+    return [f"decision {did} does not name {answer_item(x)}" for x in m.items if answer_item(x) not in answer]
+
+
+def deferral_in_effect(repo_root: Path, node_id: str, m: Marker) -> list[str]:
+    """Why the shape-valid marker ``m`` (:func:`load_markers`) is not in effect; empty when it is. The only
+    place that decides it: the RCA it names is valid, recommends ``defer_findings`` at the marker's round and
+    defers exactly the marker's items; its decision is the closed one ``review defer`` recorded for those items
+    (:func:`answer_item`); and :func:`qualify_deferral` accepts the items now."""
+    ev = deferral_evidence(repo_root, node_id, m.data["rca"], m.data["round"])
+    ev.markers = [o for o in ev.markers if o.name != m.name]
+    rca = next((r for r in ev.rcas if r.path.name == m.data["rca"]), None)
+    if rca is None:
+        out = [f"{m.data['rca']} is no valid RCA record of {node_id}"]
+    elif (rca.data["recommended_action"]["type"] != "defer_findings"
+          or int(rca.data["trigger"]["round"]) != m.data["round"]):
+        out = [f"{rca.path.name} is no defer_findings record of round {m.data['round']}"]
+    elif not _items_match(repo_root, m.items, rca.data.get("deferred_findings") or []):
+        out = [f"its items are not {rca.path.name}'s deferred_findings"]
+    else:
+        out = _decision_problems(repo_root, node_id, m) or qualify_deferral(m.items, ev)
+    return [f"{m.name}: {p}" for p in out]
+
+
+def rca_deferral(repo_root: Path, node_id: str, rca_name: str) -> list[str] | None:
+    """The marker beside ``rca_name``: ``None`` when there is none, ``[]`` when it is in effect for that
+    record (:func:`deferral_in_effect`), else why it is not."""
+    path = marker_path(repo_root, node_id, rca_name)
+    if not path.exists():
+        return None
+    good, bad = load_markers(repo_root, node_id)
+    m = next((m for m in good if m.name == path.name), None)
+    if m is None:
+        return [b for b in bad if b.startswith(path.name + ":")] or [f"{path.name}: unreadable deferral marker"]
+    if m.data["rca"] != Path(rca_name).name:
+        return [f"{path.name}: names {m.data['rca']}, not {Path(rca_name).name}"]
+    return deferral_in_effect(repo_root, node_id, m)
 
 
 def apply_deferrals(repo_root: Path, result: GateResult) -> None:
-    """Move a counted block to ``ineligible`` when a valid marker names its reviewer and commit, that marker's
-    decision is closed, and :func:`qualify_deferral` accepts all of the marker's items now. Without a marker
-    naming the block, neither the ledger nor the history is read."""
+    """Move a counted block to ``ineligible`` when a valid marker names its reviewer and commit and is in
+    effect (:func:`deferral_in_effect`). Without a marker naming the block, neither the ledger nor the history
+    is read."""
     markers = load_markers(repo_root, result.node_id)[0] if result.blocks else []
-    closed: set[str] | None = None
-    verdicts: dict[str, bool] = {}   # marker name -> its items qualify
+    verdicts: dict[str, bool] = {}   # marker name -> it is in effect
     for b in list(result.blocks):
         naming = [m for m in markers if any(x["reviewer"] == b.model and same_commit(
             repo_root, x["commit"], str(b.review.data["commit"])) for x in m.items)]
-        if not naming:
-            continue
-        closed = _closed_decisions(repo_root, result.node_id) if closed is None else closed
         for m in naming:
-            if m.data["decision"] in closed and m.name not in verdicts:
-                ev = deferral_evidence(repo_root, result.node_id, m.data["rca"], m.data["round"])
-                ev.markers = [o for o in ev.markers if o.name != m.name]
-                verdicts[m.name] = not qualify_deferral(m.items, ev)
-        ok = [m for m in naming if verdicts.get(m.name)]
+            if m.name not in verdicts:
+                verdicts[m.name] = not deferral_in_effect(repo_root, result.node_id, m)
+        ok = [m for m in naming if verdicts[m.name]]
         if ok:
             result.blocks.remove(b)
             result.ineligible.append((b.review, "deferred by " + ", ".join(m.data["decision"] for m in ok)))

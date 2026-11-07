@@ -31,7 +31,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from specy_road.finish_implementation_check import _clean, zone_matches
+from specy_road.finish_implementation_check import _clean, in_zones
 from specy_road.git_changed_paths import branch_commit_paths
 from specy_road.git_subprocess import git_text, head_sha, run
 from specy_road.review_target import ReviewTargetError, resolve_target
@@ -275,8 +275,7 @@ def _outside_zones(repo_root: Path, rec: WorkerRecord, start: str, end: str,
         return []
     prefix = project_prefix(repo_root)
     paths = branch_commit_paths(Path(rec.worktree), f"{start}..{end}") or set()
-    return sorted(p for p in paths if zones and not expected(p)
-                  and not any(zone_matches(z, rebase_to_project(p, prefix) or p) for z in zones))
+    return sorted(p for p in paths if zones and not expected(p) and not in_zones(zones, p, prefix))
 
 
 def git_findings(repo_root: Path, rec: WorkerRecord, before: GitState, after: GitState | None = None) -> list[dict[str, Any]]:

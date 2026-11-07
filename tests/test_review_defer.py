@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import time
 from pathlib import Path
 
 import pytest
@@ -14,8 +16,10 @@ from tests.test_review_cli import _ready
 from tests.test_review_rca import ROSTER, _block_round, _run, _status
 
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.review_deferral import answer_item
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
+from specy_road.rework_rca import governing_rca
 
 ROSTER4 = ROSTER + "  - {id: sonnet, family: anthropic, roles: [reviewer]}\n"
 BUDGET = "policy: {max_fix_rounds: 2}\n"
@@ -240,12 +244,94 @@ def _two_fail_round(repo: Path, n: int, *, correctness: bool) -> None:
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 
 
-def _forge_closed_deferral(repo: Path, items: list[dict]) -> None:
-    """A closed decision and a marker written by hand: the gate must re-check them against the history."""
-    (repo / "roadmap" / "decisions.yaml").write_text(yaml.safe_dump({"version": 1, "entries": [{
-        "id": "D9", "node": "M1.1", "kind": "decision", "summary": "s", "why_now": "w",
+def bound_ledger(rca: str, marker_items: list[dict], did: str = "D9") -> dict:
+    """A ledger whose one closed decision is worded as ``review defer``'s ``_record`` words it."""
+    return {"version": 1, "entries": [{
+        "id": did, "node": "M1.1", "kind": "decision", "summary": "s",
+        "why_now": f"{rca} recommends defer_findings: defer the new class",
         "options": [{"label": "a", "effect": "b"}], "recommendation": "a", "recommendation_reason": "r",
-        "default_if_unanswered": "a", "asked": "2026-11-04", "status": "closed", "answer": "x",
-        "closed": "2026-11-04"}]}))
-    (reviews_dir(repo, "M1.1") / "DEFERRAL-9.yaml").write_text(yaml.safe_dump(
-        {"node_id": "M1.1", "rca": "RCA-9.md", "round": 9, "decision": "D9", "deferred": items}))
+        "default_if_unanswered": "a", "asked": "2026-11-04", "status": "closed", "closed": "2026-11-04",
+        "answer": f"Deferred by T <t@e.com> from {rca}: " + "; ".join(f"{answer_item(x)} -> M1.2"
+                                                                     for x in marker_items)}]}
+
+
+def _forge_closed_deferral(repo: Path, items: list[dict], round_: int = 2) -> None:
+    """An RCA, a closed decision in ``review defer``'s shape and a marker, all written by hand: the gate must
+    still re-check the items against the history."""
+    _write_rca(repo, _record(round_, items))
+    marker = [{k: x[k] for k in ("reviewer", "commit", "finding", "category", "acceptance_id", "input_class")}
+              for x in items]
+    (repo / "roadmap" / "decisions.yaml").write_text(yaml.safe_dump(bound_ledger(f"RCA-{round_}.md", marker)))
+    (reviews_dir(repo, "M1.1") / f"DEFERRAL-{round_}.yaml").write_text(yaml.safe_dump(
+        {"node_id": "M1.1", "rca": f"RCA-{round_}.md", "round": round_, "decision": "D9", "deferred": marker}))
+
+
+def _crlf_review(repo: Path, model: str) -> None:
+    """``model`` blocks HEAD on A1 with the boundary finding 'CRLF input still warns'."""
+    notes = repo.parent / f"notes-{model}.md"
+    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict="block", a1="fail")
+                     .replace("boundary: []", "boundary:\n  - CRLF input still warns"))
+    assert _run("review", "record", "M1.1", "--model", model, "--verdict", "block",
+                "--file", str(notes), "--repo-root", str(repo)) == 0
+
+
+def _edit_yaml(path: Path, edit) -> None:
+    data = yaml.safe_load(path.read_text())
+    edit(data)
+    path.write_text(yaml.safe_dump(data, sort_keys=False))
+
+
+def _unrelated(repo: Path, d: Path, ledger: Path) -> None:
+    _edit_yaml(ledger, lambda doc: doc["entries"].append({**doc["entries"][0], "id": "D99", "why_now": "w",
+                                                         "answer": "Use blue for the button."}))
+    _edit_yaml(d / "DEFERRAL-2.yaml", lambda m: m.update(decision="D99"))
+
+
+def _rewrite(repo: Path, d: Path, item: dict) -> None:
+    """RCA-2 and its marker rewritten to ``item``, same finding text; the decision left as recorded."""
+    _write_rca(repo, _record(2, [item]))
+    _edit_yaml(d / "DEFERRAL-2.yaml", lambda m: m["deferred"][0].update(reviewer=item["reviewer"],
+                                                                         commit=item["commit"]))
+
+
+UNBOUND = {   # each leaves the named reviewer's block counted at HEAD (and the marker not in effect)
+    "unrelated_decision": ("opus", _unrelated),
+    "decision_on_another_node": ("opus", lambda r, d, l: _edit_yaml(
+        l, lambda doc: doc["entries"][0].update(node="M9.9"))),
+    "open_decision": ("opus", lambda r, d, l: _edit_yaml(l, lambda doc: doc["entries"][0].update(status="open"))),
+    "missing_rca": ("opus", lambda r, d, l: (d / "RCA-2.md").unlink()),
+    "rca_of_another_round": ("opus", lambda r, d, l: _edit_yaml(d / "DEFERRAL-2.yaml", lambda m: m.update(round=3))),
+    "rca_other_findings": ("opus", lambda r, d, l: _write_rca(r, _record(2, [_item(
+        git(r, "rev-parse", "HEAD"), input_class="CRLF in headers")]))),
+    "marker_altered": ("opus", lambda r, d, l: _edit_yaml(
+        d / "DEFERRAL-2.yaml", lambda m: m["deferred"][0].update(input_class="CRLF in headers"))),
+    "replayed_to_another_reviewer": ("sonnet", lambda r, d, l: _rewrite(
+        r, d, _item(git(r, "rev-parse", "HEAD"), reviewer="sonnet"))),
+    "replayed_to_another_commit": ("opus", lambda r, d, l: _rewrite(
+        r, d, _item(git(r, "rev-parse", "HEAD~1")))),
+}
+
+
+@pytest.mark.parametrize("case", sorted(UNBOUND))
+def test_a_marker_not_bound_to_its_decision_and_rca_resolves_nothing(tmp_path: Path, capsys, human,
+                                                                     case: str) -> None:
+    """Only the marker ``review defer`` wrote, for the RCA and decision it recorded, is in effect."""
+    repo = make_review_repo(tmp_path, orchestration=ROSTER4 + BUDGET)
+    _two_fail_round(repo, 1, correctness=False)   # opus: the same CRLF finding in both rounds
+    _two_fail_round(repo, 2, correctness=False)
+    _crlf_review(repo, "sonnet")   # sonnet blocks round 2 with the same finding text
+    head = git(repo, "rev-parse", "HEAD")
+    rca = _write_rca(repo, _record(2, [_item(head[:12])]))
+    os.utime(rca, ns=(time.time_ns() + 10**10,) * 2)   # filed after every review
+    assert _run("review", "defer", "M1.1", "--rca", str(rca), "--repo-root", str(repo)) == 0
+    gate = evaluate_gate(repo, NODE, head)
+    assert [b.model for b in gate.blocks] == ["sonnet"]
+    assert _status(repo, capsys)[1]["fix_round_budget"]["state"] == "spent_defer_applied_no_executor"
+    assert governing_rca(repo, "M1.1", [b.review for b in gate.blocks]).name == "RCA-2.md"
+    model, tamper = UNBOUND[case]
+    tamper(repo, reviews_dir(repo, "M1.1"), repo / "roadmap" / "decisions.yaml")
+    gate = evaluate_gate(repo, NODE, head)
+    assert model in [b.model for b in gate.blocks]
+    b = _status(repo, capsys)[1].get("fix_round_budget") or {}
+    assert not str(b.get("state")).startswith("spent_defer_applied"), b
+    assert governing_rca(repo, "M1.1", [b.review for b in gate.blocks]) is None

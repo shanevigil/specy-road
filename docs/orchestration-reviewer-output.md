@@ -10,7 +10,7 @@ reviewer command passes the harness's structured-output flag where there is one:
 
 | Harness | Reviewer command | Where the JSON comes from |
 |---|---|---|
-| Claude Code | bare or explicit (below); both use `--allowedTools Read,Glob,Grep,Bash`, `--disallowedTools` (below), `--json-schema '<schema>'` and `--add-dir` | the `result` event's `structured_output`, else its text |
+| Claude Code | bare or explicit (below); both use `--allowedTools Read,Glob,Grep,Bash`, `--disallowedTools` (below), `--json-schema '<schema>'` (the schema inline, less its top-level `$schema`: Claude Code 2.1.318 rejects the draft 2020-12 reference) and `--add-dir` | the `result` event's `structured_output`, else its text |
 | Codex | `codex exec --json -c sandbox_mode=read-only -c approval_policy=never --output-schema <file> -o <answer file> -` (the answer file is in a private temporary directory, outside the checkout and the hand-off directory) | at `turn.completed`, the `-o` file; a resume (which documents neither flag) the turn's last `agent_message` |
 | Cursor | `agent -p --output-format stream-json --mode ask --trust` (no `--force`) | the last `result` event's text |
 | Antigravity (`agy`, a `generic` entry) | its roster `channels.cli` (never the profile's `access.cli`), with `--json-schema <schema file>`, `--output-format json`, `--sandbox` and `--print-timeout 30m` added after `agy` where absent; `--dangerously-skip-permissions` is refused | the envelope's `structured_output` |
@@ -31,19 +31,28 @@ terminal message:
 
 An output with none of a harness's event types is read by the `generic` row.
 Only the final turn's **last** terminal message counts, and it must be **one
-complete JSON object** that passes the schema: its whole text (whitespace
-aside) parses as one object, or the harness's structured output is one. Each
-of these is a rerun request, never a verdict, and an earlier answer is never
-used instead:
+complete JSON object** that passes the schema: the harness's structured output,
+or for a text message (Cursor's or Claude Code's `result` text, Codex's
+`agent_message` or `-o` file) its last top-level JSON object. For a text
+message, text before the final object is ignored and nothing may follow it
+(whitespace aside); the text is read as a run of complete JSON values (a brace
+inside a JSON string is text, an object inside another value is never the
+answer), and a message cut off inside a token (`{"x": tru`) is an unfinished
+object, while a brace no JSON can continue (`Use {1`) is prose; the `generic` row's whole output must still parse as one
+object or envelope. Each of these is a rerun request, never a verdict, and an
+earlier answer is never used instead:
 
 - no terminal message in the final turn, or a Codex turn with no
   `turn.completed` (cut off, `turn.failed`, or a later `turn.started`);
-- a final message that is `null` (an error result), empty, not JSON, prose
-  around JSON, a code fence, two objects, an array, or schema-invalid;
+- a final message that is `null` (an error result), empty, or schema-invalid
+  (for a text message, its last object; an earlier valid object is never used),
+  or a text message that holds no JSON object, has text after its last object
+  (a code fence's closing line included), ends inside an unfinished object, or
+  nests JSON too deeply;
 - **any** non-blank line inside the final turn that is not one JSON object (a
   truncated event, stray text), even after a valid answer.
 
-Nested or partial objects are never salvaged.
+An object nested in another value, or a partial object, is never the answer.
 
 The schema file is `work/reviews/<NODE_ID>/review-output.schema.json`, in the
 form OpenAI's strict structured output takes, which Codex sends it in: every
@@ -70,6 +79,26 @@ specy-road decides the outcome:
   never found by searching the log: the `[review delegate]` / `[review prompt]`
   lines are for people and are not parsed, so a harness that prints one moves
   nothing. A span whose bytes changed during the run reads as no output.
+  When `review record` refuses the answer of a last attempt that exited 0
+  with no capacity error, `review delegate` (not a chore reviewer) gives the reviewer one repair turn: the session's resume, or one
+  fresh launch with the full prompt on a harness that cannot resume, with
+  `review record`'s whole output and the notes rules, through every capacity
+  retry. It is checked like the first turn (write check, model check). The
+  run record keeps the first refusal as `refusal` and marks the repair
+  attempts `repair: true`; a second refusal leaves the run incomplete, naming
+  both. `--resume` of an incomplete run that kept a `refusal` at the commit
+  under review sends that repair prompt instead of the continue prompt.
+  An answer that does not parse (an empty or missing final message, no JSON
+  object, a fenced object or text after it, an unfinished or too deeply nested
+  object, a stray or cut-off event line, a null result, or a schema-invalid
+  object) gets the same one repair turn under the same condition: the reason is given as specy-road's reading of the final
+  message, with a request for the whole object and nothing else, without the
+  notes rules. `refusal_kind` records `parse` or `record` (missing is
+  `record`), and `--resume` sends the repair prompt of the stored kind. A
+  second failure of either kind leaves the run incomplete, naming both; there
+  is never a third turn. Neither kind gets a repair turn after a capacity
+  failure or a non-zero exit, and an unreadable run log, a write (still a
+  review failure) and a chore reviewer get none.
 - **recorded** — specy-road writes the notes to `notes-<model>.md` and `review record` files
   `REVIEW-<model>.md` from them, with the launch mode, family and `history/`
   copy an interactive filing gets. Under `policy.signed_reviews`, pass the

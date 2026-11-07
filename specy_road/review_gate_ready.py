@@ -11,6 +11,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from specy_road import review_lock
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_changed_paths import diff_paths
@@ -34,7 +35,9 @@ def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str, sig
 
     A signature is verified against the roster's ``human`` ``public_key``
     before anything is written: a wrong key raises :class:`SigningError` and
-    leaves no record behind, as ``review record --sign-key`` does.
+    leaves no record behind, as ``review record --sign-key`` does. While a reviewer run on the leaf holds its
+    hand-off directory past :data:`~specy_road.review_lock.FILING_WAIT`, raises
+    :class:`~specy_road.review_lock.ReviewRunBusy` and writes nothing.
     """
     body = "Approved interactively with `specy-road mark-implementation-reviewed`.\n"
     data = {
@@ -64,8 +67,8 @@ def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str, sig
             raise SigningError(f"the signature does not verify against the roster public_key for "
                                f"{HUMAN!r} ({why}); wrong key?")
     path = review_path(repo_root, node["id"], HUMAN)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_front_matter(data, body), encoding="utf-8")
+    with review_lock.review_run_lock(path.parent, wait=review_lock.FILING_WAIT):
+        path.write_text(render_front_matter(data, body), encoding="utf-8")
     return path
 
 

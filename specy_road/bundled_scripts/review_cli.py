@@ -11,6 +11,7 @@ whose review loop is not converging and has no root-cause analysis for it is
 ``escalated`` (exit 1), with the trigger named (``review_rca``).
 With ``policy.max_fix_rounds`` set, a leaf that spent that many blocking rounds is ``fix_round_budget_spent``
 (exit 1) with its next command; ``review defer`` applies an RCA's deferral (:mod:`review_defer`, human-only).
+``review accept-policy`` accepts a review policy change made since the claim (:mod:`review_policy_pin`, human-only).
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``. It refuses an approve whose
@@ -38,6 +39,8 @@ from specy_road.review_files import (
     review_path, reviews_dir, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, trial_merge
+from specy_road import review_caller, review_lock
+from specy_road.review_lock import ReviewRunBusy, filing_busy
 from specy_road.review_rejected import run_review_record
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
 from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
@@ -46,6 +49,7 @@ from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
 from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
+from specy_road.review_policy_pin import add_parser as add_accept_policy_parser
 from specy_road.orphaned_claims import orphaned_claims, report_lines
 from specy_road.review_run_status import (extend_handoff_refused, print_refused_list, refused_by_model,
                                           review_list_payload, unreadable_rejected_lines)
@@ -263,6 +267,21 @@ def cmd_review_record(ns: argparse.Namespace) -> int:
     return run_review_record(ns, resolve_repo_root(ns), _fail, _relabel_independence)
 
 
+def cmd_review_record_locked(ns: argparse.Namespace) -> int:
+    """``review record`` from the command line: waits for, then refuses during, a reviewer run on the leaf.
+    A run's own filing (``file_review``) calls :func:`cmd_review_record` inside the lock it holds."""
+    root = resolve_repo_root(ns)
+    if not any(n.get("id") == ns.node_id for n in load_roadmap(root)["nodes"]):   # before any mkdir or lock file
+        return _fail(f"unknown node id: {ns.node_id}")
+    if why := review_caller.refusal(root, ns):   # before the lock: a refused caller writes nothing (M21.31)
+        return _fail(why)
+    try:
+        with review_lock.review_run_lock(reviews_dir(root, ns.node_id), wait=review_lock.FILING_WAIT):
+            return cmd_review_record(ns)
+    except ReviewRunBusy:
+        return _fail(f"{filing_busy(ns.node_id)} — file again when it ends (review list {ns.node_id})")
+
+
 def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget | None) -> int:
     reviews = list_reviews(root, ns.node_id)
     if not reviews:
@@ -338,8 +357,12 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
     rec.add_argument("--launch-mode", choices=REVIEW_LAUNCH_MODES, help="How your harness was started; stored on the record")
+    rec.add_argument("--human-filed", metavar="WHO_AND_WHY",
+                     help="Required when no harness or worker is identified (a human filing by hand): one non-blank line saying "
+                          "who files this and why; stored as human_filed, which counts only signed or under "
+                          "policy.count_human_filed_reviews")
     add_repo_root_arg(rec)
-    rec.set_defaults(func=cmd_review_record)
+    rec.set_defaults(func=cmd_review_record_locked)
     for name, about, fn in (("list", "Print a node's filed review records and the gate evaluation; writes nothing", cmd_review_list),
                             ("check-pre-existing", "Re-run claimed pre-existing verifier failures twice on the integration tip",
                              cmd_check_pre_existing),
@@ -353,6 +376,7 @@ def build_parser() -> argparse.ArgumentParser:
         sp.set_defaults(func=fn)
     add_delegate_parser(rsub)
     add_defer_parser(rsub)
+    add_accept_policy_parser(rsub)
     add_ready_parser(sub)
     return p
 

@@ -14,7 +14,7 @@
     },
     {
       "acceptance": [
-        "tests/parity/ reads the command set from the CLI's own tables (`cli._known_commands()`, each command's subcommands and the `specyrd` parser) and compares it with the golden set under tests/parity/golden/ in both directions after applying the additions, aliases and removals that rows of tests/parity/command_map.yaml authorise; any other difference fails the test naming the command, subcommand or alias; one documented environment variable regenerates the goldens. The inventory records, per command and subcommand, its subparser path, its option strings and whether it passes the remaining arguments through (argparse.REMAINDER or a bare --)",
+        "tests/parity/ reads top-level command names through `cli.registered_agent_command_names()` and subcommand and option metadata through public parser builders or public help output until M16.2.10 supplies the builders, adding no private specy_road reference and no constraints/test-private-imports-baseline.txt entry, and compares that set with the golden set under tests/parity/golden/ in both directions after applying the additions, aliases and removals that rows of tests/parity/command_map.yaml authorise; any other difference fails the test naming the command, subcommand or alias; one documented environment variable regenerates the goldens. The inventory records, per command and subcommand, its subparser path, its option strings and whether it passes the remaining arguments through (argparse.REMAINDER or a bare --)",
         "Each name in that set has a golden `--help` transcript; tests/parity/command_map.yaml exists with no rows, and a test fails when a transcript differs from its golden unless the name is a row of that map (later leaves add rows: old invocation, new invocation, allowed difference)",
         "An end-to-end test drives a temp repo through init project, add-node, scaffold-planning, pickup, ready, two review records, the gate check and finish, once with on_complete: merge and once with on_complete: pr (offline, no hosting service). After each step it asserts the exit code, registry rows, node status and git state that today's pickup and finish tests already pin; the merge run ends at exit 0 with the leaf Complete, its registry row gone and the feature branch merged into the integration branch; the pr run's end state (exit code, node status, registry row, branches) is recorded at pickup from today's behaviour; neither run makes a network call",
         "`upgrade --dry-run` on a fixture shaped like a 0.3.1rc3 consumer repo, and validate, export --check and digest --check on the dogfood fixture, match golden outputs with paths and timestamps normalised; digest goldens leave out sections derived from git history (such as 'Quality by area'), so the goldens do not depend on the branch",
@@ -22,12 +22,14 @@
         "Estimated net line change (informational, not a gate): package 0; tests about +550"
       ],
       "codename": "parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs",
-      "dependencies": [],
+      "dependencies": [
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+      ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.0",
+      "id": "M16.1.1",
       "node_key": "b7db8132-bda6-4fb9-8a71-3932fde03766",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.0_parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs_b7db8132-bda6-4fb9-8a71-3932fde03766.md",
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.1_parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs_b7db8132-bda6-4fb9-8a71-3932fde03766.md",
       "sibling_order": 0,
       "status": "Not Started",
       "title": "Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs",
@@ -46,12 +48,14 @@
         "Estimated net line change (informational, not a gate): package 0; tests about +450"
       ],
       "codename": "parity-harness-a-review-gate-decision-table-covering-every-review-policy",
-      "dependencies": [],
+      "dependencies": [
+        "ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf"
+      ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.1",
+      "id": "M16.1.2",
       "node_key": "de3d165f-d76a-4430-b54e-9dea18809691",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.1_parity-harness-a-review-gate-decision-table-covering-every-review-policy_de3d165f-d76a-4430-b54e-9dea18809691.md",
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.2_parity-harness-a-review-gate-decision-table-covering-every-review-policy_de3d165f-d76a-4430-b54e-9dea18809691.md",
       "sibling_order": 1,
       "status": "Not Started",
       "title": "Parity harness: a review-gate decision table covering every review policy",
@@ -62,13 +66,14 @@
     },
     {
       "acceptance": [
-        "constraints/lean-baseline.json records the baseline commit; at that commit every rc4 leaf in M16.34's inventory is Complete or recorded as deferred in M16.34's sheet, and the M16.0 and M16.1 harnesses are green",
-        "`python scripts/lean_metrics.py` writes the baseline: package and test lines and files per subsystem, docs lines and files (README.md, AGENTS.md, CLAUDE.md, docs/**/*.md except docs/design-notes/, constitution/*.md and suggested_prompts/*.md; the root design-notes/ and anything under sr/ are never counted), test functions and collected items, functions over ruff C901 (waivers ignored), `noqa: C901` count, lines over 100 characters, canonical command count (as M16.45 defines it) and alias count, config and policy key count, modules imported by `specy-road validate`, `validate --help` wall time, and full-suite wall time as the median of three runs with a fixed worker count, coverage off and all extras installed (settings and machine recorded); `--check` prints deltas; every number is a measurement, not a gate (the coverage floor below is the only CI failure this leaf adds)",
+        "constraints/lean-baseline.json records the baseline commit; at that commit every rc4 leaf in M16.1.3's inventory is Complete or recorded as deferred in M16.1.3's sheet, and the M16.1.1 and M16.1.2 harnesses are green",
+        "`python scripts/lean_metrics.py` writes the baseline: package and test lines and files per subsystem, docs lines and files (README.md, AGENTS.md, CLAUDE.md, docs/**/*.md except docs/design-notes/, constitution/*.md and suggested_prompts/*.md; the root design-notes/ and anything under sr/ are never counted), test functions and collected items, functions over ruff C901 (waivers ignored), `noqa: C901` count, lines over 100 characters, canonical command count (as M16.4.4 defines it) and alias count, config and policy key count, modules imported by `specy-road validate`, `validate --help` wall time, and full-suite wall time as the median of three runs with a fixed worker count, coverage off and all extras installed (settings and machine recorded); `--check` prints deltas; every number is a measurement, not a gate (the coverage floor below is the only CI failure this leaf adds)",
         "`python scripts/lean_metrics.py --contexts` (opt-in, not run in CI) runs the suite under coverage.py with per-test contexts, subprocesses included, and writes the covered arcs per test to work/lean/contexts.json for the test-lane leaves",
         "The baseline coverage configuration is committed in pyproject.toml ([tool.coverage.run] source scope, branch setting and subprocess capture); [tool.coverage.report] fail_under is that configuration's coverage.py TOTAL at the baseline commit, rounded down to a whole percent; CI runs the same configuration and fails below it; a separately printed branch percentage is informational; project.version is not touched",
-        "constraints/README.md states the M16 rules: behaviour-preserving except the two named exceptions (zone-scoped `checks:` gates in M16.52 and the complexity gate in M16.22); each leaf carries an informational line-change estimate, never a gate; no new config key, policy key or command without retiring one; adopter feedback is parked; the review-finding test rule, which is these five conditions, all required: the test fails before the fix and passes after; it checks something no existing test checks, and a new input to tested behaviour is a new row in that behaviour's table rather than a new test; it is written at the cheapest level that reproduces the bug; it lives in the module's test file and is named for the behaviour, not the round; it asserts structured results, not message text; after a second block of the same class the planner rescopes or splits the leaf; a leaf past four review rounds is split or rescoped; reviewers check the acceptance lines and the leaf's parity tables, and a new input class goes to intake",
-        "constraints/README.md states the M16 quality rules (maintainer, 2026-11-05, revision 3): behaviour is preserved (the parity harness, the decision table and the leaf's own tables); code a leaf touches moves toward best practice: small single-purpose functions, clear module boundaries, no new import cycle (M16.36), explicit dependencies (module globals and functions that call the clock or git themselves are given those as parameters where a test needs a seam; no dependency-injection framework), one statement of each rule rather than copies; no touched function rises in complexity (the M16.22 rule); docstrings and comments that explain intent are kept or improved, never stripped to save lines; names say what the code does; no code squashing (joined statements, removed blank lines, shortened names or deleted explanations to meet a number); the quality metrics (M16.8's ruff family baseline, line width, M16.36's layering gate) never regress in a leaf; line-count estimates are informational and never by themselves a review finding or a gate",
-        "Estimated net line change (informational, not a gate): package 0; scripts about +200 (maintainer-only, not shipped)"
+        "constraints/README.md states the M16 rules: behaviour-preserving except the two named exceptions (zone-scoped `checks:` gates in M16.4.6 and the complexity gate in M16.5.14); each leaf carries an informational line-change estimate, never a gate; no new config key, policy key or command without retiring one; adopter feedback is parked; the review-finding test rule, which is these five conditions, all required: the test fails before the fix and passes after; it checks something no existing test checks, and a new input to tested behaviour is a new row in that behaviour's table rather than a new test; it is written at the cheapest level that reproduces the bug; it lives in the module's test file and is named for the behaviour, not the round; it asserts structured results, not message text; after a second block of the same class the planner rescopes or splits the leaf; a leaf past four review rounds is split or rescoped; reviewers check the acceptance lines and the leaf's parity tables, and a new input class goes to intake",
+        "constraints/README.md states the M16 quality rules (maintainer, 2026-11-05, revision 3): behaviour is preserved (the parity harness, the decision table and the leaf's own tables); code a leaf touches moves toward best practice: small single-purpose functions, clear module boundaries, no new import cycle (M16.2.6), explicit dependencies (module globals and functions that call the clock or git themselves are given those as parameters where a test needs a seam; no dependency-injection framework), one statement of each rule rather than copies; no touched function rises in complexity (the M16.5.14 rule); docstrings and comments that explain intent are kept or improved, never stripped to save lines; names say what the code does; no code squashing (joined statements, removed blank lines, shortened names or deleted explanations to meet a number); the quality metrics (M16.1.8's ruff family baseline, line width, M16.2.6's layering gate) never regress in a leaf; line-count estimates are informational and never by themselves a review finding or a gate",
+        "Estimated net line change (informational, not a gate): package 0; scripts about +200 (maintainer-only, not shipped)",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down",
       "dependencies": [
@@ -77,11 +82,11 @@
         "eaee2f90-4953-4580-b772-570043326e4b"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.2",
+      "id": "M16.1.7",
       "node_key": "fce532e1-9ed0-4da1-9f16-2465c6e73df0",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.2_baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down_fce532e1-9ed0-4da1-9f16-2465c6e73df0.md",
-      "sibling_order": 2,
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.7_baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down_fce532e1-9ed0-4da1-9f16-2465c6e73df0.md",
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "Baseline metrics, a coverage floor in CI, and the M16 working rules written down",
       "touch_zones": [
@@ -89,7 +94,8 @@
         "constraints/lean-baseline.json",
         "constraints/README.md",
         ".github/workflows/validate.yml",
-        "pyproject.toml"
+        "pyproject.toml",
+        "sr/constraints/README.md"
       ],
       "type": "task"
     },
@@ -99,18 +105,23 @@
         "specy_road/fs_atomic.py defines `atomic_write_text()`; the hand-written temp-file writers in worker_state (and worker_outbox's import of its private helper), history_cache, brainstorm_session, roadmap_chunk_atomic, reviewer_run_failure and worker_lease call it, and a test fails on `os.replace(` in specy_road outside fs_atomic.py and an allowlist committed with the test",
         "A parametrised test per replaced writer asserts the encoding, newline handling, file mode and the leftover temp file on a failed write are what they were at pickup; review_write_check.replace_file's symlink protections and worker_lease.checkout_id's link-if-absent install are kept as specialised installers on the allowlist and tested through their public callers",
         "Parity harness unchanged",
-        "Estimated net line change (informational, not a gate): package about -60"
+        "Estimated net line change (informational, not a gate): package about -60",
+        "The os.replace( allowlist is fs_atomic.py, safe_write.py (specialised and descriptor-anchored after M22.29, not routed through atomic_write_text), review_write_check.replace_file and worker_lease.checkout_id; worker_state, history_cache.save_cache and the brainstorm session's replace call atomic_write_text directly, with no repo-root check; safe_write's directory-descriptor replace and its re-check where dir_fd is unsupported are unchanged"
       ],
       "codename": "shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers",
       "dependencies": [
-        "bdf86710-8da3-4c1b-a1db-c11e0a5c1613"
+        "bdf86710-8da3-4c1b-a1db-c11e0a5c1613",
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
+        "f6a94a57-91ff-449b-997e-af12dedd41ee",
+        "0bcbdc19-743c-4037-9bbb-089c6a3f0cb4",
+        "37904d88-a256-4ae0-9abf-1c92de6bed7f"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.4",
+      "id": "M16.2.2",
       "node_key": "95c1e571-3280-4f29-893b-f8e891092e78",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.4_shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers_95c1e571-3280-4f29-893b-f8e891092e78.md",
-      "sibling_order": 4,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.2_shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers_95c1e571-3280-4f29-893b-f8e891092e78.md",
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers",
       "touch_zones": [
@@ -146,11 +157,11 @@
         "3b4b0524-3dc1-4acb-9d9f-1b8fd01be350"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.5",
+      "id": "M16.2.4",
       "node_key": "34598a66-ab29-4a34-aea5-919d3970cbce",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.5_one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready_34598a66-ab29-4a34-aea5-919d3970cbce.md",
-      "sibling_order": 5,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.4_one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready_34598a66-ab29-4a34-aea5-919d3970cbce.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready",
       "touch_zones": [
@@ -168,30 +179,31 @@
     },
     {
       "acceptance": [
-        "Before any move, this sheet lists the modules under specy_road/bundled_scripts that a specy_road module outside bundled_scripts imports at pickup, excluding every module named by cli.py's `_SCRIPTS` or `_FORWARDED` and excluding review_node.py (M16.10); exactly those move to the specy_road package with `git mv`, and no other module moves (the title's 29 is the code report's count; the list is this rule's result, 39 on 2026-11-05)",
-        "A moved module keeps a one-line re-export at its old path only if a console entry point, a shipped template or a documented `python specy_road/bundled_scripts/...` command names that path; each kept re-export is listed in this sheet for M16.62",
-        "Imports are updated and nothing else changes; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json are rewritten for the new paths only (M16.8's transfer rule); parity harness, full suite and `scripts/check_test_private_imports.py` green",
+        "Before any move, this sheet lists the modules under specy_road/bundled_scripts that a specy_road module outside bundled_scripts imports at pickup, excluding every module named by cli.py's `_SCRIPTS` or `_FORWARDED` and excluding review_node.py (M16.3.4); exactly those move to the specy_road package with `git mv`, and no other module moves (the code report counted 29; this rule gave 39 on 2026-11-05)",
+        "A moved module keeps a one-line re-export at its old path only if a console entry point, a shipped template or a documented `python specy_road/bundled_scripts/...` command names that path; each kept re-export is listed in this sheet for M16.8.3",
+        "Imports are updated and nothing else changes; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json are rewritten for the new paths only (M16.1.8's transfer rule); parity harness, full suite and `scripts/check_test_private_imports.py` green",
         "Estimated net line change (informational, not a gate): package about -40"
       ],
-      "codename": "the-29-package-imported-library-modules-move-out-of-bundled-scripts",
+      "codename": "library-modules-imported-by-the-package-move-out-of-bundled",
       "dependencies": [
         "34598a66-ab29-4a34-aea5-919d3970cbce"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.6",
+      "id": "M16.2.5",
       "node_key": "8ae7a813-4e43-4590-9f7d-d20b1691dbce",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.6_the-29-package-imported-library-modules-move-out-of-bundled-scripts_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md",
-      "sibling_order": 6,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.5_library-modules-imported-by-the-package-move-out-of-bundled_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md",
+      "sibling_order": 4,
       "status": "Not Started",
-      "title": "The 29 package-imported library modules move out of bundled_scripts",
+      "title": "Library modules imported by the package move out of bundled_scripts",
       "touch_zones": [
         "specy_road/bundled_scripts/",
         "specy_road/",
         "tests/",
         "scripts/line_width_baseline.json",
         "scripts/ruff_quality_baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -208,11 +220,11 @@
         "cf05fbd9-5071-4aca-a730-53a36d888301"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.7",
+      "id": "M16.2.9",
       "node_key": "6902ede7-bde3-4667-b192-366c09681589",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.7_commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals_6902ede7-bde3-4667-b192-366c09681589.md",
-      "sibling_order": 7,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.9_commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals_6902ede7-bde3-4667-b192-366c09681589.md",
+      "sibling_order": 8,
       "status": "Not Started",
       "title": "Commands run in the CLI's process: no python -m re-launch, no cwd globals",
       "touch_zones": [
@@ -240,28 +252,28 @@
     {
       "acceptance": [
         "The consumer template's constraints/file-limits.yaml matches the toolkit: max_lines_per_file 1,000 with a 750-line warning (maintainer decision, 2026-11-05)",
-        "scripts/line_width_baseline.json records, per file under specy_road, scripts and tests, the number of lines over 100 characters at pickup (counted with `ruff check --select E501 --line-length 100 --output-format json`); a test fails when a file's count rises or a file outside the baseline has any, and when a count falls the entry must be lowered in the same change",
-        "scripts/ruff_quality_baseline.json records, per file under specy_road, scripts and tests, the number of ruff findings per rule family — C901 (waivers ignored: counted with `--ignore-noqa`), PL, B, SIM, RET, N, and D102/D103 (docstrings on public methods and functions) — counted at pickup by scripts/ruff_quality_baseline.py with `ruff check --select <family> --output-format json`; tests/test_ruff_quality_baseline.py fails when a file's count in a family rises or a file outside the baseline has a finding; `python scripts/ruff_quality_baseline.py --shrink` lowers entries and never raises one",
-        "For a move or fold a leaf records as old path -> new path, `python scripts/ruff_quality_baseline.py --transfer OLD NEW` and the width baseline's equivalent move OLD's entries onto NEW, summed per family; the per-family totals never rise; outside recorded moves every file keeps its own shrink-only check; tests/test_upgrade_file_limits_notice.py pins the upgrade notice below",
-        "The families are selected only by the baseline script: pyproject.toml's ruff selection and today's `ruff check` CI gate are unchanged, and no tool other than ruff is added (mypy, radon and duplication detectors are out of scope for M16)",
-        "`python scripts/lean_metrics.py --check` (M16.2) prints each family's total and its delta from the baseline commit, and docs/release-runbook.md's checklist records those totals, the width total and M16.36's import-cycle count for each release",
-        "No code is reformatted or fixed in this leaf; the fold leaves rewrap the files they merge and lower their width entries",
-        "upgrade never rewrites an existing project's constraints/file-limits.yaml: it prints one notice naming the new template default when the project's values differ, and docs/file-limits.md and docs/upgrading.md say the same; the rc3-shaped `upgrade --dry-run` golden differs only by that notice; the toolkit stays at 1,000 lines with a 750 warning",
+        "scripts/line_width_baseline.json records, per file under specy_road, scripts and tests, the number of lines over 100 characters at pickup (counted with `ruff check --select E501 --line-length 100 --output-format json`); a test fails when a file's count rises or a file outside the baseline has any, and when a count falls the entry must be lowered in the same change; for a move or fold a leaf records as old path -> new path, the width baseline's `--transfer OLD NEW` moves OLD's count onto NEW and the total never rises. No code is reformatted or fixed in this leaf; the fold leaves rewrap the files they merge and lower their width entries",
+        "upgrade never rewrites an existing project's constraints/file-limits.yaml: it prints one notice naming the new template default when the project's values differ, and docs/file-limits.md and docs/upgrading.md say the same; the rc3-shaped `upgrade --dry-run` golden differs only by that notice; the toolkit stays at 1,000 lines with a 750 warning; tests/test_upgrade_file_limits_notice.py pins that notice",
         "CHANGELOG.md's [Unreleased] section records the new consumer default and that upgrade leaves existing projects' files alone; no version heading is written",
-        "Estimated net line change (informational, not a gate): package 0; config about +40; scripts and tests about +150 plus the two generated baseline files"
+        "Estimated net line change (informational, not a gate): package 0; config about +40; scripts and tests about +70 plus the generated width baseline file",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "ruff-quality-baseline",
       "dependencies": [
-        "fce532e1-9ed0-4da1-9f16-2465c6e73df0"
+        "fce532e1-9ed0-4da1-9f16-2465c6e73df0",
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
+        "1d5c3b8f-8179-40d8-a04a-262e6f8765d9",
+        "5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c",
+        "02c665e8-0e2a-44d5-b297-c82a5a288c41"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.8",
+      "id": "M16.1.8",
       "node_key": "c840cf76-95c4-4688-a587-3bc06824fad5",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.8_ruff-quality-baseline_c840cf76-95c4-4688-a587-3bc06824fad5.md",
-      "sibling_order": 8,
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.8_ruff-quality-baseline_c840cf76-95c4-4688-a587-3bc06824fad5.md",
+      "sibling_order": 7,
       "status": "Not Started",
-      "title": "Ruff quality rule families and the 100-character width with shrink-only baselines, and the consumer file-limit default decided",
+      "title": "A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided",
       "touch_zones": [
         "pyproject.toml",
         "constraints/file-limits.yaml",
@@ -273,13 +285,10 @@
         "CHANGELOG.md",
         "specy_road/bundled_scripts/upgrade.py",
         "docs/upgrading.md",
-        "scripts/ruff_quality_baseline.py",
-        "scripts/ruff_quality_baseline.json",
-        "tests/test_ruff_quality_baseline.py",
-        "scripts/lean_metrics.py",
-        "docs/release-runbook.md",
         "tests/parity/golden/",
-        "tests/test_upgrade_file_limits_notice.py"
+        "tests/test_upgrade_file_limits_notice.py",
+        "sr/constraints/file-limits.yaml",
+        "sr/constraints/README.md"
       ],
       "type": "task"
     },
@@ -293,14 +302,17 @@
       "codename": "fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents",
       "dependencies": [
         "fba72c3a-24a5-4c6b-b174-0e581d8b8450",
-        "c840cf76-95c4-4688-a587-3bc06824fad5"
+        "c840cf76-95c4-4688-a587-3bc06824fad5",
+        "467b60ed-37a1-4220-ba8a-9507471e9dcc",
+        "24a67d66-529a-40ca-a500-759cedaacb12",
+        "17405142-e2fa-4516-83e2-e536820d1ec2"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.9",
+      "id": "M16.3.2",
       "node_key": "d9fbe9b7-3b23-4095-9bf5-a8da923d2075",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.9_fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents_d9fbe9b7-3b23-4095-9bf5-a8da923d2075.md",
-      "sibling_order": 9,
+      "parent_id": "M16.3",
+      "planning_dir": "planning/M16.3.2_fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents_d9fbe9b7-3b23-4095-9bf5-a8da923d2075.md",
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "Fold the cap-driven splits in pickup and finish into their parents",
       "touch_zones": [
@@ -316,28 +328,30 @@
         "specy_road/finish_land_local.py",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "The Azure, OpenAI and Anthropic client code in review_node moves to specy_road/llm_client.py under public names; review_node, brainstorm_chat, roadmap_gui_remote, the GUI route modules and llm_throughput import those names, and no module imports an underscore name from review_node",
+        "The Azure, OpenAI and Anthropic client code in review_node moves to specy_road/llm_client.py under public names; review_node, brainstorm_chat, roadmap_gui_remote, the GUI route modules and llm_throughput import those names, and no module imports an underscore name from review_node; llm_client gains no caller outside principle 4's exceptions (review-node and the GUI's providers, which include brainstorm_chat's brainstorm-panel chat; llm_throughput is the rate limiter, not a caller)",
         "brainstorm_chat's own `_complete_anthropic` and `complete_chat` copies are removed; llm_client exposes a client factory tests can replace without patching private names",
         "review_node's override is removed from constraints/file-limits.yaml",
         "Parity harness unchanged, review-node and brainstorm transcripts included",
-        "Estimated net line change (informational, not a gate): package about -80"
+        "Estimated net line change (informational, not a gate): package about -80",
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
       ],
       "codename": "one-llm-client-module-replaces-the-provider-code-inside-review-node",
       "dependencies": [
         "b89bc064-4355-4957-85d6-31504463269f"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.10",
+      "id": "M16.3.4",
       "node_key": "3793b31b-d61a-460f-a4b2-23f9af3f1350",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.10_one-llm-client-module-replaces-the-provider-code-inside-review-node_3793b31b-d61a-460f-a4b2-23f9af3f1350.md",
-      "sibling_order": 10,
+      "parent_id": "M16.3",
+      "planning_dir": "planning/M16.3.4_one-llm-client-module-replaces-the-provider-code-inside-review-node_3793b31b-d61a-460f-a4b2-23f9af3f1350.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "One LLM client module replaces the provider code inside review_node",
       "touch_zones": [
@@ -348,14 +362,16 @@
         "specy_road/gui_app_routes_*.py",
         "specy_road/bundled_scripts/llm_throughput.py",
         "constraints/file-limits.yaml",
-        "tests/"
+        "tests/",
+        "constraints/clone-baseline.json",
+        "sr/constraints/file-limits.yaml"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "Before the switch, tests/parity/cleanup/ holds one fixture repo with: a merged feature branch, an unmerged one, a branch whose leaf is Complete, a claimed branch, a live worktree, a merged clean worktree, a merged dirty worktree, a registry row with no branch, a registry row for a Complete leaf, a specy-road stash and a foreign stash; it records the dry-run action list of `doctor`, `branches prune`, `registry-prune`, `worktree prune <ID>` and `grind-session --delete-merged-branches` on that fixture",
-        "Before the switch, a reconciliation table in this sheet fixes the action and reason for each fixture item under each old command and under `doctor --prune --kind` branches, registry, worktrees or stashes; one planner with one merged rule and one live rule (live read from the M16.15 snapshot) selects exactly the table's rows for the new form and for each alias; a safety-driven reduction from an old command's selection is a decided row of that table; applying removes exactly the planned items",
+        "Before the switch, a reconciliation table in this sheet fixes the action and reason for each fixture item under each old command and under `doctor --prune --kind` branches, registry, worktrees or stashes; one planner with one merged rule and one live rule (live read from the M16.3.1 snapshot) selects exactly the table's rows for the new form and for each alias; a safety-driven reduction from an old command's selection is a decided row of that table; applying removes exactly the planned items",
         "`worktree prune <ID>` stays as the single-leaf path on the same planner; `branches prune`, `registry-prune` and `grind-session --delete-merged-branches` still work for one release, print one deprecation line naming the new form, are hidden from top-level help and are rows of tests/parity/command_map.yaml",
         "Docs, templates and suggested_prompts name the new form in the same change; the stale-command check passes; goldens differ only for map rows",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
@@ -367,11 +383,11 @@
         "01db66ad-a91c-48e3-953e-4083f5f14a13"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.11",
+      "id": "M16.4.1",
       "node_key": "b5ca5d95-58a9-472c-9f90-0004d0fbd46f",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.11_doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases_b5ca5d95-58a9-472c-9f90-0004d0fbd46f.md",
-      "sibling_order": 11,
+      "parent_id": "M16.4",
+      "planning_dir": "planning/M16.4.1_doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases_b5ca5d95-58a9-472c-9f90-0004d0fbd46f.md",
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases",
       "touch_zones": [
@@ -406,14 +422,15 @@
       ],
       "codename": "review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session",
       "dependencies": [
-        "fcb9f89a-2bad-423c-8d52-eb748967a367"
+        "fcb9f89a-2bad-423c-8d52-eb748967a367",
+        "99ad0839-6c85-4631-b67b-80ef2d3b3c57"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.13",
+      "id": "M16.4.3",
       "node_key": "ca41116c-978b-4215-a69e-2f52400009fa",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.13_review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session_ca41116c-978b-4215-a69e-2f52400009fa.md",
-      "sibling_order": 13,
+      "parent_id": "M16.4",
+      "planning_dir": "planning/M16.4.3_review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session_ca41116c-978b-4215-a69e-2f52400009fa.md",
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session",
       "touch_zones": [
@@ -446,11 +463,11 @@
         "21cc96e6-1e15-425e-a4b0-9c821fe30c55"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.58",
+      "id": "M16.7.4",
       "node_key": "086cd41a-9d4b-4377-8ebd-ee563a0d20df",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.58_tests-apply-the-dedupe-worklist-for-pickup-and-finish_086cd41a-9d4b-4377-8ebd-ee563a0d20df.md",
-      "sibling_order": 58,
+      "parent_id": "M16.7",
+      "planning_dir": "planning/M16.7.4_tests-apply-the-dedupe-worklist-for-pickup-and-finish_086cd41a-9d4b-4377-8ebd-ee563a0d20df.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "Tests: apply the dedupe worklist for pickup and finish",
       "touch_zones": [

@@ -84,10 +84,12 @@ class ClaudeCode(Adapter):
         ``(id, resume)`` for ``review delegate``: the session flag, and stream-json so the id can be read back.
         Read-only (A2): no file-writing tool is allowed or approved (``Write``, ``Edit`` and ``NotebookEdit`` are
         denied, and no permission mode approves edits); bare mode fires no hook, so ``--disallowedTools`` denies
-        commits, pushes and ``gh`` too (A4). ``--add-dir`` lets it read the hand-off directory. ``schema`` (the review output schema file) goes inline as ``--json-schema``. ``output`` is unused:
+        commits, pushes and ``gh`` too (A4). ``--add-dir`` lets it read the hand-off directory. ``schema`` (the review output schema file) goes inline as
+        ``--json-schema``, less its top-level ``$schema`` (Claude Code 2.1.318 rejects the draft 2020-12 reference; the file keeps it). ``output`` is unused:
         the result event carries the final answer."""
         tracked = [*self.session_flag(*session), "--output-format", "stream-json", "--verbose"] if session else []
-        structured = ["--json-schema", json.dumps(json.loads(schema.read_text(encoding="utf-8")))] if schema else []
+        body = json.loads(schema.read_text(encoding="utf-8")) if schema else {}
+        structured = ["--json-schema", json.dumps({k: v for k, v in body.items() if k != "$schema"})] if schema else []
         # explicit reads the subscription login from user settings and still loads no project settings or MCP.
         # bare with only an apiKeyHelper passes the settings file's path, never the helper command.
         auth = (["--setting-sources", "user", "--strict-mcp-config"] if mode == "explicit"

@@ -184,7 +184,7 @@ entries:
       PR #140, 2026-11-04); this entry supersedes D5 (maintainer, 2026-11-05)'
     closed: '2026-11-05T19:00:02+00:00'
   - id: D8
-    node: M16.69
+    node: M21.15
     kind: decision
     summary: 'Temporary exception: the toolkit''s Composer and Grok Cursor executors
       (composer-2.5, grok-4.7-exec) opt into cursor_force'

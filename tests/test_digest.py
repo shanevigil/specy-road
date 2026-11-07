@@ -249,6 +249,28 @@ def test_check_reports_a_missing_file_rather_than_writing_one(
     assert "missing" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [["digest"], ["digest", "--check"], ["digest", "-o", "-"]],
+    ids=["plain", "check", "stdout"],
+)
+def test_no_manifest_is_one_clean_line_and_writes_nothing(
+    tmp_path: Path, capsys, argv: list[str]
+) -> None:
+    """The same line and exit code as `export --check`, not a traceback."""
+    root = tmp_path.resolve()
+
+    assert run_cli(argv, root) == 1
+
+    cap = capsys.readouterr()
+    assert cap.err == (
+        f"no roadmap manifest: expected {root / 'roadmap' / 'manifest.json'}\n"
+    )
+    assert "Traceback" not in cap.err
+    assert cap.out == ""
+    assert not (root / DEFAULT_OUTPUT).exists()
+
+
 def test_the_dogfood_fixture_digest_is_committed_and_current() -> None:
     """`roadmap-context.md` is generated *and* tracked, so drift is a defect.
 

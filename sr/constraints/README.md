@@ -1,16 +1,17 @@
-# Constraints
+# Constraints (specy-road toolkit)
 
-Operational rules that are **enforced** (or enforceable by CI), not aspirational prose.
+This directory applies to **this repository** — the `specy-road` Python package and docs — not to consumer projects created with `specy-road init project`.
+
+Test-fixture roadmap validation uses the consumer-shaped sample tree under [`tests/fixtures/specy_road_dogfood/`](../../tests/fixtures/specy_road_dogfood/). That tree is not the toolkit's own product roadmap.
 
 | Rule | Where | Check |
-|------|--------|--------|
-| Max file length (matched globs) | [`file-limits.yaml`](file-limits.yaml) | `specy-road file-limits` |
-| Max function length (**Python `.py` only**) | same | same |
-| Optional policy: excludes, overlays, advisory `hard_alerts` | same | same |
-| Roadmap graph | `roadmap/` JSON + `registry.yaml` | `specy-road validate` |
+| ---- | ----- | ----- |
+| Max file length (any matched glob) | [`file-limits.yaml`](file-limits.yaml) | `specy-road file-limits` |
+| Max function length (**Python** `.py` via stdlib `ast`; **TS/JS** `.ts` `.tsx` `.js` `.jsx` `.mjs` via a bracket scanner) | same | same |
+| Optional: `exclude_path_globs`, `override_limits`, `hard_alerts` | same | same (`--strict-hard-alerts` fails on warnings) |
+| Roadmap manifest / JSON chunk line caps | same (`roadmap_*_max_lines` keys) | `specy-road validate` (via roadmap loader) |
+| Dogfood test-fixture roadmap graph | `tests/fixtures/specy_road_dogfood/roadmap/` | `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` |
 
-**Dependency and supply-chain policy** (Python/npm, advisory scans, review discipline) lives in [`docs/supply-chain-security.md`](../docs/supply-chain-security.md). Enforce it with your own CI jobs and lockfiles.
+Per-function / `hard_alerts.max_lines_per_function` apply to **`.py`** and **`.ts` `.tsx` `.js` `.jsx` `.mjs`** sources. TS/JS coverage is `function` declarations, arrow functions bound by `const`/`let`/`var`, and class methods ([`specy_road/file_limits_js.py`](../../specy_road/file_limits_js.py)); unnamed callbacks are not measured. **Other files** matched by `applies_to_globs` are checked for **line count per file** only; use your stack’s analyzers in CI for other languages.
 
-Tune `file-limits.yaml` globs for your repository layout (for example `src/`, `packages/`, `app/`). For languages other than Python, keep **per-file** limits here and enforce method/style rules with language-native tooling in CI.
-
-**Two things are skipped before your globs are applied**, so you do not have to re-declare them: files **git ignores** (they never reach CI — pass `specy-road file-limits --no-respect-gitignore` to include them), and the toolkit's own session artifacts under `work/` (`brief-`, `prompt-`, `implementation-summary-`, `pr-body-`, `.on-complete-`, `.milestone-session.yaml`). Those are machine-written and regenerated each cycle, so a line cap on them is not actionable.
+**Skipped before `applies_to_globs` is applied:** git-ignored files (opt out with `--no-respect-gitignore`), the toolkit's own `work/` session artifacts, and archived roadmap material under `roadmap/archive/` (a scaffold's `**/*.md` glob would otherwise keep flagging planning sheets for milestones that shipped years ago). See [`specy_road/file_limits_engine.py`](../../specy_road/file_limits_engine.py) (`SESSION_ARTIFACT_GLOBS`).

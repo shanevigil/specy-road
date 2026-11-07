@@ -52,7 +52,7 @@ def test_review_record_writes_the_canonical_name_over_a_lowercase_file(tmp_path:
     assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
     d = reviews_dir(repo, "M1.1")
-    assert sorted(p.name for p in d.iterdir() if p.is_file()) == ["REVIEW-opus.md"]
+    assert sorted(p.name for p in d.iterdir() if p.is_file()) == [".review-run.lock", "REVIEW-opus.md"]   # M21.27 lock
     assert "family: anthropic" in review_path(repo, "M1.1", "opus").read_text(encoding="utf-8")
 
 

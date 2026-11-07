@@ -10,14 +10,16 @@
       ],
       "codename": "agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer",
       "dependencies": [
-        "42e6f078-5c8e-4ac2-b6bc-519cdac7c399"
+        "218a29f0-6309-4fa6-b767-1c8a74e17046",
+        "42e6f078-5c8e-4ac2-b6bc-519cdac7c399",
+        "49318c9b-27ad-4cc9-a948-e01d2c01b921"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.30",
+      "id": "M16.1.5",
       "node_key": "01db66ad-a91c-48e3-953e-4083f5f14a13",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.30_agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer_01db66ad-a91c-48e3-953e-4083f5f14a13.md",
-      "sibling_order": 30,
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.5_agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer_01db66ad-a91c-48e3-953e-4083f5f14a13.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer",
       "touch_zones": [
@@ -37,7 +39,7 @@
         "bootstrap-roadmap creates nodes with add-node, edit-node and scaffold-planning instead of hand-written UUID JSON, and says to resolve validate warnings as well as errors",
         "Every doc a prompt cites is either shipped by init project or named with where an adopter finds it (installed package or toolkit repository); the governance deliverables table includes orchestration.yaml, model-profiles/ and review-lessons.md",
         "bootstrap-agents-md links the rules file instead of restating it, states the step order consistently with the other prompts, and covers the nested (sr/-style) layout and running from the git root",
-        "tests/test_suggested_prompts_commands.py checks the invocations in shell fences and single-line code spans that begin with `specy-road` or `specyrd`: it tokenises them with shlex, stops at a shell operator or a bare --, skips documented placeholders, and fails when a command path or option is not in the parity inventory (M16.0) as a canonical name",
+        "tests/test_suggested_prompts_commands.py checks the invocations in shell fences and single-line code spans that begin with `specy-road` or `specyrd`: it tokenises them with shlex, stops at a shell operator or a bare --, skips documented placeholders, and fails when a command path or option is not in the parity inventory (M16.1.1) as a canonical name",
         "Estimated net line change (informational, not a gate): prompts about -60"
       ],
       "codename": "suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout",
@@ -45,11 +47,11 @@
         "a0733044-eec3-4411-bec8-e6f31fac6456"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.32",
+      "id": "M16.6.2",
       "node_key": "98d51a48-dcd5-419f-bc34-16ae75aef21b",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.32_suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout_98d51a48-dcd5-419f-bc34-16ae75aef21b.md",
-      "sibling_order": 32,
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.2_suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout_98d51a48-dcd5-419f-bc34-16ae75aef21b.md",
+      "sibling_order": 1,
       "status": "Not Started",
       "title": "suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout",
       "touch_zones": [
@@ -60,10 +62,10 @@
     },
     {
       "acceptance": [
-        "`lean_metrics --check` prints package, test and docs lines and files, the C901 and long-line counts, and the command and alias counts against the M16.2 baseline, beside the sum of the leaves' informational estimates; none of the line numbers fails the check",
-        "The canonical command count is at most 56 and the alias count is printed; coverage is at or above fail_under; M16.28's suite-time result holds",
-        "This sheet lists, for M16.62, every deprecated form still accepted at rc5 with the notice it prints: the tests/parity/command_map.yaml rows, the old checks keys and the review-before-finish switch (M16.14), the four grind_session_* keys (M16.50), the version-1 roster form (M16.63), the `[gui-next]` extra (M16.31) and the re-exports kept by M16.6; each has its CHANGELOG [Unreleased] entry",
-        "The M16.2 baseline stays as committed; the rc5 measurements are committed as a separate end-state section of constraints/lean-baseline.json that names the baseline commit, and the summary states the source lines, command count, test count and suite time reached",
+        "`lean_metrics --check` prints package, test and docs lines and files, the C901 and long-line counts, and the command and alias counts against the M16.1.7 baseline, beside the sum of the leaves' informational estimates; none of the line numbers fails the check",
+        "The canonical command count is at most 56 and the alias count is printed; coverage is at or above fail_under; each effectiveness measure recorded in M16.7.8's sheet is at or above the value or threshold recorded there; suite time is printed for information only and never fails this leaf",
+        "This sheet lists, for M16.8.3, every deprecated form still accepted at rc5 with the notice it prints: the tests/parity/command_map.yaml rows, the old checks keys and the review-before-finish switch (M16.4.5), the four grind_session_* keys (M16.5.11), the version-1 roster form (M16.5.5), the `[gui-next]` extra (M16.6.1) and the re-exports kept by M16.2.5; each has its CHANGELOG [Unreleased] entry",
+        "The M16.1.7 baseline stays as committed; the rc5 measurements are committed as a separate end-state section of constraints/lean-baseline.json that names the baseline commit, and the summary states the source lines, command count, test count and effectiveness measures reached, with suite time as an informational figure",
         "Estimated net line change (informational, not a gate): package 0"
       ],
       "codename": "rc5-close-lean-metrics-measured-against-the-baseline",
@@ -72,36 +74,36 @@
         "98d51a48-dcd5-419f-bc34-16ae75aef21b"
       ],
       "execution_milestone": "Mixed",
-      "id": "M16.33",
+      "id": "M16.8.1",
       "node_key": "ed19381c-5265-4909-a70c-f9c5a9cf1853",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.33_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md",
-      "sibling_order": 33,
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.1_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md",
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "rc5 close: lean metrics measured against the baseline",
       "touch_zones": [
         "scripts/lean_metrics.py",
         "constraints/lean-baseline.json",
-        "sr/planning/M16.33_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md"
+        "sr/planning/M16.8.1_rc5-close-lean-metrics-measured-against-the-baseline_ed19381c-5265-4909-a70c-f9c5a9cf1853.md"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "At the recorded triage commit, this sheet inventories from the graph every live held or parked leaf and every rc4 leaf still open (on 2026-11-05: M15.3, M15.31, M15.33 and M15.36; M14.1, M15.7 and M15.20 are archived and M15.2, M15.9 and M15.17 Complete), reconciles archived and Complete entries, and gives each remaining leaf a recommendation: finish in rc4, defer past the M16.2 baseline, park to the post-M16 intake, move to M16.65's intake, or drop",
+        "At the recorded triage commit, this sheet inventories from the graph every live held or parked leaf and every rc4 leaf still open (on 2026-11-05: M15.3, M15.31, M15.33 and M15.36; M14.1, M15.7 and M15.20 are archived and M15.2, M15.9 and M15.17 Complete), reconciles archived and Complete entries, and gives each remaining leaf a recommendation: finish in rc4, defer past the M16.1.7 baseline, park to the post-M16 intake, move to M16.8.4's intake, or drop",
         "human: the maintainer records a decision per listed leaf in this sheet; the planner applies each with the roadmap CLI command it needs (edit-node, archive or removal), regenerates export and digest, and records any replacement node or intake id here",
         "A 'keep' becomes a post-M16 leaf or an intake entry; it widens an M16 leaf only when the decision names that leaf and the acceptance line it adds",
-        "No held leaf's status changes and no held leaf is started before its decision is recorded",
+        "No held leaf's status changes and no held leaf is started before its decision is recorded; the maintainer released M21.37, M21.38, M21.39, M22.5, M22.30, M22.31 and M22.32 for pass 0 on 2026-11-06, and the inventory lists them as released, with no decision asked",
         "Estimated net line change (informational, not a gate): 0"
       ],
       "codename": "triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf",
       "dependencies": [],
       "execution_milestone": "Human-led",
-      "id": "M16.34",
+      "id": "M16.1.3",
       "node_key": "eaee2f90-4953-4580-b772-570043326e4b",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.34_triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf_eaee2f90-4953-4580-b772-570043326e4b.md",
-      "sibling_order": 34,
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.3_triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf_eaee2f90-4953-4580-b772-570043326e4b.md",
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf",
       "touch_zones": [
@@ -119,14 +121,19 @@
       ],
       "codename": "tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold",
       "dependencies": [
-        "fce532e1-9ed0-4da1-9f16-2465c6e73df0"
+        "fce532e1-9ed0-4da1-9f16-2465c6e73df0",
+        "8b9893d1-675f-4d25-9d6a-a1f13e9f3f67",
+        "d4ee1c66-2780-4b43-b7bd-b9afb89ce0ab",
+        "12d3e989-fce1-4dc5-8994-b865fcbafc24",
+        "2fd5c912-b8d0-40f4-bf90-7e70a09e6aa1",
+        "121934a1-3ec8-416e-b66c-0305b77665b5"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.53",
+      "id": "M16.1.10",
       "node_key": "2fcf08ee-20e7-4751-a9ab-e64e163f5e2a",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.53_tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold_2fcf08ee-20e7-4751-a9ab-e64e163f5e2a.md",
-      "sibling_order": 35,
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.10_tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold_2fcf08ee-20e7-4751-a9ab-e64e163f5e2a.md",
+      "sibling_order": 9,
       "status": "Not Started",
       "title": "Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold",
       "touch_zones": [
@@ -140,18 +147,21 @@
         "A test fails when a module in specy_road other than git_subprocess passes `--show-toplevel` or `--show-current` to git",
         "registry_yaml.write_registry owns registry serialisation and writes, and registry_yaml.REGISTRY_REL the path constant; the `_save_registry` copies in finish_task, mark_implementation_reviewed and abort_task_pickup and the REGISTRY_REL copies in pm_integration_registry, registry_remote_overlay_merge and review_target are gone, and their callers use those public helpers",
         "Parity harness unchanged",
-        "Estimated net line change (informational, not a gate): package about -110"
+        "Estimated net line change (informational, not a gate): package about -110",
+        "upgrade's git calls keep M22.25's GIT_-stripped environment and timeout"
       ],
       "codename": "git-queries-and-registry-i-o-go-through-one-helper-each",
       "dependencies": [
-        "95c1e571-3280-4f29-893b-f8e891092e78"
+        "95c1e571-3280-4f29-893b-f8e891092e78",
+        "02c665e8-0e2a-44d5-b297-c82a5a288c41",
+        "7765e73d-c0a5-475b-89bf-819992cf6ba4"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.35",
+      "id": "M16.2.3",
       "node_key": "3b4b0524-3dc1-4acb-9d9f-1b8fd01be350",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.35_git-queries-and-registry-i-o-go-through-one-helper-each_3b4b0524-3dc1-4acb-9d9f-1b8fd01be350.md",
-      "sibling_order": 36,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.3_git-queries-and-registry-i-o-go-through-one-helper-each_3b4b0524-3dc1-4acb-9d9f-1b8fd01be350.md",
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "Git queries and registry I/O go through one helper each",
       "touch_zones": [
@@ -190,11 +200,11 @@
         "8ae7a813-4e43-4590-9f7d-d20b1691dbce"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.36",
+      "id": "M16.2.6",
       "node_key": "d0dc4b2c-781d-42f3-82a3-29b6468abebe",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.36_a-shrink-only-layering-gate-records-the-import-cycles-and-package-to-entry-point-imports_d0dc4b2c-781d-42f3-82a3-29b6468abebe.md",
-      "sibling_order": 37,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.6_a-shrink-only-layering-gate-records-the-import-cycles-and-package-to-entry-point-imports_d0dc4b2c-781d-42f3-82a3-29b6468abebe.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "A shrink-only layering gate records the import cycles and package-to-entry-point imports",
       "touch_zones": [
@@ -218,11 +228,11 @@
         "d0dc4b2c-781d-42f3-82a3-29b6468abebe"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.37",
+      "id": "M16.2.7",
       "node_key": "c1383fd3-04bc-447c-971b-3a03e0eb3608",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.37_break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate_c1383fd3-04bc-447c-971b-3a03e0eb3608.md",
-      "sibling_order": 38,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.7_break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate_c1383fd3-04bc-447c-971b-3a03e0eb3608.md",
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "Break the 45-module import cycle through the graph loader, the brief and validate",
       "touch_zones": [
@@ -245,11 +255,11 @@
         "c1383fd3-04bc-447c-971b-3a03e0eb3608"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.38",
+      "id": "M16.2.8",
       "node_key": "cf05fbd9-5071-4aca-a730-53a36d888301",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.38_break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli_cf05fbd9-5071-4aca-a730-53a36d888301.md",
-      "sibling_order": 39,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.8_break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli_cf05fbd9-5071-4aca-a730-53a36d888301.md",
+      "sibling_order": 7,
       "status": "Not Started",
       "title": "Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI",
       "touch_zones": [
@@ -264,7 +274,7 @@
       "acceptance": [
         "Every command module exposes `build_parser()`; the parity inventory reads parsers from it and the golden command set is unchanged (the parser half of M12.6, which triage round 1 removed)",
         "cli_args declares `--json`, `--ref`, `--model` and `--base`/`--remote` once; every other declaration of those options is replaced; the shared helpers keep each caller's action, type, choices, required flag and default, pinned by a committed per-option parser table; help goldens are unchanged except those options' help strings, which the transcript test allows by option name",
-        "`specy-road validate` imports at most half as many modules as the M16.2 baseline records (counted by a test); `validate --help` wall time is printed by lean_metrics, not gated",
+        "`specy-road validate` imports at most half as many modules as the M16.1.7 baseline records (counted by a test); `validate --help` wall time is printed by lean_metrics, not gated",
         "The CLI imports without the gui and review extras (tests/test_cli_imports_without_gui_extra.py green)",
         "The stale-command scan in validate (and M12.3's garden scan through the same function) extends the existing extractor: it walks only the files `validate_stale_commands.agent_files` walks, plus docs/ for the garden scan; inside a backtick or fenced span it tokenises a `specy-road <cmd> [<sub>] --<long-flag>` invocation with shlex, stops at a shell operator or a bare --, skips an unparseable or placeholder invocation, and reports file:line, the command, the unknown flag and the closest valid flag when <cmd> and <sub> are in that command's build_parser() and the long flag is not; short options and flags on an argparse.REMAINDER parser are not reported; a fixture with one stale and one valid flag pins the output (absorbed from M12.6 by maintainer triage 2026-11-05)",
         "Estimated net line change (informational, not a gate): package about -80"
@@ -274,11 +284,11 @@
         "6902ede7-bde3-4667-b192-366c09681589"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.39",
+      "id": "M16.2.10",
       "node_key": "955ec135-b330-402f-ab9f-6f1fed66614c",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.39_every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers_955ec135-b330-402f-ab9f-6f1fed66614c.md",
-      "sibling_order": 40,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.10_every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers_955ec135-b330-402f-ab9f-6f1fed66614c.md",
+      "sibling_order": 9,
       "status": "Not Started",
       "title": "Every command exposes build_parser(), imports lazily and shares the common argument helpers",
       "touch_zones": [
@@ -295,7 +305,7 @@
       "acceptance": [
         "specy_road/errors.py defines `SpecyError(message, exit_code)`; these 15 classes subclass it and keep their names, import paths, existing base classes (ValueError, RuntimeError, WorkerError) and constructor signatures: WorkerError, LeaseError, DelegateError, ReviewError, BrainstormError, ResearchError, ReviewTargetError, SigningError, EnvSetupError, RosterError, PruneError, NestedRepoError, HarnessFactsError, DeterministicResolveError, ConstitutionExistsError; this leaf's first commit, before any package change, records in this sheet each class's stderr prefix and exit code as printed today",
         "cli_entry prints a SpecyError and exits with its code in one place, reproducing that table; a test fails when an `except` in specy_road catches one of those 15 classes and every statement in the handler is a print, a `sys.exit` or `raise SystemExit`, or a `return` of an int (the sites it matches at pickup are listed in this sheet and removed); handlers that log, record state or re-raise stay; other exit sites are out of scope",
-        "Messages that tests assert at pickup are byte-identical; parity harness and the M16.7 process corpus unchanged",
+        "Messages that tests assert at pickup are byte-identical; parity harness and the M16.2.9 process corpus unchanged",
         "Estimated net line change (informational, not a gate): package about -100"
       ],
       "codename": "one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once",
@@ -303,11 +313,11 @@
         "955ec135-b330-402f-ab9f-6f1fed66614c"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.40",
+      "id": "M16.2.11",
       "node_key": "3ae67e69-01ea-46bc-a70c-2642964c6e0c",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.40_one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once_3ae67e69-01ea-46bc-a70c-2642964c6e0c.md",
-      "sibling_order": 41,
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.11_one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once_3ae67e69-01ea-46bc-a70c-2642964c6e0c.md",
+      "sibling_order": 10,
       "status": "Not Started",
       "title": "One SpecyError base for the 15 error classes, printed and turned into an exit code once",
       "touch_zones": [
@@ -322,7 +332,7 @@
       "acceptance": [
         "nested_repos_land (250) merges into nested_repos (313); nested_repos, nested_repos_land and finish_implementation_check no longer form an import cycle (the layering baseline shrinks)",
         "milestone_session and on_complete_session read and write their session files through one shared helper in specy_road/session_file_io.py (the 17-26 line clone goes); the files' paths and formats are unchanged",
-        "The merged file is rewrapped and its width entry lowered; parity harness, the milestone scenarios (M16.27) and the full suite unchanged",
+        "The merged file is rewrapped and its width entry lowered; parity harness, the milestone scenarios (M16.1.9) and the full suite unchanged",
         "Estimated net line change (informational, not a gate): package about -50"
       ],
       "codename": "nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one",
@@ -331,11 +341,11 @@
         "142b5d57-8272-439f-93a1-0aa3dc7cf88d"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.41",
+      "id": "M16.3.3",
       "node_key": "b89bc064-4355-4957-85d6-31504463269f",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.41_nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one_b89bc064-4355-4957-85d6-31504463269f.md",
-      "sibling_order": 42,
+      "parent_id": "M16.3",
+      "planning_dir": "planning/M16.3.3_nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one_b89bc064-4355-4957-85d6-31504463269f.md",
+      "sibling_order": 2,
       "status": "Not Started",
       "title": "Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one",
       "touch_zones": [
@@ -349,7 +359,8 @@
         "specy_road/session_file_io.py",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -359,18 +370,20 @@
         "agents_md_block, agent_guide_block and managed_block write through one engine and agents_md_report merges into agents_md_block; refresh-stubs and `upgrade --dry-run` goldens unchanged",
         "A table test shows that replacing a managed block twice gives the same file and that text outside the block is byte-identical, for each of the three block kinds",
         "Merged files are rewrapped and their width entries lowered; each stays within the 1,000-line cap (not squashed to get under the 750-line warning)",
-        "Estimated net line change (informational, not a gate): package about -300"
+        "Estimated net line change (informational, not a gate): package about -300",
+        "M21.37's managed-block strict refusals are unchanged"
       ],
       "codename": "the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine",
       "dependencies": [
-        "3793b31b-d61a-460f-a4b2-23f9af3f1350"
+        "3793b31b-d61a-460f-a4b2-23f9af3f1350",
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.43",
+      "id": "M16.3.5",
       "node_key": "9ca08f50-6df0-4f3e-bf0b-8770bc8d260f",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.43_the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine_9ca08f50-6df0-4f3e-bf0b-8770bc8d260f.md",
-      "sibling_order": 43,
+      "parent_id": "M16.3",
+      "planning_dir": "planning/M16.3.5_the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine_9ca08f50-6df0-4f3e-bf0b-8770bc8d260f.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "The brainstorm CLI becomes two modules and the three managed-block writers share one engine",
       "touch_zones": [
@@ -379,7 +392,8 @@
         "specy_road/agent_guide_block.py",
         "specy_road/managed_block.py",
         "scripts/line_width_baseline.json",
-        "tests/"
+        "tests/",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
@@ -392,14 +406,15 @@
       ],
       "codename": "fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list",
       "dependencies": [
-        "9ca08f50-6df0-4f3e-bf0b-8770bc8d260f"
+        "9ca08f50-6df0-4f3e-bf0b-8770bc8d260f",
+        "24a67d66-529a-40ca-a500-759cedaacb12"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.44",
+      "id": "M16.3.6",
       "node_key": "631269e6-5224-413a-8fe5-37f46b27a16b",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.44_fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list_631269e6-5224-413a-8fe5-37f46b27a16b.md",
-      "sibling_order": 44,
+      "parent_id": "M16.3",
+      "planning_dir": "planning/M16.3.6_fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list_631269e6-5224-413a-8fe5-37f46b27a16b.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "Fold the remaining single-importer siblings from the code report's misc list",
       "touch_zones": [
@@ -420,14 +435,15 @@
         "specy_road/reconcile_branch.py",
         "specy_road/bundled_scripts/reconcile_branch_cli.py",
         "scripts/line_width_baseline.json",
-        "tests/"
+        "tests/",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "The merges in this sheet's table are applied: gui_app_api, gui_app_routes_publish and gui_app_routes_workers into gui_app; roadmap_gui_pr_pickers into roadmap_gui_remote; roadmap_gui_settings_tokens into roadmap_gui_settings; roadmap_crud_delete into roadmap_crud_ops; bundled_scripts/roadmap_crud.py stays (a documented command path); module paths resolve through M16.6's committed move list; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
-        "PM UI routes and their JSON responses (GUI tests) and the outline and edit-field scenarios (M16.53) are unchanged; each handler from the old gui_app_routes_workers module calls the same functions it called at pickup (import paths may change), and none calls `orchestration.state.snapshot`",
+        "The merges in this sheet's table are applied: gui_app_api, gui_app_routes_publish and gui_app_routes_workers into gui_app; roadmap_gui_pr_pickers into roadmap_gui_remote; roadmap_gui_settings_tokens into roadmap_gui_settings; roadmap_crud_delete into roadmap_crud_ops; bundled_scripts/roadmap_crud.py stays (a documented command path); module paths resolve through M16.2.5's committed move list; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
+        "PM UI routes and their JSON responses (GUI tests) and the outline and edit-field scenarios (M16.1.10) are unchanged; each handler from the old gui_app_routes_workers module calls the same functions it called at pickup (import paths may change), and none calls `orchestration.state.snapshot`",
         "Each merged file is rewrapped, its width entry lowered, and stays within the 1,000-line cap (not squashed to get under the 750-line warning)",
         "Estimated net line change (informational, not a gate): package about -100"
       ],
@@ -437,11 +453,11 @@
         "2fcf08ee-20e7-4751-a9ab-e64e163f5e2a"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.42",
+      "id": "M16.3.7",
       "node_key": "af6d3c1a-cccf-481d-ab9f-503e834b47d7",
-      "parent_id": "M16",
-      "planning_dir": "planning/M16.42_fold-the-pm-ui-server-and-roadmap-crud-splits-after-the-orchestration-snapshot-is-fixed_af6d3c1a-cccf-481d-ab9f-503e834b47d7.md",
-      "sibling_order": 45,
+      "parent_id": "M16.3",
+      "planning_dir": "planning/M16.3.7_fold-the-pm-ui-server-and-roadmap-crud-splits-after-the-orchestration-snapshot-is-fixed_af6d3c1a-cccf-481d-ab9f-503e834b47d7.md",
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed",
       "touch_zones": [
@@ -453,7 +469,8 @@
         "specy_road/",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "constraints/clone-baseline.json"
       ],
       "type": "task"
     }

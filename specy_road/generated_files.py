@@ -18,6 +18,7 @@ from pathlib import Path
 
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.git_subprocess import run as git_run
+from specy_road.managed_block import refused_link
 
 #: Repo-root-relative names that are generated and committed.
 GENERATED_COMMITTED: tuple[str, ...] = ("roadmap.md", DEFAULT_OUTPUT)
@@ -96,15 +97,30 @@ def warn_if_generated_files_ignored(root: Path) -> list[str]:
     return hits
 
 
-def regenerate_generated_files(root: Path) -> None:
+def refused_generated_files(root: Path) -> dict[str, str]:
+    """Each :data:`GENERATED_COMMITTED` name that is a link out of ``root``, with its refusal line."""
+    reasons = {name: refused_link(root, root / name) for name in GENERATED_COMMITTED}
+    return {name: why for name, why in reasons.items() if why}
+
+
+def regenerate_generated_files(root: Path) -> list[str]:
     """Re-render both :data:`GENERATED_COMMITTED` files from the graph on disk.
 
     For commands that change the graph and leave the tree to be committed as is
     (archive, restore-archive), so ``export --check`` and ``digest --check``
     pass without a separate ``export`` and ``digest`` run.
+
+    A name that is a symlink out of ``root`` is not written: a stderr line names
+    it, and the refused names are returned.
     """
     # Imported here: export_roadmap_md imports this module.
     from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 
-    reexport_roadmap_md(root)
-    (root / DEFAULT_OUTPUT).write_text(render_digest(root), encoding="utf-8")
+    refused = refused_generated_files(root)
+    for why in refused.values():
+        print(f"roadmap: {why}", file=sys.stderr)
+    if "roadmap.md" not in refused:
+        reexport_roadmap_md(root)
+    if DEFAULT_OUTPUT not in refused:
+        (root / DEFAULT_OUTPUT).write_text(render_digest(root), encoding="utf-8")
+    return list(refused)

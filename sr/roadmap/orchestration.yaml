@@ -33,9 +33,10 @@ roster:
     roles: [reviewer]
     profile: model-profiles/spacexai-grok/grok-4.7.md
     harness: cursor
+    harness_model: grok-4.7-high
     billing_route: cursor_subscription
     channels:
-      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/cursor-review.sh" grok-4.7-high {prompt}'
+      cli: '"$SPECY_ROAD_TOOLS/cursor-review.sh" --model grok-4.7-high {prompt}'
   - id: grok-4.7-low
     family: xai
     roles: [reviewer]
@@ -119,9 +120,10 @@ roster:
     family: openai
     roles: [reviewer]
     harness: cursor
+    harness_model: gpt-5.6-sol-high
     billing_route: cursor_subscription
     channels:
-      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/cursor-review.sh" gpt-5.6-sol-high {prompt}'
+      cli: '"$SPECY_ROAD_TOOLS/cursor-review.sh" --model gpt-5.6-sol-high {prompt}'
 policy:
   reviewers_required: 2
   reviewers_distinct_families: true

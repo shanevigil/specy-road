@@ -3,7 +3,7 @@
     {
       "codename": "orch-review-loop",
       "dependencies": [
-        "2dce21fe-f676-42e5-a9a2-cd58a333d5fa"
+        "1d9b9c91-dec8-4f55-bd57-c8eb6368612f"
       ],
       "id": "M18",
       "node_key": "8c72e749-2cc5-4d00-a78f-472d7ff68f33",
@@ -18,7 +18,7 @@
       "acceptance": [
         "The reviewer prompt gains a section 'Code quality: structure' with exactly four checklist rows: small single-purpose functions; clear module boundaries; explicit dependencies (no hidden module globals, clock or git calls where a parameter would do); intent-explaining docstrings and comments kept",
         "On a fix round the prompt adds a section 'Fix-round degradation' listing exactly four signals to check in the delta: an added special-case branch, a duplicated rule, a stripped comment or docstring, a new noqa or lint waiver; it tells the reviewer that a required_change must fix the class (one rule or table) rather than patch the instance",
-        "The reviewer prompt asks the reviewer to cite the complexity delta that M16.22 puts in the packet, and to block on growth only when the review policy says so; no new record-refusal rule is added and the record schema is unchanged",
+        "The reviewer prompt asks the reviewer to cite the complexity delta that M16.5.14 puts in the packet, and to block on growth only when the review policy says so; no new record-refusal rule is added and the record schema is unchanged",
         "Tests pin the text of both prompt sections (first round without the degradation section, fix round with it) and one packet row showing a complexity delta the prompt cites"
       ],
       "codename": "review-code-quality",
@@ -160,7 +160,7 @@
         "Stage (a): the planner explicitly runs `review delegate` in plan mode with leaf ids or a milestone id (no automatic run from CRUD commands or hooks); it reuses the roster pick, distinct families and fresh bare sessions, and gives reviewers the routed lenses' rows plus the leaves' sheet, acceptance, zones, dependencies and ancestor context; every finding carries a `lens` tag and a row id; records are plan-prefixed files (PLAN-REVIEW-<model>.md) under work/reviews/<ID>/ against a separate plan-review schema, never count toward code-review approval, and hold a fingerprint the filing command computes (SHA-256 of canonical acceptance, touch_zones, dependencies and sheet text) plus the integration commit; the planner answers each finding on the record with `amended` or `not a defect because <reason>`",
         "Stage (b) at pickup is deterministic and checks four conditions: the fingerprint differs; a dependency that was not Complete at review time is Complete and git diff --name-only from the stored commit to the current integration commit intersects the leaf's zones (undetermined, with a warning, if either commit is unavailable); a zone matches no tracked file; a finding is unanswered. Advisory: all four warn and pickup proceeds. Required: no plan record at the current fingerprint, or an unanswered finding, excludes the leaf in do_next_task.py; the dependency and zone conditions only warn in every mode. No lens is required by this leaf; a later M20 posture may mark lenses required; routing is built so that a later M20 risk label can be one more routing input alongside zones and keywords (no labels in this leaf)",
         "Tests with a stub reviewer and no network: a vague fixture leaf gets item rows flagged (uncheckable line, contradicting lines, named file outside zones, unbounded detection rule) and a clear one gets none; table-driven routing rows (a guard or review-record zone routes security, a gui_app_* zone routes gui-api, every leaf gets item and testability, alignment only on a milestone or batch run); a project override replaces a built-in lens row; each stage (b) condition warns, including a sheet-only edit; required refuses on a missing or stale record and on an unanswered finding but not on the dependency or zone conditions; plan records do not satisfy code-review approval; off is a no-op; docs/orchestration-review.md documents lenses, routing and both stages",
-        "The built-in item lens carries the row 'a new value stored in a schema-validated record (a flag, enum or status value) names that schema file in the touch zones'; a fixture leaf that adds a worker flag without specy_road/schemas/worker-record.schema.json in its zones gets that row flagged (2026-11-05: M21.7 passed two plan reviews, then its worker stopped for that schema)"
+        "The built-in item lens carries the row 'a new value stored in a schema-validated record (a flag, enum or status value) names that schema file in the touch zones'; a fixture leaf that adds a worker flag without specy_road/schemas/worker-record.schema.json in its zones gets that row flagged (2026-11-05: M22.5 passed two plan reviews, then its worker stopped for that schema)"
       ],
       "codename": "plan-review-and-pickup-staleness",
       "dependencies": [

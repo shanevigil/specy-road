@@ -7,21 +7,22 @@ reports. A review record counts only when all of these hold:
   including a result for every acceptance id in the brief);
 * its ``commit`` is the commit under review — any later commit makes it stale,
   which is how "a substantive fix restarts both reviews" needs no extra state;
-* it is for this node, and no other record from the same model already counts;
+* it is for this node, its model wrote no READY on the leaf, and no other record from that model already counts;
 * its model is rostered with the ``reviewer`` role, or is the substitute in an active substitution covering this
   node — its family always comes from the roster, never from the file, and under ``reviewers_distinct_families``
   an approval counts only from an entry whose routing is fixed or pinned (:func:`routing_problem`);
 * that model's roster ``may_process`` includes the node's sensitivity, as
   ``orchestrate plan`` and ``prompt`` require;
+* under ``signed_reviews``, no model its entry launches has a profile recording guidance bypass, unless the entry
+  sets ``allow_guidance_bypass_model: true`` (:func:`guidance_problem`, M21.44);
 * it attests a fresh session when policy requires one (``reviewer_resumed_delta`` waives
   that for an approval naming ``delta_from``: :mod:`specy_road.review_resumed_delta`).
 
-Policy is read from ``roadmap/orchestration.yaml`` **as committed on the
-integration branch** (its remote-tracking ref when present), and the gate is on
-when either that branch or the working tree turns it on: a feature branch
-cannot lower its own bar. Which branch that is comes from the committed
-``git-workflow.yaml`` on the remote's default branch (at HEAD only in a repo
-with no remote), and a branch that cannot be found fails closed (:func:`policy_source`).
+Policy is read from ``roadmap/orchestration.yaml`` **as committed on the integration branch** (its remote-tracking
+ref when present), and the gate is on when either that branch or the working tree turns it on: a feature branch
+cannot lower its own bar. Which branch that is comes from the committed ``git-workflow.yaml`` on the remote's
+default branch (at HEAD only in a repo with no remote), and a branch that cannot be found fails closed
+(:func:`policy_source`).
 
 The gate passes when no counted record blocks and the counted approvals reach ``reviewers_required`` — counted by
 distinct family when ``reviewers_distinct_families`` is set. With ``policy.integrity_gate`` on, each test-integrity
@@ -29,7 +30,7 @@ finding the node did not declare in ``planned_test_changes`` on the integration 
 (:mod:`specy_road.integrity_gate`). Each ``policy.strong_review`` item the leaf's touch zones meet needs one counted
 approval from its ``require_one_of`` (:mod:`specy_road.review_strong`). An approval naming ``delta_from`` (a delta
 review) must also meet :func:`delta_problem`. A block a human-applied deferral names (reviewer and commit) does not
-count (:func:`specy_road.review_deferral.apply_deferrals`).
+count (:func:`specy_road.review_deferral.apply_deferrals`). A policy change since the claim: :mod:`review_policy_pin`.
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ from specy_road.git_subprocess import git_code
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.integrity import compare_integrity
 from specy_road.integrity_gate import integrity_gate_problems
-from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
+from specy_road.orchestrate_plan import entry_may_process, guidance_problem, may_handle, node_sensitivity
 from specy_road.orchestration_config import (effective_config, family_of, is_rostered_reviewer, roster_entry,
                                             routing_problem, substitute_for)
 from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exported
@@ -56,11 +57,13 @@ from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exp
 from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
     SigningError, notes_problem, verify)
 from specy_road.review_deferral import apply_deferrals
+from specy_road.review_eligible import reviews_to_judge
 from specy_road.review_model_check import model_mismatch_problem
 from specy_road.review_bookkeeping import CARRY_NOTE, count_at_later_commit, only_planning_or_review_bookkeeping_since
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
                                      list_review_history, list_reviews, review_semantic_errors, reviews_dir,
                                      verifier_gate_problems)
+from specy_road.review_policy_pin import pin_problem
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_resumed_delta import FRESH_SESSION, fresh_only_note, fresh_session_problem
 from specy_road.review_strong import human_closes_strong, strong_problem, touch_zones, unmet_strong
@@ -122,6 +125,7 @@ class GateResult:
     config_error: str | None = None
     bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict)
     strong_unmet: list[tuple[int, dict[str, Any]]] = field(default_factory=list)   # unmet policy.strong_review items
+    policy_pin: str | None = None   # the policy changed since the claim and no human accepted it (review_policy_pin)
 
     @property
     def approval_count(self) -> int:
@@ -129,7 +133,7 @@ class GateResult:
 
     @property
     def passed(self) -> bool:
-        return (self.config_error is None and self.commit is not None and not self.blocks
+        return (self.config_error is None and self.commit is not None and not self.blocks and not self.policy_pin
                 and not self.verifier_problems and not self.strong_unmet and self.approval_count >= self.required)
 
     def summary(self) -> str:
@@ -155,14 +159,15 @@ class GateResult:
             unit = "distinct-family approvals" if self.distinct_families else "approvals"
             out.append(f"need {self.required} {unit} at this commit, have {self.approval_count}")
         out.extend(self.verifier_problems + [strong_problem(i, item) for i, item in self.strong_unmet])
-        return out
+        return out + ([self.policy_pin] if self.policy_pin else [])
 
 
 def _signature_problem(config: dict[str, Any], model: str, review: ReviewFile) -> str | None:
     """Why a record's signature keeps it from counting, else ``None``.
 
     A present signature is always verified (tampering is caught even with the
-    policy off); a missing one matters only when ``signed_reviews`` is on.
+    policy off); a missing one matters only when ``signed_reviews`` is on, or the
+    record is ``human_filed`` and ``count_human_filed_reviews`` is off (M21.31).
     """
     sig = review.data.get("signature")
     entry = roster_entry(config, model) or {}
@@ -174,6 +179,8 @@ def _signature_problem(config: dict[str, Any], model: str, review: ReviewFile) -
         return None if ok else f"signature does not verify for {model!r}: {reason}"
     if config["policy"].get("signed_reviews"):
         return "policy requires signed reviews (signature missing); file it with `review record --sign-key`"
+    if review.data.get("human_filed") and not config["policy"].get("count_human_filed_reviews"):
+        return "filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off"
     return None
 
 
@@ -206,7 +213,7 @@ def _eligibility(repo_root: Path, config: dict[str, Any], node: dict[str, Any], 
                       f"{entry_may_process(entry)} (roster may_process)")
     why = (rerun_problem(config["policy"], review.data) or notes_problem(review.data, review.body)
            or _signature_problem(config, model, review) or routing_problem(repo_root, config, review.data)
-           or model_mismatch_problem(review.data))
+           or model_mismatch_problem(review.data) or guidance_problem(repo_root, config, entry))
     family = family_of(config, model)
     why = why or (None if family else f"no family for {model!r}: add it to the roster")
     if why := fresh_session_problem(config["policy"], review.data, why):   # exactly FRESH_SESSION when alone
@@ -318,7 +325,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
     result = GateResult(node_id=node["id"], commit=full_sha(repo_root, commit),
                         required=int(policy["reviewers_required"]),
                         distinct_families=bool(policy["reviewers_distinct_families"]), config_error=err, config=config)
-    for review in list_reviews(repo_root, node["id"], acceptance_ids(node)):
+    for review in reviews_to_judge(repo_root, node, branch, result.ineligible):   # READY authors never count
         if review.ok and review.data.get("node_id") != node["id"]:
             review.errors.append(f"node_id is {review.data.get('node_id')!r}, not {node['id']!r}")
         if not review.ok:
@@ -343,6 +350,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
         result.verifier_problems += executor_blocked_gate_problems(ready)
     result.verifier_problems += integrity_gate_problems(repo_root, policy, node["id"], result.commit, ref)
     result.strong_unmet = unmet_strong(repo_root, node, policy, result.approvals, result.commit)
+    result.policy_pin = pin_problem(repo_root, node, result.commit) if result.commit else None
     return result
 
 
@@ -355,7 +363,8 @@ def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, 
     approval still missing, and — under ``signed_reviews`` — a key was given and
     the roster has its public key. An unmet ``strong_review`` item must list the human.
     """
-    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems or not human_closes_strong(gate):
+    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems or gate.policy_pin or \
+            not human_closes_strong(gate):
         return False
     config = gate.config
     if not is_rostered_reviewer(config, HUMAN) or not may_handle(roster_entry(config, HUMAN), node_sensitivity(node)):

@@ -9,31 +9,399 @@
       "planning_dir": "planning/M17_pm-gui-orchestration-view_be53d706-287c-4f1f-bb62-8ff1da6c2dfe.md",
       "sibling_order": 16,
       "status": "Not Started",
-      "title": "0.3.2: PM GUI shows orchestration and worktree state",
+      "title": "0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16",
       "touch_zones": [],
       "type": "phase"
     },
     {
       "acceptance": [
-        "The 0.3.2 PM GUI shows orchestration and worktree state by reading only `specy_road.orchestration`'s snapshot (tests/fixtures/orchestration_snapshot_v1.json, `schema: 1`); it imports no worker_* or gui_app_routes_workers internals, and a missing field is a snapshot interface change with a new schema number",
-        "The GUI work owns docs/pm-gui.md's existing sections (M16.31 only appends brainstorm and LLM-review sections)",
-        "This placeholder is not dispatchable: the maintainer replaces it with planned leaves after M16.15 and M16.42 merge"
+        "human: this sheet records the maintainer's dated approval of the final information design (the drawer, the leaf detail and the outline badge: which fields, in what order, which show first, how unknown and missing values look) before M17.2 starts",
+        "human: the maintainer has confirmed that M17 is read-only in 0.3.1 (no GUI action stops or messages a worker, prunes a worktree, releases a claim or records a review), or named the one mutating action wanted, which the planner then files as its own M17 leaf that calls the CLI's existing command",
+        "human: this sheet's Open questions section records a dated answer to questions 1-6 before M17.2 starts and to questions 7-8 before M17.8 starts, or the maintainer's note that the default written into the leaves stands"
       ],
       "codename": "pm-gui-orchestration-plan",
-      "dependencies": [
-        "fba72c3a-24a5-4c6b-b174-0e581d8b8450",
-        "af6d3c1a-cccf-481d-ab9f-503e834b47d7"
-      ],
+      "dependencies": [],
       "execution_milestone": "Human-led",
       "id": "M17.1",
       "node_key": "6074421f-382e-452e-9cdb-9ad693eddc64",
       "parent_id": "M17",
       "planning_dir": "planning/M17.1_pm-gui-orchestration-plan_6074421f-382e-452e-9cdb-9ad693eddc64.md",
       "sibling_order": 1,
-      "status": "Not Started",
-      "title": "0.3.2 PM GUI orchestration and worktree view: plan from the snapshot interface",
-      "touch_zones": [],
+      "status": "Complete",
+      "title": "Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1",
+      "touch_zones": [
+        "sr/planning/M17.1_pm-gui-orchestration-plan_6074421f-382e-452e-9cdb-9ad693eddc64.md"
+      ],
       "type": "gate"
+    },
+    {
+      "acceptance": [
+        "gui/pm-gantt/src/orchestrationSnapshot.ts declares the snapshot type: its required fields are exactly M16.3.1's v1 list (schema; per leaf key the claim {codename, branch, registered_at}, workers {id, harness, model, status, pid_alive, started_at, ended_at}, worktrees {path, branch, dirty} and reviews {model, verdict, commit, fresh_for_head}; leafless workers) with status in claimed, running, exited_ok, exited_failed, abandoned, unknown; the schema 2 additions are optional: worker account (string or null), last_activity, flags (string list); worktree ahead, behind (integer or \"unknown\"); per leaf ready {commit, model, at, blocked_on? [{acceptance, reason}]}, gate {state (a `handoff status` label), approvals (integer), blocks (integer), fresh_for_head}, holds (a list of {source (\"hold_list\" or \"gate\"), id, reason (string or null)}, M17.1 question 4); the module exports `requiredKeys` and `optionalKeys` (key paths) and this sheet lists them for M17.6",
+        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json covers every status value, a leaf with two worktrees, a leafless worker, an `unknown` field, a null account, a stale review (fresh_for_head false), gate states blocked and executor_blocked (a READY with blocked_on), a leaf held by the hold list (with a reason) and one held by an open gate, a worker whose flags are stalled and steering_changed and one flagged paused_by_limit; a vitest test fails when a mock key path is in neither `requiredKeys` nor `optionalKeys` or a `requiredKeys` path is missing",
+        "`buildOrchestrationView(snapshot, outline, now)` in the same module (no React, no fetch) joins each leaf key to the outline's `node_key` for display id, title and order (outline order, then keys absent from the outline by key, then leafless workers); picks one leaf badge with M17.1's precedence, where blocked means gate.state blocked or executor_blocked with count gate.blocks or the number of ready.blocked_on entries; formats ages with `formatRelativeAge` (lastWorked.ts) from `now`; renders `unknown` as \"unknown\" and an absent or null optional field as \"—\" (except account: null or absent shows an empty cell, M17.1 question 3), never as false, 0 or clean",
+        "Table-driven vitest rows with a fixed clock: each badge candidate alone, each adjacent precedence pair on one leaf, reversed worker order, numeric-looking display ids in outline order, a schema 1 snapshot (no optional fields), explicit unknown, null account, an empty snapshot and leafless workers only, each with its expected groups, badge and text; no component, route or existing type changes; `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes",
+        "Estimated net line change (informational, not a gate): frontend about +400 (module, tests and mock)"
+      ],
+      "codename": "gui-orch-view-model",
+      "dependencies": [
+        "6074421f-382e-452e-9cdb-9ad693eddc64"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.2",
+      "node_key": "6beeb2f4-75de-4dd3-8266-71cb00efb234",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.2_gui-orch-view-model_6beeb2f4-75de-4dd3-8266-71cb00efb234.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock",
+      "touch_zones": [
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A header button \"Orchestration\" opens a read-only drawer: one group per leaf from M17.2's view model (display id, title, leaf badge, claim codename, branch and registered age), then a \"No leaf\" group; each worker row shows id, harness / model, account, status, last activity age, started / ended and one badge per `flags` entry, verbatim (exited_failed shows in the status column; a null account is an empty cell); an optional `filterLeafId` prop (null shows every group) shows only that leaf's group",
+        "api.ts gains `fetchOrchestration()` built on `loadOrchestration(fetchImpl)` in orchestrationSnapshot.ts; vitest rows with an injected fetch assert one GET to /api/orchestration per load, 404 -> unavailable (the drawer says the server does not provide the orchestration snapshot yet) and any other failure -> error; a vitest over OrchestrationDrawer.tsx's source fails on any import from api.ts other than `fetchOrchestration`; the mock renders only in a dev build (`import.meta.env.DEV`) with `?mock=orchestration`; no existing request in api.ts changes",
+        "Clicking a leaf id opens the existing edit modal for that node; clicking a worker opens the existing Workers drawer on that worker through a new optional WorkersDrawer prop `initialWorkerId`, selected through createWorkerSelection on open (without it the current newest-worker default stays; workerSelection tests gain both rows); the drawer reloads on open, on Refresh and every 15 s while it is open (one interval, cleared on close and unmount, no request while closed; M17.1 question 5, 2026-11-06), with vitest rows on fake timers: open -> one load, +15 s -> one more, closed -> none",
+        "Copy-CLI buttons (M17.1 question 2, 2026-11-06): each worker row copies `specy-road worker status <id>` and `specy-road worker open <id>`, each leaf header copies `specy-road handoff status <NODE_ID>`, built by a pure copyCommand(kind, id) in orchestrationSnapshot.ts that single-quotes any id outside [A-Za-z0-9._-] (vitest rows include an id with a quote, a space and `$(...)`); a click only calls navigator.clipboard.writeText (no request; a failure shows 'copy failed'). App.tsx grows only by the button, the open state and the lazy mount (under 30 lines); `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes",
+        "Estimated net line change (informational, not a gate): frontend about +330"
+      ],
+      "codename": "gui-orch-drawer",
+      "dependencies": [
+        "6beeb2f4-75de-4dd3-8266-71cb00efb234",
+        "5c86a7f3-8322-43c6-a4a4-e27fd2f39e11"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.3",
+      "node_key": "299b0942-b9da-4784-ab34-f25701ee0e27",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.3_gui-orch-drawer_299b0942-b9da-4784-ab34-f25701ee0e27.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags",
+      "touch_zones": [
+        "gui/pm-gantt/src/components/OrchestrationDrawer.tsx",
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "gui/pm-gantt/src/api.ts",
+        "gui/pm-gantt/src/App.tsx",
+        "gui/pm-gantt/src/App.css",
+        "specy_road/pm_gantt_static/",
+        "gui/pm-gantt/src/components/WorkersDrawer.tsx",
+        "gui/pm-gantt/src/workerSelection.ts",
+        "gui/pm-gantt/src/workerSelection.test.ts",
+        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "LeafOrchestrationDetail shows for one leaf: the claim; each worktree (path, branch, dirty yes / no / unknown, ahead and behind the integration branch or \"—\"); the newest READY (short commit, model, age) and its blocked_on entries as plain-text `A<n>: <reason>` lines; each review record (model, verdict, commit, fresh for HEAD); the gate summary (state, approvals, blocks, fresh for HEAD); and holds (each hold's source, id and reason: the hold list's reason, or the open gate's id and title)",
+        "Review freshness follows the snapshot's fresh_for_head only (\"unknown\" stays unknown; READY.commit is shown separately and never compared); blocking verdicts list first; fields a schema 1 server omits, or null, show \"—\"; view-model rows cover a fresh carried approval whose commit differs from READY.commit (not stale), a stale review, an unknown one and a schema 1 leaf",
+        "The detail shows in the Orchestration drawer for a selected leaf and (M17.1 question 6, 2026-11-06) as a collapsed read-only \"Orchestration\" section in the existing edit modal for leaf nodes; the edit modal's save paths and their tests are unchanged; the detail has a copy button for `specy-road handoff status <NODE_ID>` through M17.3's copyCommand (clipboard only)",
+        "`cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes",
+        "Estimated net line change (informational, not a gate): frontend about +250"
+      ],
+      "codename": "gui-orch-leaf-detail",
+      "dependencies": [
+        "299b0942-b9da-4784-ab34-f25701ee0e27"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.4",
+      "node_key": "fad930e4-76ee-407d-9ee4-a4d8a07d64c1",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.4_gui-orch-leaf-detail_fad930e4-76ee-407d-9ee4-a4d8a07d64c1.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state",
+      "touch_zones": [
+        "gui/pm-gantt/src/components/LeafOrchestrationDetail.tsx",
+        "gui/pm-gantt/src/components/OrchestrationDrawer.tsx",
+        "gui/pm-gantt/src/components/EditModal.tsx",
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "gui/pm-gantt/src/App.css",
+        "specy_road/pm_gantt_static/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the snapshot is available each leaf row's existing Task cell shows at most one badge chosen by the view model (blocked / held, exited_failed, stalled, running, READY awaiting review, approved, claimed, abandoned, unknown), with a hover listing claim, workers, worktree count, READY and review summary; no column is added (`TABLE_COLS` stays 6) and a row with no orchestration state shows nothing new",
+        "A held leaf's hover names each hold from the snapshot's holds ('hold list: <reason>', or 'hold list' without one, and each open gate id; \"—\" when the server sends none); a blocked leaf shows \"blocked\" with the count (gate.blocks, or the number of ready.blocked_on entries for executor_blocked); view-model rows for snapshot present, snapshot unavailable (404) and no state assert badge text, hover text and the leaf key a click passes",
+        "Clicking the badge opens the Orchestration drawer with M17.3's `filterLeafId` set to that leaf key (passed from App.tsx); the snapshot loads once per roadmap refresh and, while the Orchestration drawer is open, takes each of the drawer's loads (no interval of its own; M17.1 question 5, 2026-11-06); when `GET /api/orchestration` answers 404 the outline renders exactly as before (existing outline, tableCols and gantt tests unchanged)",
+        "App.tsx grows by under 20 lines; `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes",
+        "Estimated net line change (informational, not a gate): frontend about +170"
+      ],
+      "codename": "gui-orch-outline-badges",
+      "dependencies": [
+        "fad930e4-76ee-407d-9ee4-a4d8a07d64c1"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.5",
+      "node_key": "6341c523-6051-4c9f-8cb7-74ab1a9eeed9",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.5_gui-orch-outline-badges_6341c523-6051-4c9f-8cb7-74ab1a9eeed9.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer",
+      "touch_zones": [
+        "gui/pm-gantt/src/components/OutlineTable.tsx",
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "gui/pm-gantt/src/App.tsx",
+        "gui/pm-gantt/src/App.css",
+        "specy_road/pm_gantt_static/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`orchestration.state.snapshot(repo_root)` returns `schema: 2`: every v1 field keeps its name, type and value; it adds per worker `account` (M17.1 question 3, 2026-11-06: the Claude profile name when the worker record or its roster entry names the CLAUDE_CONFIG_DIR it ran with, i.e. that directory's name, or its parent's when the directory is named claude or .claude (`work` for ~/.agent-accounts/work/claude); else null; never a path, credential or environment value), `last_activity` (the newer of the last event time and last_output_at) and `flags` (the record's flags verbatim, plus `paused_by_limit` while the record's state is paused_by_limit: a usage-limit pause is a worker flag, never a hold); per worktree `ahead` and `behind` (integers against the local integration ref, else \"unknown\"); per leaf `ready` {commit, model, at (the file's mtime, ISO UTC), blocked_on (the READY's entries while it is current at the commit under review, else absent)} from the READY latest_ready selects for the registered branch, `gate` {state (the label `handoff status` reports), approvals and blocks (integers: counted approvals and counted blocking records), fresh_for_head} and `holds` (M17.1 question 4, 2026-11-06: {source: \"hold_list\", id: the leaf id, reason: the text after `#` or null} when the leaf is listed in the main checkout's gitignored work/grind-hold.txt (M18.20's format: one id per line, `#` starts a reason; read only as a regular file, an unreadable one sets holds to unknown), plus {source: \"gate\", id, reason: the gate's title} per open gate the leaf depends on, as list-gates reports); tests/fixtures/orchestration_snapshot_v2.json is a full schema 2 snapshot whose key paths are exactly orchestrationSnapshot.ts's `requiredKeys` plus `optionalKeys` (a name change edits the TypeScript and the mock here, and `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` then passes)",
+        "Read-only and total: the builder writes nothing, runs no stall sweep, ack, fetch, check or harness command, and every git call passes `-c core.fsmonitor=false -c core.hooksPath=/dev/null` with GIT_OPTIONAL_LOCKS=0; a non-UTF-8, non-mapping or schema-invalid READY, review or worker record sets only that source's fields to `unknown` and keeps readable siblings; tests through snapshot(): one byte fixture per malformed class, a missing integration ref, and a worktree whose core.fsmonitor names a sentinel-writing script (the sentinel stays absent and `git status --porcelain` of the main checkout is unchanged)",
+        "The gate summary calls the review gate's existing public function (no re-implementation); a table through snapshot() covers passed gate, counted block, stale-only review, insufficient approvals, executor blocker, policy error, absent READY and unreadable READY, asserting each leaf's full ready and gate values; a seeded secret environment value and config-dir path appear in no snapshot string; the layering gate, M16.3.1's parity rows and `worker list`, `orchestrate plan` and doctor output stay unchanged; docs/orchestration.md documents schema 2",
+        "Estimated net line change (informational, not a gate): package about +180, tests about +280"
+      ],
+      "codename": "orch-snapshot-schema-2",
+      "dependencies": [
+        "fba72c3a-24a5-4c6b-b174-0e581d8b8450",
+        "6beeb2f4-75de-4dd3-8266-71cb00efb234",
+        "6341c523-6051-4c9f-8cb7-74ab1a9eeed9"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.6",
+      "node_key": "4c5fb003-1a29-4442-820e-f700f4e2d71f",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.6_orch-snapshot-schema-2_4c5fb003-1a29-4442-820e-f700f4e2d71f.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf)",
+      "touch_zones": [
+        "specy_road/orchestration/state.py",
+        "tests/fixtures/orchestration_snapshot_v2.json",
+        "docs/orchestration.md",
+        "tests/",
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`GET /api/orchestration` returns `orchestration.state.snapshot(<main project root>)` unchanged, with no added keys (display ids come from the GUI's outline, M17.2); the handler imports only `specy_road.orchestration` (the layering gate stays green), lives in the gui_app module M16.3.7 folded, and leaves the app's loopback-only CORS setting unchanged",
+        "It works under `specy-road gui --read-only`, where `POST /api/orchestration` answers 403; every existing `/api/` route keeps its response shape (existing GUI tests unchanged, including tests/test_gui_outline_contract.py and tests/test_gui_app_workers.py); this is the only route added",
+        "A contract test fails when a response key path is not in tests/fixtures/orchestration_snapshot_v2.json, or when gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json has a key path the fixture lacks or lacks a required one",
+        "Table-driven tests over fixture repos: no orchestration state (200, empty); a claim with a running worker and a READY; a non-UTF-8 worker record and READY (200, only those fields `unknown`); served from a linked worktree with divergent local state (reads the main worktree's claims, READY and workers); a nested project root (serves that project, not the enclosing repository's roadmap); a seeded secret environment value and CLAUDE_CONFIG_DIR path appear nowhere in the body",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +200"
+      ],
+      "codename": "gui-api-orchestration",
+      "dependencies": [
+        "af6d3c1a-cccf-481d-ab9f-503e834b47d7",
+        "4c5fb003-1a29-4442-820e-f700f4e2d71f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.7",
+      "node_key": "25c737eb-656b-487b-a238-b8e825a8e6d3",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.7_gui-api-orchestration_25c737eb-656b-487b-a238-b8e825a8e6d3.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together",
+      "touch_zones": [
+        "specy_road/gui_app.py",
+        "tests/test_gui_app_orchestration.py",
+        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "docs/pm-gui.md gains an \"Orchestration drawer\" entry under What ships (panels, each field's meaning, the unknown / \"—\" rule, badge precedence, read-only) and a `/orchestration` row in the read-only JSON API table; docs/pm-workflow.md gains one paragraph on reading it; tests/test_docs_links.py passes",
+        "CHANGELOG.md's [Unreleased] Added lists the drawer, the leaf detail, the outline badge and `GET /api/orchestration`; no version heading, no project.version change, no tag",
+        "Against `specy-road gui` on a fixture repo with live orchestration state the drawer shows the server's snapshot, not the mock; a test (or a grep of the production build output) shows the production bundle cannot render the mock",
+        "`cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes; validate, export --check and file-limits pass",
+        "Estimated net line change (informational, not a gate): docs about +60, frontend small"
+      ],
+      "codename": "gui-orch-docs-wiring",
+      "dependencies": [
+        "fad930e4-76ee-407d-9ee4-a4d8a07d64c1",
+        "6341c523-6051-4c9f-8cb7-74ab1a9eeed9",
+        "25c737eb-656b-487b-a238-b8e825a8e6d3",
+        "a0733044-eec3-4411-bec8-e6f31fac6456"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.8",
+      "node_key": "c6f05a10-ac3d-4297-b8ca-e9e82076ad1d",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.8_gui-orch-docs-wiring_c6f05a10-ac3d-4297-b8ca-e9e82076ad1d.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route",
+      "touch_zones": [
+        "docs/pm-gui.md",
+        "docs/pm-workflow.md",
+        "CHANGELOG.md",
+        "gui/pm-gantt/src/components/OrchestrationDrawer.tsx",
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "specy_road/pm_gantt_static/",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Run by the coordinator, not CI and not a worker, only once gate M17.10 records the maintainer's dated approval to use the sandbox; RESULTS.md cites that approval and keeps to its limits",
+        "tests/sandbox/pm_gui_orchestration/ holds a setup script that builds the wheel (after `npm run build`), creates a fixture repo from tests/fixtures/specy_road_dogfood seeded with orchestration state (a claim with a running worker whose pid is an inert child process the script supervises and kills on exit, success or failure; a failed worker flagged stalled; a leaf with two worktrees one dirty; a READY with one approving and one stale review; a held leaf; a leafless worker) and starts `specy-road gui --read-only`, waiting for an HTTP 200 rather than a fixed sleep; a browser test script for sbvm_run_browser_test; and CHECKLIST.md with the expected badge and detail values per item",
+        "The run uses the sandbox MCP tools (claim_workspace, vm_start, sbvm_exec to install the wheel and run setup, sbvm_run_browser_test, sbvm_screenshot) and covers each checklist item: drawer groups and flags, leaf detail (stale review, ahead/behind, holds), outline badge and its link, the 404 message (the browser script answers `GET /api/orchestration` with 404 by request interception, or a stub server in this directory does), and `POST /api/orchestration` answering 403 under --read-only",
+        "RESULTS.md records date, wheel version and commit, VM image, pass / fail per checklist item and screenshot names (screenshots stay under work/, gitignored), and lists each defect for the coordinator to file as a new M17 leaf in a separate roadmap operation; this leaf edits nothing outside its zone, and the M16.8.9 gate stays held until every filed leaf is Complete",
+        "Estimated net line change (informational, not a gate): tests/sandbox about +280; package 0"
+      ],
+      "codename": "gui-orch-sandbox-acceptance",
+      "dependencies": [
+        "c6f05a10-ac3d-4297-b8ca-e9e82076ad1d",
+        "860efe04-3d36-451d-9f69-1f0657634bc1"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M17.9",
+      "node_key": "dcfc7951-9552-486c-b415-a50e994cf442",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.9_gui-orch-sandbox-acceptance_dcfc7951-9552-486c-b415-a50e994cf442.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results",
+      "touch_zones": [
+        "tests/sandbox/pm_gui_orchestration/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "human: this sheet's Approvals section records the maintainer's dated approval to use the agentic sandbox for M17.9's run, with any limits (number of VMs, time window, image); a re-run of M17.9 needs a new dated line"
+      ],
+      "codename": "gui-orch-sandbox-use-approved",
+      "dependencies": [],
+      "execution_milestone": "Human-led",
+      "id": "M17.10",
+      "node_key": "860efe04-3d36-451d-9f69-1f0657634bc1",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.10_gui-orch-sandbox-use-approved_860efe04-3d36-451d-9f69-1f0657634bc1.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run",
+      "touch_zones": [
+        "sr/planning/M17.10_gui-orch-sandbox-use-approved_860efe04-3d36-451d-9f69-1f0657634bc1.md"
+      ],
+      "type": "gate"
+    },
+    {
+      "acceptance": [
+        "The node edit dialog shows an Acceptance section with the node's criteria, one text field per criterion, with add, remove, move up and move down; saving sends PATCH /api/nodes/{id} with the one pair {key: 'acceptance', value: the criteria joined by a newline} through the edit modal's save queue (fingerprint and milestone lock as for the other fields), which is edit-node --set acceptance= semantics (one criterion per line, surrounding whitespace trimmed, empty criteria dropped, an empty list sends '' and removes the field); a newline typed inside a criterion is refused in the dialog with a message, never split; the GUI node type gains `acceptance?: string[]` read from GET /api/roadmap; no server, route or body change",
+        "Vitest rows over a pure helper (acceptanceEdit.ts): an unchanged list -> no PATCH; an added, removed, reordered and emptied list -> the exact pair value; a whitespace-only criterion dropped; a criterion containing a newline -> refused with the message; save-queue rows for the acceptance field next to an unrelated field edit",
+        "A contract test in tests/test_gui_app_mutations.py PATCHes the exact body the helper builds on a fixture repo and reads the node's acceptance back through GET /api/roadmap (and '' removes it); existing GUI tests unchanged. `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes; specy_road/pm_gantt_static/ rebuilt; docs/pm-gui.md's edit dialog entry and CHANGELOG [Unreleased] Added",
+        "Estimated net line change (informational, not a gate): frontend about +220, tests about +60, docs about +5",
+        "docs/pm-gui.md's edit dialog entry also says that GUI edits change the graph only, and that roadmap.md and roadmap-context.md are regenerated by Publish (or specy-road export and digest)"
+      ],
+      "codename": "gui-acceptance-editing",
+      "dependencies": [
+        "6074421f-382e-452e-9cdb-9ad693eddc64",
+        "7a0ccfaf-aa9e-45f5-8438-19693d6c622d"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.11",
+      "node_key": "624ea57d-6ecc-4356-8d99-d10c5a262e50",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.11_gui-acceptance-editing_624ea57d-6ecc-4356-8d99-d10c5a262e50.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics",
+      "touch_zones": [
+        "gui/pm-gantt/src/components/EditModal.tsx",
+        "gui/pm-gantt/src/editModalSaveQueue.ts",
+        "gui/pm-gantt/src/editModalSaveQueue.test.ts",
+        "gui/pm-gantt/src/acceptanceEdit.ts",
+        "gui/pm-gantt/src/acceptanceEdit.test.ts",
+        "gui/pm-gantt/src/types.ts",
+        "gui/pm-gantt/src/api.ts",
+        "gui/pm-gantt/src/App.css",
+        "specy_road/pm_gantt_static/",
+        "tests/test_gui_app_mutations.py",
+        "docs/pm-gui.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A 'Group siblings…' action on a selected outline row opens a dialog: the row's siblings as checkboxes (the selected row checked), a new parent id prefilled with the parent's next unused child id from the loaded outline (editable), a required title, a type (milestone by default) and 'rewrite id references in prose' (off by default); confirm sends one POST /api/outline/group with GroupOutlineBody's existing fields {into_new, title, node_ids (in outline order), type, rewrite_refs} through a new api.ts groupOutline(), with the PM write header and the pending-mutation and retry handling the move action uses; no server, route or body change",
+        "A refusal shows the server's 400 detail verbatim in the dialog and changes nothing in the outline; on success the outline refreshes and selects the new parent. Vitest rows over a pure helper (outlineGroup.ts): siblings of a row, the default id (including a parent whose children have gaps), the body from the dialog state, refusal of an empty title or no row checked",
+        "A contract test in tests/test_gui_outline_contract.py posts the exact body the helper builds on a fixture repo -> the new parent holds the nodes in order; a taken id -> 400 with its detail; existing outline tests unchanged. `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes; specy_road/pm_gantt_static/ rebuilt; docs/pm-gui.md and CHANGELOG [Unreleased] Added",
+        "Estimated net line change (informational, not a gate): frontend about +250, tests about +60, docs about +5"
+      ],
+      "codename": "gui-group-siblings-action",
+      "dependencies": [
+        "6074421f-382e-452e-9cdb-9ad693eddc64",
+        "624ea57d-6ecc-4356-8d99-d10c5a262e50",
+        "8b9893d1-675f-4d25-9d6a-a1f13e9f3f67"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.12",
+      "node_key": "00ff9691-82c1-484e-a02d-dbf2d60e3241",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.12_gui-group-siblings-action_00ff9691-82c1-484e-a02d-dbf2d60e3241.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group",
+      "touch_zones": [
+        "gui/pm-gantt/src/components/GroupSiblingsModal.tsx",
+        "gui/pm-gantt/src/components/OutlineTable.tsx",
+        "gui/pm-gantt/src/outlineGroup.ts",
+        "gui/pm-gantt/src/outlineGroup.test.ts",
+        "gui/pm-gantt/src/api.ts",
+        "gui/pm-gantt/src/App.tsx",
+        "gui/pm-gantt/src/usePmGuiHandlers.ts",
+        "gui/pm-gantt/src/App.css",
+        "specy_road/pm_gantt_static/",
+        "tests/test_gui_outline_contract.py",
+        "docs/pm-gui.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A single click on an outline row selects it on the click itself (OutlineTable.tsx's handleRowClick no longer waits for the 220 ms timer before onSelectRow); a double click still opens the edit modal on that row; title-click editing, long press and dependency-edit clicks behave as today",
+        "Toolbar actions (add above and below, indent, outdent, move, delete) read the selection at click time, so an action clicked right after a row click targets that row (rc4 final sandbox 2026-11-06 F1: 2 of 2 immediate Add task below clicks went to the previous row)",
+        "Vitest rows with fake timers over a pure helper (outlineRowClick.ts) that holds the click / double-click decision: click -> select at once; click then a second click inside the double-click window -> one select, then open the modal; a click while a title is being edited -> no select; row click then an immediate toolbar action -> the clicked row's id. `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes; specy_road/pm_gantt_static/ rebuilt; CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): frontend about +60",
+        "A row whose drag alone is disabled is not marked aria-disabled (OutlineTable.tsx useSortable), with one vitest pure-helper case"
+      ],
+      "codename": "gui-outline-selection-lag",
+      "dependencies": [
+        "6074421f-382e-452e-9cdb-9ad693eddc64",
+        "00ff9691-82c1-484e-a02d-dbf2d60e3241"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.13",
+      "node_key": "5c86a7f3-8322-43c6-a4a4-e27fd2f39e11",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.13_gui-outline-selection-lag_5c86a7f3-8322-43c6-a4a4-e27fd2f39e11.md",
+      "sibling_order": 13,
+      "status": "Not Started",
+      "title": "PM GUI: a row click selects at once, so a toolbar action right after it acts on that row",
+      "touch_zones": [
+        "gui/pm-gantt/src/components/OutlineTable.tsx",
+        "gui/pm-gantt/src/outlineRowClick.ts",
+        "gui/pm-gantt/src/outlineRowClick.test.ts",
+        "gui/pm-gantt/src/App.tsx",
+        "gui/pm-gantt/src/usePmGuiHandlers.ts",
+        "specy_road/pm_gantt_static/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

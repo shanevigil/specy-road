@@ -124,10 +124,14 @@ def test_a_codex_resume_whose_last_answer_event_has_no_text_is_a_rerun(tmp_path:
     argvs = [json.loads(line) for line in calls.read_text().splitlines()]
     resumed = [a for a in argvs if a[:2] == ["exec", "resume"]]
     assert resumed and all(sid in a and "-o" not in a for a in resumed)          # a resume: no -o file
-    assert not [a for a in argvs if "-o" in a] and len(run["attempts"]) == 1      # no fresh turn, no retry
+    assert not [a for a in argvs if "-o" in a]                                    # no fresh turn, no retry
+    # M21.42: a null answer after a clean exit gets exactly one repair launch, which resumes with the parse reason
+    assert [a.get("repair", False) for a in run["attempts"]] == ([False, True] if null_last else [False])
     if null_last:
         assert run["outcome"] == "rerun" and run["state"] == "incomplete"
         assert "carries no answer" in run["reason"]
+        assert run["refusal_kind"] == "parse"
+        assert run["refusal"] in (repo / "work" / "prompt-M1.1-reviewer-sol-repair.md").read_text()
         assert not rf.review_path(repo, "M1.1", "sol").exists()
     else:   # the same earlier answer, last: filed
         assert run["outcome"] == "recorded", run["reason"]
@@ -138,6 +142,9 @@ def test_a_retried_codex_turn_never_files_the_failed_fresh_turns_answer_file(tmp
     run = delegate(repo, "M1.1", "sol", retries=1, backoff=0, sleep=lambda _s: None)
     argvs = [json.loads(line) for line in calls.read_text().splitlines()]
     assert [a for a in argvs if "-o" in a] and [a for a in argvs if a[:2] == ["exec", "resume"]]   # by argv
-    assert [a["capacity"] for a in run["attempts"]] == [True, False]
-    assert run["outcome"] == "rerun" and "not one complete JSON object" in run["reason"]
+    assert [a["capacity"] for a in run["attempts"]] == [True, False, False]
+    assert [a.get("repair", False) for a in run["attempts"]] == [False, False, True]   # M21.42: one repair launch
+    assert run["refusal_kind"] == "parse"
+    assert run["refusal"] in (repo / "work" / "prompt-M1.1-reviewer-sol-repair.md").read_text()
+    assert run["outcome"] == "rerun" and "the final message holds no JSON object" in run["reason"]
     assert not rf.review_path(repo, "M1.1", "sol").exists()

@@ -1,0 +1,477 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "finish-this-task runs validate (output captured) after its branch, override and context checks and before its first write (PR-body snapshot, status -> Complete); on failure it prints validate's own error lines and 'finish-this-task: nothing was changed', exits 1 with no Python traceback, and worktree bytes, the index and HEAD are as before",
+        "Before its first bookkeeping write, finish snapshots the worktree bytes (or absence) and index entry of every path it may create, overwrite, move or remove before the bookkeeping commit: the chunk, rolled-up ancestors, registry, roadmap.md, roadmap-context.md, the PR-body file and the work artifacts cleanup removes (reusing finish_bookkeeping_undo's path list and state helpers where they fit)",
+        "A non-zero validate, export or digest exit, or an OSError or subprocess.SubprocessError during those commands, the bookkeeping writes, cleanup, staging or the commit, puts every snapshotted path's bytes and index entry back (never restoring from HEAD, so pre-existing staged or unstaged edits survive), prints the failing command or path and 'nothing was committed; fix it and run finish-this-task again', reports a failed restore explicitly, and exits 1 with no traceback",
+        "tests/test_finish_config_preflight.py through finish's public entry: the rc4 configuration (require_implementation_review_before_finish false, policy.reviewers_required 1) -> exit 1, message names the fix, registry entry unchanged; injected rows for a later validate refusal, a digest refusal after export rewrote roadmap.md, an OSError on the registry write and a commit refusal; one row starts with distinct staged and unstaged bytes on a bookkeeping path; each row asserts worktree bytes, index blobs and HEAD equal the pre-run state and no 'Traceback' in stderr; existing finish tests pass unchanged",
+        "CHANGELOG [Unreleased] Fixed. Out of scope: the gate-agreement rule, the merge-landing undo after the commit (M15.40), landing modules (M22.10)",
+        "Estimated net line change (informational, not a gate): package about +60, tests about +150"
+      ],
+      "codename": "finish-validates-before-bookkeeping",
+      "dependencies": [],
+      "id": "M21.28",
+      "node_key": "eedff108-5960-4cf3-9c3d-f5666291763f",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.28_finish-validates-before-bookkeeping_eedff108-5960-4cf3-9c3d-f5666291763f.md",
+      "sibling_order": 26,
+      "status": "Complete",
+      "title": "finish-this-task refuses an invalid configuration before any bookkeeping write and never leaves a half-mutated tree",
+      "touch_zones": [
+        "specy_road/bundled_scripts/finish_task.py",
+        "tests/test_finish_config_preflight.py",
+        "CHANGELOG.md",
+        "specy_road/finish_bookkeeping_undo.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "kill_group, after verifying the group and before its first signal, reads ps -A -o pid=,ppid=,pgid=,lstart= once (lstart parsed as the rest of the line, compared as start_token compares it) and records every transitive descendant (by parent pid) of the group's members that is outside the group, with its start time",
+        "After the group is gone, each recorded descendant still alive with the same start time gets SIGTERM, then SIGKILL after the grace; a pid authoritatively absent or whose start time differs is gone and never signalled; a survivor, or a failed, timed-out or unparsable descendant inventory or recheck, raises WorkerError naming the pid or the failure (the group itself is still signalled as today), so terminate does not report terminated",
+        "tests/test_worker_terminate_descendants.py (POSIX), through public worker terminate / kill_group only: a fake harness whose child calls os.setsid(), writes a ready file and sleeps, terminate run only once that file exists; neither the group nor that grandchild is left alive; a grandchild ignoring SIGTERM is SIGKILLed with an explicit short grace; with patched ps/os.kill seams a changed start time is neither signalled nor a survivor, an unreadable inventory and a same-start survivor each raise WorkerError; spawned processes are killed in finally; existing terminate and orphan tests pass unchanged",
+        "docs/orchestration-workers.md 'Processes outside the group' says terminate snapshots descendants before the first signal and also ends those outside the group, but cannot see a process already re-parented before that snapshot; CHANGELOG [Unreleased] Fixed. Out of scope: processes already re-parented to init before terminate ran, killing by cwd, Windows, worker interrupt",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +130, docs about +3"
+      ],
+      "codename": "terminate-ends-escaped-descendants",
+      "dependencies": [],
+      "id": "M21.29",
+      "node_key": "b5ff0d94-fd70-4f7e-92de-5e67baf71f1d",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.29_terminate-ends-escaped-descendants_b5ff0d94-fd70-4f7e-92de-5e67baf71f1d.md",
+      "sibling_order": 27,
+      "status": "Complete",
+      "title": "worker terminate also ends processes the harness started in their own session",
+      "touch_zones": [
+        "specy_road/worker_process.py",
+        "tests/test_worker_terminate_descendants.py",
+        "CHANGELOG.md",
+        "docs/orchestration-workers.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Pickup's registration commit (--local too) keeps its subject line and gains, after a blank line, a trailer `Review-policy: sha256:<hex> at <commit>` appended where do_next_task._finalize_pickup builds the message: the sha256 of json.dumps({roster, substitutions, policy of roadmap/orchestration.yaml; require_implementation_review_before_finish of roadmap/git-workflow.yaml}, sort_keys=True, separators=(',', ':'), default=str) as committed at the integration branch HEAD the claim is made on (a missing key is null, list order as in the file, no toolkit defaults, no local availability overlay); one helper in specy_road/review_policy_pin.py computes it for any ref; a policy file that is present but does not parse makes pickup exit 1 before any registry write",
+        "evaluate_gate reads the trailer of the newest commit reachable from the commit under review whose subject starts with `chore(rm-<codename>): register as in-progress`; when the digest at the policy_source ref differs and no valid acceptance matches, or the trailer or a policy file does not parse, it sets a GateResult field that `passed` reads (so mark-implementation-reviewed --yes refuses too): 'review policy changed on <ref> since <ID> was claimed (<commit12>): <one line per change: roster <id> added or removed with its entry, roster <id>.<property> a -> b for every changed property including public_key, substitutions changed, policy.<key> a -> b, require_implementation_review_before_finish a -> b>; a human accepts it with `specy-road review accept-policy <ID>` in a terminal, or re-claims the leaf'. finish-this-task checks the pin before review_required; a registration commit without the trailer is judged as today. Pin and acceptance are honour-system for rc4 (maintainer decision 2026-11-05; M22.5 is the rc5 guard)",
+        "`specy-road review accept-policy <ID>` runs only with stdin a TTY (otherwise exit 1, 'a human accepts a review policy change in a terminal; nothing was written'), prints the change lines, asks for the node id typed back, and writes work/reviews/<ID>/POLICY-ACCEPTED.yaml (node_id, pinned_sha256, accepted_sha256, user, at) checked against the new specy_road/schemas/policy-acceptance.schema.json on read; an invalid file is a gate problem, never an acceptance, and a later change needs a new acceptance",
+        "tests/test_review_policy_pin.py runs the CR1 sequence as a table: claim pins (trailer equals the digest at HEAD, subject unchanged); unchanged policy -> gate as today; a roster entry gains the reviewer role on the integration branch after the claim -> not passed with the roles line, and mark-implementation-reviewed --yes and finish-this-task exit 1 writing nothing; the review switch turned off after the claim -> finish exits 1 before any bookkeeping; accept-policy without a TTY writes nothing, with a (patched) TTY the gate passes; an acceptance that is malformed, schema-invalid, for another node or with a mismatched digest, a second edit after acceptance, and an unparsable trailer -> gate problem; a changed public_key is named; quoted and unquoted substitution dates hash equal; an unpinned claim and a normal review delegate flow are unaffected; tests/test_do_next_task_pickup.py still passes",
+        "agents-rules.md Review roles and the managed block's Review rule (each with its provenance comment): an executor never edits roadmap/orchestration.yaml, roadmap/git-workflow.yaml or the roster to get past the review gate, and never files a review under any model id but its own; docs/orchestration-review.md gains 'Review policy pinned at claim' (honour-system like READY; M22.5 is the broader steering guard); CHANGELOG [Unreleased] Fixed (security)",
+        "Estimated net line change (informational, not a gate): package about +135, tests about +250, docs about +20"
+      ],
+      "codename": "review-policy-pinned-at-claim",
+      "dependencies": [
+        "2f0e89a6-4b5f-4efd-9320-c0438d82ee5a",
+        "cec33876-599c-4516-abe7-3ec445eb8a2a",
+        "eedff108-5960-4cf3-9c3d-f5666291763f"
+      ],
+      "id": "M21.30",
+      "node_key": "aa063cac-70c3-41a9-8f3c-4c671184d333",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.30_review-policy-pinned-at-claim_aa063cac-70c3-41a9-8f3c-4c671184d333.md",
+      "sibling_order": 28,
+      "status": "Complete",
+      "title": "A leaf's review policy is pinned at claim: the gate and finish refuse a roster, policy or review-switch change made on the integration branch after it until a human accepts it",
+      "touch_zones": [
+        "specy_road/review_policy_pin.py",
+        "specy_road/bundled_scripts/registration_pickup_commit.py",
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/schemas/policy-acceptance.schema.json",
+        "tests/test_review_policy_pin.py",
+        "docs/orchestration-review.md",
+        "specy_road/templates/specyrd/agents-rules.md",
+        "specy_road/templates/specyrd/agents-md-block.md",
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "tests/test_do_next_task_pickup.py",
+        "tests/test_enforced_rules_pointers.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/review_policy_ref.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy_road/review_caller.py identifies the caller of the review record argparse handler only (not cmd_review_record, so review delegate and prompt --channel cli --run file through file_review as today whatever harness the coordinator runs in): a set SPECY_ROAD_WORKER_ID must resolve through worker_state.load_record (a bad id, missing or malformed record exits 1 with no traceback and nothing written) and gives that worker's model ahead of any inherited harness marker; else one environment marker per harness in one table (each confirmed against the harness versions of the §9 replay 2026-11-05 and listed in docs; an unconfirmed harness is left out) -> that harness; no marker, or two or more recognized markers -> unidentified",
+        "Before any write, lock or REJECTED file, the handler refuses (exit 1, nothing written) --model M when the caller is a worker whose model is not M, or a harness that is not M's roster entry harness (an entry with no harness or generic matches none): '<M> is a <harness> roster entry and this command runs under <caller>; file a review only under your own model id (AGENTS.md, Review roles); nothing was written'. An unidentified caller must pass --human-filed '<who and why>' (one non-empty, non-whitespace line, stored as the optional human_filed property before signing; review-record.schema.json gains it, not in required; read with getattr so file_review's Namespace needs no change), else exit 1 naming the flag; for a matching identified caller the flag is ignored with a stderr note and not stored",
+        "Maintainer decision 2026-11-05: evaluate_gate counts a record with human_filed only when its signature verifies against the roster entry's public_key or policy.count_human_filed_reviews (orchestration.schema.json and DEFAULT_POLICY, default false) is true on the integration branch; otherwise it is in ineligible with 'filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off'. The review record line in reviewer_preamble (role_prompt_rca.py) stays plain; the paste-channel PASTED_LINES add one sentence: a human filing from a terminal with no harness marker adds --human-filed '<who and why>'",
+        "tests/test_review_record_caller.py as a table: Cursor marker filing claude-opus-5-5 (claude-code entry) and gpt-6.1-sol (codex entry) -> exit 1, nothing written (CR1 r1, r3); worker composer-2.5 filing gpt-6.1-sol, or with an inherited Claude Code marker filing claude-opus-5-5 -> exit 1; invalid id, absent or malformed worker record -> exit 1, no traceback; Cursor and Claude Code markers together without the flag -> exit 1; Claude Code marker filing claude-opus-5-5 -> filed and counted, also with --human-filed (not stored); no marker and no flag, or an empty, whitespace or multiline attestation -> exit 1; with a valid one -> filed, ineligible by default, counted when signed or with the policy on; review delegate from a process with the Cursor marker files the codex reviewer's record and it counts; the rendered paste prompt shows the plain line and the human sentence; every exit-1 row leaves the review directory unchanged",
+        "docs/orchestration-review.md (who may file review record, --human-filed, the policy key, the paste flow) and CHANGELOG [Unreleased] Fixed (security). Out of scope: two models on one harness (M21.26 excludes READY authors; signed_reviews is the strong check) and a caller that forges a marker or worker record (cooperative, like READY)",
+        "Estimated net line change (informational, not a gate): package about +100, tests about +220, docs about +12"
+      ],
+      "codename": "review-record-files-only-as-the-caller",
+      "dependencies": [
+        "aa063cac-70c3-41a9-8f3c-4c671184d333"
+      ],
+      "id": "M21.31",
+      "node_key": "5e6b33e5-b2a5-4d7b-86ab-336efd7d2960",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.31_review-record-files-only-as-the-caller_5e6b33e5-b2a5-4d7b-86ab-336efd7d2960.md",
+      "sibling_order": 29,
+      "status": "Complete",
+      "title": "review record files only under the caller's own model: a filing from another harness or worker is refused, and a hand-filed record needs an attestation and counts only when signed or the policy allows it",
+      "touch_zones": [
+        "specy_road/review_caller.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_rejected.py",
+        "specy_road/review_gate.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "tests/test_review_record_caller.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "tests/conftest.py",
+        "specy_road/review_answer.py",
+        "tests/test_review_concurrent_writers.py",
+        "tests/test_review_record_write.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Maintainer decision 2026-11-05: the caller's identity is only default_agent_id() (SPECY_ROAD_AGENT_ID or the derived id); the positional id and --agent on `session end` only select the target and go through one check. A record is removed only when the target is the caller's own or has expired; for another agent's live record it exits 1, keeps the file and says 'session <id> is live until <expires> and is not yours (you are <me>); never end or override another agent's session (AGENTS.md, Shared checkouts): ask its owner, or wait for it to expire'; --force ends it only with stdin a TTY (otherwise exit 1, nothing removed); the other-user refusal and the unreadable-record refusal (kept, exit 1, no traceback) stay",
+        "`session end` with no id ends only the caller's own record: the 'your only live session' and 'only one on this worktree and branch' fallbacks are removed, and with no own record it says the record is under the id `session start` printed (export SPECY_ROAD_AGENT_ID=<id>), lists no other sessions and exits 0. The session guard's deny reason adds 'Do not end, edit or delete another session's record to get past this; ask its owner or a human.'",
+        "tests/test_session_end_others.py runs the CR3 sequence as a table: peer live (session start --agent peer) -> session end peer and session end --agent peer from another id each exit 1 with peer.yaml byte-identical; the guard's denial of git restore names the rule; session end with no own record leaves peer.yaml; an expired peer is removed; the caller's own id is ended; --force without a TTY is refused and with a (patched) TTY ends it. tests/test_session_presence.py fallback tests follow the new rule",
+        "agents-rules.md 'Shared checkouts' and the managed block's 'Shared checkout' rule (with provenance comments): never end, edit or delete another agent's session record or override its work; docs/orchestration.md Presence (the session end line and the retire paragraph); CHANGELOG [Unreleased] Fixed (security)",
+        "Estimated net line change (informational, not a gate): package about -10, tests about +120, docs about +6"
+      ],
+      "codename": "session-end-only-your-own",
+      "dependencies": [
+        "aa063cac-70c3-41a9-8f3c-4c671184d333"
+      ],
+      "id": "M21.32",
+      "node_key": "218a29f0-6309-4fa6-b767-1c8a74e17046",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.32_session-end-only-your-own_218a29f0-6309-4fa6-b767-1c8a74e17046.md",
+      "sibling_order": 30,
+      "status": "Complete",
+      "title": "session end ends only your own session: another agent's live record needs --force from a terminal, and the guard's refusal names the rule",
+      "touch_zones": [
+        "specy_road/bundled_scripts/session_cli.py",
+        "specy_road/session_presence.py",
+        "specy_road/tool_call_guard.py",
+        "tests/test_session_end_others.py",
+        "tests/test_session_presence.py",
+        "docs/orchestration.md",
+        "specy_road/templates/specyrd/agents-rules.md",
+        "specy_road/templates/specyrd/agents-md-block.md",
+        "CHANGELOG.md",
+        "tests/test_enforced_rules_pointers.py",
+        "suggested_prompts/bootstrap-agents-md.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specyrd-brainstorm.md's description and first body paragraph say: after reading this skill, make `specy-road brainstorm start` your next tool call, alone in its tool-call batch, with no parallel read or search (not roadmap-context.md, roadmap/, planning/ or anything else); after it returns, read the prompt file it names and continue; the 'not even in the same step' wording is gone and the description stays within 1024 characters",
+        "suggested_prompts/brainstorm-roadmap.md Phase 1 states the same rule",
+        "tests/test_brainstorm_skill_first_call.py renders the skill with specyrd init for claude-code, codex and cursor and, in each .agents/skills/specyrd-brainstorm/SKILL.md, asserts the sentence in the description and body, the old wording gone and the description at most 1024 characters; for claude-code it also asserts .claude/skills/specyrd-brainstorm/SKILL.md resolves to that file; no CLI enforcement in rc4; CHANGELOG [Unreleased] Changed",
+        "Estimated net line change (informational, not a gate): templates about +2, tests about +40, docs about +2"
+      ],
+      "codename": "brainstorm-start-is-the-first-call-alone",
+      "dependencies": [],
+      "id": "M21.33",
+      "node_key": "e9746b02-d2ba-406b-b477-ec1711b86247",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.33_brainstorm-start-is-the-first-call-alone_e9746b02-d2ba-406b-b477-ec1711b86247.md",
+      "sibling_order": 31,
+      "status": "Complete",
+      "title": "The brainstorm skill makes `specy-road brainstorm start` the first tool call, alone in its turn, in every harness's shipped copy",
+      "touch_zones": [
+        "specy_road/templates/specyrd/commands/specyrd-brainstorm.md",
+        "suggested_prompts/brainstorm-roadmap.md",
+        "tests/test_brainstorm_skill_first_call.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "CR2's prompt asks for a short 'Running the tests' README section with the command that runs the tests, a task the todo app supports; app, setup, harnesses and runs are unchanged",
+        "CR2's first pass item records git rev-list --all --reflog and git worktree list --porcelain before the session and again after it, judges the newly reachable commit objects (not timestamps) with git show --name-only, and expects exactly one new commit, touching README.md only, on the checkout's branch or on the branch of a worktree path absent from the before list; any other new commit or path fails; the second item (peer files untouched) and the AGENTS 'Shared checkouts' rule are unchanged",
+        "docs/context-regressions.yaml still has at most ten cases and passes tests/test_context_regressions.py (its schema changes only if the new item needs it)",
+        "Estimated net line change (informational, not a gate): docs about +4"
+      ],
+      "codename": "cr2-case-fits-the-todo-app",
+      "dependencies": [],
+      "id": "M21.34",
+      "node_key": "49318c9b-27ad-4cc9-a948-e01d2c01b921",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.34_cr2-case-fits-the-todo-app_49318c9b-27ad-4cc9-a948-e01d2c01b921.md",
+      "sibling_order": 32,
+      "status": "Complete",
+      "title": "Context regression CR2 asks for a README section the todo app supports, and passes a README-only commit on the agent's own worktree branch",
+      "touch_zones": [
+        "docs/context-regressions.yaml",
+        "tests/test_context_regressions.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Prompt: the reviewer prompt's last section (schema_lines, after the packet, immediately before the JSON schema) states the approve-notes rules operationally: one observation per line; every notes line of two words or more other than a heading, a bare acceptance result (`A1: pass` with no words after it), a `>` quote, fenced code or a table separator, and on an approve every findings entry, either matches a required_changes entry (verdict block) or carries on that same line 'not a defect because <reason>', the phrase outside backticks and the reason naming no defect; each clause split on '. ', '; ' or a conjunction (and, but, while) is checked on its own; a comma list is several observations, split into lines; evidence goes in commands_rerun. PROBE_RULES_LINES rule 4 keeps its first sentence (the one tests/test_review_record_rules.py asserts) and replaces the rest with a pointer to that section. The rule itself (clause_problem, _second_observation, note_problem) is unchanged and tests/test_review_record_rules.py passes unmodified",
+        "Repair turn: when review record refuses the filed answer, review delegate runs exactly one repair phase: `_attempts` once more, with the existing capacity-retry budget, given (full prompt plus the repair section, the repair section alone), so a resumed launch and every capacity retry carry the refusal and a non-resumable harness gets one fresh launch with the full prompt plus the repair section. The repair section carries the whole refusal text as review record printed it (every offending line, never truncated) in a fence longer than any backtick run in it, the notes rules section, and 'send the whole corrected JSON object'. A snapshot taken right before the repair launch is compared with one after it by the existing write check, model_check is recomputed from the repair attempt's own log span, and the launch keeps the same read-only restrictions. A parse or schema rerun request, a review failure (a write) and a chore reviewer get no repair turn",
+        "Run record: RUN-<model>.json lists both turns' attempts, the repair turn's marked `repair: true`, and keeps the first refusal text as `refusal`; a second refusal leaves the run incomplete, exit 1, with a reason naming both refusals. `review delegate --resume` sends the repair prompt pair instead of RESUME_PROMPT only when the stored record's state is `incomplete`, its commit is the one under review and its `refusal` is a string; otherwise (a complete run, no refusal, a non-string refusal, with no traceback) --resume is unchanged",
+        "Tests (tests/test_review_delegate_repair.py, fake reviewer harness with a per-turn answer list, each row checking the prompt the harness received): refused then valid -> REVIEW filed, one repair turn, the second prompt contains each offending line and 'not a defect because'; refused twice -> incomplete, both reasons; first answer files -> no repair turn; first answer writes a file -> review_failure, no second launch; repair turn writes a tracked file -> review_failure, nothing filed; repair turn reports another model -> model_mismatch on the filed record; repair launch hits a capacity error then answers -> the retry prompt still has each offending line; non-resumable harness -> one fresh launch with the refusal text; --resume after a stored refusal sends it on an incomplete run and RESUME_PROMPT on a complete one. docs/orchestration-reviewer-output.md (rerun request bullet) and CHANGELOG [Unreleased] Fixed. Out of scope: loosening the rule (maintainer decision 2026-11-06); prompt --channel cli --run (M18.16); the coordinator's own sr/tools addendum",
+        "Estimated net line change (informational, not a gate): package about +75, tests about +220, docs about +6"
+      ],
+      "codename": "refused-review-gets-one-repair-turn",
+      "dependencies": [],
+      "id": "M21.35",
+      "node_key": "ef56f4ea-a868-4a22-b5a4-f6bccf890779",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.35_refused-review-gets-one-repair-turn_ef56f4ea-a868-4a22-b5a4-f6bccf890779.md",
+      "sibling_order": 33,
+      "status": "Complete",
+      "title": "review delegate gives a refused reviewer answer one repair turn with the refusal text, and the reviewer prompt ends with the notes rules",
+      "touch_zones": [
+        "specy_road/review_delegate.py",
+        "specy_road/review_record_write.py",
+        "specy_road/review_record_rules.py",
+        "tests/review_delegate_helpers.py",
+        "tests/test_review_delegate_repair.py",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`_norm` treats page text and quote alike: after tags are stripped and entities unescaped it removes bracketed citation markers matching `\\[(?:\\d+|[a-z]|note \\d+|citation needed)\\]` case-insensitively ([43], [44][45][46], [a], [note 1], [citation needed]); maps each of U+2018, U+2019, U+201A, U+2032 to U+0027, each of U+201C, U+201D, U+201E, U+2033 to U+0022, each of U+2010, U+2011, U+2012, U+2013, U+2014, U+2015, U+2212 to U+002D, and each of U+00A0, U+202F, U+2009 to U+0020; deletes U+00AD, U+200B, U+200C, U+200D, U+2060 and U+FEFF; then collapses whitespace as today",
+        "Table test in tests/test_brainstorm_verify.py through check_source with a fake fetcher and `_is_off_host` stubbed as test_check_source_states does (no DNS, no network), each fold row matched in both directions (typographic page vs ASCII quote, and ASCII page vs typographic quote): the Wikipedia `restudying<sup>[43]</sup> while` and `[44][45][46]` markers plus [a], [note 1] and [citation needed]; one row per code point A1 maps; U+00AD and each zero-width code point A1 deletes, inside a word",
+        "A quote whose words differ from the page (children's files against children’s records), or a quote that is only `[43]`, stays not-found; existing verify tests pass; repo sources (quote_in_file) are unchanged",
+        "docs/brainstorming.md's verify paragraph says fetched pages are compared ignoring case, whitespace, tags, citation markers and quote, dash, space, soft-hyphen and zero-width variants, while repo sources stay whitespace-collapsed only; CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +50, docs about +1"
+      ],
+      "codename": "verify-normalizes-real-page-text",
+      "dependencies": [],
+      "id": "M21.36",
+      "node_key": "e08489cb-8a8e-497f-8a0e-79c5eb67f39d",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.36_verify-normalizes-real-page-text_e08489cb-8a8e-497f-8a0e-79c5eb67f39d.md",
+      "sibling_order": 34,
+      "status": "Complete",
+      "title": "brainstorm verify matches a quote across citation markers, typographic quotes and apostrophes, dashes, non-breaking spaces and soft hyphens",
+      "touch_zones": [
+        "specy_road/bundled_scripts/brainstorm_verify.py",
+        "tests/test_brainstorm_verify.py",
+        "docs/brainstorming.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Primitive: new specy_road/safe_write.py (check, mkdirs, write, copy, remove, prune_empty, open_lock, SafeWriteError(OSError)) walks with lstat from the owned root (resolved once; nothing above it inspected) and refuses a symlink at any ancestor below the root (dangling, in-repo and outward alike), a non-directory where a directory belongs, or a lexical '..' leaving the root. The final component is per operation: write/copy/open_lock absent or a regular file; mkdirs absent or a real directory; remove a regular file or a symlink unlinked as an entry, never followed; prune_empty only an lstat real directory. Messages use finish's irregular_destination sentence ('<path> is <kind>[ (to <readlink>)], not <expected>'). write/copy use an exclusive temp file in the verified parent and re-lstat destination and parent right before os.replace; open_lock uses O_NOFOLLOW, or where os.O_NOFOLLOW is absent lstat-refuses a final link then opens. managed_block.refused_link returns this refusal for any link; agent_ignores' managed blocks (.gitignore, Cursor ignore files) use a strict mode on the rule; resolves_outside stays only for agents_md_block, agent_guide_block, upgrade_templates and refresh_profiles. Skills-link rule, the one named exception to the ancestor rule (maintainer 2026-11-06): refresh_stubs and specyrd_skills write through safe_write with repo_root as the owned root, and the agent skills directory itself may be a symlink only when its raw os.readlink text is, byte for byte, `../.agents/skills` at .claude/skills or `../.claude/skills` at .agents/skills. The text is not normalised (specyrd_skills.skill_path's os.path.normpath of it goes); safe_write's lstat walk runs on the un-normalised join of the link's parent and that text, so a symlinked .agents or .claude above it is refused, and the final component must be a real directory by lstat. Any other link on the path, any other skills-link text (an in-repo alias such as ../tools/skills included), a chained or dangling skills link, or a skills link leaving the repo is refused. link_target() stays and gives the per-skill link target; only ensure_link's dynamic os.path.relpath target goes",
+        "Setup writers on the rule: init_project._copy_templates (a dangling destination link counts as present and is refused; a linked parent refused before mkdir), refresh_schemas, specyrd_init._save_manifest, export (reexport_roadmap_md and main's index write), digest (default output and a relative or in-checkout -o; '-' stays stdout; an explicit absolute -o outside the checkout stays today's write), generated_files (refused_generated_files refuses any link, in-repo included), pickup (do_next_task_register.regenerated_tracked_paths keeps tracked-only selection and writes each tracked name through safe_write.write; an untracked name is never created), upgrade_generated.regenerate, refresh_stubs (the file-write branch through safe_write from repo_root under the skills-link rule, no resolves_outside branch; the is_link_path branch keeps specyrd_skills.ensure_link; _prune refuses an orphan under a linked directory, removes a symlink orphan as an entry, and its empty-parent cleanup never lists or rmdirs a linked directory)",
+        "Upgrade invariant and CLI boundary: upgrade_plan.apply_plan checks every entry of plan.changes() by its target (the real path, before locate) with safe_write.check against the checkout before its first mutation; a failure names each path and applies nothing to the checkout or to the dry run's copy (declined entries are not changes and apply nothing for that entry, and the rest of the plan still applies; a stub or canonical skill file refused for a link is an error diagnostic, and refresh-stubs, upgrade and upgrade --dry-run all exit 1 for it (maintainer 2026-11-06); declined entries of agents_md_block, agent_guide_block, upgrade_templates and refresh_profiles stay report lines in this leaf). grok's reproduction (schemas/roadmap.schema.json linked to an outside file, real upgrade) leaves the outside bytes unchanged. upgrade.main (real and --dry-run), init project, refresh-schemas, specyrd init, refresh-stubs, export and digest print SafeWriteError as 'error: <message>' on stderr, exit 1, no traceback",
+        "archive_restore.restore_archive preflights every path it will touch, lexically from the owned root with no resolve(): record.chunk (the source it later unlinks), each target chunk _write_back will write, every planning stored and origin, and the manifest, ledger and archive planning directory; any refusal raises before the first write, move or unlink",
+        "Tests: tests/test_safe_write.py (each operation's allowed and refused final kinds, an existing real directory for mkdirs, a symlink orphan removed with its target intact, FIFO destination, non-directory ancestor, '..' out, a link swapped in right before replace, the message shape) and tests/test_setup_writers_refuse_links.py, one row per entry point (init with and without --force incl. .gitignore linked to an in-repo file; refresh_schemas; upgrade real and --dry-run, nothing written to the copy; manifest; export; digest default and relative -o; pickup with neither and with exactly one generated file tracked; refresh_stubs write with skill links still created; upgrade --prune with an outside orphan and with the orphan the only entry under a linked directory; archive restore with chunk ../../outside.json, a symlinked roadmap/phases, a linked origin or stored, and a two-move record whose second move is unsafe) -> refused naming the path, exit 1, no traceback, outside and original bytes and existence unchanged; tests/test_writers_refuse_links_out.py generated-file link_in rows now refused. tests/test_m13_7_notices.py keeps both in-repo skills-link layouts writing; refusal rows cover a stub under a linked parent other than the skills directory, a chained, dangling and outward skills link; tests/test_prerelease_files.py and tests/test_upgrade_plan_parity.py assert exit 1 for an outward stub or canonical skill link, real and dry run alike. docs/install-and-usage.md (any symlink on the path is refused, naming the skills-link exception and which declined entries stay report lines; upgrade exits non-zero on a refusal of a generated, stub or canonical skill file even when validate passes) and CHANGELOG [Unreleased] Fixed (in-repo links at generated files now refused)",
+        "Estimated net line change (informational, not a gate): package about +200, tests about +340, docs about +8",
+        "The skills-link change is intentional: both allowed values work through specyrd init, refresh-stubs and upgrade, including upgrade --dry-run's mirror (upgrade_plan Mirror._ensure); a formerly accepted in-repo alias (.claude/skills -> ../tools/skills) is refused with a message naming the two allowed values; CHANGELOG [Unreleased] and docs/install-and-usage.md tell an adopter to replace such a link with one of the two values or a real directory",
+        "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node"
+      ],
+      "codename": "safe-write-rule-setup-writers",
+      "dependencies": [],
+      "id": "M21.37",
+      "node_key": "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.37_safe-write-rule-setup-writers_3e6996c7-2e6f-477d-9c9f-fc8e33a2e313.md",
+      "sibling_order": 35,
+      "status": "Not Started",
+      "title": "One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout",
+      "touch_zones": [
+        "specy_road/safe_write.py",
+        "specy_road/managed_block.py",
+        "specy_road/init_project.py",
+        "specy_road/specyrd_init.py",
+        "specy_road/generated_files.py",
+        "specy_road/archive_restore.py",
+        "specy_road/bundled_scripts/refresh_schemas.py",
+        "specy_road/bundled_scripts/upgrade_plan.py",
+        "specy_road/bundled_scripts/upgrade_generated.py",
+        "specy_road/bundled_scripts/export_roadmap_md.py",
+        "specy_road/bundled_scripts/digest_cli.py",
+        "specy_road/bundled_scripts/do_next_task_register.py",
+        "specy_road/bundled_scripts/refresh_stubs.py",
+        "tests/test_safe_write.py",
+        "tests/test_setup_writers_refuse_links.py",
+        "tests/test_writers_refuse_links_out.py",
+        "tests/test_upgrade.py",
+        "docs/install-and-usage.md",
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/agent_ignores.py",
+        "specy_road/specyrd_skills.py",
+        "tests/test_prerelease_files.py",
+        "tests/test_m13_7_notices.py",
+        "tests/test_upgrade_plan_parity.py",
+        "specy_road/bundled_scripts/refresh_stubs_report.py",
+        "specy_road/specyrd_hooks.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Lock: review_run_lock (signature unchanged, owned root reviews.parents[2], the project directory holding work/) makes the hand-off directory with safe_write.mkdirs and opens .review-run.lock with safe_write.open_lock; a symlink at work, work/reviews, <node> or the lock name (dangling or in-repo included) refuses before any filing check. Every caller translates SafeWriteError at its CLI boundary (review_cli for review record and accept-policy, role_prompt for prompt --run, mark_implementation_reviewed, review_delegate): 'error: <message>' on stderr naming the path, exit 1, no traceback",
+        "Writers through safe_write from that owned root, refusing (not replacing) a final link: cmd_accept_policy (POLICY-ACCEPTED.yaml), write_human_approval (REVIEW-human.md), write_rejected (checked before any mkdir), write_review and archive_review (checked before mkdir and before the case-variant loop, which unlinks only an lstat regular file or symlink entry; a dangling link at the name refused), review_delegate._prompt_file (prompt, -resume, -repair-full, -repair: refused before any launch, --resume with a stored refusal included), ensure_packet, and role_prompt's prompt file when -o is omitted or inside the project (refused before launch; an explicit -o outside the project stays today's write). review record preflights the live REVIEW-<model>.md and the history/ destination before writing the live record or clearing REJECTED-<model>.md. refused_link is removed if no caller remains",
+        "Tripwire: Snapshot keeps the owned root and Snapshot.restore walks work and work/reviews with lstat from it before any post-run traversal; a linked ancestor makes the run a review_failure without reading, deleting or writing through it. replace_file and append_log refuse a symlink at any ancestor from the owned root; below a verified root, replace_file still replaces a final link and real_dirs still removes reviewer-planted links, reported as a review failure as today",
+        "Tests: tests/test_review_writers_refuse_links.py: the lock refusal parametrized over the five callers (delegate, prompt --run, review record, accept-policy, mark-implementation-reviewed) x (dangling lock link out, lock link in-repo, <node>, work/reviews and work links) asserting the path on stderr and no traceback; one row per writer (review record success path, archive_review, write_review with <node> linked to an outside dir holding review-x.md, accept-policy, human approval, REJECTED marker, each delegate prompt name incl. a refused-then-repair run and --resume, prompt --run's default file, ensure_packet with a linked <node> and no packet); linked history/ with an existing live record and marker -> both byte-identical, no new approval; a fake reviewer replacing work/reviews after launch with a link to an outside dir holding records and links -> outside unchanged, review_failure, no review counts. Each: outside bytes and existence unchanged, nothing launched or filed. tests/test_writers_refuse_links_out.py rejected and packet rows follow; tests/test_review_concurrent_writers.py passes. docs/orchestration-reviewer-output.md symlink paragraph and CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +65, tests about +260, docs about +4"
+      ],
+      "codename": "review-writers-refuse-links",
+      "dependencies": [
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313",
+        "f4abbcaf-6a04-44f7-a505-8b0694560f41",
+        "f6a968f0-f084-49e0-b5f1-c8132d45ea7f",
+        "d340dc53-ba74-45b4-a5c4-9f778862e8f0"
+      ],
+      "id": "M21.38",
+      "node_key": "992a07fe-018e-4ff0-adc5-1675c130adb6",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.38_review-writers-refuse-links_992a07fe-018e-4ff0-adc5-1675c130adb6.md",
+      "sibling_order": 36,
+      "status": "Not Started",
+      "title": "Review writers and the review lock refuse any symlink on the path from the project root",
+      "touch_zones": [
+        "specy_road/review_lock.py",
+        "specy_road/review_policy_pin.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/review_rejected.py",
+        "specy_road/review_files.py",
+        "specy_road/review_delegate.py",
+        "specy_road/review_delegate_packet.py",
+        "specy_road/review_write_check.py",
+        "specy_road/managed_block.py",
+        "tests/test_review_writers_refuse_links.py",
+        "tests/test_writers_refuse_links_out.py",
+        "tests/test_review_concurrent_writers.py",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Publish and land: GUI Publish refuses (HTTP 400, nothing written, HEAD and index unchanged, in-repo target bytes unchanged) when roadmap.md or roadmap-context.md is any symlink, in-repo included, with irregular_destination's sentence ('roadmap.md is a symlink (to payload.md), not a regular file'); finish_land_deterministic.resolve_deterministic_paths uses the same check and writes both files through safe_write, so a caller that skips finish's preflight still cannot write through a link",
+        "Finish reviews base: write_destinations names the untracked-summary copy from the owning main checkout's project root (work/reviews/<node>/<summary>) so irregular_destination, now a thin wrapper over safe_write's walk with its message kept (tests/test_finish_config_preflight.py passes), inspects work and work/reviews too; _keep_untracked_summary copies with safe_write; a linked work/reviews (main checkout or linked worktree), <node> or work refuses finish before any bookkeeping write",
+        "Cache dir, pickup hint, brainstorm lock: history_cache.ensure_cache_dir refuses a linked .specyrd or .specyrd/cache (root = cache_dir.parents[1]) and writes .gitignore through safe_write (search_index and context_notice_cache inherit it through their OSError handling); on_complete_pickup tests the marker with lstat, so any symlink there (live or dangling) is refused rather than read as already shown, and writes it through safe_write (a refusal prints one warning line, pickup exits 0, the link target unchanged); brainstorm_session.session_lock opens with safe_write.open_lock and re-raises SafeWriteError as BrainstormError with the same message, so its existing callers report it with no traceback",
+        "Tests: tests/test_ops_writers_refuse_links.py rows per entry point (Publish in-repo link and dangling roadmap-context.md; resolve_deterministic_paths called directly with an in-repo and an outward link; finish with an untracked summary and work/reviews linked out from the main checkout and from a linked worktree, <node> link, work link; pickup with .specyrd/cache linked out, .specyrd linked, a dangling marker link and a marker linked to an outside regular file; brainstorm add-idea with the lock name linked -> error line, exit 1, no traceback) -> refused naming the path, target bytes and existence unchanged. docs/dev-workflow.md finish paragraph and CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +35, tests about +185, docs about +3",
+        "history_cache.save_cache and ensure_cache_dir write .specyrd/cache, its .gitignore and roadmap-history.json through safe_write from the project root: with .specyrd/cache linked out of the repo, or its .gitignore a dangling link, nothing is written outside the repo. The cache stays optional: a refused cache path prints one warning naming the path and digest carries on, exit 0. Tests add a final-link row and a linked-folder row"
+      ],
+      "codename": "ops-writers-refuse-links",
+      "dependencies": [
+        "3e6996c7-2e6f-477d-9c9f-fc8e33a2e313"
+      ],
+      "id": "M21.39",
+      "node_key": "f6a94a57-91ff-449b-997e-af12dedd41ee",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.39_ops-writers-refuse-links_f6a94a57-91ff-449b-997e-af12dedd41ee.md",
+      "sibling_order": 37,
+      "status": "Not Started",
+      "title": "Publish, finish's land and reviews copy, and the pickup hint refuse any symlink on the path",
+      "touch_zones": [
+        "specy_road/pm_publish.py",
+        "specy_road/finish_land_deterministic.py",
+        "specy_road/finish_bookkeeping_undo.py",
+        "specy_road/finish_work_artifacts.py",
+        "specy_road/history_cache.py",
+        "specy_road/on_complete_pickup.py",
+        "specy_road/bundled_scripts/brainstorm_session.py",
+        "tests/test_ops_writers_refuse_links.py",
+        "tests/test_pm_publish.py",
+        "tests/test_finish_config_preflight.py",
+        "docs/dev-workflow.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "ignore_report.scratch_git_env drops every environment variable whose name starts with GIT_ (the _REPO_ENV denylist removed); for the scratch repository it then sets GIT_CONFIG_NOSYSTEM=1 and GIT_CONFIG_GLOBAL to an empty file in the scratch temp, so neither the caller's environment nor their default global, XDG or system git config reaches it; scratch_environ installs that isolated environment for the whole dry run, validate included. regenerate's ls-files in the caller's checkout uses the prefix strip of the caller's environment only (their own config, e.g. safe.directory, still applies; GIT_CEILING_DIRECTORIES no longer hides .git)",
+        "upgrade's git calls (Mirror git init, upgrade.py add and commit, regenerate's ls-files) go through git_subprocess.run, which gains env= (None keeps today's inherit) and keeps its 60 s default timeout; scratch git init uses --template=<an empty directory in the scratch temp> and init, add and commit pass -c core.hooksPath=<an empty scratch directory>, so no hook runs. A timeout or non-zero exit of scratch init, add or commit prints 'error: git <command> failed in the temporary copy (<reason>)', returns 2, and neither applies the plan to the copy nor validates; ls-files exit 1 means untracked, any other exit or a timeout aborts the same way before a generated file is written",
+        "Tests in tests/test_upgrade_preview.py: GIT_CONFIG_COUNT injecting core.fsmonitor, filter.<x>.clean with core.attributesFile, or core.hooksPath with a post-commit hook -> no marker, hook not run, the caller repo's HEAD, index and refs unchanged; HOME and XDG_CONFIG_HOME at a directory whose git config sets core.fsmonitor and filter.<x>.clean -> no marker; the scratch repository has no template hooks; GIT_CEILING_DIRECTORIES above the checkout's .git with a drifted tracked roadmap.md -> still regenerated as tracked; the five-name parametrized test passes; timeout and non-zero exit stubbed at the git_subprocess.run boundary for init, add, commit and ls-files (exit 128), no sleep -> error, exit 2, nothing applied or validated. tests/test_git_subprocess.py covers env=. docs/install-and-usage.md dry-run sentence (every GIT_ variable dropped, no global or system config in the copy) and CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +35, tests about +130, docs about +3"
+      ],
+      "codename": "upgrade-scratch-git-env-sterile",
+      "dependencies": [],
+      "id": "M21.40",
+      "node_key": "74c3d924-fc2e-4170-a786-caed84beca86",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.40_upgrade-scratch-git-env-sterile_74c3d924-fc2e-4170-a786-caed84beca86.md",
+      "sibling_order": 38,
+      "status": "Complete",
+      "title": "upgrade's scratch git drops every GIT_ variable, runs no hook, and times out",
+      "touch_zones": [
+        "specy_road/ignore_report.py",
+        "specy_road/git_subprocess.py",
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/bundled_scripts/upgrade_plan.py",
+        "specy_road/bundled_scripts/upgrade_generated.py",
+        "tests/test_upgrade_preview.py",
+        "tests/test_git_subprocess.py",
+        "CHANGELOG.md",
+        "docs/install-and-usage.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "NOTES_RULES_LINES (review_record_rules.py, also the repair-turn prompt) names every clause break the checker uses: '. ', '! ', '? ', '; ' and all eight conjunctions (and, but, while, whereas, although, though, yet, plus), keeping the comma-list instruction; the rule code (clause_problem, _second_observation, note_problem) and the existing tests are unchanged (maintainer decision 2026-11-06)",
+        "New tests in tests/test_review_record_rules.py use public names only (no import, read or patch of _CLAUSE_END, _PARTS or any private name): the public prompt's clause line contains each separator and each conjunction, and one public note_problem / clause_problem row per separator and per conjunction joins a reasoned clause to an unreasoned one -> refused, and with its own reason -> accepted; one row is 'Ship it! The suite passed, not a defect because ...'",
+        "rework_rca.py's module docstring names review_deferral.rca_deferral instead of deferral_in_effect; tests/test_brainstorm_verify.py's two M21.36 tests (test_check_source_matches_page_text_variants_both_ways, test_check_source_still_needs_the_same_words) patch socket.getaddrinfo (a public address for example.com, a private one otherwise) instead of the private _is_off_host and still call check_source with the fetcher argument; scripts/check_test_private_imports.py's baseline does not grow. CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +3, tests about +35, docs about +1"
+      ],
+      "codename": "notes-rules-name-every-clause-break",
+      "dependencies": [],
+      "id": "M21.41",
+      "node_key": "1a086436-279e-481f-bbd1-e222b218c1e6",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.41_notes-rules-name-every-clause-break_1a086436-279e-481f-bbd1-e222b218c1e6.md",
+      "sibling_order": 39,
+      "status": "Complete",
+      "title": "The notes rules name every clause break the checker uses; rework docstring and verify tests fixed",
+      "touch_zones": [
+        "specy_road/review_record_rules.py",
+        "specy_road/rework_rca.py",
+        "tests/test_review_record_rules.py",
+        "tests/test_brainstorm_verify.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "digest_cli.cmd_digest checks for the roadmap manifest first, the way export_roadmap_md.main does (discover_manifest_path); with no roadmap/manifest.json, digest, digest --check and digest -o - print the one line 'no roadmap manifest: expected <root>/roadmap/manifest.json' on stderr and exit 1, with no traceback and nothing written: the same line and exit code as export --check (sandbox rehearsal 2026-11-06, F3)",
+        "render_digest and the message text are unchanged; existing digest tests pass",
+        "Tests in tests/test_digest.py: digest --check, plain digest and digest -o - in a repo with no manifest -> stderr is that one line with no 'Traceback', exit 1, no roadmap-context.md created. CHANGELOG [Unreleased] Fixed",
+        "Estimated net line change (informational, not a gate): package about +5, tests about +20, docs about +1"
+      ],
+      "codename": "digest-check-no-manifest-clean-error",
+      "dependencies": [],
+      "id": "M21.43",
+      "node_key": "dc4d8f5d-b3cc-4224-b456-4991ab6b3909",
+      "parent_id": "M21",
+      "planning_dir": "planning/M21.43_digest-check-no-manifest-clean-error_dc4d8f5d-b3cc-4224-b456-4991ab6b3909.md",
+      "sibling_order": 41,
+      "status": "Complete",
+      "title": "digest refuses cleanly when the roadmap manifest is missing, like export --check",
+      "touch_zones": [
+        "specy_road/bundled_scripts/digest_cli.py",
+        "tests/test_digest.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    }
+  ]
+}

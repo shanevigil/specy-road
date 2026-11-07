@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -33,6 +34,35 @@ def _git(repo: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
+def _git_out(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout
+
+
+def _add_bare_remote(repo: Path) -> Path:
+    bare = repo.parent / "remote.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+    _git(repo, "remote", "add", "origin", str(bare))
+    _git(repo, "push", "-u", "origin", "HEAD")
+    return bare
+
+
+def _state(repo: Path) -> tuple[str, str, bytes | None, bytes | None]:
+    """HEAD, the index, and both generated files' bytes (``None`` when absent)."""
+
+    def _bytes(name: str) -> bytes | None:
+        p = repo / name
+        return p.read_bytes() if p.is_file() else None
+
+    return (
+        _git_out(repo, "rev-parse", "HEAD"),
+        _git_out(repo, "ls-files", "--stage"),
+        _bytes("roadmap.md"),
+        _bytes("roadmap-context.md"),
+    )
+
+
 @pytest.fixture()
 def tmp_git_repo(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
@@ -48,6 +78,7 @@ def tmp_git_repo(tmp_path: Path) -> Path:
 
 
 def test_classify_clean_repo(tmp_git_repo: Path) -> None:
+    _add_bare_remote(tmp_git_repo)
     st = classify_publish_status(tmp_git_repo)
     assert st.blocked is False
     assert st.scope_dirty is False
@@ -60,6 +91,7 @@ def test_classify_scope_dirty(tmp_git_repo: Path) -> None:
     (d / "manifest.json").write_text("{}\n", encoding="utf-8")
     _git(tmp_git_repo, "add", "roadmap/manifest.json")
     _git(tmp_git_repo, "commit", "-m", "add roadmap")
+    _add_bare_remote(tmp_git_repo)
 
     (d / "chunk.json").write_text("[]\n", encoding="utf-8")
     st = classify_publish_status(tmp_git_repo)
@@ -88,43 +120,36 @@ def test_classify_blocked_staged_out_of_scope(tmp_git_repo: Path) -> None:
     assert st.blocked_reason == "staged_out_of_scope"
 
 
-def test_publish_roadmap_commits_and_push_fails_without_remote(
-    tmp_git_repo: Path,
+@pytest.mark.parametrize("remote", ["none", "push_remote_gone"])
+def test_publish_roadmap_refuses_without_remote(
+    tmp_git_repo: Path, remote: str
 ) -> None:
     (tmp_git_repo / "roadmap").mkdir()
     (tmp_git_repo / "roadmap" / "manifest.json").write_text("{}\n", encoding="utf-8")
     _git(tmp_git_repo, "add", "roadmap/manifest.json")
     _git(tmp_git_repo, "commit", "-m", "r")
+    if remote == "push_remote_gone":
+        _add_bare_remote(tmp_git_repo)
+        _git(tmp_git_repo, "config", "remote.pushDefault", "gone")
 
     (tmp_git_repo / "roadmap" / "chunk.json").write_text("[]\n", encoding="utf-8")
-    # The digest is generated and committed like roadmap.md (`specy-road digest`).
     (tmp_git_repo / "roadmap-context.md").write_text("# ctx\n", encoding="utf-8")
-    with pytest.raises(RuntimeError, match="upstream|push"):
+    _git(tmp_git_repo, "add", "roadmap-context.md")
+    before = _state(tmp_git_repo)
+    st = classify_publish_status(tmp_git_repo)
+    assert st.blocked is True
+    assert st.blocked_reason == "no_remote"
+    assert st.detail and "git remote add" in st.detail
+    with pytest.raises(ValueError, match="No git remote is configured"):
         publish_roadmap(tmp_git_repo, "roadmap: test publish")
-    # Commit runs before push; push fails without remote/upstream.
-    # publish_roadmap raises RuntimeError on push failure - commit is NOT reverted
-    r = subprocess.run(
-        ["git", "log", "-1", "--pretty=%s"],
-        cwd=tmp_git_repo,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert r.stdout.strip() == "roadmap: test publish"
-    shown = subprocess.run(
-        ["git", "show", "--name-only", "--pretty="],
-        cwd=tmp_git_repo,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    assert "roadmap-context.md" in shown.stdout.split()
+    assert _state(tmp_git_repo) == before
 
 
 def test_publish_status_dict_api(tmp_git_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(tmp_git_repo))
     from specy_road.gui_app import create_app
 
+    _add_bare_remote(tmp_git_repo)
     client = TestClient(create_app())
     r = client.get("/api/publish/status")
     assert r.status_code == 200
@@ -180,3 +205,113 @@ def test_api_publish_validation(
 
 def test_publish_pathspecs_cover_manifest() -> None:
     assert "roadmap/" in PUBLISH_PATHSPECS
+
+
+@pytest.fixture()
+def dogfood_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """The dogfood fixture committed in a git repo with a bare remote, served by the GUI."""
+    repo = tmp_path / "dogfood"
+    shutil.copytree(DOGFOOD, repo)
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "t@example.com")
+    _git(repo, "config", "user.name", "Test")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "init")
+    _add_bare_remote(repo)
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(repo))
+    return repo
+
+
+def _post_publish(repo: Path, message: str = "roadmap: publish"):
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    fp = client.get("/api/roadmap/fingerprint").json()["fingerprint"]
+    return client.post(
+        "/api/publish",
+        headers={"X-PM-Gui-Fingerprint": str(fp)},
+        json={"message": message},
+    )
+
+
+def _edit_m0(repo: Path, old: str, new: str) -> None:
+    chunk = repo / "roadmap" / "phases" / "M0.json"
+    text = chunk.read_text(encoding="utf-8")
+    assert old in text
+    chunk.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def test_publish_regenerates_generated_files_and_pushes(dogfood_repo: Path) -> None:
+    _edit_m0(dogfood_repo, '"title": "Foundation — architecture and contracts"',
+             '"title": "Foundation — renamed for publish"')
+    r = _post_publish(dogfood_repo)
+    assert r.status_code == 200, r.text
+    assert set(r.json()) == {"ok", "commit_sha", "pushed", "branch"}
+    clone = dogfood_repo.parent / "clone"
+    subprocess.run(
+        ["git", "clone", str(dogfood_repo.parent / "remote.git"), str(clone)],
+        check=True, capture_output=True,
+    )
+    assert "renamed for publish" in (clone / "roadmap.md").read_text(encoding="utf-8")
+    for command in ("export", "digest"):
+        done = subprocess.run(
+            [sys.executable, "-m", "specy_road.cli", command, "--check",
+             "--repo-root", str(clone)],
+            capture_output=True, text=True, check=False,
+        )
+        assert done.returncode == 0, (command, done.stdout, done.stderr)
+
+
+def _break_not_json(repo: Path) -> None:
+    (repo / "roadmap" / "phases" / "M1.json").write_text("{ not json", encoding="utf-8")
+
+
+def _break_missing_chunk(repo: Path) -> None:
+    (repo / "roadmap" / "phases" / "M1.json").unlink()
+
+
+def _break_unknown_dependency(repo: Path) -> None:
+    _edit_m0(repo, '"dependencies": [],\n      "execution_milestone": "Mixed"',
+             '"dependencies": ["M9.99"],\n      "execution_milestone": "Mixed"')
+
+
+@pytest.mark.parametrize(
+    ("breaker", "cause"),
+    [
+        (_break_not_json, "M1.json"),
+        (_break_missing_chunk, "M1.json"),
+        (_break_unknown_dependency, "M9.99"),
+    ],
+)
+def test_publish_refuses_invalid_graph(dogfood_repo: Path, breaker, cause: str) -> None:
+    breaker(dogfood_repo)
+    before = _state(dogfood_repo)
+    r = _post_publish(dogfood_repo)
+    assert r.status_code == 400, r.text
+    assert cause in r.json()["detail"]
+    assert _state(dogfood_repo) == before
+
+
+@pytest.mark.parametrize("outside_exists", [False, True])
+def test_publish_refuses_generated_link_out(
+    dogfood_repo: Path, outside_exists: bool
+) -> None:
+    outside = dogfood_repo.parent / "outside.md"
+    if outside_exists:
+        outside.write_text("someone else's file\n", encoding="utf-8")
+    ctx = dogfood_repo / "roadmap-context.md"
+    ctx.unlink()
+    ctx.symlink_to(outside)
+    _edit_m0(dogfood_repo, '"title": "Foundation — architecture and contracts"',
+             '"title": "Foundation — renamed for publish"')
+    before = _state(dogfood_repo)
+    r = _post_publish(dogfood_repo)
+    assert r.status_code == 400, r.text
+    assert "roadmap-context.md" in r.json()["detail"]
+    assert _git_out(dogfood_repo, "rev-parse", "HEAD") == before[0]
+    assert _git_out(dogfood_repo, "ls-files", "--stage") == before[1]
+    assert (dogfood_repo / "roadmap.md").read_bytes() == before[2]
+    if outside_exists:
+        assert outside.read_bytes() == b"someone else's file\n"
+    else:
+        assert not outside.exists()

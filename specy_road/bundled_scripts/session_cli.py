@@ -2,11 +2,11 @@
 """CLI for `specy-road session start|touch|end|list|check`.
 
 An agent announces itself before its first edit (``start``), renews on long
-work (``touch``), and withdraws when done (``end``); ``end <id>`` retires a
-record the same user left behind (a closed terminal's). ``end`` with no id,
-when the derived id has no record (a harness that runs each command in a new
-POSIX session), ends this user's only live session, or the only one on this
-worktree and branch when several are live. ``list`` is what the
+work (``touch``), and withdraws when done (``end``). ``end`` removes only the
+caller's own record (``SPECY_ROAD_AGENT_ID``, else the derived id) or an
+expired one; ``<id>`` and ``--agent`` pick the target, never the caller.
+Another agent's live record is ended only with ``--force`` from a terminal
+(stdin a TTY). ``list`` is what the
 others read; ``handoff status`` shows the same. ``check`` is the commit guard:
 exit 1 when the staged paths (or ``--path`` ones) overlap another live
 session's, so a pre-commit hook can refuse a commit that would land on
@@ -30,7 +30,6 @@ from specy_road.session_presence import (
     env_agent_id,
     list_sessions,
     load_session,
-    own_live_sessions,
     own_session_here,
     session_path,
     start_session,
@@ -77,58 +76,36 @@ def cmd_start(ns: argparse.Namespace) -> int:
 
 
 def cmd_end(ns: argparse.Namespace) -> int:
+    """Remove the target's record when it is the caller's own or has expired; another agent's live one needs ``--force`` from a terminal."""
     root = resolve_repo_root(ns)
-    if ns.session_id:
-        return _retire(root, ns.session_id)
-    agent = _agent(ns)
-    if end_session(root, agent):
-        print(f"session {agent}: ended")
-        return 0
-    if ns.agent or env_agent_id():
-        print(f"session {agent}: no record")
-        return 0
-    return _end_own(root, agent)
-
-
-def _end_own(root: Path, derived: str) -> int:
-    """The derived id has no record (``start`` ran in another POSIX session): end this user's only live one."""
-    mine = own_live_sessions(root)
-    if not mine:
-        print(f"session {derived}: no record")
-        return 0
-    if len(mine) == 1:
-        end_session(root, mine[0].agent)
-        print(f"ended your only live session {mine[0].agent} here (this shell's id {derived} has no record)")
-        return 0
-    here = own_session_here(root, worktree=Path.cwd())
-    if here:
-        end_session(root, here.agent)
-        print(f"ended {here.agent}: the only live session for this worktree and branch "
-              f"(this shell's id {derived} has no record)")
-        return 0
-    print(f"error: no record for {derived}, and you have {len(mine)} live sessions here; "
-          "end one with `specy-road session end <id>`:", file=sys.stderr)
-    for s in mine:
-        print(f"  {s.agent:<28} {s.branch or '-':<32} paths: {', '.join(s.paths) or '-'}", file=sys.stderr)
-    return 1
-
-
-def _retire(root: Path, agent: str) -> int:
-    """``session end <id>``: remove another session's record, when the same user started it (a dead terminal's)."""
+    me = default_agent_id()
+    agent = ns.session_id or ns.agent or me   # the target; the caller is always ``me``
     try:
         path = session_path(root, agent)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     if not path.is_file():
-        print(f"session {agent}: no record")
+        hint = "" if agent != me else ("; your record is under the id `session start` printed "
+                                       "(export SPECY_ROAD_AGENT_ID=<id>)")
+        print(f"session {agent}: no record{hint}")
         return 0
-    s = load_session(path)
-    if s is None or s.user != current_user():
-        owner = f"user {s.user!r}" if s and s.user else "an unrecorded user"
-        print(f"error: session {agent} was started by {owner}, not {current_user()!r}; only its owner may end it "
-              f"(`specy-road session list` shows its branch and worktree)", file=sys.stderr)
-        return 1
+    if agent != me:
+        s = load_session(path)
+        if s is None or s.user != current_user():
+            owner = f"user {s.user!r}" if s and s.user else "an unrecorded user"
+            print(f"error: session {agent} was started by {owner}, not {current_user()!r}; only its owner may end it "
+                  f"(`specy-road session list` shows its branch and worktree)", file=sys.stderr)
+            return 1
+        if s.is_live() and not ns.force:
+            print(f"error: session {agent} is live until {s.expires} and is not yours (you are {me}); never end or "
+                  "override another agent's session (AGENTS.md, Shared checkouts): ask its owner, or wait for it "
+                  "to expire", file=sys.stderr)
+            return 1
+        if s.is_live() and not sys.stdin.isatty():
+            print("error: a human ends another agent's live session from a terminal; nothing was removed",
+                  file=sys.stderr)
+            return 1
     end_session(root, agent)
     print(f"session {agent}: ended")
     return 0
@@ -219,10 +196,12 @@ def build_parser() -> argparse.ArgumentParser:
         common(sp)
         sp.set_defaults(func=cmd_start)
 
-    sp = ssub.add_parser("end", help="Remove this session's record, or <id>'s when the same user started it")
+    sp = ssub.add_parser("end", help="Remove this session's record, or an expired <id>'s; never another agent's live one")
     sp.add_argument("session_id", nargs="?", metavar="ID",
-                    help="Retire this session instead (one of yours that is no longer running, e.g. a closed "
-                         "terminal's); refused when another user started it")
+                    help="End this record instead (or pass --agent): yours, or an expired one the same user "
+                         "started; another agent's live record is refused")
+    sp.add_argument("--force", action="store_true",
+                    help="A human at a terminal (stdin a TTY) ends another agent's live record of the same user")
     common(sp)
     sp.set_defaults(func=cmd_end)
 

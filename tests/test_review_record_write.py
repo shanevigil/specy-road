@@ -103,23 +103,28 @@ def test_the_reviewer_process_writes_no_bytecode_or_pytest_cache() -> None:
 
 # --- A3: missing or malformed output is a rerun request (end to end; the per-row table is test_review_answer) --------
 
-NOT_ONE = "is not one complete JSON object"
+UNFINISHED = "the final message ends inside an unfinished JSON object"
+SCHEMA = "does not match the review output schema"
 CUT = "is not one JSON object (a cut-off or stray line)"
 
 
 @pytest.mark.parametrize("raw,why", [
-    ('{"verdict": "approve", "commit": ', NOT_ONE),
-    ('{"verdict": "approve"}', "does not match the review output schema"),
-    ("Verdict:\nVERDICT", NOT_ONE),                       # prose before the object
-    ("```json\nVERDICT\n```", NOT_ONE),                  # a fenced object
-    ("VERDICT\n{}", NOT_ONE),                             # two objects
-    ("[\nVERDICT\n]", NOT_ONE),                          # inside an array
-    ('{"wrapper": "draft", "review":\nVERDICT', NOT_ONE),  # nested in an unterminated outer object
+    ('{"verdict": "approve", "commit": ', UNFINISHED),
+    ('{"verdict": "approve"}', SCHEMA),
+    ("Verdict:\nVERDICT", None),                          # prose before the object: the object is filed (M21.25)
+    ("```json\nVERDICT\n```", "the final message does not end with a JSON object"),   # a fenced object
+    ("VERDICT\n{}", SCHEMA),                              # two objects: the last is the answer
+    ("[\nVERDICT\n]", "the final message holds no JSON object"),                      # inside an array
+    ('{"wrapper": "draft", "review":\nVERDICT', UNFINISHED),  # nested in an unterminated outer object
 ])
-def test_malformed_output_is_a_rerun_request_never_a_verdict(tmp_path: Path, raw: str, why: str) -> None:
+def test_malformed_output_is_a_rerun_request_never_a_verdict(tmp_path: Path, raw: str, why: str | None) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {"raw": raw.replace("VERDICT", json.dumps(verdict_step(repo)["answer"]))})
     run = delegate(repo, "M1.1", "opus", sleep=lambda s: None)
+    if why is None:
+        assert run["state"] == "complete" and run["outcome"] == "recorded", run["reason"]
+        assert _record(repo).exists()
+        return
     assert run["state"] == "incomplete" and run["outcome"] == "rerun"
     assert run["reason"].startswith("rerun requested: ") and why in run["reason"]
     assert not _record(repo).exists()
@@ -170,7 +175,7 @@ def test_the_output_schema_is_the_record_schema_less_what_specy_road_fills() -> 
     schema = output_schema()
     assert set(schema["properties"]) == set(record["properties"]) - {
         "family", "independence", "notes_sha256", "signature", "launch_mode", "sibling_heads", "harness_model",
-        "model_mismatch"} | {"notes"}
+        "model_mismatch", "human_filed"} | {"notes"}
     assert schema["required"] == [*record["required"], "notes"] and schema["additionalProperties"] is False
 
 
@@ -209,7 +214,7 @@ def test_codex_reviewer_runs_read_only_with_the_output_schema(tmp_path: Path) ->
                           "--output-schema", str(schema), "-o", str(out), "-"]
     assert fresh.stdin == "review it"
     resumed = Codex().reviewer_launch(prompt, "gpt-6.1-sol", tmp_path, session=("t1", True), schema=schema, output=out)
-    assert resumed.argv == ["codex", "exec", "resume", "--json", "-c", "sandbox_mode=read-only",
+    assert resumed.argv == ["codex", "exec", "resume", "--json", "-m", "gpt-6.1-sol", "-c", "sandbox_mode=read-only",
                             "-c", "approval_policy=never", "t1", "-"]
     assert "sandbox_mode=read-only" in M87_NOTE.read_text(encoding="utf-8")
 

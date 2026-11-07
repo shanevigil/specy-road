@@ -66,7 +66,9 @@
         "Estimated net line change (informational, not a gate): docs and templates about +20, tests about +25"
       ],
       "codename": "milestone-conventions-guide",
-      "dependencies": [],
+      "dependencies": [
+        "12d3e989-fce1-4dc5-8994-b865fcbafc24"
+      ],
       "id": "M19.19",
       "node_key": "94a5c838-408a-4b7b-83ba-ac7308626999",
       "parent_id": "M19",

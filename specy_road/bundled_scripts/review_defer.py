@@ -4,7 +4,8 @@ Human-only, as ``mark-implementation-reviewed`` is for the human approval: it re
 terminal, has no ``--yes``, and asks before writing. It refuses the whole record when any item may not be
 deferred (:func:`specy_road.review_deferral.qualify_deferral`, the rule the gate re-applies). Otherwise it adds one follow-up leaf per
 distinct ``follow_up_title`` beside the leaf (the ``add-node`` write), records a closed ``decision`` in
-``roadmap/decisions.yaml`` naming every deferred finding, the follow-up leaf and the approver, and writes
+``roadmap/decisions.yaml`` naming every deferred finding (with its reviewer, full commit, category, acceptance
+id and input class: the gate binds the marker to them), the follow-up leaf and the approver, and writes
 ``DEFERRAL-<round>.yaml`` beside the RCA record; the review gate then counts only those blocks (reviewer and
 commit) as resolved. Design: ``docs/design-notes/review-loop-rca.md``.
 """
@@ -27,8 +28,8 @@ from specy_road.decisions import add_entry, close_entry
 from specy_road.git_subprocess import git_text
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.bundled_scripts.roadmap_chunk_atomic import TreeSnapshot
-from specy_road.review_deferral import (deferral_evidence, marker_path, qualify_deferral, round_of,
-                                       write_marker)
+from specy_road.review_deferral import (answer_item, deferral_evidence, marker_path, qualify_deferral,
+                                       round_of, write_marker)
 from specy_road.review_files import reviews_dir
 from specy_road.review_rca import loop_state
 from specy_road.review_target import full_sha
@@ -151,7 +152,8 @@ def _record(root: Path, node_id: str, rca: Any, parent: str | None, approver: st
     items = rca.data["deferred_findings"]
     ids = _add_follow_ups(root, parent, items)
     answer = f"Deferred by {approver} from {rca.path.name}: " + "; ".join(
-        f"{x['finding']} (input class {x['input_class']!r}) -> {ids[_norm(x['follow_up_title'])]}" for x in items)
+        f"{answer_item({**x, 'commit': full_sha(root, x['commit']) or x['commit']})} -> "
+        f"{ids[_norm(x['follow_up_title'])]}" for x in items)
     entry = add_entry(
         root, node_id=node_id, kind="decision",
         summary=f"Defer {len(items)} review finding(s) of {node_id} to {', '.join(sorted(set(ids.values())))}",

@@ -3,7 +3,7 @@
     {
       "codename": "adopter-features",
       "dependencies": [
-        "2dce21fe-f676-42e5-a9a2-cd58a333d5fa"
+        "1d9b9c91-dec8-4f55-bd57-c8eb6368612f"
       ],
       "id": "M19",
       "node_key": "8e41dcbb-83cd-4a42-84a0-35ab72e78f94",
@@ -16,8 +16,8 @@
     },
     {
       "acceptance": [
-        "A project chooses its analysis set in checks: either specy-road's built-in set (the ruff rule families and shrink-only baselines from M16.8) or its own entries naming tools such as mypy, radon, pylint or eslint; validate names the active set and warns about a declared tool that is not installed",
-        "Declared tools run through the existing checks: machinery (when:, zones:, per-commit merge-blocking results from M16.52) with no tool-specific code path beyond a small table of known tools",
+        "A project chooses its analysis set in checks: either specy-road's built-in set (the ruff rule families and shrink-only baselines from M16.1.8) or its own entries naming tools such as mypy, radon, pylint or eslint; validate names the active set and warns about a declared tool that is not installed",
+        "Declared tools run through the existing checks: machinery (when:, zones:, per-commit merge-blocking results from M16.4.6) with no tool-specific code path beyond a small table of known tools",
         "An agent-facing command or shipped prompt detects which known analysis tools are already installed in the project's environment and prints a proposed checks: block that gives parity with the built-in set at the same points (baseline, ready, land); it never installs anything and never writes the config itself",
         "Tests cover the built-in set alone, a declared custom tool, a declared tool that is missing, and the proposal for a repo with mypy and radon installed and for one with none"
       ],

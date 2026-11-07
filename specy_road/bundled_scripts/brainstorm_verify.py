@@ -51,11 +51,22 @@ _TAGS = re.compile(r"<[^>]+>")
 _WS = re.compile(r"\s+")
 #: A space before closing or after opening punctuation, dropped on both sides alike.
 _PUNCT_SPACE = re.compile(r" (?=[.,;:!?)\]])|(?<=[(\[]) ")
+#: A page's reference markers ("restudying[43] while"), which an agent's copy of the sentence leaves out.
+_CITATION = re.compile(r"\[(?:\d+|[a-z]|note \d+|citation needed)\]", re.IGNORECASE)
+#: Typographic quotes, dashes and spaces to their ASCII form; soft hyphens and zero-width characters removed.
+_FOLD = str.maketrans({
+    **dict.fromkeys("\u2018\u2019\u201a\u2032", "'"),
+    **dict.fromkeys("\u201c\u201d\u201e\u2033", '"'),
+    **dict.fromkeys("\u2010\u2011\u2012\u2013\u2014\u2015\u2212", "-"),
+    **dict.fromkeys("\u00a0\u202f\u2009", " "),
+    **dict.fromkeys("\u00ad\u200b\u200c\u200d\u2060\ufeff"),
+})
 
 
 def _norm(text: str) -> str:
-    text = _TAGS.sub(" ", _INLINE_TAGS.sub("", text))
-    return _PUNCT_SPACE.sub("", _WS.sub(" ", unescape(text)).strip().lower())
+    text = unescape(_TAGS.sub(" ", _INLINE_TAGS.sub("", text)))
+    text = _CITATION.sub("", text).translate(_FOLD)
+    return _PUNCT_SPACE.sub("", _WS.sub(" ", text).strip().lower())
 
 
 MAX_REDIRECTS = 5
