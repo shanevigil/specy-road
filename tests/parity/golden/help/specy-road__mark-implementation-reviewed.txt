@@ -1,0 +1,29 @@
+$ specy-road mark-implementation-reviewed --help
+exit: 0
+--- stdout ---
+usage: specy-road mark-implementation-reviewed [-h] [--yes] [--sign-key PATH]
+                                               [--allow-missing-summary] [--repo-root DIR]
+                                               [node_id]
+
+Close the implementation review gate: require review records under work/reviews/<NODE_ID>/ that
+satisfy roadmap/orchestration.yaml at the commit under review, then record approval in
+roadmap/registry.yaml.
+
+positional arguments:
+  node_id               A milestone id: close its full review at the integration tip and set it
+                        Complete (policy.milestone_full_review). Without it, the current feature
+                        branch's leaf.
+
+options:
+  -h, --help            show this help message and exit
+  --yes                 Never prompt: commit the approval only when recorded reviews already
+                        satisfy roadmap/orchestration.yaml. Does not create a review.
+  --sign-key PATH       Sign the interactive human approval with this OpenSSH private key
+                        (policy.signed_reviews).
+  --allow-missing-summary
+                        Allow approving when the implementation summary file is missing (loud
+                        warning).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

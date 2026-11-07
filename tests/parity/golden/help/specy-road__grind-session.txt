@@ -1,0 +1,100 @@
+$ specy-road grind-session --help
+exit: 0
+--- stdout ---
+usage: specy-road grind-session [-h] [--plan] [--step {pickup,finish}] [--until NODE_ID]
+                                [--under NODE_ID] [--resume-in-flight] [--max-leaves N]
+                                [--max-cycles N] [--implement-mode {manual,hook}]
+                                [--implement-cmd CMD] [--ready-signal PATH]
+                                [--signal-timeout SECONDS] [--pre-finish-cmd CMD]
+                                [--max-limit-waits N] [--max-limit-wait-hours H]
+                                [--limit-wait-grace-seconds S] [--max-empty-retries N]
+                                [--repo-root DIR] [--base BRANCH] [--remote NAME]
+                                [--on-complete MODE] [--no-ci-skip-in-message]
+                                [--milestone-subtree] [--allow-unauthored]
+                                [--prefer-agentic | --no-prefer-agentic] [--baseline-cmd CMD]
+                                [--baseline-warn] [--push] [--delete-merged-branches] [--json]
+                                [--fields KEY,...]
+
+Orchestrate the task loop: do-next-available-task -> implement -> (optional pre-finish hook) ->
+finish-this-task, repeated until a stop condition. Use --plan for a read-only dependency/wave
+report (no git).
+
+options:
+  -h, --help            show this help message and exit
+  --plan, --dry-run     Read-only: print the session plan (ready/blocked/active + dependency waves
+                        + parallel batches) and exit 0. No git, no pickup.
+  --step {pickup,finish}
+                        Run one phase and exit, for an agent that drives the loop and implements
+                        between phases itself. pickup: resume this clone's open claim, else pick
+                        the next ready leaf (writes work/brief and work/prompt). finish: optional
+                        --pre-finish-cmd, then finish-this-task on the checked-out feature/rm-*
+                        branch.
+  --until NODE_ID       Stop after successfully finishing this node id (inclusive).
+  --under NODE_ID       Only pick leaves under this roadmap node (e.g. M7). A parent id scopes to
+                        its subtree; a single leaf id targets exactly that leaf.
+  --resume-in-flight    When nothing is ready because this worktree already holds a claim, check
+                        that branch out and implement/finish it instead of stopping with exit 6.
+                        Only claims registered to a branch that exists locally qualify: a claim
+                        held by another clone is never resumed.
+  --max-leaves N        Stop after N successful finish cycles.
+  --max-cycles N        Safety bound on total loop iterations (default 100).
+  --implement-mode {manual,hook}
+                        manual (default): after pickup, wait for a ready signal (file or Enter)
+                        while you/your agent implement; hook: run --implement-cmd per cycle.
+  --implement-cmd CMD   Shell command to run for implementation in hook mode (env:
+                        SPECY_ROAD_NODE_ID, SPECY_ROAD_BRANCH, SPECY_ROAD_BRIEF,
+                        SPECY_ROAD_PROMPT, SPECY_ROAD_REPO_ROOT).
+  --ready-signal PATH   manual mode: path (relative to repo root) whose creation signals
+                        implementation is done (default work/.session-ready). Enter also works on
+                        a TTY.
+  --signal-timeout SECONDS
+                        manual mode: max seconds to wait for the ready signal (0 = forever).
+  --pre-finish-cmd CMD  Shell command run after implement, before finish-this-task (e.g. 'make
+                        test && specy-road validate'). Non-zero stops the session (exit 4).
+  --max-limit-waits N   Claude hook: how many times one leaf may wait out a usage limit before the
+                        run stops (default 3; yaml grind_session_max_limit_waits).
+  --max-limit-wait-hours H
+                        Claude hook: longest single wait for a stated reset (default 6). A reset
+                        further out stops the run rather than waiting unattended (yaml
+                        grind_session_max_limit_wait_hours).
+  --limit-wait-grace-seconds S
+                        Claude hook: slack added after the stated reset, because clocks disagree
+                        (default 120; yaml grind_session_limit_wait_grace_seconds).
+  --max-empty-retries N
+                        Claude hook: re-runs when the command dies without printing anything at
+                        all — killed from outside, not a failed implementation (default 2; yaml
+                        grind_session_max_empty_retries).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+  --base BRANCH         Integration branch (default: roadmap/git-workflow.yaml).
+  --remote NAME         Git remote (default: roadmap/git-workflow.yaml).
+  --on-complete MODE    Completion workflow per leaf: pr|merge|auto. Loop needs merge/auto.
+  --no-ci-skip-in-message
+                        Pass through to pickup registration commit.
+  --milestone-subtree   Pass through to pickup (uses work/.milestone-session.yaml).
+  --allow-unauthored    Treat leaves whose planning sheet is still a placeholder and whose node
+                        has no acceptance as ready (--plan lists them as not ready by default);
+                        passed through to pickup.
+  --prefer-agentic, --no-prefer-agentic
+                        Order ready leaves Agentic-led, Mixed, unset, Human-led within each pickup
+                        tier (default: prefer_agentic_pick_order in roadmap/git-workflow.yaml);
+                        applies to --plan and is passed through to pickup.
+  --baseline-cmd CMD    Passed through to pickup: run on the integration branch before each claim;
+                        a non-zero exit refuses the pickup (exit 5). Default: baseline_cmd in
+                        roadmap/git-workflow.yaml.
+  --baseline-warn       Passed through to pickup: a failing baseline only warns.
+  --push                Pass --push through to finish-this-task.
+  --delete-merged-branches
+                        When the session ends cleanly, delete the feature/rm-* branches it
+                        finished: locally with 'git branch -d', and on the remote too when --push
+                        was given. Only branches the integration branch already contains are
+                        touched. Off by default; the loop prints the command instead.
+  --json                Emit one JSON event per line (picked/finished/blocked/stopped/...). stdout
+                        carries only JSON; sub-command output goes to stderr.
+  --fields KEY,...      With --plan --json: print only these top-level plan keys (no event or ts).
+                        Valid: under, ready, blocked, active, closed, gated, gates_open,
+                        needs_codename, waves, parallel_batches, zone_overlaps,
+                        shared_zones_ignored, finished_unmerged, finished_claimed, unauthored,
+                        totals, ready_execution, prefer_agentic, nested_unpushed.
+--- stderr ---

@@ -1,0 +1,15 @@
+$ specy-road decisions close --help
+exit: 0
+--- stdout ---
+usage: specy-road decisions close [-h] --answer ANSWER [--repo-root DIR] ID
+
+positional arguments:
+  ID
+
+options:
+  -h, --help       show this help message and exit
+  --answer ANSWER
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

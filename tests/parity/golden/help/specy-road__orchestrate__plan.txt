@@ -1,0 +1,24 @@
+$ specy-road orchestrate plan --help
+exit: 0
+--- stdout ---
+usage: specy-road orchestrate plan [-h] [--today TODAY] [--spread] [--json]
+                                   [--roster-from-worktree] [--repo-root DIR]
+                                   [parent]
+
+positional arguments:
+  parent                Limit to leaves under this node (default: whole roadmap)
+
+options:
+  -h, --help            show this help message and exit
+  --today TODAY         YYYY-MM-DD, for availability and substitution checks
+  --spread              Assign executors round-robin among the capable, available entries by leaf
+                        order, instead of always the cheapest
+  --json
+  --roster-from-worktree
+                        Dry run: plan with the working tree's roadmap/orchestration.yaml
+                        (uncommitted); nothing may launch from this plan, and delegation never
+                        reads it
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

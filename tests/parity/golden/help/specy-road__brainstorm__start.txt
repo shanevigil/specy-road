@@ -1,0 +1,28 @@
+$ specy-road brainstorm start --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm start [-h] [--topic TEXT] [--under NODE_ID] [--count N] [--rounds R]
+                                   [--profile {personal,product,technical}] [--panel N]
+                                   [--slug SLUG] [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --topic TEXT          The question to brainstorm. Also seeds --slug when omitted.
+  --under NODE_ID       Anchor node that accepted ideas become children of (default: the roadmap
+                        root).
+  --count N             Minimum ideas to ask for (default: 20). Raise it to push the agent past
+                        its first, safest set.
+  --rounds R            Diverge rounds planned (default: 2). Round 1 plans and generates without
+                        the roadmap list or research; `next-round` opens the rest.
+  --profile {personal,product,technical}
+                        Lens set: product (default) or technical (failure modes, operability,
+                        migration, debt, dependency risk, platform).
+  --panel N             Also write N independent shard prompts (work/brainstorm-<slug>-r1-sN-
+                        prompt.md) for sub-agents or other harnesses to run without seeing each
+                        other; `frame` rewrites them with the frame and each shard's `sN:`
+                        allocation cell.
+  --slug SLUG           Session name (default: the only open session; required when several are).
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

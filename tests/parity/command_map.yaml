@@ -1,0 +1,7 @@
+# The only way a later leaf may change the command surface or a golden --help transcript.
+# Each row names one changed invocation; the inventory and transcript checks skip that command
+# (and its subcommands) and fail on any other difference. Row fields:
+#   old: the invocation before the change ("specy-road branches prune"); empty for an addition
+#   new: the invocation after it ("specy-road doctor --prune"); empty for a removal
+#   allowed: the difference this row allows, in one line
+rows: []

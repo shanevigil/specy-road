@@ -1,0 +1,25 @@
+$ specy-road worker message --help
+exit: 0
+--- stdout ---
+usage: specy-road worker message [-h] [--json] [--op-id ID] [--repo-root DIR]
+                                 (--file PATH | --text TEXT) [--fix-round] [--no-queue]
+                                 [--offline]
+                                 W
+
+positional arguments:
+  W
+
+options:
+  -h, --help       show this help message and exit
+  --json
+  --op-id ID       Idempotency key; a retry returns the first result
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+  --file PATH
+  --text TEXT
+  --fix-round      Send the blocking findings and the class-audit block, then any text
+  --no-queue       Refuse while a turn is still running instead of queueing for the next turn
+  --offline        Count this checkout's workers only and push no lease (when the integration
+                   remote is unreachable)
+--- stderr ---

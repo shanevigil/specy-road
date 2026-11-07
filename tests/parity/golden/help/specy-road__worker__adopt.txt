@@ -1,0 +1,20 @@
+$ specy-road worker adopt --help
+exit: 0
+--- stdout ---
+usage: specy-road worker adopt [-h] --node NODE --harness {claude-code,codex,cursor,generic}
+                               --session SESSION [--model MODEL] [--worktree WORKTREE] [--json]
+                               [--op-id ID] [--repo-root DIR]
+
+options:
+  -h, --help            show this help message and exit
+  --node NODE
+  --harness {claude-code,codex,cursor,generic}
+  --session SESSION     The harness's session/thread/chat id
+  --model MODEL
+  --worktree WORKTREE
+  --json
+  --op-id ID
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

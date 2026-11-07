@@ -1,0 +1,21 @@
+$ specy-road reconcile-branch --help
+exit: 0
+--- stdout ---
+usage: specy-road reconcile-branch [-h] [--repo-root DIR] [--base BRANCH] [--remote NAME]
+                                   [NODE_ID]
+
+In a leaf's worktree: fetch the integration branch and merge it into the feature branch, resolving
+roadmap/registry.yaml by rule and regenerating roadmap.md and roadmap-context.md; commit, and push
+when the branch has an upstream. Any other conflict aborts the merge and exits 1.
+
+positional arguments:
+  NODE_ID          Refuse unless HEAD is this leaf's feature branch.
+
+options:
+  -h, --help       show this help message and exit
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+  --base BRANCH    Integration branch (default: roadmap/git-workflow.yaml, else main).
+  --remote NAME    Git remote (default: roadmap/git-workflow.yaml, else origin).
+--- stderr ---

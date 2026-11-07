@@ -1,0 +1,15 @@
+$ specy-road decisions --help
+exit: 0
+--- stdout ---
+usage: specy-road decisions [-h] {add,list,close} ...
+
+positional arguments:
+  {add,list,close}
+    add             Open a self-contained human decision, or record a routing preference
+    list            List active preferences, then open entries ordered by needed-by
+    close           Close an entry after its answer is on the planning sheet (a preference closes
+                    with --answer alone)
+
+options:
+  -h, --help        show this help message and exit
+--- stderr ---

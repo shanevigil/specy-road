@@ -1,0 +1,21 @@
+$ specy-road rename-refs --help
+exit: 0
+--- stdout ---
+usage: specy-road rename-refs [-h] [--dry-run] [--repo-root DIR] ID_MAP_JSON
+
+Rewrite display ids cited in prose: each live node's planning sheet, title and acceptance. Every
+key of the map is replaced in one pass (swaps and chains are safe), as a whole id only: M16.1
+never matches M16.10 or M16.1.2. Fenced code blocks and text between <!-- historical --> and <!--
+/historical --> are left alone. docs/, CHANGELOG.md, work/, roadmap.md and git history are never
+touched.
+
+positional arguments:
+  ID_MAP_JSON      JSON file: {"OLD_ID": "NEW_ID", ...}.
+
+options:
+  -h, --help       show this help message and exit
+  --dry-run        Print the counts; write nothing.
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

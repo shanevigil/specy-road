@@ -1,0 +1,57 @@
+$ specy-road finish-this-task --help
+exit: 0
+--- stdout ---
+usage: specy-road finish-this-task [-h] [--push] [--remote NAME] [--on-complete MODE]
+                                   [--override-on-complete] [--delete-branch]
+                                   [--land-check-cmd CMD] [--repo-root DIR] [--no-cleanup-work]
+                                   [--allow-empty-implementation] [--allow-scaffold-planning]
+                                   [--no-milestone-rollup]
+
+Mark the current roadmap task complete, validate, export, digest, commit.
+
+Finishing the last open leaf under a parent also flips that parent to Complete, in the same bookkeeping commit, walking up as far as the rollup reaches. Nothing is printed when there is nothing to close, so a run that leaves other leaves open looks the same as one with no parents to close.
+
+The exception is a node carrying a milestone_execution block (written by start-milestone-session): its status belongs to the milestone-rollup state machine, which closes it only once the rollup branch is proven merged. Use specy-road reconcile-milestone-status for those.
+
+--on-complete merge (and auto when merge succeeds) lands on the integration branch and pushes it. --push only pushes the feature branch; it does not open the PR. The printed gh/glab command is pasteable.
+
+options:
+  -h, --help            show this help message and exit
+  --push                After the bookkeeping commit, run git push -u <remote> <branch>. Does not
+                        open the PR — the gh/glab line is printed for you.
+  --remote NAME         Remote for --push (default: origin).
+  --on-complete MODE    Override completion workflow: pr, merge, or auto. merge lands on the
+                        integration branch and pushes it. Default: session file from do-next-
+                        available-task, then SPECY_ROAD_ON_COMPLETE / roadmap/git-workflow.yaml. A
+                        value other than pr that differs from that default is refused unless
+                        --override-on-complete is also passed.
+  --override-on-complete
+                        Acknowledge that --on-complete changes the repository's configured landing
+                        mode. A person's choice: agents do not pass it on their own.
+  --delete-branch       Once the merge lands on the integration branch (merge, or auto when its
+                        merge succeeds), delete the feature branch locally and on the remote.
+                        Refused under pr: there the branch is the only copy of the work until the
+                        PR merges.
+  --land-check-cmd CMD  Shell command run at the project root of a detached worktree of the local
+                        merge commit, before merge mode pushes it; a non-zero exit pushes nothing
+                        and resets the integration branch. An empty value skips the check for this
+                        run. Default: land_check_cmd in roadmap/git-workflow.yaml. pr mode never
+                        runs it.
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+  --no-cleanup-work     Keep work/brief-, work/prompt-, and work/implementation-summary- for this
+                        node (default: delete after successful validate/export/digest).
+  --allow-empty-implementation
+                        Finish even though the branch changes no file under the node's declared
+                        touch zones. For a leaf that genuinely needs no code change; otherwise fix
+                        the zones or abort the pickup.
+  --allow-scaffold-planning
+                        Finish even though the node's planning sheet still has the scaffold-
+                        planning or brainstorm promote placeholder text. Otherwise write the sheet
+                        and commit it on this branch.
+  --no-milestone-rollup
+                        Skip milestone dual-land (cherry-pick bookkeeping to integration + merge
+                        leaf into rollup) when work/.milestone-session.yaml exists; use normal
+                        on_complete instead.
+--- stderr ---
