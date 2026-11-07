@@ -32,6 +32,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A sandboxed worker turn can read its leaf's review records. The `work/reviews/<ID>/` outbox now starts with a
+  copy of the regular files already there (REVIEW, notes and `history/` records; links are not copied), so a
+  fix round sees its blocking review. Only `READY-*` files are still moved back, so an edited copy of a record
+  never reaches the reviews directory. Cursor turns start under the sandbox again: `~/.cursor/sandbox-policies/`
+  is no longer read-only, because Cursor writes its policy file there on every start. It is now the worker's own
+  state.
 - Reviewer runs (rc4 re-test D15c, D17, D18). A refused answer's one-line reason names the first
   offending line whole, then `(N more; full text in work/reviews/<ID>/REJECTED-<model>.md)`, for the
   first refusal and for a repair turn's, instead of the last 400 characters cut mid-word. A

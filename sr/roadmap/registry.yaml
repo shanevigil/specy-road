@@ -134,17 +134,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: sandboxed-workers-can-read-their-reviews
-    node_id: M22.46
-    branch: feature/rm-sandboxed-workers-can-read-their-reviews
-    touch_zones:
-      - specy_road/worker_sandbox.py
-      - tests/test_worker_sandbox.py
-      - CHANGELOG.md
-      - docs/orchestration-workers.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: terminate-and-finish-rollback-robustness
     node_id: M22.20
     branch: feature/rm-terminate-and-finish-rollback-robustness
