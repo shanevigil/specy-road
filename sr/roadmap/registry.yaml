@@ -149,21 +149,3 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: preview-rollback-fidelity
-    node_id: M22.21
-    branch: feature/rm-preview-rollback-fidelity
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_verify.py
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/bundled_scripts/upgrade_generated.py
-      - specy_road/bundled_scripts/roadmap_crud_dependency_ops.py
-      - specy_road/archive_ops.py
-      - tests/test_brainstorm_verify.py
-      - tests/test_upgrade_preview.py
-      - tests/test_roadmap_apply.py
-      - docs/brainstorming.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T19:33:58+00:00'

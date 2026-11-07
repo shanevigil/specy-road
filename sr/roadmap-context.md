@@ -152,7 +152,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.18` The reviewer prompt asks for every required change in one pass, not just the first `reviewer-lists-every-required-change` — task — **Complete**
   - `M22.19` Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names `review-inputs-identity-and-unreadable` — task — **Not Started**
   - `M22.20` worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging `terminate-and-finish-rollback-robustness` — task — **Not Started**
-  - `M22.21` Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback `preview-rollback-fidelity` — task — **Not Started**
+  - `M22.21` Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback `preview-rollback-fidelity` — task — **Complete**
   - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal `sandbox-rc4-final-polish` — task — **Complete**
   - `M22.23` Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus `guidance-bypass-retest-cursor-grok-sol-opus` — task — **Not Started**
   - `M22.24` The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths `guidance-exclusion-closes-three-bypasses` — task — **Complete**
@@ -257,6 +257,17 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-07 `M16.1.2` stopped depending on `M22.5 Executors cannot change the files that steer harnesses and specy-road unnoticed`
+- 2026-11-07 `M16.1.1` stopped depending on `M22.5 Executors cannot change the files that steer harnesses and specy-road unnoticed`
+- 2026-11-07 `M22.6` stopped depending on `M22.5 Executors cannot change the files that steer harnesses and specy-road unnoticed`
+- 2026-11-07 `M16.2.2` stopped depending on `M22.30 Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed`
+- 2026-11-07 `M22.31` stopped depending on `M22.30 Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed`
+- 2026-11-07 `M16.5.1` stopped depending on `M22.32 Claude Code launch and resume deny edits to steering files`
+- 2026-11-07 `M16.1.4` stopped depending on `M22.5 Executors cannot change the files that steer harnesses and specy-road unnoticed`
+- 2026-11-07 `M16.8.9` stopped depending on `M22.5 Executors cannot change the files that steer harnesses and specy-road unnoticed`
+- 2026-11-07 `M16.8.8` stopped depending on `M22.5 Executors cannot change the files that steer harnesses and specy-road unnoticed`
+- 2026-11-07 `M16.8.8` stopped depending on `M22.30 Executors cannot change harness, policy, registry, review, shell or environment steering files unnoticed`
+- 2026-11-07 `M16.8.8` stopped depending on `M22.32 Claude Code launch and resume deny edits to steering files`
 - 2026-11-06 `M22.22` stopped depending on `M21.40 upgrade's scratch git drops every GIT_ variable, runs no hook, and times out`
 - 2026-11-06 `M22.22` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.40` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
@@ -271,18 +282,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.60` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
 - 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
 - 2026-11-05 `M16.18` stopped depending on `M16.5.4 One check_assignment decides eligibility for every launch and for the gate`
-- 2026-11-05 `M16.12` stopped depending on `M16.2.9 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
-- 2026-11-05 `M16.12` stopped depending on `M16.3.4 One LLM client module replaces the provider code inside review_node`
-- 2026-11-05 `M16.15` stopped depending on `M16.1.2 Parity harness: a review-gate decision table covering every review policy`
-- 2026-11-05 `M16.15` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
-- 2026-11-05 `M16.15` stopped depending on `M16.2.4 One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready`
-- 2026-11-05 `M16.33` stopped depending on `M16.4.2 upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update`
-- 2026-11-05 `M16.33` stopped depending on `M16.4.3 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
-- 2026-11-05 `M16.33` stopped depending on `M16.4.1 doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases`
-- 2026-11-05 `M16.33` stopped depending on `M16.5.7 Shared-checkout guard and session presence move into orchestration`
-- 2026-11-05 `M16.33` stopped depending on `M16.5.14 Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it`
-- 2026-11-05 `M16.33` stopped depending on `M16.4.5 One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points`
-- _…and 46 earlier — `specy-road history --json`_
+- _…and 57 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -315,7 +315,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.38` on `feature/rm-review-writers-refuse-links` since 2026-11-07
 - `M22.14` on `feature/rm-deps-ids-briefs-and-landed-branch` since 2026-11-07
-- `M22.21` on `feature/rm-preview-rollback-fidelity` since 2026-11-07
 - `M22.36` on `feature/rm-rc-publishes-wheel-url-and-project-urls` since 2026-11-07
 - `M22.5` on `feature/rm-steering-file-guard` since 2026-11-05
 

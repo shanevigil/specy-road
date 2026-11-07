@@ -95,7 +95,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.21_preview-rollback-fidelity_5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c.md",
       "sibling_order": 20,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_verify.py",
