@@ -18,6 +18,11 @@ body. Keep section bodies focused; link to PRs for detail.
   other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
   also with focus in the editor. The Markdown editor configures its link extension once, so opening an edit dialog
   no longer logs `[tiptap warn]: Duplicate extension names found: ['link']`.
+- A move that renames planning sheets (`move-node`, `indent`, `outdent`, `group-nodes` and the PM UI's move, indent,
+  outdent, group and `renumber_outline` reorder) also rewrites a touch zone equal to a renamed sheet's old path, as
+  `planning/<sheet>` or `sr/planning/<sheet>`, on the nodes and claims it already rewrites. `validate` prints a stdout
+  notice for each literal zone, on a node of any status, naming a planning sheet that is not in the working tree, with
+  the node's current sheet when the name's `node_key` matches; `--strict` does not count it.
 - `specy-road upgrade` prints no version-skew warning that says to run `specy-road upgrade`.
   `validate` and the other commands print that warning when a managed block was written by another
   toolkit version.

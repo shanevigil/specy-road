@@ -133,7 +133,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M21.44` A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk `guidance-bypass-model-excluded-under-signed-reviews` — task — **Complete**
 - `M22` rc5 fixes: defects found while preparing rc5 `rc5-fixes` — phase — **Not Started**
   - `M22.1` group-nodes accepts a new parent id held by one of the nodes it groups `group-into-member-id` — task — **Complete**
-  - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Not Started**
+  - `M22.2` A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet `move-rewrites-sheet-zones` — task — **Complete**
   - `M22.3` Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node `decisions-follow-moves` — task — **Not Started**
   - `M22.4` New planning sheets no longer write the node's display id into their body `sheet-body-without-display-id` — task — **Not Started**
   - `M22.5` Executors cannot change the files that steer harnesses and specy-road unnoticed `steering-file-guard` — task — **Not Started**
@@ -310,7 +310,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M21.38` on `feature/rm-review-writers-refuse-links` since 2026-11-07
 - `M22.14` on `feature/rm-deps-ids-briefs-and-landed-branch` since 2026-11-07
-- `M22.2` on `feature/rm-move-rewrites-sheet-zones` since 2026-11-07
 - `M22.24` on `feature/rm-guidance-exclusion-closes-three-bypasses` since 2026-11-07
 - `M22.25` on `feature/rm-upgrade-git-calls-share-one-environment` since 2026-11-07
 - `M22.29` on `feature/rm-safe-write-directory-descriptors` since 2026-11-07
@@ -326,15 +325,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
+| `docs` **flagged** | 36 | 0 | 2.47 | 53% | 25 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `CHANGELOG.md` | 42 | 0 | 2.10 | 40% | 29 | 2 |
-| `docs` | 36 | 0 | 2.42 | 50% | 26 | 2 |
+| `CHANGELOG.md` | 42 | 0 | 2.14 | 43% | 28 | 2 |
 | `planning` | 1 | 0 | 1.00 | 0% | 0 | 0 |
-| `specy_road` | 46 | 0 | 2.30 | 48% | 35 | 3 |
+| `specy_road` | 46 | 0 | 2.35 | 50% | 34 | 3 |
 | `suggested_prompts` | 3 | 0 | 1.00 | 0% | 3 | 0 |
-| `tests` | 47 | 0 | 2.23 | 45% | 33 | 3 |
+| `tests` | 47 | 0 | 2.28 | 47% | 32 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

@@ -198,7 +198,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M21.44` | A model observed to bypass specy-road's guidance is excluded from executor and reviewer roles when signed reviews are on, unless the roster entry opts in at its own risk | task | Agentic-led | Complete |
 | `M22` | rc5 fixes: defects found while preparing rc5 | phase | — | Not Started |
 | `M22.1` | group-nodes accepts a new parent id held by one of the nodes it groups | task | — | Complete |
-| `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Not Started |
+| `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Complete |
 | `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Not Started |
 | `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Not Started |
 | `M22.5` | Executors cannot change the files that steer harnesses and specy-road unnoticed | task | Agentic-led | Not Started |
