@@ -170,13 +170,29 @@ def test_ready_author_and_record_model_are_compared_after_case_folding_and_roste
     assert g.passed and {a.model for a in g.approvals} == {"sonnet", "sol"}
 
 
-def test_a_ready_author_two_roster_entries_answer_to_closes_the_gate(tmp_path: Path) -> None:
-    roster = ALIASED.replace("{id: sonnet, family: anthropic, roles: [reviewer]}",
-                             "{id: sonnet, family: anthropic, roles: [reviewer], harness_model: claude-opus-x}")
+SHARED = ALIASED.replace("{id: sonnet, family: anthropic, roles: [reviewer]}",
+                         "{id: sonnet, family: anthropic, roles: [reviewer], harness_model: claude-opus-x}")
+#: One entry's exact id is another entry's harness_model: an exact id has no precedence.
+COLLIDE = TWO_FAMILIES.replace("{id: sonnet, family: anthropic, roles: [reviewer]}",
+                               "{id: sonnet, family: anthropic, roles: [reviewer], harness_model: opus}")
+
+
+@pytest.mark.parametrize(("roster", "agent", "name"), [
+    (SHARED, "claude-opus-x", "claude-opus-x"),   # READY: an alias two entries share
+    (COLLIDE, "opus", "opus"),                    # READY: one entry's id, the other's alias
+    (COLLIDE, "sonnet", "opus"),                  # record: opus may be sonnet, the READY author
+    (COLLIDE, "astra", None),                     # record: colliding, but no READY author shares it
+])
+def test_a_name_two_roster_entries_answer_to_closes_the_gate(tmp_path: Path, roster: str, agent: str,
+                                                             name: str | None) -> None:
     repo = make_review_repo(tmp_path, orchestration=roster)
-    _ready(repo, "claude-opus-x")
-    _review(repo, "sonnet")
+    _ready(repo, agent)
+    _review(repo, "opus")
     _review(repo, "sol")
     g = _gate(repo)
-    assert not g.passed and g.approval_count == 2
-    assert any("'claude-opus-x' names more than one roster entry (opus, sonnet)" in p for p in g.problems())
+    problem = f"{name!r} names more than one roster entry (opus, sonnet)"
+    if name is None:
+        assert g.passed and not any("more than one roster entry" in p for p in g.problems())
+    else:
+        assert not g.passed and [a.model for a in g.approvals] == ["sol"]
+        assert any(problem in p for p in g.problems())
