@@ -178,16 +178,3 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-lists-every-required-change
-    node_id: M22.18
-    branch: feature/rm-reviewer-lists-every-required-change
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/review_record_write.py
-      - tests/test_role_prompt_reviewer.py
-      - docs/orchestration-reviewer-output.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-07T08:05:09+00:00'
