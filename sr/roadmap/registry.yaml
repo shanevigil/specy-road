@@ -156,7 +156,6 @@ entries:
       - tests/test_validate_touch_zones.py
       - docs/roadmap-authoring.md
       - CHANGELOG.md
-      - tests/move_node_helpers.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
