@@ -19,7 +19,8 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
     manifest_includes,
     roadmap_dir,
 )
-from specy_road.registry_yaml import registry_path
+from specy_road.decisions import decisions_path, load_checked_decisions
+from specy_road.registry_yaml import dump_registry_text, registry_path
 from specy_road.runtime_paths import project_prefix
 
 
@@ -171,3 +172,29 @@ def _stage_registry_ids(
                 data, default_flow_style=False, allow_unicode=True, sort_keys=False
             ),
         )
+
+
+def _stage_decision_ids(
+    plan: AtomicWritePlan, root: Path, renamed: dict[str, str]
+) -> None:
+    """Stage ``node`` rewrites in the tracked decision ledger.
+
+    Only when ``renamed`` is non-empty and the ledger exists. Each entry's
+    ``node`` is looked up once, so a chain or a swap keeps the id that entry
+    named. The file is staged only when an entry changed. A ledger that does
+    not parse, is not a mapping or fails the decisions schema raises
+    ``ValueError`` naming it, before this plan stages anything else.
+    """
+    if not renamed:
+        return
+    doc = load_checked_decisions(root)
+    if doc is None:
+        return
+    changed = False
+    for entry in doc["entries"]:
+        new = renamed.get(entry.get("node"))
+        if new is not None:
+            entry["node"] = new
+            changed = True
+    if changed:
+        plan.stage_text(decisions_path(root), dump_registry_text(doc))

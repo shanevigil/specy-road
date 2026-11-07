@@ -130,6 +130,54 @@ def active_preferences(doc: dict[str, Any], now: datetime | date | None = None) 
     return sorted(prefs, key=lambda e: ((e.get("asked") or ""), e.get("id") or ""))
 
 
+def load_checked_decisions(root: Path) -> dict[str, Any] | None:
+    """The tracked ledger, checked against the decisions schema.
+
+    ``None`` when ``roadmap/decisions.yaml`` is absent. A parse error, a
+    non-mapping root or schema errors raise ``ValueError`` naming that file.
+    """
+    path = decisions_path(root)
+    if not path.is_file():
+        return None
+    name = DECISIONS_REL.as_posix()
+    try:
+        doc = read_decisions(path, missing_ok=False)
+    except yaml.YAMLError as e:
+        raise ValueError(f"{name}: {e}") from e
+    if not isinstance(doc, dict):
+        raise ValueError(f"{name}: root must be a mapping")
+    errs = schema_errors(doc, schema_path_for_write(root))
+    if errs:
+        raise ValueError(f"{name}: " + "; ".join(errs))
+    return doc
+
+
+def notice_decisions_naming_no_node(
+    root: Path, live_ids: set[str], now: datetime | date | None = None
+) -> None:
+    """One stdout notice for open questions and active preferences naming no live node.
+
+    Entries with no ``node``, closed entries and expired preferences are omitted.
+    An absent, unreadable or schema-invalid ledger prints nothing.
+    """
+    try:
+        doc = load_checked_decisions(root)
+    except ValueError:
+        return
+    if doc is None:
+        return
+    rows = []
+    for entry in (*open_questions(doc), *active_preferences(doc, now)):
+        node = entry.get("node")
+        if isinstance(node, str) and node and node not in live_ids:
+            rows.append(f"{entry['id']} [{entry['kind']}] node {node}")
+    if rows:
+        print(
+            "roadmap: notice — roadmap/decisions.yaml names no live node:\n  "
+            + "\n  ".join(rows)
+        )
+
+
 def plan_preferences(root: Path, now: datetime | date | None = None) -> tuple[list[dict[str, Any]], str | None]:
     """Active preferences for ``orchestrate plan``, ``roadmap/decisions.local.yaml`` merged over the tracked
     ledger; an unreadable ledger is a warning, never a plan failure."""

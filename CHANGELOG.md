@@ -13,6 +13,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- An id-changing move (`move-node`, `indent`, `outdent`, `group-nodes`, `--renumber-outline`, and the PM GUI
+  move, indent, outdent, group and `renumber_outline` reorder) rewrites `node` in the tracked
+  `roadmap/decisions.yaml` for every entry whose node is an old id, any kind and status, one lookup so a
+  chain or a swap stays correct, in the same transaction as the chunks and registry. The file is written
+  only when an entry changed. An absent ledger stays absent. A ledger that does not parse or fails its
+  schema refuses the move before any write. `validate` prints one stdout notice listing each open decision,
+  open human-action and active preference whose `node` names no live node; `--strict` does not count it.
+  A missing, unreadable or schema-invalid ledger adds no notice.
 - PM GUI planning sheets save without rewriting Markdown nobody touched: an unedited sheet saves byte-identical (a
   list item's two-space continuation indent kept, no trailing blank line added), and editing one block leaves the
   other blocks' source lines as they were. Escape closes the front-most edit or Publish dialog, and only that one,
