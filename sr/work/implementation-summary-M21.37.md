@@ -504,13 +504,35 @@ Commit `a787ec3f`.
 - `AGENTS.md` / `CLAUDE.md` blocks (non-strict, `resolves_outside`): `_plain_write` never raises `SafeWriteError`. Out of the class.
 - Full suite (`pytest -n 4`) at the fix: 6176 passed. `ruff check`: pass. `specy-road file-limits`: OK.
 
+## Fix round 13 (review `gpt-5.6-sol-high` at `fb32b7fc`; `gpt-6.1-sol-low` at `e3f70e09`; `grok-4.7-high` at `85466059`)
+
+Commit `8e433d8d`.
+
+- **Sol's finding.** `upgrade_plan.Mirror.build` copied each link's relative text verbatim and gave `_ensure` the lexical `to_sandbox(src.parent / text)`. A text with more `..` than its depth (`repo/notes -> ../../../../../etc`) stops at `/` in the checkout but climbs above the mirror's `outside/` (to `$TMPDIR/etc`). `_ensure` then `mkdir`ed that path's parents and created a symlink there, outside the temporary copy, and a refresher writing through such a link would have written outside the copy, where `check_changes` cannot see it.
+- **The class.** A link in the mirror whose resolution leaves `Mirror.outside` although the same link in the checkout cannot leave `/`: a relative text with excess `..`, an absolute text spelled with `/..` (`/../../etc`), and a `..` met after another link has resolved (`d/../../..` with `d` a link). Every such link reaches outside through `Mirror.build`, which both `make_plan` (real and dry) and the dry run's copy (`apply_plan` with `locate`) use.
+- **The fix (removes the class, not the one shape).**
+  - `_ensure` only creates where the text actually lands in the mirror (`realpath` of the lexical place, which follows links before `..` like the kernel); a place outside `outside/` is never created.
+  - `build` then checks every link it made: any whose resolution is outside `outside/` is re-pointed by the new `_contain` at its real target's place, absolutely (the target's content is placed there when the real link is not dangling). The check repeats until nothing escapes; a link that still escapes after containment raises `SafeWriteError` (`upgrade` prints it as `error:` and exits 1) rather than reaching outside.
+  - The mirror's text for such a link is its target's absolute path, so a refusal naming that link shows `(to /etc)` rather than the raw `(to ../../../../../etc)`. The verdict is the same: `safe_write` refuses any link on a write path whatever its text, and an escaping text is never one of the two skills-link values.
+- **Test.** `test_a_link_climbing_past_the_root_creates_nothing_outside_the_copy` in `tests/test_upgrade_plan_parity.py`, parametrized over real and `--dry-run`: `notes` links past `/` to an existing outside directory, with `tempfile.tempdir` pointed at an empty scratch directory two levels above where the mirror's `outside/` sits (so the excess `..` lands in it). It asserts exit 0, no traceback, the scratch directory empty afterwards, the outside directory unchanged and the link's text unchanged. Red-green: before the fix both rows fail (`scratch/tmp/...` was created).
+
+### Probes (fix round 13)
+
+- Probe script, a `Mirror` built in a scratch `tempfile.tempdir`: a relative excess-`..` link, an absolute `/../../<target>` link, `..` after an in-repo link (`d/<excess ..>/<target>`), a link that climbs past `/` and back into the checkout, a plain `docs` link and a dangling excess-`..` link. Every link resolves inside `outside/`; the climb-back link reaches the checkout's own `docs` copy; the dangling one stays dangling inside; nothing is created in the scratch directory outside the mirror, and it is empty after cleanup.
+- `Mirror._copy_file`, `_copy_dir`, `_place`: write only at `to_sandbox(real)` of a `realpath`, which has no `..` and no link: inside `outside/`. Not reachable.
+- `Mirror.build`'s first `os.symlink(self.to_sandbox(Path(text)))` for an absolute text: the link is made inside the mirror; where it resolves is now checked by the containment pass. Covered.
+- `_diff` (`to_real` of an absolute text the refresh wrote) and `apply_plan`'s `link` branch (`locate(Path(e.link))`): run after `check_changes`, on texts the refreshers write (the two fixed skills-link texts and per-skill `link_target`). Unchanged, not the class.
+- The dry run's copy: `apply_plan(locate=...)` into a second `Mirror`, built by the same `build`, so contained the same way. Covered by the `dry_run=True` row.
+- Containment check itself: `os.path.realpath` in non-strict mode returns, without raising, for a loop or a missing component (Python 3.11), so a looping link cannot crash `build`; loops stay with round 8's `loop_refusal`.
+- Full suite (`pytest -n 4`) at `8e433d8d`: 6178 passed. `ruff check`: pass. `specy-road file-limits`: OK.
+
 ## Touch zones
 
 All edits are inside the listed zones (`specy_road/specyrd_hooks.py` added in round 10). No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
 
 ## Verification
 
-- `pytest -n 4` full suite at `a787ec3f`: 6176 passed.
+- `pytest -n 4` full suite at `8e433d8d`: 6178 passed.
 - `ruff check specy_road tests scripts`, `scripts/check_clones.py`, `scripts/check_test_private_imports.py` and `scripts/check_machine_paths.py`: pass.
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood` and `specy-road file-limits`: pass.
 
@@ -569,4 +591,5 @@ All edits are inside the listed zones (`specy_road/specyrd_hooks.py` added in ro
 - Writer audit: the `manifest-link-out` and `specyrd-parent-link` rows in `INIT_LAYOUTS` (the init-project manifest class, final and parent; they pass on the current code, coverage only); no helper, no mock.
 - Fix round 11: `archive_restore._checked` (returns the checked path, used for every restore operation, and refuses a `..` spelling that a raw re-join elsewhere would read differently), replacing the old `_check` body; `safe_write.mkdirs` for the restore's parent directories. Tests: the `origin-cancelled` (Sol's reproduction), `chunk-cancelled`, `stored-cancelled` and `capsule-cancelled` (deep) layouts in `test_archive_restore_refuses_before_the_first_change`, plus their `_cancelled` setup helper (the coordinator's caller audit: one row per restore path the fix covers); no mock.
 - Fix round 12: the `SafeWriteError` branch in `managed_block._write` (a refusal at replace is `refused: <why>`, not `failed`); `managed_block.raise_rule_refusal` (one call for `init project` and `specyrd init`, so a rule refusal outcome exits 1 the way `refresh-stubs` and `upgrade` already do); `specyrd_init._apply_ignores` (keeps `run_init` within the function cap). Test: `test_an_ignore_file_linked_right_before_replace_is_an_error` (5 rows: refresh-stubs, upgrade, upgrade --dry-run, specyrd init, init project --force); it patches the public `os.chmod` to swap the link in.
+- Fix round 13: `upgrade_plan.Mirror._inside` and `_contain` and the containment pass in `build` (no mirror link resolves outside `outside/`, the class); the in-mirror `where` guard in `_ensure` (never creates outside the mirror). Test: `test_a_link_climbing_past_the_root_creates_nothing_outside_the_copy` (2 rows: real and `--dry-run`); it sets the public `tempfile.tempdir` with monkeypatch to a scratch directory.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap tests; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
