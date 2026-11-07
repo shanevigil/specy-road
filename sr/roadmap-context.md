@@ -254,6 +254,17 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-07 `M16.1.2` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.1.1` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M22.6` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.2.2` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
+- 2026-11-07 `M22.31` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
+- 2026-11-07 `M16.5.1` stopped depending on `1cfcf177-4014-4267-9000-d5b81d912f95` (no longer live)
+- 2026-11-07 `M16.1.4` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.8.9` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.8.8` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.8.8` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
+- 2026-11-07 `M16.8.8` stopped depending on `1cfcf177-4014-4267-9000-d5b81d912f95` (no longer live)
 - 2026-11-06 `M22.22` stopped depending on `M21.40 upgrade's scratch git drops every GIT_ variable, runs no hook, and times out`
 - 2026-11-06 `M22.22` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.40` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
@@ -268,18 +279,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M16.60` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
 - 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
 - 2026-11-05 `M16.18` stopped depending on `M16.5.4 One check_assignment decides eligibility for every launch and for the gate`
-- 2026-11-05 `M16.12` stopped depending on `M16.2.9 Commands run in the CLI's process: no python -m re-launch, no cwd globals`
-- 2026-11-05 `M16.12` stopped depending on `M16.3.4 One LLM client module replaces the provider code inside review_node`
-- 2026-11-05 `M16.15` stopped depending on `M16.1.2 Parity harness: a review-gate decision table covering every review policy`
-- 2026-11-05 `M16.15` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
-- 2026-11-05 `M16.15` stopped depending on `M16.2.4 One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready`
-- 2026-11-05 `M16.33` stopped depending on `M16.4.2 upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update`
-- 2026-11-05 `M16.33` stopped depending on `M16.4.3 review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session`
-- 2026-11-05 `M16.33` stopped depending on `M16.4.1 doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases`
-- 2026-11-05 `M16.33` stopped depending on `M16.5.7 Shared-checkout guard and session presence move into orchestration`
-- 2026-11-05 `M16.33` stopped depending on `M16.5.14 Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it`
-- 2026-11-05 `M16.33` stopped depending on `M16.4.5 One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points`
-- _…and 46 earlier — `specy-road history --json`_
+- _…and 57 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
