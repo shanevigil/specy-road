@@ -84,8 +84,37 @@ First merged `origin/WIP/improvements-0-3-1` (no conflicts). The fix is commit d
 
 **Class F: the time budget was checked only before each step.** A step that started in time and ended past the budget was accepted, and so was the snapshot's last read. **Design change:** `guarded` checks the budget after its step as well as before. Every read runs inside a guarded step (one per checkout `.git`, one per hooks directory), so a snapshot that returns ended within its budget. Otherwise the step's path is a `check_error` (`TimeoutError`).
 
+## Fix round 3 (block by `gpt-5.6-sol-high` on aa99d02c)
+
+First merged `origin/WIP/improvements-0-3-1` (no conflicts). The fix is commit fc8615bd. The touch zones are unchanged: `worker_runner.py`, `worker_turn_check.py`, the test and the two docs.
+
+**Class G: a git command run by the wrapper after a turn whose git steering is unverified.** That is a turn whose check skipped the git probes because steering changed, could not be read, or had no snapshot to compare. The review named READY's validation: `fresh_ready` ran `branch_mismatch` and `same_commit`. Looking for every git command the runner issues after `close_turn` found two more:
+- `_exit_state` delivers a queued message. That starts the next turn through `_send` (`git branch --show-current`), unattended, under what the turn changed.
+- `mirror_logs` (when `track_worker_logs` is `events` or `full`) computes its directory with `project_prefix`, which runs `git rev-parse --show-prefix`.
+
+**Design change, one rule:** `close_turn` records on the watch whether the git probes were skipped (`TurnWatch.git_unverified`). It starts true, so it is unverified until the check says otherwise. After such a turn, the runner runs no git command:
+- The new `_turn_ready` parses READY with `new_ready`, which runs no git, so a READY that cannot be parsed is still the turn's completion error (A4). It does not check READY against git. That READY does not count, and the completion reads `exit 0; READY not checked: git steering changed or not verified`. `_finish` is simpler than before: the try/except moved into `_turn_ready`.
+- `_deliver_queued(hold=True)` keeps a queued message queued and records an `error` event saying so. The message goes out after a later turn whose git steering is verified.
+- `mirror_dir` finds the project prefix from the filesystem (`prefix_within(git_top(repo_root), repo_root)`), for every turn.
+
+The other `close_turn` callers end without git: a harness that could not start sets `failed` without READY or delivery, and a terminated record returns at once.
+
 ## Probes
 
+Fix round 3. Each probe is a public `worker_runner.run` with a fake `claude` and a `git` shim on PATH that logs every call; the script was kept outside the tree.
+- Valid READY (schema-valid, its branch and HEAD) plus a common-config change: no git call after the executor's last one, completion `READY not checked`, worker `idle`, queued message held. Pass (new `valid` row of the public-runner test). It fails at aa99d02c: `git branch --show-current` and `git rev-parse` ran.
+- The same row with the hold switched off: delivery ran `git branch --show-current`. So the hold is needed (red check by hand).
+- Byte-FF READY plus a config change: still `READY file invalid` (A4), no git after the executor, message held. Pass (existing row, extended).
+- Valid READY on a clean turn: READY counted, worker `completed`, git probes ran (8 calls). Pass: validation is skipped only when unverified.
+- Valid READY, hook added to the common hooks directory: no git after the executor, `READY not checked`. Pass.
+- Valid READY, common config made unreadable: no git after the executor, `READY not checked`. Pass.
+- `track_worker_logs: events` with a config change: no git after the executor, and the mirror copy is written to `work/worker-logs/M1.1/`. Pass.
+- `track_worker_logs: events` on a clean turn: the same mirror path as before. Pass.
+- Other `close_turn` callers: a harness that could not start, and a terminated record. Neither reads READY, delivers or mirrors after an unverified check, except the could-not-start path's `mirror_logs`, which now runs no git. Checked by reading the code.
+- `worker_ops_message` imports only `limit_gate` from the check: not affected. Checked by grep.
+- Limit, documented: a turn the coordinator starts by hand (`worker message`, `resume`) runs its turn-start git commands after that turn's own snapshot, under what an earlier turn changed. That worker is flagged `steering_changed` until `worker reconcile`, and finish's refusal is M22.31.
+
+### Fix round 2
 Fix round 2. Each probe is a public turn or a public snapshot on the test layout; the script was kept outside the tree.
 - Worktree inside the main checkout (`work/.worktrees/nested`), `.git` missing at the start, fsmonitor set during the turn: one `check_error` per class naming the worktree, only `git_probes_skipped` otherwise, sentinel not run. Pass (new `dotgit_missing_nested` row; fails at 00588b17).
 - Clock past the deadline at the end snapshot's last read (the read count taken from a clean turn): one `check_error` for the main checkout's `.git` with `TimeoutError`, probes skipped. Pass (new `deadline_passed_in_final_operation` row; fails at 00588b17).
@@ -169,6 +198,7 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 
 ## Verification
 
+- Fix round 3: `pytest -q tests/test_steering_file_guard.py`: 37 passed. The test files that import the changed modules: 590 passed. Worker-log, queued-message and finish tests: 173 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with aa99d02c's `worker_runner.py` and `worker_turn_check.py`, the `valid` row fails (git ran after the executor).
 - Fix round 2: `pytest -q tests/test_steering_file_guard.py`: 36 passed. The steering tests plus the test files that import the changed modules: 589 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with 00588b17's `steering_paths.py` and `worker_turn_check.py`, 4 rows fail (the 2 new ones and the 2 changed ones) and 32 pass.
 - Fix round 1: `pytest -q tests/test_steering_file_guard.py`: 34 passed. The steering tests plus the test files that import the changed modules: 587 passed. `ruff check specy_road tests scripts`: clean. `specy-road file-limits`: OK. Red/green: with cef67a38's `steering_paths.py`, the 6 new rows fail and the other 28 pass.
 - `pytest -q tests/test_steering_file_guard.py`: 28 passed (rework 3).
@@ -220,4 +250,9 @@ The final list is the brief's list, unchanged. `specy_road/schemas/worker-record
 - Fix round 2, `TurnWatch` takes the snapshot before `git_state` and runs it only with a snapshot: no git command before git steering is read (class E).
 - Fix round 2, `guarded` checks the budget after its step: a slow last step is a timeout (class F).
 - Fix round 2, test rows `dotgit_missing_nested` and `deadline_passed_in_final_operation` in the fsmonitor test, with the test's `_Clock`, a stand-in for `steering_paths.time` that counts reads and jumps past the deadline at a chosen read. The test sets it with `monkeypatch` on the public `time` attribute. Changed expectations: the `gitdir_missing` and `commondir_missing` rows now expect the no-snapshot `check_error` naming the worktree.
-- Mocks: `_Clock` (above) only.
+- Fix round 3, `TurnWatch.git_unverified`, set by `close_turn` from `PROBES_SKIPPED`: the one signal the runner reads (class G).
+- Fix round 3, `worker_runner._turn_ready`: READY parsed without git when unverified, else `fresh_ready`; the parse error is the turn's (A4). It replaces the try/except in `_finish`.
+- Fix round 3, `_exit_state(hold=)` and `_deliver_queued(hold=)`: a queued message held after an unverified turn, with an `error` event (class G).
+- Fix round 3, `mirror_dir` prefix from the filesystem: no `git rev-parse` after the turn (class G).
+- Fix round 3, the public-runner test is parametrized `byte_ff` / `valid`. It has a `git` shim on PATH that logs calls (no Python mock), and a queued message set before the run. It asserts that no git call follows the executor's, that the message is still queued, and the completion summary.
+- Mocks: `_Clock` (above) only; the `git` shim is a logging wrapper around the real git binary.
