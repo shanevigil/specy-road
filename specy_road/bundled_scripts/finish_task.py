@@ -25,6 +25,7 @@ from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
     cleanup_work_artifacts,
+    remove_main_checkout_pickup_files,
     warn_if_pr_body_tracked,
     worker_logs_to_stage,
 )
@@ -38,7 +39,6 @@ from specy_road.finish_modes import (
     apply_on_complete_mode,
     close_merged_checkout,
     delete_branch_preflight,
-    drop_main_checkout_pickup_files,
     merge_landing_preflight,
 )
 from specy_road.finish_pr_merge import pr_merge_integration_or_exit
@@ -367,6 +367,7 @@ def _finish_locked(args) -> None:
         )
     _end_leaf_workers(node_id)
     mr_manual = merge_request_requires_manual_approval(ROOT)
+    cleanup = should_cleanup_work_artifacts_on_finish(ROOT, no_cleanup_work_cli=args.no_cleanup_work)
 
     if try_milestone_rollup_finish(
         ROOT,
@@ -379,7 +380,8 @@ def _finish_locked(args) -> None:
         ib=ib,
         gw_remote=gw_remote,
     ):
-        drop_main_checkout_pickup_files(ROOT, node_id, no_cleanup_work=args.no_cleanup_work)
+        if cleanup:
+            remove_main_checkout_pickup_files(ROOT, node_id)
         return
 
     apply_on_complete_mode(
@@ -398,7 +400,7 @@ def _finish_locked(args) -> None:
     )
     close_merged_checkout(
         ROOT, node_id=node_id, branch=branch, ib=ib, on_mode=on_mode,
-        delete_branch=args.delete_branch, no_cleanup_work=args.no_cleanup_work,
+        delete_branch=args.delete_branch, cleanup=cleanup,
     )
 
 

@@ -555,12 +555,22 @@ def _finish(leaf, capsys, *extra: str) -> str:
 def test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch(
     tmp_path, monkeypatch, capsys,
 ) -> None:
-    """A later merge finish removes the main copies and ends on the checkout line, landed or already merged."""
-    from tests.review_repo_helpers import delegate_layout
+    """A later merge finish removes the main copies and ends on the checkout line, landed or already merged.
+
+    A ``--delete-branch`` retry against a stale local ``dev``, whose config turns cleanup off, leaves
+    this checkout there; it still removes them, as the branch's config says, and prints no checkout line.
+    """
+    from tests.review_repo_helpers import commit_file, delegate_layout, git
 
     from specy_road.bundled_scripts import finish_task
 
     repo, leaf, bare = delegate_layout(tmp_path, monkeypatch)
+    workflow = (repo / "roadmap" / "git-workflow.yaml").read_text(encoding="utf-8")
+    stale_dev = commit_file(
+        repo, "roadmap/git-workflow.yaml",
+        workflow + "cleanup_work_artifacts_on_finish: false\n", "stale config",
+    )
+    git(repo, "reset", "-q", "--hard", "HEAD~1")
     work = repo / "work"
     work.mkdir(exist_ok=True)
     brief, prompt = work / "brief-M1.1.md", work / "prompt-M1.1.md"
@@ -590,6 +600,14 @@ def test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch(
     assert not brief.exists() and not prompt.exists()
     assert (work / "notes.md").read_text(encoding="utf-8") == "keep\n"
     assert again.rstrip().endswith(guidance)
+    git(repo, "reset", "-q", "--hard", stale_dev)
+    brief.write_text("stale\n", encoding="utf-8")
+    prompt.write_text("stale\n", encoding="utf-8")
+    deleted = _finish(leaf, capsys, "--delete-branch")
+    assert "[ok] feature/rm-thing is already merged into dev on origin" in deleted
+    assert git(leaf, "rev-parse", "HEAD") == stale_dev
+    assert not brief.exists() and not prompt.exists()
+    assert "this checkout is still on" not in deleted
 
 
 def test_linked_worktree_rollup_retry_clears_main_copies(tmp_path, monkeypatch, capsys) -> None:

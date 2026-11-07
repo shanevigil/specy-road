@@ -215,23 +215,20 @@ def delete_landed_branch(
         print(f"[warn] --delete-branch: {failure['message']}", file=sys.stderr)
 
 
-def drop_main_checkout_pickup_files(repo: Path, node_id: str, *, no_cleanup_work: bool) -> None:
-    """Remove the main checkout's untracked brief and prompt when cleanup is on."""
-    if should_cleanup_work_artifacts_on_finish(repo, no_cleanup_work_cli=no_cleanup_work):
-        remove_main_checkout_pickup_files(repo, node_id)
-
-
 def close_merged_checkout(
     repo: Path, *, node_id: str, branch: str, ib: str, on_mode: str,
-    delete_branch: bool, no_cleanup_work: bool,
+    delete_branch: bool, cleanup: bool,
 ) -> None:
     """After finish returns: remove the main checkout's pickup files, then the checkout line.
 
-    A pr finish removes the files and does not print the line. The line is the
-    final one, and only for a merge or auto landing that left this checkout on
-    ``branch`` without ``--delete-branch``.
+    ``cleanup`` is the work-artifact cleanup decision, read on ``branch``
+    before the landing could move this checkout. A pr finish removes the files
+    and does not print the line. The line is the final one, and only for a
+    merge or auto landing that left this checkout on ``branch`` without
+    ``--delete-branch``.
     """
-    drop_main_checkout_pickup_files(repo, node_id, no_cleanup_work=no_cleanup_work)
+    if cleanup:
+        remove_main_checkout_pickup_files(repo, node_id)
     if on_mode not in ("merge", "auto") or delete_branch or current_branch(repo) != branch:
         return
     print(f"[ok] this checkout is still on {branch} (landed into {ib}); next: git switch {ib}")
@@ -315,9 +312,14 @@ def retry_merge_landing(
     result then removes the main checkout's pickup files and, when this
     checkout is still on ``branch`` and the branch was not deleted, prints the
     switch guidance. This re-run has no ``--no-cleanup-work`` argument; the
-    yaml cleanup flag still applies.
+    yaml cleanup flag still applies. The node and that flag are read before
+    landing or ``--delete-branch`` can move this checkout off ``branch``.
     """
+    from specy_road.feature_rm_registry import finish_already_done_on_branch
+
     refuse_unless_finish_tip(repo, branch)
+    node_id = finish_already_done_on_branch(repo, branch)["id"]
+    cleanup = should_cleanup_work_artifacts_on_finish(repo, no_cleanup_work_cli=False)
     local = root_land(repo) == LAND_LOCAL   # land: local fetches nothing and checks the local branch
     tracking_before = None if local else tracking_ref_snapshot(repo, remote=remote, integration_branch=ib)
     if not local:
@@ -340,11 +342,9 @@ def retry_merge_landing(
         print(err_msg, file=sys.stderr)
     report_landed(repo, outcome, branch=branch, ib=ib, remote=remote,
                   delete_branch=delete_branch, local_only=local)
-    from specy_road.feature_rm_registry import finish_already_done_on_branch
-    done_node = finish_already_done_on_branch(repo, branch)
     close_merged_checkout(
-        repo, node_id=done_node["id"], branch=branch, ib=ib, on_mode="merge",
-        delete_branch=delete_branch, no_cleanup_work=False,
+        repo, node_id=node_id, branch=branch, ib=ib, on_mode="merge",
+        delete_branch=delete_branch, cleanup=cleanup,
     )
     raise SystemExit(0)
 

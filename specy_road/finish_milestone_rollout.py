@@ -15,9 +15,9 @@ from specy_road.milestone_rollup_git import (
 from specy_road.milestone_chunk_io import maybe_promote_milestone_to_pending_mr
 from specy_road.milestone_session import MilestoneSession, milestone_session_path, read_milestone_session
 from specy_road.milestone_subtree import subtree_node_ids
-from specy_road.finish_modes import (
-    delete_landed_branch, drop_main_checkout_pickup_files, refuse_unless_finish_tip,
-)
+from specy_road.finish_modes import delete_landed_branch, refuse_unless_finish_tip
+from specy_road.finish_work_artifacts import remove_main_checkout_pickup_files
+from specy_road.git_workflow_config import should_cleanup_work_artifacts_on_finish
 from specy_road.on_complete_session import remove_on_complete_session
 
 
@@ -113,7 +113,8 @@ def retry_milestone_rollup_landing(
     passed, so the caller retries an integration merge instead. Only the finish
     bookkeeping commit is landed. True after the rollup landing, having removed
     the main checkout's pickup files and deleted the leaf when asked; the caller
-    then stops. A failed landing raises before that removal.
+    then stops. A failed landing raises before that removal. The cleanup flag
+    is read before the landing, which ends on the integration branch.
     """
     from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
@@ -125,11 +126,13 @@ def retry_milestone_rollup_landing(
     if node_id not in subtree_node_ids(ms.parent_node_id, load_roadmap(repo)["nodes"]):
         return False
     refuse_unless_finish_tip(repo, branch)
+    cleanup = should_cleanup_work_artifacts_on_finish(repo, no_cleanup_work_cli=False)
     print(f"[info] {node_id} is already Complete on {branch}; landing it on {ms.rollup_branch}.")
     land_milestone_rollup(
         repo, branch=branch, ms=ms, ib=ms.integration_branch, remote=ms.remote,
     )
-    drop_main_checkout_pickup_files(repo, node_id, no_cleanup_work=False)
+    if cleanup:
+        remove_main_checkout_pickup_files(repo, node_id)
     if delete_branch:
         _delete_rolled_leaf(
             repo, branch=branch, ms=ms, ib=ms.integration_branch, remote=ms.remote,
