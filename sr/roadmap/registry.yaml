@@ -110,3 +110,16 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
+  - codename: upgrade-mirror-skips-ignored-files
+    node_id: M22.35
+    branch: feature/rm-upgrade-mirror-skips-ignored-files
+    touch_zones:
+      - specy_road/bundled_scripts/upgrade_plan.py
+      - specy_road/bundled_scripts/upgrade.py
+      - tests/test_upgrade.py
+      - tests/test_upgrade_preview.py
+      - docs/upgrading.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
