@@ -1,0 +1,14 @@
+$ specy-road init gui --help
+exit: 0
+--- stdout ---
+usage: specy-road init gui [-h] [--install-gui | --reinstall-gui] [--build-gui] [--skip-npm-build]
+                           [--dry-run]
+
+options:
+  -h, --help        show this help message and exit
+  --install-gui     pip install --upgrade …[gui-next], then npm build in gui/pm-gantt when present
+  --reinstall-gui   Like --install-gui but pip uses --force-reinstall
+  --build-gui       Only rebuild the SPA (npm). Use without --install-gui to skip pip
+  --skip-npm-build  With --install-gui / --reinstall-gui: skip npm after pip
+  --dry-run         Print commands that would be run
+--- stderr ---

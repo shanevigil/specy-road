@@ -83,29 +83,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: queued-message-undelivered
-    node_id: M22.6
-    branch: feature/rm-queued-message-undelivered
-    touch_zones:
-      - specy_road/worker_runner.py
-      - specy_road/worker_ops_message.py
-      - specy_road/worker_ops_lifecycle.py
-      - specy_road/worker_state.py
-      - specy_road/schemas/worker-record.schema.json
-      - tests/test_worker_queue_message.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
-    node_id: M16.1.1
-    branch: feature/rm-parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
-    touch_zones:
-      - tests/parity/
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
     node_id: M16.1.4
     branch: feature/rm-constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
@@ -149,16 +126,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: sandboxed-workers-can-read-their-reviews
-    node_id: M22.46
-    branch: feature/rm-sandboxed-workers-can-read-their-reviews
-    touch_zones:
-      - specy_road/worker_sandbox.py
-      - tests/test_worker_sandbox.py
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: terminate-and-finish-rollback-robustness
     node_id: M22.20
     branch: feature/rm-terminate-and-finish-rollback-robustness
@@ -170,14 +137,57 @@ entries:
       - tests/test_finish_merge_failure_undo.py
       - docs/orchestration-workers.md
       - CHANGELOG.md
+      - specy_road/worker_state.py
+      - specy_road/schemas/worker-record.schema.json
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: parity-harness-a-review-gate-decision-table-covering-every-review-policy
-    node_id: M16.1.2
-    branch: feature/rm-parity-harness-a-review-gate-decision-table-covering-every-review-policy
+  - codename: worker-cost-and-stale-presence
+    node_id: M22.13
+    branch: feature/rm-worker-cost-and-stale-presence
     touch_zones:
-      - tests/parity/review_gate/
+      - specy_road/session_presence.py
+      - specy_road/worker_ops_lifecycle.py
+      - tests/test_worker_usage_shell_cli.py
+      - tests/test_session_presence.py
+      - docs/orchestration-workers.md
+      - CHANGELOG.md
+      - specy_road/worker_adapter_base.py
+      - specy_road/bundled_scripts/session_cli.py
+      - tests/test_session_overlap.py
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: review-inputs-identity-and-unreadable
+    node_id: M22.19
+    branch: feature/rm-review-inputs-identity-and-unreadable
+    touch_zones:
+      - specy_road/review_eligible.py
+      - specy_road/review_gate.py
+      - specy_road/review_policy_pin.py
+      - specy_road/review_caller.py
+      - specy_road/worker_state.py
+      - specy_road/review_rejected.py
+      - specy_road/review_gate_ready.py
+      - specy_road/review_files.py
+      - tests/test_review_eligible.py
+      - tests/test_review_gate_ready_author.py
+      - tests/test_review_policy_pin.py
+      - tests/test_review_record_caller.py
+      - tests/test_review_file_case.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: cursor-starts-under-the-sandbox
+    node_id: M22.47
+    branch: feature/rm-cursor-starts-under-the-sandbox
+    touch_zones:
+      - specy_road/worker_sandbox.py
+      - tests/test_worker_sandbox.py
+      - docs/orchestration-workers.md
+      - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

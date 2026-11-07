@@ -1,0 +1,22 @@
+$ specy-road brainstorm frame --help
+exit: 0
+--- stdout ---
+usage: specy-road brainstorm frame [-h] [--answer KEY=TEXT] [--amend KEY]
+                                   [--provisional | --confirm] [--allocation TEXT] [--slug SLUG]
+                                   [--repo-root DIR]
+
+options:
+  -h, --help         show this help message and exit
+  --answer KEY=TEXT  One agreed answer, e.g. outcome=... (repeatable). A different answer for a
+                     recorded key replaces it and keeps the old one in frame_history.
+  --amend KEY        Change one recorded answer: give the new text as the one --answer TEXT; the
+                     previous answer is kept in frame_history.
+  --provisional      Mark the frame provisional: later prompts treat it as working assumptions.
+  --confirm          Mark the frame confirmed by the PM; later prompts say so.
+  --allocation TEXT  The allocation grid as text. With --panel, a line `sN: <cell>` gives shard N
+                     its cell.
+  --slug SLUG        Session name (default: the only open session; required when several are).
+  --repo-root DIR    Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                     .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                     root, else the current directory).
+--- stderr ---

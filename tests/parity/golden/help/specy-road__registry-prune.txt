@@ -1,0 +1,19 @@
+$ specy-road registry-prune --help
+exit: 0
+--- stdout ---
+usage: specy-road registry-prune [-h] [--repo-root DIR] [--remove CODENAME] [--base BRANCH]
+                                 [--remote NAME]
+
+Report registry claims whose feature/rm-* branch is missing from this clone, and remove ones you
+name. Removal commits on the integration branch and pushes it.
+
+options:
+  -h, --help         show this help message and exit
+  --repo-root DIR    Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                     .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                     root, else the current directory).
+  --remove CODENAME  Remove this claim (repeatable). Refuses when the feature branch still exists
+                     here — use abort-task-pickup for that.
+  --base BRANCH      Integration branch (default: roadmap/git-workflow.yaml, else main).
+  --remote NAME      Git remote (default: roadmap/git-workflow.yaml, else origin).
+--- stderr ---

@@ -1,0 +1,19 @@
+---
+# Copy to work/reviews/<NODE_ID>/READY-<your roster id>.md when your implementation
+# is committed, then stop. If you work in a separate worktree, write the file
+# into the main checkout (specy-road reads work/reviews/ from there).
+# Quote SHAs: YAML reads 0123456 as an octal number.
+node_id: M1.1
+agent: your-roster-id   # the `id` of your entry in roadmap/orchestration.yaml
+branch: feature/rm-codename
+commit: "full or 7+ char SHA of the branch's last commit (the one that adds your summary)"
+base: "SHA your branch started from (git merge-base <integration> HEAD)"
+changed_paths: [src/example.py]
+verify:
+  - {cmd: "the verifier or test command you ran", exit: 0, tail: "last lines of its output"}
+# When a criterion can be met only by deleting, skipping or weakening a test, or
+# by raising a baseline or cap, stop and list it here instead of making that change:
+# blocked_on:
+#   - {acceptance: A1, reason: "why the criterion is blocked"}
+---
+Optional notes for the coordinator: anything you could not finish, and why.

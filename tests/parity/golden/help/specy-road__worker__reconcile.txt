@@ -1,0 +1,18 @@
+$ specy-road worker reconcile --help
+exit: 0
+--- stdout ---
+usage: specy-road worker reconcile [-h] [--json] [--op-id ID] [--repo-root DIR] [--dismiss REASON]
+                                   W
+
+positional arguments:
+  W
+
+options:
+  -h, --help        show this help message and exit
+  --json
+  --op-id ID        Idempotency key; a retry returns the first result
+  --repo-root DIR   Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                    .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                    root, else the current directory).
+  --dismiss REASON  Clear needs_reconcile, recording REASON as an event
+--- stderr ---

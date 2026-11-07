@@ -1,0 +1,222 @@
+$ specy-road --help
+exit: 0
+--- stdout ---
+Usage: specy-road <command> [args...]
+
+  version, --version, -V — print the installed specy-road version
+
+Authoring / validation:
+  validate             — validate merged roadmap graph and registry
+    (optional: --strict to exit 1 on warnings, e.g. in CI;
+     --generate-orchestration writes the roadmap/orchestration.yaml starter when missing)
+  brief <NODE_ID>      — generate focused brief for a node
+    (inlines shared/ contracts cited in the chain's `## References`;
+     --all-contracts inlines every shared/**/*.md instead; the header states the
+     brief's size and largest sections, and stderr warns past 65536 bytes)
+  export               — regenerate roadmap.md index from merged graph
+  file-limits          — check line-count constraints
+
+PM workflow:
+  brainstorm           — generate roadmap ideas with an agent, then promote
+    the ones you keep. `start` and `next-round` diverge in rounds (frame,
+    allocation grid, regeneration against the pool; --panel N shards,
+    --profile technical); `evidence`/`add-evidence`/`verify` source the
+    shortlist with verbatim quotes (verify asks before fetching);
+    `recommend` converges (clusters, overlap relations, critics, cited
+    verdicts); accept/reject --reason/park is the PM's triage; `promote`
+    writes accepted ideas into the graph; `close` moves a finished
+    session to work/brainstorm-closed/.
+    (see: specy-road brainstorm -h)
+  sync                 — fetch/merge integration branch, validate, export, digest
+    (optional: --base BRANCH --remote NAME)
+  list-nodes           — list nodes and chunk paths (pass-through to roadmap CRUD)
+    (optional: --status STATUS, repeatable; filters on the ROLLUP column)
+  show-node <NODE_ID>  — stdout is pure JSON (pipe it); the source chunk
+    path is printed to stderr
+  add-node ...         — see: specy-road add-node -h
+    (--chunk is now optional; specy-road auto-routes to a valid chunk;
+     --acceptance and --dependency are repeatable; dependencies take display ids)
+  edit-node ...
+  move-node <NODE_ID> --to-parent <PARENT_NODE_ID|null> — re-parent a subtree and
+    renumber display ids; renames planning sheets and updates registry claims
+    (optional: --index N --repo-root DIR). edit-node --set parent_id= does NOT renumber.
+  indent <NODE_ID>     — nest a subtree under the sibling above; prints the id map
+  outdent <NODE_ID>    — make a subtree the sibling after its parent; prints the id map
+  group-nodes --into-new <NEW_ID> --title <T> <NODE_ID...> — create a parent and move
+    the listed siblings under it in one transaction (optional: --type, default milestone)
+    move-node, indent, outdent and group-nodes take --rewrite-refs: also rewrite the
+    changed ids where planning sheets, titles and acceptance cite them (default: off)
+  rename-refs <ID_MAP_JSON> — rewrite prose id references ({"OLD": "NEW"}) in live
+    nodes' planning sheets, titles and acceptance in one pass (optional: --dry-run)
+  set-gate-status <NODE_ID> --status … — gate nodes only (Not Started|In Progress|Complete|Blocked)
+  list-gates           — gate nodes still holding work back, and what each blocks
+    (optional: --under NODE_ID --json --repo-root DIR)
+  remove-node <NODE_ID>    — delete a never-started leaf and its planning sheet when
+    nothing blocks it (optional: --dry-run)
+  archive-node ...         — legacy hard-remove; see `remove-node` and `archive` below
+
+Archiving (long-running roadmaps):
+  archive <NODE_ID>    — move a Complete subtree out of the live graph into roadmap/archive/
+    (optional: --deep --dry-run --force | --auto [--older-than-days N])
+  deepen-archive <ARCHIVE_ID> — fold a shallow archive into one capsule file + reference
+  list-archives        — list archive records (optional: --json)
+  show-archive <ARCHIVE_ID> — one record in detail, including git provenance
+  restore-archive <ARCHIVE_ID> — bring an archived subtree back (optional: --dry-run)
+
+History (derived from git, cached under .specyrd/cache/):
+  history [NODE_ID]    — how a node got here: status changes, dependency edges,
+    renumbering, archived work. A node's timeline reads oldest first; omit
+    NODE_ID for a roadmap-wide feed, which reads newest first.
+    (optional: --since DATE --archived --limit N --reverse --json --rebuild
+     --repo-root DIR)
+
+Agent context (keeps IDE indexing small):
+  search <QUERY>       — ranked search over planning sheets, shared contracts,
+    roadmap nodes, implementation summaries and archived work
+    (optional: --scope live|archived|all --kind K --node ID --limit N --json
+     --stats --rebuild --repo-root DIR)
+  digest               — write roadmap-context.md: the current state in one file,
+    for an agent to read instead of crawling planning/ and work/. Generated
+    AND committed, like roadmap.md; --check is its drift gate.
+    (optional: -o FILE | -o - for stdout | --check --repo-root DIR)
+
+Roadmap editing:
+  list-dependencies <NODE_ID>
+  set-dependencies <NODE_ID> (--clear | --deps "KEY or ID …")
+  add-dependency <NODE_ID> <DEP>  — DEP is a display id or node_key; stores the node_key
+  remove-dependency <NODE_ID> <DEP_NODE_KEY>
+  apply CHANGES.yaml   — run add-node / edit-node / add-dependency entries in order,
+    all or nothing; prints the resulting ready/blocked waves
+    (optional: --dry-run to rehearse on a scratch copy and write nothing)
+  rebalance-chunks     — re-pack roadmap chunks deterministically when a chunk
+    exceeds the line cap (optional: --repo-root DIR --dry-run)
+  upgrade              — after pip install -U: refresh-schemas, refresh-profiles,
+    refresh-stubs, then validate and digest --check; roadmap untouched
+    (optional: --repo-root DIR --dry-run --prune)
+  refresh-schemas      — update schemas/ from this specy-road version; touches
+    nothing else (optional: --repo-root DIR --dry-run)
+  refresh-profiles     — add model-profiles/ files this version ships that the repo
+    lacks; never overwrites yours (optional: --dry-run | --force PATH)
+  refresh-stubs        — update the IDE stubs .specyrd/manifest.json records,
+    add ones shipped since, re-apply the managed blocks; touches nothing else
+    (optional: --repo-root DIR --dry-run --prune)
+  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])
+  scaffold-planning <NODE_ID> — create planning/<id>_<slug>_<node_key>.md; set planning_dir
+    (optional: --planning-dir PATH --force; see specy-road scaffold-planning -h)
+  author-approach <ID> [<ID>...] — print the prompt that writes a leaf's placeholder ## Approach
+    (pickup skips it until written); skips authored ones (optional: -o writes work/prompt-approach-<ID>.md)
+  scaffold-constitution — create constitution/purpose.md and constitution/principles.md from templates
+    (optional: --repo-root DIR --force)
+  init project [PATH] — scaffold roadmap/constitution/shared/… into the repo root
+    (optional: --dry-run --force)
+  init gui — optional PM UI: --install-gui | --reinstall-gui | --build-gui [--skip-npm-build]
+  update — fast-forward a git clone of specy-road from github.com/shanevigil/specy-road (optional: --path DIR --remote NAME --branch BRANCH --dry-run --install-gui-stack)
+  gui — FastAPI + Gantt PM UI (after: specy-road init gui --install-gui, or pip install 'specy-road[gui-next]')
+
+Dev task loop:
+  do-next-available-task  — sync base, pick actionable leaf, brief, register on base, push base, branch, prompt
+    (optional: --base BRANCH --remote NAME | --interactive | --no-ci-skip-in-message | --on-complete MODE | --milestone-subtree | --under NODE_ID)
+    Selection: Blocked leaves are offered FIRST, then MR-rejected, then the
+    rest in outline order. execution_milestone (Human-led/…) is advisory and
+    does not gate pickup; use a type: gate dependency to hold work back.
+    --under takes a parent (its whole subtree) or one leaf id.
+    An existing feature/rm-* branch is checked out, not treated as a failure.
+  abort-task-pickup       — undo pickup: deregister on base, push base, delete local feature/rm-*, clean work/
+    (optional: --base BRANCH --remote NAME | --force)
+  reconcile-branch [ID]   — in a PR-mode leaf's worktree: merge base, registry by rule, regenerate, commit, push
+    (refuses, unchanged, on a conflict outside the three bookkeeping paths)
+  registry-prune          — list claims whose feature/rm-* branch is missing from this clone
+    (--remove CODENAME to drop one, repeatable: commits on base and pushes)
+    Reporting is advisory: another clone's live claim looks identical here,
+    because pickup pushes the registry but keeps the branch local.
+  branches prune          — list feature/rm-* branches, local and on the remote, that
+    the remote integration branch already contains; claimed branches and open
+    milestone rollups are skipped (--delete to delete them; --base --remote)
+  worktree prune <NODE_ID> — list what removing the leaf's work/.worktrees/ checkout
+    deletes; refuses unless its branch is merged into the remote integration tip and it
+    (and each nested_repos repository in it) holds no unsaved work (--yes removes it)
+  doctor                  — after git fetch --prune, list what the task loop left
+    behind: feature/rm-* branches whose leaf is Complete or that nothing claims
+    (merged by ancestry or patch content, leaf Complete, or claim gone),
+    worktrees whose branch is gone or merged, registry rows with no branch
+    (listed; --fix leaves a non-Complete one for registry-prune --remove) or a
+    Complete leaf, specy-road stashes; dry-run by default
+    (--fix removes the rest, asking per kind; --yes --base --remote)
+  why-blocked <NODE_ID>   — why one node is not pickable: the transitive chain of
+    unmet dependencies, an open gate, an existing claim, or a missing codename
+    (optional: --json --repo-root DIR; exits 1 when it really is blocked)
+  session start|touch|end|list|check — presence records under work/.sessions/:
+    announce the paths this agent edits (--path, repeatable), renew, withdraw, see
+    who else is live; check exits 1 when staged paths overlap another live session
+  worker delegate <NODE_ID> --model ID | list | status W | events W | sync [--ack] |
+    message W --text|--file | resume W | interrupt W | terminate W | handoff W |
+    reclaim W | reconcile W | open W | adopt --node ID --harness H --session SID | hook --format H |
+    usage W — tokens and cost per attempt and node total; when a harness reports tokens but no cost,
+    cost is estimated from the roster model profile's cost_usd_per_mtok (marked est. in text output)
+    — launch a claimed leaf on a harness and return at once; sync at the start of every
+    turn; handoff/reclaim lease a worker to a human (see https://github.com/shanevigil/specy-road/blob/<DOCS_REF>/docs/orchestration-workers.md)
+  decisions add [NODE] --kind decision|human-action|preference --summary TEXT | list |
+    close ID --answer TEXT — open human decisions and routing preferences in
+    roadmap/decisions.yaml (optional: --option 'LABEL|EFFECT' --needed-by --json; see -h)
+  chore start <SLUG> --task TEXT --zone PATH [--review] [--model ID --harness H] |
+    close <SLUG> --summary TEXT — work outside the roadmap: worker delegate, message, sync,
+    usage, reconcile and review delegate take the slug (see https://github.com/shanevigil/specy-road/blob/<DOCS_REF>/docs/orchestration-chores.md)
+  orchestrate plan [PARENT] — per ready leaf, which roster model should coordinate,
+    execute, and review, from sensitivity, eligibility, availability, cost and
+    profile scores; exit 1 when a leaf cannot be staffed (optional: --json --today)
+  models list|show <ID>|stale — the roster with profiles and role scores; one profile;
+    profiles whose research is old or superseded (exit 1 if a rostered one is)
+  prompt <NODE_ID> --model ID --role coordinator|executor|reviewer
+    — write work/prompt-<NODE_ID>-<role>-<model>.md: precondition, role preamble,
+    the model profile's rules, then the brief or review packet
+    (optional: --channel cli|paste|subagent — cli runs the profile's access.cli;
+     --ref BRANCH when no claim names the commit under review)
+  review-packet <NODE_ID>  — write work/reviews/<NODE_ID>/PACKET.md for reviewers: brief,
+    summary, changed paths (touch-zone breaches flagged), test integrity, tests at risk, diff,
+    verifier output
+    (optional: --ref BRANCH | --verify-cmd CMD (repeatable) | -o PATH |
+     --max-diff-lines N: inline at most N diff lines, default 1500; the rest is listed
+     with +/- counts and the full diff written to work/reviews/<NODE_ID>/DIFF.patch; 0 = no cap)
+  integrity <NODE_ID>       — test-integrity findings vs the merge base (removed tests, skips,
+    lost asserts, pytest config); exit 1 when any (optional: --ref BRANCH | --json)
+  impact <NODE_ID>          — Python test files that import, at any depth, a module changed since
+    the merge base, sorted; ALL when a conftest.py changed; advisory (exit 0 whatever it lists)
+    (optional: --ref BRANCH | --zones: modules under the touch zones instead of the diff)
+  ready <NODE_ID> --model ID --verify 'CMD=EXIT' ... — write the executor's
+    work/reviews/<NODE_ID>/READY-<model>.md for HEAD (branch, commit, base, changed paths);
+    refuses a non-zero --verify (optional: --red-green 'CMD=EXIT' for a check meant to fail
+    without the fix, recorded in the notes | --note TEXT)
+  handoff status [NODE_ID] — READY hand-offs and review records under work/reviews/,
+    and whether review policy is met at the commit under review (optional: --json --ref BRANCH);
+    for one node exits 0 met or complete_no_claim, 1 not met, 2 undeterminable
+  review record <NODE_ID> --model ID --verdict approve|block --file NOTES.md
+    — validate a roster reviewer's notes and file them as REVIEW-<model>.md
+    (optional: --ref BRANCH; human reviews are filed only by mark-implementation-reviewed)
+  review list <NODE_ID>   — read-only: filed review records (verdict, commit, family),
+    then the gate evaluation (optional: --ref BRANCH)
+  mark-implementation-reviewed — review gate: approve once recorded reviews satisfy
+    roadmap/orchestration.yaml (interactive approve can file the human review)
+    (optional: --yes | --allow-missing-summary)
+  finish-this-task        — complete task, validate, export, digest, commit;
+    land pr|merge|auto
+    (optional: --push [--remote NAME] | --delete-branch | --no-cleanup-work |
+     --no-milestone-rollup)
+    --delete-branch deletes the feature branch locally and on the remote once
+    the merge lands; refused under pr.
+    --on-complete MODE other than pr that differs from the configured mode
+    is refused without --override-on-complete (a person's choice).
+    Finishing the last open leaf under a parent also closes that parent in the
+    same bookkeeping commit — except milestone-session nodes, which
+    reconcile-milestone-status closes once the rollup branch is proven merged.
+  grind-session           — orchestrate pickup->implement->finish over many leaves
+    (--plan for read-only ready/blocked/waves, --plan --json --fields KEY,... for only
+    those plan keys; --until NODE | --under PARENT | --max-leaves N | --implement-mode {manual,hook} --implement-cmd CMD | --pre-finish-cmd CMD | --on-complete {pr,merge,auto} | --json | --resume-in-flight | --delete-merged-branches | --step {pickup,finish})
+    Stopping with exit 6 means this worktree already holds a claim: finish it,
+    abort-task-pickup, or re-run with --resume-in-flight. Exit 3 is a real
+    dependency/gate block needing human action elsewhere.
+  start-milestone-session <PARENT_NODE_ID> — sync base, ensure rollup branch, write work/.milestone-session.yaml
+    (optional: --base BRANCH --remote NAME --repo-root DIR)
+  reconcile-milestone-status — dry-run milestone delivery vs git; --apply to close/sync (see -h)
+  open-milestone-pr       — print gh/glab one-line PR from rollup branch to integration
+
+--- stderr ---

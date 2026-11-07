@@ -176,10 +176,10 @@
     },
     {
       "acceptance": [
-        "The usage parser (worker_adapter_base parse_events) reads the launch model through worker_models.launch_model instead of model_from_argv alone, so a shell -c launch is priced by command_model's existing rules (one simple command, redirections allowed, a literal -m / --model / --model= value): a Codex worker whose channels.cli is `codex exec --json -m <id> … - < {prompt}` gets a roster-priced cost marked est. instead of $?; a list or pipeline, or a non-literal model word, stays $?; model_from_argv is unchanged",
+        "The usage parser (worker_adapter_base parse_events) reads the launch model through worker_models.launch_model instead of model_from_argv alone, so a shell -c launch is priced by command_model's existing rules (one simple command, redirections allowed, a literal -m / --model / --model= value): a Codex worker whose channels.cli is `codex exec --json -m <id> … - < {prompt}` gets a roster-priced cost marked est. instead of $?; a list or pipeline, or a non-literal model word, stays $?; model_from_argv is unchanged. A command that command_model refuses, such as the documented git-roots form with a quoted $(...), stays unpriced ($?) and docs/orchestration-workers.md says so; command_model itself does not change, because the review gate uses the same rule",
         "list_sessions with live_only leaves out a session whose recorded worktree is not a directory or whose recorded branch has no refs/heads/<branch>; session list --all still shows it with 'stale: worktree gone' or 'stale: branch gone' (worktree gone when both); a record with no worktree or no branch keeps today's expiry rule; a worktree or branch value that is not a string, or a git error on the ref check, keeps the session live and raises nothing",
         "worker terminate ends only the live presence session in the worker's worktree whose agent is the worker's derived id, `<user>-s<pgid>` from the record's pgid read before terminate clears it (the runner drops SPECY_ROAD_AGENT_ID and starts the wrapper in its own session); another agent's session in the same worktree and sessions in other worktrees stay live; no new worker-record field",
-        "Tests: tests/test_worker_usage_shell_cli.py (the rc4 Codex channels.cli string priced; a pipeline and a non-literal -m stay $?; an unsplittable string still $?); tests/test_session_presence.py (worktree removed, branch deleted, both gone, --all reasons, a non-string worktree value stays live, terminate ends the worker's own session and leaves a peer in the same worktree and another worktree's session); docs/orchestration-workers.md cost and presence lines; CHANGELOG [Unreleased] Fixed",
+        "Tests: tests/test_worker_usage_shell_cli.py (a simple Codex channels.cli string priced, and the git-roots form still $? as documented; a pipeline and a non-literal -m stay $?; an unsplittable string still $?); tests/test_session_presence.py (worktree removed, branch deleted, both gone, --all reasons, a non-string worktree value stays live, terminate ends the worker's own session and leaves a peer in the same worktree and another worktree's session); docs/orchestration-workers.md cost and presence lines; CHANGELOG [Unreleased] Fixed",
         "Estimated net line change (informational, not a gate): package about +30, tests about +100, docs about +3"
       ],
       "codename": "worker-cost-and-stale-presence",
@@ -202,7 +202,8 @@
         "docs/orchestration-workers.md",
         "CHANGELOG.md",
         "specy_road/worker_adapter_base.py",
-        "specy_road/bundled_scripts/session_cli.py"
+        "specy_road/bundled_scripts/session_cli.py",
+        "tests/test_session_overlap.py"
       ],
       "type": "task"
     },

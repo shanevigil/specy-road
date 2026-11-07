@@ -10,8 +10,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 |----|-------|------|------|--------|
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
 | `M16.1` | Freeze, rules, parity harness and baselines | milestone | — | Not Started |
-| `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
-| `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Not Started |
+| `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Complete |
+| `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Complete |
 | `M16.1.3` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Not Started |
 | `M16.1.4` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Not Started |
 | `M16.1.5` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Not Started |
@@ -201,7 +201,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.2` | A move rewrites touch zones that name a renamed planning sheet, and validate warns on a zone naming a missing sheet | task | — | Complete |
 | `M22.3` | Moves rewrite decision-ledger node ids, and validate warns on an open entry naming no node | task | — | Complete |
 | `M22.4` | New planning sheets no longer write the node's display id into their body | task | — | Complete |
-| `M22.6` | A queued worker message that cannot be delivered flags the worker and goes out with its next turn | task | — | Not Started |
+| `M22.6` | A queued worker message that cannot be delivered flags the worker and goes out with its next turn | task | — | Complete |
 | `M22.7` | ready warns when a branch changes product files but adds nothing under the CHANGELOG's [Unreleased] heading | task | — | Complete |
 | `M22.8` | init project ends with the next steps: set the integration branch, commit the scaffold, validate | task | — | Complete |
 | `M22.9` | Local roster entries need allow_local_cli for preflight, cli_resume and harness_bin; a Codex reviewer runs memory-off in its own CODEX_HOME | task | — | Complete |
@@ -239,7 +239,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.43` | digest gives the same result with a cold or warm history cache | task | — | Not Started |
 | `M22.44` | Unattended workers run in a read-only sandbox on Linux | task | — | Complete |
 | `M22.45` | A worker turn that moves the integration ref is flagged | task | — | Complete |
-| `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Not Started |
+| `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Complete |
+| `M22.47` | Cursor workers start and keep their config under the sandbox | task | — | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

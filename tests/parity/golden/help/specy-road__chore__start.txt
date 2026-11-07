@@ -1,0 +1,25 @@
+$ specy-road chore start --help
+exit: 0
+--- stdout ---
+usage: specy-road chore start [-h] --task TASK --zone PATH [--review] [--model MODEL]
+                              [--harness {claude-code,codex,cursor,generic}] [--worktree WORKTREE]
+                              [--json] [--repo-root DIR]
+                              slug
+
+positional arguments:
+  slug
+
+options:
+  -h, --help            show this help message and exit
+  --task TASK           What the chore is to do (the executor's task, the reviewer's A1)
+  --zone PATH           A touch zone (repeatable); worker reconcile flags changes outside them
+  --review              Allow `review delegate <slug>`; without it close records unreviewed
+  --model MODEL         Default executor model for `worker delegate <slug>`; may be off the roster
+  --harness {claude-code,codex,cursor,generic}
+                        Where an off-roster model runs
+  --worktree WORKTREE   Run in this checkout (default: this one)
+  --json
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

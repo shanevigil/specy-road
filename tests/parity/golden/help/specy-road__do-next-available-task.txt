@@ -1,0 +1,93 @@
+$ specy-road do-next-available-task --help
+exit: 0
+--- stdout ---
+usage: specy-road do-next-available-task [-h] [--base BRANCH] [--remote NAME] [--interactive]
+                                         [--no-ci-skip-in-message] [--allow-unauthored]
+                                         [--allow-scaffold-planning]
+                                         [--prefer-agentic | --no-prefer-agentic]
+                                         [--baseline-cmd CMD] [--baseline-warn] [--local]
+                                         [--worktree] [--owner NAME] [--allow-second-claim]
+                                         [--repo-root DIR] [--on-complete MODE]
+                                         [--milestone-subtree] [--under NODE_ID]
+
+Pick the next actionable leaf task: sync integration branch, write brief,
+register on integration branch, create feature/rm-*, write prompt.
+
+Selection order among eligible leaves:
+  1. status Blocked   — a blocked leaf is the thing most worth unblocking, so
+     it is offered FIRST rather than skipped. To keep work out of the queue
+     entirely, give it a type: gate dependency; gates are never pickable and
+     hold their dependents back.
+  2. MR-rejected      — changes requested on the open PR/MR.
+  3. everything else  — outline (tree) order.
+With --prefer-agentic (or prefer_agentic_pick_order: true in
+roadmap/git-workflow.yaml), each tier is ordered Agentic-led, Mixed, unset,
+Human-led, outline order within each. The tiers and eligibility do not change.
+
+A dependency on a phase or milestone is satisfied when that node's leaf
+descendants are all Complete (the F-013 rollup), not when its own status field
+says Complete.
+
+execution_milestone (Human-led / Agentic-led / Mixed) is advisory metadata. It
+does NOT gate pickup; --prefer-agentic only reorders.
+
+A leaf whose planning sheet is still the scaffold-planning or brainstorm promote
+placeholder, and whose node has no acceptance, is skipped with the reason
+printed; --allow-unauthored picks it anyway. A leaf with acceptance but an
+unwritten ## Intent or ## Approach is skipped too; --allow-scaffold-planning
+keeps the old warn-and-pick behaviour for that case.
+
+options:
+  -h, --help            show this help message and exit
+  --base BRANCH         Integration branch to sync before registering and branching (default:
+                        roadmap/git-workflow.yaml, else main).
+  --remote NAME         Git remote to fetch and merge from (default: roadmap/git-workflow.yaml,
+                        else origin).
+  --interactive         Choose a task from a numbered list instead of auto-picking the first.
+  --no-ci-skip-in-message
+                        Omit CI skip tokens from the registration commit message (default appends
+                        common [skip ci] / [ci skip] / ***NO_CI*** markers).
+  --allow-unauthored    Also pick leaves whose planning sheet is still the scaffold-planning or
+                        brainstorm promote placeholder and whose node has no acceptance (skipped
+                        by default, with the reason printed).
+  --allow-scaffold-planning
+                        Also pick leaves that have acceptance criteria but whose planning sheet
+                        still has scaffold-planning's or brainstorm promote's placeholder under ##
+                        Intent or ## Approach (skipped by default; finish-this-task still refuses
+                        unless this flag is passed there too).
+  --prefer-agentic, --no-prefer-agentic
+                        Order each selection tier by execution_milestone: Agentic-led, Mixed,
+                        unset, Human-led (default: prefer_agentic_pick_order in roadmap/git-
+                        workflow.yaml, else off).
+  --baseline-cmd CMD    Shell command run on the integration branch after the sync and before
+                        claiming a leaf (e.g. 'make test'). A non-zero exit refuses the pickup, so
+                        a red base is fixed before a leaf inherits it. Default: baseline_cmd in
+                        roadmap/git-workflow.yaml; an empty value turns that off for this run.
+  --baseline-warn       Pick up even when the baseline command fails, with a warning.
+  --local               Register the claim in this checkout only: no fetch, no merge, no push. The
+                        row is still committed on the integration branch locally, so finish, abort
+                        and the review gate work; push that branch when you want the team to see
+                        the claim. Peers cannot see a local claim until then.
+  --worktree            Run from the main checkout on the integration branch: register and push
+                        the claim there as usual, then create the leaf's branch in a linked
+                        worktree at work/.worktrees/<codename> instead of switching this checkout
+                        to it. The brief, prompt and session file go in that worktree's work/.
+  --owner NAME          Who holds the claim, written to the registry row (default: git config
+                        user.name).
+  --allow-second-claim  Claim another leaf although this checkout already holds one. Without it,
+                        pickup exits 6 naming the held claim when the registry has a row whose
+                        branch exists here and no other worktree has it checked out.
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+  --on-complete MODE    Completion workflow for this task: pr, merge, or auto. Sets session for
+                        finish-this-task; skips TTY prompt when set. See roadmap/git-workflow.yaml
+                        on_complete and https://github.com/shanevigil/specy-
+                        road/blob/<DOCS_REF>/docs/git-workflow.md.
+  --milestone-subtree   Limit pickup to leaves under the parent from work/.milestone-session.yaml
+                        (run specy-road start-milestone-session first).
+  --under NODE_ID       Limit pickup to leaves under this roadmap node (e.g. M7). Pass a parent id
+                        to scope to its whole subtree, or a single leaf id to target exactly that
+                        leaf — the scope includes the node itself. If work/.milestone-session.yaml
+                        exists, it must match this node.
+--- stderr ---

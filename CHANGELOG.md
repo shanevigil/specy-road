@@ -41,6 +41,12 @@ body. Keep section bodies focused; link to PRs for detail.
   the temporary file), restores file modes, and keeps the index when something outside finish's own
   paths was staged meanwhile, naming it and the saved pre-finish index.
 
+- A sandboxed worker turn can read its leaf's review records. The `work/reviews/<ID>/` outbox now starts with a
+  copy of the regular files already there (REVIEW, notes and `history/` records; links are not copied), so a
+  fix round sees its blocking review. Only `READY-*` files are still moved back, so an edited copy of a record
+  never reaches the reviews directory. Cursor turns start under the sandbox again: `~/.cursor/sandbox-policies/`
+  is no longer read-only, because Cursor writes its policy file there on every start. It is now the worker's own
+  state.
 - Reviewer runs (rc4 re-test D15c, D17, D18). A refused answer's one-line reason names the first
   offending line whole, then `(N more; full text in work/reviews/<ID>/REJECTED-<model>.md)`, for the
   first refusal and for a repair turn's, instead of the last 400 characters cut mid-word. A
@@ -51,6 +57,7 @@ body. Keep section bodies focused; link to PRs for detail.
   child such as Cursor's `worker-server` no longer outlives the run. The prompt goes on stdin from a
   thread inside that guard, so a reviewer that exits or is interrupted before reading it no longer
   strands the run.
+- A queued worker message that cannot be delivered (a lease the remote rejects or cannot take, a harness that cannot resume, or a prompt file that cannot be written) stays on the record and the worker gains `message_undelivered`. The next `worker message` or `worker resume` sends that text, a blank line, then its own prompt, and clears both only after the turn starts. `terminate` drops the text and clears the flag. The wrapper's exit code is unchanged.
 - `set-dependencies --deps` and `edit-node --set dependencies=` accept a display id or a node_key
   (mixed in one value) and store the node_key. An unknown token is still refused with
   `dependency 'X' is neither a node id nor a node_key in the roadmap`.

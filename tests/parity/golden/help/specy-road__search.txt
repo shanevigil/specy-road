@@ -1,0 +1,29 @@
+$ specy-road search --help
+exit: 0
+--- stdout ---
+usage: specy-road search [-h] [--scope {live,archived,all}]
+                         [--kind {planning,shared,node,summary,constitution}] [--node NODE_ID]
+                         [--limit N] [--json] [--stats] [--rebuild] [--repo-root DIR]
+                         [QUERY ...]
+
+Search planning sheets, shared contracts, roadmap nodes, implementation summaries and archived
+work. Ranked, deduplicated, and scoped so current decisions outrank superseded ones.
+
+positional arguments:
+  QUERY
+
+options:
+  -h, --help            show this help message and exit
+  --scope {live,archived,all}
+                        Restrict to live or archived material (default: all, live ranked first).
+  --kind {planning,shared,node,summary,constitution}
+                        Restrict to a source kind. Repeatable.
+  --node NODE_ID        Only this node's material.
+  --limit N
+  --json                Machine-readable output.
+  --stats               Report index size instead of searching.
+  --rebuild             Discard the index under .specyrd/cache/ and re-chunk everything.
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

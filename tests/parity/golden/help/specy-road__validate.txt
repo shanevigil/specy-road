@@ -1,0 +1,32 @@
+$ specy-road validate --help
+exit: 0
+--- stdout ---
+usage: specy-road validate [-h] [--no-overlap-warn] [--no-phase-status-warn] [--strict]
+                           [--strict-authoring] [--all] [--generate-orchestration]
+                           [--repo-root DIR] [--context]
+
+Validate merged roadmap graph (manifest + chunks) and registry.yaml.
+
+options:
+  -h, --help            show this help message and exit
+  --no-overlap-warn     suppress touch-zone overlap warnings
+  --no-phase-status-warn
+                        Deprecated. Ignored. A parent status that disagrees with the F-013 rollup
+                        on Complete is reported as a warning (it never fails validation), because
+                        the authored chunk value is what a reviewer reads.
+  --strict              Exit 1 when validation passes with warnings (or self-heal notes), e.g. as
+                        a CI gate once an upgrade window closes. Open leaves pickup skips as
+                        unauthored (placeholder sheet, no acceptance) are a notice, not counted.
+  --strict-authoring    --strict, and count the unauthored-leaf notice as warnings too.
+  --all                 List every open leaf with a placeholder planning sheet and no acceptance
+                        (do-next-available-task skips them), not just the first ten, and every
+                        Complete leaf whose planning sheet is still the scaffold.
+  --generate-orchestration
+                        After validation passes, write the commented roadmap/orchestration.yaml
+                        starter that init project writes, when the file does not exist.
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+  --context             Print the context: warnings in full even when unchanged since the last
+                        validate.
+--- stderr ---

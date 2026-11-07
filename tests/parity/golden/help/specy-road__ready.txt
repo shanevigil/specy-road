@@ -1,0 +1,30 @@
+$ specy-road ready --help
+exit: 0
+--- stdout ---
+usage: specy-road ready [-h] --model MODEL [--run CMD] [--run-argv JSON] [--verify CMD=EXIT]
+                        [--red-green CMD=EXIT] [--note NOTE] [--repo-root DIR]
+                        node_id
+
+positional arguments:
+  node_id
+
+options:
+  -h, --help            show this help message and exit
+  --model MODEL         Your roster id; the file is READY-<model>.md
+  --run CMD             Run this verifier or test now from the current directory and record its
+                        exit and the last lines of its output, which the review packet shows
+                        (repeatable); a non-zero exit is refused
+  --run-argv JSON       Like --run but runs a JSON array of strings without a shell (repeatable);
+                        invalid JSON or a value that is not a non-empty JSON array of strings
+                        whose first element is non-empty (e.g. not-json, [], {}, [1], [""]) is
+                        refused before anything runs; later elements may be empty or whitespace;
+                        e.g. ["echo", "ok"] or ["echo", ""] is accepted
+  --verify CMD=EXIT     A verifier or test you ran and its exit, without its output (repeatable);
+                        a non-zero exit is refused
+  --red-green CMD=EXIT  A check that fails without the fix, by design (repeatable); goes in the
+                        notes, not verify
+  --note NOTE           Notes for the coordinator: anything you could not finish, and why
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---
