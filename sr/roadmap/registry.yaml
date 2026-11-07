@@ -83,19 +83,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-run-summary-and-process-tree
-    node_id: M22.16
-    branch: feature/rm-reviewer-run-summary-and-process-tree
-    touch_zones:
-      - specy_road/review_record_write.py
-      - specy_road/review_delegate.py
-      - specy_road/worker_process.py
-      - tests/test_review_run_lows_rc5.py
-      - docs/orchestration-reviewer-output.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: queued-message-undelivered
     node_id: M22.6
     branch: feature/rm-queued-message-undelivered
@@ -107,16 +94,6 @@ entries:
       - specy_road/schemas/worker-record.schema.json
       - tests/test_worker_queue_message.py
       - docs/orchestration-workers.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: integration-refs-stay-put-during-a-turn
-    node_id: M22.45
-    branch: feature/rm-integration-refs-stay-put-during-a-turn
-    touch_zones:
-      - specy_road/worker_turn_check.py
-      - tests/test_worker_turn_check.py
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil
@@ -168,6 +145,16 @@ entries:
       - specy_road/pm_gantt_static/
       - tests/test_gui_app_mutations.py
       - docs/pm-gui.md
+      - CHANGELOG.md
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: sandboxed-workers-can-read-their-reviews
+    node_id: M22.46
+    branch: feature/rm-sandboxed-workers-can-read-their-reviews
+    touch_zones:
+      - specy_road/worker_sandbox.py
+      - tests/test_worker_sandbox.py
       - CHANGELOG.md
     started: '2026-11-07'
     owner: savigil

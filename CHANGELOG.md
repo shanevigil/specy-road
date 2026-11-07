@@ -18,6 +18,11 @@ body. Keep section bodies focused; link to PRs for detail.
   remove and move up / down, saved through the existing `PATCH /api/nodes/{id}` as `edit-node --set acceptance=`
   (one criterion per line; an empty list removes the field). A line break inside a criterion is refused with a
   message. See `docs/pm-gui.md` (Node edit dialog).
+- A worker turn that moves the local integration ref or its remote-tracking ref, including a ref that appears
+  or disappears, is a post-run finding naming the ref and its before and after values. A ref absent at both
+  ends stays clean. A failed read is a check error, not a clean turn. A turn that moves only its own branch
+  stays clean.
+
 - `worker_sandbox` in `roadmap/git-workflow.yaml` (`bwrap`, `auto` or `off`; omitted means `off`, so a project
   opts in) runs each unattended worker turn's harness in a read-only bubblewrap sandbox on Linux. Writable: the
   leaf's linked worktree and the git objects, refs and logs. Each harness state directory is replaced by the
@@ -31,6 +36,16 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- Reviewer runs (rc4 re-test D15c, D17, D18). A refused answer's one-line reason names the first
+  offending line whole, then `(N more; full text in work/reviews/<ID>/REJECTED-<model>.md)`, for the
+  first refusal and for a repair turn's, instead of the last 400 characters cut mid-word. A
+  `review delegate` turn (first or repair) whose last attempt ended with a capacity error has the
+  capacity reason alone, with no `line N of the final turn is not one JSON object`. `review delegate`
+  and `prompt --channel cli --run` start the reviewer in its own process group and end that group
+  (SIGTERM, SIGKILL after 5 s) when the reviewer exits or the run is interrupted, so a background
+  child such as Cursor's `worker-server` no longer outlives the run. The prompt goes on stdin from a
+  thread inside that guard, so a reviewer that exits or is interrupted before reading it no longer
+  strands the run.
 - `set-dependencies --deps` and `edit-node --set dependencies=` accept a display id or a node_key
   (mixed in one value) and store the node_key. An unknown token is still refused with
   `dependency 'X' is neither a node id nor a node_key in the roadmap`.
