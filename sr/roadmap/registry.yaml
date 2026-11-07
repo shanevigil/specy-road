@@ -116,6 +116,7 @@ entries:
       - tests/test_m13_7_notices.py
       - tests/test_upgrade_plan_parity.py
       - specy_road/bundled_scripts/refresh_stubs_report.py
+      - specy_road/specyrd_hooks.py
     started: '2026-11-06'
     owner: savigil
     implementation_review: pending
