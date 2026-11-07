@@ -154,6 +154,7 @@ entries:
       - CHANGELOG.md
       - specy_road/worker_adapter_base.py
       - specy_road/bundled_scripts/session_cli.py
+      - tests/test_session_overlap.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
