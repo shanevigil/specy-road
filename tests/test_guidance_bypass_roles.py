@@ -488,13 +488,18 @@ def test_a_flag_on_a_profile_at_a_quoted_path_is_found(tmp_path: Path, capfd, mo
     for k, v in {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.quotePath", "GIT_CONFIG_VALUE_0": "true"}.items():
         monkeypatch.setenv(k, v)
     rel = "model-profiles/custom/café.md"
-    repo = guidance_repo(tmp_path, roster(rid="my-model", extra=f"\n    profile: {rel}"))
+    person = f"  - {{id: my-model-fast, family: human, roles: [reviewer], public_key: '{DUMMY_KEY}'}}\n"
+    repo = guidance_repo(tmp_path, roster(rid="my-model", extra=f"\n    profile: {rel}").replace(
+        "policy:", person + "policy:"))
     (repo / rel).parent.mkdir(parents=True)
     (repo / rel).write_text((BUNDLED / "composer-2.5.md").read_text().replace("composer-2.5", "my-model"))
     on_dev(repo, "a profile at a quoted path")
     capfd.readouterr()
     assert prompt(repo, "executor", model="my-model") == 1
     assert "my-model (model my-model) is excluded" in capfd.readouterr().err
+    # found only by its id (the profile's alias), a human entry running that profile is no person
+    row = next(r for r in status(repo, capfd)["reviewer_eligibility"] if r["model"] == "my-model-fast")
+    assert not row["eligible"] and "my-model-fast (model my-model" in row["reason"] and EXCLUDED in row["reason"]
 
 
 UNREADABLE = "passes a model flag specy-road cannot read"

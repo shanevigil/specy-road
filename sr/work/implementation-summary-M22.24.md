@@ -15,14 +15,23 @@ Base `4a1a8674`. Fix commit `fc3a691b`. Touch zones unchanged and accurate. All 
   The fields checked are `channels.cli`, `channels.cli_resume` and each copy's `access.cli`. While signed reviews are on, such an entry gets the brief's refusal text, or the opted-in warning when the committed roster opts in. Precedence is: read error, then flagged name, then unreadable field. `validate` and `doctor` print `warning: <id> (model unreadable in <field>) is excluded…` / `opted in at its own risk` through `guidance_bypass_lines`.
 - **A5, normalised names** (`_flagged`). An exact key match is tried first, then `model_names.same_model(name, key)`. The record comes from the matched key, and the label shows the name as the entry spells it. `composer-2` stays unflagged.
 - **A4, docs and CHANGELOG.** `docs/orchestration-roster.md` gets the bounded-rule paragraph, and the launch-name list now names the roster id and `access.cli`. The existing `[Unreleased]` Security bullet in `CHANGELOG.md` is extended; no version heading was added.
-- **Not changed, noted for reviewers:**
-  - `orchestration_pinned._committed_profile_paths` (profile lookup by id, not the flag map) still uses the quoted plain listing. A by-id profile at a quoted path is routed as no profile, but its id is still a launch name and the flag map now holds its flag. The brief scopes A3 to `_committed_source`.
-  - A non-UTF-8 listing still fails through the existing path.
+- **Fix round 1** (review `gpt-5.6-sol-high` at `6a43da70`). Class: a profile listing parsed newline by newline, which git quotes under `core.quotePath`, so a non-ASCII profile path is dropped. The flag scan was fixed in round 0; the routing scan `_committed_profile_paths` was not. An implicit `café.md` matching a `family: human` reviewer was then routed as no profile, and `_is_person` exempted it. Design change: one helper, `_listed_profiles` (`ls-tree -r -z --name-only`), now serves both the routing scan and `_committed_source`, so the two cannot diverge.
+- A non-UTF-8 listing still fails through the existing path.
+
+## Probes
+
+- `_committed_profile_paths` (routing by id): newline listing, quoted name dropped. **Fixed:** now uses `_listed_profiles`. The quoted-path test's new human-reviewer row is red at `6a43da70` and green now.
+- `_committed_source` (flag map): already `-z` since round 0, and now through the same helper.
+- `_blob` and `_committed_text` (`ls-tree <sha> -- <rel>` mode check, then `show <sha>:./<rel>`): only the mode prefix is read and the path is passed unquoted. Not affected; the explicit `café.md` row covers them.
+- Every other `ls-tree`, `ls-files` and `diff --name-only` caller in `specy_road/` (finish, pm_publish, ignore_report, node_activity, nested_repos, sibling_repos): none lists model profiles or feeds the guidance check, and all are outside the zones. No change.
+- `_is_person` against a missed routing scan: with one shared listing, it misses only when git fails. A git failure also makes `_committed_source` an error, so a person check against `src.profiles` would see nothing more. I tried that extra guard (`_by_id`) and dropped it as unreachable.
+- Profiles outside git (`_worktree_source`, `profile_for_entry`) use `rglob`, which has no quoting. Not affected.
 
 ## Verification
 
 - `pytest -n 4 -q`: 6230 passed. `-n 4` was used instead of `-n auto` because the brief asks to cap workers on a shared machine.
 - `pytest -n 4 -q tests/test_guidance_bypass_roles.py`: 65 passed.
+- Fix round 1, after merging `origin/WIP/improvements-0-3-1`: the targeted run (guidance, aliases, worktree dry run, models-and-prompt, dynamic-routing-reviewers) passed 155. `ruff check specy_road tests scripts` is clean and `specy-road file-limits` is OK.
 - Red/green: with the two source files reverted to base, 28 of the new rows in that file fail and 37 pass, the 37 being the existing rows plus passing controls. With the fix, all pass.
 - `specy-road file-limits`: OK. `orchestrate_assign.py` is 501 lines and the test file 561, both under the 1000 cap.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: exit 0.
@@ -43,7 +52,7 @@ Base `4a1a8674`. Fix commit `fc3a691b`. Touch zones unchanged and accurate. All 
 - `guidance_bypass_warning` branch: the unreadable-field opted-in warning (A5).
 
 ### Code (`specy_road/orchestration_pinned.py`)
-- `_committed_source`: `-z` listing split on NUL, plus a docstring (A3). This is a change to the listing, not a new guard.
+- `_listed_profiles(repo_root, sha)`: the one NUL-delimited committed-profile listing (`None` on git failure), used by both `_committed_profile_paths` (routing) and `_committed_source` (flags). Fix round 1 (A3).
 
 ### Tests (`tests/test_guidance_bypass_roles.py`; public CLI only, no `_`-prefixed imports, no mocks)
 - `roster()` gains `cli=None` (omit `channels`) and `resume` (`channels.cli_resume`), as the brief asks.
@@ -52,7 +61,7 @@ Base `4a1a8674`. Fix commit `fc3a691b`. Touch zones unchanged and accurate. All 
 - `test_an_unreadable_integration_branch_profile_refuses`: extended so `handoff status --json` shows the key-holding `human` row eligible while `my-model` is refused. A person keeps the exemption (A1).
 - `test_a_human_entry_that_launches_a_model_is_judged_like_one`: three launch configurations × committed/local × `worker delegate`/`prompt`, all refused with nothing launched (A1).
 - `test_a_profile_access_cli_model_is_matched`: `access.cli` model through `worker delegate` and `prompt --run --channel cli`, with and without a working-tree drift to `access.cli: none` (A2).
-- `test_a_flag_on_a_profile_at_a_quoted_path_is_found`: `café.md` with `core.quotePath=true` forced through `GIT_CONFIG_COUNT` (A3).
+- `test_a_flag_on_a_profile_at_a_quoted_path_is_found`: `café.md` with `core.quotePath=true` forced through `GIT_CONFIG_COUNT` (A3). Fix round 1 extends it with a `family: human` reviewer whose id matches the profile's alias only, so it is found only by the routing scan. `handoff status --json` must show that reviewer excluded (A1 + A3 combined).
 - `test_an_unreadable_model_flag_is_refused`: substitution, list, variable, attached `-m`, two flags, unbalanced quote, and `cli_resume` only, each refused (A5).
 - `test_an_unreadable_local_command_is_refused_and_a_committed_opt_in_admits_it`: the review's `roster_add` case is refused. A committed opt-in launches and warns once, and `validate`/`doctor` print the opted-in line (A5).
 - `test_no_shipped_profile_is_refused_but_the_flagged_one`: one generic executor per bundled profile; `validate` excludes only composer-2.5 and reports nothing unreadable.

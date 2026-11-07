@@ -210,10 +210,18 @@ def _pinned_at(repo_root: Path, sha: str, rel: str, ref: str) -> Profile:
     return parse_profile(local, committed)
 
 
+def _listed_profiles(repo_root: Path, sha: str) -> tuple[str, ...] | None:
+    """The committed profile paths at ``sha`` (``None`` when git cannot list them). One listing for routing and the
+    guidance flags: NUL-delimited ``ls-tree -z``, since under ``core.quotePath`` a plain listing quotes a non-ASCII
+    name (``"model-profiles/caf\\303\\251.md"``) and the ``.md`` filter would drop it."""
+    out = git_stdout(["ls-tree", "-r", "-z", "--name-only", sha, "--", PROFILES_REL.as_posix()], repo_root)
+    return None if out is None else tuple(
+        p for p in out.split("\0") if p.endswith(".md") and not p.endswith("/README.md"))
+
+
 @cache
 def _committed_profile_paths(root: str, sha: str) -> tuple[str, ...]:
-    out = git_text(["ls-tree", "-r", "--name-only", sha, "--", PROFILES_REL.as_posix()], Path(root)) or ""
-    return tuple(p for p in out.splitlines() if p.endswith(".md") and not p.endswith("/README.md"))
+    return _listed_profiles(Path(root), sha) or ()
 
 
 def _pinned_for_id(repo_root: Path, sha: str, path: str, ref: str, model_id: Any) -> Profile | None:
@@ -360,13 +368,11 @@ def _committed_text(repo_root: Path, sha: str, rel: str) -> tuple[str | None, st
 
 
 def _committed_source(repo_root: Path, sha: str) -> GuidanceSource:
-    """NUL-delimited ``ls-tree -z``: under ``core.quotePath`` a plain listing quotes a non-ASCII name
-    (``"model-profiles/caf\\303\\251.md"``), which the ``.md`` filter would drop with its flag."""
-    listing = git_stdout(["ls-tree", "-r", "-z", "--name-only", sha, "--", PROFILES_REL.as_posix()], repo_root)
+    listing = _listed_profiles(repo_root, sha)
     if listing is None:
         return _failed(repo_root, f"cannot list {PROFILES_REL.as_posix()}/ on the integration branch ({sha[:12]})")
     texts = {}
-    for rel in (r for r in listing.split("\0") if r.endswith(".md") and not r.endswith("/README.md")):
+    for rel in listing:
         text, err = _committed_text(repo_root, sha, rel)
         if err:
             return _failed(repo_root, err)
