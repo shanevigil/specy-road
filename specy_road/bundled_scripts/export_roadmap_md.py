@@ -178,7 +178,11 @@ def _write_export(
         if out_index.is_file():
             existing = out_index.read_text(encoding="utf-8")
             if existing != index:
-                print(f"drift: {out_index}", file=sys.stderr)
+                print(
+                    f"drift: {out_index} no longer matches the roadmap. "
+                    "Run: specy-road export",
+                    file=sys.stderr,
+                )
                 _print_gitignore_hint(root)
                 raise SystemExit(1)
         else:

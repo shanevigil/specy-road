@@ -47,7 +47,8 @@
         "pyproject.toml",
         "README.md",
         "docs/install-release-candidates.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_release_harness.py"
       ],
       "type": "task"
     },
@@ -119,6 +120,27 @@
         "specy_road/bundled_scripts/worker_cli.py",
         "tests/test_worker_stall_recovery.py",
         "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "same_model treats a Cursor display name with a context size and effort word, such as Claude Opus 5.5 300K High or GPT-5.6 Sol 1M High, as the catalog id it names, and a genuinely different model or effort still does not match",
+        "tests/test_model_names.py covers Opus, Sol and Grok names in both context sizes, and a mismatch that must stay a mismatch; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "cursor-display-names-match-the-model",
+      "dependencies": [],
+      "id": "M22.40",
+      "node_key": "b48b07b0-1aba-4444-abfe-0620d8bf76a2",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.40_cursor-display-names-match-the-model_b48b07b0-1aba-4444-abfe-0620d8bf76a2.md",
+      "sibling_order": 39,
+      "status": "Not Started",
+      "title": "Cursor display names match the model they name",
+      "touch_zones": [
+        "specy_road/model_names.py",
+        "tests/test_model_names.py",
         "CHANGELOG.md"
       ],
       "type": "task"

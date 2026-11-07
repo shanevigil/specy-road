@@ -80,14 +80,19 @@ class Codex(Adapter):
         verdict comes back as the final message, shaped by ``--output-schema`` and written to ``-o``. Both flags
         are documented for ``codex exec`` only, so a resume (``session`` is ``(id, True)``) leaves them out and
         its last ``agent_message`` is parsed instead; a fresh turn cannot choose its thread id. A resume passes
-        ``-m`` again, as the fresh turn does, so a format-repair retry runs on the requested model."""
+        ``-m`` again, as the fresh turn does, so a format-repair retry runs on the requested model. Both turns pass
+        ``CODEX_MEMORY_OFF`` and an isolated ``CODEX_HOME``: the profile's on a fresh turn, the session's home
+        (else the profile's) on resume, as a worker launch and resume do."""
         if session and session[1]:
+            home = session_home(session[0]) or profile_home(model)   # where the fresh turn left the thread
             return Launch([self._program(harness_bin), "exec", "resume", "--json", *_model_flag("-m", model),
-                           *self.effort_flag(effort), *CODEX_REVIEW_POLICY,
-                           session[0], "-"], stdin=_text(prompt_path), session_id=session[0])
+                           *self.effort_flag(effort), *CODEX_REVIEW_POLICY, *CODEX_MEMORY_OFF,
+                           session[0], "-"], stdin=_text(prompt_path), session_id=session[0],
+                          env={"CODEX_HOME": str(home)})
         return Launch([self._program(harness_bin), "exec", "--json", *_model_flag("-m", model), *self.effort_flag(effort),
-                       *CODEX_REVIEW_POLICY, *(["--output-schema", str(schema)] if schema else []),
-                       *(["-o", str(output)] if output else []), "-"], stdin=_text(prompt_path))
+                       *CODEX_REVIEW_POLICY, *CODEX_MEMORY_OFF, *(["--output-schema", str(schema)] if schema else []),
+                       *(["-o", str(output)] if output else []), "-"], stdin=_text(prompt_path),
+                      env={"CODEX_HOME": str(profile_home(model))})
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

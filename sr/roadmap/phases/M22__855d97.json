@@ -124,7 +124,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.22_sandbox-rc4-final-polish_7a0ccfaf-aa9e-45f5-8438-19693d6c622d.md",
       "sibling_order": 21,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal",
       "touch_zones": [
         "gui/pm-gantt/src/components/MarkdownWorkspace.tsx",
@@ -314,7 +314,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.28_upgrade-no-self-warning-export-drift-hint_02771e58-14a5-472d-8292-a1fb1dce7e3e.md",
       "sibling_order": 27,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade does not warn about itself, and export's drift line says how to fix it",
       "touch_zones": [
         "specy_road/cli.py",
@@ -476,7 +476,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.34_accept-policy-for-all-open-claims_59ad86eb-3b77-478d-ac05-ba61dabf8394.md",
       "sibling_order": 33,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "One accept-policy prompt covers every open claim",
       "touch_zones": [
         "specy_road/review_policy_pin.py",
