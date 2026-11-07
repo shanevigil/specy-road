@@ -158,6 +158,15 @@ def test_doctor_is_wired_into_the_cli(doctor_repo, capfd) -> None:
 
 def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> None:
     repo, bare = doctor_repo
+    chunk = json.loads((repo / "roadmap" / "phases" / "M1.json").read_text())
+    chunk["nodes"].append({**NODE, "id": "M1.5", "codename": "buried", "status": "Complete",
+                           "node_key": "55555555-5555-5555-8555-555555555555", "sibling_order": 5})
+    commit_file(repo, "roadmap/phases/M1.json", json.dumps(chunk), "complete without a branch")
+    reg = yaml.safe_load((repo / "roadmap" / "registry.yaml").read_text())
+    reg["entries"].append({"codename": "buried", "node_id": "M1.5",
+                           "branch": "feature/rm-buried", "touch_zones": ["buried"]})
+    commit_file(repo, "roadmap/registry.yaml", yaml.safe_dump(reg), "buried claim")
+    git(repo, "push", "-q", "origin", "dev")
 
     assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
 
@@ -176,8 +185,12 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
         assert name in git(repo, "worktree", "list")
     assert any(line.startswith("[kept] ") and "wt-wip: detached at" in line for line in out.splitlines())
     assert "[ok] removed registry row settled on origin/dev" in out
+    assert "  buried  — node M1.5: leaf Complete" in out
+    assert "feature/rm-buried is listed above" not in out
+    assert "[ok] removed registry row buried on origin/dev" in out
     registry = git(bare, "show", "dev:roadmap/registry.yaml")
     assert "settled" not in registry
+    assert "buried" not in registry
     assert any(
         line.startswith("[kept] ghost:") and "specy-road registry-prune --remove ghost" in line
         and "confirm that clone no longer holds the claim" in line
