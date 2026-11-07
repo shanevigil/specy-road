@@ -32,7 +32,8 @@ a temporary mirror of the checkout that keeps its links; what they wrote there
 is the plan, which is then written into the checkout. ``--dry-run`` lists the
 same plan, writes it into a temporary copy instead and runs ``validate`` there;
 the checkout is never written, and the generated files it would write are
-listed as ``would write``. Every git call runs with every ``GIT_`` variable of
+listed as ``would write``, the digest rendered from the checkout's history,
+read-only. Every git call runs with every ``GIT_`` variable of
 the caller's removed and a timeout; in the plan's mirror and the dry run's
 copy, git also reads no global or system config and runs no hook, and in the
 checkout the caller's own config files apply. The exit code is 2 when a git
@@ -54,6 +55,7 @@ import os
 import shlex
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
@@ -64,7 +66,9 @@ from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, selection_notice
 from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
 from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
-from specy_road.bundled_scripts.upgrade_generated import GitFailed, checked, regenerate, scratch_environ
+from specy_road.bundled_scripts.upgrade_generated import (
+    GitFailed, checked, regenerate, scratch_environ, use_live_history,
+)
 from specy_road.bundled_scripts.upgrade_plan import (
     Entry, Mirror, Plan, apply_plan, check_changes, conflicts, make_plan,
 )
@@ -218,6 +222,7 @@ _REFUSED_STEP = ("Replace each path refused above (error:, refused) with a regul
 
 def _check(
     project: Path, tracked_in: Path, verb: str, refused: bool, caller_env: dict[str, str],
+    before_digest: Callable[[], None] = lambda: None,
 ) -> tuple[str | None, bool]:
     """``(what failed, as the first next step, or None; generated files done)``; each step prints its own detail.
 
@@ -226,7 +231,8 @@ def _check(
     rule refused) fails the run (exit 1).
     The generated files are done only when validate passed (so they were
     regenerated), nothing was refused, and ``digest --check`` passes; otherwise
-    ``specy-road digest`` stays a next step.
+    ``specy-road digest`` stays a next step. ``before_digest`` runs after
+    validate and before the digest is first rendered.
     """
     _section("validate")
     try:
@@ -234,6 +240,7 @@ def _check(
         valid = True
     except SystemExit as e:
         valid = not e.code
+    before_digest()
     generated_refused = False
     if valid:
         _section("generated files")
@@ -395,7 +402,8 @@ def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
         copy_missing_work_templates(copy_project, existence_root=project)
         _report_line_caps(before, _capped_lines(copy_project))
         failed, _digest_ok = _check(copy_project, project, "would write",
-                                    any(e.action == "error" for e in plan.entries), caller_env)
+                                    any(e.action == "error" for e in plan.entries), caller_env,
+                                    lambda: use_live_history(copy.repo, project, caller_env))
     changed = plan.changed_since()
     if changed:
         print(f"error: dry run modified {', '.join(changed)} in {checkout}; this is a bug in specy-road upgrade,"

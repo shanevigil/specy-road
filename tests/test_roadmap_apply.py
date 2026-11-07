@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -292,6 +293,26 @@ def test_dry_run_archive_of_an_in_repo_sheet_link_leaves_the_live_sheet(repo: Pa
     assert r.returncode == 0, r.stderr
     assert _tree(repo) == before
     assert sheet.is_symlink() and target.is_file()
+
+
+@pytest.mark.parametrize("store", ["roadmap/store", "docs/store"], ids=["in-the-snapshot", "elsewhere-in-the-repo"])
+def test_a_refused_entry_after_an_archive_restores_a_sheet_link(repo: Path, store: str) -> None:
+    """The archive moved the link's target and unlinked the link: both come back where they were, the link a link."""
+    _complete_m99_1(repo)
+    sheet = _sheet_m99_1(repo)
+    target = repo / store / sheet.name
+    target.parent.mkdir(parents=True)
+    sheet.rename(target)
+    text = os.path.relpath(target, sheet.parent)
+    sheet.symlink_to(text)
+    before = _tree(repo)
+
+    r = _apply(repo, ARCHIVE + "- {op: edit-node, node: M404, set: {title: X}}\n")
+
+    assert r.returncode == 1
+    assert sheet.is_symlink() and os.readlink(sheet) == text
+    assert not target.is_symlink() and sheet.resolve() == target.resolve()
+    assert _tree(repo) == before
 
 
 def _sheet_links_out(repo: Path) -> tuple[Path, str]:

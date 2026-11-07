@@ -206,7 +206,7 @@ def test_two_missing_pages_on_one_origin_probe_the_root_once(monkeypatch) -> Non
 
 _FOLDED = {"'": "\u2018\u2019\u201a\u2032", '"': "\u201c\u201d\u201e\u2033",
            "-": "\u2010\u2011\u2012\u2013\u2014\u2015\u2212", " ": "\u00a0\u202f\u2009"}
-_SAME_WORDS = [
+_CITED = [
     ("restudying<sup>[43]</sup> while helping", "restudying while helping"),
     ("effect.<sup>[44][45][46]</sup> It", "effect. It"),
     ("restudying [43] while", "restudying while"),
@@ -215,6 +215,8 @@ _SAME_WORDS = [
     ("word[note 1] next", "word next"),
     ("word[citation needed] next", "word next"),
     ("word[Citation Needed] next", "word next"),
+]
+_SAME_WORDS = [
     ("children\u2019s education records", "children's education records"),
     ("\u201ctesting effect\u201d", '"testing effect"'),
     ("1990\u20132000 \u2014 a decade", "1990-2000 - a decade"),
@@ -239,8 +241,33 @@ def test_check_source_matches_page_text_variants_both_ways(monkeypatch, variant:
         assert bv.check_source(source, lambda url, page=page: (200, page)) == "matched"
 
 
+@pytest.mark.parametrize(("page", "quote"), _CITED)
+def test_a_citation_marker_is_dropped_from_the_page_only(monkeypatch, page: str, quote: str) -> None:
+    """The page's marker is left out of the quote: matched. The quote keeps a marker the page lacks: not-found."""
+    monkeypatch.setattr(bv.socket, "getaddrinfo", _example_com_is_public)
+    source = {"url": "https://example.com/p", "quote": quote}
+    assert bv.check_source(source, lambda url: (200, page)) == "matched"
+    assert bv.check_source({**source, "quote": page}, lambda url: (200, quote)) == "not-found"
+
+
+@pytest.mark.parametrize(("page", "quote"), [
+    ("restudying[43] while", "restudying[43] while"),
+    ("restudying[43] while", "restudying [43] while"),
+    ("effect.[44][45][46] It", "effect.[45] It"),
+    ("one[1] two[2] three", "one two[2] three"),
+    ("word [sic] next", "word [sic] next"),
+])
+def test_a_quote_that_keeps_a_bracket_matches_it_on_the_page(monkeypatch, page: str, quote: str) -> None:
+    monkeypatch.setattr(bv.socket, "getaddrinfo", _example_com_is_public)
+    source = {"url": "https://example.com/p", "quote": quote}
+    assert bv.check_source(source, lambda url: (200, page)) == "matched"
+
+
 @pytest.mark.parametrize(("page", "quote"), [("children\u2019s records", "children's files"),
-                                             ("restudying[43] while", "[43]")])
+                                             ("restudying[43] while", "[43]"),
+                                             ("restudying[43] while", "restudying[44] while"),
+                                             ("word[a] next", "word[b] next"),
+                                             ("one[1] two[2] three", "one[2] two three")])
 def test_check_source_still_needs_the_same_words(monkeypatch, page: str, quote: str) -> None:
     monkeypatch.setattr(bv.socket, "getaddrinfo", _example_com_is_public)
     source = {"url": "https://example.com/p", "quote": quote}
