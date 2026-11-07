@@ -111,19 +111,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: doctor-fix-keeps-other-clones-claims
-    node_id: M22.38
-    branch: feature/rm-doctor-fix-keeps-other-clones-claims
-    touch_zones:
-      - specy_road/bundled_scripts/doctor.py
-      - tests/test_doctor.py
-      - CHANGELOG.md
-      - docs/git-workflow.md
-      - specy_road/cli_usage.py
-      - specy_road/templates/specyrd/commands/specyrd-finish.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: guidance-exclusion-closes-three-bypasses
     node_id: M22.24
     branch: feature/rm-guidance-exclusion-closes-three-bypasses
@@ -154,6 +141,8 @@ entries:
       - CHANGELOG.md
       - specy_road/bundled_scripts/roadmap_crud_ops.py
       - tests/test_gui_app_routes_nodes_errors.py
+      - tests/test_finish_merge_failure_undo.py
+      - specy_road/finish_modes.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

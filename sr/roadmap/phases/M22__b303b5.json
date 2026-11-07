@@ -86,7 +86,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.38_doctor-fix-keeps-other-clones-claims_ee340317-9162-4a87-a51a-cc4ee3725421.md",
       "sibling_order": 37,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "doctor --fix never removes a claim that may belong to another clone",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",
