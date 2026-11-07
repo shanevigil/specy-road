@@ -346,9 +346,31 @@ Commit `906fc4f3`.
 - `refresh-stubs` on a linked `.specyrd/README.md`: still exit 1 with `error:` (grok's probe). `specyrd init` and `refresh-stubs` now agree.
 - Full suite: 6153 passed (`pytest -n 4`). `ruff check specy_road tests`: pass. `specy-road file-limits`: OK.
 
+## Fix round 10 (review `gpt-5.6-sol-high` at `6fdd5a59`; `gpt-6.1-sol-low` at `e3f70e09`; `grok-4.7-high` at `85466059`)
+
+Commit `b86b42ce`. `specy_road/specyrd_hooks.py` is now in the touch zones.
+
+- **Sol-high's finding.** The opt-in hook installs of `specyrd init` wrote outside the rule. These are the harness file (`.claude/settings.json`, `.codex/hooks.json`, `.cursor/hooks.json`), `.specyrd/hooks/<agent>/README.md` and `.git/hooks/pre-push`, written with `mkdir` and `Path.write_text`. Sol-high showed that a linked `.cursor/hooks.json` overwrote the outside JSON.
+- **Class.** Same as round 9: a path `specyrd init` writes that the preflight does not check and that is not written through `safe_write`.
+- **Fix:**
+  - New `specyrd_hooks.hook_destinations` lists every path the opt-in installs would write. `specyrd_init._refuse_unsafe_paths` checks all of them before the first write, so `--dry-run` is covered too.
+  - `_write_json`, the hooks README and `install_pre_push_hook` write through `safe_write.write`. Before reading the existing harness JSON, its path goes through `safe_write.check`.
+  - The pre-push hook keeps its earlier mode. An existing file keeps its own mode; a new file gets `0o666` less the umask. Execute bits are added in both cases, and the mode is set on the temp file before the replace, not with a `chmod` afterwards.
+- **Tests.** New `test_specyrd_init_refuses_a_linked_hook_destination` (10 rows). It covers each agent's harness file, the hooks README and `.git/hooks/pre-push`, each with a final link and with a linked parent. Each row expects exit 1 with `error:` naming the path, no traceback, and no change in the checkout or outside. For the final rows, it also checks that no file was added under `.git/hooks`. Red-green: with `specyrd_hooks.py` and `specyrd_init.py` from `6fdd5a59`, 9 of 10 rows fail. The one that passes, the `.claude` parent link, was already refused by the skills check.
+- **Sol R1/R2** (`gpt-6.1-sol-low` at `e3f70e09`) and **grok's README finding**: resolved in rounds 7 and 9. No change this round. The `relative-alias`, `dotdot-through-link` (R1) and `git-dir` (R2) rows of the shape table still pass, all expecting refusal. The acceptance allows only the two exact skills-link texts, so R2's `.git` target is refused everywhere, consistently, and never left dangling.
+
+### Probes (fix round 10)
+
+- Every write in `specyrd_init.run_init`, now including the hooks. Every path is checked by `_refuse_unsafe_paths` and written through the rule, except `AGENTS.md` and `CLAUDE.md` (`resolves_outside`, kept by A1) and `~/.specy-road/gui-settings.json`, which is outside the checkout. Result: no unchecked write left.
+- Other callers of `install_orchestration_hooks` and `install_pre_push_hook` in the package: none outside `specyrd_init`. Only `tests/test_orchestration_guard_hooks.py` calls them directly, and it passes. Result: no path skips the preflight in a CLI run, and a direct call still refuses at the write.
+- A worktree, where `.git` is a file, with `--install-pre-push`. Result: `error: <wt>/.git is a regular file, not a directory`, exit 1, nothing written. Before: stubs written, then a `mkdir` traceback.
+- A dry run with a linked hook destination. Result: refused by the preflight (exit 1), like the other `specyrd init` paths.
+- Remaining `write_text`, `mkdir`, `unlink`, `copy`, `chmod` and `replace` calls across all zoned modules (grep). Result: the same set as round 9, minus `specyrd_hooks`, which no longer has any.
+- Full suite before the final split: 6162 passed, plus 1 file-limits failure (`run_init` at 81 lines). That was fixed by moving the hook list into `_refuse_unsafe_paths`. After the fix, the file-limits, setup-writers, guard-hooks and doc-link tests all pass (203). `ruff check specy_road tests`: pass. `specy-road file-limits`: OK.
+
 ## Touch zones
 
-All edits are inside the listed zones. No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
+All edits are inside the listed zones (`specy_road/specyrd_hooks.py` added in round 10). No file outside them needed changing, and no new module beyond `specy_road/safe_write.py` (already listed). `specy-road file-limits` passes.
 
 ## Verification
 
@@ -407,4 +429,5 @@ All edits are inside the listed zones. No file outside them needed changing, and
 - Fix round 7: `specyrd_skills.SKILLS_LINK_TEXT` (the two allowed link texts, replacing `SKILLS_DIRS`); in `skill_path`, the exact-text branch (A1, removes the R1/R2 class); in `ensure_link`, the `link == canonical` guard (one skills directory linked to the other: no self-loop link, and dry and real runs agree). Tests: the shape table's `pair`, `absolute-pair`, `pair-under-linked-parent`, `relative-alias`, `dotdot-through-link` (R1) and `git-dir` (R2) rows, and the `OTHER_SKILLS` helper map; no mock.
 - Fix round 8: `safe_write.loop_refusal` (a loop met before the rule, as the rule's refusal; the class), `safe_write._loops` (its `stat` test) and `safe_write.refusal_of` (one boundary call for `exit_on_refusal` and `init project`); `refresh_stubs_report._refused` (the report resolves only a path the rule allows); `exit_on_refusal` at the `refresh-stubs`, `refresh-schemas` and `upgrade` mains and on `specyrd_init.run_init`; the loop branch in `upgrade_plan.make_plan` (names the checkout's path). Tests: the `cycle` shape row (6), the m13_7 `self-loop` parameter (2), `test_a_symlink_loop_on_a_managed_path_is_refused_without_a_traceback` (11 rows: each a traceback before) and `test_a_symlink_loop_is_refused_as_the_looping_link` (3); no mock.
 - Fix round 9: the `.specyrd/README.md` check in `specyrd_init._refuse_unsafe_paths` and its `safe_write.write` (grok: a linked README was written through). Tests: the `readme-link-out` and `readme-dangling` layouts and the `force` parameter in `test_specyrd_init_refuses_a_linked_manifest_or_ignore_file` (7 more rows); no mock.
+- Fix round 10: `specyrd_hooks.hook_destinations`, used by the preflight; the `guard_hooks` and `pre_push` arguments of `specyrd_init._refuse_unsafe_paths`; the safe-write calls and the pre-check before the harness JSON is read in `specyrd_hooks`; the pre-push mode branch, so the file keeps its own mode or the umask's, plus execute bits. Test: `test_specyrd_init_refuses_a_linked_hook_destination` (10 rows); no mock.
 - Mocks: `os.chmod` (monkeypatch, restored) in the swap test; `sys.argv` for `export_roadmap_md.main`. No call counts or order are asserted.
