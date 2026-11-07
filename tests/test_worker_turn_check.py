@@ -325,6 +325,57 @@ def test_post_run_check_reports_branch_stash_porcelain_and_commits_outside_the_z
     assert git(repo, "branch", "--show-current") == "elsewhere"
 
 
+@pytest.mark.parametrize("move", [
+    "local move", "remote-tracking move", "absent to present", "present to absent", "unchanged",
+])
+def test_an_integration_ref_move_is_a_finding_and_the_workers_own_branch_is_not(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, move: str) -> None:
+    """The public runner compares the config's local and remote-tracking integration refs (M22.45)."""
+    repo = make_review_repo(tmp_path)
+    dev, head = git(repo, "rev-parse", "refs/heads/dev"), git(repo, "rev-parse", "HEAD")
+    local, remote = "refs/heads/dev", "refs/remotes/origin/dev"
+    if move == "remote-tracking move":
+        git(repo, "update-ref", remote, dev)
+    script = {
+        "local move": f"git update-ref {local} {head}",
+        "remote-tracking move": f"git update-ref {remote} {head}",
+        "absent to present": f"git update-ref {remote} {head}",
+        "present to absent": f"git update-ref -d {local}",
+        "unchanged": "git commit --allow-empty -qm own-branch",
+    }[move]
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_clean"], run=[script])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    findings = _events(repo, rec.worker_id, "post_run_check")[-1].detail["findings"]
+    flagged = tc.FLAG_POST_RUN in ws.load_record(repo, rec.worker_id).flags
+    if move == "unchanged":
+        assert findings == [] and not flagged and git(repo, "rev-parse", "HEAD") != head
+        return
+    ref, before, after = {
+        "local move": (local, dev, head),
+        "remote-tracking move": (remote, dev, head),
+        "absent to present": (remote, None, head),
+        "present to absent": (local, dev, None),
+    }[move]
+    assert findings == [{"kind": "integration_ref", "ref": ref, "before": before, "after": after,
+                         "summary": f"integration ref {ref} {before or '(absent)'} -> {after or '(absent)'}"}]
+    assert flagged
+
+
+def test_a_failed_read_of_an_integration_ref_is_a_check_error(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A broken integration ref is a check error, not an absence and not a clean turn."""
+    repo = make_review_repo(tmp_path)
+    _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_clean"],
+             run=["echo not-a-sha > .git/refs/heads/dev"])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(_prompt(tmp_path), repo, "m", None)) == 0
+    [found] = _events(repo, rec.worker_id, "post_run_check")[-1].detail["findings"]
+    assert found["kind"] == "check_error" and found["ref"] == "refs/heads/dev"
+    assert found["summary"].startswith("integration ref refs/heads/dev could not be read:")
+    assert tc.FLAG_POST_RUN in ws.load_record(repo, rec.worker_id).flags
+
+
 # --- parsing ------------------------------------------------------------------------------------------------
 
 

@@ -35,10 +35,13 @@ import hashlib
 import io
 import json
 import os
+import queue
 import re
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from contextlib import redirect_stderr, redirect_stdout
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -67,6 +70,7 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
 )
 from specy_road.orchestration_role_env import harness_env
 from specy_road.reviewer_run_failure import _now, close_run, harness_error_line, record_reviewer_failure_event
+from specy_road.worker_process import end_group
 
 
 
@@ -284,8 +288,98 @@ def file_review(root: Path, node_id: str, model: str, reviews: Path, *, answer: 
     replace_file(notes, render_front_matter(record, "\n" + answer["notes"].strip() + "\n"))   # never through a link
     rc, said = _review_record(root, node_id, model, record["verdict"], notes, ref, launch_mode, sign_key)
     if rc != 0:
-        return Outcome("rerun", f"rerun requested: review record refused the output: {said[-400:]}", refusal=said)
+        return Outcome("rerun", refusal_summary(said, node_id, model), refusal=said)
     return Outcome("recorded", "", review_path(root, node_id, model))
+
+
+def refusal_summary(said: str, node_id: str, model: str) -> str:
+    """The one-line reason for a refusal ``said`` (``review record``'s output; M22.16): its first offending line
+    (the indented ``where: text`` lines :func:`~specy_road.review_record_rules.approve_defect_problem` prints; with
+    none, its first line), whole, then how many more and where the full text is. Used for the initial refusal and
+    for a repair turn's (immediate or resumed)."""
+    lines = [ln for ln in said.splitlines() if ln.strip()] or [""]
+    named = [ln.strip() for ln in lines[1:] if ln.startswith("  ")] or [ln.strip() for ln in lines]
+    return (f"rerun requested: review record refused the output: {named[0]} ({len(named) - 1} more; full text in "
+            f"work/reviews/{node_id}/REJECTED-{model}.md)")
+
+
+#: How long a reviewer's process group gets after SIGTERM, and the rest of its output after the group ends (M22.16).
+GROUP_GRACE = 5.0
+DRAIN_BOUND = 5.0
+_EOF = object()
+
+
+def _read_into(stdout: Any, got: queue.Queue) -> None:
+    try:
+        for line in stdout:
+            got.put(line)
+    except (OSError, ValueError):   # the pipe closed under the reader
+        pass
+    got.put(_EOF)
+
+
+def _group_lines(proc: subprocess.Popen, waiter: threading.Thread, got: queue.Queue) -> Iterator[str]:
+    """Lines until the direct child exits (or, after EOF, until it does), then the group ended and the rest of the
+    output, read for at most :data:`DRAIN_BOUND` seconds."""
+    eof = False
+    while waiter.is_alive() and not eof:
+        try:
+            item = got.get(timeout=0.1)
+        except queue.Empty:
+            continue
+        eof = item is _EOF
+        if not eof:
+            yield item
+    while waiter.is_alive():   # stdout closed but the child still runs
+        waiter.join(0.1)
+    end_group(proc.pid, GROUP_GRACE)
+    deadline = time.monotonic() + DRAIN_BOUND
+    while not eof:
+        try:
+            item = got.get(timeout=max(0.0, deadline - time.monotonic()))
+        except queue.Empty:
+            return
+        eof = item is _EOF
+        if not eof:
+            yield item
+
+
+def _deliver(stdin: Any, text: str, said: list[str]) -> None:
+    """Write the prompt and close the pipe; a harness that quits before reading it leaves its error in ``said``."""
+    try:
+        stdin.write(text)
+        stdin.close()
+    except (OSError, ValueError) as e:   # the harness (or the group's last holder of stdin) is gone
+        said.append(str(e))
+
+
+@contextlib.contextmanager
+def reviewer_output(proc: subprocess.Popen, prompt: str | None = None,
+                    said: list[str] | None = None) -> Iterator[Iterator[str]]:
+    """``proc``'s output lines, for a reviewer started in a session of its own (``start_new_session``: its pid is
+    its process group's id; M22.16). Entered right after the launch, so it guards the reviewer's whole lifetime.
+    The direct child's exit is watched apart from stdout EOF, since a background child holding the pipe would keep
+    it open; ``prompt`` (the launch's stdin) is written on a thread started after that watch and the reader, so a
+    delivery that blocks (a descendant holding stdin unread) or is interrupted never strands the run, and an error
+    writing it goes to ``said``. When the child exits, or the block ends early (an interrupt, or an error while
+    processing a line), the group is ended (:func:`~specy_road.worker_process.end_group`: SIGTERM, SIGKILL after
+    :data:`GROUP_GRACE`, only while it has a member), then the rest of the output is read for at most
+    :data:`DRAIN_BOUND` seconds."""
+    assert proc.stdout is not None
+    got: queue.Queue = queue.Queue()
+    waiter = threading.Thread(target=proc.wait, daemon=True)   # reaps the child, so a gone child lists no member
+    reader = threading.Thread(target=_read_into, args=(proc.stdout, got), daemon=True)
+    writer = threading.Thread(target=_deliver, args=(proc.stdin, prompt, said if said is not None else []),
+                              daemon=True)
+    try:   # watch, read, then deliver: in that order, all inside the guard
+        for thread in (waiter, reader, *([writer] if prompt is not None and proc.stdin else [])):
+            thread.start()
+        yield _group_lines(proc, waiter, got)
+    finally:   # a no-op after a normal end: the group has no member left
+        end_group(proc.pid, GROUP_GRACE)
+        waiter.join(GROUP_GRACE)
+        if writer.is_alive():   # its reader left the group (setsid): the write fails or never ends; not waited on
+            writer.join(DRAIN_BOUND)
 
 
 def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list[str] | None = None,
@@ -299,33 +393,27 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list
         raw.write(f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
         out = SpanWriter(raw)
         span[:] = [out.start, out.start, None]
-        note = ""
+        said: list[str] = []   # an error delivering the prompt (reviewer_output)
         try:
             proc = subprocess.Popen(launch.argv, cwd=cwd, text=True, encoding="utf-8", errors="replace",
                                     env=reviewer_env({**os.environ, **(launch.env or {})}),
-                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,
                                     stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL)
         except OSError as e:   # e.g. the harness is not on PATH
             print(f"error: could not launch {launch.argv[0]}: {e.strerror}", file=sys.stderr)
             if transcript is not None:
                 transcript.append(f"error: could not launch {launch.argv[0]}: {e.strerror}")
             return 127
-        if launch.stdin is not None and proc.stdin:
-            try:
-                proc.stdin.write(launch.stdin)
-                proc.stdin.close()
-            except OSError as e:   # the harness quit before reading its prompt
-                note = f"[harness closed stdin early: {e}]\n"
-        assert proc.stdout is not None
-        for line in proc.stdout:
-            out.write(line)
-            if transcript is not None:
-                transcript.append(line.rstrip("\n"))
-            for ev in events(adapter, line, launch):   # total: untrusted output (review_answer)
-                print(f"{ev.type}: {ev.summary}", file=sys.stderr)
+        with reviewer_output(proc, launch.stdin, said) as lines:   # the group ends with the run (M22.16)
+            for line in lines:
+                out.write(line)
+                if transcript is not None:
+                    transcript.append(line.rstrip("\n"))
+                for ev in events(adapter, line, launch):   # total: untrusted output (review_answer)
+                    print(f"{ev.type}: {ev.summary}", file=sys.stderr)
         rc = proc.wait()
         span[:] = out.close()
-        raw.write(note)   # specy-road's own note, after the span
+        raw.write("".join(f"[harness closed stdin early: {e}]\n" for e in said))   # specy-road's own, after the span
         return rc
 
 
@@ -340,31 +428,26 @@ def delegate_turn(adapter: Any, harness: str, log: Path, cwd: Path, launch: Any)
         raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")   # for people; never parsed
         span = SpanWriter(raw)   # the attempt's span: specy-road's own offsets and digest
         out.update(log_start=span.start, log_end=span.start, log_sha256=None)
-        note = ""
+        said: list[str] = []   # an error delivering the prompt (reviewer_output)
         try:
             proc = subprocess.Popen(launch.argv, cwd=cwd, env=env, text=True, encoding="utf-8",
                                     errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    start_new_session=True,   # its own group, ended with the turn (M22.16)
                                     stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL)
         except OSError as e:
             out.update(exit=127, errors=[f"cannot start {launch.argv[0]}: {e}"])
             return out
-        if launch.stdin is not None and proc.stdin:
-            try:
-                proc.stdin.write(launch.stdin)
-                proc.stdin.close()
-            except OSError as e:   # the harness quit before reading its prompt
-                note = f"[review delegate] harness closed stdin early: {e}\n"
-        assert proc.stdout is not None
-        for line in proc.stdout:
-            span.write(line)
-            out["tail"] = [*out["tail"][-19:], line.strip()]
-            for ev in events(adapter, line, launch):   # total: untrusted output (review_answer)
-                out["session_id"] = ev.session_id or out["session_id"]
-                if ev.type == "error":
-                    out["errors"].append(str((ev.detail or {}).get("message") or ev.summary))
+        with reviewer_output(proc, launch.stdin, said) as lines:   # the group ends with the turn (M22.16)
+            for line in lines:
+                span.write(line)
+                out["tail"] = [*out["tail"][-19:], line.strip()]
+                for ev in events(adapter, line, launch):   # total: untrusted output (review_answer)
+                    out["session_id"] = ev.session_id or out["session_id"]
+                    if ev.type == "error":
+                        out["errors"].append(str((ev.detail or {}).get("message") or ev.summary))
         out["exit"] = proc.wait()
         out["log_start"], out["log_end"], out["log_sha256"] = span.close()
-        raw.write(note)   # specy-road's own note, after the span
+        raw.write("".join(f"[review delegate] harness closed stdin early: {e}\n" for e in said))   # after the span
     return out
 
 
