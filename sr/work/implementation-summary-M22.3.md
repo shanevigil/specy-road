@@ -2,7 +2,7 @@
 
 ## What changed
 
-- **A1, the move.** `stage_id_rewrite` (`roadmap_move_node.py`) calls `_stage_decision_ids` (`roadmap_id_rewrite_staging.py`) first, before any other file is staged, on every id-changing move (move-node, indent, outdent, group-nodes, `--renumber-outline`, and the PM GUI move, indent, outdent, group and `renumber_outline` reorder all go through `stage_id_rewrite`). When the old -> new map is non-empty and the tracked `roadmap/decisions.yaml` exists, `load_checked_decisions` (`decisions.py`) schema-checks the raw YAML value. A parse error or a schema error raises `ValueError` naming `roadmap/decisions.yaml`, so the CLI exits 1 and the GUI handlers that catch `ValueError` answer 400, and nothing is staged. A falsy root is schema-invalid and is not replaced with an empty ledger. Each entry's `node` is looked up once in the map, so a chain or a swap keeps the id that entry named. The file is staged, with the same YAML dump `write_decisions` uses, only when an entry changed. An absent ledger is left absent. `decisions.local.yaml` is not read. Summary and answer text are not rewritten.
+- **A1, the move.** `stage_id_rewrite` (`roadmap_move_node.py`) calls `_stage_decision_ids` (`roadmap_id_rewrite_staging.py`) first, before any other file is staged, on every id-changing move (move-node, indent, outdent, group-nodes, `--renumber-outline`, and the PM GUI move, indent, outdent, group and `renumber_outline` reorder all go through `stage_id_rewrite`). When the old -> new map is non-empty and the tracked `roadmap/decisions.yaml` exists, `load_checked_decisions` (`decisions.py`) schema-checks the raw YAML value. A parse error or a schema error raises `ValueError` naming `roadmap/decisions.yaml`, so the CLI exits 1 and the GUI handlers that catch `ValueError` answer 400, and nothing is staged. A falsy root is schema-invalid and is not replaced with an empty ledger. Each entry's `node` is read before any entry is updated, then looked up once, so a chain, a swap, or a YAML alias of the same mapping keeps the id that entry had when loaded. The file is staged, with the same YAML dump `write_decisions` uses, only when an entry changed. An absent ledger is left absent. `decisions.local.yaml` is not read. Summary and answer text are not rewritten.
 - **A2, the notice.** `notice_decisions_naming_no_node` (`decisions.py`), called from `run_validation` (`validate_roadmap_checks.py`), prints one stdout notice listing each `open_questions` entry and each `active_preferences` entry whose `node` is a non-empty string that is not a live id. Closed entries, expired preferences and entries with no `node` are omitted. An absent, unreadable or schema-invalid ledger prints nothing. stdout, so `--strict` does not count it and the exit code is unchanged.
 - **A4.** `docs/roadmap-authoring.md` (the move-node rewrite list and the validate step), `docs/orchestration.md` (the ledger section) and a CHANGELOG `[Unreleased]` Fixed entry.
 
@@ -19,6 +19,10 @@ A6 is not binding. `M16.1.1` and `M16.1.2` are Not Started, and `tests/parity/` 
 
 - **Class: a falsy YAML root is replaced with a valid empty ledger before the schema runs.** `read_decisions` does `yaml.safe_load(...) or {version: 1, entries: []}`, so empty text, `[]`, `{}`, `null`, `false` and `0` never reached the schema. An id-changing move over `[]` then wrote the tree. One rule: `load_checked_decisions` schema-checks that raw value and does not call `read_decisions`. Every one of those roots fails `type: object` plus required `version` and `entries`, so each raises `ValueError` naming `roadmap/decisions.yaml` before anything is staged. The separate "root must be a mapping" branch is gone; a non-empty sequence fails the same schema check. The notice already returns on that `ValueError`, so `validate` stays silent. Limit, stated in the docstring: `read_decisions` still replaces a falsy root for other callers (`add`/`close`, `decisions_local`, `review_deferral`). An explicit `version: 1` / `entries: []` document is valid and still loads. A directory at the path still counts as absent.
 
+## Fix round 3 (review gpt-5.6-sol-high at fd5be077)
+
+- **Class: an entry mapping is updated, then read again.** A YAML alias puts the same mapping in `entries` twice. The loop read `node` after an earlier iteration had already written it, so a swap applied both sides and an entry that started at `M1` finished at `M1`. One rule: read every `node` before any write, then look each saved value up once. No alias check. The dump does not preserve anchors; each list item is written with the node that lookup produced. The notice does not mutate entries, so this class does not reach it.
+
 ## Probes
 
 - Callers of `load_checked_decisions`: only `_stage_decision_ids` and `notice_decisions_naming_no_node`. One except covers both. `read_decisions` callers outside this leaf (`add`/`close`, `decisions_local`, `review_deferral`) are unchanged.
@@ -32,11 +36,13 @@ A6 is not binding. `M16.1.1` and `M16.1.2` are Not Started, and `tests/parity/` 
 - `read_decisions` on `[]` still returns `{version: 1, entries: []}` (the other callers are outside this rule).
 - Move CLI, empty sequence and the other falsy roots: exit 1, stderr names `roadmap/decisions.yaml`, tree bytes unchanged (parametrized refusal test, 51 passed in the two files).
 - `validate --strict` on `[]`: exit 0, no `decisions.yaml` on stdout or stderr (silence test).
+- The only in-place `node` write this leaf added is the loop in `_stage_decision_ids`. The notice does not write entries. `_rewrite_touch_zones` builds a new zone list from the strings it read. `_stage_registry_ids` still reads `node_id` and then writes it; that loop predates this leaf and is outside the ledger acceptance, so it was left as it was.
+- Public move CLI, `--renumber-outline` swap, two schema-valid anchors (`*from_m1` shared with `Da`, `*from_m2` shared with `Db`): before the move the pairs are the same objects; after it the nodes are `M2`, `M2`, `M1`, `M1` (52 passed in the two test files).
 
 ## Verification
 
 - `pytest -q -n 4` on `tests/test_move_node_subtree.py`, `tests/test_decisions.py`, `tests/test_gui_outline_contract.py` and the PM GUI Python API tests (`tests/test_gui_app*.py`, `tests/test_roadmap_gui_*.py`): 193 passed before this round.
-- Fix round 2: `pytest -q -n 4 tests/test_move_node_subtree.py tests/test_decisions.py` passed (51). `ruff check specy_road tests scripts` passed. `specy-road file-limits`: OK (the four hard-alert warnings are pre-existing files this leaf does not touch).
+- Fix round 3: `pytest -q -n 4 tests/test_move_node_subtree.py tests/test_decisions.py` passed (52). `ruff check specy_road tests scripts` passed. `specy-road file-limits`: OK (the four hard-alert warnings are pre-existing files this leaf does not touch).
 
 ## Added
 
@@ -45,7 +51,7 @@ A6 is not binding. `M16.1.1` and `M16.1.2` are Not Started, and `tests/parity/` 
 - `notice_decisions_naming_no_node` (`decisions.py`): the one stdout notice, built from `open_questions` then `active_preferences`, listing a non-empty string `node` that is not a live id; `now` is passed through to `active_preferences` (A2).
 - `except (yaml.YAMLError, UnicodeError, OSError)` in `load_checked_decisions`: one read-failure rule, raised as `ValueError` naming the ledger (fix round 1). The notice's existing `except ValueError` is what keeps `validate` silent for those errors.
 - `schema_errors` (`decisions.py`) takes the raw YAML value, so a falsy or non-mapping root fails the same schema check as any other invalid document (fix round 2).
-- `_stage_decision_ids` (`roadmap_id_rewrite_staging.py`): one lookup of each entry's `node` in the move's old -> new map; stage the ledger text only when an entry changed; return immediately when the map is empty (A1).
+- `_stage_decision_ids` (`roadmap_id_rewrite_staging.py`): reads every `node` before any update, then looks each saved value up once; stage the ledger text only when an entry changed; return immediately when the map is empty (A1). A YAML alias is rewritten from the id it had when loaded.
 - Call of `_stage_decision_ids` at the start of staging in `stage_id_rewrite`, so an invalid ledger raises before any file is staged (A1).
 - Call of `notice_decisions_naming_no_node` from `run_validation` (A2).
 
@@ -57,6 +63,7 @@ A6 is not binding. `M16.1.1` and `M16.1.2` are Not Started, and `tests/parity/` 
 - Assert on `test_moving_a_leaf_out_of_the_middle_of_a_milestone`: a move with no ledger does not create one.
 - `test_a_move_leaves_an_unmatched_ledger_byte_for_byte`: a ledger whose nodes are not in the map is not rewritten.
 - `test_renumber_outline_swaps_decision_nodes_in_one_lookup`: a `--renumber-outline` swap of `M1`/`M2` and `M1.1`/`M2.1` replaces each `node` once.
+- `test_a_renumber_outline_swap_rewrites_a_yaml_aliased_entry_once`: the public move CLI with `--renumber-outline` rewrites a schema-valid alias of an `M1` entry to `M2` and an alias of an `M2` entry to `M1`, each once.
 - `test_a_refused_move_leaves_the_tree_byte_for_byte_unchanged` (validation / invalid YAML / sequence root / empty text / empty sequence / empty mapping / `null` / `false` / `0` / invalid UTF-8 / mode `000`): each leaves `roadmap/` and `planning/` byte-for-byte unchanged; validation names the duplicate title; the others name `roadmap/decisions.yaml`.
 - `_entry`, `_nodes_of` (`tests/test_move_node_subtree.py`): schema-valid ledger rows and a read-back by id for those move tests.
 - `test_validate_notices_open_entries_naming_no_live_node` (`tests/test_decisions.py`): one stdout notice under `--strict` lists an orphan open decision, open human-action and active preference once each, and stays silent for a closed entry, an expired preference, a preference without `node` and a live-node reference (fixed dates `2099-12-31` and `2000-01-01`).
