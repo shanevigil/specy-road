@@ -26,6 +26,7 @@ from pathlib import Path
 
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
+from specy_road import worker_sandbox
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapter_cursor import launch_permissions
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model
@@ -220,26 +221,21 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
     env = harness_env(os.environ, "executor", harness_pythonpath=harness_pythonpath, harness=rec.harness)
     env.update(launch.env or {})   # the adapter's own (Codex: the profile's CODEX_HOME)
+    try:
+        box = worker_sandbox.prepare(repo_root, rec, env)   # M22.44: every harness argv runs under it
+    except worker_sandbox.SandboxError as e:
+        return _not_started(repo_root, rec, launch, watch, f"sandbox: {e}")
     with log.open("a", encoding="utf-8") as raw:
         log_start = raw.tell()   # this turn's part of the log starts here (the harness writes stderr into it)
         try:
             proc = subprocess.Popen(  # noqa: S603 — the adapter's documented command
-                launch.argv, cwd=rec.worktree, env=env,
+                box.command(launch.argv), cwd=rec.worktree, env=env, pass_fds=box.pass_fds,
                 stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL,
                 stdout=subprocess.PIPE, stderr=raw, text=True, encoding="utf-8", errors="replace",
             )
         except OSError as e:
-            # The turn ends here too: nothing reported, so nulls; no `launched` event names its model.
-            _append_usage(repo_root, rec, {"requested_model": launch_model(launch.argv), "observed_model": None})
-            watch.failed = f"cannot start {launch.argv[0]}: {e}"   # a failed turn: the post-run check runs here too
-            close_turn(repo_root, rec, watch)   # (M8.2); the record still ends `failed` below
-            append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
-                         detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
-            mirror_logs(repo_root, rec)
-            with workers_lock(repo_root):   # failed and its lease gone in one step: a resume cannot fall between
-                set_state(repo_root, rec, "failed", pid=None)
-                release_lease(repo_root, rec.worker_id)
-            return 127
+            box.finish()
+            return _not_started(repo_root, rec, launch, watch, f"cannot start {launch.argv[0]}: {e}")
         def seen(r: WorkerRecord) -> None:
             r.harness_pid, r.harness_start, r.pgid = proc.pid, start_token(proc.pid), os.getpgid(0)
             # A new turn is a new silence: measured from the launch, not the last turn's output.
@@ -247,17 +243,8 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             r.flags = [f for f in r.flags if f != FLAG_STALLED]
         mutate(repo_root, rec, seen)
         watch.proc = proc
-        append_event(repo_root, rec, "launched", source="system", summary=f"started {launch.argv[0]} (pid {proc.pid})",
-                     detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed,
-                             "model": launch_model(launch.argv),   # the model the harness is told, if any
-                             # Cursor: the permission flags passed, so a roster's --force opt-in shows in the log.
-                             **({"permissions": launch_permissions(launch.argv)} if rec.harness == "cursor" else {})})
-        if launch.stdin is not None and proc.stdin:
-            try:
-                proc.stdin.write(launch.stdin)
-                proc.stdin.close()
-            except (BrokenPipeError, OSError) as e:   # the harness quit before reading its prompt
-                raw.write(f"[wrapper] harness closed stdin early: {e}\n")
+        _launched(repo_root, rec, launch, proc.pid, box, raw, resumed=resumed)
+        _feed(proc, launch, raw)
         assert proc.stdout is not None
         first, marked, usage_logged = True, None, False
         for line in proc.stdout:
@@ -272,15 +259,68 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
+    _close_box(repo_root, rec, box)   # READY leaves the outbox before the turn's READY check
     # A Claude result always carries usage, so none means no result line: a limit is then only in the transcript.
     if code != 0 and not usage_logged and isinstance(adapter, ClaudeCode):
-        _transcript_limit(repo_root, rec, adapter, launch, watch)
+        _transcript_limit(repo_root, rec, adapter, launch, watch, box.state)
     return _finish(repo_root, rec, code, before, before_all, usage_logged, watch, log_start)
 
 
-def _transcript_limit(repo_root: Path, rec: WorkerRecord, adapter: ClaudeCode, launch: Launch, watch: TurnWatch) -> None:
-    """Record a usage limit the session transcript names, for the post-run check to pause on."""
-    parsed = adapter.transcript_limit(launch.session_id or load_record(repo_root, rec.worker_id).provider_session_id)
+def _feed(proc: subprocess.Popen, launch: Launch, raw) -> None:
+    """Write the prompt to the harness's stdin, when it takes one."""
+    if launch.stdin is not None and proc.stdin:
+        try:
+            proc.stdin.write(launch.stdin)
+            proc.stdin.close()
+        except (BrokenPipeError, OSError) as e:   # the harness quit before reading its prompt
+            raw.write(f"[wrapper] harness closed stdin early: {e}\n")
+
+
+def _launched(repo_root: Path, rec: WorkerRecord, launch: Launch, pid: int, box: worker_sandbox.Box, raw,
+              *, resumed: bool) -> None:
+    """The ``launched`` event; a sandboxed launch names its sandbox, an unsandboxed ``auto`` one warns (also in the log)."""
+    boxed = {"sandbox": box.mode} if box.prefix or box.warning else {}   # off by default: the event is as before
+    if box.warning:
+        raw.write(f"[wrapper] warning: {box.warning}\n")
+    append_event(repo_root, rec, "launched", source="system",
+                 summary=f"started {launch.argv[0]} (pid {pid})" + (f", sandbox {box.mode}" if box.prefix else "")
+                         + (f"; warning: {box.warning}" if box.warning else ""),
+                 detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed, **boxed,
+                         "model": launch_model(launch.argv),   # the model the harness is told, if any
+                         # Cursor: the permission flags passed, so a roster's --force opt-in shows in the log.
+                         **({"permissions": launch_permissions(launch.argv)} if rec.harness == "cursor" else {})})
+
+
+def _close_box(repo_root: Path, rec: WorkerRecord, box: worker_sandbox.Box) -> None:
+    """Move READY out of the outbox; a sandbox that never started the harness is recorded (the exit is non-zero)."""
+    why = box.finish()
+    if why:
+        append_event(repo_root, rec, "error", source="system", summary=f"sandbox: {why}")
+
+
+def _not_started(repo_root: Path, rec: WorkerRecord, launch: Launch, watch: TurnWatch, why: str) -> int:
+    """The turn ends before the harness runs: nulls for usage, the post-run check, an exit record, ``failed``."""
+    # Nothing reported, so nulls; no `launched` event names its model.
+    _append_usage(repo_root, rec, {"requested_model": launch_model(launch.argv), "observed_model": None})
+    watch.failed = why   # a failed turn: the post-run check runs here too
+    close_turn(repo_root, rec, watch)   # (M8.2); the record still ends `failed` below
+    append_event(repo_root, rec, "error", source="system", summary=why,
+                 detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
+    mirror_logs(repo_root, rec)
+    with workers_lock(repo_root):   # failed and its lease gone in one step: a resume cannot fall between
+        set_state(repo_root, rec, "failed", pid=None)
+        release_lease(repo_root, rec.worker_id)
+    return 127
+
+
+def _transcript_limit(repo_root: Path, rec: WorkerRecord, adapter: ClaudeCode, launch: Launch, watch: TurnWatch,
+                      home: Path | None = None) -> None:
+    """Record a usage limit the session transcript names, for the post-run check to pause on.
+
+    ``home``: the sandboxed worker's own state home, where its transcripts are; ``None`` reads the user's.
+    """
+    parsed = adapter.transcript_limit(launch.session_id or load_record(repo_root, rec.worker_id).provider_session_id,
+                                      home=home)
     if parsed:
         append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
                      summary=parsed.summary, detail=parsed.detail)

@@ -291,7 +291,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.44_workers-run-in-a-sandbox_9022edcd-0ffa-48b3-829d-0ad51f8d6866.md",
       "sibling_order": 43,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Unattended workers run in a read-only sandbox on Linux",
       "touch_zones": [
         "specy_road/worker_sandbox.py",
