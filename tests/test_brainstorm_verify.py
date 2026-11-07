@@ -174,6 +174,16 @@ def test_a_missing_page_follows_its_origin_root(monkeypatch, page, page_status, 
     assert calls == ([page] if root is None else [page, root])
 
 
+def test_a_zone_id_stays_in_the_origin_root() -> None:
+    """A zone id in the hostname is part of the origin, including the ``%25`` encoding."""
+    def fetch(url: str):
+        if url != "https://[fe80::1%25eth0]/":
+            raise OSError(url)
+        return 200, ""
+
+    assert bv.host_answers("https://[fe80::1%25eth0]/a", fetch, {}) is True
+
+
 def test_two_missing_pages_on_one_origin_probe_the_root_once(monkeypatch) -> None:
     """One root fetch per origin per run; a different port is a different origin."""
     monkeypatch.setattr(bv.socket, "getaddrinfo", _example_com_is_public)

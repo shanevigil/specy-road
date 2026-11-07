@@ -249,8 +249,8 @@ def _root_url(url: str) -> str:
 
     A hostname containing ``:`` is an IPv6 literal and is written in brackets; any other host is
     written as itself. Port 443 is omitted, so an explicit ``:443`` is the same origin as none.
-    Userinfo, query and fragment are dropped. An IPv6 zone id is not kept: verify fetches public
-    hosts only, and a public address has none.
+    Userinfo, query and fragment are dropped. A zone id in the hostname is retained, so
+    ``https://[fe80::1%25eth0]/a`` has root ``https://[fe80::1%25eth0]/``.
     """
     parts = urlsplit(url)
     host = parts.hostname or ""

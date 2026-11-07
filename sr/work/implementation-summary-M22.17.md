@@ -24,10 +24,12 @@ Confirmed: `specy_road/bundled_scripts/brainstorm_verify.py`, `tests/test_brains
 - `test_a_missing_page_follows_its_origin_root` still expects `[page, root]` for one source. Result: the second URL is the root spelling, not a cross-source order. Kept.
 - `test_check_source_states` counts `https://example.com/` once. Result: already order-insensitive. Kept.
 - `test_a_root_that_redirects_to_a_private_address_is_blocked` expects two connections to the public address. Result: that is one page then its root, and it shows the private address was not connected. Kept.
+- Class: prose about the root spelling stated a limit the function does not have. `_root_url`'s docstring and this summary's Added line both said a zone id is not kept. Result: `_root_url("https://[fe80::1%25eth0]/a")` returns `https://[fe80::1%25eth0]/`, and both sentences now say a zone id in the hostname is retained. The code copies the hostname and was not changed.
+- The module docstring, `host_answers`'s docstring, `CHANGELOG.md` and `docs/brainstorming.md`. Result: none of them say a zone id is dropped, so they were left as they are.
 
 ## Added
 
-- `_root_url`: the one origin spelling. IPv6 literals are bracketed; any other host is not. Port 443 is omitted. Userinfo, query and fragment are dropped. A zone id is not kept, because a public address has none.
+- `_root_url`: the one origin spelling. IPv6 literals are bracketed; any other host is not. Port 443 is omitted. Userinfo, query and fragment are dropped. A zone id in the hostname is retained (`https://[fe80::1%25eth0]/a` has root `https://[fe80::1%25eth0]/`).
 - `host_answers`: one fetch of `_root_url` per origin; True only when that fetch returns 200.
 - `if root not in roots` in `host_answers`: a second source on an origin already probed does not fetch again.
 - `except Exception` in `host_answers`: a root that fails to fetch is cached as not answering, so the source is `blocked`. The transport-error rows reach it.
@@ -35,6 +37,7 @@ Confirmed: `specy_road/bundled_scripts/brainstorm_verify.py`, `tests/test_brains
 - `_non_200`: applies that table. A direct call with no cache still probes; a verify run shares one dict.
 - `roots` dict in `verify_session`: one cache for the run.
 - `test_a_missing_page_follows_its_origin_root`: 404 or 410 with root 404, 200 or a transport error; a non-default port whose root drops userinfo, query and fragment; a public IPv6 literal bare, with port 8443 (userinfo, query and fragment dropped) and with explicit `:443`; a 200 page and a 500 make no root request.
+- `test_a_zone_id_stays_in_the_origin_root`: `https://[fe80::1%25eth0]/a` is answered only at `https://[fe80::1%25eth0]/`, so a zone id in the hostname is retained.
 - `test_two_missing_pages_on_one_origin_probe_the_root_once`: two 404s on one origin are both `blocked` after one root fetch; a different port is a separate origin. Counts, not fetch order.
 - `test_check_source_states` (extended): the 404 fixture's root answers 200 and stays `not-found`; the other rows make no root request.
 - `Sock`, `connect` and `wrap` in `test_a_root_that_redirects_to_a_private_address_is_blocked`: fake DNS and transport around `default_fetch`, so the root's redirect to a private address is `blocked` and that address is never connected.
