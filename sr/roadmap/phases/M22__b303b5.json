@@ -263,9 +263,9 @@
     },
     {
       "acceptance": [
-        "digest and digest --check give the same bytes from a fresh clone and from a checkout with a warm .specyrd/cache, on a history where a dependency edge is removed on a merged side branch",
-        "CACHE_VERSION is bumped so an old cache at this HEAD is rebuilt",
-        "tests/test_digest_cold_warm.py builds that history and asserts both renders match, and that upgrade's render in a fresh worktree keeps the line; CHANGELOG [Unreleased] entry"
+        "With fixed commit dates, on a repository where main has a dependency edge, a side branch removes it, main then takes one more roadmap commit, and a non-fast-forward merge keeps the removal: digest writes byte-identical roadmap-context.md when .specyrd/cache/roadmap-history.json is absent and when that file was produced by indexing the side branch before the merge. The file contains exactly one 'stopped depending on' line for that edge, dated with the merge commit. digest --check exits 0 and does not modify the file",
+        "Indexing main before that merge, then again after it, writes that same file. A cache at the merge commit with an older cache_version and no removal event is rebuilt to that same file; CACHE_VERSION is bumped. A cached commit on HEAD's first-parent line is appended to; any other ancestor, including a merged side-branch tip, is a full rebuild, and docs/roadmap-history.md says so",
+        "tests/test_digest_cold_warm.py drives the three cache states above in one table through render_digest or the digest CLI, calling clear_memo before each state; the side-branch cache row fails on the code before the fix. A second checkout of the merge commit with no history cache renders the same file. No sleeps, network or harness. CHANGELOG [Unreleased] entry"
       ],
       "codename": "digest-is-the-same-cold-or-warm",
       "dependencies": [],
@@ -282,7 +282,8 @@
         "tests/test_digest_cold_warm.py",
         "CHANGELOG.md",
         "specy_road/history_git.py",
-        "specy_road/history_walk.py"
+        "specy_road/history_walk.py",
+        "docs/roadmap-history.md"
       ],
       "type": "task"
     },
