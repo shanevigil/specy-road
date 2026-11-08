@@ -383,6 +383,29 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A name that more than one roster entry may be no longer closes the gate by itself. A READY author is excluded under every entry it may be (today's rule). A review record whose name may be any entry that wrote the leaf is not counted (today's rule). A review record whose candidate entries wrote nothing on the leaf counts when all candidates share one family, and closes the gate with today's message only when the candidates span more than one family, so the family it counts as cannot be decided",
+        "tests/test_review_gate_ready_author.py: table-driven rows for (1) Sol-style effort aliases, one family, nobody wrote the leaf: counts; (2) a reviewer id that is also an executor row's harness_model, where that executor wrote the leaf: not counted; (3) the same name, where another model wrote the leaf: counts; (4) a name shared across two families: closes; (5) an ambiguous READY author: excluded under every candidate, gate not closed by ambiguity alone. The M22.19 tests still pass. handoff status shows the reason for each excluded row; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "shared-names-close-only-when-they-could-be-the-writer",
+      "dependencies": [],
+      "id": "M22.48",
+      "node_key": "e6ac4cbe-9a89-469a-9670-56cb116c10ff",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.48_shared-names-close-only-when-they-could-be-the-writer_e6ac4cbe-9a89-469a-9670-56cb116c10ff.md",
+      "sibling_order": 47,
+      "status": "Not Started",
+      "title": "A shared reviewer name closes the gate only when it could be the leaf's writer",
+      "touch_zones": [
+        "specy_road/review_eligible.py",
+        "specy_road/review_gate.py",
+        "tests/test_review_gate_ready_author.py",
+        "docs/roadmap-history.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
