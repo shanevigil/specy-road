@@ -701,11 +701,19 @@ def test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror(
     (root / "env-link").symlink_to(".env")
     (root / "modules-link").symlink_to("node_modules", target_is_directory=True)
     (root / "nested-link").symlink_to(Path("vendor") / "other", target_is_directory=True)
+    # A later ``!`` rule re-includes the guide AGENTS.md points at, so the refresh can read it.
+    guide = root / "work" / "guide.md"
+    guide.parent.mkdir(exist_ok=True)
+    (root / "AGENTS.md").replace(guide)
+    (root / "AGENTS.md").symlink_to(Path("work") / "guide.md")
+    ignore.write_text(ignore.read_text(encoding="utf-8") + "work/*\n!work/guide.md\n", encoding="utf-8")
     _ListingTemp.listings, _ListingTemp.texts = [], []
     monkeypatch.setattr(upgrade.tempfile, "TemporaryDirectory", _ListingTemp)
     monkeypatch.setattr(upgrade_plan.tempfile, "TemporaryDirectory", _ListingTemp)
 
     assert run_upgrade(root, dry_run=dry_run) == 0
+    out = capsys.readouterr().out
+    assert "AGENTS.md (failed)" not in out
 
     assert _ListingTemp.listings
     for names, text in zip(_ListingTemp.listings, _ListingTemp.texts, strict=True):
@@ -714,9 +722,10 @@ def test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror(
         assert not any("vendor/other" in path for path in names)
         assert _has(names, "env-link") and _has(names, "modules-link") and _has(names, "nested-link")
         assert _has(names, "keep-me.txt") and _has(names, "AGENTS.md")
+        assert any(path.endswith("work/guide.md") for path in names)
         assert "SECRET=1" not in text and "nested-secret" not in text and "module.exports" not in text
     if dry_run:
-        assert capsys.readouterr().out.count("ignored files are not copied") == 1
+        assert out.count("ignored files are not copied") == 1
 
 
 @pytest.mark.parametrize("dry_run", [True, False])

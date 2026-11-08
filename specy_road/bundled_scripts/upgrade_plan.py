@@ -125,18 +125,22 @@ def _skipped_dir(path: Path) -> bool:
 
 
 def _ignored(checkout: Path, rels: list[str], env: dict[str, str] | None) -> set[str]:
-    """The members of ``rels`` that git ignores in ``checkout``. A git failure raises :class:`GitFailed`."""
+    """The members of ``rels`` that git ignores in ``checkout``. A git failure raises :class:`GitFailed`.
+
+    Plain ``check-ignore`` (not ``-v``) prints only paths whose last matching rule ignores them, so a path
+    a later ``!`` rule re-includes is not in the set.
+    """
     found: set[str] = set()
     for start in range(0, len(rels), 200):
         chunk = rels[start:start + 200]
         if not chunk:
             continue
         result = git_subprocess.run(
-            ["-c", "core.fsmonitor=", "-c", "core.quotepath=false", "check-ignore", "-v", "--", *chunk],
+            ["-c", "core.fsmonitor=", "-c", "core.quotepath=false", "check-ignore", "--", *chunk],
             checkout, env=env)
         if result.code not in (0, 1):
             checked(result, "check-ignore", "the checkout")
-        found.update(line.split("\t", 1)[-1] for line in result.out.splitlines() if "\t" in line)
+        found.update(result.out.splitlines())
     return found
 
 
