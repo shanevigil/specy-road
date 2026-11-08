@@ -180,7 +180,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.48` A shared reviewer name closes the gate only when it could be the leaf's writer `shared-names-close-only-when-they-could-be-the-writer` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
-  - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
+  - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
   - `M17.3` PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags `gui-orch-drawer` — task — **Not Started**
   - `M17.4` PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state `gui-orch-leaf-detail` — task — **Not Started**
   - `M17.5` PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer `gui-orch-outline-badges` — task — **Not Started**
@@ -255,6 +255,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
 - 2026-11-07 `M16.1.2` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
 - 2026-11-07 `M16.1.1` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
 - 2026-11-07 `M22.6` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
@@ -279,8 +280,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M17.1` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-05 `M16.60` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
 - 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
-- 2026-11-05 `M16.18` stopped depending on `M16.5.4 One check_assignment decides eligibility for every launch and for the gate`
-- _…and 57 earlier — `specy-road history --json`_
+- _…and 58 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -312,7 +312,6 @@ Do not pick these up.
 - `M16.1.6` on `feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` since 2026-11-08
 - `M16.1.7` on `feature/rm-baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` since 2026-11-08
 - `M17.11` on `feature/rm-gui-acceptance-editing` since 2026-11-07
-- `M17.2` on `feature/rm-gui-orch-view-model` since 2026-11-07
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -326,20 +325,17 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 43 | 0 | 2.79 | 65% | 26 | 3 |
-| `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
+| `CHANGELOG.md` **flagged** | 47 | 0 | 2.72 | 62% | 21 | 4 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 37 | 0 | 2.92 | 65% | 22 | 3 |
+| `docs` **flagged** | 36 | 0 | 2.83 | 64% | 17 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 44 | 0 | 2.84 | 64% | 26 | 4 |
-| `tests` **flagged** | 47 | 0 | 2.72 | 62% | 28 | 4 |
-| `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
-| `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
+| `specy_road` **flagged** | 46 | 0 | 2.74 | 61% | 21 | 4 |
+| `tests` **flagged** | 48 | 0 | 2.65 | 58% | 19 | 4 |
+| `suggested_prompts` | 2 | 0 | 1.00 | 0% | 3 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

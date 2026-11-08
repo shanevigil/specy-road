@@ -84,17 +84,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: gui-orch-view-model
-    node_id: M17.2
-    branch: feature/rm-gui-orch-view-model
-    touch_zones:
-      - gui/pm-gantt/src/orchestrationSnapshot.ts
-      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
-      - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-08T18:43:26+00:00'
   - codename: gui-acceptance-editing
     node_id: M17.11
     branch: feature/rm-gui-acceptance-editing
