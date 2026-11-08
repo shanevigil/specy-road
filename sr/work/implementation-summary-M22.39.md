@@ -73,6 +73,40 @@ record it returns is not flagged. Docs state the rule.
 - First turn (no `message` event): unchanged. The existing `test_worker_faults` stall tests and the never-output test pass.
 - Red-green: with the `worker_ops_slots.py` change reverted, both new clauses fail (`stalled_workers` lists the resumed worker; the returned flags contain `stalled`). With it, they pass.
 
+## Fix round 2 (gpt-5.6-sol-high block at a5a81abf)
+
+**Findings:**
+- A recovery left the old turn's presence session (`<user>-s<old pgid>`) live, so the resumed worker's guard
+  saw it as a peer.
+- A recovery of a dead wrapper with a live harness returned the new worker still flagged
+  `wrapper_gone_harness_alive`.
+
+**Class:** what the ended turn leaves on the record and in presence. `terminate` cleans this up;
+`recover`'s own ending step did not.
+
+**Design change:** `recover` ends the turn through one step, `_end_turn`. It mirrors `terminate` except
+that it does not close the record:
+- it signals the group through `kill_group` when anything in the group lives;
+- only after that (`kill_group` raises if the group survives, leaving the flag and the session in place) it
+  clears `wrapper_gone_harness_alive` and calls terminate's own `_end_worker_session` for `<user>-s<pgid>`.
+
+No file outside the zones changed. The doc's `recover` row says so.
+
+## Probes (round 2)
+
+- Old turn's presence session `<user>-s<pgid>` in its worktree: ended by `recover`; a peer's session (`<user>-s1`) stays (test). Red without the fix.
+- Dead wrapper (SIGKILLed by the test) with a live harness: `sync` flags `wrapper_gone_harness_alive`; `recover` ends the harness by its recorded start time, the old harness pid is gone, and the returned record has no orphan flag and a new pid; the worker resumes to `idle` (test). Red without the fix.
+- `kill_group` fails (group survives, or descendants cannot be listed): it raises before the clears, so the flag and the session stay and the error reaches the caller (by reading the code).
+- Group already gone (dead wrapper and dead harness): no signal; the stale orphan flag and the session are still dropped, and `_send`'s dead-wrapper close marks the record `failed` with its session, then resumes (by reading the code).
+- Other per-turn residue, compared with `terminate`:
+  - `queued_message` / `message_undelivered`: kept on purpose, so `_send` delivers the text with the continue prompt and clears both.
+  - `descendants_unchecked`: owned by `kill_group`.
+  - lease: released by `_send`'s dead-wrapper close and acquired anew.
+  - `pid`, `pgid`, `harness_pid`, `harness_start`: reset by `spawn`'s mark and the wrapper.
+  - `post_run_findings`: set or cleared by the next turn's check.
+  - `needs_reconcile` and `possibly_modified_externally`: about the worker, not the turn, so kept.
+- `resume` and `message` of a failed worker: not changed by this leaf. They keep their existing behaviour, which `_send` owns outside these zones.
+
 ## Added
 
 - `worker_state.FLAG_NEEDS_PERSON` / schema flag `needs_person` — marks a worker past its recovery limit so it shows in list/status and is not retried.
@@ -87,10 +121,12 @@ record it returns is not flagged. Docs state the rule.
 - `worker_ops_slots.stalled_workers` / `stall_lines` — one report for list, sync and doctor with seconds silent (A1).
 - `worker_ops_slots.recovery_limit` — `policy.max_fix_rounds` or the default (A3).
 - `worker_ops_slots.recover` and its guards (not stalled, other live worker on the leaf, limit, writer, resumable session, branch) — A2/A3.
+- `worker_ops_slots._end_turn` — ends the stalled turn and drops its orphan flag and presence session once the group is confirmed gone, reusing terminate's `_end_worker_session` (fix round 2).
 - `worker_ops_slots.recover_stalled` (+ no-`work/.workers` guard) — the loop body grind-session calls (A4).
 - `worker_cli._with_stalls`, `cmd_recover`, the `recover` parser; `cmd_list`/`cmd_sync` append stall lines — A1/A2.
 - `doctor._print_stalled` (+ no-`work/.workers` guard so doctor creates nothing) — A1.
 - `grind_session.RECOVER_EVERY`, `_recover_stalled`, calls in `_run_loop` and `_wait_for_signal` — A4.
 - Mocks: none.
 - `tests/parity/command_map.yaml` rows (recover added; worker parent help) and golden `specy-road__worker__recover.txt`: the parity harness's required way to change the command surface.
+- Tests (`tests/test_worker_stall_recovery.py`, round 2): `_silent_worker` helper shared by the two real-process tests; the recover test now also checks that the old turn's presence session ends and a peer's stays; new `test_recover_ends_a_live_harness_whose_wrapper_died` (distinct regression: dead wrapper with a live harness).
 - Tests (`tests/test_worker_stall_recovery.py`): `test_a_worker_that_never_wrote_output_is_flagged_from_its_launch` (no output at all; list and doctor show seconds silent; a follow-up turn's `message` resets silence); `test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes` (busy worker left running, sync shows the stall, recovered worker keeps commit and uncommitted file, returned record unflagged, a second recover refused as not stalled, count 1); `test_recover_past_the_limit_stops_as_needing_a_person` (persisted limit from `max_fix_rounds`, last output named, one event, grind's `recover_stalled` path, not retried); `test_recover_refuses_while_another_worker_holds_the_leaf`.
