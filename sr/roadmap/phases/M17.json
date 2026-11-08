@@ -291,7 +291,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.10_gui-orch-sandbox-use-approved_860efe04-3d36-451d-9f69-1f0657634bc1.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run",
       "touch_zones": [
         "sr/planning/M17.10_gui-orch-sandbox-use-approved_860efe04-3d36-451d-9f69-1f0657634bc1.md"

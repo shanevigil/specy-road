@@ -160,7 +160,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.23_guidance-bypass-retest-cursor-grok-sol-opus_dfb21e02-6eaa-4de1-9b48-25de90e7c191.md",
       "sibling_order": 21,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/spacexai-grok/grok-4.7.md",
