@@ -95,14 +95,11 @@ runs the refusals covered so far through the CLI and checks each names its fix.
 
 ## Branching, tagging, and release process
 
-### Default branch is `dev`
+### Branch policy
 
-- All feature work targets **`dev`**.
-- The **`main`** branch is reserved for tagged releases. The
-  [`main-release-tag-gate.yml`](../.github/workflows/main-release-tag-gate.yml)
-  workflow rejects pushes to `main` that aren't release-marker PRs and
-  auto-tags merge commits.
-- `main` is intentionally minimal (README + workflows) until v0.1.
+Which branch to start from, where topic branches merge, when a PR is
+required and how `main` is promoted are stated once, in
+[toolkit-development.md](toolkit-development.md#maintainer-workflow-vs-consumer-workflow).
 
 ### Branch-naming convention (enforced)
 

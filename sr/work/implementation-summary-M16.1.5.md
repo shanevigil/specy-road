@@ -2,7 +2,7 @@
 
 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer.
 
-Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `origin/WIP/improvements-0-3-1` (`b781d827`); fix round 2 after merging it again (`9c39ce3e`); fix round 3 after merging it again (`ef13dd25`).
+Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `origin/WIP/improvements-0-3-1` (`b781d827`); fix round 2 after merging it again (`9c39ce3e`); fix round 3 after merging it again (`ef13dd25`); fix round 4 after the coordinator's zone change (`d36e40ef`), merged at `439228ac`.
 
 ## Acceptance
 
@@ -78,6 +78,17 @@ The review repeats the round 1 and round 2 findings A1 and A4 unchanged. No new 
   - **New file:** a maintainer-only provenance resource outside `specy_road/templates/`, so it is not in the wheel's `templates/**/*` package data.
 - **Coordinator options:** add these zones to M16.1.5; split A1's other copies and A4 into a follow-up leaf, with this leaf's acceptance narrowed to match; or rule on the interpretation. Another automatic fix round under the current zones cannot clear either finding.
 
+## Fix round 4 (coordinator resolution at `d36e40ef`)
+
+- **A1 (fixed).** Class: the branch policy or the version-numbers rule restated outside its canonical place. The canonical places are `docs/toolkit-development.md` § Maintainer workflow vs consumer workflow for the branch policy, and `AGENTS.md` § Version numbers (human-owned) for the version rule. Each copy now links there:
+  - `docs/contributor-guide.md` § Default branch is `dev` → § Branch policy, a link. The old text said "all feature work targets `dev`", which contradicted the WIP-base rule, and "`main` is intentionally minimal until v0.1", which is stale. No file linked the old anchor.
+  - `docs/release-runbook.md:9`: the "Must know" version line now links to `AGENTS.md`.
+  - `docs/release-runbook.md:150`: the WIP-base sentence in the pre-release steps now links to the branch policy.
+  - `docs/git-workflow.md:6`: "Not for" now points to `toolkit-development.md` instead of `CLAUDE.md`.
+  - `.cursor/rules/026-release-version-tag-sync.mdc:8`: the "Human owns the number" bullet is now a link to `AGENTS.md`, which removes the 026 → 027 → AGENTS.md hop.
+  - `AGENTS.md` § Coordination: the "Branches" line's parenthetical summary of the policy was dropped, leaving only the link.
+- **A4 (narrowed by the coordinator; met).** Acceptance now asks only that the shipped `agents-rules.md` cite files an adopter has. `tests/test_agent_start_up_reading.py::test_shipped_rules_cite_only_files_an_adopter_has` checks it, and the load order names only files a fresh consumer repo has (checked by the start-up test's missing-file assertion). Provenance comments are unchanged; moving them is M16.1.12.
+
 ## Probes
 
 - Digest in the consumer closure: now counted at 23 lines; total 161, under 400.
@@ -96,6 +107,10 @@ The review repeats the round 1 and round 2 findings A1 and A4 unchanged. No new 
 - Round 2, zones: the registry row on `origin/WIP/improvements-0-3-1` is unchanged, so A1 and A4 are still outside this leaf.
 - Round 3, zones: the registry row on `origin/WIP/improvements-0-3-1` at `ef13dd25` is unchanged (the same eight paths), so A1 and A4 are still outside this leaf.
 - Round 3, package data: `templates/**/*` ships the template file itself, which confirms A4 needs the comments moved out of `specy_road/templates/`. That needs the out-of-zone paths listed above.
+- Round 4, branch-policy copies: grep across tracked `*.md`/`*.mdc` (excluding `sr/`, fixtures, CHANGELOG, design-notes) for "targets `dev`", `WIP/improvements-x-y-z`, "topic branch … from" and "branch from `dev`". After the edits, only `docs/toolkit-development.md` (canonical) and `AGENTS.md:23` match; the latter names the line `sr/` lives on and states no policy.
+- Round 4, version-rule copies: grep for "never bump", "do not bump", "without the exact number" and "unless the user stated" finds only `AGENTS.md` (canonical). 026, 027 and `release-runbook.md:9` now link; `release-runbook.md:109` already linked.
+- Round 4, broken anchors: nothing links `#default-branch-is-dev`; the new links target `#maintainer-workflow-vs-consumer-workflow` and `#version-numbers-human-owned`, which exist.
+- Round 4, tests that read the edited docs: `tests/test_release_harness.py` (030 and runbook strings still present), `tests/test_refusals_name_their_fix.py` and `tests/test_sibling_repo_approvals.py` pass.
 - Provenance comments by template: `agents-rules.md` 27, `agents-md-block.md` 8, `claude-md-block.md` 2, `agents-team.md` 0.
 - Readers of provenance comments: `agent_guide_block.py` (`PROVENANCE`, `strip_provenance`), `agents_md_block.py` (render), `chore_garden.py` (advisory-rule), and `tests/test_agents_md_block.py`, `tests/test_chore_mode.py`.
 

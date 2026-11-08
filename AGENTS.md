@@ -26,7 +26,7 @@ By task, only what it needs:
 
 The dogfood tree is a **test-fixture roadmap**, not the canonical product roadmap for the `specy-road` toolkit. Do not register ordinary toolkit implementation work in [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) unless the work is specifically exercising or updating the fixture.
 
-**Branches:** the toolkit's branch, PR and promotion policy (topic branches from the active `WIP/improvements-x-y-z` line, else from `dev`; `main` by release PR only) is stated once, in [`docs/toolkit-development.md`](docs/toolkit-development.md#maintainer-workflow-vs-consumer-workflow). For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/git-workflow.md).
+**Branches:** the toolkit's branch, PR and promotion policy is stated once, in [`docs/toolkit-development.md`](docs/toolkit-development.md#maintainer-workflow-vs-consumer-workflow). For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/git-workflow.md).
 
 If this repository ran **`specyrd init`**, you may have skills under `.agents/skills/<name>/SKILL.md` (with `.claude/skills/` symlinks for Claude Code, or a flat stub directory for `--ai generic`; `.cursor/commands/` and `.claude/commands/` only in repos initialised before 0.3.0) — they delegate to `specy-road` / bundled scripts.
 

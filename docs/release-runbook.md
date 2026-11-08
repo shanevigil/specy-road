@@ -6,7 +6,7 @@
 **Not for:** day-to-day branching and PR conventions ([`contributor-guide.md`](contributor-guide.md)) or installing an RC as a consumer ([`install-release-candidates.md`](install-release-candidates.md)).
 
 **Must know without reading on:**
-- The user chooses the version (step 2.2); never bump, tag or name a release branch without the exact number in this conversation.
+- The user chooses the version (step 2.2): see [`AGENTS.md`](../AGENTS.md#version-numbers-human-owned) (Version numbers).
 - Two flows: RC `vX.Y.Z-rcN` → TestPyPI, final `vX.Y.Z` → PyPI; `pyproject.toml` must read `X.Y.ZrcN` / `X.Y.Z` (PEP 440, no dash) and match the tag — `python scripts/check_release_version.py vX.Y.Z[-rcN]` must print `ok:`.
 - Branch `chore/release-vX-Y-Z[-rcN]`, PR to `main` titled `release: vX.Y.Z[-rcN]` (leading `v` mandatory), CHANGELOG heading `## [vX.Y.Z[-rcN]] - YYYY-MM-DD`.
 - Every release also writes or updates the `## specy-road X.Y.Z` section of `docs/whats-new.md` and points the README's **What's new** line at it (step 2.5a, "A.2 Author the release commit").
@@ -147,8 +147,8 @@ attach its evidence file before §3.1.
    git pull --ff-only origin dev
    ```
 
-   If maintainers have an active `WIP/improvements-x-y-z` batch for
-   the release train, start from that branch instead of raw `dev`.
+   Start from the branch the [branch policy](toolkit-development.md#maintainer-workflow-vs-consumer-workflow)
+   names instead of `dev` when it names another.
 
 2. Create the pre-release validation branch:
 
