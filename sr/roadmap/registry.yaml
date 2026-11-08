@@ -93,3 +93,21 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
+  - codename: gui-orch-drawer
+    node_id: M17.3
+    branch: feature/rm-gui-orch-drawer
+    touch_zones:
+      - gui/pm-gantt/src/components/OrchestrationDrawer.tsx
+      - gui/pm-gantt/src/orchestrationSnapshot.ts
+      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
+      - gui/pm-gantt/src/api.ts
+      - gui/pm-gantt/src/App.tsx
+      - gui/pm-gantt/src/App.css
+      - specy_road/pm_gantt_static/
+      - gui/pm-gantt/src/components/WorkersDrawer.tsx
+      - gui/pm-gantt/src/workerSelection.ts
+      - gui/pm-gantt/src/workerSelection.test.ts
+      - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
