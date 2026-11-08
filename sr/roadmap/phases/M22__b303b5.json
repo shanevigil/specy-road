@@ -396,7 +396,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.48_shared-names-close-only-when-they-could-be-the-writer_e6ac4cbe-9a89-469a-9670-56cb116c10ff.md",
       "sibling_order": 47,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A shared reviewer name closes the gate only when it could be the leaf's writer",
       "touch_zones": [
         "specy_road/review_eligible.py",

@@ -241,7 +241,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.45` | A worker turn that moves the integration ref is flagged | task | — | Complete |
 | `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Complete |
 | `M22.47` | Cursor workers start and keep their config under the sandbox | task | — | Not Started |
-| `M22.48` | A shared reviewer name closes the gate only when it could be the leaf's writer | task | — | Not Started |
+| `M22.48` | A shared reviewer name closes the gate only when it could be the leaf's writer | task | — | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

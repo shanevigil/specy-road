@@ -176,7 +176,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.45` A worker turn that moves the integration ref is flagged `integration-refs-stay-put-during-a-turn` — task — **Complete**
   - `M22.46` Sandboxed workers can read their leaf's review records `sandboxed-workers-can-read-their-reviews` — task — **Complete**
   - `M22.47` Cursor workers start and keep their config under the sandbox `cursor-starts-under-the-sandbox` — task — **Not Started**
-  - `M22.48` A shared reviewer name closes the gate only when it could be the leaf's writer `shared-names-close-only-when-they-could-be-the-writer` — task — **Not Started**
+  - `M22.48` A shared reviewer name closes the gate only when it could be the leaf's writer `shared-names-close-only-when-they-could-be-the-writer` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -321,7 +321,6 @@ Do not pick these up.
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 - `M22.39` on `feature/rm-worker-stall-recovery` since 2026-11-07
 - `M22.47` on `feature/rm-cursor-starts-under-the-sandbox` since 2026-11-07
-- `M22.48` on `feature/rm-shared-names-close-only-when-they-could-be-the-writer` since 2026-11-08
 
 ## Quality by area
 
