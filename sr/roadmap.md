@@ -233,7 +233,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.39` | Stalled workers are detected on every run and can be recovered in one command | task | — | Complete |
 | `M22.40` | Cursor display names match the model they name | task | — | Complete |
 | `M22.41` | ready refuses a leaf with no commits, and handoff status stops offering it for review | task | — | Not Started |
-| `M22.43` | digest gives the same result with a cold or warm history cache | task | — | Not Started |
+| `M22.43` | digest gives the same result with a cold or warm history cache | task | — | Complete |
 | `M22.44` | Unattended workers run in a read-only sandbox on Linux | task | — | Complete |
 | `M22.45` | A worker turn that moves the integration ref is flagged | task | — | Complete |
 | `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Complete |

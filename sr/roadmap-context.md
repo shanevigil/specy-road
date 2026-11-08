@@ -171,7 +171,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Complete**
   - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Complete**
   - `M22.41` ready refuses a leaf with no commits, and handoff status stops offering it for review `ready-refuses-a-leaf-with-no-commits` — task — **Not Started**
-  - `M22.43` digest gives the same result with a cold or warm history cache `digest-is-the-same-cold-or-warm` — task — **Not Started**
+  - `M22.43` digest gives the same result with a cold or warm history cache `digest-is-the-same-cold-or-warm` — task — **Complete**
   - `M22.44` Unattended workers run in a read-only sandbox on Linux `workers-run-in-a-sandbox` — task — **Complete**
   - `M22.45` A worker turn that moves the integration ref is flagged `integration-refs-stay-put-during-a-turn` — task — **Complete**
   - `M22.46` Sandboxed workers can read their leaf's review records `sandboxed-workers-can-read-their-reviews` — task — **Complete**
