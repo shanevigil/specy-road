@@ -171,4 +171,5 @@ entries:
       - tests/parity/command_map.yaml
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-08T16:31:56+00:00'
