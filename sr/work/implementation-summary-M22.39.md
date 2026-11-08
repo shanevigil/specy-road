@@ -45,12 +45,41 @@ Before the goldens: full suite `pytest -n 4` gave 3 failed (the parity tests abo
 the targeted run below passes, `pytest -m parity tests/parity` passes (180 passed, 1 skipped), ruff is clean,
 and `specy-road file-limits` is OK.
 
+## Fix round 1 (gpt-5.6-sol-high block at d17bd24e)
+
+**Finding:** `recover()` resumed the worker but left `stalled` on the record. The record also still held the
+old `last_output_at` until the new wrapper wrote its launch time. A second `recover` queued behind the first
+re-flagged the fresh turn, ended it and spent another retry.
+
+**Class:** a follow-up turn inherits the previous turn's silence (`last_output_at` and `stalled`) between
+`_send`'s `message` event and the new wrapper's first record write. Every path that starts a follow-up turn
+through `_send` hits it: `recover`, `resume`, `message`, and the wrapper's queued-message delivery.
+
+**Design change (one rule, `silent_seconds`):** silence runs from the newest of `last_output_at` and the
+`message` or `resumed` event that started the current follow-up turn. With neither, it runs from the first
+turn's `started`/`launched` event, else `created`. This replaces the earlier `_LAUNCH_EVENTS` fallback, so
+no branch is added. `recover` also clears `stalled` in the same mutate that counts the recovery, so the
+record it returns is not flagged. Docs state the rule.
+
+## Probes
+
+- `recover` twice in a row against a live wrapper, with `last_output_at` set back to OLD between the calls (the window before the new wrapper writes): the second call is refused as "not stalled" and does not end the fresh turn or spend a retry (test).
+- Record returned by `recover --json`: no `stalled` flag (test).
+- Rule clause: a `message` event newer than an old `last_output_at` gives 0 s of silence and clears `stalled`; 5 s later it reads 5 (test).
+- `resume` and `message` (both through `_send`, which writes `message` before `spawn`): covered by the same rule; no separate code.
+- Queued delivery (the runner calls `_send`, which writes `message`): covered by the same rule.
+- A `message` text queued while a turn runs writes `message_queued`, not `message`, so it does not reset a live turn's silence: checked in `queue_worker_message`.
+- `grind-session` `recover_stalled`: each `recover` sweeps again under the lock, so a worker its list named but another recovery already resumed is refused, not ended: by the same rule.
+- First turn (no `message` event): unchanged. The existing `test_worker_faults` stall tests and the never-output test pass.
+- Red-green: with the `worker_ops_slots.py` change reverted, both new clauses fail (`stalled_workers` lists the resumed worker; the returned flags contain `stalled`). With it, they pass.
+
 ## Added
 
 - `worker_state.FLAG_NEEDS_PERSON` / schema flag `needs_person` — marks a worker past its recovery limit so it shows in list/status and is not retried.
 - `WorkerRecord.recoveries` / schema property — the persisted count, so separate `recover` processes share one limit.
 - `worker_ops_slots.DEFAULT_RECOVERIES` — the limit when `policy.max_fix_rounds` is unset (recovery must be bounded).
-- `worker_ops_slots._LAUNCH_EVENTS` — events that anchor silence for a worker with no `last_output_at`.
+- `worker_ops_slots._TURN_EVENTS` / `_FIRST_EVENTS` — the events that start a follow-up turn and the first turn; silence never runs from before them (fix round 1).
+- The `stalled` flag cleared in `recover`'s counting mutate, so the returned record is not flagged (fix round 1).
 - `worker_ops_slots._policy` — shared pinned-policy read for the stall window and the limit.
 - `worker_ops_slots.silent_seconds` — silence from last output, or from launch when none (A1).
 - `worker_ops_slots.last_output` — last harness-parsed summary, named in stall and needs-person messages (was inline in `sweep_stalled`).
@@ -64,4 +93,4 @@ and `specy-road file-limits` is OK.
 - `grind_session.RECOVER_EVERY`, `_recover_stalled`, calls in `_run_loop` and `_wait_for_signal` — A4.
 - Mocks: none.
 - `tests/parity/command_map.yaml` rows (recover added; worker parent help) and golden `specy-road__worker__recover.txt`: the parity harness's required way to change the command surface.
-- Tests (`tests/test_worker_stall_recovery.py`): `test_a_worker_that_never_wrote_output_is_flagged_from_its_launch` (no output at all; list and doctor show seconds silent); `test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes` (busy worker left running, sync shows the stall, recovered worker keeps commit and uncommitted file, count 1); `test_recover_past_the_limit_stops_as_needing_a_person` (persisted limit from `max_fix_rounds`, last output named, one event, grind's `recover_stalled` path, not retried); `test_recover_refuses_while_another_worker_holds_the_leaf`.
+- Tests (`tests/test_worker_stall_recovery.py`): `test_a_worker_that_never_wrote_output_is_flagged_from_its_launch` (no output at all; list and doctor show seconds silent; a follow-up turn's `message` resets silence); `test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes` (busy worker left running, sync shows the stall, recovered worker keeps commit and uncommitted file, returned record unflagged, a second recover refused as not stalled, count 1); `test_recover_past_the_limit_stops_as_needing_a_person` (persisted limit from `max_fix_rounds`, last output named, one event, grind's `recover_stalled` path, not retried); `test_recover_refuses_while_another_worker_holds_the_leaf`.
