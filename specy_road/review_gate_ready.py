@@ -16,7 +16,9 @@ from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import base_ref, in_zones
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import commits_behind, git_stdout, git_text, merge_conflicts
-from specy_road.nested_repos import covers, in_nested, is_repo_top, nested_prefixes, nested_repos, nested_zone_paths
+from specy_road.nested_repos import (
+    NestedRepo, branch_tip, covers, in_nested, is_repo_top, nested_base_ref, nested_prefixes, nested_repos,
+)
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_files import (
@@ -239,20 +241,65 @@ def uncommitted_in_zone(root: Path, zones: list[str]) -> list[str] | None:
     return sorted(set(found))
 
 
-def committed_in_zone(root: Path, base: str, commit: str, zones: list[str]) -> list[str] | None:
-    """In-zone paths committed since the integration merge base, or ``None`` when the outer diff cannot be listed.
+def _nested_gap(nr: NestedRepo, evidence: str) -> str:
+    return f"nested repository {nr.path!r} cannot be assessed: {evidence}"
 
-    Nested paths come from :func:`specy_road.nested_repos.nested_zone_paths`: the current branch's
-    merge base inside each configured nested repository. Paths git lists for the outer repository
+
+def _nested_in_zone(root: Path, zones: list[str]) -> tuple[list[str], str | None]:
+    """In-zone commits in covered nested repositories that are checked out here, or why one cannot be read.
+
+    One rule. A checkout is assessed only when its integration base resolves and, when the leaf
+    branch exists there, the merge base and the committed diff can be listed. Any of those missing
+    is a refusal that names the repository and the missing evidence, not an empty change. No leaf
+    branch means no commits. A covered repository that is not checked out is left unread: this
+    command does not invent a checkout. ``nested_zone_paths`` is not used: it turns a missing base
+    or an unreadable diff into no paths.
+    """
+    branch = git_text(["branch", "--show-current"], root) or ""
+    prefix = project_prefix(root)
+    found: list[str] = []
+    for nr in nested_repos(root):
+        if not covers(zones, nr.path, prefix):
+            continue
+        repo = root / nr.path
+        if not is_repo_top(repo):
+            continue
+        base_ref_name = nested_base_ref(repo, nr)
+        if not base_ref_name:
+            return [], _nested_gap(nr, f"no integration base for {nr.integration_branch!r} (remote {nr.remote})")
+        listed = _status_paths(repo)
+        if listed is None:
+            return [], _nested_gap(nr, "git cannot list uncommitted paths")
+        tip = branch_tip(repo, nr, branch) if branch else None
+        if not tip:
+            continue
+        mb = git_text(["merge-base", base_ref_name, tip], repo)
+        if not mb:
+            return [], _nested_gap(nr, f"no merge base of {base_ref_name} and {branch}")
+        diff = diff_paths(repo, f"{mb}...{tip}")
+        if diff is None:
+            return [], _nested_gap(nr, f"git cannot list the committed diff {mb[:12]}...{tip[:12]}")
+        lead = f"{prefix}{nr.path}/"
+        found += [f"{nr.path}/{p}" for p in diff if in_zones(zones, f"{lead}{p}", prefix)]
+    return found, None
+
+
+def committed_in_zone(root: Path, base: str, commit: str, zones: list[str]) -> tuple[list[str] | None, str | None]:
+    """``(in-zone commits, refusal)``. The refusal names a covered nested repository that cannot be assessed.
+
+    ``(None, None)`` when the outer diff cannot be listed. Paths git lists for the outer repository
     inside a nested repository's directory are that repository's, so they are not counted twice.
     """
     changed = diff_paths(root, f"{base}...{commit}")
     if changed is None:
-        return None
+        return None, None
+    nested, gap = _nested_in_zone(root, zones)
+    if gap:
+        return [], gap
     prefix = project_prefix(root)
     skip = nested_prefixes(root)
     outer = [p for p in changed if in_zones(zones, p, prefix) and not in_nested(p, skip)]
-    return sorted(set(outer).union(nested_zone_paths(root, zones)))
+    return sorted(set(outer).union(nested)), None
 
 
 def leaf_work_problem(root: Path, zones, base: str, commit: str) -> str | None:
@@ -260,15 +307,18 @@ def leaf_work_problem(root: Path, zones, base: str, commit: str) -> str | None:
 
     Zones are the claim's, or the node's when the claim has none. A path matches in either the
     project-root or the git-root spelling, and a directory zone does not match a sibling whose
-    name only starts with the zone's.
+    name only starts with the zone's. A covered nested repository that is checked out but whose
+    integration base or committed diff cannot be read is named; that is not an empty change.
     """
     cleaned = _cleaned_zones(zones)
+    committed, gap = committed_in_zone(root, base, commit, cleaned)
+    if gap:   # a covered nested repository with no base or no diff is not an empty change
+        return gap
     dirty = uncommitted_in_zone(root, cleaned)
     if dirty is None:
         return "git cannot list uncommitted paths"
     if dirty:
         return "uncommitted in-zone changes: " + ", ".join(dirty)
-    committed = committed_in_zone(root, base, commit, cleaned)
     if committed is None:
         return f"git cannot list the paths changed in {base[:12]}...{commit[:12]}"
     if not committed:
@@ -390,7 +440,16 @@ def _refuse(msg: str) -> int:
 
 
 def add_ready_parser(sub: argparse._SubParsersAction) -> None:
-    r = sub.add_parser("ready", help="Write the executor's READY hand-off for HEAD into work/reviews/<NODE_ID>/")
+    r = sub.add_parser(
+        "ready",
+        help="Write the executor's READY hand-off for HEAD into work/reviews/<NODE_ID>/",
+        description="Write the executor's READY hand-off for HEAD into work/reviews/<NODE_ID>/. "
+                    "A checked-out covered nested repository is assessed only when its integration base "
+                    "resolves and, when the leaf branch exists there, the merge base and the committed diff "
+                    "can be listed; any of those missing refuses and names the repository and the missing "
+                    "evidence. No leaf branch means no commits. A covered repository that is not checked out "
+                    "is not read.",
+    )
     r.add_argument("node_id")
     r.add_argument("--model", required=True, help="Your roster id; the file is READY-<model>.md")
     r.add_argument("--run", action="append", default=[], metavar="CMD",

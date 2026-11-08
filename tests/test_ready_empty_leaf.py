@@ -86,6 +86,35 @@ def test_ready_refuses_only_in_zone_dirt_and_an_empty_leaf(tmp_path: Path, capsy
         assert "no committed in-zone path" not in err
 
 
+@pytest.mark.parametrize("integration_branch,code", [(None, 0), ("typo-dev", 1)])
+def test_ready_names_a_covered_nested_repo_it_cannot_assess(
+        tmp_path: Path, capsys, integration_branch: str | None, code: int) -> None:
+    """Outer in-zone commits do not hide a checked-out nested repository with no integration base.
+
+    ``None`` keeps the configured branch (``dev``), which resolves, and the nested repository has
+    no leaf branch: that is an empty nested diff, so READY is written. ``typo-dev`` resolves to
+    no ref.
+    """
+    repo = make_review_repo(tmp_path)
+    add_nested_repo(repo, "src/engine", "dev")
+    if integration_branch:
+        cfg = repo / "roadmap" / "git-workflow.yaml"
+        cfg.write_text(cfg.read_text().replace(
+            "  - src/engine\n",
+            f"  - {{path: src/engine, integration_branch: {integration_branch}}}\n",
+        ), encoding="utf-8")
+    capsys.readouterr()
+    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == code
+    err = capsys.readouterr().err
+    ready = _ready_path(repo)
+    if code:
+        assert not ready.exists()
+        assert "src/engine" in err and "typo-dev" in err and "integration base" in err
+    else:
+        assert ready.is_file()
+        assert "cannot be assessed" not in err
+
+
 def test_a_preflight_refusal_runs_no_command(tmp_path: Path, monkeypatch, capsys) -> None:
     repo = make_review_repo(tmp_path)
     git(repo, "reset", "--hard", "dev")
