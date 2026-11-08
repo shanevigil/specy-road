@@ -48,6 +48,7 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road ready` refuses, before any `--run` and again after, when the branch has no committed in-zone change against the integration merge base (this repository or a configured nested repository the zones cover) or when an in-zone path is staged, unstaged, deleted or untracked and not ignored. The refusal names those paths. A `--run` that moves `HEAD` is refused too. Nothing is written, and an existing READY file is left unchanged. A covered nested repository that is checked out but whose integration base does not resolve, or whose committed diff cannot be listed, is refused as well, naming the repository and the missing git evidence. No leaf branch there is not that failure. For a leaf whose zones cover no nested repository, `handoff status` shows an existing unblocked READY whose commit is its base as INVALID, and with no independent review records the state is `waiting` (no reviewer prompt). A READY that declares `blocked_on` stays `executor_blocked`.
 - `specy-road digest` writes the same `roadmap-context.md` when the history cache is missing and when it was
   written on a branch that later merged. A cache is appended only when its commit is on `HEAD`'s first-parent
   line; a merged side-branch tip, and any cache from before this change, is rebuilt. A dependency removed on a

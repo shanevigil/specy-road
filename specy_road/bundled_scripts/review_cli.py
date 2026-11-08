@@ -35,10 +35,11 @@ from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
-    REVIEW_LAUNCH_MODES, executor_blocked_display_lines, latest_ready, list_ready,
+    REVIEW_LAUNCH_MODES, executor_blocked_display_lines, list_ready,
     list_reviews, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
     review_path, reviews_dir, reviews_root, round_span, write_review,
 )
+from specy_road.review_gate_ready import empty_ready_error
 from specy_road.review_gate import GateResult, evaluate_gate, trial_merge
 from specy_road import review_caller, review_lock, safe_write
 from specy_road.review_lock import ReviewRunBusy, filing_busy
@@ -79,7 +80,12 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     branch = (t.entry or {}).get("branch")
     aids = acceptance_ids(t.node)
     gate = evaluate_gate(root, t.node, t.commit, branch=branch)
-    ready = latest_ready(root, node_id, branch, aids)
+    files = list_ready(root, node_id, branch, aids)
+    for item in files:   # an old empty hand-off is not an offer of review; a blocked one still is
+        if item.ok and (msg := empty_ready_error(root, t.touch_zones, item.data)):
+            item.errors.append(msg)
+    valid = [item for item in files if item.ok]
+    ready = max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name), default=None)
     ready_commit = ready.data["commit"] if ready else None
     # A current READY's blocked_on outranks reviewer blocks and escalation (A3).
     blocked_lines = executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
@@ -101,7 +107,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         "executor_blocked": blocked_lines,
         "ready": [
             {"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors}
-            for r in list_ready(root, node_id, branch, aids)
+            for r in files
         ],
         "reviews": [
             {"file": c.review.path.name, "model": c.model, "family": c.family,
