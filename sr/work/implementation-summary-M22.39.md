@@ -1,7 +1,7 @@
 # Implementation summary — M22.39 (worker-stall-recovery)
 
-**Status: blocked on a path outside the touch zones** (see "Blocker"). The code, tests, docs and CHANGELOG
-below are committed; READY is not written because the full suite fails on the CLI-surface goldens.
+**Status: ready.** Merged `origin/WIP/improvements-0-3-1` first (clean merge); the CLI-surface goldens the
+first run stopped on are now in the zones and updated.
 
 ## What changed
 
@@ -26,22 +26,24 @@ below are committed; READY is not written because the full suite fails on the CL
 
 ## Touch zones (final)
 
-All edits are inside the listed zones, plus the out-of-zone goldens below that are still needed:
 `specy_road/worker_ops_slots.py`, `specy_road/bundled_scripts/worker_cli.py`, `specy_road/bundled_scripts/doctor.py`,
 `specy_road/bundled_scripts/grind_session.py`, `specy_road/worker_state.py`,
 `specy_road/schemas/worker-record.schema.json`, `tests/test_worker_stall_recovery.py`,
-`docs/orchestration-workers.md`, `CHANGELOG.md`. No new module was needed (all files under the 1,000-line cap).
+`docs/orchestration-workers.md`, `CHANGELOG.md`, `tests/parity/command_map.yaml`, `tests/parity/golden/help/`
+(`tests/parity/golden/inventory.json` was added to the zones but needed no change). No new module was needed.
 
-## Blocker
+## Parity goldens
 
-Adding the `worker recover` subcommand changes the CLI surface, so these fail:
-`tests/parity/test_command_surface.py::test_inventory_matches_golden_both_ways`,
-`::test_help_transcript_matches_golden[specy-road worker]`, `::test_every_current_name_has_a_golden_transcript`.
-The fix is regenerating the goldens (`SPECY_ROAD_PARITY_REGEN=missing` / full regen), which writes
-**`tests/parity/golden/inventory.json`**, **`tests/parity/golden/help/specy-road__worker.txt`** and the new
-**`tests/parity/golden/help/specy-road__worker__recover.txt`** — all outside this leaf's touch zones. Add them to
-the zones and the leaf can finish. Everything else passed: full suite `3 failed, 6826 passed, 8 skipped`
-(`pytest -n 4`), the 3 being these.
+Per `tests/parity/README.md`: two `command_map.yaml` rows: one adds `specy-road worker recover`, one covers
+the parent `specy-road worker`, whose `--help` now lists it. Then `SPECY_ROAD_PARITY_REGEN=missing` wrote the
+one missing transcript, `tests/parity/golden/help/specy-road__worker__recover.txt`. The baseline
+`inventory.json` and `specy-road__worker.txt` stay as they are; the rows declare the delta.
+
+## Verification
+
+Before the goldens: full suite `pytest -n 4` gave 3 failed (the parity tests above), 6826 passed. After them:
+the targeted run below passes, `pytest -m parity tests/parity` passes (180 passed, 1 skipped), ruff is clean,
+and `specy-road file-limits` is OK.
 
 ## Added
 
@@ -61,4 +63,5 @@ the zones and the leaf can finish. Everything else passed: full suite `3 failed,
 - `doctor._print_stalled` (+ no-`work/.workers` guard so doctor creates nothing) — A1.
 - `grind_session.RECOVER_EVERY`, `_recover_stalled`, calls in `_run_loop` and `_wait_for_signal` — A4.
 - Mocks: none.
+- `tests/parity/command_map.yaml` rows (recover added; worker parent help) and golden `specy-road__worker__recover.txt`: the parity harness's required way to change the command surface.
 - Tests (`tests/test_worker_stall_recovery.py`): `test_a_worker_that_never_wrote_output_is_flagged_from_its_launch` (no output at all; list and doctor show seconds silent); `test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes` (busy worker left running, sync shows the stall, recovered worker keeps commit and uncommitted file, count 1); `test_recover_past_the_limit_stops_as_needing_a_person` (persisted limit from `max_fix_rounds`, last output named, one event, grind's `recover_stalled` path, not retried); `test_recover_refuses_while_another_worker_holds_the_leaf`.
