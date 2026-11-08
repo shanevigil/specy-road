@@ -136,3 +136,16 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
+  - codename: ready-refuses-a-leaf-with-no-commits
+    node_id: M22.41
+    branch: feature/rm-ready-refuses-a-leaf-with-no-commits
+    touch_zones:
+      - specy_road/review_gate_ready.py
+      - specy_road/review_files.py
+      - tests/test_ready_empty_leaf.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+      - specy_road/bundled_scripts/review_cli.py
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
