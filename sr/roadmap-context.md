@@ -171,7 +171,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Complete**
   - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Complete**
   - `M22.41` ready refuses a leaf with no commits, and handoff status stops offering it for review `ready-refuses-a-leaf-with-no-commits` — task — **Not Started**
-  - `M22.42` Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review `sibling-heads-come-from-the-reviewed-checkout` — task — **Not Started**
   - `M22.43` digest gives the same result with a cold or warm history cache `digest-is-the-same-cold-or-warm` — task — **Not Started**
   - `M22.44` Unattended workers run in a read-only sandbox on Linux `workers-run-in-a-sandbox` — task — **Complete**
   - `M22.45` A worker turn that moves the integration ref is flagged `integration-refs-stay-put-during-a-turn` — task — **Complete**
@@ -242,6 +241,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M20.1` Posture advisor: plan the M20 leaves from the research `plan-m20-from-research` — task — **Not Started**
   - `M20.2` Probe each reviewer harness for instruction-file leakage into fresh sessions `fresh-reviewer-leak-probe` — task — **Not Started**
 - `M23` Post-0.3.1 field feedback `post-0-3-1-field-feedback` — phase — **Not Started**
+  - `M23.1` Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review `sibling-heads-come-from-the-reviewed-checkout` — task — **Not Started**
 
 ## Open gates
 

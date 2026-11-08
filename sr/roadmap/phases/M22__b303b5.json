@@ -14,7 +14,7 @@
       "node_key": "b303b556-fa59-422a-a1c4-f1ce47d429ef",
       "parent_id": "M22",
       "planning_dir": "planning/M22.35_upgrade-mirror-skips-ignored-files_b303b556-fa59-422a-a1c4-f1ce47d429ef.md",
-      "sibling_order": 34,
+      "sibling_order": 31,
       "status": "Not Started",
       "title": "upgrade mirrors only what the refreshes need, never ignored files",
       "touch_zones": [
@@ -40,7 +40,7 @@
       "node_key": "00b3ae55-3843-44f0-94ad-61ba72868d91",
       "parent_id": "M22",
       "planning_dir": "planning/M22.36_rc-publishes-wheel-url-and-project-urls_00b3ae55-3843-44f0-94ad-61ba72868d91.md",
-      "sibling_order": 35,
+      "sibling_order": 32,
       "status": "Complete",
       "title": "Each RC publishes its wheel URL and install line, and the package links to the guide",
       "touch_zones": [
@@ -66,7 +66,7 @@
       "node_key": "bc7839a4-9796-4a0c-a544-d53116c1d045",
       "parent_id": "M22",
       "planning_dir": "planning/M22.37_cursor-cli-harness-test-pass_bc7839a4-9796-4a0c-a544-d53116c1d045.md",
-      "sibling_order": 36,
+      "sibling_order": 33,
       "status": "Not Started",
       "title": "Test the Cursor CLI harness on the documented default",
       "touch_zones": [
@@ -89,7 +89,7 @@
       "node_key": "ee340317-9162-4a87-a51a-cc4ee3725421",
       "parent_id": "M22",
       "planning_dir": "planning/M22.38_doctor-fix-keeps-other-clones-claims_ee340317-9162-4a87-a51a-cc4ee3725421.md",
-      "sibling_order": 37,
+      "sibling_order": 34,
       "status": "Complete",
       "title": "doctor --fix never removes a claim that may belong to another clone",
       "touch_zones": [
@@ -119,7 +119,7 @@
       "node_key": "0b69a82d-d3b0-454d-93de-338c1f10836f",
       "parent_id": "M22",
       "planning_dir": "planning/M22.39_worker-stall-recovery_0b69a82d-d3b0-454d-93de-338c1f10836f.md",
-      "sibling_order": 38,
+      "sibling_order": 35,
       "status": "Complete",
       "title": "Stalled workers are detected on every run and can be recovered in one command",
       "touch_zones": [
@@ -149,7 +149,7 @@
       "node_key": "b48b07b0-1aba-4444-abfe-0620d8bf76a2",
       "parent_id": "M22",
       "planning_dir": "planning/M22.40_cursor-display-names-match-the-model_b48b07b0-1aba-4444-abfe-0620d8bf76a2.md",
-      "sibling_order": 39,
+      "sibling_order": 36,
       "status": "Complete",
       "title": "Cursor display names match the model they name",
       "touch_zones": [
@@ -176,7 +176,7 @@
       "node_key": "121934a1-3ec8-416e-b66c-0305b77665b5",
       "parent_id": "M22",
       "planning_dir": "planning/M22.14_deps-ids-briefs-and-landed-branch_121934a1-3ec8-416e-b66c-0305b77665b5.md",
-      "sibling_order": 13,
+      "sibling_order": 12,
       "status": "Complete",
       "title": "Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch",
       "touch_zones": [
@@ -202,9 +202,9 @@
     },
     {
       "acceptance": [
-        "specy-road ready, before any --run command, refuses when no implementation exists: an empty committed diff in the outer repository and in every configured nested repository the leaf's zones name; or uncommitted in-zone changes (staged, unstaged, deleted or non-ignored untracked, by the claim's zones), naming the paths. ready accepts --blocked-on A<n>=REASON, which permits an empty or dirty handoff. After --run commands, the same checks repeat and HEAD must not have moved; on failure no READY is written",
-        "handoff status does not show ok or offer review for an existing READY whose commit equals its base",
-        "tests/test_ready_empty_leaf.py covers no commits, a dirty zone path, a dirty path outside the zones, blocked_on, and an old empty READY; CHANGELOG [Unreleased] entry"
+        "Using the claim's zones (falling back to the node's zones) and the existing in_zones matching in both project-root and git-root spellings, specy-road ready refuses before any --run command when no committed in-zone path differs from the integration merge base in the outer repository or in any configured nested repository the zones cover, or when in-zone changes are uncommitted (staged, unstaged, deleted or non-ignored untracked), naming the paths. After the --run commands the same checks repeat and HEAD must not have moved; on any refusal no READY is written and an existing READY is left byte-for-byte unchanged",
+        "For a leaf with no covered configured nested repository, handoff status shows an existing READY without blocked_on whose commit resolves to its base as INVALID in text and with a non-empty errors list in --json; without independent review records its state is waiting and no reviewer prompt is suggested. A READY with blocked_on still reports executor_blocked",
+        "tests/test_ready_empty_leaf.py, through the in-process CLI and local temporary git repositories (reuse tests.review_repo_helpers; no sleeps, network or harness), one table: staged, unstaged, deleted and non-ignored untracked in-zone paths; an outside-zone path and one whose name starts with a zone's; no committed in-zone diff; nested-only committed work (accepted). Assert exit code, named paths and READY existence. A marker-writing --run shows a preflight refusal runs nothing; --run commands that dirty an in-zone file or move HEAD refuse afterwards and leave an existing READY unchanged. Status rows for an old empty, a blocked and a non-empty READY in text and --json. CHANGELOG [Unreleased] entry"
       ],
       "codename": "ready-refuses-a-leaf-with-no-commits",
       "dependencies": [
@@ -215,7 +215,7 @@
       "node_key": "ac3ad49e-21e0-4e99-afd3-f91340af713a",
       "parent_id": "M22",
       "planning_dir": "planning/M22.41_ready-refuses-a-leaf-with-no-commits_ac3ad49e-21e0-4e99-afd3-f91340af713a.md",
-      "sibling_order": 40,
+      "sibling_order": 37,
       "status": "Not Started",
       "title": "ready refuses a leaf with no commits, and handoff status stops offering it for review",
       "touch_zones": [
@@ -223,7 +223,8 @@
         "specy_road/review_files.py",
         "tests/test_ready_empty_leaf.py",
         "docs/orchestration-review.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/review_cli.py"
       ],
       "type": "task"
     },
@@ -241,11 +242,11 @@
         "855d9738-4b87-480b-8404-d6a1aa85c714",
         "ac3ad49e-21e0-4e99-afd3-f91340af713a"
       ],
-      "id": "M22.42",
+      "id": "M23.1",
       "node_key": "181434e9-497e-4969-9329-3659d4fc0908",
-      "parent_id": "M22",
-      "planning_dir": "planning/M22.42_sibling-heads-come-from-the-reviewed-checkout_181434e9-497e-4969-9329-3659d4fc0908.md",
-      "sibling_order": 41,
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.1_sibling-heads-come-from-the-reviewed-checkout_181434e9-497e-4969-9329-3659d4fc0908.md",
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review",
       "touch_zones": [
@@ -273,7 +274,7 @@
       "node_key": "936cac0b-872f-4f66-82ae-9a987f865b57",
       "parent_id": "M22",
       "planning_dir": "planning/M22.43_digest-is-the-same-cold-or-warm_936cac0b-872f-4f66-82ae-9a987f865b57.md",
-      "sibling_order": 42,
+      "sibling_order": 38,
       "status": "Not Started",
       "title": "digest gives the same result with a cold or warm history cache",
       "touch_zones": [
@@ -302,7 +303,7 @@
       "node_key": "9022edcd-0ffa-48b3-829d-0ad51f8d6866",
       "parent_id": "M22",
       "planning_dir": "planning/M22.44_workers-run-in-a-sandbox_9022edcd-0ffa-48b3-829d-0ad51f8d6866.md",
-      "sibling_order": 43,
+      "sibling_order": 39,
       "status": "Complete",
       "title": "Unattended workers run in a read-only sandbox on Linux",
       "touch_zones": [
@@ -329,7 +330,7 @@
       "node_key": "49e7b2a8-6486-47cb-a9c7-ba757373b6c8",
       "parent_id": "M22",
       "planning_dir": "planning/M22.45_integration-refs-stay-put-during-a-turn_49e7b2a8-6486-47cb-a9c7-ba757373b6c8.md",
-      "sibling_order": 44,
+      "sibling_order": 40,
       "status": "Complete",
       "title": "A worker turn that moves the integration ref is flagged",
       "touch_zones": [
@@ -352,7 +353,7 @@
       "node_key": "43366e49-21ee-4162-8748-cd1ec4b0b76f",
       "parent_id": "M22",
       "planning_dir": "planning/M22.46_sandboxed-workers-can-read-their-reviews_43366e49-21ee-4162-8748-cd1ec4b0b76f.md",
-      "sibling_order": 45,
+      "sibling_order": 41,
       "status": "Complete",
       "title": "Sandboxed workers can read their leaf's review records",
       "touch_zones": [
@@ -374,7 +375,7 @@
       "node_key": "d4c82f4c-c50c-4f31-b15c-e7c4041a9727",
       "parent_id": "M22",
       "planning_dir": "planning/M22.47_cursor-starts-under-the-sandbox_d4c82f4c-c50c-4f31-b15c-e7c4041a9727.md",
-      "sibling_order": 46,
+      "sibling_order": 42,
       "status": "Complete",
       "title": "Cursor workers start and keep their config under the sandbox",
       "touch_zones": [
@@ -396,7 +397,7 @@
       "node_key": "e6ac4cbe-9a89-469a-9670-56cb116c10ff",
       "parent_id": "M22",
       "planning_dir": "planning/M22.48_shared-names-close-only-when-they-could-be-the-writer_e6ac4cbe-9a89-469a-9670-56cb116c10ff.md",
-      "sibling_order": 47,
+      "sibling_order": 43,
       "status": "Complete",
       "title": "A shared reviewer name closes the gate only when it could be the leaf's writer",
       "touch_zones": [
@@ -420,7 +421,7 @@
       "node_key": "e6bafcd8-c5d5-41f0-a0c4-e1b498b4baf8",
       "parent_id": "M22",
       "planning_dir": "planning/M22.49_sandboxed-worker-resumes-after-an-account-switch_e6bafcd8-c5d5-41f0-a0c4-e1b498b4baf8.md",
-      "sibling_order": 48,
+      "sibling_order": 44,
       "status": "Complete",
       "title": "A sandboxed Claude worker resumes after the executor account changes",
       "touch_zones": [
