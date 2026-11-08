@@ -122,20 +122,6 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
-  - codename: digest-is-the-same-cold-or-warm
-    node_id: M22.43
-    branch: feature/rm-digest-is-the-same-cold-or-warm
-    touch_zones:
-      - specy_road/history_index.py
-      - specy_road/history_cache.py
-      - tests/test_digest_cold_warm.py
-      - CHANGELOG.md
-      - specy_road/history_git.py
-      - specy_road/history_walk.py
-      - docs/roadmap-history.md
-    started: '2026-11-08'
-    owner: savigil
-    implementation_review: pending
   - codename: ready-refuses-a-leaf-with-no-commits
     node_id: M22.41
     branch: feature/rm-ready-refuses-a-leaf-with-no-commits
