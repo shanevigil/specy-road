@@ -102,6 +102,11 @@ branch = true
 patch = ["subprocess"]
 data_file = "work/.coverage"
 
+[tool.coverage.report]
+# This configuration's TOTAL at the M16.1.7 baseline commit (constraints/lean-baseline.json)
+# was 90.57%, rounded down. Test consolidation may not take the suite below it.
+fail_under = 90
+
 [tool.ruff]
 # Lean-code gate (docs/contributor-guide.md, "Lean-code gates"). Only the
 # complexity rule is selected on purpose: the ruff default set is not clean on
