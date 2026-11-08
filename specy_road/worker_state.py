@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, fields
@@ -84,6 +85,7 @@ class WorkerRecord:
     harness_pid: int | None = None    # the harness child, while it runs
     harness_start: str | None = None  # the harness's start time (ps lstart): with the pid, its identity
     last_output_at: str | None = None  # the harness's last stdout line (the turn's launch until one); stalled reads it
+    descendants_unchecked: bool | None = None  # terminate could not list escaped descendants; terminate repeats
     queued_message: str | None = None  # a follow-up from ``worker message`` while the wrapper was still running
     limit_reset_at: str | None = None  # while paused_by_limit: when the usage limit lifts (worker_turn_check)
     toolkit_version: str | None = None
@@ -177,10 +179,19 @@ def save_record(repo_root: Path, rec: WorkerRecord) -> Path:
     return path
 
 
+def _read_regular(path: Path) -> str:
+    """``path``'s UTF-8 text, opened without blocking: a FIFO or other non-regular file raises ``OSError`` at once."""
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
+    with os.fdopen(fd, "rb") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            raise OSError(f"{path} is not a regular file")
+        return f.read().decode("utf-8")
+
+
 def load_record(repo_root: Path, worker_id: str) -> WorkerRecord:
     path = record_path(repo_root, worker_id)
     try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        raw = yaml.safe_load(_read_regular(path))
     except OSError as e:
         raise WorkerError(f"{worker_id}: no record ({e})") from None
     except yaml.YAMLError as e:

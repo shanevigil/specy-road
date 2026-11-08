@@ -113,60 +113,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: terminate-and-finish-rollback-robustness
-    node_id: M22.20
-    branch: feature/rm-terminate-and-finish-rollback-robustness
-    touch_zones:
-      - specy_road/worker_process.py
-      - specy_road/finish_bookkeeping_undo.py
-      - tests/test_worker_terminate_descendants.py
-      - tests/test_finish_config_preflight.py
-      - tests/test_finish_merge_failure_undo.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-      - specy_road/worker_state.py
-      - specy_road/schemas/worker-record.schema.json
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: worker-cost-and-stale-presence
-    node_id: M22.13
-    branch: feature/rm-worker-cost-and-stale-presence
-    touch_zones:
-      - specy_road/session_presence.py
-      - specy_road/worker_ops_lifecycle.py
-      - tests/test_worker_usage_shell_cli.py
-      - tests/test_session_presence.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-      - specy_road/worker_adapter_base.py
-      - specy_road/bundled_scripts/session_cli.py
-      - tests/test_session_overlap.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: review-inputs-identity-and-unreadable
-    node_id: M22.19
-    branch: feature/rm-review-inputs-identity-and-unreadable
-    touch_zones:
-      - specy_road/review_eligible.py
-      - specy_road/review_gate.py
-      - specy_road/review_policy_pin.py
-      - specy_road/review_caller.py
-      - specy_road/worker_state.py
-      - specy_road/review_rejected.py
-      - specy_road/review_gate_ready.py
-      - specy_road/review_files.py
-      - tests/test_review_eligible.py
-      - tests/test_review_gate_ready_author.py
-      - tests/test_review_policy_pin.py
-      - tests/test_review_record_caller.py
-      - tests/test_review_file_case.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: cursor-starts-under-the-sandbox
     node_id: M22.47
     branch: feature/rm-cursor-starts-under-the-sandbox
@@ -190,6 +136,39 @@ entries:
       - tests/test_agent_start_up_reading.py
       - .cursor/rules/027-version-numbers-require-human.mdc
       - .cursor/rules/030-git-workflow-management.mdc
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: steering-finish-refusal
+    node_id: M22.31
+    branch: feature/rm-steering-finish-refusal
+    touch_zones:
+      - specy_road/steering_gate.py
+      - specy_road/bundled_scripts/finish_task.py
+      - docs/orchestration-steering-files.md
+      - tests/test_steering_file_guard.py
+      - tests/test_finish_merge_failure_undo.py
+      - tests/test_finish_work_cleanup.py
+      - tests/test_finish_config_preflight.py
+    started: '2026-11-07'
+    owner: savigil
+    implementation_review: pending
+  - codename: worker-stall-recovery
+    node_id: M22.39
+    branch: feature/rm-worker-stall-recovery
+    touch_zones:
+      - specy_road/worker_ops_slots.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - tests/test_worker_stall_recovery.py
+      - docs/orchestration-workers.md
+      - CHANGELOG.md
+      - specy_road/bundled_scripts/doctor.py
+      - specy_road/bundled_scripts/grind_session.py
+      - specy_road/worker_state.py
+      - specy_road/schemas/worker-record.schema.json
+      - tests/parity/golden/inventory.json
+      - tests/parity/golden/help/
+      - tests/parity/command_map.yaml
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

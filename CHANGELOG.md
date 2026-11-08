@@ -33,6 +33,32 @@ body. Keep section bodies focused; link to PRs for detail.
 ### Fixed
 
 - `specy-road upgrade` copies tracked files, untracked files git does not ignore, and files the refreshes read into its temporary directory. Gitignored paths such as `.env` files, virtualenvs, `node_modules` and nested repositories are not copied, on a real run or `--dry-run`, including when a symlink points at them. A directory that cannot be searched is left out of that copy, and neither a real run nor `--dry-run` stops on it; `validate`'s sibling-repository search skips it too. A global excludes file applies to that copy on both paths. An ignored `roadmap-context.md` that is already current is not reported as a rewrite. `--dry-run` prints a line before that copy and builds it once, then reuses it for the preview.
+- The review gate compares READY authors and review-record models after one normalization: case-folded, and a
+  name stands for every roster entry whose id, `harness_model`, or profile `api_id`, file name or alias it is. An
+  exact id gets no precedence. A READY naming `Opus` or the executor's alias still excludes the executor's own
+  review. A READY or record name two roster entries have closes the gate with a problem naming both. So does a
+  roster entry whose pinned profile is refused, and a READY that is not valid UTF-8 (no traceback). An unreadable parent of `POLICY-ACCEPTED.yaml`,
+  or a dangling link there, is an invalid acceptance, not a traceback. `review record` refuses a FIFO or other
+  non-regular worker record at once instead of hanging. `REJECTED-<model>.md` and `REVIEW-human.md` replace a
+  case-variant name (`rejected-opus.md`, `review-human.md`), and unreadable `REJECTED` markers are listed in any
+  case.
+
+- A worker's simple shell `channels.cli`, such as `codex exec --json -m gpt-6.1-sol … - < {prompt}`, is priced
+  from its literal `-m` as an estimate (`est.`) instead of `$?`. A command that is not one simple command, such
+  as the Codex git-roots grant with its quoted `$(git rev-parse …)`, a pipeline, or a non-literal `-m`, stays `$?`.
+- A presence session stops counting as live once its recorded worktree is gone or its branch is deleted;
+  `session list --all` marks it `stale: worktree gone` or `stale: branch gone`. `worker terminate` ends the
+  presence session the worker's harness started in its worktree, and leaves other agents' sessions alone.
+- Worker terminate and finish rollback (rc4 final review, M22.20). `worker terminate` lists the
+  group's escaped descendants at every step and signals them with the group's SIGTERM and SIGKILL,
+  not after its grace, so a child one of them forks during the grace is caught too; a zombie
+  descendant or group member is no survivor; `descendants_unchecked` stays on the worker record
+  until a pass ends with every `ps` listing read and no survivor, and the next `terminate` repeats
+  the pass instead of marking the worker terminated (a process already re-parented stays out of
+  reach). finish's rollback writes each file to a temporary file and renames it into place (a
+  failed write keeps the previous bytes and names the temporary file), restores file modes, and,
+  when the staged entries changed since it started, saves and names the index it replaces.
+
 - A sandboxed worker turn can read its leaf's review records. The `work/reviews/<ID>/` outbox now starts with a
   copy of the regular files already there (REVIEW, notes and `history/` records; links are not copied), so a
   fix round sees its blocking review. Only `READY-*` files are still moved back, so an edited copy of a record
