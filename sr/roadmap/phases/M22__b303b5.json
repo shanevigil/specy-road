@@ -409,8 +409,8 @@
     },
     {
       "acceptance": [
-        "A sandboxed claude-code worker launched with one CLAUDE_CONFIG_DIR and resumed with another starts, and the .claude.json it reads is a copy of the new directory's file; a resume with the same directory keeps the worker's existing copy (today's behaviour). The worker's transcripts stay in its state directory across the switch, so --resume finds the session",
-        "tests/test_worker_sandbox.py: table-driven rows through the public launch path for (1) resume with the same config dir: existing copy kept; (2) resume with a different config dir: the copy holds the new file's content, not empty and not the old account's; (3) the user's file missing in the new dir: the turn starts as today when there is no file to seed. CHANGELOG [Unreleased] entry"
+        "A sandboxed claude-code worker records, in its state directory outside the mounted .claude tree, the resolved CLAUDE_CONFIG_DIR its .claude.json copy was made from. A turn whose resolved directory differs from the record, or that finds no record (workers launched before this change), replaces the copy with one from the new directory's file, including when the old copy is the empty read-only mount placeholder; a turn with the same recorded directory keeps the worker's copy. The user's source file is never written, and the worker's transcripts and sessions stay where they were",
+        "tests/test_worker_sandbox.py, through worker_runner.run and the existing bwrap fixture (no real harness, no network): (1) same recorded directory, copy rewritten by the harness: kept; (2) different directory, parametrized over a non-empty old copy and a zero-byte mode-0444 copy: the fake harness reads and parses the new file's JSON at its config path, can replace it by rename, the user's source bytes are unchanged and a transcript written before the switch is unchanged; (3) no record: the copy is made from the current directory's file. The Worker sandbox section of docs/orchestration-workers.md says the copy is made again when the config directory changes; CHANGELOG [Unreleased] entry"
       ],
       "codename": "sandboxed-worker-resumes-after-an-account-switch",
       "dependencies": [],
@@ -425,7 +425,8 @@
       "touch_zones": [
         "specy_road/worker_sandbox.py",
         "tests/test_worker_sandbox.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     }
