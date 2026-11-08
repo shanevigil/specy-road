@@ -48,6 +48,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A Cursor shell denial under the documented default (`--sandbox enabled`, no `--force`) is a `permission_denied`
+  worker event: `Permission denied`, `Read-only file system` or `Operation not permitted` in the shell tool
+  result's stderr. On agent 2026.11.05-86047df (2026-11-08) that default commits in a linked worktree, `system/init`
+  reports the model, `--resume` with a new prompt continues the chat, and `--mode ask` stays read-only. See
+  `docs/orchestration-workers.md` (Cursor CLI, checked 2026-11-08).
+
 - A sandboxed Claude worker whose `CLAUDE_CONFIG_DIR` changes gets a new copy of that directory's `.claude.json`,
   including a worker launched before the directory was recorded and one whose copy is the empty read-only mount
   placeholder. The same resolved directory keeps the worker's copy, including another spelling such as
