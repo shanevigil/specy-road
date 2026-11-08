@@ -148,21 +148,3 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
-  - codename: shipped-templates-carry-no-provenance-comments
-    node_id: M16.1.12
-    branch: feature/rm-shipped-templates-carry-no-provenance-comments
-    touch_zones:
-      - specy_road/templates/specyrd/agents-rules.md
-      - specy_road/templates/specyrd/agents-md-block.md
-      - specy_road/templates/specyrd/claude-md-block.md
-      - specy_road/agent_guide_block.py
-      - specy_road/bundled_scripts/chore_garden.py
-      - tests/test_agents_md_block.py
-      - tests/test_chore_mode.py
-      - CHANGELOG.md
-      - specy_road/agent_rule_provenance.md
-      - docs/orchestration-chores.md
-    started: '2026-11-08'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-08T22:27:44+00:00'

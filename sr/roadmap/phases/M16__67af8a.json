@@ -400,7 +400,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.12_shipped-templates-carry-no-provenance-comments_122b76b1-4d3f-428f-a893-79c236fd2e87.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Shipped agent templates carry no maintainer provenance comments",
       "touch_zones": [
         "specy_road/templates/specyrd/agents-rules.md",
