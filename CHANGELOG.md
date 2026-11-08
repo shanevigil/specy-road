@@ -25,6 +25,11 @@ body. Keep section bodies focused; link to PRs for detail.
   remove and move up / down, saved through the existing `PATCH /api/nodes/{id}` as `edit-node --set acceptance=`
   (one criterion per line; an empty list removes the field). A line break inside a criterion is refused with a
   message. See `docs/pm-gui.md` (Node edit dialog).
+- The PM GUI toolbar's **Group siblings…** action puts the selected row and the siblings you check under a new
+  parent through the existing `POST /api/outline/group` (`group-nodes`): the new id defaults to one past the
+  parent's highest child number, a title is required, the type defaults to milestone and prose references are
+  rewritten only when asked. A refusal shows the server's message in the dialog and changes nothing. See
+  `docs/pm-gui.md` (Group siblings).
 - A worker turn that moves the local integration ref or its remote-tracking ref, including a ref that appears
   or disappears, is a post-run finding naming the ref and its before and after values. A ref absent at both
   ends stays clean. A failed read is a check error, not a clean turn. A turn that moves only its own branch
