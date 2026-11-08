@@ -40,8 +40,10 @@ def sweep_dead_wrappers(repo_root: Path) -> list[WorkerRecord]:
 
 #: Recoveries one worker gets when ``policy.max_fix_rounds`` is unset (M22.39).
 DEFAULT_RECOVERIES = 3
-#: Events that start a turn: a running worker with no ``last_output_at`` yet is silent since the latest one.
-_LAUNCH_EVENTS = frozenset({"started", "message", "resumed", "launched"})
+#: Events that start a follow-up turn (``_send`` writes ``message``, the wrapper ``resumed``), before the new
+#: wrapper writes its own ``last_output_at``; and those that start the first turn.
+_TURN_EVENTS = frozenset({"message", "resumed"})
+_FIRST_EVENTS = frozenset({"started", "launched"})
 
 
 def _policy(repo_root: Path) -> dict:
@@ -50,13 +52,17 @@ def _policy(repo_root: Path) -> dict:
 
 
 def silent_seconds(repo_root: Path, rec: WorkerRecord, now: datetime) -> int | None:
-    """Seconds a ``running`` worker has been silent: since ``last_output_at``, or since the turn's launch when the
-    harness never wrote one (M22.39); ``None`` for any other state."""
+    """Seconds a ``running`` worker has been silent; ``None`` for any other state. One rule (M22.39): silence runs
+    from the newest of its last output and the event that started its current follow-up turn, so a resumed or
+    recovered turn never inherits the last turn's silence; with neither, from the first turn's launch."""
     if rec.state != "running":
         return None
-    since = rec.last_output_at or next(
-        (e.at for e in reversed(events_since(repo_root, rec.worker_id)) if e.type in _LAUNCH_EVENTS), rec.created)
-    return int((now - datetime.fromisoformat(since)).total_seconds())
+    events = events_since(repo_root, rec.worker_id)
+    turn = next((e.at for e in reversed(events) if e.type in _TURN_EVENTS), None)
+    stamps = [datetime.fromisoformat(t) for t in (rec.last_output_at, turn) if t]
+    since = max(stamps) if stamps else datetime.fromisoformat(
+        next((e.at for e in reversed(events) if e.type in _FIRST_EVENTS), rec.created))
+    return int((now - since).total_seconds())
 
 
 def last_output(repo_root: Path, worker_id: str) -> str | None:
@@ -147,7 +153,8 @@ def recover(repo_root: Path, worker_id: str, *, offline: bool = False,
                               "`worker terminate` it and `worker delegate --rework` instead")
         require_branch(rec)
         n = (rec.recoveries or 0) + 1
-        mutate(repo_root, rec, lambda r: setattr(r, "recoveries", n))   # counted before anything can fail
+        # Counted before anything can fail, and no longer stalled: the new turn's silence starts at its message.
+        mutate(repo_root, rec, lambda r: r.__dict__.update(recoveries=n, flags=[f for f in r.flags if f != FLAG_STALLED]))
         append_event(repo_root, rec, "error", source="system",
                      summary=f"stalled; recovery {n} of {limit}: ending its processes and resuming; last output: {last}")
         if process_alive(rec, repo_root):

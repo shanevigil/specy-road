@@ -46,6 +46,12 @@ def test_a_worker_that_never_wrote_output_is_flagged_from_its_launch(tmp_path: P
     assert [r.worker_id for r in ops.sweep_stalled(repo, now=launched + timedelta(seconds=1))] == [rec.worker_id]
     [s] = slots.stalled_workers(repo, now=launched + timedelta(seconds=700))
     assert s["silent_seconds"] == 700 and s["recoveries"] == 0 and not s["needs_person"]
+    # A follow-up turn's silence starts at the message that started it, not at the last turn's old output.
+    ws.mutate(repo, rec, lambda r: setattr(r, "last_output_at", OLD))
+    ws.append_event(repo, rec, "message", source="orchestrator", authority="orchestrator", summary="resume: continue")
+    turn = datetime.fromisoformat(ws.events_since(repo, rec.worker_id)[-1].at)
+    assert slots.stalled_workers(repo, now=turn) == [] and ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags
+    assert slots.stalled_workers(repo, now=turn + timedelta(seconds=5))[0]["silent_seconds"] == 5
     # list and doctor name it with how long it has been silent, measured now (sync: a live worker, below).
     time.sleep(1.1)
     assert run_worker_cli("worker", "list", "--repo-root", str(repo)) == 0
@@ -82,9 +88,14 @@ def test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes(tmp_path: Path
         assert run_worker_cli("worker", "sync", "--json", "--repo-root", str(repo)) == 0
         [stalled] = json.loads(capsys.readouterr().out)["stalled"]
         assert stalled["worker_id"] == rec.worker_id and stalled["silent_seconds"] >= 600
-        assert run_worker_cli("worker", "recover", rec.worker_id, "--repo-root", str(repo)) == 0
-        assert "recovered" in capsys.readouterr().out
+        assert run_worker_cli("worker", "recover", rec.worker_id, "--json", "--repo-root", str(repo)) == 0
+        assert "stalled" not in json.loads(capsys.readouterr().out)["flags"]   # the resumed turn starts unflagged
         assert not wrapper_alive(busy, repo)   # the stalled turn was ended
+        # A second recover queued behind the first, before the new wrapper writes its launch time, finds no stall:
+        # it neither ends the fresh turn nor spends a retry.
+        ws.mutate(repo, rec, lambda r: setattr(r, "last_output_at", OLD))
+        assert run_worker_cli("worker", "recover", rec.worker_id, "--repo-root", str(repo)) == 1
+        assert "not stalled" in capsys.readouterr().err
         after = wait_for_worker(repo, rec.worker_id, timeout=30)
         assert after.state == "idle" and after.recoveries == 1 and ws.FLAG_STALLED not in after.flags
         assert [e.type for e in ws.events_since(repo, rec.worker_id)].count("resumed") == 1
