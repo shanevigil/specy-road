@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -255,6 +256,16 @@ def _status(check: str, where) -> str:
     return subprocess.run(check, shell=True, cwd=where, capture_output=True, text=True, check=True).stdout
 
 
+def _config_on_dev(repo: Path, text: str) -> None:
+    """``roadmap/git-workflow.yaml`` committed on the integration branch and merged into the leaf: a leaf's own
+    change to it is a steering file finish refuses (M21.7)."""
+    subprocess.run(["git", "-C", str(repo), "checkout", "-q", "dev"], check=True)
+    (repo / "roadmap" / "git-workflow.yaml").write_text(text, encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "commit", "-qam", "config"], check=True)
+    subprocess.run(["git", "-C", str(repo), "checkout", "-q", "feature/rm-thing"], check=True)
+    subprocess.run(["git", "-C", str(repo), "merge", "-q", "--no-edit", "dev"], check=True)
+
+
 def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, monkeypatch, capsys) -> None:
     """R1: the logs the wrapper mirrors after READY pass both clean-tree checks, and finish commits them."""
     import re
@@ -279,10 +290,9 @@ def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, mo
 
     monkeypatch.setenv("PYTHONPATH", str(REPO))   # finish runs validate/export/digest as subprocesses
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
+    _config_on_dev(repo, "version: 1\nintegration_branch: dev\nremote: origin\n"
+                         "require_implementation_review_before_finish: true\ntrack_worker_logs: \"events\"\n")
     apply_agent_ignores(repo)
-    (repo / "roadmap" / "git-workflow.yaml").write_text(
-        "version: 1\nintegration_branch: dev\nremote: origin\n"
-        "require_implementation_review_before_finish: true\ntrack_worker_logs: \"events\"\n", encoding="utf-8")
     (repo / "work").mkdir()
     (repo / "work" / "implementation-summary-M1.1.md").write_text("## Added\n\nnone\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
@@ -501,12 +511,14 @@ def test_pr_finish_from_a_linked_worktree_keeps_main_checkout_copies(tmp_path, m
     from specy_road.bundled_scripts import finish_task
 
     repo, leaf, _bare = delegate_layout(tmp_path, monkeypatch)
-    workflow = (leaf / "roadmap" / "git-workflow.yaml").read_text(encoding="utf-8")
-    commit_file(
-        leaf, "roadmap/git-workflow.yaml",
+    workflow = (repo / "roadmap" / "git-workflow.yaml").read_text(encoding="utf-8")
+    commit_file(   # on the integration branch: a leaf's own change to it is a steering file
+        repo, "roadmap/git-workflow.yaml",
         workflow.replace("on_complete: merge\n", "on_complete: pr\n"),
         "pr mode",
     )
+    subprocess.run(["git", "-C", str(repo), "push", "-q", "origin", "dev"], check=True)
+    subprocess.run(["git", "-C", str(leaf), "merge", "-q", "--no-edit", "dev"], check=True)
     work = repo / "work"
     work.mkdir(exist_ok=True)
     (work / "brief-M1.1.md").write_text("brief\n", encoding="utf-8")

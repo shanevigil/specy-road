@@ -14,6 +14,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road worker recover W` ends a stalled worker, keeps its worktree and commits, and resumes its native
+  session with the continue prompt, or says why it cannot. It runs once and exits. Recoveries are counted on the
+  worker record up to `policy.max_fix_rounds` (default 3); past that the worker is flagged `needs_person` with its
+  last output named. It refuses while another worker holds the leaf. `grind-session` runs it on its own loop.
+  A running worker that never wrote output is now flagged stalled from its launch, and `worker sync`, `worker list`
+  and `doctor` list stalled workers with how long they have been silent.
+
 - A worker turn that moves the local integration ref or its remote-tracking ref, including a ref that appears
   or disappears, is a post-run finding naming the ref and its before and after values. A ref absent at both
   ends stays clean. A failed read is a check error, not a clean turn. A turn that moves only its own branch
@@ -32,12 +39,48 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A roster name that several entries share (profile effort aliases, or one model in an executor row and a reviewer
+  row) no longer closes the review gate by itself. A READY author is still excluded under every entry it may be,
+  and a record that may be any entry that wrote the leaf still does not count. A record whose entries wrote
+  nothing counts when they share one family, and closes the gate only when they span families. Leaves with two
+  real approvals can land again.
+
+- The review gate compares READY authors and review-record models after one normalization: case-folded, and a
+  name stands for every roster entry whose id, `harness_model`, or profile `api_id`, file name or alias it is. An
+  exact id gets no precedence. A READY naming `Opus` or the executor's alias still excludes the executor's own
+  review. A READY or record name two roster entries have closes the gate with a problem naming both. So does a
+  roster entry whose pinned profile is refused, and a READY that is not valid UTF-8 (no traceback). An unreadable parent of `POLICY-ACCEPTED.yaml`,
+  or a dangling link there, is an invalid acceptance, not a traceback. `review record` refuses a FIFO or other
+  non-regular worker record at once instead of hanging. `REJECTED-<model>.md` and `REVIEW-human.md` replace a
+  case-variant name (`rejected-opus.md`, `review-human.md`), and unreadable `REJECTED` markers are listed in any
+  case.
+
+- A worker's simple shell `channels.cli`, such as `codex exec --json -m gpt-6.1-sol … - < {prompt}`, is priced
+  from its literal `-m` as an estimate (`est.`) instead of `$?`. A command that is not one simple command, such
+  as the Codex git-roots grant with its quoted `$(git rev-parse …)`, a pipeline, or a non-literal `-m`, stays `$?`.
+- A presence session stops counting as live once its recorded worktree is gone or its branch is deleted;
+  `session list --all` marks it `stale: worktree gone` or `stale: branch gone`. `worker terminate` ends the
+  presence session the worker's harness started in its worktree, and leaves other agents' sessions alone.
+- Worker terminate and finish rollback (rc4 final review, M22.20). `worker terminate` lists the
+  group's escaped descendants at every step and signals them with the group's SIGTERM and SIGKILL,
+  not after its grace, so a child one of them forks during the grace is caught too; a zombie
+  descendant or group member is no survivor; `descendants_unchecked` stays on the worker record
+  until a pass ends with every `ps` listing read and no survivor, and the next `terminate` repeats
+  the pass instead of marking the worker terminated (a process already re-parented stays out of
+  reach). finish's rollback writes each file to a temporary file and renames it into place (a
+  failed write keeps the previous bytes and names the temporary file), restores file modes, and,
+  when the staged entries changed since it started, saves and names the index it replaces.
+
 - A sandboxed worker turn can read its leaf's review records. The `work/reviews/<ID>/` outbox now starts with a
   copy of the regular files already there (REVIEW, notes and `history/` records; links are not copied), so a
   fix round sees its blocking review. Only `READY-*` files are still moved back, so an edited copy of a record
   never reaches the reviews directory. Cursor turns start under the sandbox again: `~/.cursor/sandbox-policies/`
   is no longer read-only, because Cursor writes its policy file there on every start. It is now the worker's own
   state.
+- Cursor workers start under the sandbox. The worker's copy of `~/.cursor/cli-config.json` is now a plain file
+  in its own `.cursor` state directory instead of a file bound over yours, so Cursor can replace it by rename on
+  start; it failed with `EBUSY` before. The same holds for `$CLAUDE_CONFIG_DIR/.claude.json`. `~/.claude.json`
+  is still a per-worker copy bound over yours. Your own copy never changes.
 - Reviewer runs (rc4 re-test D15c, D17, D18). A refused answer's one-line reason names the first
   offending line whole, then `(N more; full text in work/reviews/<ID>/REJECTED-<model>.md)`, for the
   first refusal and for a repair turn's, instead of the last 400 characters cut mid-word. A

@@ -80,28 +80,7 @@ entries:
       - tests/test_upgrade_preview.py
       - docs/upgrading.md
       - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
-    node_id: M16.1.1
-    branch: feature/rm-parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs
-    touch_zones:
-      - tests/parity/
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
-    node_id: M16.1.4
-    branch: feature/rm-constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions
-    touch_zones:
-      - constitution/purpose.md
-      - constitution/principles.md
-      - docs/philosophy-and-scope.md
-      - AGENTS.md
-      - docs/toolkit-development.md
-      - sr/constitution/purpose.md
-      - sr/constitution/principles.md
+      - specy_road/sibling_repos.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -134,64 +113,27 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: terminate-and-finish-rollback-robustness
-    node_id: M22.20
-    branch: feature/rm-terminate-and-finish-rollback-robustness
+  - codename: review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome
+    node_id: M16.1.6
+    branch: feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome
     touch_zones:
-      - specy_road/worker_process.py
-      - specy_road/finish_bookkeeping_undo.py
-      - tests/test_worker_terminate_descendants.py
-      - tests/test_finish_config_preflight.py
-      - tests/test_finish_merge_failure_undo.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-      - specy_road/worker_state.py
-      - specy_road/schemas/worker-record.schema.json
-    started: '2026-11-07'
+      - scripts/review_effort_study.py
+      - sr/planning/M16.1.6_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md
+    started: '2026-11-08'
     owner: savigil
     implementation_review: pending
-  - codename: parity-harness-a-review-gate-decision-table-covering-every-review-policy
-    node_id: M16.1.2
-    branch: feature/rm-parity-harness-a-review-gate-decision-table-covering-every-review-policy
+  - codename: baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down
+    node_id: M16.1.7
+    branch: feature/rm-baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down
     touch_zones:
-      - tests/parity/review_gate/
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: worker-cost-and-stale-presence
-    node_id: M22.13
-    branch: feature/rm-worker-cost-and-stale-presence
-    touch_zones:
-      - specy_road/session_presence.py
-      - specy_road/worker_ops_lifecycle.py
-      - tests/test_worker_usage_shell_cli.py
-      - tests/test_session_presence.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-      - specy_road/worker_adapter_base.py
-      - specy_road/bundled_scripts/session_cli.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: review-inputs-identity-and-unreadable
-    node_id: M22.19
-    branch: feature/rm-review-inputs-identity-and-unreadable
-    touch_zones:
-      - specy_road/review_eligible.py
-      - specy_road/review_gate.py
-      - specy_road/review_policy_pin.py
-      - specy_road/review_caller.py
-      - specy_road/worker_state.py
-      - specy_road/review_rejected.py
-      - specy_road/review_gate_ready.py
-      - specy_road/review_files.py
-      - tests/test_review_eligible.py
-      - tests/test_review_gate_ready_author.py
-      - tests/test_review_policy_pin.py
-      - tests/test_review_record_caller.py
-      - tests/test_review_file_case.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-    started: '2026-11-07'
+      - scripts/lean_metrics.py
+      - constraints/lean-baseline.json
+      - constraints/README.md
+      - .github/workflows/validate.yml
+      - pyproject.toml
+      - sr/constraints/README.md
+      - requirements-ci.in
+      - requirements-ci.txt
+    started: '2026-11-08'
     owner: savigil
     implementation_review: pending

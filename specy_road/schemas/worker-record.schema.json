@@ -27,8 +27,8 @@
     "limit_reset_at": { "type": ["string", "null"], "description": "UTC ISO 8601 time the usage limit that paused this worker lifts, set with state paused_by_limit (null when the harness named no time: resume is then allowed at once) and cleared when the next turn starts. One field for every harness and every recogniser of a limit: the adapters' parsers and the retry watchdog write it, worker resume reads it." },
     "flags": {
       "type": "array", "uniqueItems": true,
-      "items": { "enum": ["possibly_modified_externally", "needs_reconcile", "wrapper_gone_harness_alive", "stalled", "post_run_findings", "message_undelivered"] },
-      "description": "post_run_findings: the post-run check after the worker's last turn found something beyond a clean turn (permission denials, a failed turn, api retries, or git state beyond the expected files); its post_run_check event lists them. Set or cleared by each turn's check, whatever the exit code. message_undelivered: a queued follow-up could not be delivered; the text stays in queued_message until the next worker message or worker resume sends it, or terminate clears both."
+      "items": { "enum": ["possibly_modified_externally", "needs_reconcile", "wrapper_gone_harness_alive", "stalled", "post_run_findings", "message_undelivered", "needs_person"] },
+      "description": "post_run_findings: the post-run check after the worker's last turn found something beyond a clean turn (permission denials, a failed turn, api retries, or git state beyond the expected files); its post_run_check event lists them. Set or cleared by each turn's check, whatever the exit code. message_undelivered: a queued follow-up could not be delivered; the text stays in queued_message until the next worker message or worker resume sends it, or terminate clears both. needs_person: the worker is stalled and worker recover has already run policy.max_fix_rounds times on it (default 3); cleared once it is no longer stalled."
     },
     "lease": {
       "type": "object", "required": ["holder", "since"], "additionalProperties": false,
@@ -52,6 +52,8 @@
     },
     "attempt": { "type": "integer", "minimum": 1, "description": "Nth worker delegated for this leaf; <node_id>:<attempt> is the idempotency key." },
     "billing_route": { "type": ["string", "null"] },
+    "descendants_unchecked": { "type": ["boolean", "null"], "description": "true: worker terminate could not list the process group's descendants outside it (ps failed), so the record is not terminated; the next terminate repeats that pass (from what still links to the group) and clears this when a listing succeeds." },
+    "recoveries": { "type": ["integer", "null"], "minimum": 0, "description": "How many times worker recover has ended this stalled worker and resumed its session; never reset, so separate recover calls count toward one limit (policy.max_fix_rounds, default 3)." },
     "queued_message": { "type": ["string", "null"], "description": "Follow-up text from ``worker message`` while a turn was still running; delivered as the next turn when the wrapper finishes." },
     "toolkit_version": { "type": ["string", "null"], "description": "The specy-road build that delegated this worker (``specy-road --version`` from the coordinator checkout)." },
     "last_event_seq": { "type": "integer", "minimum": 0 },

@@ -17,6 +17,7 @@ from tests.test_review_gate import TWO_FAMILIES
 from specy_road import review_signing as rs
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import review_cli
+from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
 from specy_road.review_files import load_review, render_front_matter, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.toolkit_version import stamp_review_toolkit_version
@@ -149,3 +150,101 @@ def test_delegate_refuses_a_ready_author_and_writes_nothing(tmp_path: Path, caps
     assert "opus wrote READY-opus.md on M1.1" in capsys.readouterr().err
     assert sorted(p.name for p in reviews_dir(repo, "M1.1").rglob("*")) == before
     assert not spec.with_name("calls.json").exists()   # no harness started
+
+
+ALIASED = TWO_FAMILIES.replace("{id: opus, family: anthropic, roles: [reviewer]}",
+                               "{id: opus, family: anthropic, roles: [reviewer], harness_model: claude-opus-x}")
+#: opus pins a profile whose file name (custom-model), declared api_id (vendor-model) and alias (opus) all differ.
+CUSTOM = "model-profiles/custom/custom-model.md"
+PROFILED = TWO_FAMILIES.replace("{id: opus, family: anthropic, roles: [reviewer]}",
+                                f"{{id: opus, family: anthropic, roles: [reviewer], profile: {CUSTOM}}}")
+_TEMPLATE = Path(__file__).resolve().parent.parent / "specy_road/templates/project/model-profiles/anthropic-claude"
+
+
+def _profiled_repo(tmp_path: Path, roster: str) -> Path:
+    """A review repo on ``roster``; under PROFILED, the custom profile committed on the integration branch only."""
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    if roster == PROFILED:
+        text = (_TEMPLATE / "claude-opus-5-5.md").read_text(encoding="utf-8")
+        head, rest = text.split("aliases:\n", 1)
+        text = head.replace("api_id: claude-opus-5-5", "api_id: vendor-model") + "aliases:\n  - opus\n" + \
+            rest[rest.index("checkpoint:"):]
+        git(repo, "checkout", "-q", "dev")
+        (repo / CUSTOM).parent.mkdir(parents=True)
+        (repo / CUSTOM).write_text(text, encoding="utf-8")
+        git(repo, "add", CUSTOM)
+        git(repo, "commit", "-qm", "profile")
+        git(repo, "checkout", "-q", "feature/rm-thing")
+    return repo
+
+
+@pytest.mark.parametrize(("roster", "agent", "model"), [
+    (ALIASED, "Opus", "opus"), (ALIASED, "opus", "OPUS"),                 # case variants
+    (ALIASED, "claude-opus-x", "opus"), (ALIASED, "opus", "Claude-Opus-X"),   # harness_model
+    (PROFILED, "vendor-model", "opus"), (PROFILED, "opus", "custom-model"),   # declared api_id, file name
+])
+def test_ready_author_and_record_model_are_compared_after_case_folding_and_roster_aliases(
+        tmp_path: Path, roster: str, agent: str, model: str) -> None:
+    """M22.19: a case variant or an entry's name on either side still excludes the executor; others still count."""
+    repo = _profiled_repo(tmp_path, roster)
+    _ready(repo, agent)
+    _review(repo, model)
+    _review(repo, "sonnet")
+    _review(repo, "sol")
+    g = _gate(repo)
+    assert _why(g, model) == [f"{model} wrote READY-{agent}.md on this leaf; the executor never reviews its own leaf"]
+    assert g.passed and {a.model for a in g.approvals} == {"sonnet", "sol"}
+
+
+SHARED = ALIASED.replace("{id: sonnet, family: anthropic, roles: [reviewer]}",
+                         "{id: sonnet, family: anthropic, roles: [reviewer], harness_model: claude-opus-x}")
+#: One entry's exact id is another entry's harness_model: an exact id has no precedence.
+COLLIDE = TWO_FAMILIES.replace("{id: sonnet, family: anthropic, roles: [reviewer]}",
+                               "{id: sonnet, family: anthropic, roles: [reviewer], harness_model: opus}")
+#: The reviewer id sol is also an openai executor row's harness_model (as Sol effort aliases in one shared profile).
+SOL_ALIAS = TWO_FAMILIES.replace("{id: astra, family: openai, roles: [executor]}",
+                                 "{id: astra, family: openai, roles: [executor], harness_model: sol}")
+#: The reviewer id sol is also a cursor executor row's harness_model: the name spans two families.
+CROSS = TWO_FAMILIES.replace("{id: composer, family: cursor, roles: [executor]}",
+                             "{id: composer, family: cursor, roles: [executor], harness_model: sol}")
+_EXEC = "executor of the leaf"
+_WROTE = "wrote READY-{}.md on this leaf"
+
+
+@pytest.mark.parametrize(("roster", "agent", "problem", "counted", "excluded"), [
+    (SOL_ALIAS, None, None, ["opus", "sol"], {}),                          # (1) one family, nobody wrote: counts
+    (SOL_ALIAS, "astra", None, ["opus"], {"astra": _EXEC, "sol": _WROTE.format("astra")}),   # (2) its writer wrote
+    (SOL_ALIAS, "composer", None, ["opus", "sol"], {}),                    # (3) another model wrote: counts
+    (CROSS, "astra", "'sol' names more than one roster entry (composer, sol)", ["opus", "sol"], {}),   # (4) closes
+    (SHARED, "claude-opus-x", None, ["sol"], {"opus": _EXEC, "sonnet": _EXEC}),   # (5) READY: an alias two share
+    (COLLIDE, "opus", None, ["sol"], {"opus": _EXEC, "sonnet": _EXEC}),   # READY: one entry's id, the other's alias
+    (COLLIDE, "sonnet", None, ["sol"], {"sonnet": _EXEC, "opus": _WROTE.format("sonnet")}),   # record may be writer
+    (COLLIDE, "astra", None, ["opus", "sol"], {}),                         # record: one family, nobody wrote
+    (PROFILED, "vendor-model", "roster entry 'opus': its profile's names cannot be known", ["opus", "sol"], {}),
+])
+def test_a_shared_name_closes_the_gate_only_when_it_could_be_the_writer(
+        tmp_path: Path, roster: str, agent: str | None, problem: str | None, counted: list[str],
+        excluded: dict[str, str]) -> None:
+    """M22.48 (narrowing M22.19): a READY author is excluded under every entry it may be and a record that may be a
+    writer is not counted, without closing the gate; a record name whose entries wrote nothing closes it only when
+    they span families. ``handoff status`` gives each excluded entry its reason."""
+    repo = _profiled_repo(tmp_path, roster)
+    if roster == PROFILED:   # a working-tree edit: dispatch refuses the profile, so its names are unknown
+        (repo / CUSTOM).parent.mkdir(parents=True)
+        (repo / CUSTOM).write_text("---\napi_id: something-else\n---\n", encoding="utf-8")
+    if agent:
+        _ready(repo, agent)
+    _review(repo, "opus")
+    _review(repo, "sol")
+    g = _gate(repo)
+    assert sorted(a.model for a in g.approvals) == counted
+    assert g.passed == (problem is None and counted == ["opus", "sol"])
+    if problem:
+        assert any(problem in p for p in g.problems())
+    else:
+        assert not any("names more than one roster entry" in p for p in g.problems())
+    rows = {r["model"]: r for r in reviewer_eligibility(repo, NODE, g, "feature/rm-thing")}
+    lines = "\n".join(eligibility_lines({"reviewer_eligibility": list(rows.values())}))
+    for model, why in excluded.items():
+        assert not rows[model]["eligible"] and why in rows[model]["reason"]
+        assert f"{model} ({rows[model]['family']}): excluded — {rows[model]['reason']}" in lines

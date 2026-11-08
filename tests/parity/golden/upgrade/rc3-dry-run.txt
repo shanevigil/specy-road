@@ -1,0 +1,36 @@
+$ specy-road upgrade --dry-run --repo-root <ROOT>
+exit: 0
+--- stdout ---
+previewing what specy-road <VERSION> would write: <ROOT>
+Install: specy-road <VERSION> running from <PREFIX>
+- no specy-road or specyrd on PATH
+
+== refresh-schemas
+would write schemas/git-workflow.schema.json
+would write schemas/orchestration.schema.json
+
+== refresh-profiles
+no roster entry in roadmap/orchestration.yaml names a profile this specy-road ships; `specy-road refresh-profiles --profiles all` adds every one
+
+== shipped docs
+every shipped doc the load order names is present
+every work template prompts reference is present
+
+== refresh-stubs
+would write .gitignore (updated)
+would write AGENTS.md (updated)
+would write .specyrd/AGENTS.md (updated)
+
+== applying the refreshes to a temporary copy, then validating it
+
+== validate
+OK: roadmap and registry validate.
+
+== generated files
+would write roadmap-context.md (specy-road digest)
+
+== digest --check
+OK: roadmap-context.md matches the roadmap.
+
+(dry-run; no files written in the checkout. The exit code is 1 when validate fails on the copy or a write is refused.)
+--- stderr ---

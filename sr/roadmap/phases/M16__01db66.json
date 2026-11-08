@@ -5,7 +5,7 @@
         "AGENTS.md is the only agent entry; CLAUDE.md points to it and holds only Claude-specific notes (about 20 lines, an estimate, not a gate); branch policy and the version-numbers rule each appear in one place, and every other copy (including .cursor/rules/027-version-numbers-require-human.mdc and .cursor/rules/030-git-workflow-management.mdc) is replaced with a link to it",
         "The load order is task-conditional: always purpose, principles and constraints; then by task (orchestration or review, roadmap data, dependencies or release, the dogfood fixture, sr/ roadmap work); supply-chain-security.md is not in the default order, here or in the consumer agents-rules template",
         "tests/test_agent_start_up_reading.py counts the unique files in the unconditional start-up closure (AGENTS.md, the entry stubs and the always-applied managed rule files, each once per repo; task-conditional references excluded), prints the counted paths and each total, and fails when a file in the default load order is missing or the total is over 400 lines, for this repo and for a freshly initialised consumer repo; CLAUDE.md's size (about 20 lines) is printed as a soft check, not enforced",
-        "The shipped agents-rules.md loses its provenance comments and cites only files an adopter has",
+        "The shipped agents-rules.md cites only files an adopter has. Removing the provenance comments from the shipped templates moved to M16.1.12 (coordinator split, 2026-11-08)",
         "Estimated net line change (informational, not a gate): docs about -200"
       ],
       "codename": "agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer",
@@ -20,7 +20,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.5_agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer_01db66ad-a91c-48e3-953e-4083f5f14a13.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer",
       "touch_zones": [
         "AGENTS.md",
@@ -30,7 +30,11 @@
         "docs/context-regressions.yaml",
         "tests/test_agent_start_up_reading.py",
         ".cursor/rules/027-version-numbers-require-human.mdc",
-        ".cursor/rules/030-git-workflow-management.mdc"
+        ".cursor/rules/030-git-workflow-management.mdc",
+        "docs/contributor-guide.md",
+        "docs/release-runbook.md",
+        "docs/git-workflow.md",
+        ".cursor/rules/026-release-version-tag-sync.mdc"
       ],
       "type": "task"
     },
@@ -107,7 +111,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.3_triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf_eaee2f90-4953-4580-b772-570043326e4b.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf",
       "touch_zones": [
         "sr/roadmap/",

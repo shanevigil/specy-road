@@ -10,17 +10,18 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 |----|-------|------|------|--------|
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
 | `M16.1` | Freeze, rules, parity harness and baselines | milestone | — | Not Started |
-| `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Not Started |
-| `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Not Started |
-| `M16.1.3` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Not Started |
-| `M16.1.4` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Not Started |
-| `M16.1.5` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Not Started |
+| `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Complete |
+| `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Complete |
+| `M16.1.3` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Complete |
+| `M16.1.4` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Complete |
+| `M16.1.5` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Complete |
 | `M16.1.6` | Review-policy evidence: how often each optional review policy changed a gate outcome | task | Mixed | Not Started |
 | `M16.1.7` | Baseline metrics, a coverage floor in CI, and the M16 working rules written down | task | Agentic-led | Not Started |
 | `M16.1.8` | A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided | task | Agentic-led | Not Started |
 | `M16.1.9` | Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold | task | Agentic-led | Not Started |
 | `M16.1.10` | Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold | task | Agentic-led | Not Started |
 | `M16.1.11` | Ruff quality rule families with per-file shrink-only baselines and per-release totals | task | Agentic-led | Not Started |
+| `M16.1.12` | Shipped agent templates carry no maintainer provenance comments | task | — | Not Started |
 | `M16.2` | Mechanical clean-up, layering and the in-process CLI | milestone | — | Not Started |
 | `M16.2.1` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Not Started |
 | `M16.2.2` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Not Started |
@@ -113,7 +114,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M18.9` | The implementation-zone check runs before a review is spent, and knows about sibling repositories | task | Agentic-led | Not Started |
 | `M18.10` | review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available | task | Agentic-led | Not Started |
 | `M18.11` | Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn | task | Agentic-led | Not Started |
-| `M18.12` | Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance | task | Agentic-led | Not Started |
 | `M18.13` | Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short | task | Agentic-led | Not Started |
 | `M18.14` | A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed | task | Agentic-led | Not Started |
 | `M18.15` | --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews | task | Agentic-led | Not Started |
@@ -134,11 +134,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M19.2` | Research reminders leave validate | task | — | Not Started |
 | `M19.3` | The pickup prompt names its base commit | task | Agentic-led | Not Started |
 | `M19.4` | The managed block stops naming pickup's --local opt-out | task | Agentic-led | Not Started |
-| `M19.5` | A tracked tech-debt ledger that planning can turn into leaves | task | Agentic-led | Not Started |
 | `M19.6` | The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first | task | Agentic-led | Not Started |
 | `M19.7` | Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice | task | Agentic-led | Not Started |
 | `M19.8` | upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs | task | Agentic-led | Not Started |
-| `M19.9` | upgrade --prompt writes an agent upgrade prompt filled in from this repo | task | Agentic-led | Not Started |
 | `M19.10` | file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count | task | Agentic-led | Not Started |
 | `M19.11` | Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored | task | Agentic-led | Not Started |
 | `M19.12` | List shipped nodes with no result after N days | milestone | Agentic-led | Not Started |
@@ -208,14 +206,14 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.10` | reconcile-branch keeps a local-only claim, and a checkout failure after a successful landing does not undo the bookkeeping | task | — | Complete |
 | `M22.11` | Reports say what happened: a failed review tally is visible, rename-refs keeps tilde and longer fences, upgrade's ignore notices describe the checkout | task | — | Complete |
 | `M22.12` | The review gate fails closed with a working set-head command when refs/remotes/<remote>/HEAD is missing | task | — | Complete |
-| `M22.13` | Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone | task | — | Not Started |
+| `M22.13` | Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone | task | — | Complete |
 | `M22.14` | Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch | task | — | Complete |
 | `M22.15` | The agentic sandbox runbook states rc4's real results: checks after init, the second claim, tamper outcomes, where staleness shows | task | — | Complete |
 | `M22.16` | Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends | task | — | Complete |
 | `M22.17` | brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist | task | — | Complete |
 | `M22.18` | The reviewer prompt asks for every required change in one pass, not just the first | task | — | Complete |
-| `M22.19` | Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names | task | — | Not Started |
-| `M22.20` | worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging | task | — | Not Started |
+| `M22.19` | Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names | task | — | Complete |
+| `M22.20` | worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging | task | — | Complete |
 | `M22.21` | Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback | task | — | Complete |
 | `M22.22` | Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal | task | — | Complete |
 | `M22.23` | Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus | task | Human-led | Not Started |
@@ -225,14 +223,14 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.27` | The old-log review usage test asserts on the run, not on a substring | task | — | Complete |
 | `M22.28` | upgrade does not warn about itself, and export's drift line says how to fix it | task | — | Complete |
 | `M22.29` | safe_write and archive moves traverse by directory descriptor | task | — | Complete |
-| `M22.31` | finish-this-task refuses a branch that changes a steering file no touch zone names | task | — | Not Started |
+| `M22.31` | finish-this-task refuses a branch that changes a steering file no touch zone names | task | — | Complete |
 | `M22.33` | A resumed review runs on the model it was asked for | task | — | Complete |
 | `M22.34` | One accept-policy prompt covers every open claim | task | — | Complete |
 | `M22.35` | upgrade mirrors only what the refreshes need, never ignored files | task | — | Not Started |
 | `M22.36` | Each RC publishes its wheel URL and install line, and the package links to the guide | task | — | Complete |
 | `M22.37` | Test the Cursor CLI harness on the documented default | task | — | Not Started |
 | `M22.38` | doctor --fix never removes a claim that may belong to another clone | task | — | Complete |
-| `M22.39` | Stalled workers are detected on every run and can be recovered in one command | task | — | Not Started |
+| `M22.39` | Stalled workers are detected on every run and can be recovered in one command | task | — | Complete |
 | `M22.40` | Cursor display names match the model they name | task | — | Complete |
 | `M22.41` | ready refuses a leaf with no commits, and handoff status stops offering it for review | task | — | Not Started |
 | `M22.42` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
@@ -240,6 +238,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.44` | Unattended workers run in a read-only sandbox on Linux | task | — | Complete |
 | `M22.45` | A worker turn that moves the integration ref is flagged | task | — | Complete |
 | `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Complete |
+| `M22.47` | Cursor workers start and keep their config under the sandbox | task | — | Complete |
+| `M22.48` | A shared reviewer name closes the gate only when it could be the leaf's writer | task | — | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

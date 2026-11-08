@@ -1,0 +1,21 @@
+$ specy-road indent --help
+exit: 0
+--- stdout ---
+usage: specy-road indent [-h] [--rewrite-refs] [--repo-root DIR] NODE_ID
+
+Nest a node and its subtree under the sibling above it, as the PM UI's indent does; only that
+subtree's ids change. With no sibling above that can take it (none, a gate, or the outline depth
+cap), exits 1 printing `no previous sibling` and writes nothing.
+
+positional arguments:
+  NODE_ID          The node to shift (e.g. M1.2).
+
+options:
+  -h, --help       show this help message and exit
+  --rewrite-refs   Also rewrite the changed ids where prose cites them: every live node's planning
+                   sheet, title and acceptance, as `rename-refs` does with this move's old -> new
+                   map, in the same transaction. Without it no prose changes.
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

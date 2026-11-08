@@ -1,0 +1,28 @@
+$ specy-road review record --help
+exit: 0
+--- stdout ---
+usage: specy-road review record [-h] --model MODEL --verdict {approve,block} --file FILE
+                                [--ref REF] [--sign-key PATH] [--launch-mode {full,bare,explicit}]
+                                [--human-filed WHO_AND_WHY] [--repo-root DIR]
+                                node_id
+
+positional arguments:
+  node_id
+
+options:
+  -h, --help            show this help message and exit
+  --model MODEL         Reviewer model id from the roster (not human)
+  --verdict {approve,block}
+  --file FILE           Markdown with review-record front matter
+  --ref REF             Branch or commit under review (default: the node's registered branch)
+  --sign-key PATH       Sign the record with this OpenSSH private key (ssh-keygen -Y sign)
+  --launch-mode {full,bare,explicit}
+                        How your harness was started; stored on the record
+  --human-filed WHO_AND_WHY
+                        Required when no harness or worker is identified (a human filing by hand):
+                        one non-blank line saying who files this and why; stored as human_filed,
+                        which counts only signed or under policy.count_human_filed_reviews
+  --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
+                        root, else the current directory).
+--- stderr ---

@@ -20,7 +20,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.19_review-inputs-identity-and-unreadable_855d9738-4b87-480b-8404-d6a1aa85c714.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names",
       "touch_zones": [
         "specy_road/review_eligible.py",
@@ -59,7 +59,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.20_terminate-and-finish-rollback-robustness_17405142-e2fa-4516-83e2-e536820d1ec2.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging",
       "touch_zones": [
         "specy_road/worker_process.py",
@@ -176,10 +176,10 @@
     },
     {
       "acceptance": [
-        "The usage parser (worker_adapter_base parse_events) reads the launch model through worker_models.launch_model instead of model_from_argv alone, so a shell -c launch is priced by command_model's existing rules (one simple command, redirections allowed, a literal -m / --model / --model= value): a Codex worker whose channels.cli is `codex exec --json -m <id> … - < {prompt}` gets a roster-priced cost marked est. instead of $?; a list or pipeline, or a non-literal model word, stays $?; model_from_argv is unchanged",
+        "The usage parser (worker_adapter_base parse_events) reads the launch model through worker_models.launch_model instead of model_from_argv alone, so a shell -c launch is priced by command_model's existing rules (one simple command, redirections allowed, a literal -m / --model / --model= value): a Codex worker whose channels.cli is `codex exec --json -m <id> … - < {prompt}` gets a roster-priced cost marked est. instead of $?; a list or pipeline, or a non-literal model word, stays $?; model_from_argv is unchanged. A command that command_model refuses, such as the documented git-roots form with a quoted $(...), stays unpriced ($?) and docs/orchestration-workers.md says so; command_model itself does not change, because the review gate uses the same rule",
         "list_sessions with live_only leaves out a session whose recorded worktree is not a directory or whose recorded branch has no refs/heads/<branch>; session list --all still shows it with 'stale: worktree gone' or 'stale: branch gone' (worktree gone when both); a record with no worktree or no branch keeps today's expiry rule; a worktree or branch value that is not a string, or a git error on the ref check, keeps the session live and raises nothing",
         "worker terminate ends only the live presence session in the worker's worktree whose agent is the worker's derived id, `<user>-s<pgid>` from the record's pgid read before terminate clears it (the runner drops SPECY_ROAD_AGENT_ID and starts the wrapper in its own session); another agent's session in the same worktree and sessions in other worktrees stay live; no new worker-record field",
-        "Tests: tests/test_worker_usage_shell_cli.py (the rc4 Codex channels.cli string priced; a pipeline and a non-literal -m stay $?; an unsplittable string still $?); tests/test_session_presence.py (worktree removed, branch deleted, both gone, --all reasons, a non-string worktree value stays live, terminate ends the worker's own session and leaves a peer in the same worktree and another worktree's session); docs/orchestration-workers.md cost and presence lines; CHANGELOG [Unreleased] Fixed",
+        "Tests: tests/test_worker_usage_shell_cli.py (a simple Codex channels.cli string priced, and the git-roots form still $? as documented; a pipeline and a non-literal -m stay $?; an unsplittable string still $?); tests/test_session_presence.py (worktree removed, branch deleted, both gone, --all reasons, a non-string worktree value stays live, terminate ends the worker's own session and leaves a peer in the same worktree and another worktree's session); docs/orchestration-workers.md cost and presence lines; CHANGELOG [Unreleased] Fixed",
         "Estimated net line change (informational, not a gate): package about +30, tests about +100, docs about +3"
       ],
       "codename": "worker-cost-and-stale-presence",
@@ -192,7 +192,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.13_worker-cost-and-stale-presence_99ad0839-6c85-4631-b67b-80ef2d3b3c57.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone",
       "touch_zones": [
         "specy_road/session_presence.py",
@@ -202,7 +202,8 @@
         "docs/orchestration-workers.md",
         "CHANGELOG.md",
         "specy_road/worker_adapter_base.py",
-        "specy_road/bundled_scripts/session_cli.py"
+        "specy_road/bundled_scripts/session_cli.py",
+        "tests/test_session_overlap.py"
       ],
       "type": "task"
     },
@@ -371,7 +372,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.31_steering-finish-refusal_7765e73d-c0a5-475b-89bf-819992cf6ba4.md",
       "sibling_order": 30,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish-this-task refuses a branch that changes a steering file no touch zone names",
       "touch_zones": [
         "specy_road/steering_gate.py",
@@ -379,7 +380,8 @@
         "docs/orchestration-steering-files.md",
         "tests/test_steering_file_guard.py",
         "tests/test_finish_merge_failure_undo.py",
-        "tests/test_finish_work_cleanup.py"
+        "tests/test_finish_work_cleanup.py",
+        "tests/test_finish_config_preflight.py"
       ],
       "type": "task"
     },

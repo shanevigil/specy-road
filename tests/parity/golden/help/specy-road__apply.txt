@@ -1,0 +1,20 @@
+$ specy-road apply --help
+exit: 0
+--- stdout ---
+usage: specy-road apply [-h] [--dry-run] CHANGES.yaml
+
+Apply a change file in order, all or nothing: if any change is refused, every file the batch
+touched is restored. Each entry is op: plus the subcommand's long options (node: and dependency:
+for the positionals, set: {field: value} for edit-node; node:, nodes:, to_parent:, into_new:,
+title:, type:, id:, fill_gaps: and rewrite_refs: for the restructure ops). The final graph is
+validated once. See https://github.com/shanevigil/specy-road/blob/<DOCS_REF>/docs/roadmap-
+authoring.md.
+
+positional arguments:
+  CHANGES.yaml
+
+options:
+  -h, --help    show this help message and exit
+  --dry-run     Rehearse on a scratch copy and print the old -> new id map and the resulting
+                waves; write nothing
+--- stderr ---

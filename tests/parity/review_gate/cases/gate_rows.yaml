@@ -1,0 +1,372 @@
+# Review-gate decision table (M16.1.2): today's verdicts, recorded at pickup (base 923ae573).
+#
+# Each row builds the claimed leaf of tests/review_repo_helpers.make_review_repo (M1.1 on feature/rm-thing,
+# acceptance A1 and A2, touch zone src), runs its steps in order, then evaluates the gate the way
+# finish-this-task, mark-implementation-reviewed, `handoff status` and `review list` do:
+# resolve_target(repo, "M1.1", "HEAD"), then evaluate_gate(..., branch=<the registry branch>).
+# `expect` holds `passed`, the approval count and the number of problems; `says` asserts a problem sentence
+# only where a test at pickup asserts it (the value names that test).
+#
+# Step vocabulary (implemented in test_review_gate_decision_table.py):
+#   commit: {path, text?, label?}     commit on the feature branch; `label` names the new commit
+#   dev: {path, text}                 commit on the integration branch (dev); the feature branch stays put
+#   claim: {}                         pickup's registration commit on dev with the Review-policy pin, then rebase
+#   review: {model, verdict?, at?, a1?, drop?, history?, sign?, fields?}
+#                                     a REVIEW-<model>.md written with review_files.render_front_matter;
+#                                     `at` a label (default HEAD), `drop` leaves out an acceptance result,
+#                                     `history` also archives it, `sign` signs it with that key,
+#                                     `fields` adds record fields (a `delta_from` value is a label)
+#   record: {model, verdict, a1?, boundary?}
+#                                     filed with `specy-road review record` (it keeps the history copy)
+#   ready: {agent, exit?, blocked_on?}
+#                                     a READY-<agent>.md at HEAD written with render_front_matter
+#   defer: {finding, category, acceptance_id, input_class}
+#                                     an RCA-2 defer_findings record, the closed decision `review defer` records
+#                                     and its DEFERRAL-2 marker, for opus's block at HEAD
+# A roster entry's `public_key: "@key:<name>"` is the public half of a key the test generates.
+
+# Every field GateResult.passed and GateResult.problems() read at pickup. The test derives the same set from the
+# source of those two members, so a branch added later fails until it is listed here with its rows.
+branches:
+  - {branch: config_error, reads: [config_error], can_pass: false}
+  - {branch: no_commit, reads: [commit], can_pass: false}
+  - {branch: block, reads: [blocks], can_pass: true}         # passes only once a human-applied deferral resolves it
+  - {branch: stale, reads: [stale], can_pass: true}
+  - {branch: invalid, reads: [invalid], can_pass: true}
+  - {branch: ineligible, reads: [ineligible], can_pass: true}
+  - {branch: too_few_approvals, reads: [approval_count, required, distinct_families], can_pass: true}
+  - {branch: verifier, reads: [verifier_problems], can_pass: true}
+  - {branch: strong_unmet, reads: [strong_unmet], can_pass: true}
+  - {branch: policy_pin, reads: [policy_pin], can_pass: true}
+
+rosters:
+  human:
+    - {id: human, family: human, roles: [coordinator, reviewer]}
+  team:
+    - {id: human, family: human, roles: [coordinator, reviewer]}
+    - {id: opus, family: anthropic, roles: [reviewer]}
+    - {id: sonnet, family: anthropic, roles: [reviewer]}
+    - {id: sol, family: openai, roles: [reviewer]}
+  keyed:
+    - {id: human, family: human, roles: [coordinator, reviewer]}
+    - {id: opus, family: anthropic, roles: [reviewer], public_key: "@key:opus"}
+    - {id: sol, family: openai, roles: [reviewer]}
+
+rows:
+  # --- defaults (no roadmap/orchestration.yaml) and too few approvals ---
+  - id: defaults-no-review
+    branch: too_few_approvals
+    roster: null
+    steps: []
+    expect: {passed: false, approvals: 0, problems: 1, required: 1, distinct_families: false}
+    says: {"need 1 approvals at this commit, have 0": tests/test_review_gate.py::test_no_reviews_fails_default_policy}
+  - id: defaults-one-human-approval
+    branch: too_few_approvals
+    roster: null
+    steps: [{review: {model: human}}]
+    expect: {passed: true, approvals: 1, problems: 0, required: 1, distinct_families: false}
+
+  # --- config error ---
+  - id: config-error
+    branch: config_error
+    orchestration: "version: 1\npolicy: {reviewers_required: 0}\n"
+    steps: [{review: {model: human}}]
+    expect: {passed: false, approvals: 1, problems: 1}
+
+  # --- no commit under review ---
+  - id: no-commit
+    branch: no_commit
+    target: unresolvable
+    roster: null
+    steps: [{review: {model: human}}]
+    expect: {passed: false, approvals: 0, problems: 3}
+
+  # --- a block ---
+  - id: block-at-head
+    branch: block
+    roster: team
+    policy: {reviewers_required: 2, reviewers_distinct_families: true}
+    steps: [{review: {model: opus}}, {review: {model: sol}}, {review: {model: human, verdict: block, a1: fail}}]
+    expect: {passed: false, approvals: 2, problems: 1}
+    says: {"human blocks this commit": tests/test_review_gate.py::test_block_at_head_fails_even_with_enough_approvals}
+
+  # --- a stale record; stale vs current commit ---
+  - id: stale-only
+    branch: stale
+    roster: null
+    steps: [{review: {model: human}}, {commit: {path: src/b.py}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+    says: {"re-review": tests/test_review_gate.py::test_a_new_commit_makes_reviews_stale}
+  - id: stale-beside-a-current-approval
+    branch: stale
+    roster: team
+    steps: [{review: {model: opus}}, {commit: {path: src/b.py}}, {review: {model: human}}]
+    expect: {passed: true, approvals: 1, problems: 1}
+
+  # --- an invalid record ---
+  - id: invalid-only
+    branch: invalid
+    roster: null
+    steps: [{review: {model: human, drop: A2}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+    says: {"no result for A2": tests/test_review_gate.py::test_invalid_record_is_reported}
+  - id: invalid-beside-a-valid-approval
+    branch: invalid
+    roster: team
+    steps: [{review: {model: opus, drop: A2}}, {review: {model: human}}]
+    expect: {passed: true, approvals: 1, problems: 1}
+
+  # --- an ineligible record ---
+  - id: ineligible-unrostered
+    branch: ineligible
+    roster: null
+    steps: [{review: {model: opus}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+    says: {"not a rostered reviewer": tests/test_review_gate.py::test_unrostered_model_does_not_count_under_default_roster}
+  - id: ineligible-beside-a-valid-approval
+    branch: ineligible
+    roster: null
+    steps: [{review: {model: opus}}, {review: {model: human}}]
+    expect: {passed: true, approvals: 1, problems: 1}
+
+  # --- a verifier problem ---
+  - id: verifier-failing
+    branch: verifier
+    roster: null
+    steps: [{review: {model: human}}, {ready: {agent: exec, exit: 1}}]
+    expect: {passed: false, approvals: 1, problems: 1}
+    says: {"verifier `false` exited 1": tests/test_mark_implementation_reviewed_gate.py::test_yes_refuses_a_failing_ready_verifier}
+  - id: verifier-blocked-on
+    branch: verifier
+    roster: null
+    steps: [{review: {model: human}}, {ready: {agent: exec, exit: 0, blocked_on: A1}}]
+    expect: {passed: false, approvals: 1, problems: 1}
+    says: {"blocked on A1": tests/test_mark_implementation_reviewed_gate.py::test_yes_refuses_while_ready_declares_blocked_on}
+  - id: verifier-passing
+    branch: verifier
+    roster: null
+    steps: [{review: {model: human}}, {ready: {agent: exec, exit: 0}}]
+    expect: {passed: true, approvals: 1, problems: 0}
+
+  # --- an unmet strong-review item ---
+  - id: strong-unmet
+    branch: strong_unmet
+    roster: team
+    policy: {strong_review: [{zones: [src], require_one_of: [sol]}]}
+    steps: [{review: {model: opus}}]
+    expect: {passed: false, approvals: 1, problems: 1}
+  - id: strong-met
+    branch: strong_unmet
+    roster: team
+    policy: {strong_review: [{zones: [src], require_one_of: [sol]}]}
+    steps: [{review: {model: sol}}]
+    expect: {passed: true, approvals: 1, problems: 0}
+
+  # --- the policy pinned at claim ---
+  - id: pin-changed-after-claim
+    branch: policy_pin
+    roster: human
+    steps:
+      - claim: {}
+      - dev: {path: roadmap/orchestration.yaml, text: "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\npolicy: {reviewers_required: 1}\n"}
+      - review: {model: human}
+    expect: {passed: false, approvals: 1, problems: 1}
+  - id: pin-holds
+    branch: policy_pin
+    roster: human
+    steps: [{claim: {}}, {review: {model: human}}]
+    expect: {passed: true, approvals: 1, problems: 0}
+
+  # --- exclusions: executor, coordinator, fresh session ---
+  - id: executor-excluded
+    branch: ineligible
+    roster: team
+    steps: [{ready: {agent: opus, exit: 0}}, {review: {model: opus}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+  - id: coordinator-excluded
+    branch: invalid
+    roster: team
+    steps: [{review: {model: opus, fields: {is_coordinator: true}}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+  - id: coordinator-human-counts
+    branch: invalid
+    roster: null
+    steps: [{review: {model: human, fields: {is_coordinator: true}}}]
+    expect: {passed: true, approvals: 1, problems: 0}
+  - id: fresh-session-excluded
+    branch: ineligible
+    roster: null
+    steps: [{review: {model: human, fields: {fresh_session: false}}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+  - id: fresh-session-off
+    branch: ineligible
+    roster: human
+    policy: {reviewer_fresh_session: false}
+    steps: [{review: {model: human, fields: {fresh_session: false}}}]
+    expect: {passed: true, approvals: 1, problems: 0}
+
+  # --- signatures: missing, invalid, valid; hand-filed records ---
+  - id: signature-missing
+    branch: ineligible
+    roster: keyed
+    policy: {signed_reviews: true}
+    steps: [{review: {model: opus}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+  - id: signature-invalid
+    branch: ineligible
+    roster: keyed
+    steps: [{review: {model: opus, sign: stranger}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+  - id: signature-valid
+    branch: ineligible
+    roster: keyed
+    policy: {signed_reviews: true}
+    steps: [{review: {model: opus, sign: opus}}]
+    expect: {passed: true, approvals: 1, problems: 0}
+  - id: human-filed-not-counted
+    branch: ineligible
+    roster: team
+    steps: [{review: {model: opus, fields: {human_filed: "T, filing by hand for the table"}}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+  - id: human-filed-counted
+    branch: ineligible
+    roster: team
+    policy: {count_human_filed_reviews: true}
+    steps: [{review: {model: opus, fields: {human_filed: "T, filing by hand for the table"}}}]
+    expect: {passed: true, approvals: 1, problems: 0}
+  - id: reruns-required-missing
+    branch: ineligible
+    roster: team
+    policy: {reviewer_reruns_required: true}
+    steps: [{review: {model: opus}}]
+    expect: {passed: false, approvals: 0, problems: 2}
+  - id: reruns-required-met
+    branch: ineligible
+    roster: team
+    policy: {reviewer_reruns_required: true}
+    steps: [{review: {model: opus, fields: {commands_rerun: [pytest -q]}}}]
+    expect: {passed: true, approvals: 1, problems: 0}
+
+  # --- reviewer count, distinct families, disagreement ---
+  - id: families-one-family-twice
+    branch: too_few_approvals
+    roster: team
+    policy: {reviewers_required: 2, reviewers_distinct_families: true}
+    steps: [{review: {model: opus}}, {review: {model: sonnet}}]
+    expect: {passed: false, approvals: 1, problems: 1, required: 2, distinct_families: true}
+    says: {"need 2 distinct-family approvals": tests/test_mark_implementation_reviewed_gate.py::test_human_cannot_stand_in_for_a_missing_second_family}
+  - id: families-two
+    branch: too_few_approvals
+    roster: team
+    policy: {reviewers_required: 2, reviewers_distinct_families: true}
+    steps: [{review: {model: opus}}, {review: {model: sol}}]
+    expect: {passed: true, approvals: 2, problems: 0}
+  - id: count-two-of-one-family
+    branch: too_few_approvals
+    roster: team
+    policy: {reviewers_required: 2}
+    steps: [{review: {model: opus}}, {review: {model: sonnet}}]
+    expect: {passed: true, approvals: 2, problems: 0, required: 2, distinct_families: false}
+  - id: reviewers-disagree
+    branch: block
+    roster: team
+    policy: {reviewers_required: 2, reviewers_distinct_families: true}
+    steps: [{review: {model: opus}}, {review: {model: sol, verdict: block, a1: fail}}]
+    expect: {passed: false, approvals: 1, problems: 2}
+
+  # --- an approval carried across commits ---
+  - id: approval-carried-over-bookkeeping
+    branch: stale
+    roster: null
+    steps:
+      - review: {model: human}
+      - commit: {path: planning/M1.1_thing_11111111-1111-5111-8111-111111111111.md, text: "# M1.1 Thing\n\n## Intent\n\nDo the thing, said better.\n"}
+    expect: {passed: true, approvals: 1, problems: 0, carry: true}
+
+  # --- delta review, with red-green, and resumed sessions ---
+  - id: delta-approval-counts
+    branch: too_few_approvals
+    roster: team
+    policy: {reviewers_required: 2, reviewers_distinct_families: true}
+    steps: &delta
+      - commit: {path: src/tests/test_a.py, text: "def test_a():\n    assert 1\n", label: approved}
+      - review: {model: opus, history: true}
+      - commit: {path: src/tests/test_a.py, text: "def test_a():\n    assert 1\n\n\ndef test_b():\n    assert 2\n"}
+      - review: {model: opus, history: true, fields: {delta_from: approved}}
+      - review: {model: sol}
+    expect: {passed: true, approvals: 2, problems: 0}
+  - id: delta-with-red-green
+    branch: verifier
+    roster: team
+    policy: {reviewers_required: 2, reviewers_distinct_families: true, red_green: true}
+    steps: *delta
+    expect: {passed: false, approvals: 2, problems: 1}
+  - id: delta-review-off
+    branch: ineligible
+    roster: team
+    policy: {reviewers_required: 2, reviewers_distinct_families: true, delta_review: false}
+    steps: *delta
+    expect: {passed: false, approvals: 1, problems: 2}
+  - id: resumed-delta-waives-fresh-session
+    branch: ineligible
+    roster: team
+    policy: {reviewers_required: 2, reviewers_distinct_families: true, reviewer_resumed_delta: true}
+    steps: &resumed
+      - commit: {path: src/tests/test_a.py, text: "def test_a():\n    assert 1\n", label: approved}
+      - review: {model: opus, history: true}
+      - commit: {path: src/tests/test_a.py, text: "def test_a():\n    assert 1\n\n\ndef test_b():\n    assert 2\n"}
+      - review: {model: opus, history: true, fields: {delta_from: approved, fresh_session: false}}
+      - review: {model: sol}
+    expect: {passed: true, approvals: 2, problems: 0}
+  - id: resumed-delta-off
+    branch: ineligible
+    roster: team
+    policy: {reviewers_required: 2, reviewers_distinct_families: true}
+    steps: *resumed
+    expect: {passed: false, approvals: 1, problems: 2}
+
+  # --- test integrity and ratchet paths ---
+  - id: integrity-undeclared-finding
+    branch: verifier
+    roster: human
+    policy: {integrity_gate: true}
+    steps: [{commit: {path: src/c.py, text: "x = 1  # noqa\n"}}, {review: {model: human}}]
+    expect: {passed: false, approvals: 1, problems: 1}
+  - id: integrity-clean
+    branch: verifier
+    roster: human
+    policy: {integrity_gate: true}
+    steps: [{review: {model: human}}]
+    expect: {passed: true, approvals: 1, problems: 0}
+  - id: ratchet-path-widened
+    branch: verifier
+    roster: human
+    policy: {integrity_gate: true, ratchet_paths: [src/baseline.txt]}
+    steps: [{commit: {path: src/baseline.txt, text: "one\ntwo\n"}}, {review: {model: human}}]
+    expect: {passed: false, approvals: 1, problems: 1}
+
+  # --- deferral with strong review ---
+  - id: deferral-strong-unmet
+    branch: strong_unmet
+    roster: team
+    policy: {strong_review: [{zones: [src], require_one_of: [sol]}]}
+    steps: &deferred
+      - commit: {path: src/r1.py}
+      - record: {model: opus, verdict: block, a1: fail}
+      - commit: {path: src/r2.py}
+      - record: {model: opus, verdict: block, a1: fail, boundary: [CRLF input still warns]}
+      - defer: {finding: "round 2/opus: CRLF input still warns", category: boundary, acceptance_id: A1, input_class: CRLF line endings}
+      - review: {model: human}
+    expect: {passed: false, approvals: 1, problems: 2}
+  - id: deferral-strong-met
+    branch: block
+    roster: team
+    policy: {strong_review: [{zones: [src], require_one_of: [sol]}]}
+    steps:
+      - commit: {path: src/r1.py}
+      - record: {model: opus, verdict: block, a1: fail}
+      - commit: {path: src/r2.py}
+      - record: {model: opus, verdict: block, a1: fail, boundary: [CRLF input still warns]}
+      - defer: {finding: "round 2/opus: CRLF input still warns", category: boundary, acceptance_id: A1, input_class: CRLF line endings}
+      - review: {model: sol}
+    expect: {passed: true, approvals: 1, problems: 1}

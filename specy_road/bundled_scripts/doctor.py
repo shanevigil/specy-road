@@ -66,6 +66,8 @@ from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.version_skew import print_install_report, warn_if_running_version_older
 from specy_road.worker_adapter_cursor import force_warnings
+from specy_road.worker_lock import workers_dir
+from specy_road.worker_ops_slots import stall_lines, stalled_workers
 
 TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
 
@@ -316,6 +318,14 @@ def _print_orphaned_claims(root: Path) -> None:
         print(f"  {line}")
 
 
+def _print_stalled(root: Path) -> None:
+    """Report-only: each stalled worker and how long it has been silent (M22.39); ``worker recover`` acts on it."""
+    lines = stall_lines(stalled_workers(root)) if workers_dir(root).is_dir() else []   # none launched: no sweep
+    if lines:
+        print("Stalled workers (report only; --fix does not recover them):")
+        print("\n".join(f"  {line}" for line in lines))
+
+
 def _print_cursor_force(root: Path) -> None:
     """Advisory: one line per roster ``cursor`` entry that launches with ``--force`` (the roster launches read).
     An unreadable roster is left to ``validate`` and ``orchestrate plan``."""
@@ -353,6 +363,7 @@ def cmd_doctor(ns: argparse.Namespace) -> int:
         else:
             bad_config = _fix(sections, ns.yes) or bad_config
     _print_orphaned_claims(root)   # after the branch section, so it is not read as one of those rows
+    _print_stalled(root)
     return int(bad_config)
 
 

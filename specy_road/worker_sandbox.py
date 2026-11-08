@@ -13,7 +13,8 @@
 * the harness's state directories, each replaced by the worker's own (transcripts and sessions included), with
   only the user's named auth *files* written through and the user's settings, hooks, plugins, skills, rules and
   instruction files read-only (:data:`HARNESS_STATE`); configuration it must write that can hold launch
-  instructions (``~/.claude.json``, Cursor's ``cli-config.json``) is a per-worker copy.
+  instructions (``~/.claude.json``, Cursor's ``cli-config.json``) is a per-worker copy, made inside the worker's own
+  state directory when the file lives in a replaced one, so the harness can replace it by rename.
 
 The rule for the home directory: **no directory of the user's is writable from the sandbox, and only the named
 auth files are.** Any writable directory is an open namespace (a transcript directory takes a ``memory/``
@@ -197,15 +198,18 @@ def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> l
 
     Each state directory the user has is replaced by the worker's own (``work/.workers/<id>.state/``, kept across
     its turns); into it go the user's auth files (writable) and steering entries (read-only), each only when the
-    user has it, and an auth name the user has as a directory is not bound. A seeded file is copied from the user's once and bound writable over its path.
+    user has it, and an auth name the user has as a directory is not bound. A seeded file is copied from the user's
+    once: into the worker's own directory when it lives in a replaced one, so the harness can replace it by rename
+    (Cursor's ``cli-config.json``; a rename onto a bound file fails with EBUSY), else bound writable over its path.
     """
     own = state_home(repo_root, rec.worker_id)
     dirs, seeds = HARNESS_STATE.get(rec.harness, ((), ()))
     argv: list[str] = []
+    replaced: dict[Path, Path] = {}
     for var, rel, through, steering in dirs:
         user = _state_path(env, var, rel)
         if user.is_dir():
-            mine = own / rel.replace("/", "_")
+            mine = replaced[user] = own / rel.replace("/", "_")
             mine.mkdir(parents=True, exist_ok=True)
             auth = [n for n in through if (user / n).resolve().is_file()]   # files only: never a directory
             argv += ["--bind", str(mine), str(user),
@@ -213,13 +217,15 @@ def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> l
                      *_binds("--ro-bind", [user / n for n in steering])]
     for var, rel in seeds:
         user = _state_path(env, var, rel)
-        copy = own / ("seed" + rel.replace("/", "_"))
+        inside = next((mine / user.relative_to(d) for d, mine in replaced.items() if user.is_relative_to(d)), None)
+        copy = inside or own / ("seed" + rel.replace("/", "_"))
         if user.is_file():
             if not copy.is_file():
-                own.mkdir(parents=True, exist_ok=True)
+                copy.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(user, copy)
                 copy.chmod(0o600)
-            argv += ["--bind", str(copy), str(user)]
+            if inside is None:
+                argv += ["--bind", str(copy), str(user)]
     return argv
 
 

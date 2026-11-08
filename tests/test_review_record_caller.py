@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from tests.helpers import script_subprocess_env
 from tests.review_delegate_helpers import delegate_repo, handoff_status_node, run_review_cli
 from tests.review_repo_helpers import git, make_review_repo, review_output, review_text
 
@@ -102,6 +103,23 @@ def test_a_worker_id_that_does_not_resolve_is_refused_without_a_traceback(
     assert _record(repo, OPUS) == 1
     err = capsys.readouterr().err
     assert "SPECY_ROAD_WORKER_ID" in err and "Traceback" not in err
+    assert _tree(repo) == before
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+def test_a_fifo_worker_record_is_refused_at_once(tmp_path: Path) -> None:
+    """A FIFO with no writer at ``work/.workers/<id>.yaml`` is refused, not waited on (M22.19)."""
+    repo = make_review_repo(tmp_path, orchestration=_roster())
+    record_path(repo, "w-0001").parent.mkdir(parents=True, exist_ok=True)
+    os.mkfifo(record_path(repo, "w-0001"))
+    notes = repo.parent / "notes.md"
+    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model=OPUS, commands_rerun=["pytest -q"]))
+    env = {k: v for k, v in script_subprocess_env().items() if k not in {var for _, var, _ in HARNESS_MARKERS}}
+    before = _tree(repo)
+    done = subprocess.run([sys.executable, "-m", "specy_road.cli", "review", "record", "M1.1", "--model", OPUS,
+                           "--verdict", "approve", "--file", str(notes), "--repo-root", str(repo)],
+                          capture_output=True, text=True, timeout=5, env={**env, "SPECY_ROAD_WORKER_ID": "w-0001"})
+    assert done.returncode == 1 and "not a regular file" in done.stderr and "Traceback" not in done.stderr
     assert _tree(repo) == before
 
 

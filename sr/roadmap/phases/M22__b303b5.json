@@ -23,7 +23,8 @@
         "tests/test_upgrade.py",
         "tests/test_upgrade_preview.py",
         "docs/upgrading.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/sibling_repos.py"
       ],
       "type": "task"
     },
@@ -119,7 +120,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.39_worker-stall-recovery_0b69a82d-d3b0-454d-93de-338c1f10836f.md",
       "sibling_order": 38,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Stalled workers are detected on every run and can be recovered in one command",
       "touch_zones": [
         "specy_road/worker_ops_slots.py",
@@ -130,7 +131,10 @@
         "specy_road/bundled_scripts/doctor.py",
         "specy_road/bundled_scripts/grind_session.py",
         "specy_road/worker_state.py",
-        "specy_road/schemas/worker-record.schema.json"
+        "specy_road/schemas/worker-record.schema.json",
+        "tests/parity/golden/inventory.json",
+        "tests/parity/golden/help/",
+        "tests/parity/command_map.yaml"
       ],
       "type": "task"
     },
@@ -355,6 +359,51 @@
         "tests/test_worker_sandbox.py",
         "CHANGELOG.md",
         "docs/orchestration-workers.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A seeded config file inside a replaced state directory is copied into the worker's own directory, not bound as a separate file, so a harness can replace it by rename: Cursor renames cli-config.json on start and failed with EBUSY on 2026-11-07. Seeds outside a replaced directory, such as ~/.claude.json, keep today's behaviour",
+        "tests/test_worker_sandbox.py: a fake harness that writes a temp file and renames it over the seeded file succeeds, and the change does not reach the user's copy. A real Cursor start under the sandbox is a recorded smoke check in the implementation summary; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "cursor-starts-under-the-sandbox",
+      "dependencies": [],
+      "id": "M22.47",
+      "node_key": "d4c82f4c-c50c-4f31-b15c-e7c4041a9727",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.47_cursor-starts-under-the-sandbox_d4c82f4c-c50c-4f31-b15c-e7c4041a9727.md",
+      "sibling_order": 46,
+      "status": "Complete",
+      "title": "Cursor workers start and keep their config under the sandbox",
+      "touch_zones": [
+        "specy_road/worker_sandbox.py",
+        "tests/test_worker_sandbox.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A name that more than one roster entry may be no longer closes the gate by itself. A READY author is excluded under every entry it may be (today's rule). A review record whose name may be any entry that wrote the leaf is not counted (today's rule). A review record whose candidate entries wrote nothing on the leaf counts when all candidates share one family, and closes the gate with today's message only when the candidates span more than one family, so the family it counts as cannot be decided",
+        "tests/test_review_gate_ready_author.py: table-driven rows for (1) Sol-style effort aliases, one family, nobody wrote the leaf: counts; (2) a reviewer id that is also an executor row's harness_model, where that executor wrote the leaf: not counted; (3) the same name, where another model wrote the leaf: counts; (4) a name shared across two families: closes; (5) an ambiguous READY author: excluded under every candidate, gate not closed by ambiguity alone. The M22.19 tests still pass. handoff status shows the reason for each excluded row; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "shared-names-close-only-when-they-could-be-the-writer",
+      "dependencies": [],
+      "id": "M22.48",
+      "node_key": "e6ac4cbe-9a89-469a-9670-56cb116c10ff",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.48_shared-names-close-only-when-they-could-be-the-writer_e6ac4cbe-9a89-469a-9670-56cb116c10ff.md",
+      "sibling_order": 47,
+      "status": "Complete",
+      "title": "A shared reviewer name closes the gate only when it could be the leaf's writer",
+      "touch_zones": [
+        "specy_road/review_eligible.py",
+        "specy_road/review_gate.py",
+        "tests/test_review_gate_ready_author.py",
+        "docs/roadmap-history.md",
+        "CHANGELOG.md"
       ],
       "type": "task"
     }

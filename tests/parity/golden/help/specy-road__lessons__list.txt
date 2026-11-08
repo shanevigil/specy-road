@@ -1,0 +1,11 @@
+$ specy-road lessons list --help
+exit: 0
+--- stdout ---
+usage: specy-road lessons list [-h] [--repo-root DIR]
+
+options:
+  -h, --help       show this help message and exit
+  --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
+                   .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
+                   else the current directory).
+--- stderr ---

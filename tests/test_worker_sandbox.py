@@ -70,6 +70,10 @@ for p in spec["create"]:                    # steering the user does not have: t
 for p in spec["state"]:                     # auth files and seeded copies stay writable
     with open(p, "a") as f:
         f.write("state\n")
+for p in spec["renamed"]:                   # a seed in a replaced directory is replaced by rename, as Cursor does
+    with open(p + ".tmp", "w") as f:
+        f.write("renamed\n")
+    os.replace(p + ".tmp", p)
 persist = {}
 for p in spec["persist"]:                   # the worker's own transcripts outlive its turn
     os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -115,8 +119,8 @@ def box(monkeypatch) -> dict:
 #: Per harness, paths under the temporary home: the user's files; steering the user has (writes refused);
 #: paths whose creation or append must not reach the home (absent steering, existing transcripts and new files in
 #: transcript directories: no directory is shared); auth files (writes reach the user's file); seeded
-#: configuration (writable, but a per-worker copy); transcripts the worker keeps across its turns. Codex's
-#: profile home links its auth.json to ~/.codex.
+#: configuration (writable, but a per-worker copy); the seeds the harness replaces by rename; transcripts the
+#: worker keeps across its turns. Codex's profile home links its auth.json to ~/.codex.
 HARNESSES = {
     "claude-code": {"env": {}, "files": [".claude/settings.json", ".claude/projects/t.jsonl", ".claude/.credentials.json",
                                          ".claude.json", ".cache/claude-cli-nodejs/log"],
@@ -124,7 +128,7 @@ HARNESSES = {
                     "create": [".claude/settings.local.json", ".claude/hooks/h.sh", ".claude/skills/s/SKILL.md",
                                ".claude/CLAUDE.md", ".cache/claude-cli-nodejs/log", ".claude/projects/t.jsonl",
                                ".claude/projects/slug/memory/MEMORY.md", ".claude/projects/planted.md"],
-                    "through": [".claude/.credentials.json"], "seeded": [".claude.json"],
+                    "through": [".claude/.credentials.json"], "seeded": [".claude.json"], "renamed": [],
                     "persist": [".claude/projects/-wt/s.jsonl"]},
     "cursor": {"env": {}, "files": [".cursor/hooks.json", ".cursor/cli-config.json", ".cursor/chats/c.db",
                                     ".config/cursor/auth.json", ".cursor/sandbox-policies/policy.json"],
@@ -133,13 +137,14 @@ HARNESSES = {
                           ".config/cursor/cli.json", ".cursor/chats/c.db", ".cursor/chats/planted.md",
                           ".cursor/sandbox-policies/policy.json"],   # Cursor writes it on every start
                "through": [".config/cursor/auth.json"], "seeded": [".cursor/cli-config.json"],
+               "renamed": [".cursor/cli-config.json"],   # Cursor renames it on start (EBUSY when bound)
                "persist": [".cursor/chats/x/store.db"]},
     "codex": {"env": {"CODEX_HOME": "codex-home"}, "files": ["codex-home/config.toml", "codex-home/sessions/s.jsonl",
                                                             ".codex/auth.json"],
               "refused": ["codex-home/config.toml"],
               "create": ["codex-home/AGENTS.md", "codex-home/hooks/h", "codex-home/skills/s/SKILL.md",
                          "codex-home/sessions/s.jsonl", "codex-home/sessions/planted.md"],
-              "through": ["codex-home/auth.json"], "seeded": [],
+              "through": ["codex-home/auth.json"], "seeded": [], "renamed": [],
               "persist": ["codex-home/sessions/2026/r.jsonl"]},
 }
 
@@ -173,6 +178,7 @@ def _turn(b: dict, rec: ws.WorkerRecord, marker: str, env: dict, *, resumed: boo
             "env": list(SECRETS),
             "create": [str(home / r) for r in h["create"]],
             "state": [str(home / r) for r in h["through"] + h["seeded"]],
+            "renamed": [str(home / r) for r in h["renamed"]],
             "persist": [str(home / r) for r in h["persist"]]}
     return wr.run(b["repo"], rec.worker_id, Launch([sys.executable, "-c", FAKE], stdin=json.dumps(spec), env=env),
                   resumed=resumed)
