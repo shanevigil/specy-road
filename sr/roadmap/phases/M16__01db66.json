@@ -20,7 +20,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.5_agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer_01db66ad-a91c-48e3-953e-4083f5f14a13.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer",
       "touch_zones": [
         "AGENTS.md",
