@@ -172,3 +172,12 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
+  - codename: review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome
+    node_id: M16.1.6
+    branch: feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome
+    touch_zones:
+      - scripts/review_effort_study.py
+      - sr/planning/M16.1.6_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
