@@ -176,7 +176,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.44` Unattended workers run in a read-only sandbox on Linux `workers-run-in-a-sandbox` — task — **Complete**
   - `M22.45` A worker turn that moves the integration ref is flagged `integration-refs-stay-put-during-a-turn` — task — **Complete**
   - `M22.46` Sandboxed workers can read their leaf's review records `sandboxed-workers-can-read-their-reviews` — task — **Complete**
-  - `M22.47` Cursor workers start and keep their config under the sandbox `cursor-starts-under-the-sandbox` — task — **Not Started**
+  - `M22.47` Cursor workers start and keep their config under the sandbox `cursor-starts-under-the-sandbox` — task — **Complete**
   - `M22.48` A shared reviewer name closes the gate only when it could be the leaf's writer `shared-names-close-only-when-they-could-be-the-writer` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
@@ -321,7 +321,6 @@ Do not pick these up.
 - `M22.31` on `feature/rm-steering-finish-refusal` since 2026-11-07
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 - `M22.39` on `feature/rm-worker-stall-recovery` since 2026-11-07
-- `M22.47` on `feature/rm-cursor-starts-under-the-sandbox` since 2026-11-07
 
 ## Quality by area
 
@@ -330,15 +329,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 45 | 0 | 2.71 | 64% | 22 | 3 |
+| `CHANGELOG.md` **flagged** | 45 | 0 | 2.69 | 62% | 22 | 3 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 36 | 0 | 2.83 | 67% | 18 | 2 |
+| `docs` **flagged** | 36 | 0 | 2.81 | 64% | 18 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 44 | 0 | 2.73 | 64% | 22 | 3 |
-| `tests` **flagged** | 47 | 0 | 2.62 | 62% | 24 | 3 |
+| `specy_road` **flagged** | 44 | 0 | 2.70 | 61% | 22 | 3 |
+| `tests` **flagged** | 47 | 0 | 2.60 | 60% | 24 | 3 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 | `suggested_prompts` | 1 | 0 | 1.00 | 0% | 3 | 0 |

@@ -70,6 +70,10 @@ body. Keep section bodies focused; link to PRs for detail.
   never reaches the reviews directory. Cursor turns start under the sandbox again: `~/.cursor/sandbox-policies/`
   is no longer read-only, because Cursor writes its policy file there on every start. It is now the worker's own
   state.
+- Cursor workers start under the sandbox. The worker's copy of `~/.cursor/cli-config.json` is now a plain file
+  in its own `.cursor` state directory instead of a file bound over yours, so Cursor can replace it by rename on
+  start; it failed with `EBUSY` before. The same holds for `$CLAUDE_CONFIG_DIR/.claude.json`. `~/.claude.json`
+  is still a per-worker copy bound over yours. Your own copy never changes.
 - Reviewer runs (rc4 re-test D15c, D17, D18). A refused answer's one-line reason names the first
   offending line whole, then `(N more; full text in work/reviews/<ID>/REJECTED-<model>.md)`, for the
   first refusal and for a repair turn's, instead of the last 400 characters cut mid-word. A

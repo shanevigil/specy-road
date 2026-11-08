@@ -113,17 +113,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: cursor-starts-under-the-sandbox
-    node_id: M22.47
-    branch: feature/rm-cursor-starts-under-the-sandbox
-    touch_zones:
-      - specy_road/worker_sandbox.py
-      - tests/test_worker_sandbox.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer
     node_id: M16.1.5
     branch: feature/rm-agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer
