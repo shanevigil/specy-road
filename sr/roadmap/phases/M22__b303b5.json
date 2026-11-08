@@ -131,7 +131,10 @@
         "specy_road/bundled_scripts/doctor.py",
         "specy_road/bundled_scripts/grind_session.py",
         "specy_road/worker_state.py",
-        "specy_road/schemas/worker-record.schema.json"
+        "specy_road/schemas/worker-record.schema.json",
+        "tests/parity/golden/inventory.json",
+        "tests/parity/golden/help/",
+        "tests/parity/command_map.yaml"
       ],
       "type": "task"
     },

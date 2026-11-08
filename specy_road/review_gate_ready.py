@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from specy_road import review_lock, safe_write
+from specy_road import review_lock
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_changed_paths import diff_paths
@@ -19,7 +19,7 @@ from specy_road.git_subprocess import commits_behind, git_text, merge_conflicts
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_files import (
-    HUMAN, READY_PREFIX, load_ready, project_of, render_front_matter, review_path, reviews_dir, write_review,
+    HUMAN, READY_PREFIX, load_ready, render_front_matter, review_path, reviews_dir, write_review,
 )
 from specy_road.sibling_repos import sibling_heads_field
 from specy_road.toolkit_version import stamp_review_toolkit_version
@@ -68,7 +68,7 @@ def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str, sig
                                f"{HUMAN!r} ({why}); wrong key?")
     path = review_path(repo_root, node["id"], HUMAN)
     with review_lock.review_run_lock(path.parent, wait=review_lock.FILING_WAIT):
-        safe_write.write(project_of(path), path, render_front_matter(data, body))
+        write_review(path, render_front_matter(data, body))   # replaces a case variant such as review-human.md
     return path
 
 

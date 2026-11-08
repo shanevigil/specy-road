@@ -49,7 +49,7 @@ def write_rejected(reviews: Path, model: str, commit: str, reason: str) -> Path:
         return path
     refused_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     body = reason if reason.endswith("\n") else reason + "\n"
-    safe_write.write(project_of(path), path, render_front_matter({"commit": commit, "refused_at": refused_at}, body))
+    write_review(path, render_front_matter({"commit": commit, "refused_at": refused_at}, body))   # replaces rejected-x.md
     return path
 
 
@@ -89,11 +89,12 @@ def read_rejected_marker(path: Path) -> tuple[dict[str, Any], str] | str | None:
 
 
 def unreadable_rejected_lines(reviews: Path) -> list[str]:
-    """Every ``marker unreadable: …`` line for ``REJECTED-*.md`` under ``reviews``."""
+    """Every ``marker unreadable: …`` line for ``REJECTED-*.md`` under ``reviews``, its name matched in any case."""
     if not reviews.is_dir():
         return []
     lines: list[str] = []
-    for path in sorted(reviews.glob(f"{REJECTED_PREFIX}*.md")):
+    for path in sorted(p for p in reviews.iterdir()
+                       if p.name.lower().startswith(REJECTED_PREFIX.lower()) and p.suffix.lower() == ".md"):
         read = read_rejected_marker(path)
         if isinstance(read, str):
             lines.append(read)
