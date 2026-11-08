@@ -119,18 +119,3 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
-  - codename: gui-outline-selection-lag
-    node_id: M17.13
-    branch: feature/rm-gui-outline-selection-lag
-    touch_zones:
-      - gui/pm-gantt/src/components/OutlineTable.tsx
-      - gui/pm-gantt/src/outlineRowClick.ts
-      - gui/pm-gantt/src/outlineRowClick.test.ts
-      - gui/pm-gantt/src/App.tsx
-      - gui/pm-gantt/src/usePmGuiHandlers.ts
-      - specy_road/pm_gantt_static/
-      - CHANGELOG.md
-    started: '2026-11-08'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-08T23:16:36+00:00'
