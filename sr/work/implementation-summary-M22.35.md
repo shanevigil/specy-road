@@ -59,13 +59,18 @@
 - Round 3, real run: `test_an_unsearchable_directory_is_left_out_of_the_mirror[False]` now requires exit 0; with `sibling_repos.py` reverted it fails (red), with the fix it passes. Result: held.
 - Round 3, other `(path / ".git").exists()` callers in `specy_road/` (`agent_ignores`, `schema_revision`, `worktree_env`, `review_files`, `worktree_delete_set`): they check the git root or its parents, not child directories of the checkout, so an unsearchable checkout subdirectory does not reach them. Result: not in this class, unchanged.
 - R1 (gpt-6.1-sol), ignored roadmap JSON: maintainer-accepted limit in the planning sheet; no change.
+- Round 4, class: a path whose last matching ignore rule is a `!` negation. `check-ignore -v` prints such a path with its `!` pattern, and `_ignored` took every printed path as ignored. Design change: `_ignored` runs plain `check-ignore`, which prints only paths that are ignored, so no output parsing can misread a negation. Result: removed at the source.
+- Round 4, `_left_out` (link target): `AGENTS.md -> work/guide.md` under `work/*` then `!work/guide.md`. Before: `AGENTS.md (failed)` on both paths and no `work/guide.md` in the temp directory. After: no failure line, the guide is in both temp directories. Result: held (test red without the fix, green with it).
+- Round 4, `_walk` and `_appeared`: both call the same `_ignored`, so a re-included path is copied by the walk and reported as a new checkout path by `changed_since`, as any non-ignored path is. Result: same rule, no separate code.
+- Round 4, `ls-files --others --exclude-standard` (the file list) and `sibling_repos._untracked_by_root` (`check-ignore -q`): git applies negations itself and neither parses `-v` output. Result: not in this class, unchanged.
+- Round 4, grok-4.7-high's finding at `02be8c65` (unsearchable directory): already fixed in `758f6d4f` and `f8d9045d`; `test_an_unsearchable_directory_is_left_out_of_the_mirror` requires exit 0 on both paths. Result: no further change.
 
 ## Added
 
 Helpers and branches:
 
 - `_ancestors`: parent directories of the paths to copy, so an ignored directory that contains one of them is still entered.
-- `_ignored`: one `check-ignore -v` batch per directory; a git failure is `GitFailed` (exit 2), the same as the other git calls upgrade depends on.
+- `_ignored`: one plain `check-ignore` batch per directory (not `-v`, which also lists paths a `!` rule re-includes); a git failure is `GitFailed` (exit 2), the same as the other git calls upgrade depends on.
 - `_appeared`: new non-ignored checkout paths after the dry run; ignored directories that were not read are not walked, so they are not reported as edits.
 - `_copy_keeping_mode`: the dry-run snapshot of an unreadable file stays an empty file of the same mode; `shutil.copytree` would raise `Error` and the unreadable-`AGENTS.md` dry run would not match the real run.
 - `snapshot_outside`: the pre-refresh tree the validation copy reuses, without `.git`.
@@ -89,7 +94,7 @@ Helpers and branches:
 
 Tests:
 
-- `test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror`: lists the temp directory while it exists, on both paths; an ignored `.env`, `node_modules`, and a nested repo are absent, including through `env-link`, `modules-link` and `nested-link`; the secret text is absent; an untracked `keep-me.txt` and `AGENTS.md` are present; the dry run prints the copy line once.
+- `test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror`: lists the temp directory while it exists, on both paths; extended in round 4 with `AGENTS.md -> work/guide.md` under `work/*` and `!work/guide.md`, which must be copied and must not report `AGENTS.md (failed)`; an ignored `.env`, `node_modules`, and a nested repo are absent, including through `env-link`, `modules-link` and `nested-link`; the secret text is absent; an untracked `keep-me.txt` and `AGENTS.md` are present; the dry run prints the copy line once.
 - `test_a_global_excludes_file_keeps_a_secret_out_of_both_mirrors`: a `core.excludesFile` in the caller's gitconfig keeps `secret.env` out of both temp directories.
 - `test_an_ignored_current_digest_is_not_predicted_as_a_rewrite`: an ignored `roadmap-context.md` that matches the roadmap is not a `would write` and not a `wrote`.
 - `test_an_unsearchable_directory_is_left_out_of_the_mirror`: a mode-000 directory and a link to it stay out of both temp directories, and both the real run and the dry run exit 0.
