@@ -406,6 +406,28 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A sandboxed claude-code worker launched with one CLAUDE_CONFIG_DIR and resumed with another starts, and the .claude.json it reads is a copy of the new directory's file; a resume with the same directory keeps the worker's existing copy (today's behaviour). The worker's transcripts stay in its state directory across the switch, so --resume finds the session",
+        "tests/test_worker_sandbox.py: table-driven rows through the public launch path for (1) resume with the same config dir: existing copy kept; (2) resume with a different config dir: the copy holds the new file's content, not empty and not the old account's; (3) the user's file missing in the new dir: the turn starts as today when there is no file to seed. CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "sandboxed-worker-resumes-after-an-account-switch",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.49",
+      "node_key": "e6bafcd8-c5d5-41f0-a0c4-e1b498b4baf8",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.49_sandboxed-worker-resumes-after-an-account-switch_e6bafcd8-c5d5-41f0-a0c4-e1b498b4baf8.md",
+      "sibling_order": 48,
+      "status": "Not Started",
+      "title": "A sandboxed Claude worker resumes after the executor account changes",
+      "touch_zones": [
+        "specy_road/worker_sandbox.py",
+        "tests/test_worker_sandbox.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
