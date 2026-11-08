@@ -420,7 +420,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.49_sandboxed-worker-resumes-after-an-account-switch_e6bafcd8-c5d5-41f0-a0c4-e1b498b4baf8.md",
       "sibling_order": 48,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A sandboxed Claude worker resumes after the executor account changes",
       "touch_zones": [
         "specy_road/worker_sandbox.py",
