@@ -162,6 +162,35 @@ def test_outline_group_into_an_id_a_listed_node_holds(client: TestClient, repo: 
     assert (after[NK_A1], after[NK_A2], after[NK_A3]) == ("M1.1", "M1.2.1", "M1.2.2")
 
 
+def test_outline_group_posts_the_dialogs_body(client: TestClient, repo: Path) -> None:
+    # The body gui/pm-gantt/src/outlineGroup.test.ts pins for this outline:
+    # "Group siblings…" on M1.3, M1.1 also checked, title "Grouped".
+    body = {
+        "into_new": "M1.4",
+        "title": "Grouped",
+        "node_ids": ["M1.1", "M1.3"],
+        "type": "milestone",
+        "rewrite_refs": False,
+    }
+    before = tree_bytes(repo)
+
+    taken = _post(client, "/api/outline/group", {**body, "into_new": "M1.2"})
+
+    assert taken.status_code == 400
+    assert taken.json() == {"detail": "id 'M1.2' is already taken by another node"}
+    assert tree_bytes(repo) == before
+
+    r = _post(client, "/api/outline/group", body)
+
+    assert r.status_code == 200, r.text
+    assert r.json() == {"ok": "true", "id_map": {"M1.1": "M1.4.1", "M1.3": "M1.4.2"}}
+    children = sorted(
+        (n for n in nodes_by_key(repo).values() if n.get("parent_id") == "M1.4"),
+        key=lambda n: n["sibling_order"],
+    )
+    assert [n["node_key"] for n in children] == [NK_A1, NK_A3]
+
+
 @pytest.mark.parametrize(
     "body",
     [

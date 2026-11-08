@@ -16,6 +16,7 @@ import {
   fetchRoadmap,
   fetchRoadmapFingerprints,
   shouldRefreshSnapshotFromViewFingerprint,
+  groupOutline,
   indentNode,
   outdentNode,
   patchNode,
@@ -50,7 +51,9 @@ import { transitiveEffectivePrereqIds } from "./depChain";
 import { minDependencyDepth } from "./ganttDepthOffset";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
 import { GanttPane } from "./components/GanttPane";
+import { GroupSiblingsModal } from "./components/GroupSiblingsModal";
 import { OutlineTable } from "./components/OutlineTable";
+import { groupDialogState, type GroupOutlineBody } from "./outlineGroup";
 import { PublishRoadmapModal } from "./components/PublishRoadmapModal";
 import type { ThemeMode } from "./components/SettingsDrawer";
 import {
@@ -163,6 +166,8 @@ export default function App() {
   const [repoId, setRepoId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Row the "Group siblings…" dialog was opened on (null: closed). */
+  const [groupRowId, setGroupRowId] = useState<string | null>(null);
   /** Node ids with an open edit dialog (order = stack; last is topmost). */
   const [editOpenIds, setEditOpenIds] = useState<string[]>([]);
   /** Open task ids shown in the bottom strip; order = minimize order. */
@@ -1267,6 +1272,25 @@ export default function App() {
     ).catch((e) => setErr(String(e)));
   };
 
+  /** No optimistic overlay: a refused group leaves the outline as it was. */
+  const submitGroup = useCallback(
+    async (body: GroupOutlineBody) => {
+      const sent = { ok: false };
+      await performOptimisticMutation(
+        "Grouping rows…",
+        null,
+        body.node_ids,
+        "move",
+        async () => {
+          await groupOutline(body);
+          sent.ok = true;
+        },
+      );
+      if (sent.ok) setSelectedId(body.into_new);
+    },
+    [performOptimisticMutation],
+  );
+
   const publishReady =
     Boolean(
       publishStatus?.scope_dirty &&
@@ -1447,6 +1471,22 @@ export default function App() {
                 }
               >
                 <IconOutdent />
+              </button>
+              <button
+                type="button"
+                className="toolbar-icon-btn"
+                disabled={queueOverloaded || !selectedId}
+                title="Group siblings… — put the selected row and chosen siblings under a new parent"
+                aria-label="Group siblings…"
+                onClick={() =>
+                  guardRowAction(selectedId, () => {
+                    if (selectedId) setGroupRowId(selectedId);
+                  })
+                }
+              >
+                <span className="toolbar-gate-icon" aria-hidden="true">
+                  {"{ }"}
+                </span>
               </button>
               <button
                 type="button"
@@ -1840,6 +1880,19 @@ export default function App() {
           onPublish={handlePublishRoadmap}
           headerMinTop={0}
         />
+        {groupRowId && data ? (
+          <GroupSiblingsModal
+            key={groupRowId}
+            initial={groupDialogState(
+              data.ordered_ids,
+              nodesByIdFrom(data.nodes),
+              groupRowId,
+            )}
+            nodesById={byId}
+            onSubmit={submitGroup}
+            onClose={() => setGroupRowId(null)}
+          />
+        ) : null}
       </Suspense>
       {/* Not gated on the roadmap having loaded: the dock is the only way back
           to a minimized window, and Brainstorm can be minimized without one. */}

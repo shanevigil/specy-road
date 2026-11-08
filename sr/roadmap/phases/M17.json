@@ -354,7 +354,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.12_gui-group-siblings-action_00ff9691-82c1-484e-a02d-dbf2d60e3241.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group",
       "touch_zones": [
         "gui/pm-gantt/src/components/GroupSiblingsModal.tsx",
