@@ -302,9 +302,9 @@ def _config_turn(b: dict, rec: ws.WorkerRecord, account: Path, ident: str, *, re
                   Launch([sys.executable, "-c", CLAUDE_COPY], stdin=spec, env={"CLAUDE_CONFIG_DIR": str(account)}))
 
 
-@pytest.mark.parametrize("case", ["same", "different-text", "different-placeholder", "unrecorded"])
+@pytest.mark.parametrize("case", ["same", "same-dotdot", "different-text", "different-placeholder", "unrecorded"])
 def test_a_sandboxed_claude_worker_refreshes_claude_json_when_the_config_directory_changes(box, case: str) -> None:
-    """The same recorded directory keeps a harness rewrite; a different directory, or no record, copies again."""
+    """The same resolved directory keeps a harness rewrite; a different directory, or no record, copies again."""
     b = box
     old, now = _claude_account(b["home"], "account-old", "old"), _claude_account(b["home"], "account-now", "now")
     old_bytes, now_bytes = (old / ".claude.json").read_bytes(), (now / ".claude.json").read_bytes()
@@ -325,9 +325,12 @@ def test_a_sandboxed_claude_worker_refreshes_claude_json_when_the_config_directo
             copy.chmod(0o444)
     transcript.parent.mkdir(parents=True, exist_ok=True)
     transcript.write_bytes(b"before\n")
-    account, ident, rewritten = (old, "old", True) if case == "same" else (now, "now", False)
+    # ``same-dotdot`` is the same directory with an absolute ``..`` spelling; the rewrite must survive.
+    account = Path(f"{old}/../{old.name}") if case == "same-dotdot" else old if case == "same" else now
+    ident, rewritten = ("old", True) if case in ("same", "same-dotdot") else ("now", False)
     assert _config_turn(b, rec, account, ident, rewritten=rewritten) == 0
     assert (old / ".claude.json").read_bytes() == old_bytes and (now / ".claude.json").read_bytes() == now_bytes
     assert transcript.read_bytes() == b"before\n"
-    hits = [p for p in state.rglob("*") if p.is_file() and p.read_text(encoding="utf-8").strip() == str(account)]
+    want = str(Path(account).resolve())
+    hits = [p for p in state.rglob("*") if p.is_file() and p.read_text(encoding="utf-8").strip() == want]
     assert len(hits) == 1 and hits[0].parent == state

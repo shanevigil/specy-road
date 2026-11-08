@@ -460,7 +460,8 @@ not wrapped. In a sandboxed turn (`bwrap`, or `auto` with bwrap present):
   instructions: `~/.claude.json` (or `$CLAUDE_CONFIG_DIR/.claude.json`) and Cursor's `cli-config.json`. Each
   worker gets its own copy of these, made from yours on its first turn. The `$CLAUDE_CONFIG_DIR/.claude.json`
   copy (from `~/.claude/.claude.json` when the variable is unset) is made again when the config directory
-  changes, or when no directory was recorded for it; the same recorded directory keeps the worker's copy. A
+  changes, or when no directory was recorded for it. The directory is resolved before it is recorded, so
+  another spelling of the same directory, such as `account/../account`, keeps the worker's copy. A
   copy of a file inside a replaced directory (Cursor's `cli-config.json`, `$CLAUDE_CONFIG_DIR/.claude.json`)
   is a plain file in the worker's own directory, so the harness can replace it by rename (Cursor does on
   every start); `~/.claude.json` is bound over yours.

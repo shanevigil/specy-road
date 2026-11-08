@@ -45,7 +45,8 @@ body. Keep section bodies focused; link to PRs for detail.
 
 - A sandboxed Claude worker whose `CLAUDE_CONFIG_DIR` changes gets a new copy of that directory's `.claude.json`,
   including a worker launched before the directory was recorded and one whose copy is the empty read-only mount
-  placeholder. The same recorded directory keeps the worker's copy. The user's file is not written, and the
+  placeholder. The same resolved directory keeps the worker's copy, including another spelling such as
+  `account/../account`. The user's file is not written, and the
   worker's transcripts stay in its state directory.
 
 - A roster name that several entries share (profile effort aliases, or one model in an executor row and a reviewer

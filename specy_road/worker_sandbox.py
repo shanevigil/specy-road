@@ -202,8 +202,9 @@ def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> l
     user has it, and an auth name the user has as a directory is not bound. A seeded file is copied from the user's
     once: into the worker's own directory when it lives in a replaced one, so the harness can replace it by rename
     (Cursor's ``cli-config.json``; a rename onto a bound file fails with EBUSY), else bound writable over its path.
-    Claude's ``.claude.json`` is the exception: it is copied again when the resolved config directory differs from
-    the directory recorded beside the worker's state, or when nothing is recorded.
+    Claude's ``.claude.json`` is the exception: it is copied again when the config directory's ``Path.resolve``
+    differs from the directory recorded beside the worker's state, or when nothing is recorded. Two spellings of
+    one directory, such as ``account/../account``, are the same directory.
     """
     own = state_home(repo_root, rec.worker_id)
     dirs, seeds = HARNESS_STATE.get(rec.harness, ((), ()))
@@ -232,16 +233,18 @@ def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> l
 
 
 def _refresh_claude_config(own: Path, user: Path, copy: Path) -> None:
-    """Replace the worker's ``.claude.json`` unless it was copied from this same config directory.
+    """Replace the worker's ``.claude.json`` unless this turn's config directory resolves to the recorded one.
 
-    The record is a sibling of the mounted ``.claude`` tree. No record (a worker launched before it was written)
-    is refreshed too, including when ``copy`` is the empty mode-0444 mount placeholder. ``user`` is only read.
+    Identity is ``Path.resolve`` of the directory, on both sides of the comparison: ``account/../account`` is the
+    same directory as ``account``. The record sits beside the mounted ``.claude`` tree and stores that resolved
+    path. No record is refreshed too, including a mode-0444 placeholder. A directory with no ``.claude.json`` is
+    left unchanged. ``user`` is only read.
     """
     if not user.is_file():
         return
-    directory = user.parent
+    directory = user.parent.resolve()
     record = own / "claude-config-dir"
-    recorded = Path(record.read_text(encoding="utf-8").strip()) if record.is_file() else None
+    recorded = Path(record.read_text(encoding="utf-8").strip()).resolve() if record.is_file() else None
     if recorded == directory and copy.is_file():
         return
     _install_seed(user, copy)
