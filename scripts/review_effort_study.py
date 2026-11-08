@@ -26,13 +26,15 @@ the script reads. Every check runs before the first reviewer, and a study larger
     python scripts/review_effort_study.py policy-evidence [NODE_ID ...] [-o DIR]
 
 A case is one review round: node_key, commit and every record filed at that commit, from ``history/``
-and each live ``REVIEW-*.md`` no history copy duplicates; a record's filing time is its history stamp,
-else the end of its ``date`` day (:func:`filed_at`). It is
-replayable when its records validate and its commit, node and ``roadmap/orchestration.yaml`` (the
-integration branch's last commit before the round's latest filing time) all come back from git; the
-policy's public evaluator then runs on the case with the policy as configured and with only that policy
-disabled (:data:`POLICIES`). A case that is not replayable is cited-only when a record field or problem
-sentence names the policy, else unknown. ``cases.csv`` under ``-o`` lists each case's provenance.
+and each live ``REVIEW-*.md`` no history copy duplicates. It is replayable when its records validate and
+its commit, node and ``roadmap/orchestration.yaml`` (the integration branch's last commit before the
+round's filing time) all come back from git. Filing time, one rule (:func:`filed_at`): a history stamp is
+exact; a record known only by its local ``date`` spans that day in any time zone, from no earlier than
+the reviewed commit, and its round is replayable only when no integration commit in that span changed
+the config. The policy's public evaluator runs with the policy as configured and with only that policy
+disabled (:data:`POLICIES`); for a gate policy a difference counts only when the complete gate,
+replayed in a throwaway clone (:class:`Sandbox`), differs too. A case that is not replayable is
+cited-only when a record field or problem sentence names the policy, else unknown. ``cases.csv`` under ``-o`` lists each case's provenance.
 """
 
 from __future__ import annotations
@@ -43,9 +45,12 @@ import csv
 import functools
 import json
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -53,13 +58,14 @@ import yaml
 
 from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import GIT_WORKFLOW_REL, resolve_integration_defaults
-from specy_road.orchestration_config import (DEFAULT_CONFIG, DEFAULT_POLICY, family_of,
+from specy_road.orchestration_config import (DEFAULT_CONFIG, DEFAULT_POLICY, ORCHESTRATION_REL, family_of,
                                             load_orchestration_config)
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.review_deferral import deferral_in_effect, load_markers
 from specy_road.review_files import (PACKET_NAME, ReviewFile, latest_ready, list_rcas,
                                      list_review_history, list_reviews, reviews_dir, reviews_root)
-from specy_road.review_gate import delta_problem
+from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.review_gate import delta_problem, evaluate_gate
 from specy_road.review_policy_ref import committed_yaml
 from specy_road.review_pre_existing import PRE_EXISTING_NAME, gate_problems
 from specy_road.review_rca import Round, escalation, review_rounds
@@ -210,6 +216,8 @@ class Case:
         self.config: dict[str, Any] = {}
         self.workflow: dict[str, Any] = {}
         self.has_orchestration = False   # whether roadmap/orchestration.yaml existed then, not only defaults
+        self.rev = ""                    # the integration commit the configs were read at
+        self.day: date | None = None     # the filing day, the gate's ``today``
         self.provenance = ""
         self.problem = ""         # why the case is not replayable; empty when it is
 
@@ -289,26 +297,96 @@ def _agreement(c: Case, policy: dict[str, Any]) -> Any:
     return policy.get("agreement", True) and asks and not finish_gate
 
 
-#: policy -> (evaluator, the policy with only it disabled, citation pattern, outcome counted when it changes).
-POLICIES: dict[str, tuple[Callable[[Case, dict[str, Any]], Any], dict[str, Any], str, str]] = {
-    "delta": (_delta, {"delta_review": False}, r"delta_from|delta_review|delta review",
-              "a delta approval counted that is refused without it"),
-    "resumed delta": (_resumed, {"reviewer_resumed_delta": False},
-                      r"reviewer_resumed_delta|resumed delta|fresh_session: false",
-                      "a resumed approval counted that is refused without it"),
-    "red-green": (_red_green, {"red_green": False}, r"red_green|red-green", "a gate block it caused"),
-    "pre-existing": (_pre_existing, {"pre_existing": False}, r"verify_pre_existing|pre-existing",
-                     "a failing verifier it cleared"),
-    "deferral": (_deferral, {"deferral": False}, r"deferral|defer_findings|review defer",
-                 "a deferral it forced (a block resolved)"),
-    "RCA escalation": (_rca, {"escalate_same_acceptance_blocks": OFF, "escalate_review_rounds": OFF},
-                       r"\bRCA\b|escalat", "an RCA escalation it forced"),
-    "strong review": (_strong, {"strong_review": []}, r"strong_review|strong review",
-                      "a gate block it caused"),
-    "agreement": (_agreement, {"agreement": False},
-                  r"require_implementation_review_before_finish|review_gate_agreement",
-                  "a validate/doctor error it raised"),
+class Policy:
+    """One optional policy: its evaluator, how it is disabled, how a record cites it, and what a change is.
+
+    ``gate`` says whether the outcome is a review-gate outcome. Those changes are confirmed through
+    :func:`review_gate.evaluate_gate` (:class:`Sandbox`), with ``off`` written into ``orchestration.yaml``,
+    or, for a policy that is a file rather than a key, with the ``withhold`` files left out.
+    """
+
+    def __init__(self, evaluate: Callable[[Case, dict[str, Any]], Any], off: dict[str, Any], cites: str,
+                 means: str, gate: bool = True, withhold: str | None = None) -> None:
+        self.evaluate, self.off, self.cites, self.means = evaluate, off, cites, means
+        self.gate, self.withhold = gate, withhold
+
+
+POLICIES: dict[str, Policy] = {
+    "delta": Policy(_delta, {"delta_review": False}, r"delta_from|delta_review|delta review",
+                    "a delta approval counted that is refused without it"),
+    "resumed delta": Policy(_resumed, {"reviewer_resumed_delta": False},
+                            r"reviewer_resumed_delta|resumed delta|fresh_session: false",
+                            "a resumed approval counted that is refused without it"),
+    "red-green": Policy(_red_green, {"red_green": False}, r"red_green|red-green", "a gate block it caused"),
+    "pre-existing": Policy(_pre_existing, {"pre_existing": False}, r"verify_pre_existing|pre-existing",
+                           "a failing verifier it cleared", withhold=PRE_EXISTING_NAME),
+    "deferral": Policy(_deferral, {"deferral": False}, r"deferral|defer_findings|review defer",
+                       "a deferral it forced (a block resolved)", withhold="DEFERRAL-*"),
+    "RCA escalation": Policy(_rca, {"escalate_same_acceptance_blocks": OFF, "escalate_review_rounds": OFF},
+                             r"\bRCA\b|escalat", "an RCA escalation it forced", gate=False),
+    "strong review": Policy(_strong, {"strong_review": []}, r"strong_review|strong review",
+                            "a gate block it caused"),
+    "agreement": Policy(_agreement, {"agreement": False},
+                        r"require_implementation_review_before_finish|review_gate_agreement",
+                        "a validate/doctor error it raised", gate=False),
 }
+
+
+class Sandbox:
+    """A throwaway shared clone with no remote, where :func:`review_gate.evaluate_gate` replays one case.
+
+    The clone checks out the case's integration commit on the branch its ``git-workflow.yaml`` names, so the
+    gate reads that policy, registry, roadmap and decisions; ``work/reviews/<ID>/`` holds the node's history
+    filed by then, the round's latest record per model as ``REVIEW-*.md``, and today's READY, RCA,
+    PRE-EXISTING and DEFERRAL files. Every other condition is the same in both runs of a case, so a
+    difference is the selected policy's alone. Nothing is written outside the temporary directory.
+    """
+
+    def __init__(self, root: Path) -> None:
+        top = Path(git_text(["rev-parse", "--show-toplevel"], root) or root)
+        self._tmp = tempfile.TemporaryDirectory(prefix="policy-evidence-")
+        self.top = Path(self._tmp.name) / "repo"
+        for args in (["clone", "-q", "--shared", "--no-checkout", str(top), str(self.top)],
+                     ["-C", str(self.top), "remote", "remove", "origin"]):
+            subprocess.run(["git", *args], check=True, capture_output=True)
+        self.root = self.top / root.resolve().relative_to(top.resolve())
+
+    def _git(self, *args: str) -> None:
+        subprocess.run(["git", "-c", "user.name=policy-evidence", "-c", "user.email=policy-evidence@localhost",
+                        *args], cwd=self.top, check=True, capture_output=True)
+
+    def outcome(self, case: Case, policy: Policy | None = None) -> tuple[Any, ...]:
+        """The gate's outcome for ``case``, with ``policy`` disabled when given."""
+        self._git("checkout", "-q", "-f", "-B", str(case.workflow.get("integration_branch") or "main"), case.rev)
+        self._git("clean", "-q", "-f", "-d", "-x")
+        if policy is not None and policy.withhold is None:
+            config = {**case.config, "policy": {**case.config["policy"], **policy.off}}
+            (self.root / ORCHESTRATION_REL).write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+            self._git("add", "-f", "--", str(self.root / ORCHESTRATION_REL))
+            self._git("commit", "-q", "--no-verify", "-m", "policy-evidence: disable one policy")
+        self._fill(case, policy.withhold if policy is not None else None)
+        entry = next((e for e in read_registry(registry_path(self.root)).get("entries") or []
+                      if e.get("node_id") == case.node_id), {})
+        g = evaluate_gate(self.root, case.node, case.commit, today=case.day, branch=entry.get("branch"))
+        if g.config_error:   # a gate that cannot read its policy decides nothing either way
+            raise Missing(f"the gate does not replay: {g.config_error}")
+        return (g.passed, sorted(a.model for a in g.approvals), sorted(b.model for b in g.blocks),
+                g.verifier_problems, [i for i, _ in g.strong_unmet])
+
+    def _fill(self, case: Case, withhold: str | None) -> None:
+        here, there = reviews_dir(case.root, case.node_id), reviews_dir(self.root, case.node_id)
+        (there / "history").mkdir(parents=True)
+        until = max(b for _, b in map(filed_at, case.records))
+        for r in list_review_history(case.root, case.node_id):
+            span = filed_at(r)
+            if span and span[1] <= until:
+                shutil.copyfile(r.path, there / "history" / r.path.name)
+        for r in case.records:   # the round's latest record per model, as the gate reads it
+            shutil.copyfile(r.path, there / f"REVIEW-{r.data['model']}.md")
+        for pattern in ("READY-*.md", "RCA-*.md", PRE_EXISTING_NAME, "DEFERRAL-*"):
+            for f in here.glob(pattern):
+                if not (withhold and f.match(withhold)):
+                    shutil.copyfile(f, there / f.name)
 
 
 @functools.cache
@@ -331,41 +409,61 @@ def node_then(root: Path, node_id: str, commit: str) -> dict[str, Any] | None:
     return found
 
 
-def filed_at(r: ReviewFile) -> tuple[str, bool]:
-    """``(UTC time, from the date field)``: a record's filing time, the one rule for every record. A history
-    copy's name carries it; a record without that stamp (a live ``REVIEW-*.md`` or a ``superseded-*`` copy)
-    counts as filed at the end of its own ``date`` day, so the config found may be up to a day later than
-    the review. ``("", False)`` when neither exists."""
+def filed_at(r: ReviewFile) -> tuple[int, int] | None:
+    """``(earliest, latest)`` UTC epoch seconds the record can have been filed in: the one rule for every
+    record. A history copy's name stamps the instant. A record without that stamp (a live ``REVIEW-*.md`` or
+    a ``superseded-*`` copy) only says its local ``date``, so it spans that day in any time zone (UTC-12 to
+    UTC+14). ``None`` when neither exists."""
     m = STAMP.match(r.path.name)
     if m:
-        return "{}-{}-{}T{}:{}:{}Z".format(*m.groups()), False
+        t = int(datetime(*map(int, m.groups()), tzinfo=timezone.utc).timestamp())
+        return t, t
     day = str(r.data.get("date") or "") if isinstance(r.data, dict) else ""
-    return (f"{day}T23:59:59Z", True) if re.fullmatch(r"\d{4}-\d\d-\d\d", day) else ("", False)
+    if not re.fullmatch(r"\d{4}-\d\d-\d\d", day):
+        return None
+    midnight = int(datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp())
+    return midnight - 14 * 3600, midnight + 36 * 3600 - 1
+
+
+def _utc(t: int) -> str:
+    return datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def reconstruct(case: Case, branch: str) -> Case:
-    """Fill ``case`` from git at the round's latest filing time; ``problem`` says what did not come back."""
-    times = [filed_at(r) for r in case.records]
+    """Fill ``case`` from git at the round's filing time; ``problem`` says what did not come back.
+
+    The round was filed at its latest record's time. When that time is only an interval (a record known by
+    its date alone), the interval starts no earlier than the reviewed commit, and the reconstruction is
+    exact only when no integration commit inside it changed ``orchestration.yaml`` or ``git-workflow.yaml``.
+    """
+    spans = [filed_at(r) for r in case.records]
     commit = full_sha(case.root, case.commit)
     case.node = node_then(case.root, case.node_id, commit) if commit else None
-    at = max((t for t, _ in times if t), default="")
-    rev = git_text(["rev-list", "-1", "--first-parent", f"--before={at}", branch], case.root) if at else ""
+    born = int(git_text(["show", "-s", "--format=%ct", commit], case.root) or 0) if commit else 0
+    lo = max([born, *(a for a, _ in filter(None, spans))])
+    hi = max((b for _, b in filter(None, spans)), default=0)
+    rev = git_text(["rev-list", "-1", "--first-parent", f"--before={_utc(hi)}", branch], case.root) if hi else ""
+    moved = rev and lo < hi and git_text(["rev-list", "-1", "--first-parent", f"--after={_utc(lo)}", f"--before={_utc(hi)}",
+                                          branch, "--", f"./{ORCHESTRATION_REL}", f"./{GIT_WORKFLOW_REL}"],
+                                         case.root)
     data, err = load_orchestration_config(case.root, rev) if rev else (None, None)
     case.problem = next((why for bad, why in (
         (not all(r.ok for r in case.records), "a record does not validate"),
-        (not all(t for t, _ in times), "a record has no filing time"), (not commit, "the commit is not in git"),
+        (not all(spans), "a record has no filing time"), (not commit, "the commit is not in git"),
         (case.node is None, "the node is not readable at the commit"),
-        (not rev, f"no {branch} commit before {at}"), (bool(err), str(err))) if bad), "")
+        (lo > hi, f"a record is dated before its commit ({_utc(born)})"),
+        (not rev, f"no {branch} commit before {_utc(hi)}"),
+        (bool(moved), f"the config changed between {_utc(lo)} and {_utc(hi)}, the filing interval"),
+        (bool(err), str(err))) if bad), "")
     if case.problem:
         return case
-    case.commit = commit
+    case.commit, case.rev, case.day = commit, rev, datetime.fromtimestamp(hi, timezone.utc).date()
     case.config = copy.deepcopy(data or DEFAULT_CONFIG)
     case.config["policy"] = {**DEFAULT_POLICY, **(case.config.get("policy") or {})}
     case.has_orchestration = data is not None
     case.workflow = committed_yaml(case.root, rev, GIT_WORKFLOW_REL.as_posix())
-    dated = sum(by_date for _, by_date in times)
-    case.provenance = (f"{len(case.records)} record(s) filed by {at}"
-                       f"{f' ({dated} by their date field)' if dated else ''}; orchestration.yaml and "
+    when = _utc(hi) if lo >= hi else f"{_utc(lo)}..{_utc(hi)} (config unchanged in it)"
+    case.provenance = (f"{len(case.records)} record(s) filed {when}; orchestration.yaml and "
                        f"git-workflow.yaml at {branch}@{rev[:12]}{'' if data else ' (absent: defaults)'}")
     return case
 
@@ -395,37 +493,48 @@ def node_cases(root: Path, node_id: str, branch: str) -> list[Case]:
 def moves_others(case: Case, name: str) -> list[str]:
     """The other policies whose outcome moves when only ``name`` is disabled; a change is counted only
     when this is empty, so one policy's count never carries another's."""
-    policy, off = case.config["policy"], POLICIES[name][1]
+    policy, off = case.config["policy"], POLICIES[name].off
     moved = []
-    for other, (evaluate, *_) in POLICIES.items():
+    for other, pol in POLICIES.items():
         try:
-            if other != name and evaluate(case, policy) != evaluate(case, {**policy, **off}):
+            if other != name and pol.evaluate(case, policy) != pol.evaluate(case, {**policy, **off}):
                 moved.append(other)
         except Missing:
             continue
     return moved
 
 
-def classify(case: Case, name: str) -> str:
-    """``changed``, ``unchanged``, ``cited-only`` or ``unknown`` for one policy on one case."""
-    evaluate, off, pattern, _ = POLICIES[name]
+def classify(case: Case, name: str, sandbox: Sandbox) -> str:
+    """``changed``, ``unchanged``, ``cited-only`` or ``unknown`` for one policy on one case.
+
+    The policy's evaluator screens: equal outcomes with and without the policy are ``unchanged``. A
+    difference counts only when no other policy's evaluator moves too and, for a gate policy, when the
+    whole gate's outcome (:meth:`Sandbox.outcome`) differs as well; a gate that does not differ (another
+    condition refused the record anyway) is ``unchanged``.
+    """
+    pol = POLICIES[name]
     if not case.problem:
         try:
-            on = evaluate(case, case.config["policy"])
-            if on == evaluate(case, {**case.config["policy"], **off}):
+            on = pol.evaluate(case, case.config["policy"])
+            if on == pol.evaluate(case, {**case.config["policy"], **pol.off}):
                 return "unchanged"
             if not moves_others(case, name):
-                return "changed"
+                return "changed" if not pol.gate or sandbox.outcome(case) != sandbox.outcome(case, pol) \
+                    else "unchanged"
         except Missing:
             pass
     text = "\n".join(yaml.safe_dump(r.data) for r in case.records if isinstance(r.data, dict))
-    return "cited-only" if re.search(pattern, text, re.I) else "unknown"
+    return "cited-only" if re.search(pol.cites, text, re.I) else "unknown"
 
 
 def evidence_main(argv: list[str]) -> int:
     p = argparse.ArgumentParser(prog="review_effort_study.py policy-evidence",
                                 description="Count how often each optional review policy changed a gate "
-                                            "outcome, from work/reviews history and git (M16.1.6).")
+                                            "outcome, from work/reviews history and git (M16.1.6). A record "
+                                            "known only by its date is replayable only when the config did "
+                                            "not change during that day in any time zone; a gate policy's "
+                                            "change must show in the whole gate, replayed in a temporary "
+                                            "clone.")
     p.add_argument("nodes", nargs="*", metavar="NODE_ID", help="Leaves to count (default: every leaf)")
     p.add_argument("-o", "--output", type=Path, help="Directory for cases.csv (default work/policy-evidence)")
     add_repo_root_arg(p)
@@ -436,10 +545,10 @@ def evidence_main(argv: list[str]) -> int:
     nodes = ns.nodes or (sorted(d.name for d in top.iterdir() if d.is_dir() and not d.name.startswith("."))
                          if top.is_dir() else [])
     cases = [c for n in nodes for c in node_cases(root, n, branch)]
-    nodes = sorted({c.node_id for c in cases})
+    nodes, sandbox = sorted({c.node_id for c in cases}), Sandbox(root)
     rows = [{"node_id": c.node_id, "node_key": (c.node or {}).get("node_key", ""), "commit": c.commit,
              "round": c.round or "live", "records": len(c.records), "provenance": c.provenance or c.problem,
-             **{name: classify(c, name) for name in POLICIES}} for c in cases]
+             **{name: classify(c, name, sandbox) for name in POLICIES}} for c in cases]
     out = (ns.output or root / "work" / "policy-evidence").resolve()
     out.mkdir(parents=True, exist_ok=True)
     with (out / "cases.csv").open("w", newline="", encoding="utf-8") as f:
@@ -449,10 +558,10 @@ def evidence_main(argv: list[str]) -> int:
     print(f"{len(cases)} case(s) from {len(nodes)} node(s); "
           f"{sum(not c.problem for c in cases)} with full provenance; cases in {out / 'cases.csv'}\n")
     print("| Policy | Replayable | Changed | Cited-only | Unknown | Changed means |\n|---|---|---|---|---|---|")
-    for name, (*_, means) in POLICIES.items():
+    for name, pol in POLICIES.items():
         n = {k: sum(r[name] == k for r in rows) for k in ("changed", "unchanged", "cited-only", "unknown")}
         print(f"| {name} | {n['changed'] + n['unchanged']} | {n['changed']} | {n['cited-only']} | "
-              f"{n['unknown']} | {means} |")
+              f"{n['unknown']} | {pol.means} |")
     return 0
 
 
