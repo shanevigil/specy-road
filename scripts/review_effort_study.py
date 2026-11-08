@@ -31,9 +31,10 @@ its commit, node and ``roadmap/orchestration.yaml`` (the integration branch's la
 round's filing time) all come back from git. Filing time, one rule (:func:`filed_at`): a history stamp is
 exact; a record known only by its local ``date`` spans that day in any time zone, from no earlier than
 the reviewed commit, and its round is replayable only when no integration commit in that span changed
-the config. The policy's public evaluator runs with the policy as configured and with only that policy
-disabled (:data:`POLICIES`); for a gate policy a difference counts only when the complete gate,
-replayed in a throwaway clone (:class:`Sandbox`), differs too. A case that is not replayable is
+the config. Each policy is judged with the policy as configured and with only that policy disabled
+(:data:`POLICIES`): a gate policy by the complete gate alone, replayed in a throwaway clone
+(:class:`Sandbox`), and RCA escalation and agreement, which no GateResult field records, by their own
+public evaluators. A case that is not replayable is
 cited-only when a record field or problem sentence names the policy, else unknown. ``cases.csv`` under ``-o`` lists each case's provenance.
 """
 
