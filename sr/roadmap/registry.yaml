@@ -136,6 +136,10 @@ entries:
       - tests/test_agent_start_up_reading.py
       - .cursor/rules/027-version-numbers-require-human.mdc
       - .cursor/rules/030-git-workflow-management.mdc
+      - docs/contributor-guide.md
+      - docs/release-runbook.md
+      - docs/git-workflow.md
+      - .cursor/rules/026-release-version-tag-sync.mdc
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -178,6 +182,18 @@ entries:
     touch_zones:
       - scripts/review_effort_study.py
       - sr/planning/M16.1.6_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
+  - codename: shared-names-close-only-when-they-could-be-the-writer
+    node_id: M22.48
+    branch: feature/rm-shared-names-close-only-when-they-could-be-the-writer
+    touch_zones:
+      - specy_road/review_eligible.py
+      - specy_road/review_gate.py
+      - tests/test_review_gate_ready_author.py
+      - docs/roadmap-history.md
+      - CHANGELOG.md
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending

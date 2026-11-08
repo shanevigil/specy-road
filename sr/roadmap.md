@@ -21,6 +21,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.1.9` | Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold | task | Agentic-led | Not Started |
 | `M16.1.10` | Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold | task | Agentic-led | Not Started |
 | `M16.1.11` | Ruff quality rule families with per-file shrink-only baselines and per-release totals | task | Agentic-led | Not Started |
+| `M16.1.12` | Shipped agent templates carry no maintainer provenance comments | task | — | Not Started |
 | `M16.2` | Mechanical clean-up, layering and the in-process CLI | milestone | — | Not Started |
 | `M16.2.1` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Not Started |
 | `M16.2.2` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Not Started |
