@@ -317,7 +317,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.11_gui-acceptance-editing_624ea57d-6ecc-4356-8d99-d10c5a262e50.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics",
       "touch_zones": [
         "gui/pm-gantt/src/components/EditModal.tsx",
