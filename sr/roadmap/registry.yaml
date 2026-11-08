@@ -136,6 +136,10 @@ entries:
       - tests/test_agent_start_up_reading.py
       - .cursor/rules/027-version-numbers-require-human.mdc
       - .cursor/rules/030-git-workflow-management.mdc
+      - docs/contributor-guide.md
+      - docs/release-runbook.md
+      - docs/git-workflow.md
+      - .cursor/rules/026-release-version-tag-sync.mdc
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
