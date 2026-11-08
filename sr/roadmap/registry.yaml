@@ -129,3 +129,22 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
+  - codename: gui-group-siblings-action
+    node_id: M17.12
+    branch: feature/rm-gui-group-siblings-action
+    touch_zones:
+      - gui/pm-gantt/src/components/GroupSiblingsModal.tsx
+      - gui/pm-gantt/src/components/OutlineTable.tsx
+      - gui/pm-gantt/src/outlineGroup.ts
+      - gui/pm-gantt/src/outlineGroup.test.ts
+      - gui/pm-gantt/src/api.ts
+      - gui/pm-gantt/src/App.tsx
+      - gui/pm-gantt/src/usePmGuiHandlers.ts
+      - gui/pm-gantt/src/App.css
+      - specy_road/pm_gantt_static/
+      - tests/test_gui_outline_contract.py
+      - docs/pm-gui.md
+      - CHANGELOG.md
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
