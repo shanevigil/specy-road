@@ -52,7 +52,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.2_gui-orch-view-model_6beeb2f4-75de-4dd3-8266-71cb00efb234.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock",
       "touch_zones": [
         "gui/pm-gantt/src/orchestrationSnapshot.ts",
