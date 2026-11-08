@@ -32,6 +32,12 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A roster name that several entries share (profile effort aliases, or one model in an executor row and a reviewer
+  row) no longer closes the review gate by itself. A READY author is still excluded under every entry it may be,
+  and a record that may be any entry that wrote the leaf still does not count. A record whose entries wrote
+  nothing counts when they share one family, and closes the gate only when they span families. Leaves with two
+  real approvals can land again.
+
 - The review gate compares READY authors and review-record models after one normalization: case-folded, and a
   name stands for every roster entry whose id, `harness_model`, or profile `api_id`, file name or alias it is. An
   exact id gets no precedence. A READY naming `Opus` or the executor's alias still excludes the executor's own
