@@ -8,13 +8,15 @@ Mirrors tests/test_specyrd_init_guide_block.py for `CLAUDE.md`.
 
 from __future__ import annotations
 
+import fnmatch
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
 
 from specy_road import __version__
-from specy_road.agent_guide_block import AGENT_GUIDE, PROVENANCE
+from specy_road.agent_guide_block import AGENT_GUIDE, PROVENANCE, strip_provenance
 from specy_road.agents_md_block import (
     AGENTS_MD,
     CLAUDE_MD_TARGET_LINES,
@@ -37,7 +39,10 @@ from specy_road.init_project import run_init_project
 from specy_road.managed_block import CREATED, HTML_COMMENT, REFUSED, UNCHANGED, UPDATED
 from specy_road.specyrd_init import run_init
 
-TEMPLATES = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "specyrd"
+PACKAGE = Path(__file__).resolve().parent.parent / "specy_road"
+TEMPLATES = PACKAGE / "templates" / "specyrd"
+#: The block templates with each rule's provenance comment, for maintainers; no wheel ships it.
+PROVENANCE_FILE = PACKAGE / "agent_rule_provenance.md"
 
 HAND_AUTHORED = """# Our agents guide
 
@@ -365,12 +370,25 @@ def test_rules_file_is_the_full_rule_set_and_the_stub_points_at_it() -> None:
     stub = "\n".join(render_agents_lines())
     for needle in ("`.specyrd/AGENTS.md`", "`.specyrd/AGENTS.team.md`", "`.specyrd/AGENTS.local.md`", "never relax"):
         assert needle in stub, needle
-    assert "<!--" not in text and "<!--" not in stub   # provenance stays in the templates
+    assert "<!--" not in text and "<!--" not in stub   # provenance lives in PROVENANCE_FILE
+    pyproject = tomllib.loads((PACKAGE.parent / "pyproject.toml").read_text(encoding="utf-8"))
+    shipped = pyproject["tool"]["setuptools"]["package-data"]["specy_road"]
+    rel = PROVENANCE_FILE.relative_to(PACKAGE).as_posix()
+    assert not [glob for glob in shipped if fnmatch.fnmatchcase(rel, glob)]   # so no wheel ships it
+
+
+def provenance_section(name: str) -> str:
+    """Template ``name`` as :data:`PROVENANCE_FILE` holds it, provenance lines included."""
+    text = PROVENANCE_FILE.read_text(encoding="utf-8")
+    return text.split(f"<!-- template: {name} -->\n")[1].split("<!-- template: ")[0]
 
 
 @pytest.mark.parametrize("name", ["agents-md-block.md", "agents-rules.md", "claude-md-block.md"])
-def test_every_rule_in_a_block_template_is_followed_by_its_provenance(name: str) -> None:
-    lines = (TEMPLATES / name).read_text(encoding="utf-8").splitlines()
+def test_each_template_is_its_provenance_section_and_every_rule_there_has_one(name: str) -> None:
+    template = (TEMPLATES / name).read_text(encoding="utf-8")
+    assert not [ln for ln in template.splitlines() if PROVENANCE.fullmatch(ln)]
+    assert strip_provenance(provenance_section(name)) == template
+    lines = provenance_section(name).splitlines()
     missing = []
     for i, line in enumerate(lines):
         if not line.startswith(("- ", "**")):

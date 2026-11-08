@@ -38,7 +38,8 @@ _TEMPLATE_NAME = "claude-md-block.md"
 # convention to hook into.
 GUIDE_AGENTS = frozenset({"claude-code"})
 
-#: The line after each rule in a block template: why the rule exists, for maintainers only.
+#: The line after each rule in ``agent_rule_provenance.md``: why the rule exists, for maintainers
+#: only. The block templates are that file's sections without these lines.
 PROVENANCE = re.compile(r"<!-- prevents: [^|]+ \| enforced: [^|]+ \| ref: [^|]+ -->")
 
 
