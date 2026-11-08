@@ -140,3 +140,11 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
+  - codename: tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold
+    node_id: M16.1.10
+    branch: feature/rm-tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold
+    touch_zones:
+      - tests/scenarios/roadmap_edit/
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
