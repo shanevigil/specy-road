@@ -274,7 +274,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.43_digest-is-the-same-cold-or-warm_936cac0b-872f-4f66-82ae-9a987f865b57.md",
       "sibling_order": 42,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "digest gives the same result with a cold or warm history cache",
       "touch_zones": [
         "specy_road/history_index.py",
