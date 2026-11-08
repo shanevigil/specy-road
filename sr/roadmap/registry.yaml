@@ -113,25 +113,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer
-    node_id: M16.1.5
-    branch: feature/rm-agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer
-    touch_zones:
-      - AGENTS.md
-      - CLAUDE.md
-      - docs/toolkit-development.md
-      - specy_road/templates/specyrd/agents-rules.md
-      - docs/context-regressions.yaml
-      - tests/test_agent_start_up_reading.py
-      - .cursor/rules/027-version-numbers-require-human.mdc
-      - .cursor/rules/030-git-workflow-management.mdc
-      - docs/contributor-guide.md
-      - docs/release-runbook.md
-      - docs/git-workflow.md
-      - .cursor/rules/026-release-version-tag-sync.mdc
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: worker-stall-recovery
     node_id: M22.39
     branch: feature/rm-worker-stall-recovery

@@ -6,7 +6,7 @@
 **Not for:** using specy-road in an application repo ([`install-and-usage.md`](install-and-usage.md)) or cutting a release ([`release-runbook.md`](release-runbook.md)).
 
 **Must know without reading on:**
-- Feature work targets `dev`; `main` takes release-marker PRs only. Branch names must match `^(feature|fix|chore)/[a-z0-9]+(-[a-z0-9]+)*$`, and non-`chore/` PRs need a `Closes #N` / `Fixes #N` / `Refs #N` line.
+- Which branch to start from and merge into: the [branch policy](toolkit-development.md#maintainer-workflow-vs-consumer-workflow). Branch names must match `^(feature|fix|chore)/[a-z0-9]+(-[a-z0-9]+)*$`, and non-`chore/` PRs need a `Closes #N` / `Fixes #N` / `Refs #N` line.
 - Local CI parity before pushing: `pytest -n auto -q`, `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`, `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`.
 - After React/TypeScript changes, from `gui/pm-gantt/`: `npm ci && npm run lint && npm test && npm run build`.
 - Never run `specy-road init project` with no path in this repo; scaffold into `/tmp/specy-consumer-sandbox` or `playground/`.
@@ -95,14 +95,11 @@ runs the refusals covered so far through the CLI and checks each names its fix.
 
 ## Branching, tagging, and release process
 
-### Default branch is `dev`
+### Branch policy
 
-- All feature work targets **`dev`**.
-- The **`main`** branch is reserved for tagged releases. The
-  [`main-release-tag-gate.yml`](../.github/workflows/main-release-tag-gate.yml)
-  workflow rejects pushes to `main` that aren't release-marker PRs and
-  auto-tags merge commits.
-- `main` is intentionally minimal (README + workflows) until v0.1.
+Which branch to start from, where topic branches merge, when a PR is
+required and how `main` is promoted are stated once, in
+[toolkit-development.md](toolkit-development.md#maintainer-workflow-vs-consumer-workflow).
 
 ### Branch-naming convention (enforced)
 

@@ -14,7 +14,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.1.2` Parity harness: a review-gate decision table covering every review policy `parity-harness-a-review-gate-decision-table-covering-every-review-policy` — task — **Complete**
     - `M16.1.3` Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf `triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf` — task — **Not Started**
     - `M16.1.4` Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions `constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions` — task — **Complete**
-    - `M16.1.5` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Not Started**
+    - `M16.1.5` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Complete**
     - `M16.1.6` Review-policy evidence: how often each optional review policy changed a gate outcome `review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` — task — **Not Started**
     - `M16.1.7` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Not Started**
     - `M16.1.8` A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided `ruff-quality-baseline` — task — **Not Started**
@@ -309,7 +309,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.1.5` on `feature/rm-agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` since 2026-11-07
 - `M16.1.6` on `feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` since 2026-11-08
 - `M17.11` on `feature/rm-gui-acceptance-editing` since 2026-11-07
 - `M17.2` on `feature/rm-gui-orch-view-model` since 2026-11-07
@@ -327,17 +326,19 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
+| `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 44 | 0 | 2.73 | 64% | 19 | 3 |
+| `CHANGELOG.md` **flagged** | 43 | 0 | 2.72 | 63% | 18 | 3 |
+| `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 36 | 0 | 2.81 | 64% | 15 | 2 |
+| `docs` **flagged** | 36 | 0 | 2.89 | 64% | 14 | 3 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 44 | 0 | 2.70 | 61% | 19 | 3 |
-| `tests` **flagged** | 47 | 0 | 2.60 | 60% | 21 | 3 |
-| `AGENTS.md` | 1 | 0 | 1.00 | 0% | 0 | 0 |
+| `specy_road` **flagged** | 44 | 0 | 2.77 | 61% | 18 | 4 |
+| `tests` **flagged** | 47 | 0 | 2.66 | 60% | 20 | 4 |
+| `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.

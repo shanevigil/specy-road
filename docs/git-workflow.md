@@ -3,7 +3,7 @@
 ## Agent quickstart
 
 **Use this doc when:** claiming, branching, finishing or cleaning up roadmap work in a consumer repo, or reading a `roadmap/git-workflow.yaml` field.
-**Not for:** the toolkit repo's own branch policy — [`../CLAUDE.md`](../CLAUDE.md) (Repository git workflow policy); the command-by-command dev loop — [`dev-workflow.md`](dev-workflow.md).
+**Not for:** the toolkit repo's own branch policy — [`toolkit-development.md`](toolkit-development.md#maintainer-workflow-vs-consumer-workflow); the command-by-command dev loop — [`dev-workflow.md`](dev-workflow.md).
 
 **Must know without reading on:**
 - Register on the integration branch first (a registration-only commit), then `git checkout -b feature/rm-<codename>`; `specy-road do-next-available-task` does both and pushes.

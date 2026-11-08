@@ -17,10 +17,10 @@ and ask a human which applies; do not pick one.
 1. `constitution/purpose.md`
 2. `constitution/principles.md`
 3. `constraints/README.md`
-4. `docs/supply-chain-security.md`
-5. `roadmap/manifest.json` + chunk files: your node, parents, dependencies
-6. `planning/<id>_<slug>_<node_key>.md` for each node with `planning_dir` (ancestor sheets too)
-7. `shared/README.md`, then only the contracts cited for the task
+By task:
+4. `roadmap/manifest.json` + chunks: your node, parents, dependencies; `planning/<id>_<slug>_<node_key>.md` per node with `planning_dir`, ancestors too
+5. `docs/supply-chain-security.md`: dependencies or release
+6. `shared/README.md`, then only cited contracts
 
 Focused brief: `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`. Its `## 6. Dependency context` inlines each dependency's `## Intent`: read that instead of dependency sheets, and never paraphrase dependencies in a planning sheet you author.
 
