@@ -13,9 +13,10 @@ from typing import Any
 
 from specy_road import review_lock
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
-from specy_road.finish_implementation_check import base_ref
+from specy_road.finish_implementation_check import base_ref, in_zones
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import commits_behind, git_text, merge_conflicts
+from specy_road.git_subprocess import commits_behind, git_stdout, git_text, merge_conflicts
+from specy_road.nested_repos import covers, in_nested, is_repo_top, nested_prefixes, nested_repos, nested_zone_paths
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_files import (
@@ -26,7 +27,7 @@ from specy_road.toolkit_version import stamp_review_toolkit_version
 from specy_road.ready_run_checks import prepare_live_runs, run_argv, run_check
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
-from specy_road.review_target import ReviewTargetError, full_sha, resolve_target
+from specy_road.review_target import ReviewTargetError, full_sha, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, rebase_to_project, resolve_repo_root
 
 
@@ -178,6 +179,140 @@ _RED_GREEN_HINT = ("Fix it, or, if it is a check meant to fail without the fix, 
                    "instead of --verify or --run")
 
 
+def _cleaned_zones(zones) -> list[str]:
+    """Touch-zone strings with surrounding slashes removed; non-strings are skipped."""
+    cleaned = []
+    for zone in zones or []:
+        if isinstance(zone, str) and (text := zone.strip().strip("/")):
+            cleaned.append(text)
+    return cleaned
+
+
+def _status_paths(repo: Path) -> list[str] | None:
+    """Paths ``git status`` lists, both sides of a rename, or ``None`` when git cannot answer.
+
+    ``-z`` keeps a path with a space as one field. Ignored files are absent, so an
+    untracked file the project ignores is not an in-zone change.
+    """
+    out = git_stdout(["status", "--porcelain", "--untracked-files=all", "-z"], repo)
+    if out is None:
+        return None
+    fields, paths, i = out.split("\0"), [], 0
+    while i < len(fields):
+        entry = fields[i]
+        if len(entry) < 4:
+            i += 1
+            continue
+        paths.append(entry[3:])
+        i += 1
+        if entry[0] in "RC":   # the next field is the path before the rename or copy
+            if i < len(fields) and fields[i]:
+                paths.append(fields[i])
+            i += 1
+    return paths
+
+
+def uncommitted_in_zone(root: Path, zones: list[str]) -> list[str] | None:
+    """In-zone paths that are staged, unstaged, deleted or untracked, outer repo and covered nested repos.
+
+    ``None`` when git cannot list the outer tree, or a covered nested repository that is present:
+    a missing answer is not a clean tree. One that is not checked out here is skipped, as is a
+    nested repository the zones do not cover.
+    """
+    prefix = project_prefix(root)
+    listed = _status_paths(root)
+    if listed is None:
+        return None
+    skip = nested_prefixes(root)
+    found = [p for p in listed if not in_nested(p, skip) and in_zones(zones, p, prefix)]
+    for nr in nested_repos(root):
+        if not covers(zones, nr.path, prefix):
+            continue
+        repo = root / nr.path
+        if not is_repo_top(repo):   # absent here: the nested-zone diff helper has nothing to read either
+            continue
+        sub = _status_paths(repo)
+        if sub is None:
+            return None
+        lead = f"{prefix}{nr.path}/"
+        found += [lead + p for p in sub if in_zones(zones, lead + p, prefix)]
+    return sorted(set(found))
+
+
+def committed_in_zone(root: Path, base: str, commit: str, zones: list[str]) -> list[str] | None:
+    """In-zone paths committed since the integration merge base, or ``None`` when the outer diff cannot be listed.
+
+    Nested paths come from :func:`specy_road.nested_repos.nested_zone_paths`: the current branch's
+    merge base inside each configured nested repository. Paths git lists for the outer repository
+    inside a nested repository's directory are that repository's, so they are not counted twice.
+    """
+    changed = diff_paths(root, f"{base}...{commit}")
+    if changed is None:
+        return None
+    prefix = project_prefix(root)
+    skip = nested_prefixes(root)
+    outer = [p for p in changed if in_zones(zones, p, prefix) and not in_nested(p, skip)]
+    return sorted(set(outer).union(nested_zone_paths(root, zones)))
+
+
+def leaf_work_problem(root: Path, zones, base: str, commit: str) -> str | None:
+    """Why ``ready`` must refuse, or ``None`` when in-zone work is committed and the tree is clean there.
+
+    Zones are the claim's, or the node's when the claim has none. A path matches in either the
+    project-root or the git-root spelling, and a directory zone does not match a sibling whose
+    name only starts with the zone's.
+    """
+    cleaned = _cleaned_zones(zones)
+    dirty = uncommitted_in_zone(root, cleaned)
+    if dirty is None:
+        return "git cannot list uncommitted paths"
+    if dirty:
+        return "uncommitted in-zone changes: " + ", ".join(dirty)
+    committed = committed_in_zone(root, base, commit, cleaned)
+    if committed is None:
+        return f"git cannot list the paths changed in {base[:12]}...{commit[:12]}"
+    if not committed:
+        return "no committed in-zone path differs from the integration merge base"
+    return None
+
+
+def empty_ready_error(root: Path, zones, data: dict[str, Any]) -> str | None:
+    """An unblocked READY whose commit is its base, when the leaf's zones cover no nested repository.
+
+    A ``blocked_on`` hand-off stays valid: the executor stopped on purpose. A leaf whose zones cover
+    a configured nested repository keeps today's reading, because an outer commit equal to its base
+    does not say whether the nested repository holds the work.
+    """
+    if data.get("blocked_on"):
+        return None
+    prefix = project_prefix(root)
+    if any(covers(_cleaned_zones(zones), nr.path, prefix) for nr in nested_repos(root)):
+        return None
+    if not same_commit(root, data.get("commit"), data.get("base")):
+        return None
+    return "commit resolves to its base: no committed work on this leaf"
+
+
+def _checked_runs(root: Path, zones, base: str, commit: str, runs: list[str], argv_runs: list[list[str]],
+                  ) -> tuple[list[dict[str, Any]], str | None]:
+    """Run the verifiers only when the leaf already has committed, clean in-zone work.
+
+    The same check runs again afterwards, and a command that moved ``HEAD`` is refused. Either
+    refusal is returned with no READY write, so an existing file stays byte-for-byte.
+    ``commit`` is the fallback tip when ``HEAD`` cannot be read.
+    """
+    tip = git_text(["rev-parse", "HEAD"], root) or commit
+    if problem := leaf_work_problem(root, zones, base, tip):
+        return [], problem
+    live, refuse = _live_run_rows(runs, argv_runs)
+    if refuse:
+        return live, refuse
+    after = git_text(["rev-parse", "HEAD"], root) or ""
+    if after != tip:
+        return live, f"HEAD moved during --run ({tip[:12]} -> {after[:12] or '?'})"
+    return live, leaf_work_problem(root, zones, base, after)
+
+
 def _live_run_rows(runs: list[str], argv_runs: list[list[str]]) -> tuple[list[dict[str, Any]], str | None]:
     """Run ``--run`` and ``--run-argv`` verifiers; return new rows or a refusal message."""
     rows: list[dict[str, Any]] = []
@@ -207,6 +342,9 @@ def cmd_ready(ns: argparse.Namespace) -> int:
     """Write ``READY-<model>.md`` for ``HEAD``, validated by the loader ``handoff status`` uses; exit 1 on refusal.
 
     ``--run`` commands run last, after every cheap refusal, so a wrong branch never costs a test run.
+    A leaf with no committed in-zone change, or with uncommitted in-zone changes, is refused before
+    those commands and again after them; a command that moves ``HEAD`` is refused too, and an
+    existing READY file is left as it was.
     """
     root = resolve_repo_root(ns)
     raw_runs = getattr(ns, "run", None) or []
@@ -233,9 +371,9 @@ def cmd_ready(ns: argparse.Namespace) -> int:
     body = ready_body(red_green, ns.note)
     if errs := _ready_errors(render_front_matter(data, body), ns.node_id, t):
         return _refuse("; ".join(errs))
-    live, refuse = _live_run_rows(runs, argv_runs)
-    if refuse:
-        return _refuse(refuse)
+    live, problem = _checked_runs(root, t.touch_zones, t.base, t.commit, runs, argv_runs)
+    if problem:
+        return _refuse(problem)
     verify.extend(live)
     text = render_front_matter({**data, "verify": verify}, body)
     if errs := _ready_errors(text, ns.node_id, t):

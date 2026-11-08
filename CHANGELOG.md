@@ -48,6 +48,8 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- `specy-road ready` refuses, before any `--run` and again after, when the branch has no committed in-zone change against the integration merge base (this repository or a configured nested repository the zones cover) or when an in-zone path is staged, unstaged, deleted or untracked and not ignored. The refusal names those paths. A `--run` that moves `HEAD` is refused too. Nothing is written, and an existing READY file is left unchanged. For a leaf whose zones cover no nested repository, `handoff status` shows an existing unblocked READY whose commit is its base as INVALID, and with no independent review records the state is `waiting` (no reviewer prompt). A READY that declares `blocked_on` stays `executor_blocked`.
+
 - A sandboxed Claude worker whose `CLAUDE_CONFIG_DIR` changes gets a new copy of that directory's `.claude.json`,
   including a worker launched before the directory was recorded and one whose copy is the empty read-only mount
   placeholder. The same resolved directory keeps the worker's copy, including another spelling such as
