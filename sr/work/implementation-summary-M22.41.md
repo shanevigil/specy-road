@@ -18,7 +18,7 @@ Declared: `specy_road/review_gate_ready.py`, `specy_road/review_files.py`, `test
 
 Class: a covered nested repository that is checked out here, but whose git evidence is missing (no integration base, no merge base, or a committed diff or status listing git cannot produce). `nested_zone_paths` turns that into no paths, so committed outer work wrote READY.
 
-One rule, in `_nested_in_zone`, used by `committed_in_zone` and therefore by both the preflight and the postflight (`_checked_runs` calls `leaf_work_problem` twice). A checkout is assessed only when its integration base resolves and, when the leaf branch exists there, the merge base and the committed diff can be listed. Any of those missing refuses and names the repository and the missing evidence. No leaf branch means no commits. The same sentence is the `ready` command description. `specy_road/nested_repos.py` is outside the touch zones, so the caller stopped using `nested_zone_paths` rather than changing that helper.
+One rule, in `_nested_in_zone`, used by `committed_in_zone` and therefore by both the preflight and the postflight (`_checked_runs` calls `leaf_work_problem` twice). A checkout is assessed only when its integration base resolves and, when the leaf branch exists there, the merge base and the committed diff can be listed. Any of those missing refuses and names the repository and the missing evidence. No leaf branch means no commits. That sentence stays in the `_nested_in_zone` docstring and in `docs/orchestration-review.md`. `specy_road/nested_repos.py` is outside the touch zones, so the caller stopped using `nested_zone_paths` rather than changing that helper.
 
 Broader than the review, and stopped there: a covered repository that is not a checkout is still not read. Inventing a checkout is a different problem; the review's case is a checkout whose base does not resolve.
 
@@ -35,12 +35,26 @@ Broader than the review, and stopped there: a covered repository that is not a c
 - No leaf branch, integration base `dev` resolves, outer `src/a.py` committed: result: exit 0 and READY is written (the parametrized partner of the typo row).
 - Covered `src/engine` configured but not checked out, outer `src/a.py` committed: result: exit 0 and READY is written. Documented limit; not widened.
 - Existing nested-only row (leaf branch with `core.py`, no outer in-zone commit): result: still accepted (56 ready tests passed, including the 14 from the first round).
+- `add_ready_parser` `description=` against `tests/parity/golden/help/specy-road__ready.txt`: result: the paragraph is gone, and the golden was not edited (that path is outside the touch zones).
+- `help=` and `description=` lines in `review_gate_ready.py` and `review_cli.py` versus `origin/WIP/improvements-0-3-1`: result: no difference, so no other help transcript moved.
+- `test_help_transcript_matches_golden` for every command the surface walks: result: 146 passed, 1 skipped.
+- `tests/parity`: result: 234 passed, 1 skipped.
+
+## Fix round (claude-opus-5-5-review, `47a14d20`)
+
+Class: `specy-road ready --help` stdout against the committed parity golden. An argparse `description=` is printed under the usage line, and `tests/parity/golden/help/specy-road__ready.txt` does not contain it. The golden path is not in this leaf's touch zones, so the description was removed rather than the golden regenerated. The bounded rule stays in the docstring and in `docs/orchestration-review.md`.
+
+- `add_ready_parser` `description=`: result: removed. `help=` on `ready` is the one-line text the golden already has.
+- Every `help=` and `description=` line in the diff of `review_gate_ready.py` and `review_cli.py` against `origin/WIP/improvements-0-3-1`: result: none remain, so no other command's help text moved.
+- `tests/parity/test_command_surface.py::test_help_transcript_matches_golden` (every command the surface walks, including `ready` and the parents that only list its short help): result: 146 passed, 1 skipped.
+- `tests/parity`: result: 234 passed, 1 skipped.
 
 ## Verification
 
 - `python -m pytest tests/test_ready_empty_leaf.py tests/test_ready_command.py tests/test_review_evidence.py tests/test_review_cli.py -q --tb=short -p no:cacheprovider`: 94 passed on the first commit; after this fix, `tests/test_ready_empty_leaf.py` and `tests/test_ready_command.py`: 56 passed.
 - `ruff check specy_road tests scripts`: clean.
 - `python -m specy_road.cli file-limits`: OK (existing hard-alert warnings only).
+- After dropping `description=`: `tests/parity` 234 passed, 1 skipped; `ruff check specy_road tests scripts` clean.
 
 ## Added
 

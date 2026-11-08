@@ -440,16 +440,7 @@ def _refuse(msg: str) -> int:
 
 
 def add_ready_parser(sub: argparse._SubParsersAction) -> None:
-    r = sub.add_parser(
-        "ready",
-        help="Write the executor's READY hand-off for HEAD into work/reviews/<NODE_ID>/",
-        description="Write the executor's READY hand-off for HEAD into work/reviews/<NODE_ID>/. "
-                    "A checked-out covered nested repository is assessed only when its integration base "
-                    "resolves and, when the leaf branch exists there, the merge base and the committed diff "
-                    "can be listed; any of those missing refuses and names the repository and the missing "
-                    "evidence. No leaf branch means no commits. A covered repository that is not checked out "
-                    "is not read.",
-    )
+    r = sub.add_parser("ready", help="Write the executor's READY hand-off for HEAD into work/reviews/<NODE_ID>/")
     r.add_argument("node_id")
     r.add_argument("--model", required=True, help="Your roster id; the file is READY-<model>.md")
     r.add_argument("--run", action="append", default=[], metavar="CMD",
