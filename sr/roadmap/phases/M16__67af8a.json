@@ -383,6 +383,35 @@
         "constraints/clone-baseline.json"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "The provenance comments in specy_road/templates/specyrd/agents-rules.md, agents-md-block.md and claude-md-block.md move to one maintainer-only file outside specy_road/templates/, so no wheel ships them; the code that reads them (agent_guide_block, agents_md_block, chore_garden) reads that file instead, with the same behaviour for maintainers",
+        "Tests: a rendered consumer AGENTS.md, CLAUDE.md block and rules file contain no provenance comment; tests/test_agents_md_block.py and tests/test_chore_mode.py pass against the moved file; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "shipped-templates-carry-no-provenance-comments",
+      "dependencies": [
+        "01db66ad-a91c-48e3-953e-4083f5f14a13"
+      ],
+      "id": "M16.1.12",
+      "node_key": "122b76b1-4d3f-428f-a893-79c236fd2e87",
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.12_shipped-templates-carry-no-provenance-comments_122b76b1-4d3f-428f-a893-79c236fd2e87.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "Shipped agent templates carry no maintainer provenance comments",
+      "touch_zones": [
+        "specy_road/templates/specyrd/agents-rules.md",
+        "specy_road/templates/specyrd/agents-md-block.md",
+        "specy_road/templates/specyrd/claude-md-block.md",
+        "specy_road/agent_guide_block.py",
+        "specy_road/agents_md_block.py",
+        "specy_road/bundled_scripts/chore_garden.py",
+        "tests/test_agents_md_block.py",
+        "tests/test_chore_mode.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
