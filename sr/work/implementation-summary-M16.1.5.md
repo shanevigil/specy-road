@@ -89,6 +89,12 @@ The review repeats the round 1 and round 2 findings A1 and A4 unchanged. No new 
   - `AGENTS.md` § Coordination: the "Branches" line's parenthetical summary of the policy was dropped, leaving only the link.
 - **A4 (narrowed by the coordinator; met).** Acceptance now asks only that the shipped `agents-rules.md` cite files an adopter has. `tests/test_agent_start_up_reading.py::test_shipped_rules_cite_only_files_an_adopter_has` checks it, and the load order names only files a fresh consumer repo has (checked by the start-up test's missing-file assertion). Provenance comments are unchanged; moving them is M16.1.12.
 
+## Fix round 5 (review at `14b8efb8`)
+
+- **A1 (fixed).** Class: a branch-target statement that contradicts the canonical branch policy. Round 4 caught the section copy but missed the guide's "Must know" summary line.
+  - **The fix:** `docs/contributor-guide.md:9` said "Feature work targets `dev`; `main` takes release-marker PRs only". It now links to the branch policy in `docs/toolkit-development.md`. `AGENTS.md` § Coordination points there as the policy's one statement, so the link skips the extra hop.
+  - **Kept:** the guide's own branch-name regex and issue-link rule stay; they are CI conventions enforced by `pr-conventions.yml`, not the branch policy.
+
 ## Probes
 
 - Digest in the consumer closure: now counted at 23 lines; total 161, under 400.
@@ -111,6 +117,11 @@ The review repeats the round 1 and round 2 findings A1 and A4 unchanged. No new 
 - Round 4, version-rule copies: grep for "never bump", "do not bump", "without the exact number" and "unless the user stated" finds only `AGENTS.md` (canonical). 026, 027 and `release-runbook.md:9` now link; `release-runbook.md:109` already linked.
 - Round 4, broken anchors: nothing links `#default-branch-is-dev`; the new links target `#maintainer-workflow-vs-consumer-workflow` and `#version-numbers-human-owned`, which exist.
 - Round 4, tests that read the edited docs: `tests/test_release_harness.py` (030 and runbook strings still present), `tests/test_refusals_name_their_fix.py` and `tests/test_sibling_repo_approvals.py` pass.
+- Round 5, wider grep: tracked `*.md`/`*.mdc` (excluding `sr/`, fixtures, CHANGELOG, design-notes) for "targets `dev`", "work targets", "PR to/into `dev`" and "merge … into `dev`".
+  - `contributor-guide.md:9`: fixed.
+  - `toolkit-development.md:55`: the canonical text.
+  - `contributor-guide.md:364`: states where Dependabot's PRs target (a repository configuration fact tied to the release gate), so it stays.
+  - `release-runbook.md:843`: a runbook step's post-release docs PR target; the runbook owns release steps, so it stays.
 - Provenance comments by template: `agents-rules.md` 27, `agents-md-block.md` 8, `claude-md-block.md` 2, `agents-team.md` 0.
 - Readers of provenance comments: `agent_guide_block.py` (`PROVENANCE`, `strip_provenance`), `agents_md_block.py` (render), `chore_garden.py` (advisory-rule), and `tests/test_agents_md_block.py`, `tests/test_chore_mode.py`.
 
