@@ -14,27 +14,69 @@ import {
 const NOW = new Date("2026-11-08T12:00:00Z");
 const mock = mockJson as unknown as OrchestrationSnapshot;
 
-/** Every key path in a snapshot-shaped value, in the module's notation. */
-function keyPaths(value: unknown, prefix = "", out = new Set<string>()): Set<string> {
+type ObjectVisit = { path: string; at: string; obj: Record<string, unknown> };
+
+/**
+ * Every object in a snapshot-shaped value: `path` in the module's key-path
+ * notation, `at` the concrete location (`leaves.k1.workers[0]`) for messages.
+ */
+function objects(value: unknown, path = "", at = "", out: ObjectVisit[] = []): ObjectVisit[] {
   if (Array.isArray(value)) {
-    for (const item of value) keyPaths(item, `${prefix}[]`, out);
+    value.forEach((item, i) => objects(item, `${path}[]`, `${at}[${i}]`, out));
   } else if (value !== null && typeof value === "object") {
-    for (const [k, v] of Object.entries(value)) {
-      const seg = prefix === "leaves" ? "*" : k;
-      const path = prefix ? `${prefix}.${seg}` : seg;
-      out.add(path);
-      keyPaths(v, path, out);
+    const obj = value as Record<string, unknown>;
+    out.push({ path, at, obj });
+    for (const [k, v] of Object.entries(obj)) {
+      const seg = path === "leaves" ? "*" : k;
+      objects(v, path ? `${path}.${seg}` : seg, at ? `${at}.${k}` : k, out);
     }
   }
   return out;
 }
 
+const childPath = (parent: string, key: string, mapKeys: boolean) =>
+  `${parent ? `${parent}.` : ""}${mapKeys ? "*" : key}`;
+
+/** Every key path the value uses, in the module's notation. */
+const keyPaths = (value: unknown) =>
+  new Set(
+    objects(value).flatMap(({ path, obj }) =>
+      Object.keys(obj).map((k) => childPath(path, k, path === "leaves")),
+    ),
+  );
+
+/**
+ * Rule: a key path is unlisted when no list names it; a required key is
+ * missing when any concrete object at its parent path lacks it (so one
+ * complete entry cannot hide an incomplete sibling). Map entries (`leaves.*`)
+ * and list items are checked only where they exist: an empty map or list,
+ * or a null claim, has no children to check. The whole mock must still
+ * contain every required path once, so a list that is always empty is caught;
+ * that check skips paths under a container already reported missing.
+ */
 function contractProblems(snapshot: unknown): { unlisted: string[]; missing: string[] } {
-  const paths = keyPaths(snapshot);
   const known = new Set([...requiredKeys, ...optionalKeys]);
+  const paths = keyPaths(snapshot);
+  const missing: string[] = [];
+  const missingPaths: string[] = [];
+  for (const { path, at, obj } of objects(snapshot)) {
+    if (path === "leaves") continue;
+    for (const req of requiredKeys) {
+      const key = req.slice(req.lastIndexOf(".") + 1);
+      if (childPath(path, key, false) === req && !Object.hasOwn(obj, key)) {
+        missing.push(at ? `${at}.${key}` : key);
+        missingPaths.push(req);
+      }
+    }
+  }
   return {
     unlisted: [...paths].filter((p) => !known.has(p)).sort(),
-    missing: requiredKeys.filter((p) => !paths.has(p)),
+    missing: [
+      ...missing,
+      ...requiredKeys.filter(
+        (p) => !paths.has(p) && !missingPaths.some((m) => p === m || p.startsWith(`${m}.`) || p.startsWith(`${m}[`)),
+      ),
+    ],
   };
 }
 
@@ -56,7 +98,38 @@ describe("snapshot key paths", () => {
     delete scratch.leafless_workers;
     const { unlisted, missing } = contractProblems(scratch);
     expect(unlisted).toEqual(["leaves.*.workers[].stauts"]);
-    expect(missing).toContain("leafless_workers");
+    expect(missing).toEqual(["leafless_workers", "leaves.k-blocked.workers[0].status"]);
+  });
+
+  // Each field is still present on a sibling entry, so only a per-object
+  // check sees it missing.
+  it.each([
+    ["leaves", "k-blocked", "workers", 0, "harness"],
+    ["leaves", "k-unknown", "workers", 1, "pid_alive"],
+    ["leaves", "k-blocked", "worktrees", 1, "dirty"],
+    ["leaves", "k-held-list", "reviews", 0, "fresh_for_head"],
+    ["leaves", "k-exec-blocked", "claim", "branch"],
+    ["leaves", "k-held-gate"],
+    ["leafless_workers", 0, "started_at"],
+  ] as (string | number)[][])("reports %s.%s… missing on that one entry", (...segs) => {
+    const scratch = structuredClone(mockJson) as unknown as Record<string | number, unknown>;
+    const parent = segs.slice(0, -1).reduce<Record<string | number, unknown>>(
+      (o, s) => o[s] as Record<string | number, unknown>,
+      scratch,
+    );
+    const last = segs[segs.length - 1];
+    if (segs.length === 2) {
+      // A leaf entry with every required field gone.
+      parent[last] = {};
+    } else {
+      delete parent[last];
+    }
+    const at = segs.map((s) => (typeof s === "number" ? `[${s}]` : `.${s}`)).join("").slice(1);
+    const expected =
+      segs.length === 2
+        ? ["claim", "workers", "worktrees", "reviews"].map((k) => `${at}.${k}`)
+        : [at];
+    expect(contractProblems(scratch)).toEqual({ unlisted: [], missing: expected });
   });
 
   it("the mock covers every worker status", () => {
