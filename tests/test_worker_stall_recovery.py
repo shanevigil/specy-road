@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import signal
 import sys
 import time
 from datetime import datetime, timedelta
@@ -20,6 +22,7 @@ from specy_road import worker_ops_slots as slots
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import doctor
+from specy_road.session_presence import current_user, list_sessions, start_session
 from specy_road.worker_process import wrapper_alive
 
 OLD = "2026-01-01T00:00:00+00:00"   # long past policy.stall_after_seconds (default 600)
@@ -62,17 +65,23 @@ def test_a_worker_that_never_wrote_output_is_flagged_from_its_launch(tmp_path: P
     assert "Stalled workers" in out and f"{rec.worker_id} (M1.1) silent " in out
 
 
-def test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes(tmp_path: Path, capsys) -> None:
+def _silent_worker(tmp_path: Path) -> tuple[Path, ws.WorkerRecord]:
+    """A worker whose harness printed its session id and then went silent for a minute, under a live wrapper."""
     repo, script = make_worker_repo(tmp_path)
     spec = tmp_path / "silent.json"
     spec.write_text(json.dumps({"lines": [{"type": "system", "subtype": "init", "session_id": "quiet"}], "sleep": 60}))
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     wr.spawn(repo, rec, wa.Launch([sys.executable, str(script), str(spec)]))
+    for _ in range(100):
+        if ws.load_record(repo, rec.worker_id).provider_session_id:
+            break
+        time.sleep(0.1)
+    return repo, ws.load_record(repo, rec.worker_id)
+
+
+def test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes(tmp_path: Path, capsys) -> None:
+    repo, rec = _silent_worker(tmp_path)
     try:
-        for _ in range(100):
-            if ws.load_record(repo, rec.worker_id).provider_session_id:
-                break
-            time.sleep(0.1)
         # Output within the window: not stalled, so recover leaves the working worker running.
         assert run_worker_cli("worker", "recover", rec.worker_id, "--repo-root", str(repo)) == 1
         assert "not stalled" in capsys.readouterr().err
@@ -84,13 +93,18 @@ def test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes(tmp_path: Path
         git(repo, "commit", "-qm", "worker commit")
         head = git(repo, "rev-parse", "HEAD")
         (repo / "wip.txt").write_text("uncommitted\n")
+        # The stalled turn's own presence session (as `session start` in the harness names it) and a peer's.
+        own, peer = f"{current_user()}-s{busy.pgid}", f"{current_user()}-s1"
+        for agent in (own, peer):
+            start_session(repo, agent, paths=["src/"], worktree=repo)
         ws.mutate(repo, rec, lambda r: setattr(r, "last_output_at", OLD))
         assert run_worker_cli("worker", "sync", "--json", "--repo-root", str(repo)) == 0
         [stalled] = json.loads(capsys.readouterr().out)["stalled"]
         assert stalled["worker_id"] == rec.worker_id and stalled["silent_seconds"] >= 600
         assert run_worker_cli("worker", "recover", rec.worker_id, "--json", "--repo-root", str(repo)) == 0
         assert "stalled" not in json.loads(capsys.readouterr().out)["flags"]   # the resumed turn starts unflagged
-        assert not wrapper_alive(busy, repo)   # the stalled turn was ended
+        assert not wrapper_alive(busy, repo)   # the stalled turn was ended, and its presence session with it
+        assert {s.agent for s in list_sessions(repo)} == {peer}
         # A second recover queued behind the first, before the new wrapper writes its launch time, finds no stall:
         # it neither ends the fresh turn nor spends a retry.
         ws.mutate(repo, rec, lambda r: setattr(r, "last_output_at", OLD))
@@ -100,6 +114,26 @@ def test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes(tmp_path: Path
         assert after.state == "idle" and after.recoveries == 1 and ws.FLAG_STALLED not in after.flags
         assert [e.type for e in ws.events_since(repo, rec.worker_id)].count("resumed") == 1
         assert git(repo, "rev-parse", "HEAD") == head and (repo / "wip.txt").read_text() == "uncommitted\n"
+    finally:
+        if ws.load_record(repo, rec.worker_id).state != "terminated":
+            ops.terminate(repo, rec.worker_id)
+
+
+def test_recover_ends_a_live_harness_whose_wrapper_died(tmp_path: Path, capsys) -> None:
+    repo, rec = _silent_worker(tmp_path)
+    try:
+        os.kill(rec.pid, signal.SIGKILL)   # the wrapper this test started; its harness lives on in the group
+        os.waitpid(rec.pid, 0)
+        ws.mutate(repo, rec, lambda r: setattr(r, "last_output_at", OLD))
+        assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
+        capsys.readouterr()
+        assert ws.FLAG_ORPHAN in ws.load_record(repo, rec.worker_id).flags
+        assert run_worker_cli("worker", "recover", rec.worker_id, "--json", "--repo-root", str(repo)) == 0
+        out = json.loads(capsys.readouterr().out)
+        assert ws.FLAG_ORPHAN not in out["flags"] and out["pid"] != rec.pid
+        with pytest.raises(ProcessLookupError):   # the old harness was ended before the flag went
+            os.kill(rec.harness_pid, 0)
+        assert wait_for_worker(repo, rec.worker_id, timeout=30).state == "idle"
     finally:
         if ws.load_record(repo, rec.worker_id).state != "terminated":
             ops.terminate(repo, rec.worker_id)

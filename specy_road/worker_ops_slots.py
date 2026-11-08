@@ -17,6 +17,7 @@ from specy_road.worker_orphans import holding_slots
 from specy_road.worker_process import wrapper_gone
 from specy_road.worker_state import (
     FLAG_NEEDS_PERSON,
+    FLAG_ORPHAN,
     FLAG_STALLED,
     WorkerError,
     WorkerRecord,
@@ -127,7 +128,7 @@ def recover(repo_root: Path, worker_id: str, *, offline: bool = False,
     resumed; past :func:`recovery_limit` it is flagged ``needs_person`` with its last output named (M22.39)."""
     from specy_road.worker_adapters import adapter_for   # noqa: PLC0415
     from specy_road.worker_ops_message import CONTINUE_PROMPT, _send   # noqa: PLC0415 — it imports this module
-    from specy_road.worker_process import kill_group, process_alive, require_branch   # noqa: PLC0415
+    from specy_road.worker_process import require_branch   # noqa: PLC0415
 
     with workers_lock(repo_root):
         sweep_stalled(repo_root, now=now)
@@ -157,10 +158,26 @@ def recover(repo_root: Path, worker_id: str, *, offline: bool = False,
         mutate(repo_root, rec, lambda r: r.__dict__.update(recoveries=n, flags=[f for f in r.flags if f != FLAG_STALLED]))
         append_event(repo_root, rec, "error", source="system",
                      summary=f"stalled; recovery {n} of {limit}: ending its processes and resuming; last output: {last}")
-        if process_alive(rec, repo_root):
-            kill_group(rec, repo_root)   # the wrapper's group; the worktree and its commits are untouched
+        _end_turn(repo_root, load_record(repo_root, worker_id))
         return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "recover", offline,
                      no_queue=True)
+
+
+def _end_turn(repo_root: Path, rec: WorkerRecord) -> None:
+    """End the stalled turn as ``terminate`` does, minus closing the record: signal the process group (when anything
+    of it lives) and, only once it is confirmed gone (``kill_group`` raises otherwise), drop what that turn left
+    behind: the ``wrapper_gone_harness_alive`` flag and the worker's own presence session (``<user>-s<pgid>``).
+    The worktree, its commits and its uncommitted files are untouched."""
+    from specy_road.session_presence import current_user   # noqa: PLC0415
+    from specy_road.worker_ops_lifecycle import _end_worker_session   # noqa: PLC0415 — terminate's own cleanup
+    from specy_road.worker_process import kill_group, process_alive   # noqa: PLC0415
+
+    agent = f"{current_user()}-s{rec.pgid}" if rec.pgid else None   # read before the new turn replaces the pgid
+    if process_alive(rec, repo_root):
+        kill_group(rec, repo_root)
+    clear_flag(repo_root, rec, FLAG_ORPHAN)
+    if agent:
+        _end_worker_session(repo_root, agent, Path(rec.worktree))
 
 
 def recover_stalled(repo_root: Path) -> list[dict]:
