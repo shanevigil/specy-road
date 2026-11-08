@@ -190,7 +190,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Not Started**
   - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Not Started**
   - `M17.10` Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run `gui-orch-sandbox-use-approved` — gate — **Not Started**
-  - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Not Started**
+  - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Complete**
   - `M17.12` PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group `gui-group-siblings-action` — task — **Not Started**
   - `M17.13` PM GUI: a row click selects at once, so a toolbar action right after it acts on that row `gui-outline-selection-lag` — task — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
@@ -256,6 +256,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
 - 2026-11-07 `M16.1.2` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
 - 2026-11-07 `M16.1.1` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
 - 2026-11-07 `M22.6` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
@@ -280,8 +281,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M17.1` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-05 `M16.60` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
 - 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
-- 2026-11-05 `M16.18` stopped depending on `M16.5.4 One check_assignment decides eligibility for every launch and for the gate`
-- _…and 57 earlier — `specy-road history --json`_
+- _…and 58 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -312,7 +312,7 @@ Do not pick these up.
 
 - `M16.1.6` on `feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` since 2026-11-08
 - `M16.1.7` on `feature/rm-baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` since 2026-11-08
-- `M17.11` on `feature/rm-gui-acceptance-editing` since 2026-11-07
+- `M17.12` on `feature/rm-gui-group-siblings-action` since 2026-11-08
 - `M17.2` on `feature/rm-gui-orch-view-model` since 2026-11-07
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -330,16 +330,16 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | --- | --- | --- | --- | --- | --- | --- |
 | `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 43 | 0 | 2.79 | 65% | 26 | 3 |
+| `CHANGELOG.md` **flagged** | 43 | 0 | 2.79 | 65% | 25 | 3 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 37 | 0 | 2.92 | 65% | 22 | 3 |
-| `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
+| `docs` **flagged** | 37 | 0 | 2.92 | 65% | 21 | 3 |
+| `gui` **flagged** | 2 | 0 | 2.50 | 100% | 3 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 44 | 0 | 2.84 | 64% | 26 | 4 |
-| `tests` **flagged** | 47 | 0 | 2.72 | 62% | 28 | 4 |
+| `specy_road` **flagged** | 44 | 0 | 2.84 | 64% | 25 | 4 |
+| `tests` **flagged** | 47 | 0 | 2.72 | 62% | 27 | 4 |
 | `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 

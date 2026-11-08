@@ -1,8 +1,8 @@
 import { FileChangedOnDiskError, PmGuiConcurrencyError } from "./api";
 
 /**
- * One save at a time for an open task dialog (title, gate status, planning
- * sheet).
+ * One save at a time for an open task dialog (title, gate status, acceptance
+ * criteria, planning sheet).
  *
  * The dialog used to autosave from three independent effects that each
  * re-armed whenever the roadmap refreshed. A refresh while a title PATCH
@@ -12,14 +12,14 @@ import { FileChangedOnDiskError, PmGuiConcurrencyError } from "./api";
  *
  * This queue keeps the wanted and the saved value of each field, debounces
  * edits, and runs at most one request at a time in a fixed order: title,
- * gate status, then the sheet. A title save is followed by re-reading the
+ * gate status, acceptance, then the sheet. A title save is followed by re-reading the
  * sheet path (a title change renames the sheet) and a roadmap refresh (new
  * mutation fingerprint) before any sheet save goes out. A value already
  * requested is never requested again, so re-renders cannot duplicate a save.
  * A failed save stays reported until the user edits that field again.
  */
 
-export type SaveKind = "title" | "status" | "sheet";
+export type SaveKind = "title" | "status" | "acceptance" | "sheet";
 
 export type SaveStatus =
   | { state: "idle" }
@@ -30,6 +30,8 @@ export type SaveStatus =
 export type SaveSnapshot = {
   title: string;
   status: string;
+  /** Criteria joined by newlines (the PATCH value). */
+  acceptance: string;
   path: string | null;
   content: string;
 };
@@ -48,14 +50,16 @@ export type SaveQueueDeps = {
 export const SAVE_DEBOUNCE_MS: Record<SaveKind, number> = {
   title: 500,
   status: 500,
+  acceptance: 500,
   sheet: 600,
 };
 
-const ORDER: SaveKind[] = ["title", "status", "sheet"];
+const ORDER: SaveKind[] = ["title", "status", "acceptance", "sheet"];
 
 const LABEL: Record<SaveKind, string> = {
   title: "Title",
   status: "Gate status",
+  acceptance: "Acceptance",
   sheet: "Planning sheet",
 };
 
@@ -76,7 +80,7 @@ type Wanted = Record<SaveKind, string | null>;
 export class EditModalSaveQueue {
   private readonly deps: SaveQueueDeps;
   private saved: SaveSnapshot;
-  private wanted: Wanted = { title: null, status: null, sheet: null };
+  private wanted: Wanted = { title: null, status: null, acceptance: null, sheet: null };
   private readonly failed = new Map<SaveKind, { value: string; message: string }>();
   private readonly timers = new Map<SaveKind, ReturnType<typeof setTimeout>>();
   private running: Promise<void> | null = null;
@@ -94,7 +98,7 @@ export class EditModalSaveQueue {
   reset(s: SaveSnapshot): void {
     for (const k of ORDER) this.cancelTimer(k);
     this.saved = { ...s };
-    this.wanted = { title: null, status: null, sheet: null };
+    this.wanted = { title: null, status: null, acceptance: null, sheet: null };
     this.failed.clear();
   }
 
@@ -131,6 +135,11 @@ export class EditModalSaveQueue {
     this.request("status", value);
   }
 
+  /** ``value``: the criteria joined by newlines (acceptanceEdit). */
+  setAcceptance(value: string): void {
+    this.request("acceptance", value);
+  }
+
   setContent(value: string): void {
     this.request("sheet", value);
   }
@@ -149,12 +158,14 @@ export class EditModalSaveQueue {
   private savedOf(kind: SaveKind): string | null {
     if (kind === "title") return this.saved.title;
     if (kind === "status") return this.saved.status;
+    if (kind === "acceptance") return this.saved.acceptance;
     return this.saved.content;
   }
 
   private setSaved(kind: SaveKind, value: string): void {
     if (kind === "title") this.saved.title = value;
     else if (kind === "status") this.saved.status = value;
+    else if (kind === "acceptance") this.saved.acceptance = value;
     else this.saved.content = value;
     if (this.wanted[kind] === value) this.wanted[kind] = null;
   }

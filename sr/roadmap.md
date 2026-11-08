@@ -99,7 +99,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M17.8` | PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route | task | Agentic-led | Not Started |
 | `M17.9` | GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results | task | Human-led | Not Started |
 | `M17.10` | Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run | gate | Human-led | Not Started |
-| `M17.11` | PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics | task | Agentic-led | Not Started |
+| `M17.11` | PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics | task | Agentic-led | Complete |
 | `M17.12` | PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group | task | Agentic-led | Not Started |
 | `M17.13` | PM GUI: a row click selects at once, so a toolbar action right after it acts on that row | task | Agentic-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |

@@ -39,6 +39,7 @@ function harness(opts: { renameTo?: string } = {}) {
   const q = new EditModalSaveQueue(deps, {
     title: "Old",
     status: "",
+    acceptance: "a\nb",
     path: "planning/M1_old.md",
     content: "body",
   });
@@ -209,6 +210,29 @@ describe("EditModalSaveQueue", () => {
     expect(h.log).toEqual(["patch status=Complete", "refresh", "patch title=New"]);
     await h.settle();
     expect(last(h.statuses)).toEqual({ state: "saved" });
+  });
+
+  it("saves acceptance as one pair next to an unrelated title edit", async () => {
+    const h = harness();
+    h.q.setAcceptance("b\na");
+    h.q.setTitle("New");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(h.log).toEqual(["patch acceptance=b\na"]);
+    expect(h.deps.patchNode).toHaveBeenCalledWith([{ key: "acceptance", value: "b\na" }]);
+    await h.settle();
+    expect(h.log).toEqual(["patch acceptance=b\na", "refresh", "patch title=New"]);
+    await h.settle();
+    expect(last(h.statuses)).toEqual({ state: "saved" });
+  });
+
+  it("sends no acceptance PATCH for an unchanged or reverted list", async () => {
+    const h = harness();
+    h.q.setAcceptance("a\nb");
+    await vi.advanceTimersByTimeAsync(5000);
+    h.q.setAcceptance("");
+    h.q.setAcceptance("a\nb");
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(h.deps.patchNode).not.toHaveBeenCalled();
   });
 
   it("ignores values loaded from disk", async () => {
