@@ -146,5 +146,13 @@ jobs:
         run: python scripts/check_test_private_imports.py
       - name: No machine-specific paths or hostnames in tracked files
         run: python scripts/check_machine_paths.py
-      - name: Tests
-        run: pytest -n auto
+      # [tool.coverage.*] in pyproject.toml is the whole configuration: source,
+      # branch arcs, subprocess capture and fail_under. `coverage report` exits
+      # non-zero below fail_under; the branch percentage is informational.
+      - name: Tests under coverage (fails below the coverage floor)
+        run: |
+          coverage run -m pytest -n auto
+          coverage combine -q
+          coverage json -q -o work/coverage.json --fail-under=0
+          python -c "import json; t = json.load(open('work/coverage.json'))['totals']; print(f\"Branch coverage (informational): {100 * t['covered_branches'] / t['num_branches']:.2f}%\")"
+          coverage report

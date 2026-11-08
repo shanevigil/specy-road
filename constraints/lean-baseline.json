@@ -1,0 +1,310 @@
+{
+  "generated": "2026-11-08",
+  "commit": "ef2690edb0a5f883ebfe4ca267e572cc78e154dd",
+  "clean": true,
+  "machine": {
+    "system": "Linux 6.8.0-149-generic x86_64",
+    "cpu": "AMD Ryzen 9 5950X 16-Core Processor",
+    "cpu_count": 12,
+    "python": "3.12.16"
+  },
+  "settings": {
+    "pytest": "python -m pytest -n 4 -p no:cacheprovider -q",
+    "workers": 4,
+    "suite_runs": 3,
+    "validate_help_runs": 5,
+    "coverage": "off (COVERAGE_* variables removed)",
+    "extras_installed": {
+      "dev": true,
+      "review": true,
+      "gui": true,
+      "gui-next": true
+    },
+    "ruff": "ruff 0.17.3",
+    "c901_over_max_complexity": "ruff check --select C901 --ignore-noqa (waivers ignored)",
+    "lines_over_100": "ruff check --select E501 --line-length 100"
+  },
+  "metrics": {
+    "package": {
+      "PM UI server": {
+        "files": 25,
+        "lines": 4033
+      },
+      "archive/history/search": {
+        "files": 20,
+        "lines": 4474
+      },
+      "brainstorm": {
+        "files": 18,
+        "lines": 4772
+      },
+      "brief/digest/export/planning": {
+        "files": 18,
+        "lines": 3599
+      },
+      "cli dispatch": {
+        "files": 3,
+        "lines": 671
+      },
+      "finish/land": {
+        "files": 29,
+        "lines": 5814
+      },
+      "other": {
+        "files": 4,
+        "lines": 205
+      },
+      "pickup/grind": {
+        "files": 29,
+        "lines": 5718
+      },
+      "registry/git/worktree/doctor": {
+        "files": 31,
+        "lines": 5738
+      },
+      "review/handoff/gate": {
+        "files": 48,
+        "lines": 10940
+      },
+      "roadmap graph/CRUD": {
+        "files": 36,
+        "lines": 7234
+      },
+      "upgrade/init/agent files": {
+        "files": 32,
+        "lines": 7147
+      },
+      "validate/file-limits": {
+        "files": 12,
+        "lines": 2482
+      },
+      "worker/orchestration": {
+        "files": 72,
+        "lines": 14596
+      },
+      "total": {
+        "files": 377,
+        "lines": 77423
+      }
+    },
+    "tests": {
+      "PM UI server": {
+        "files": 23,
+        "lines": 4890
+      },
+      "archive/history/search": {
+        "files": 15,
+        "lines": 3034
+      },
+      "brainstorm": {
+        "files": 17,
+        "lines": 4139
+      },
+      "brief/digest/export/planning": {
+        "files": 14,
+        "lines": 2433
+      },
+      "cli dispatch": {
+        "files": 6,
+        "lines": 860
+      },
+      "finish/land": {
+        "files": 36,
+        "lines": 6230
+      },
+      "fixtures": {
+        "files": 1,
+        "lines": 122
+      },
+      "other": {
+        "files": 12,
+        "lines": 1488
+      },
+      "parity harness": {
+        "files": 9,
+        "lines": 1237
+      },
+      "pickup/grind": {
+        "files": 35,
+        "lines": 6611
+      },
+      "registry/git/worktree/doctor": {
+        "files": 32,
+        "lines": 7224
+      },
+      "review/handoff/gate": {
+        "files": 76,
+        "lines": 16252
+      },
+      "roadmap graph/CRUD": {
+        "files": 30,
+        "lines": 6446
+      },
+      "upgrade/init/agent files": {
+        "files": 57,
+        "lines": 8810
+      },
+      "validate/file-limits": {
+        "files": 13,
+        "lines": 2184
+      },
+      "worker/orchestration": {
+        "files": 70,
+        "lines": 13044
+      },
+      "total": {
+        "files": 446,
+        "lines": 85004
+      }
+    },
+    "docs": {
+      "constitution": {
+        "files": 2,
+        "lines": 36
+      },
+      "docs": {
+        "files": 40,
+        "lines": 9463
+      },
+      "root files": {
+        "files": 3,
+        "lines": 219
+      },
+      "suggested_prompts": {
+        "files": 5,
+        "lines": 535
+      },
+      "total": {
+        "files": 50,
+        "lines": 10253
+      }
+    },
+    "test_functions": 4002,
+    "collected_items": 6889,
+    "c901_over_max_complexity": {
+      "specy_road": 18,
+      "scripts": 0,
+      "tests": 0,
+      "total": 18
+    },
+    "noqa_c901": {
+      "specy_road": 19,
+      "scripts": 0,
+      "tests": 0,
+      "total": 19
+    },
+    "lines_over_100": {
+      "specy_road": 4675,
+      "scripts": 49,
+      "tests": 4568,
+      "total": 9292
+    },
+    "commands": {
+      "canonical": 74,
+      "aliases": 0,
+      "alias_names": [],
+      "canonical_names": [
+        "abort-task-pickup",
+        "add-dependency",
+        "add-node",
+        "apply",
+        "archive",
+        "archive-node",
+        "author-approach",
+        "brainstorm",
+        "branches",
+        "brief",
+        "chore",
+        "decisions",
+        "deepen-archive",
+        "digest",
+        "do-next-available-task",
+        "doctor",
+        "edit-node",
+        "export",
+        "file-limits",
+        "finish-this-task",
+        "grind-session",
+        "group-nodes",
+        "gui",
+        "handoff",
+        "history",
+        "impact",
+        "indent",
+        "init",
+        "integrity",
+        "lessons",
+        "list-archives",
+        "list-dependencies",
+        "list-gates",
+        "list-nodes",
+        "mark-implementation-reviewed",
+        "models",
+        "move-node",
+        "open-milestone-pr",
+        "orchestrate",
+        "orchestration",
+        "outdent",
+        "prompt",
+        "ready",
+        "rebalance-chunks",
+        "reconcile-branch",
+        "reconcile-milestone-status",
+        "refresh-profiles",
+        "refresh-schemas",
+        "refresh-stubs",
+        "registry-prune",
+        "remove-dependency",
+        "remove-node",
+        "rename-refs",
+        "restore-archive",
+        "review",
+        "review-node",
+        "review-packet",
+        "scaffold-constitution",
+        "scaffold-planning",
+        "search",
+        "session",
+        "set-dependencies",
+        "set-gate-status",
+        "show-archive",
+        "show-node",
+        "start-milestone-session",
+        "sync",
+        "update",
+        "upgrade",
+        "validate",
+        "version",
+        "why-blocked",
+        "worker",
+        "worktree"
+      ]
+    },
+    "config_and_policy_keys": {
+      "git_workflow": 24,
+      "orchestration_policy": 24,
+      "total": 48
+    },
+    "validate_imports": {
+      "command": "specy-road validate --repo-root tests/fixtures/specy_road_dogfood",
+      "method": "PYTHONPROFILEIMPORTTIME=1; distinct module names over every Python process",
+      "processes": 2,
+      "specy_road_modules": 138,
+      "all_modules": 497
+    },
+    "validate_help_seconds": 0.34,
+    "suite_seconds": {
+      "median": 505.41,
+      "runs": [
+        462.45,
+        512.96,
+        505.41
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ]
+    }
+  }
+}
