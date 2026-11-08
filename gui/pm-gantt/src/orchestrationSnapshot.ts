@@ -9,7 +9,9 @@
  *
  * `buildOrchestrationView` takes the clock as a parameter (no `Date.now()`),
  * joins leaf keys to the outline the GUI already loads, and returns display
- * text only: no React, no fetch.
+ * text only: no React, no fetch. The drawer's loader, poll and copy commands
+ * (M17.3) sit below it, with the fetch and the timer injected or owned here
+ * so vitest drives them without a DOM.
  */
 import { formatRelativeAge } from "./lastWorked";
 import type { RoadmapNode } from "./types";
@@ -334,4 +336,42 @@ export function buildOrchestrationView(
     });
   }
   return groups;
+}
+
+/* ---------- drawer: load, poll, copy commands (M17.3) ---------- */
+
+export type OrchestrationLoad =
+  | { kind: "ok"; snapshot: OrchestrationSnapshot }
+  /** 404: a server without the route (any build before M17.7). */
+  | { kind: "unavailable" }
+  | { kind: "error"; message: string };
+
+/** One GET of `/api/orchestration`; never throws. */
+export async function loadOrchestration(fetchImpl: typeof fetch): Promise<OrchestrationLoad> {
+  try {
+    const r = await fetchImpl("/api/orchestration");
+    if (r.status === 404) return { kind: "unavailable" };
+    if (!r.ok) return { kind: "error", message: `orchestration: HTTP ${r.status}` };
+    return { kind: "ok", snapshot: (await r.json()) as OrchestrationSnapshot };
+  } catch (e: unknown) {
+    return { kind: "error", message: String(e) };
+  }
+}
+
+/** M17.1 question 5: refresh every 15 s, only while the drawer is open. */
+const POLL_MS = 15_000;
+
+/** Calls `load` now and every 15 s; the returned function stops it. */
+export function pollOrchestration(load: () => void): () => void {
+  load();
+  const timer = setInterval(load, POLL_MS);
+  return () => clearInterval(timer);
+}
+
+export type CopyKind = "worker status" | "worker open" | "handoff status";
+
+/** `specy-road <kind> <id>`, the id single-quoted for a POSIX shell unless it is [A-Za-z0-9._-]+. */
+export function copyCommand(kind: CopyKind, id: string): string {
+  const arg = /^[A-Za-z0-9._-]+$/.test(id) ? id : `'${id.replaceAll("'", `'\\''`)}'`;
+  return `specy-road ${kind} ${arg}`;
 }

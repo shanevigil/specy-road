@@ -3,6 +3,7 @@ import { fetchWorkerEvents, fetchWorkers } from "../api";
 import type { WorkerDetail, WorkerRow } from "../types";
 import {
   createWorkerSelection,
+  pickWorkerId,
   type WorkerSelectionState,
 } from "../workerSelection";
 import {
@@ -16,6 +17,8 @@ import { ModalFrame } from "./ModalFrame";
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** Worker to select on open (the Orchestration drawer's link); else the newest. */
+  initialWorkerId?: string | null;
 };
 
 /** Workers grouped by leaf, in the order the server listed them (oldest worker first). */
@@ -107,7 +110,7 @@ function WorkerDetailView({ d }: { d: WorkerDetail }) {
   );
 }
 
-export function WorkersDrawer({ open, onClose }: Props) {
+export function WorkersDrawer({ open, onClose, initialWorkerId = null }: Props) {
   const [rows, setRows] = useState<WorkerRow[]>([]);
   const [view, setView] = useState<WorkerSelectionState<WorkerDetail>>({
     selected: null,
@@ -131,9 +134,8 @@ export function WorkersDrawer({ open, onClose }: Props) {
       try {
         const r = await fetchWorkers();
         setRows(r.workers);
-        const keep = r.workers.find((w) => w.worker_id === keepId);
-        const pick = keep ?? r.workers[r.workers.length - 1];
-        if (pick) await selection.select(pick.worker_id);
+        const pick = pickWorkerId(r.workers.map((w) => w.worker_id), keepId);
+        if (pick) await selection.select(pick);
         else selection.clear();
       } catch (e: unknown) {
         setMsg(String(e));
@@ -146,8 +148,8 @@ export function WorkersDrawer({ open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    void load(null);
-  }, [open, load]);
+    void load(initialWorkerId);
+  }, [open, initialWorkerId, load]);
 
   if (!open) return null;
 

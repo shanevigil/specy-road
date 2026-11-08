@@ -130,6 +130,9 @@ const WorkersDrawer = lazy(() =>
     default: m.WorkersDrawer,
   })),
 );
+const OrchestrationDrawer = lazy(() =>
+  import("./components/OrchestrationDrawer").then((m) => ({ default: m.OrchestrationDrawer })),
+);
 const BrainstormDrawer = lazy(() =>
   import("./components/BrainstormDrawer").then((m) => ({
     default: m.BrainstormDrawer,
@@ -235,6 +238,8 @@ export default function App() {
   );
   const [workNotesOpen, setWorkNotesOpen] = useState(false);
   const [workersOpen, setWorkersOpen] = useState(false);
+  const [workersInitialId, setWorkersInitialId] = useState<string | null>(null);
+  const [orchestrationOpen, setOrchestrationOpen] = useState(false);
   /** When set, Vision / Constitution need human content beyond blank or starter templates. */
   const [govCompletion, setGovCompletion] = useState<{
     vision: boolean;
@@ -1661,6 +1666,15 @@ export default function App() {
                 <button
                   type="button"
                   className="app-header-doc-btn"
+                  onClick={() => setOrchestrationOpen(true)}
+                >
+                  Orchestration
+                </button>
+              </div>
+              <div className="app-header-doc-slot">
+                <button
+                  type="button"
+                  className="app-header-doc-btn"
                   // Re-pressing raises and un-minimizes rather than doing
                   // nothing, which is what the button appears to promise once
                   // the window can be sent to the dock.
@@ -1852,9 +1866,23 @@ export default function App() {
           open={workNotesOpen}
           onClose={() => setWorkNotesOpen(false)}
         />
+        <OrchestrationDrawer
+          open={orchestrationOpen}
+          onClose={() => setOrchestrationOpen(false)}
+          nodes={displayData?.nodes ?? []}
+          onOpenNode={openEditNode}
+          onOpenWorker={(id) => {
+            setWorkersInitialId(id);
+            setWorkersOpen(true);
+          }}
+        />
         <WorkersDrawer
           open={workersOpen}
-          onClose={() => setWorkersOpen(false)}
+          initialWorkerId={workersInitialId}
+          onClose={() => {
+            setWorkersOpen(false);
+            setWorkersInitialId(null);
+          }}
         />
         <BrainstormDrawer
           open={brainstormOpen}
