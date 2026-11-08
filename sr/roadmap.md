@@ -225,7 +225,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.27` | The old-log review usage test asserts on the run, not on a substring | task | — | Complete |
 | `M22.28` | upgrade does not warn about itself, and export's drift line says how to fix it | task | — | Complete |
 | `M22.29` | safe_write and archive moves traverse by directory descriptor | task | — | Complete |
-| `M22.31` | finish-this-task refuses a branch that changes a steering file no touch zone names | task | — | Not Started |
+| `M22.31` | finish-this-task refuses a branch that changes a steering file no touch zone names | task | — | Complete |
 | `M22.33` | A resumed review runs on the model it was asked for | task | — | Complete |
 | `M22.34` | One accept-policy prompt covers every open claim | task | — | Complete |
 | `M22.35` | upgrade mirrors only what the refreshes need, never ignored files | task | — | Not Started |

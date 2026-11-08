@@ -160,7 +160,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.27` The old-log review usage test asserts on the run, not on a substring `old-log-test-asserts-on-the-run` — task — **Complete**
   - `M22.28` upgrade does not warn about itself, and export's drift line says how to fix it `upgrade-no-self-warning-export-drift-hint` — task — **Complete**
   - `M22.29` safe_write and archive moves traverse by directory descriptor `safe-write-directory-descriptors` — task — **Complete**
-  - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
+  - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Complete**
   - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
   - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Complete**
   - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Not Started**
@@ -315,7 +315,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.31` on `feature/rm-steering-finish-refusal` since 2026-11-07
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 - `M22.39` on `feature/rm-worker-stall-recovery` since 2026-11-07
 - `M22.47` on `feature/rm-cursor-starts-under-the-sandbox` since 2026-11-07
@@ -327,15 +326,15 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 45 | 0 | 2.71 | 64% | 21 | 3 |
+| `CHANGELOG.md` **flagged** | 45 | 0 | 2.73 | 64% | 21 | 3 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 36 | 0 | 2.83 | 67% | 17 | 2 |
+| `docs` **flagged** | 36 | 0 | 2.86 | 67% | 17 | 2 |
 | `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 44 | 0 | 2.73 | 64% | 21 | 3 |
-| `tests` **flagged** | 47 | 0 | 2.62 | 62% | 23 | 3 |
+| `specy_road` **flagged** | 44 | 0 | 2.75 | 64% | 21 | 3 |
+| `tests` **flagged** | 47 | 0 | 2.64 | 62% | 23 | 3 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 | `suggested_prompts` | 1 | 0 | 1.00 | 0% | 3 | 0 |

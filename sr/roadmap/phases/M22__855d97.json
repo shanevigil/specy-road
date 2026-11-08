@@ -372,7 +372,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.31_steering-finish-refusal_7765e73d-c0a5-475b-89bf-819992cf6ba4.md",
       "sibling_order": 30,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish-this-task refuses a branch that changes a steering file no touch zone names",
       "touch_zones": [
         "specy_road/steering_gate.py",
