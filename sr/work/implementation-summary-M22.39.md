@@ -107,6 +107,44 @@ No file outside the zones changed. The doc's `recover` row says so.
   - `needs_reconcile` and `possibly_modified_externally`: about the worker, not the turn, so kept.
 - `resume` and `message` of a failed worker: not changed by this leaf. They keep their existing behaviour, which `_send` owns outside these zones.
 
+## Fix round 3 (grok-4.7-high block at d3d9eeb5)
+
+**Findings:**
+- An unreachable lease remote left the worker `failed`, counted and unflagged, so `recover --offline`
+  answered "not stalled".
+- The live turn is signalled before that push.
+- `grind-session` repeats the online call.
+
+**Class:** any refusal inside the resume step after the turn has been ended: the lease push, a launch or
+config check (the test first hit a missing `origin/HEAD` this way), the slot check, the branch check. Each one
+stranded a worker that no later `recover` would touch.
+
+**Ordering:** the turn has to end first. `_send` will not start a turn while the old one lives (it queues or
+refuses), and the lease push lives in `_send` (outside the zones). So moving the push earlier is not
+possible, and I did not do it.
+
+**Design change: one rule, `recovery_pending`.** A recovery is counted when it ends the turn, and its event
+carries `detail.recovery`. It is pending while that event is newer than the worker's last `message` event
+(`_send` writes one before every spawn) and the worker is not `terminated`. `recover` finishes a pending
+recovery without the stalled check and without counting it again, online or `--offline`:
+- `stalled_workers` / `stall_lines` list pending recoveries;
+- `worker list` shows them even when no worker is active (a failed worker is not "active");
+- grind-session's `recover_stalled` retries them each pass.
+
+The counting is split into `_next_recovery` (limit check and `needs_person`), so `recover` gains no net
+branches. Documented limit: a spawn that fails after its `message` is logged counts as started.
+
+## Probes (round 3)
+
+- Unreachable origin (`https://127.0.0.1:1/…` with `origin/HEAD` set): `recover` exits 1 with "cannot reach origin"; the old wrapper is ended; recoveries is 1; `worker list` shows `recovery pending … 1/3`; `recover --offline` exits 0 and resumes to `idle`; recoveries stays 1; afterwards neither stalled nor pending (test). Red without the fix.
+- Missing `refs/remotes/origin/HEAD` (a launch/config check after the end): same class, same pending rule (hit while writing the test; covered by the rule).
+- A pending recovery whose worker was `terminated`: not pending (excluded by state).
+- A pending recovery finished by a manual `worker resume` (it writes `message`): no longer pending (by the rule).
+- Grind `recover_stalled`: pending workers are included in `stalled_workers`, so each pass retries them online. While the remote is down it reports `worker_recover_refused` and the recovery stays pending. The docs name `--offline` as the manual way out. I did not add an offline fallback to grind, because it would bypass the global count unannounced.
+- `kill_group` failure: raises after the count and event, so the recovery is pending and the next call retries the end. The old turn's flag and presence session are kept until the group is confirmed gone (round 2).
+- Another worker delegated (`--rework`) onto the leaf while a recovery is pending: `recover` refuses ("already has an active worker").
+- Existing worker, grind (all `test_grind_session*`), doctor, presence and terminate suites: pass.
+
 ## Added
 
 - `worker_state.FLAG_NEEDS_PERSON` / schema flag `needs_person` — marks a worker past its recovery limit so it shows in list/status and is not retried.
@@ -122,11 +160,15 @@ No file outside the zones changed. The doc's `recover` row says so.
 - `worker_ops_slots.recovery_limit` — `policy.max_fix_rounds` or the default (A3).
 - `worker_ops_slots.recover` and its guards (not stalled, other live worker on the leaf, limit, writer, resumable session, branch) — A2/A3.
 - `worker_ops_slots._end_turn` — ends the stalled turn and drops its orphan flag and presence session once the group is confirmed gone, reusing terminate's `_end_worker_session` (fix round 2).
+- `worker_ops_slots.recovery_pending` — a counted recovery whose resume never started, finished by the next call uncounted (fix round 3).
+- `worker_ops_slots._next_recovery` — the limit check and `needs_person`, split out of `recover` (fix round 3).
+- `stalled_workers` / `stall_lines` `pending` entry and line; `worker list` shows stall lines with no active worker (fix round 3).
 - `worker_ops_slots.recover_stalled` (+ no-`work/.workers` guard) — the loop body grind-session calls (A4).
 - `worker_cli._with_stalls`, `cmd_recover`, the `recover` parser; `cmd_list`/`cmd_sync` append stall lines — A1/A2.
 - `doctor._print_stalled` (+ no-`work/.workers` guard so doctor creates nothing) — A1.
 - `grind_session.RECOVER_EVERY`, `_recover_stalled`, calls in `_run_loop` and `_wait_for_signal` — A4.
 - Mocks: none.
 - `tests/parity/command_map.yaml` rows (recover added; worker parent help) and golden `specy-road__worker__recover.txt`: the parity harness's required way to change the command surface.
+- Test (round 3): `test_a_recovery_whose_resume_was_refused_is_finished_by_the_next_call` (distinct regression: unreachable lease remote after the end).
 - Tests (`tests/test_worker_stall_recovery.py`, round 2): `_silent_worker` helper shared by the two real-process tests; the recover test now also checks that the old turn's presence session ends and a peer's stays; new `test_recover_ends_a_live_harness_whose_wrapper_died` (distinct regression: dead wrapper with a live harness).
 - Tests (`tests/test_worker_stall_recovery.py`): `test_a_worker_that_never_wrote_output_is_flagged_from_its_launch` (no output at all; list and doctor show seconds silent; a follow-up turn's `message` resets silence); `test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes` (busy worker left running, sync shows the stall, recovered worker keeps commit and uncommitted file, returned record unflagged, a second recover refused as not stalled, count 1); `test_recover_past_the_limit_stops_as_needing_a_person` (persisted limit from `max_fix_rounds`, last output named, one event, grind's `recover_stalled` path, not retried); `test_recover_refuses_while_another_worker_holds_the_leaf`.
