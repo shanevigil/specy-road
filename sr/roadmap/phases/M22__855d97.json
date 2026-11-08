@@ -20,7 +20,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.19_review-inputs-identity-and-unreadable_855d9738-4b87-480b-8404-d6a1aa85c714.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names",
       "touch_zones": [
         "specy_road/review_eligible.py",
@@ -380,7 +380,8 @@
         "docs/orchestration-steering-files.md",
         "tests/test_steering_file_guard.py",
         "tests/test_finish_merge_failure_undo.py",
-        "tests/test_finish_work_cleanup.py"
+        "tests/test_finish_work_cleanup.py",
+        "tests/test_finish_config_preflight.py"
       ],
       "type": "task"
     },

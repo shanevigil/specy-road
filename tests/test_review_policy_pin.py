@@ -237,8 +237,30 @@ UNREADABLE_KINDS = [
     ("deeply nested input", f"version: 1\nsubstitutions: {_DEEP}\n", _DEEP + "\n"),
     ("unreadable file", None, None),
 ]
+#: Acceptance-only presence failures (M22.19): a dangling link, and an unreadable parent (``PermissionError`` stubbed).
+DANGLING, NO_ACCESS = "dangling link", "unreadable parent"
 UNREADABLE_CASES = [(kind, where, content) for kind, policy, acceptance in UNREADABLE_KINDS
-                    for where, content in (("committed policy", policy), ("acceptance file", acceptance))]
+                    for where, content in (("committed policy", policy), ("acceptance file", acceptance))] + [
+    (DANGLING, "acceptance file", DANGLING), (NO_ACCESS, "acceptance file", NO_ACCESS)]
+
+
+def _plant_acceptance(path: Path, content: str | bytes | None, monkeypatch) -> None:
+    if content == DANGLING:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.symlink_to(path.parent / "nowhere.yaml")
+    elif content == NO_ACCESS:
+        real = {name: getattr(Path, name) for name in ("stat", "lstat")}
+
+        def denied(name):
+            def stat(self, *a, **kw):
+                if self.name == ACCEPTANCE_NAME:
+                    raise PermissionError(13, "Permission denied", str(self))
+                return real[name](self, *a, **kw)
+            return stat
+        for name in real:
+            monkeypatch.setattr(Path, name, denied(name))
+    else:
+        _write(path, content)
 
 
 @pytest.mark.parametrize(("kind", "where", "content"), UNREADABLE_CASES,
@@ -249,7 +271,7 @@ def test_unreadable_input_is_a_problem_and_every_command_refuses_cleanly(tmp_pat
     if where == "committed policy":
         _on_dev(repo, ORCH, content)
     else:
-        _write(reviews_dir(repo, "M1.1") / ACCEPTANCE_NAME, content)
+        _plant_acceptance(reviews_dir(repo, "M1.1") / ACCEPTANCE_NAME, content, monkeypatch)
     _approve(repo)
     gate = _gate(repo)
     expected = "review policy pin of M1.1 cannot be checked" if where == "committed policy" else _INVALID

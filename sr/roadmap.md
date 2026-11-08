@@ -214,7 +214,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.16` | Reviewer run lows: a whole refusal summary, no parse reason after a capacity failure, and the reviewer's process group ended when its run ends | task | — | Complete |
 | `M22.17` | brainstorm verify records blocked, not not-found, when a site answers its requests with 404 for pages that exist | task | — | Complete |
 | `M22.18` | The reviewer prompt asks for every required change in one pass, not just the first | task | — | Complete |
-| `M22.19` | Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names | task | — | Not Started |
+| `M22.19` | Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names | task | — | Complete |
 | `M22.20` | worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging | task | — | Complete |
 | `M22.21` | Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback | task | — | Complete |
 | `M22.22` | Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal | task | — | Complete |
@@ -241,6 +241,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.45` | A worker turn that moves the integration ref is flagged | task | — | Complete |
 | `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Complete |
 | `M22.47` | Cursor workers start and keep their config under the sandbox | task | — | Not Started |
+| `M22.48` | A shared reviewer name closes the gate only when it could be the leaf's writer | task | — | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
