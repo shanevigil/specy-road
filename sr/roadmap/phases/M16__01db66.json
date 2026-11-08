@@ -5,7 +5,7 @@
         "AGENTS.md is the only agent entry; CLAUDE.md points to it and holds only Claude-specific notes (about 20 lines, an estimate, not a gate); branch policy and the version-numbers rule each appear in one place, and every other copy (including .cursor/rules/027-version-numbers-require-human.mdc and .cursor/rules/030-git-workflow-management.mdc) is replaced with a link to it",
         "The load order is task-conditional: always purpose, principles and constraints; then by task (orchestration or review, roadmap data, dependencies or release, the dogfood fixture, sr/ roadmap work); supply-chain-security.md is not in the default order, here or in the consumer agents-rules template",
         "tests/test_agent_start_up_reading.py counts the unique files in the unconditional start-up closure (AGENTS.md, the entry stubs and the always-applied managed rule files, each once per repo; task-conditional references excluded), prints the counted paths and each total, and fails when a file in the default load order is missing or the total is over 400 lines, for this repo and for a freshly initialised consumer repo; CLAUDE.md's size (about 20 lines) is printed as a soft check, not enforced",
-        "The shipped agents-rules.md loses its provenance comments and cites only files an adopter has",
+        "The shipped agents-rules.md cites only files an adopter has. Removing the provenance comments from the shipped templates moved to M16.1.12 (coordinator split, 2026-11-08)",
         "Estimated net line change (informational, not a gate): docs about -200"
       ],
       "codename": "agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer",
@@ -474,6 +474,35 @@
         "constraints/import-layers-baseline.json",
         "constraints/test-private-imports-baseline.txt",
         "constraints/clone-baseline.json"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The provenance comments in specy_road/templates/specyrd/agents-rules.md, agents-md-block.md and claude-md-block.md move to one maintainer-only file outside specy_road/templates/, so no wheel ships them; the code that reads them (agent_guide_block, agents_md_block, chore_garden) reads that file instead, with the same behaviour for maintainers",
+        "Tests: a rendered consumer AGENTS.md, CLAUDE.md block and rules file contain no provenance comment; tests/test_agents_md_block.py and tests/test_chore_mode.py pass against the moved file; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "shipped-templates-carry-no-provenance-comments",
+      "dependencies": [
+        "01db66ad-a91c-48e3-953e-4083f5f14a13"
+      ],
+      "id": "M16.1.12",
+      "node_key": "122b76b1-4d3f-428f-a893-79c236fd2e87",
+      "parent_id": "M16.1",
+      "planning_dir": "planning/M16.1.12_shipped-templates-carry-no-provenance-comments_122b76b1-4d3f-428f-a893-79c236fd2e87.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "Shipped agent templates carry no maintainer provenance comments",
+      "touch_zones": [
+        "specy_road/templates/specyrd/agents-rules.md",
+        "specy_road/templates/specyrd/agents-md-block.md",
+        "specy_road/templates/specyrd/claude-md-block.md",
+        "specy_road/agent_guide_block.py",
+        "specy_road/agents_md_block.py",
+        "specy_road/bundled_scripts/chore_garden.py",
+        "tests/test_agents_md_block.py",
+        "tests/test_chore_mode.py",
+        "CHANGELOG.md"
       ],
       "type": "task"
     }
