@@ -93,7 +93,8 @@ entries:
       - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
     started: '2026-11-07'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-08T18:43:26+00:00'
   - codename: gui-acceptance-editing
     node_id: M17.11
     branch: feature/rm-gui-acceptance-editing
