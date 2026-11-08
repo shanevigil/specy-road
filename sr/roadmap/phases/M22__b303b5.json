@@ -73,7 +73,8 @@
         "docs/orchestration-workers.md",
         "sr/planning/",
         "specy_road/worker_adapter_cursor.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_worker_adapters.py"
       ],
       "type": "task"
     },

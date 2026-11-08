@@ -157,6 +157,7 @@ entries:
       - sr/planning/
       - specy_road/worker_adapter_cursor.py
       - CHANGELOG.md
+      - tests/test_worker_adapters.py
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
