@@ -166,6 +166,15 @@ export default function App() {
   const [repoId, setRepoId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Selection at the last click. Toolbar actions read this, not the render that painted the button. */
+  const selectedIdRef = useRef<string | null>(null);
+  const selectRow = useCallback((id: string | null) => {
+    selectedIdRef.current = id;
+    setSelectedId(id);
+  }, []);
+  useLayoutEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
   /** Row the "Group siblings…" dialog was opened on (null: closed). */
   const [groupRowId, setGroupRowId] = useState<string | null>(null);
   /** Node ids with an open edit dialog (order = stack; last is topmost). */
@@ -1224,24 +1233,27 @@ export default function App() {
   );
 
   const addAbove = () => {
-    if (!selectedId) return;
+    const id = selectedIdRef.current;
+    if (!id) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    triggerAddNode(selectedId, "above", t, "task", "Adding task…");
+    triggerAddNode(id, "above", t, "task", "Adding task…");
   };
 
   const addBelow = () => {
-    if (!selectedId) return;
+    const id = selectedIdRef.current;
+    if (!id) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    triggerAddNode(selectedId, "below", t, "task", "Adding task…");
+    triggerAddNode(id, "below", t, "task", "Adding task…");
   };
 
   const insertGateAtSelection = () => {
-    if (!selectedId) return;
+    const id = selectedIdRef.current;
+    if (!id) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    triggerAddNode(selectedId, "above", t, "gate", "Inserting gate…");
+    triggerAddNode(id, "above", t, "gate", "Inserting gate…");
   };
 
   const onGapInsert = (referenceNodeId: string) => {
@@ -1251,8 +1263,9 @@ export default function App() {
   };
 
   const onDeleteSelected = () => {
-    if (!selectedId) return;
-    const label = byId[selectedId]?.id ?? selectedId;
+    const id = selectedIdRef.current;
+    if (!id) return;
+    const label = byId[id]?.id ?? id;
     if (
       !window.confirm(
         `Remove task "${label}" from the roadmap? This cannot be undone.`,
@@ -1263,11 +1276,11 @@ export default function App() {
     setErr(null);
     void performOptimisticMutation(
       "Removing task…",
-      { kind: "delete", nodeId: selectedId },
-      [selectedId],
+      { kind: "delete", nodeId: id },
+      [id],
       "delete",
       async () => {
-        await deleteNode(selectedId);
+        await deleteNode(id);
       },
     ).catch((e) => setErr(String(e)));
   };
@@ -1286,9 +1299,9 @@ export default function App() {
           sent.ok = true;
         },
       );
-      if (sent.ok) setSelectedId(body.into_new);
+      if (sent.ok) selectRow(body.into_new);
     },
-    [performOptimisticMutation],
+    [performOptimisticMutation, selectRow],
   );
 
   const publishReady =
@@ -1436,11 +1449,12 @@ export default function App() {
                     : "Edit selected task"
                 }
                 aria-label="Edit selected task"
-                onClick={() =>
-                  guardRowAction(selectedId, () => {
-                    if (selectedId) openEditNode(selectedId);
-                  })
-                }
+                onClick={() => {
+                  const id = selectedIdRef.current;
+                  guardRowAction(id, () => {
+                    if (id) openEditNode(id);
+                  });
+                }}
               >
                 <IconPencil />
               </button>
@@ -1450,11 +1464,12 @@ export default function App() {
                 disabled={queueOverloaded || indentDisabled}
                 title="Indent"
                 aria-label="Indent"
-                onClick={() =>
-                  guardRowAction(selectedId, () => {
-                    if (selectedId) void triggerIndent(selectedId);
-                  })
-                }
+                onClick={() => {
+                  const id = selectedIdRef.current;
+                  guardRowAction(id, () => {
+                    if (id) void triggerIndent(id);
+                  });
+                }}
               >
                 <IconIndent />
               </button>
@@ -1464,11 +1479,12 @@ export default function App() {
                 disabled={queueOverloaded || outdentDisabled}
                 title="Outdent"
                 aria-label="Outdent"
-                onClick={() =>
-                  guardRowAction(selectedId, () => {
-                    if (selectedId) void triggerOutdent(selectedId);
-                  })
-                }
+                onClick={() => {
+                  const id = selectedIdRef.current;
+                  guardRowAction(id, () => {
+                    if (id) void triggerOutdent(id);
+                  });
+                }}
               >
                 <IconOutdent />
               </button>
@@ -1478,11 +1494,12 @@ export default function App() {
                 disabled={queueOverloaded || !selectedId}
                 title="Group siblings… — put the selected row and chosen siblings under a new parent"
                 aria-label="Group siblings…"
-                onClick={() =>
-                  guardRowAction(selectedId, () => {
-                    if (selectedId) setGroupRowId(selectedId);
-                  })
-                }
+                onClick={() => {
+                  const id = selectedIdRef.current;
+                  guardRowAction(id, () => {
+                    if (id) setGroupRowId(id);
+                  });
+                }}
               >
                 <span className="toolbar-gate-icon" aria-hidden="true">
                   {"{ }"}
@@ -1494,7 +1511,7 @@ export default function App() {
                 disabled={queueOverloaded || !selectedId}
                 title="Add task above selection"
                 aria-label="Add task above selection"
-                onClick={() => guardRowAction(selectedId, addAbove)}
+                onClick={() => guardRowAction(selectedIdRef.current, addAbove)}
               >
                 <IconRowAbove />
               </button>
@@ -1504,7 +1521,7 @@ export default function App() {
                 disabled={queueOverloaded || !selectedId}
                 title="Add task below selection"
                 aria-label="Add task below selection"
-                onClick={() => guardRowAction(selectedId, addBelow)}
+                onClick={() => guardRowAction(selectedIdRef.current, addBelow)}
               >
                 <IconRowBelow />
               </button>
@@ -1520,7 +1537,9 @@ export default function App() {
                       : "Insert gate at selection (above this row); display ids renumber. PM hold, not dev pickup"
                 }
                 aria-label="Insert gate at selection"
-                onClick={() => guardRowAction(selectedId, insertGateAtSelection)}
+                onClick={() =>
+                  guardRowAction(selectedIdRef.current, insertGateAtSelection)
+                }
               >
                 <span className="toolbar-gate-icon" aria-hidden="true">
                   G
@@ -1532,7 +1551,9 @@ export default function App() {
                 disabled={queueOverloaded || !selectedId}
                 title="Delete selected row"
                 aria-label="Delete selected row"
-                onClick={() => guardRowAction(selectedId, onDeleteSelected)}
+                onClick={() =>
+                  guardRowAction(selectedIdRef.current, onDeleteSelected)
+                }
               >
                 <IconTrash />
               </button>
@@ -1688,9 +1709,9 @@ export default function App() {
               onApplyDepEdit={() => void applyDepEdit()}
               onCancelDepEdit={cancelDepEdit}
               onClearDepDraft={clearDepDraft}
-              onSelect={setSelectedId}
+              onSelect={selectRow}
               onDoubleClick={(id) => {
-                setSelectedId(id);
+                selectRow(id);
                 openEditNode(id);
               }}
               performRoadmapMutation={performRoadmapMutation}
@@ -1729,9 +1750,9 @@ export default function App() {
               showInheritedEdges={showInheritedDeps}
               selectedId={selectedId}
               highlightRowIds={highlightDepRowIds}
-              onSelect={setSelectedId}
+              onSelect={selectRow}
               onBarDoubleClick={(id) => {
-                setSelectedId(id);
+                selectRow(id);
                 openEditNode(id);
               }}
               onChartBackgroundMouseDown={

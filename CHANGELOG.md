@@ -48,6 +48,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- The PM GUI selects an outline row on the click itself, so Add above, Add below,
+  Indent, Outdent and Delete clicked right after it act on that row. A double
+  click still opens the edit modal. A row that cannot be dragged is no longer
+  marked aria-disabled.
+
 - A roster name that several entries share (profile effort aliases, or one model in an executor row and a reviewer
   row) no longer closes the review gate by itself. A READY author is still excluded under every entry it may be,
   and a record that may be any entry that wrote the leaf still does not count. A record whose entries wrote
