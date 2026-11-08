@@ -21,7 +21,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.1.9` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Not Started**
     - `M16.1.10` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Not Started**
     - `M16.1.11` Ruff quality rule families with per-file shrink-only baselines and per-release totals `ruff-quality-family-baseline` — task — **Not Started**
-    - `M16.1.12` Shipped agent templates carry no maintainer provenance comments `shipped-templates-carry-no-provenance-comments` — task — **Not Started**
+    - `M16.1.12` Shipped agent templates carry no maintainer provenance comments `shipped-templates-carry-no-provenance-comments` — task — **Complete**
   - `M16.2` Mechanical clean-up, layering and the in-process CLI `mechanical-clean-up-layering-and-the-in-process-cli` — milestone — **Not Started**
     - `M16.2.1` Delete dead and unwired code from a decided list, and add vulture as an advisory CI step `delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step` — task — **Not Started**
     - `M16.2.2` Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers `shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` — task — **Not Started**
@@ -310,7 +310,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.1.10` on `feature/rm-tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` since 2026-11-08
-- `M16.1.12` on `feature/rm-shipped-templates-carry-no-provenance-comments` since 2026-11-08
 - `M16.1.6` on `feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` since 2026-11-08
 - `M16.1.9` on `feature/rm-tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` since 2026-11-08
 - `M17.13` on `feature/rm-gui-outline-selection-lag` since 2026-11-08
@@ -329,13 +328,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `CHANGELOG.md` **flagged** | 42 | 0 | 2.81 | 64% | 21 | 3 |
+| `CHANGELOG.md` **flagged** | 42 | 0 | 2.52 | 62% | 19 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 39 | 0 | 2.82 | 62% | 17 | 3 |
+| `docs` **flagged** | 39 | 0 | 2.51 | 59% | 15 | 2 |
 | `gui` **flagged** | 4 | 0 | 2.00 | 75% | 3 | 0 |
-| `specy_road` **flagged** | 43 | 0 | 2.86 | 63% | 21 | 4 |
-| `tests` **flagged** | 45 | 0 | 2.78 | 62% | 23 | 4 |
+| `specy_road` **flagged** | 43 | 0 | 2.58 | 60% | 19 | 3 |
+| `tests` **flagged** | 45 | 0 | 2.51 | 60% | 21 | 3 |
 | `.github` | 2 | 0 | 1.50 | 50% | 13 | 0 |
 | `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |

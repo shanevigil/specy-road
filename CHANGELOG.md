@@ -687,6 +687,10 @@ body. Keep section bodies focused; link to PRs for detail.
 - `specy-road file-limits` now counts functions in `.tsx` files, so the same
   tree can report different function counts under 0.3.1 than under 0.2.x, and
   a local run can disagree with CI pinned to an older version.
+- The shipped agent templates (`agents-rules.md`, `agents-md-block.md` and `claude-md-block.md` under
+  `specy_road/templates/specyrd/`) no longer carry maintainer provenance comments. The comments live in
+  `specy_road/agent_rule_provenance.md`, which no wheel ships, and `chore garden` reports advisory rules there
+  instead of in the templates. The files specy-road writes into a project are unchanged.
 
 ### Fixed
 
