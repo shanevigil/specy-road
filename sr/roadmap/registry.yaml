@@ -132,3 +132,11 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
+  - codename: tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold
+    node_id: M16.1.9
+    branch: feature/rm-tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold
+    touch_zones:
+      - tests/scenarios/milestone/
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
