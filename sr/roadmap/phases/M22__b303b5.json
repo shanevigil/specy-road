@@ -217,7 +217,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.41_ready-refuses-a-leaf-with-no-commits_ac3ad49e-21e0-4e99-afd3-f91340af713a.md",
       "sibling_order": 37,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "ready refuses a leaf with no commits, and handoff status stops offering it for review",
       "touch_zones": [
         "specy_road/review_gate_ready.py",
