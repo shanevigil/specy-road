@@ -398,7 +398,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.9_tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold_142b5d57-8272-439f-93a1-0aa3dc7cf88d.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold",
       "touch_zones": [
         "tests/scenarios/milestone/"
