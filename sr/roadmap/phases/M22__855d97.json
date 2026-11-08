@@ -380,7 +380,8 @@
         "docs/orchestration-steering-files.md",
         "tests/test_steering_file_guard.py",
         "tests/test_finish_merge_failure_undo.py",
-        "tests/test_finish_work_cleanup.py"
+        "tests/test_finish_work_cleanup.py",
+        "tests/test_finish_config_preflight.py"
       ],
       "type": "task"
     },

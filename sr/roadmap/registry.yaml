@@ -149,6 +149,7 @@ entries:
       - tests/test_steering_file_guard.py
       - tests/test_finish_merge_failure_undo.py
       - tests/test_finish_work_cleanup.py
+      - tests/test_finish_config_preflight.py
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
@@ -165,6 +166,9 @@ entries:
       - specy_road/bundled_scripts/grind_session.py
       - specy_road/worker_state.py
       - specy_road/schemas/worker-record.schema.json
+      - tests/parity/golden/inventory.json
+      - tests/parity/golden/help/
+      - tests/parity/command_map.yaml
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
