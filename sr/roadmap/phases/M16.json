@@ -87,7 +87,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.7_baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down_fce532e1-9ed0-4da1-9f16-2465c6e73df0.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Baseline metrics, a coverage floor in CI, and the M16 working rules written down",
       "touch_zones": [
         "scripts/lean_metrics.py",

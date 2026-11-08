@@ -65,7 +65,8 @@ a version it does not recognise is discarded and rebuilt.
 | Situation | What happens |
 | --------- | ------------ |
 | `HEAD` unchanged | The cache is reused verbatim. |
-| `HEAD` moved forward | Only the new commits are walked and appended. |
+| Cached commit is on `HEAD`'s first-parent line | Only the new commits are walked and appended. |
+| Any other ancestor, including a merged side-branch tip | Full rebuild. Appending would keep that branch's intermediate edits; the walk records the merge as one step. |
 | History rewritten (rebase, amend, force-push) | Full rebuild — the cached commit is no longer reachable, so its events describe commits that no longer exist. |
 | Cache missing, corrupt, or a different `cache_version` | Full rebuild. |
 | Cache directory unwritable | Rebuild each time. Nothing fails. |

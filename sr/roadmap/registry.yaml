@@ -93,21 +93,6 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
-  - codename: baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down
-    node_id: M16.1.7
-    branch: feature/rm-baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down
-    touch_zones:
-      - scripts/lean_metrics.py
-      - constraints/lean-baseline.json
-      - constraints/README.md
-      - .github/workflows/validate.yml
-      - pyproject.toml
-      - sr/constraints/README.md
-      - requirements-ci.in
-      - requirements-ci.txt
-    started: '2026-11-08'
-    owner: savigil
-    implementation_review: pending
   - codename: gui-outline-selection-lag
     node_id: M17.13
     branch: feature/rm-gui-outline-selection-lag
@@ -119,20 +104,6 @@ entries:
       - gui/pm-gantt/src/usePmGuiHandlers.ts
       - specy_road/pm_gantt_static/
       - CHANGELOG.md
-    started: '2026-11-08'
-    owner: savigil
-    implementation_review: pending
-  - codename: digest-is-the-same-cold-or-warm
-    node_id: M22.43
-    branch: feature/rm-digest-is-the-same-cold-or-warm
-    touch_zones:
-      - specy_road/history_index.py
-      - specy_road/history_cache.py
-      - tests/test_digest_cold_warm.py
-      - CHANGELOG.md
-      - specy_road/history_git.py
-      - specy_road/history_walk.py
-      - docs/roadmap-history.md
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
@@ -157,6 +128,40 @@ entries:
       - sr/planning/
       - specy_road/worker_adapter_cursor.py
       - CHANGELOG.md
+      - tests/test_worker_adapters.py
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
+  - codename: tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold
+    node_id: M16.1.9
+    branch: feature/rm-tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold
+    touch_zones:
+      - tests/scenarios/milestone/
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
+  - codename: tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold
+    node_id: M16.1.10
+    branch: feature/rm-tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold
+    touch_zones:
+      - tests/scenarios/roadmap_edit/
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
+  - codename: shipped-templates-carry-no-provenance-comments
+    node_id: M16.1.12
+    branch: feature/rm-shipped-templates-carry-no-provenance-comments
+    touch_zones:
+      - specy_road/templates/specyrd/agents-rules.md
+      - specy_road/templates/specyrd/agents-md-block.md
+      - specy_road/templates/specyrd/claude-md-block.md
+      - specy_road/agent_guide_block.py
+      - specy_road/bundled_scripts/chore_garden.py
+      - tests/test_agents_md_block.py
+      - tests/test_chore_mode.py
+      - CHANGELOG.md
+      - specy_road/agent_rule_provenance.md
+      - docs/orchestration-chores.md
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending

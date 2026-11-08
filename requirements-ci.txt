@@ -25,6 +25,8 @@ certifi==2026.10.19
     #   requests
 charset-normalizer==3.4.7
     # via requests
+coverage==7.17.2
+    # via specy-road
 execnet==2.1.2
     # via pytest-xdist
 fastapi==0.141.1

@@ -16,7 +16,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.1.4` Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions `constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions` — task — **Complete**
     - `M16.1.5` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Complete**
     - `M16.1.6` Review-policy evidence: how often each optional review policy changed a gate outcome `review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` — task — **Not Started**
-    - `M16.1.7` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Not Started**
+    - `M16.1.7` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Complete**
     - `M16.1.8` A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided `ruff-quality-baseline` — task — **Not Started**
     - `M16.1.9` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Not Started**
     - `M16.1.10` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Not Started**
@@ -171,7 +171,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Complete**
   - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Complete**
   - `M22.41` ready refuses a leaf with no commits, and handoff status stops offering it for review `ready-refuses-a-leaf-with-no-commits` — task — **Not Started**
-  - `M22.43` digest gives the same result with a cold or warm history cache `digest-is-the-same-cold-or-warm` — task — **Not Started**
+  - `M22.43` digest gives the same result with a cold or warm history cache `digest-is-the-same-cold-or-warm` — task — **Complete**
   - `M22.44` Unattended workers run in a read-only sandbox on Linux `workers-run-in-a-sandbox` — task — **Complete**
   - `M22.45` A worker turn that moves the integration ref is flagged `integration-refs-stay-put-during-a-turn` — task — **Complete**
   - `M22.46` Sandboxed workers can read their leaf's review records `sandboxed-workers-can-read-their-reviews` — task — **Complete**
@@ -309,8 +309,10 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
+- `M16.1.10` on `feature/rm-tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` since 2026-11-08
+- `M16.1.12` on `feature/rm-shipped-templates-carry-no-provenance-comments` since 2026-11-08
 - `M16.1.6` on `feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` since 2026-11-08
-- `M16.1.7` on `feature/rm-baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` since 2026-11-08
+- `M16.1.9` on `feature/rm-tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` since 2026-11-08
 - `M17.13` on `feature/rm-gui-outline-selection-lag` since 2026-11-08
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -320,7 +322,6 @@ Do not pick these up.
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 - `M22.37` on `feature/rm-cursor-cli-harness-test-pass` since 2026-11-08
 - `M22.41` on `feature/rm-ready-refuses-a-leaf-with-no-commits` since 2026-11-08
-- `M22.43` on `feature/rm-digest-is-the-same-cold-or-warm` since 2026-11-08
 
 ## Quality by area
 
@@ -329,17 +330,21 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `CHANGELOG.md` **flagged** | 42 | 0 | 2.79 | 64% | 20 | 3 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 37 | 0 | 2.86 | 62% | 16 | 3 |
+| `docs` **flagged** | 38 | 0 | 2.82 | 61% | 16 | 3 |
 | `gui` **flagged** | 4 | 0 | 2.00 | 75% | 3 | 0 |
-| `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `specy_road` **flagged** | 43 | 0 | 2.84 | 63% | 20 | 4 |
-| `tests` **flagged** | 46 | 0 | 2.72 | 61% | 22 | 4 |
+| `tests` **flagged** | 45 | 0 | 2.76 | 62% | 22 | 4 |
+| `.github` | 2 | 0 | 1.50 | 50% | 13 | 0 |
 | `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
+| `constraints` | 1 | 0 | 1.00 | 0% | 13 | 0 |
+| `pyproject.toml` | 2 | 0 | 1.50 | 50% | 13 | 0 |
+| `requirements-ci.in` | 1 | 0 | 1.00 | 0% | 13 | 0 |
+| `requirements-ci.txt` | 1 | 0 | 1.00 | 0% | 13 | 0 |
+| `scripts` | 1 | 0 | 1.00 | 0% | 13 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

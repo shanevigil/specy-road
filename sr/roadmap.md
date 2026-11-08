@@ -16,7 +16,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.1.4` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Complete |
 | `M16.1.5` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Complete |
 | `M16.1.6` | Review-policy evidence: how often each optional review policy changed a gate outcome | task | Mixed | Not Started |
-| `M16.1.7` | Baseline metrics, a coverage floor in CI, and the M16 working rules written down | task | Agentic-led | Not Started |
+| `M16.1.7` | Baseline metrics, a coverage floor in CI, and the M16 working rules written down | task | Agentic-led | Complete |
 | `M16.1.8` | A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided | task | Agentic-led | Not Started |
 | `M16.1.9` | Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold | task | Agentic-led | Not Started |
 | `M16.1.10` | Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold | task | Agentic-led | Not Started |
@@ -233,7 +233,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.39` | Stalled workers are detected on every run and can be recovered in one command | task | — | Complete |
 | `M22.40` | Cursor display names match the model they name | task | — | Complete |
 | `M22.41` | ready refuses a leaf with no commits, and handoff status stops offering it for review | task | — | Not Started |
-| `M22.43` | digest gives the same result with a cold or warm history cache | task | — | Not Started |
+| `M22.43` | digest gives the same result with a cold or warm history cache | task | — | Complete |
 | `M22.44` | Unattended workers run in a read-only sandbox on Linux | task | — | Complete |
 | `M22.45` | A worker turn that moves the integration ref is flagged | task | — | Complete |
 | `M22.46` | Sandboxed workers can read their leaf's review records | task | — | Complete |
