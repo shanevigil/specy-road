@@ -386,12 +386,13 @@
     },
     {
       "acceptance": [
-        "The provenance comments in specy_road/templates/specyrd/agents-rules.md, agents-md-block.md and claude-md-block.md move to one maintainer-only file outside specy_road/templates/, so no wheel ships them; the code that reads them (agent_guide_block, agents_md_block, chore_garden) reads that file instead, with the same behaviour for maintainers",
-        "Tests: a rendered consumer AGENTS.md, CLAUDE.md block and rules file contain no provenance comment; tests/test_agents_md_block.py and tests/test_chore_mode.py pass against the moved file; CHANGELOG [Unreleased] entry"
+        "Provenance lines (a whole line matching PROVENANCE in specy_road/agent_guide_block.py) leave specy_road/templates/specyrd/agents-rules.md, agents-md-block.md and claude-md-block.md and live in specy_road/agent_rule_provenance.md (not under templates/, docs/ or sr/, and not a Python module), each still on the line after its rule. The three templates contain no such line. render_rules, render_agents_lines and render_guide_lines keep reading the templates and their output does not change. advisory_rule_findings reads the new file instead of the templates, only when it is inside the scanned checkout, with the same advisory match; finding paths name the new file. docs/orchestration-chores.md's advisory-rule row names that file",
+        "Tests in tests/test_agents_md_block.py and tests/test_chore_mode.py through the public render functions and advisory_rule_findings, as rows: (1) each template has no PROVENANCE line and equals its section of the new file with those lines removed; (2) the existing adjacency check runs on the new file; (3) on a checkout containing the file, advisory_rule_findings reports an advisory line there, no non-advisory PROVENANCE line, and no path under the three templates; (4) the new file's path matches none of the specy_road package-data globs. CHANGELOG [Unreleased] says the shipped templates no longer carry maintainer provenance comments"
       ],
       "codename": "shipped-templates-carry-no-provenance-comments",
       "dependencies": [
-        "01db66ad-a91c-48e3-953e-4083f5f14a13"
+        "01db66ad-a91c-48e3-953e-4083f5f14a13",
+        "fce532e1-9ed0-4da1-9f16-2465c6e73df0"
       ],
       "id": "M16.1.12",
       "node_key": "122b76b1-4d3f-428f-a893-79c236fd2e87",
@@ -405,11 +406,12 @@
         "specy_road/templates/specyrd/agents-md-block.md",
         "specy_road/templates/specyrd/claude-md-block.md",
         "specy_road/agent_guide_block.py",
-        "specy_road/agents_md_block.py",
         "specy_road/bundled_scripts/chore_garden.py",
         "tests/test_agents_md_block.py",
         "tests/test_chore_mode.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/agent_rule_provenance.md",
+        "docs/orchestration-chores.md"
       ],
       "type": "task"
     }
