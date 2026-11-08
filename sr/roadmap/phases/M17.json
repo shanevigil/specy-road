@@ -80,7 +80,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.3_gui-orch-drawer_299b0942-b9da-4784-ab34-f25701ee0e27.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags",
       "touch_zones": [
         "gui/pm-gantt/src/components/OrchestrationDrawer.tsx",

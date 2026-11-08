@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import drawerSource from "./components/OrchestrationDrawer.tsx?raw";
 import mockJson from "./fixtures/orchestration_snapshot_mock.json";
 import {
   buildOrchestrationView,
+  copyCommand,
   leafBadge,
+  loadOrchestration,
   optionalKeys,
+  pollOrchestration,
   requiredKeys,
   type OrchestrationSnapshot,
   type OutlineNodeRef,
@@ -341,5 +345,92 @@ describe("buildOrchestrationView", () => {
     expect(only.map((g) => [g.key, g.title, g.badge, g.workers.map((w) => [w.id, w.account])])).toEqual([
       [null, "No leaf", null, [["w-9", "work"]]],
     ]);
+  });
+});
+
+/** A fetch that records each request as `METHOD url` and answers with `reply()`. */
+function recordingFetch(reply: () => Promise<Response>) {
+  const requests: string[] = [];
+  const fetchImpl = ((input: RequestInfo | URL, init?: RequestInit) => {
+    requests.push(`${init?.method ?? "GET"} ${String(input)}`);
+    return reply();
+  }) as typeof fetch;
+  return { requests, fetchImpl };
+}
+
+const respond = (body: string, status: number) => () => Promise.resolve(new Response(body, { status }));
+
+describe("loadOrchestration", () => {
+  it("makes one GET of /api/orchestration per load and returns the snapshot", async () => {
+    const { requests, fetchImpl } = recordingFetch(respond(JSON.stringify(mockJson), 200));
+    expect(await loadOrchestration(fetchImpl)).toEqual({ kind: "ok", snapshot: mock });
+    expect(requests).toEqual(["GET /api/orchestration"]);
+  });
+
+  it("404 (a server without the route) is unavailable", async () => {
+    const { requests, fetchImpl } = recordingFetch(respond("Not Found", 404));
+    expect(await loadOrchestration(fetchImpl)).toEqual({ kind: "unavailable" });
+    expect(requests).toEqual(["GET /api/orchestration"]);
+  });
+
+  it.each([
+    ["HTTP 500", respond("boom", 500), "orchestration: HTTP 500"],
+    ["a network failure", () => Promise.reject(new TypeError("Failed to fetch")), "TypeError: Failed to fetch"],
+    ["a body that is not JSON", respond("<html>", 200), "SyntaxError"],
+  ])("%s is an error", async (_label, reply, message) => {
+    const r = await loadOrchestration(recordingFetch(reply).fetchImpl);
+    expect(r.kind).toBe("error");
+    expect(r.kind === "error" && r.message).toContain(message);
+  });
+});
+
+describe("pollOrchestration (15 s, only while open)", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("open: one load; +15 s: one more; closed: none", async () => {
+    const { requests, fetchImpl } = recordingFetch(respond("Not Found", 404));
+    const stop = pollOrchestration(() => void loadOrchestration(fetchImpl));
+    expect(requests).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(14_999);
+    expect(requests).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(requests).toEqual(["GET /api/orchestration", "GET /api/orchestration"]);
+    stop();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(requests).toHaveLength(2);
+  });
+});
+
+describe("copyCommand", () => {
+  it.each([
+    ["worker status", "w-0001", "specy-road worker status w-0001"],
+    ["worker open", "w_1.2", "specy-road worker open w_1.2"],
+    ["handoff status", "M17.3", "specy-road handoff status M17.3"],
+    ["worker status", "it's a $(rm -rf ~)", `specy-road worker status 'it'\\''s a $(rm -rf ~)'`],
+    ["handoff status", "M1;ls", "specy-road handoff status 'M1;ls'"],
+  ] as const)("%s %s", (kind, id, expected) => {
+    expect(copyCommand(kind, id)).toBe(expected);
+  });
+});
+
+/** Every import or re-export clause the source takes from `../api`; a dynamic import is `import()`. */
+function apiImports(source: string): string[] {
+  const re = /\b(?:import|export)\b([^;]*?)\bfrom\s*["']\.\.\/api(?:\.ts)?["']|\bimport\s*\(\s*["']\.\.\/api(?:\.ts)?["']/g;
+  return [...source.matchAll(re)].map((m) => (m[1] ?? "import()").replace(/\s+/g, " ").trim());
+}
+
+describe("OrchestrationDrawer.tsx imports from api.ts", () => {
+  it("only fetchOrchestration", () => {
+    expect(apiImports(drawerSource)).toEqual(["{ fetchOrchestration }"]);
+  });
+
+  it.each([
+    [`import { fetchOrchestration, patchNode } from "../api";`, "{ fetchOrchestration, patchNode }"],
+    [`import * as api from "../api";`, "* as api"],
+    [`import type {\n  Fingerprint,\n} from "../api.ts";`, "type { Fingerprint, }"],
+    [`const m = await import("../api");`, "import()"],
+  ])("the check sees %s", (source, clause) => {
+    expect(apiImports(source)).toEqual([clause]);
   });
 });

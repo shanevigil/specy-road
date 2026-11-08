@@ -11,6 +11,7 @@ import type {
   WorkerRow,
 } from "./types";
 import type { GroupOutlineBody } from "./outlineGroup";
+import { loadOrchestration, type OrchestrationLoad } from "./orchestrationSnapshot";
 
 const API = "/api";
 
@@ -845,4 +846,9 @@ export async function fetchWorkerEvents(
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json() as Promise<WorkerDetail>;
+}
+
+/** Read-only: the orchestration snapshot; a 404 (server without the route) is `unavailable`. */
+export function fetchOrchestration(): Promise<OrchestrationLoad> {
+  return loadOrchestration((input, init) => fetch(input, init));
 }

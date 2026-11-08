@@ -20,6 +20,11 @@ export type WorkerSelection = {
   clear: () => void;
 };
 
+/** The worker a list load shows: `preferId` when it is listed, else the newest (last listed). */
+export function pickWorkerId(ids: readonly string[], preferId: string | null): string | null {
+  return preferId !== null && ids.includes(preferId) ? preferId : (ids.at(-1) ?? null);
+}
+
 export function createWorkerSelection<D>(
   fetchDetail: (id: string, signal: AbortSignal) => Promise<D>,
   onChange: (state: WorkerSelectionState<D>) => void,

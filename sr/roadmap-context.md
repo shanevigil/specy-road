@@ -181,7 +181,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
-  - `M17.3` PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags `gui-orch-drawer` — task — **Not Started**
+  - `M17.3` PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags `gui-orch-drawer` — task — **Complete**
   - `M17.4` PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state `gui-orch-leaf-detail` — task — **Not Started**
   - `M17.5` PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer `gui-orch-outline-badges` — task — **Not Started**
   - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Not Started**
@@ -310,7 +310,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.1.6` on `feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` since 2026-11-08
-- `M17.3` on `feature/rm-gui-orch-drawer` since 2026-11-08
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -325,18 +324,18 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `CHANGELOG.md` **flagged** | 41 | 0 | 2.56 | 63% | 19 | 2 |
+| `CHANGELOG.md` **flagged** | 40 | 0 | 2.60 | 65% | 19 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 36 | 0 | 2.64 | 64% | 15 | 2 |
-| `gui` **flagged** | 5 | 0 | 1.80 | 60% | 3 | 0 |
+| `docs` **flagged** | 35 | 0 | 2.69 | 66% | 15 | 2 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `specy_road` **flagged** | 42 | 0 | 2.62 | 62% | 19 | 3 |
-| `tests` **flagged** | 45 | 0 | 2.51 | 62% | 21 | 3 |
+| `tests` **flagged** | 44 | 0 | 2.55 | 64% | 21 | 3 |
 | `.github` | 2 | 0 | 1.50 | 50% | 13 | 0 |
 | `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 | `constraints` | 1 | 0 | 1.00 | 0% | 13 | 0 |
+| `gui` | 6 | 0 | 1.67 | 50% | 3 | 0 |
 | `pyproject.toml` | 2 | 0 | 1.50 | 50% | 13 | 0 |
 | `requirements-ci.in` | 1 | 0 | 1.00 | 0% | 13 | 0 |
 | `requirements-ci.txt` | 1 | 0 | 1.00 | 0% | 13 | 0 |
