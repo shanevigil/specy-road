@@ -25,7 +25,9 @@ the script reads. Every check runs before the first reviewer, and a study larger
 
     python scripts/review_effort_study.py policy-evidence [NODE_ID ...] [-o DIR]
 
-A case is one review round: node_key, commit and every history record filed at that commit. It is
+A case is one review round: node_key, commit and every record filed at that commit, from ``history/``
+and each live ``REVIEW-*.md`` no history copy duplicates; a record's filing time is its history stamp,
+else the end of its ``date`` day (:func:`filed_at`). It is
 replayable when its records validate and its commit, node and ``roadmap/orchestration.yaml`` (the
 integration branch's last commit before the round's latest filing time) all come back from git; the
 policy's public evaluator then runs on the case with the policy as configured and with only that policy
@@ -49,14 +51,14 @@ from typing import Any, Callable
 
 import yaml
 
-from specy_road.git_subprocess import git_stdout
-from specy_road.git_workflow_config import GIT_WORKFLOW_REL, load_git_workflow_config
+from specy_road.git_subprocess import git_text
+from specy_road.git_workflow_config import GIT_WORKFLOW_REL, resolve_integration_defaults
 from specy_road.orchestration_config import (DEFAULT_CONFIG, DEFAULT_POLICY, family_of,
                                             load_orchestration_config)
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.review_deferral import deferral_in_effect, load_markers
 from specy_road.review_files import (PACKET_NAME, ReviewFile, latest_ready, list_rcas,
-                                     list_review_history, reviews_dir, reviews_root)
+                                     list_review_history, list_reviews, reviews_dir, reviews_root)
 from specy_road.review_gate import delta_problem
 from specy_road.review_policy_ref import committed_yaml
 from specy_road.review_pre_existing import PRE_EXISTING_NAME, gate_problems
@@ -201,11 +203,13 @@ class Case:
     def __init__(self, root: Path, node_id: str, commit: str, round_no: int, rounds: list[Round],
                  records: list[ReviewFile]) -> None:
         self.root, self.node_id, self.commit = root, node_id, commit
-        self.round, self.rounds = round_no, rounds   # 1-based, in filing order (review_rca.review_rounds)
-        self.records = records    # every history record at this commit, not only the latest per model
+        # 1-based, in filing order (review_rca.review_rounds); 0: a commit only a live REVIEW-*.md names
+        self.round, self.rounds = round_no, rounds
+        self.records = records    # every record at this commit (history, then live), not only the latest
         self.node: dict[str, Any] | None = None
         self.config: dict[str, Any] = {}
         self.workflow: dict[str, Any] = {}
+        self.has_orchestration = False   # whether roadmap/orchestration.yaml existed then, not only defaults
         self.provenance = ""
         self.problem = ""         # why the case is not replayable; empty when it is
 
@@ -258,6 +262,8 @@ def _deferral(c: Case, policy: dict[str, Any]) -> Any:
 def _rca(c: Case, policy: dict[str, Any]) -> Any:
     """The escalation rule :func:`review_rca.escalation` starts at this round; an RCA filed for the round
     that the configured policy does not reproduce makes the case unreplayable."""
+    if c.round == 0:   # the RCA rule reads history alone, so it never counted this commit
+        return None
     triggers = [r.data["trigger"] for r in list_rcas(c.root, c.node_id) if r.ok]
     resolved = max((int(t["round"]) for t in triggers if int(t["round"]) < c.round), default=0)
     fam: Callable[[str], str] = lambda m: family_of(c.config, m) or m
@@ -278,8 +284,9 @@ def _strong(c: Case, policy: dict[str, Any]) -> Any:
 
 def _agreement(c: Case, policy: dict[str, Any]) -> Any:
     """review_gate_agreement's rule at the round's time: reviewers asked for while finish skips the gate."""
-    flag = c.workflow.get("require_implementation_review_before_finish")
-    return policy.get("agreement", True) and int(policy["reviewers_required"]) >= 1 and flag is False
+    finish_gate = bool(c.workflow.get("require_implementation_review_before_finish"))   # absent: off
+    asks = c.has_orchestration and int(policy["reviewers_required"]) >= 1   # absent file: asks for none
+    return policy.get("agreement", True) and asks and not finish_gate
 
 
 #: policy -> (evaluator, the policy with only it disabled, citation pattern, outcome counted when it changes).
@@ -304,22 +311,18 @@ POLICIES: dict[str, tuple[Callable[[Case, dict[str, Any]], Any], dict[str, Any],
 }
 
 
-def _git(root: Path, *args: str) -> str:
-    return (git_stdout(list(args), root) or "").strip()
-
-
 @functools.cache
 def node_then(root: Path, node_id: str, commit: str) -> dict[str, Any] | None:
     """``node_id`` as ``commit`` records it: :func:`review_target.node_at`, else (a node archived or moved
     since) the chunk ``roadmap/manifest.json`` at ``commit`` lists that holds it."""
     found = node_at(root, node_id, commit)
     try:
-        includes = json.loads(_git(root, "show", f"{commit}:./roadmap/manifest.json") or "{}")["includes"]
+        includes = json.loads(git_text(["show", f"{commit}:./roadmap/manifest.json"], root) or "{}")["includes"]
     except (ValueError, KeyError, TypeError):
         includes = []
     for rel in includes if found is None else []:
         try:
-            nodes = nodes_from_chunk_doc(json.loads(_git(root, "show", f"{commit}:./roadmap/{rel}") or "null"))
+            nodes = nodes_from_chunk_doc(json.loads(git_text(["show", f"{commit}:./roadmap/{rel}"], root) or "null"))
         except ValueError:
             continue
         found = next((n for n in nodes or [] if n.get("id") == node_id), None)
@@ -328,17 +331,29 @@ def node_then(root: Path, node_id: str, commit: str) -> dict[str, Any] | None:
     return found
 
 
+def filed_at(r: ReviewFile) -> tuple[str, bool]:
+    """``(UTC time, from the date field)``: a record's filing time, the one rule for every record. A history
+    copy's name carries it; a record without that stamp (a live ``REVIEW-*.md`` or a ``superseded-*`` copy)
+    counts as filed at the end of its own ``date`` day, so the config found may be up to a day later than
+    the review. ``("", False)`` when neither exists."""
+    m = STAMP.match(r.path.name)
+    if m:
+        return "{}-{}-{}T{}:{}:{}Z".format(*m.groups()), False
+    day = str(r.data.get("date") or "") if isinstance(r.data, dict) else ""
+    return (f"{day}T23:59:59Z", True) if re.fullmatch(r"\d{4}-\d\d-\d\d", day) else ("", False)
+
+
 def reconstruct(case: Case, branch: str) -> Case:
     """Fill ``case`` from git at the round's latest filing time; ``problem`` says what did not come back."""
-    stamps = [STAMP.match(r.path.name) for r in case.records]
+    times = [filed_at(r) for r in case.records]
     commit = full_sha(case.root, case.commit)
     case.node = node_then(case.root, case.node_id, commit) if commit else None
-    at = max(("{}-{}-{}T{}:{}:{}Z".format(*m.groups()) for m in stamps if m), default="")
-    rev = _git(case.root, "rev-list", "-1", "--first-parent", f"--before={at}", branch) if at else ""
+    at = max((t for t, _ in times if t), default="")
+    rev = git_text(["rev-list", "-1", "--first-parent", f"--before={at}", branch], case.root) if at else ""
     data, err = load_orchestration_config(case.root, rev) if rev else (None, None)
     case.problem = next((why for bad, why in (
         (not all(r.ok for r in case.records), "a record does not validate"),
-        (not all(stamps), "a record has no filing time"), (not commit, "the commit is not in git"),
+        (not all(t for t, _ in times), "a record has no filing time"), (not commit, "the commit is not in git"),
         (case.node is None, "the node is not readable at the commit"),
         (not rev, f"no {branch} commit before {at}"), (bool(err), str(err))) if bad), "")
     if case.problem:
@@ -346,20 +361,35 @@ def reconstruct(case: Case, branch: str) -> Case:
     case.commit = commit
     case.config = copy.deepcopy(data or DEFAULT_CONFIG)
     case.config["policy"] = {**DEFAULT_POLICY, **(case.config.get("policy") or {})}
+    case.has_orchestration = data is not None
     case.workflow = committed_yaml(case.root, rev, GIT_WORKFLOW_REL.as_posix())
-    case.provenance = (f"{len(case.records)} history record(s) to {at}; orchestration.yaml and "
+    dated = sum(by_date for _, by_date in times)
+    case.provenance = (f"{len(case.records)} record(s) filed by {at}"
+                       f"{f' ({dated} by their date field)' if dated else ''}; orchestration.yaml and "
                        f"git-workflow.yaml at {branch}@{rev[:12]}{'' if data else ' (absent: defaults)'}")
     return case
 
 
 def node_cases(root: Path, node_id: str, branch: str) -> list[Case]:
-    """Every review round of ``node_id`` with its full record set, reconstructed from git."""
-    rounds, by_commit = review_rounds(root, node_id), {}
-    for r in list_review_history(root, node_id):   # an invalid record joins its round when it names a commit
+    """Every reviewed commit of ``node_id`` with its full record set, reconstructed from git.
+
+    The records are the history's and every live ``REVIEW-*.md`` no history record duplicates (same
+    model, commit and verdict): one ``review record`` did not archive. Commits come in the history's round order, then the commits only a
+    live record names. A record naming no commit (invalid) cannot join a case and is left out.
+    """
+    rounds, history = review_rounds(root, node_id), list_review_history(root, node_id)
+    def vote(r: ReviewFile) -> tuple[Any, ...]:   # fields a live copy may add (independence) are ignored
+        d = r.data if isinstance(r.data, dict) else {}
+        return d.get("model"), full_sha(root, str(d.get("commit") or "")), d.get("verdict")
+    archived = {vote(h) for h in history}
+    live = [r for r in list_reviews(root, node_id) if vote(r) not in archived]
+    order, by_commit = {rnd.commit: i for i, rnd in enumerate(rounds, 1)}, {rnd.commit: [] for rnd in rounds}
+    for r in history + live:
         raw = str(r.data.get("commit") or "") if isinstance(r.data, dict) else ""
-        by_commit.setdefault(full_sha(root, raw) or raw, []).append(r)
-    return [reconstruct(Case(root, node_id, rnd.commit, i, rounds, by_commit.get(rnd.commit, [])), branch)
-            for i, rnd in enumerate(rounds, 1)]
+        if raw:
+            by_commit.setdefault(full_sha(root, raw) or raw, []).append(r)
+    return [reconstruct(Case(root, node_id, commit, order.get(commit, 0), rounds, records), branch)
+            for commit, records in by_commit.items()]
 
 
 def moves_others(case: Case, name: str) -> list[str]:
@@ -401,12 +431,14 @@ def evidence_main(argv: list[str]) -> int:
     add_repo_root_arg(p)
     ns = p.parse_args(argv)
     root = resolve_repo_root(ns)
-    branch = (load_git_workflow_config(root)[0] or {}).get("integration_branch") or "main"
+    branch = resolve_integration_defaults(root, explicit_base=None, explicit_remote=None)[0]
     top = reviews_root(root)
-    nodes = ns.nodes or (sorted(d.name for d in top.iterdir() if (d / "history").is_dir()) if top.is_dir() else [])
+    nodes = ns.nodes or (sorted(d.name for d in top.iterdir() if d.is_dir() and not d.name.startswith("."))
+                         if top.is_dir() else [])
     cases = [c for n in nodes for c in node_cases(root, n, branch)]
+    nodes = sorted({c.node_id for c in cases})
     rows = [{"node_id": c.node_id, "node_key": (c.node or {}).get("node_key", ""), "commit": c.commit,
-             "round": c.round, "records": len(c.records), "provenance": c.provenance or c.problem,
+             "round": c.round or "live", "records": len(c.records), "provenance": c.provenance or c.problem,
              **{name: classify(c, name) for name in POLICIES}} for c in cases]
     out = (ns.output or root / "work" / "policy-evidence").resolve()
     out.mkdir(parents=True, exist_ok=True)
