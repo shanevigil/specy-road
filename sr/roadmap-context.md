@@ -178,7 +178,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.46` Sandboxed workers can read their leaf's review records `sandboxed-workers-can-read-their-reviews` — task — **Complete**
   - `M22.47` Cursor workers start and keep their config under the sandbox `cursor-starts-under-the-sandbox` — task — **Complete**
   - `M22.48` A shared reviewer name closes the gate only when it could be the leaf's writer `shared-names-close-only-when-they-could-be-the-writer` — task — **Complete**
-  - `M22.49` A sandboxed Claude worker resumes after the executor account changes `sandboxed-worker-resumes-after-an-account-switch` — task — **Not Started**
+  - `M22.49` A sandboxed Claude worker resumes after the executor account changes `sandboxed-worker-resumes-after-an-account-switch` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
@@ -320,7 +320,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
-- `M22.49` on `feature/rm-sandboxed-worker-resumes-after-an-account-switch` since 2026-11-08
 
 ## Quality by area
 
@@ -330,16 +329,16 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | --- | --- | --- | --- | --- | --- | --- |
 | `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 43 | 0 | 2.79 | 65% | 25 | 3 |
+| `CHANGELOG.md` **flagged** | 43 | 0 | 2.79 | 65% | 26 | 3 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 37 | 0 | 2.92 | 65% | 21 | 3 |
-| `gui` **flagged** | 2 | 0 | 2.50 | 100% | 3 | 0 |
+| `docs` **flagged** | 37 | 0 | 2.92 | 65% | 22 | 3 |
+| `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
 | `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 44 | 0 | 2.84 | 64% | 25 | 4 |
-| `tests` **flagged** | 47 | 0 | 2.72 | 62% | 27 | 4 |
+| `specy_road` **flagged** | 44 | 0 | 2.84 | 64% | 26 | 4 |
+| `tests` **flagged** | 47 | 0 | 2.72 | 62% | 28 | 4 |
 | `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 
