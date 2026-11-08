@@ -67,7 +67,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.37_cursor-cli-harness-test-pass_bc7839a4-9796-4a0c-a544-d53116c1d045.md",
       "sibling_order": 33,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Test the Cursor CLI harness on the documented default",
       "touch_zones": [
         "docs/orchestration-workers.md",
