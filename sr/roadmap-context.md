@@ -321,6 +321,7 @@ Do not pick these up.
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 - `M22.39` on `feature/rm-worker-stall-recovery` since 2026-11-07
 - `M22.47` on `feature/rm-cursor-starts-under-the-sandbox` since 2026-11-07
+- `M22.48` on `feature/rm-shared-names-close-only-when-they-could-be-the-writer` since 2026-11-08
 
 ## Quality by area
 
