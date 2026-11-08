@@ -2,7 +2,7 @@
 
 AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer.
 
-Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `origin/WIP/improvements-0-3-1` (`b781d827`); fix round 2 after merging it again (`9c39ce3e`).
+Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `origin/WIP/improvements-0-3-1` (`b781d827`); fix round 2 after merging it again (`9c39ce3e`); fix round 3 after merging it again (`ef13dd25`).
 
 ## Acceptance
 
@@ -66,6 +66,18 @@ Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `or
   - **A4 needs:** `specy_road/bundled_scripts/chore_garden.py`, `specy_road/agent_guide_block.py`, `specy_road/agents_md_block.py`, `tests/test_agents_md_block.py`, `tests/test_chore_mode.py`, `specy_road/templates/specyrd/agents-md-block.md`, `specy_road/templates/specyrd/claude-md-block.md`, plus a new provenance file that does not ship.
   - **Coordinator's choice:** add these zones (or split them into a follow-up leaf), or narrow A1 and A4. Editing them from here would break the executor rule against changes outside the zones.
 
+## Fix round 3 (review by gpt-6.1-sol at `33cc8191`): blocked on touch zones
+
+The review repeats the round 1 and round 2 findings A1 and A4 unchanged. No new input shape was named and A3 is no longer listed. After merging `origin/WIP/improvements-0-3-1` at `ef13dd25`, this leaf's registry row still lists the same eight touch zones, and both findings need only paths outside them. This round therefore changes no product file. The executor rules forbid edits outside the zones, and editing the registry or the acceptance is the coordinator's job.
+
+- **A1 needs:** `docs/contributor-guide.md` (lines 98-105), `docs/release-runbook.md` (lines 9 and 150), `docs/git-workflow.md` (line 6), `.cursor/rules/026-release-version-tag-sync.mdc` (line 8).
+- **A4 needs:**
+  - **Code:** `specy_road/bundled_scripts/chore_garden.py` and `specy_road/agent_guide_block.py` (which read the provenance from the templates), and `specy_road/agents_md_block.py`.
+  - **Tests:** `tests/test_agents_md_block.py`, which requires the comments to stay in the template, and `tests/test_chore_mode.py`.
+  - **Templates:** `specy_road/templates/specyrd/agents-md-block.md` and `claude-md-block.md`, which carry the same class of comment (8 and 2).
+  - **New file:** a maintainer-only provenance resource outside `specy_road/templates/`, so it is not in the wheel's `templates/**/*` package data.
+- **Coordinator options:** add these zones to M16.1.5; split A1's other copies and A4 into a follow-up leaf, with this leaf's acceptance narrowed to match; or rule on the interpretation. Another automatic fix round under the current zones cannot clear either finding.
+
 ## Probes
 
 - Digest in the consumer closure: now counted at 23 lines; total 161, under 400.
@@ -82,6 +94,8 @@ Base `5dce867e`; implementation commit `c83385c5`; fix round 1 after merging `or
 - Round 2, toolkit root: there is no root `.specyrd/AGENTS.md` (only `sr/.specyrd/`), so no managed file is added; the total stays at 238.
 - Round 2, other files the rules tell agents to read: only the load order (already counted up to "By task") and the three managed files above. The rest are task-conditional (`docs/orchestration*.md`, brief) or generated per task (`work/brief-*`).
 - Round 2, zones: the registry row on `origin/WIP/improvements-0-3-1` is unchanged, so A1 and A4 are still outside this leaf.
+- Round 3, zones: the registry row on `origin/WIP/improvements-0-3-1` at `ef13dd25` is unchanged (the same eight paths), so A1 and A4 are still outside this leaf.
+- Round 3, package data: `templates/**/*` ships the template file itself, which confirms A4 needs the comments moved out of `specy_road/templates/`. That needs the out-of-zone paths listed above.
 - Provenance comments by template: `agents-rules.md` 27, `agents-md-block.md` 8, `claude-md-block.md` 2, `agents-team.md` 0.
 - Readers of provenance comments: `agent_guide_block.py` (`PROVENANCE`, `strip_provenance`), `agents_md_block.py` (render), `chore_garden.py` (advisory-rule), and `tests/test_agents_md_block.py`, `tests/test_chore_mode.py`.
 
