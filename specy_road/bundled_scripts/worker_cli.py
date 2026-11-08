@@ -112,8 +112,8 @@ def cmd_list(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     stalls = slots.stalled_workers(root)   # sweeps first, so the flags listed below are current
     recs = list_records(root, active_only=not ns.all)
-    if not recs:
-        return _emit(ns, {"workers": []}, ["No workers under work/.workers/."])
+    if not recs:   # a pending recovery on a failed worker is still listed
+        return _emit(ns, *_with_stalls({"workers": []}, ["No workers under work/.workers/."], stalls))
     return _emit(ns, *_with_stalls(*list_view(root, recs, _row, _line), stalls))   # orphaned: held, leaf over
 
 

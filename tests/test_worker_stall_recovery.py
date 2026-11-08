@@ -139,6 +139,32 @@ def test_recover_ends_a_live_harness_whose_wrapper_died(tmp_path: Path, capsys) 
             ops.terminate(repo, rec.worker_id)
 
 
+def test_a_recovery_whose_resume_was_refused_is_finished_by_the_next_call(tmp_path: Path, capsys) -> None:
+    repo, rec = _silent_worker(tmp_path)
+    try:
+        git(repo, "remote", "add", "origin", "https://127.0.0.1:1/unreachable.git")   # the lease push will fail
+        git(repo, "update-ref", "refs/remotes/origin/dev", "dev")   # as a clone has them: the config reads dev
+        git(repo, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/dev")
+        ws.mutate(repo, rec, lambda r: setattr(r, "last_output_at", OLD))
+        assert run_worker_cli("worker", "recover", rec.worker_id, "--repo-root", str(repo)) == 1
+        assert "cannot reach origin" in capsys.readouterr().err
+        ended = ws.load_record(repo, rec.worker_id)
+        assert not wrapper_alive(rec, repo) and ended.recoveries == 1
+        # Pending, not lost: listed (and so retried by grind-session's loop), then finished offline uncounted.
+        assert run_worker_cli("worker", "list", "--repo-root", str(repo)) == 0
+        assert f"recovery pending: {rec.worker_id} (M1.1) recovery 1/3" in capsys.readouterr().out
+        assert run_worker_cli("worker", "recover", rec.worker_id, "--offline", "--repo-root", str(repo)) == 0
+        capsys.readouterr()
+        after = wait_for_worker(repo, rec.worker_id, timeout=30)
+        assert after.state == "idle" and after.recoveries == 1
+        assert slots.stalled_workers(repo) == []   # finished: neither stalled nor pending
+    finally:
+        if "origin" in git(repo, "remote").split():
+            git(repo, "remote", "remove", "origin")   # terminate releases the lease without a remote to reach
+        if ws.load_record(repo, rec.worker_id).state != "terminated":
+            ops.terminate(repo, rec.worker_id)
+
+
 def test_recover_past_the_limit_stops_as_needing_a_person(tmp_path: Path) -> None:
     repo = _repo(tmp_path, "max_fix_rounds: 2")
     rec = _running(repo, last_output_at=OLD, recoveries=2, provider_session_id="quiet")   # two recover calls so far

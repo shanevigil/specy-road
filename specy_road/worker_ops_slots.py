@@ -97,20 +97,38 @@ def sweep_stalled(repo_root: Path, *, now: datetime | None = None) -> list[Worke
     return out
 
 
+def recovery_pending(repo_root: Path, rec: WorkerRecord) -> bool:
+    """A counted recovery whose resume never started: its ``recovery`` event is newer than the last ``message``
+    (``_send`` writes one before every spawn), so the turn was ended and then a refusal (an unreachable lease
+    remote, a launch check, the slot or branch check) stopped the resume. The next ``recover`` finishes it without
+    counting it again. Limit: a spawn that fails after its ``message`` is logged counts as started."""
+    for e in reversed(events_since(repo_root, rec.worker_id)):
+        if e.type == "message":
+            return False
+        if (e.detail or {}).get("recovery"):
+            return rec.state != "terminated"   # failed is how an ended turn is left; it keeps its session
+    return False
+
+
 def stalled_workers(repo_root: Path, *, now: datetime | None = None) -> list[dict]:
-    """After a sweep, each stalled worker: id, leaf, seconds silent, recoveries used and allowed."""
+    """After a sweep, each stalled worker and each pending recovery: id, leaf, seconds silent (``None`` once the
+    turn is ended), recoveries used and allowed, ``needs_person`` and ``pending``."""
     now = now or datetime.now(timezone.utc)
     sweep_stalled(repo_root, now=now)
     limit = recovery_limit(repo_root)
     return [{"worker_id": r.worker_id, "node_id": r.node_id, "silent_seconds": silent_seconds(repo_root, r, now),
-             "recoveries": r.recoveries or 0, "recovery_limit": limit, "needs_person": FLAG_NEEDS_PERSON in r.flags}
-            for r in list_records(repo_root) if FLAG_STALLED in r.flags]
+             "recoveries": r.recoveries or 0, "recovery_limit": limit, "needs_person": FLAG_NEEDS_PERSON in r.flags,
+             "pending": pending}
+            for r in list_records(repo_root)
+            if (pending := recovery_pending(repo_root, r)) or FLAG_STALLED in r.flags]
 
 
 def stall_lines(stalls: list[dict]) -> list[str]:
-    """One line per stalled worker, with how long it has been silent and what to run."""
-    return [f"stalled: {s['worker_id']} ({s['node_id']}) silent {s['silent_seconds']}s, recoveries "
-            f"{s['recoveries']}/{s['recovery_limit']} — "
+    """One line per stalled worker or pending recovery, with how long it has been silent and what to run."""
+    return [(f"recovery pending: {s['worker_id']} ({s['node_id']}) recovery {s['recoveries']}/{s['recovery_limit']} "
+             "ended its turn but the resume did not start" if s["pending"] else
+             f"stalled: {s['worker_id']} ({s['node_id']}) silent {s['silent_seconds']}s, recoveries "
+             f"{s['recoveries']}/{s['recovery_limit']}") + " — "
             + ("needs a person (`worker status`, then `worker terminate` or wait)" if s["needs_person"]
                else f"`specy-road worker recover {s['worker_id']}`") for s in stalls]
 
@@ -120,12 +138,28 @@ def recovery_limit(repo_root: Path) -> int:
     return int(_policy(repo_root).get("max_fix_rounds") or DEFAULT_RECOVERIES)
 
 
+def _next_recovery(repo_root: Path, rec: WorkerRecord) -> int:
+    """The number the next recovery takes; past :func:`recovery_limit`, flag ``needs_person`` (one event naming the
+    last output) and raise."""
+    limit, last = recovery_limit(repo_root), last_output(repo_root, rec.worker_id) or "-"
+    if (rec.recoveries or 0) < limit:
+        return (rec.recoveries or 0) + 1
+    if FLAG_NEEDS_PERSON not in rec.flags:
+        append_event(repo_root, rec, "error", source="system",
+                     summary=f"stalled after {limit} recoveries; needs a person; last output: {last}")
+        add_flag(repo_root, rec, FLAG_NEEDS_PERSON)
+    raise WorkerError(f"{rec.worker_id} needs a person: stalled after {limit} recoveries "
+                      f"(policy.max_fix_rounds, default {DEFAULT_RECOVERIES}); last output: {last}")
+
+
 def recover(repo_root: Path, worker_id: str, *, offline: bool = False,
             now: datetime | None = None) -> WorkerRecord:
     """``worker recover``: end a stalled worker's process group, keep its worktree and commits, and resume its
     native session with the continue prompt. One shot under the workers lock, so two recoveries never overlap;
     refused (nothing ended) when the worker is not stalled, another live worker holds its leaf, or it cannot be
-    resumed; past :func:`recovery_limit` it is flagged ``needs_person`` with its last output named (M22.39)."""
+    resumed; past :func:`recovery_limit` it is flagged ``needs_person`` with its last output named (M22.39).
+    A recovery is counted when it ends the turn; one whose resume was then refused stays pending
+    (:func:`recovery_pending`), and the next call finishes it, online or ``--offline``, without counting it again."""
     from specy_road.worker_adapters import adapter_for   # noqa: PLC0415
     from specy_road.worker_ops_message import CONTINUE_PROMPT, _send   # noqa: PLC0415 — it imports this module
     from specy_road.worker_process import require_branch   # noqa: PLC0415
@@ -133,31 +167,25 @@ def recover(repo_root: Path, worker_id: str, *, offline: bool = False,
     with workers_lock(repo_root):
         sweep_stalled(repo_root, now=now)
         rec = load_record(repo_root, worker_id)
-        if FLAG_STALLED not in rec.flags:
+        pending = recovery_pending(repo_root, rec)
+        if not pending and FLAG_STALLED not in rec.flags:
             raise WorkerError(f"{worker_id} is not stalled ({rec.state}); nothing to recover")
         other = next((r for r in list_records(repo_root, active_only=True)
                       if r.node_id == rec.node_id and r.worker_id != worker_id), None)
         if other:
             raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}, {other.state}); "
                               f"{worker_id} is left as it is")
-        limit, last = recovery_limit(repo_root), last_output(repo_root, worker_id) or "-"
-        if (rec.recoveries or 0) >= limit:
-            if FLAG_NEEDS_PERSON not in rec.flags:
-                append_event(repo_root, rec, "error", source="system",
-                             summary=f"stalled after {limit} recoveries; needs a person; last output: {last}")
-                add_flag(repo_root, rec, FLAG_NEEDS_PERSON)
-            raise WorkerError(f"{worker_id} needs a person: stalled after {limit} recoveries "
-                              f"(policy.max_fix_rounds, default {DEFAULT_RECOVERIES}); last output: {last}")
+        n = None if pending else _next_recovery(repo_root, rec)
         require_writer(rec)
         if not adapter_for(rec.harness).caps.resume or not rec.provider_session_id:
             raise WorkerError(f"{worker_id} has no native session it can resume; it is left running — "
                               "`worker terminate` it and `worker delegate --rework` instead")
         require_branch(rec)
-        n = (rec.recoveries or 0) + 1
-        # Counted before anything can fail, and no longer stalled: the new turn's silence starts at its message.
-        mutate(repo_root, rec, lambda r: r.__dict__.update(recoveries=n, flags=[f for f in r.flags if f != FLAG_STALLED]))
-        append_event(repo_root, rec, "error", source="system",
-                     summary=f"stalled; recovery {n} of {limit}: ending its processes and resuming; last output: {last}")
+        if n:   # counted before anything can fail, and no longer stalled: the new turn's silence starts at its message
+            mutate(repo_root, rec, lambda r: r.__dict__.update(recoveries=n, flags=[f for f in r.flags if f != FLAG_STALLED]))
+            append_event(repo_root, rec, "error", source="system", detail={"recovery": n},
+                         summary=f"stalled; recovery {n} of {recovery_limit(repo_root)}: ending its processes and "
+                                 f"resuming; last output: {last_output(repo_root, worker_id) or '-'}")
         _end_turn(repo_root, load_record(repo_root, worker_id))
         return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "recover", offline,
                      no_queue=True)
@@ -192,7 +220,8 @@ def recover_stalled(repo_root: Path) -> list[dict]:
             continue
         try:
             recover(repo_root, s["worker_id"])
-            outcome, detail = "recovered", f"resumed after {s['silent_seconds']}s of silence"
+            outcome, detail = "recovered", ("finished a pending recovery" if s["pending"]
+                                            else f"resumed after {s['silent_seconds']}s of silence")
         except Exception as e:  # noqa: BLE001 — one worker's refusal must not stop the loop
             outcome = "needs_person" if "needs a person" in str(e) else "refused"
             detail = str(e)
