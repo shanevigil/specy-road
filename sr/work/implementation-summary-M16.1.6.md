@@ -30,7 +30,15 @@ This round keeps the interrupted worker's commit `bb0b5e4f`, which already held 
 - **Recount.** 874 cases from 310 nodes, 830 replayable. delta changed 5 (the same five rounds), RCA escalation 63 (one new round filed today), all others 0. pre-existing went from 825 replayable / 5 cited-only to 830 / 2. Its three claiming rounds used to raise `Missing` for the missing PRE-EXISTING.md. They now replay through the gate, which with no file shows no change.
 - **R2: blocked, outside the touch zones (third round asking).** The public `policy-evidence` regression test belongs in `tests/test_review_effort_study.py`. The roadmap still zones only `scripts/review_effort_study.py` and the sheet, and the coordinator's instruction for this round is to stay inside them. The reviewer's own record ("Limits") names adding that file to the zones as coordinator work. **Coordinator:** add `tests/test_review_effort_study.py` to M16.1.6's zones. The test needs a temporary repo with `strong_review: [{zones: ['**'], require_one_of: [X]}]`, an approve record from X where X is gate-ineligible (for example, not in the roster or in the implementer's family), and an assertion that `cases.csv` reports strong review `changed`. The in-process probe below shows `classify` reaching that verdict.
 
+## Fix round 4 (gpt-5.6-sol-high at 09a1e68a; final round, maintainer-approved, two findings)
+
+- **A1: a claim without its evidence was counted as replayable.** The failing class is a `verify_pre_existing` claim whose PRE-EXISTING.md was not kept. `_pre_existing` returned `False`, and `classify` read that `False` as "nothing the policy reads", so it reported `unchanged`. Without the file, though, the configured gate outcome cannot be replayed. The cause was the screen treating missing evidence the same as no input. `_pre_existing` now raises `Missing` when a record claims `verify_pre_existing` and no PRE-EXISTING.md exists. `classify` already sends `Missing` to cited-only or unknown, and here it is cited-only, because the claim names the policy. Every other screen reads only a policy key or record fields, except `_deferral`. Its file (a DEFERRAL marker) is the policy's input itself, not evidence for a claim, so no marker means the policy did not apply. I did not change it.
+- **A3: the sheet's pre-existing counts.** Recounted offline. M3.18 `b42d324b2a31` round 3, M9.1 round 1 and M9.7 round 1 are now cited-only, along with the live-only M3.8 and M4.7. The row is now 835 replayable, 0 changed, 5 cited-only, 42 unknown, and the recommendation line names the five rounds. The recount saw 882 cases (838 replayable), because reviews were filed after round 3's count. Refreshing every other row to that corpus would be broader than these two findings, so I only recounted the pre-existing row and added a sentence to the sheet saying so. The other rows' changed, cited-only and unknown counts are unchanged in the new run; only their replayable totals are 8 higher.
+
 ## Probes
+
+- A1 class: `_pre_existing` is the only screen whose input is a claim backed by a separate evidence file. `_deferral`'s file is its own input, and the others read only keys or record fields. A full run shows 5 pre-existing cited-only cases and 0 replayable cases with a claim.
+- M3.18 `b42d324b2a31` in `/tmp/pe-m1616-r4/cases.csv`: `cited-only`.
 
 - R1 class, every gate policy: `POLICIES` lists delta, resumed delta, red-green, pre-existing, deferral and strong review with `evaluate=None`, so `classify` takes the sandbox path for each. Only RCA escalation and agreement keep their own evaluator.
 - R1 class, the predicates: none of `_delta`, `_resumed`, `_red_green`, `_pre_existing`, `_deferral` or `_strong` calls a gate function. They read only the policy key, the record fields, or whether a file is in `work/reviews/<ID>/`, the same directory `Sandbox._fill` copies from.
@@ -59,11 +67,11 @@ This round keeps the interrupted worker's commit `bb0b5e4f`, which already held 
 - **A3:** The counts are in the sheet: 874 cases, 830 replayable; delta changed 5 and RCA 63. The recommendation is keep all eight. Unused or unknown is not a reason to remove a policy.
 - **A4 (human):** I left the decision table empty.
 - **A5:** No package code changed.
-- **A6 (informational):** The script grew by about +407 lines, against the +120 estimate: eight evaluator adapters, archived-node reconstruction, the cross-policy guard, the filing-interval rule and the gate sandbox. `scripts/lean_metrics.py` does not exist yet.
+- **A6 (informational):** The script grew by about +411 lines, against the +120 estimate: eight evaluator adapters, archived-node reconstruction, the cross-policy guard, the filing-interval rule and the gate sandbox. `scripts/lean_metrics.py` does not exist yet.
 
 ## Touch zones
 
-`scripts/review_effort_study.py` and this leaf's planning sheet. `tests/test_review_effort_study.py` is needed and outside the zones (see above). `Case` is a plain class rather than a dataclass, because that test loads the script without registering it in `sys.modules`. The script is 591 lines, within the file-limits cap.
+`scripts/review_effort_study.py` and this leaf's planning sheet. `tests/test_review_effort_study.py` is needed and outside the zones (see above). `Case` is a plain class rather than a dataclass, because that test loads the script without registering it in `sys.modules`. The script is 595 lines, within the file-limits cap.
 
 ## Verification
 
@@ -78,6 +86,7 @@ This round keeps the interrupted worker's commit `bb0b5e4f`, which already held 
 - `policy-evidence` dispatch in `main`: the new mode, leaving the study CLI unchanged.
 - `Missing` exception: an evaluator input that cannot be reconstructed for one policy, so the case falls to cited-only or unknown.
 - `Case` class, with `approvals`, `has_orchestration`, `rev` and `day`: one round's records plus the reconstructed node, config, workflow and provenance.
+- `_pre_existing`'s `Missing` raise: a claim whose PRE-EXISTING.md was not kept cannot be replayed (fix round 4, A1).
 - `_delta`, `_resumed`, `_red_green`, `_pre_existing`, `_deferral`, `_strong`: input-presence screens for the gate policies, which never re-derive a gate condition (fix round 3, R1). `_rca` and `_agreement`: the two non-gate evaluators.
 - `_rca` round-0 branch: a live-only commit is never a round the RCA rule counts.
 - `_agreement` absent-file and absent-flag defaults: the defaults `review_gate_agreement` and `git_workflow_config` document (fix round 1).
