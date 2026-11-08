@@ -29,3 +29,17 @@ Final list: `docs/orchestration-workers.md`, `sr/planning/`, `specy_road/worker_
 - `Cursor.parse_events`: appends that event after the line's other events.
 - Assertions in `tests/test_worker_adapters.py::test_parsers_map_each_harness_output_to_events`: a `failure` of `Permission denied` and a `success` stderr of `Operation not permitted` each emit `permission_denied`, and a clean shell stays one `output` event.
 - Mocks: none.
+
+## Fix round 1
+
+Class: a sentence about another harness left inside the dated Cursor CLI list, so it reads as a result confirmed on 2026-11-08 (A3). The Permissions paragraph and the Codex sentence were one line; splitting that paragraph left `Codex runs with -c sandbox_mode=workspace-write ...` glued to the end of `A denial is an event`. The sentence is back at the end of **Permissions**, after the Cursor known-limitation text. The Cursor list holds Cursor CLI findings. The review's note that `_sandbox_denial` also reads `interleavedOutput` is a different class and below the review standard, so this round does not change it.
+
+Merged `origin/WIP/improvements-0-3-1` before the edit (CHANGELOG auto-merged; both sides kept).
+
+## Probes
+
+- `Cursor CLI, checked 2026-11-08` (Model, Resume, `--mode ask`, Commit, A denial is an event): `Codex runs with` is absent, and the section has no `codex exec`. Result: the denial bullet was the only one that carried it, and it no longer does.
+- **Permissions** paragraph, before that list: the sentence occurs once, after the Cursor known-limitation text. Result: restored.
+- Adapter table `cursor` row: no `Codex runs with` and no `codex`. Result: unchanged Cursor text.
+- CHANGELOG `[Unreleased]` / `### Fixed` Cursor entry: no `Codex runs with`. Result: Cursor only.
+- `sr/planning/M22.37_...md` `## Confirmed 2026-11-08`: no `Codex runs with`. Result: unchanged.
