@@ -91,7 +91,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M17` | 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 | phase | Human-led | Not Started |
 | `M17.1` | Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 | gate | Human-led | Complete |
 | `M17.2` | PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock | task | Agentic-led | Complete |
-| `M17.3` | PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags | task | Agentic-led | Not Started |
+| `M17.3` | PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags | task | Agentic-led | Complete |
 | `M17.4` | PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state | task | Agentic-led | Not Started |
 | `M17.5` | PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer | task | Agentic-led | Not Started |
 | `M17.6` | Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) | task | Agentic-led | Not Started |
