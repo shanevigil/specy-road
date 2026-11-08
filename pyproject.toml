@@ -26,6 +26,9 @@ dependencies = [
 dev = [
   "pytest>=7.0",
   "pytest-xdist>=3.0",
+  # The CI coverage floor ([tool.coverage.*] below); pinned exactly because its
+  # TOTAL is the committed fail_under.
+  "coverage==7.17.2",
   "fastapi>=0.115",
   # Required by starlette.testclient.TestClient (tests/test_gui_app.py); not a transitive install.
   "httpx>=0.27",
@@ -87,6 +90,17 @@ specy_road = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.coverage.run]
+# The coverage floor CI enforces (constraints/README.md, "M16 rules"). Branch
+# arcs count toward TOTAL. `patch = subprocess` also measures every Python child
+# the suite starts (pytest-xdist workers and `specy-road` CLI runs) and implies
+# parallel data files. The data file lives under the gitignored work/ so the
+# children's files never show up as untracked files in the checkout.
+source = ["specy_road"]
+branch = true
+patch = ["subprocess"]
+data_file = "work/.coverage"
 
 [tool.ruff]
 # Lean-code gate (docs/contributor-guide.md, "Lean-code gates"). Only the
