@@ -122,3 +122,18 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
+  - codename: baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down
+    node_id: M16.1.7
+    branch: feature/rm-baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down
+    touch_zones:
+      - scripts/lean_metrics.py
+      - constraints/lean-baseline.json
+      - constraints/README.md
+      - .github/workflows/validate.yml
+      - pyproject.toml
+      - sr/constraints/README.md
+      - requirements-ci.in
+      - requirements-ci.txt
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
