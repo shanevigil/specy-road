@@ -39,6 +39,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A sandboxed Claude worker whose `CLAUDE_CONFIG_DIR` changes gets a new copy of that directory's `.claude.json`,
+  including a worker launched before the directory was recorded and one whose copy is the empty read-only mount
+  placeholder. The same recorded directory keeps the worker's copy. The user's file is not written, and the
+  worker's transcripts stay in its state directory.
+
 - A roster name that several entries share (profile effort aliases, or one model in an executor row and a reviewer
   row) no longer closes the review gate by itself. A READY author is still excluded under every entry it may be,
   and a record that may be any entry that wrote the leaf still does not count. A record whose entries wrote

@@ -14,7 +14,8 @@
   only the user's named auth *files* written through and the user's settings, hooks, plugins, skills, rules and
   instruction files read-only (:data:`HARNESS_STATE`); configuration it must write that can hold launch
   instructions (``~/.claude.json``, Cursor's ``cli-config.json``) is a per-worker copy, made inside the worker's own
-  state directory when the file lives in a replaced one, so the harness can replace it by rename.
+  state directory when the file lives in a replaced one, so the harness can replace it by rename. Claude's
+  ``.claude.json`` is copied again when ``CLAUDE_CONFIG_DIR`` changes.
 
 The rule for the home directory: **no directory of the user's is writable from the sandbox, and only the named
 auth files are.** Any writable directory is an open namespace (a transcript directory takes a ``memory/``
@@ -201,6 +202,8 @@ def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> l
     user has it, and an auth name the user has as a directory is not bound. A seeded file is copied from the user's
     once: into the worker's own directory when it lives in a replaced one, so the harness can replace it by rename
     (Cursor's ``cli-config.json``; a rename onto a bound file fails with EBUSY), else bound writable over its path.
+    Claude's ``.claude.json`` is the exception: it is copied again when the resolved config directory differs from
+    the directory recorded beside the worker's state, or when nothing is recorded.
     """
     own = state_home(repo_root, rec.worker_id)
     dirs, seeds = HARNESS_STATE.get(rec.harness, ((), ()))
@@ -219,14 +222,39 @@ def _harness_binds(repo_root: Path, rec: WorkerRecord, env: dict[str, str]) -> l
         user = _state_path(env, var, rel)
         inside = next((mine / user.relative_to(d) for d, mine in replaced.items() if user.is_relative_to(d)), None)
         copy = inside or own / ("seed" + rel.replace("/", "_"))
-        if user.is_file():
-            if not copy.is_file():
-                copy.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(user, copy)
-                copy.chmod(0o600)
-            if inside is None:
-                argv += ["--bind", str(copy), str(user)]
+        if (var, rel) == ("CLAUDE_CONFIG_DIR", ".claude/.claude.json"):
+            _refresh_claude_config(own, user, copy)
+        elif user.is_file() and not copy.is_file():
+            _install_seed(user, copy)
+        if inside is None and user.is_file() and copy.is_file():
+            argv += ["--bind", str(copy), str(user)]
     return argv
+
+
+def _refresh_claude_config(own: Path, user: Path, copy: Path) -> None:
+    """Replace the worker's ``.claude.json`` unless it was copied from this same config directory.
+
+    The record is a sibling of the mounted ``.claude`` tree. No record (a worker launched before it was written)
+    is refreshed too, including when ``copy`` is the empty mode-0444 mount placeholder. ``user`` is only read.
+    """
+    if not user.is_file():
+        return
+    directory = user.parent
+    record = own / "claude-config-dir"
+    recorded = Path(record.read_text(encoding="utf-8").strip()) if record.is_file() else None
+    if recorded == directory and copy.is_file():
+        return
+    _install_seed(user, copy)
+    record.write_text(f"{directory}\n", encoding="utf-8")
+
+
+def _install_seed(user: Path, copy: Path) -> None:
+    """Copy ``user`` onto ``copy`` by rename, so a read-only placeholder is replaced and ``user`` is not written."""
+    copy.parent.mkdir(parents=True, exist_ok=True)
+    tmp = copy.with_name(copy.name + ".tmp")
+    shutil.copyfile(user, tmp)
+    tmp.chmod(0o600)
+    os.replace(tmp, copy)
 
 
 def state_home(repo_root: Path, worker_id: str) -> Path:
