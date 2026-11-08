@@ -370,7 +370,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.47_cursor-starts-under-the-sandbox_d4c82f4c-c50c-4f31-b15c-e7c4041a9727.md",
       "sibling_order": 46,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Cursor workers start and keep their config under the sandbox",
       "touch_zones": [
         "specy_road/worker_sandbox.py",

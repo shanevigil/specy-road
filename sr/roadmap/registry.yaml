@@ -195,15 +195,3 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: cursor-starts-under-the-sandbox
-    node_id: M22.47
-    branch: feature/rm-cursor-starts-under-the-sandbox
-    touch_zones:
-      - specy_road/worker_sandbox.py
-      - tests/test_worker_sandbox.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-08T15:59:07+00:00'
