@@ -191,7 +191,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Not Started**
   - `M17.10` Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run `gui-orch-sandbox-use-approved` — gate — **Not Started**
   - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Complete**
-  - `M17.12` PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group `gui-group-siblings-action` — task — **Not Started**
+  - `M17.12` PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group `gui-group-siblings-action` — task — **Complete**
   - `M17.13` PM GUI: a row click selects at once, so a toolbar action right after it acts on that row `gui-outline-selection-lag` — task — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
   - `M18.1` Reviewers check that code is well-formed and that fixes do not degrade it `review-code-quality` — task — **Not Started**
@@ -312,7 +312,6 @@ Do not pick these up.
 
 - `M16.1.6` on `feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` since 2026-11-08
 - `M16.1.7` on `feature/rm-baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` since 2026-11-08
-- `M17.12` on `feature/rm-gui-group-siblings-action` since 2026-11-08
 - `M17.2` on `feature/rm-gui-orch-view-model` since 2026-11-07
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
