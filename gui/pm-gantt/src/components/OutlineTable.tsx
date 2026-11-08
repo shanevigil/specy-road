@@ -48,6 +48,11 @@ import {
   showActiveFeatureBranchBar,
 } from "../rowMatchesRegisteredBranch";
 import { visibleDragSubtreeIds } from "../outlineSubtree";
+import {
+  createOutlineRowClick,
+  rowDragAttributes,
+  type OutlineRowClick,
+} from "../outlineRowClick";
 
 const TITLE_PLAN_READONLY_HINT =
   "Title and planning are read-only while this task is in active development (in progress, open or merged merge request, or this checkout matches the registered branch).";
@@ -518,7 +523,8 @@ function SortableRow({
   titleEditLocked,
   isParentRow = false,
   rowSourceHidden,
-}: RowProps & { rowSourceHidden: boolean }) {
+  rowClick,
+}: RowProps & { rowSourceHidden: boolean; rowClick: OutlineRowClick }) {
   const {
     attributes,
     listeners,
@@ -526,6 +532,7 @@ function SortableRow({
     transform,
     transition,
   } = useSortable({ id, disabled: dragDisabled });
+  const sortableAttributes = rowDragAttributes(attributes, dragDisabled);
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -534,7 +541,6 @@ function SortableRow({
     pointerEvents: rowSourceHidden ? "none" : undefined,
   };
 
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressOrigin = useRef<{ x: number; y: number } | null>(null);
   const skipNextTitleClick = useRef(false);
@@ -559,10 +565,7 @@ function SortableRow({
       longPressTimer.current = null;
       longPressOrigin.current = null;
       skipNextTitleClick.current = true;
-      if (clickTimer.current) {
-        clearTimeout(clickTimer.current);
-        clickTimer.current = null;
-      }
+      rowClick.disarm();
       if (!selected) onSelectRow();
       onBeginTitleEdit();
     }, TITLE_LONG_PRESS_MS);
@@ -587,14 +590,13 @@ function SortableRow({
       return;
     }
     if (depEditId) {
+      rowClick.disarm();
       onDepRowBodyClick();
       return;
     }
-    if (clickTimer.current) clearTimeout(clickTimer.current);
-    clickTimer.current = setTimeout(() => {
-      clickTimer.current = null;
-      onSelectRow();
-    }, 220);
+    const decision = rowClick.click(id, { titleEditing });
+    if (decision === "select") onSelectRow();
+    else if (decision === "open") onOpenModal();
   };
 
   const handleRowDoubleClick = (e: MouseEvent<HTMLTableRowElement>) => {
@@ -602,16 +604,12 @@ function SortableRow({
     if (depEditId) return;
     if (titleEditing) return;
     clearLongPressTimer();
-    if (clickTimer.current) {
-      clearTimeout(clickTimer.current);
-      clickTimer.current = null;
-    }
+    rowClick.disarm();
     onOpenModal();
   };
 
   const handleIdClick = () => {
-    if (clickTimer.current) clearTimeout(clickTimer.current);
-    clickTimer.current = null;
+    rowClick.disarm();
     onSelectRow();
   };
 
@@ -685,7 +683,7 @@ function SortableRow({
       trRef={setNodeRef}
       trStyle={style}
       dndListeners={listeners}
-      dndAttributes={attributes}
+      dndAttributes={sortableAttributes}
       onRowDoubleClick={handleRowDoubleClick}
       onTitleClick={handleTitleClick}
       onTitlePointerDown={handleTitlePointerDown}
@@ -783,6 +781,11 @@ export function OutlineTable({
   activity,
 }: Props) {
   const pendingMutationsApi = usePendingMutations();
+  const rowClickRef = useRef(createOutlineRowClick());
+  useEffect(() => {
+    const clicks = rowClickRef.current;
+    return () => clicks.disarm();
+  }, []);
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -1459,6 +1462,7 @@ export function OutlineTable({
                     rowSourceHidden={Boolean(
                       activeDragId && activeSubtreeSet.has(id),
                     )}
+                    rowClick={rowClickRef.current}
                   />
                 </Fragment>
               );

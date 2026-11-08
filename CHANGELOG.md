@@ -64,6 +64,10 @@ body. Keep section bodies focused; link to PRs for detail.
   placeholder. The same resolved directory keeps the worker's copy, including another spelling such as
   `account/../account`. The user's file is not written, and the
   worker's transcripts stay in its state directory.
+- The PM GUI selects an outline row on the click itself, so Add above, Add below,
+  Indent, Outdent and Delete clicked right after it act on that row. A double
+  click still opens the edit modal. A row that cannot be dragged is no longer
+  marked aria-disabled.
 
 - A roster name that several entries share (profile effort aliases, or one model in an executor row and a reviewer
   row) no longer closes the review gate by itself. A READY author is still excluded under every entry it may be,

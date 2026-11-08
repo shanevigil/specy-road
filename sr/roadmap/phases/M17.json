@@ -391,7 +391,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.13_gui-outline-selection-lag_5c86a7f3-8322-43c6-a4a4-e27fd2f39e11.md",
       "sibling_order": 13,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI: a row click selects at once, so a toolbar action right after it acts on that row",
       "touch_zones": [
         "gui/pm-gantt/src/components/OutlineTable.tsx",
