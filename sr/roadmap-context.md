@@ -320,7 +320,6 @@ Do not pick these up.
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 - `M22.37` on `feature/rm-cursor-cli-harness-test-pass` since 2026-11-08
 - `M22.41` on `feature/rm-ready-refuses-a-leaf-with-no-commits` since 2026-11-08
-- `M22.43` on `feature/rm-digest-is-the-same-cold-or-warm` since 2026-11-08
 
 ## Quality by area
 
@@ -333,7 +332,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `CHANGELOG.md` **flagged** | 42 | 0 | 2.79 | 64% | 20 | 3 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 37 | 0 | 2.86 | 62% | 16 | 3 |
+| `docs` **flagged** | 38 | 0 | 2.82 | 61% | 16 | 3 |
 | `gui` **flagged** | 4 | 0 | 2.00 | 75% | 3 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `specy_road` **flagged** | 43 | 0 | 2.84 | 63% | 20 | 4 |

@@ -53,6 +53,10 @@ body. Keep section bodies focused; link to PRs for detail.
   result's stderr. On agent 2026.11.05-86047df (2026-11-08) that default commits in a linked worktree, `system/init`
   reports the model, `--resume` with a new prompt continues the chat, and `--mode ask` stays read-only. See
   `docs/orchestration-workers.md` (Cursor CLI, checked 2026-11-08).
+- `specy-road digest` writes the same `roadmap-context.md` when the history cache is missing and when it was
+  written on a branch that later merged. A cache is appended only when its commit is on `HEAD`'s first-parent
+  line; a merged side-branch tip, and any cache from before this change, is rebuilt. A dependency removed on a
+  side branch and kept by the merge is recorded once, dated with the merge commit. See `docs/roadmap-history.md`.
 
 - A sandboxed Claude worker whose `CLAUDE_CONFIG_DIR` changes gets a new copy of that directory's `.claude.json`,
   including a worker launched before the directory was recorded and one whose copy is the empty read-only mount
