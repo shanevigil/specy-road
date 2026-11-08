@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "roadmap/debt.yaml (schema shipped with init project and refresh-schemas) holds entries {id, title, found_in (node id or free text), paths, severity, status open|planned|closed, node (when planned)}; specy-road debt add|list|close manage it without hand edits",
+        "specy-road debt plan <id> --under <PARENT> creates the leaf through add-node, links it, and marks the entry planned; closing the leaf (finish-this-task) closes the entry",
+        "roadmap-context.md lists open debt by severity (at most 10 lines); validate warns on an entry whose linked node no longer exists"
+      ],
+      "codename": "a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves",
+      "dependencies": [
+        "46ce74ef-458b-401f-8abd-93e6a99b28c1"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M19.5",
+      "node_key": "939470c3-706a-48d7-bab6-d4c20cdf414c",
+      "parent_id": "M19",
+      "planning_dir": "planning/M19.5_a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves_939470c3-706a-48d7-bab6-d4c20cdf414c.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "A tracked tech-debt ledger that planning can turn into leaves",
+      "touch_zones": [
+        "specy_road/decisions.py",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/templates/project/schemas/",
+        "specy_road/templates/project/",
+        "docs/roadmap-authoring.md",
+        "tests/",
+        "specy_road/cli.py",
+        "specy_road/digest.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/debt_ledger.py",
+        "docs/debt-ledger.md",
+        "specy_road/bundled_scripts/validate_notices.py"
+      ],
+      "type": "task"
+    }
+  ]
+}

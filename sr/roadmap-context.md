@@ -12,7 +12,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.1` Freeze, rules, parity harness and baselines `freeze-rules-parity-harness-and-baselines` — milestone — **Not Started**
     - `M16.1.1` Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs `parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` — task — **Complete**
     - `M16.1.2` Parity harness: a review-gate decision table covering every review policy `parity-harness-a-review-gate-decision-table-covering-every-review-policy` — task — **Complete**
-    - `M16.1.3` Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf `triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf` — task — **Not Started**
+    - `M16.1.3` Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf `triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf` — task — **Complete**
     - `M16.1.4` Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions `constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions` — task — **Complete**
     - `M16.1.5` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Complete**
     - `M16.1.6` Review-policy evidence: how often each optional review policy changed a gate outcome `review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` — task — **Not Started**
@@ -204,7 +204,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M18.9` The implementation-zone check runs before a review is spent, and knows about sibling repositories `the-implementation-zone-check-runs-before-a-review-is-spent-and-knows-about-sibling-repositories` — task — **Not Started**
   - `M18.10` review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available `review-rca-launches-the-root-cause-analyst-like-review-delegate-and-says-what-to-do-when-no-analyst-is-available` — task — **Not Started**
   - `M18.11` Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn `host-effects-policy-and-interruptible-worker-messages` — task — **Not Started**
-  - `M18.12` Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance `role-observed-acceptance-needs-that-role` — task — **Not Started**
   - `M18.13` Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short `zones-missing-what-acceptance-needs-flagged` — task — **Not Started**
   - `M18.14` A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed `stash-changes-attributed-to-the-owning-branch` — task — **Not Started**
   - `M18.15` --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews `rework-carries-current-blocks-and-a-coordinator-note` — task — **Not Started**
@@ -225,11 +224,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M19.2` Research reminders leave validate `research-due-in-doctor` — task — **Not Started**
   - `M19.3` The pickup prompt names its base commit `pickup-prompt-base` — task — **Not Started**
   - `M19.4` The managed block stops naming pickup's --local opt-out `no-local-in-block` — task — **Not Started**
-  - `M19.5` A tracked tech-debt ledger that planning can turn into leaves `a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves` — task — **Not Started**
   - `M19.6` The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first `the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` — task — **Not Started**
   - `M19.7` Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice `notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` — task — **Not Started**
   - `M19.8` upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs `upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs` — task — **Not Started**
-  - `M19.9` upgrade --prompt writes an agent upgrade prompt filled in from this repo `upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo` — task — **Not Started**
   - `M19.10` file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count `file-limits-baseline-and-upgrade-report` — task — **Not Started**
   - `M19.11` Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored `chores-at-parity-with-leaves` — task — **Not Started**
   - `M19.12` List shipped nodes with no result after N days `list-shipped-nodes-with-no-result-after-n-days` — milestone — **Not Started**
@@ -304,6 +301,9 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 - 2026-11-05 `M13` (11 nodes) — `specy-road show-archive M13-2fe2e067-20261105`
 - 2026-11-05 `M14` (10 nodes) — `specy-road show-archive M14-20b59415-20261105`
 - 2026-11-06 `M15` (31 nodes) — `specy-road show-archive M15-94bbba0e-20261106`
+- 2026-11-08 `M18.12` (1 node) — `specy-road show-archive M18.12-fc76ea81-20261108`
+- 2026-11-08 `M19.5` (1 node) — `specy-road show-archive M19.5-939470c3-20261108`
+- 2026-11-08 `M19.9` (1 node) — `specy-road show-archive M19.9-bd6783a8-20261108`
 
 ## Claimed and in flight
 

@@ -12,7 +12,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.1` | Freeze, rules, parity harness and baselines | milestone | — | Not Started |
 | `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Complete |
 | `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Complete |
-| `M16.1.3` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Not Started |
+| `M16.1.3` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Complete |
 | `M16.1.4` | Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions | task | Agentic-led | Complete |
 | `M16.1.5` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Complete |
 | `M16.1.6` | Review-policy evidence: how often each optional review policy changed a gate outcome | task | Mixed | Not Started |
@@ -114,7 +114,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M18.9` | The implementation-zone check runs before a review is spent, and knows about sibling repositories | task | Agentic-led | Not Started |
 | `M18.10` | review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available | task | Agentic-led | Not Started |
 | `M18.11` | Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn | task | Agentic-led | Not Started |
-| `M18.12` | Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance | task | Agentic-led | Not Started |
 | `M18.13` | Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short | task | Agentic-led | Not Started |
 | `M18.14` | A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed | task | Agentic-led | Not Started |
 | `M18.15` | --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews | task | Agentic-led | Not Started |
@@ -135,11 +134,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M19.2` | Research reminders leave validate | task | — | Not Started |
 | `M19.3` | The pickup prompt names its base commit | task | Agentic-led | Not Started |
 | `M19.4` | The managed block stops naming pickup's --local opt-out | task | Agentic-led | Not Started |
-| `M19.5` | A tracked tech-debt ledger that planning can turn into leaves | task | Agentic-led | Not Started |
 | `M19.6` | The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first | task | Agentic-led | Not Started |
 | `M19.7` | Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice | task | Agentic-led | Not Started |
 | `M19.8` | upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs | task | Agentic-led | Not Started |
-| `M19.9` | upgrade --prompt writes an agent upgrade prompt filled in from this repo | task | Agentic-led | Not Started |
 | `M19.10` | file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count | task | Agentic-led | Not Started |
 | `M19.11` | Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored | task | Agentic-led | Not Started |
 | `M19.12` | List shipped nodes with no result after N days | milestone | Agentic-led | Not Started |

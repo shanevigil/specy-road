@@ -111,7 +111,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.3_triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf_eaee2f90-4953-4580-b772-570043326e4b.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf",
       "touch_zones": [
         "sr/roadmap/",
