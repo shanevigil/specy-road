@@ -107,18 +107,6 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
-  - codename: cursor-cli-harness-test-pass
-    node_id: M22.37
-    branch: feature/rm-cursor-cli-harness-test-pass
-    touch_zones:
-      - docs/orchestration-workers.md
-      - sr/planning/
-      - specy_road/worker_adapter_cursor.py
-      - CHANGELOG.md
-      - tests/test_worker_adapters.py
-    started: '2026-11-08'
-    owner: savigil
-    implementation_review: pending
   - codename: tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold
     node_id: M16.1.9
     branch: feature/rm-tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold
