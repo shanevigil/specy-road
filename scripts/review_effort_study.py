@@ -243,9 +243,13 @@ def _red_green(c: Case) -> bool:
 
 
 def _pre_existing(c: Case) -> bool:
-    """A record claims ``verify_pre_existing`` and the PRE-EXISTING.md the gate would read exists."""
-    return any(r.data.get("verify_pre_existing") for r in c.records) and \
-        (reviews_dir(c.root, c.node_id) / PRE_EXISTING_NAME).is_file()
+    """A record claims ``verify_pre_existing``. Without the PRE-EXISTING.md the gate would read, the configured
+    outcome cannot be replayed, so the case is not replayable for this policy (cited-only or unknown)."""
+    if not any(r.data.get("verify_pre_existing") for r in c.records):
+        return False
+    if not (reviews_dir(c.root, c.node_id) / PRE_EXISTING_NAME).is_file():
+        raise Missing(f"a verify_pre_existing claim, but no {PRE_EXISTING_NAME} was kept")
+    return True
 
 
 def _deferral(c: Case) -> bool:
