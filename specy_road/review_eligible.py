@@ -9,7 +9,8 @@ READY files as ``review_rca.rca_parties`` does:
 * the node's sensitivity is outside its roster ``may_process``;
 * executor of the leaf — it filed a READY before any valid review of its own on the leaf (READY authors and record
   models are compared by :class:`Identity`: case-folded, every roster entry whose id, ``harness_model`` or profile
-  name it is; a name two roster entries have, or a refused profile, closes the gate);
+  name it is; a READY author is excluded under every entry it may be; a record name whose entries wrote nothing and
+  span two families, or a refused profile, closes the gate);
 * wrote a fix commit on this leaf — it filed a READY after reviewing the leaf;
 * rejected record — its record at this commit is invalid or does not count, with the gate's reason;
 * same family as an approval already counted, under ``reviewers_distinct_families`` (not when its approval would
@@ -51,19 +52,22 @@ class Identity:
     An entry's names are its roster ``id`` and ``harness_model`` and, when it has a pinned profile
     (:func:`~specy_road.orchestration_pinned.pinned_profile_for_entry`), that profile's declared ``api_id``, file
     name and ``aliases``. A name, case-folded, may be every entry that has it: exact ids and aliases together, no
-    precedence; a name no entry has is only itself. A READY author is excluded under every entry it may be.
+    precedence; a name no entry has is only itself. A READY author is excluded under every entry it may be, and a
+    record whose name may be any of those writers is not counted (:func:`reviews_to_judge`); neither closes the gate.
 
-    Any of these closes the gate with a problem (:attr:`problems`): a READY or record name two or more entries
-    have; an entry whose pinned profile is refused (its names cannot be known); an unreadable READY
-    (:func:`writers`). Limit: entries that share a name cannot be told apart, so a roster where they do keeps the
-    gate closed for any READY or record using that name until the names differ."""
+    Any of these closes the gate with a problem (:attr:`problems`): a record name whose entries wrote nothing on
+    the leaf but have different families (the family it counts as cannot be decided); an entry whose pinned
+    profile is refused (its names cannot be known); an unreadable READY (:func:`writers`). Limit: a record name
+    that entries of one family share counts once for that family (M22.48)."""
 
     def __init__(self, repo_root: Path, config: dict[str, Any] | None = None) -> None:
         config = pinned_config(repo_root)[0] if config is None else config
         self.names: dict[str, set[str]] = {}
         self.problems: list[str] = []
+        self.family: dict[str, object] = {}
         for entry in config.get("roster") or []:
             rid = str(entry.get("id"))
+            self.family[rid] = entry.get("family")
             prof = pinned_profile_for_entry(repo_root, entry)
             if prof is not None and not prof.ok:
                 self.problems.append(f"roster entry {rid!r}: its profile's names cannot be known "
@@ -80,10 +84,11 @@ class Identity:
         return set(self.names.get(key) or {key})
 
     def ambiguous(self, name: object, ids: set[str]) -> None:
-        """Record a problem when ``ids`` (``self(name)``) holds more than one roster entry."""
+        """Record a problem when ``ids`` (``self(name)``) holds roster entries of more than one family."""
         why = (f"{name!r} names more than one roster entry ({', '.join(sorted(ids))}); which of them wrote "
                "or reviewed this leaf cannot be decided: name distinct roster ids")
-        self.problems += [why] if len(ids) > 1 and why not in self.problems else []
+        split = len({self.family.get(i) for i in ids}) > 1
+        self.problems += [why] if split and why not in self.problems else []
 
 
 def writers(repo_root: Path, node_id: str, branch: str | None,
@@ -106,7 +111,6 @@ def writers(repo_root: Path, node_id: str, branch: str | None,
         if r.errors[:1] and r.errors[0].startswith("cannot read:"):   # its author is unknown: never ignore it
             ident.problems.append(f"{r.path.name} is unreadable ({r.errors[0]}); its author cannot be excluded")
         ids = ident(r.data.get("agent")) if r.ok else set()
-        ident.ambiguous(r.data.get("agent"), ids)
         for agent in sorted(ids - out.keys()):
             fix = agent in first and r.path.stat().st_mtime > first[agent]
             out[agent] = (r.path.name, f"wrote a fix commit on this leaf ({r.path.name})" if fix
@@ -119,15 +123,17 @@ def reviews_to_judge(repo_root: Path, node: dict[str, Any], branch: str | None,
                      problems: list[str] | None = None) -> list[ReviewFile]:
     """The node's review records the gate judges: a record whose model may be one of :func:`writers` goes to
     ``ineligible`` instead, whatever its validity, ``authored_fix``, verdict or signature (rc4 defect D3).
-    Names are compared by :class:`Identity` over ``config``; its ambiguity problems are added to ``problems``."""
+    Names are compared by :class:`Identity` over ``config``; a judged record whose name spans families, and the
+    identity's other problems, are added to ``problems``."""
     ident = Identity(repo_root, config)
     authors, out = writers(repo_root, node["id"], branch, ident), []
     for r in list_reviews(repo_root, node["id"], acceptance_ids(node)):
-        ident.ambiguous(model := str(r.data.get("model")), ids := ident(model))
+        ids = ident(model := str(r.data.get("model")))
         if hit := sorted(ids & authors.keys()):
             ineligible.append((r, f"{model} wrote {authors[hit[0]][0]} on this leaf; "
                                   "the executor never reviews its own leaf"))
         else:
+            ident.ambiguous(model, ids)
             out.append(r)
     if problems is not None:
         problems += ident.problems

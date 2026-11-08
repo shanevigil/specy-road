@@ -185,15 +185,3 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
-  - codename: shared-names-close-only-when-they-could-be-the-writer
-    node_id: M22.48
-    branch: feature/rm-shared-names-close-only-when-they-could-be-the-writer
-    touch_zones:
-      - specy_road/review_eligible.py
-      - specy_road/review_gate.py
-      - tests/test_review_gate_ready_author.py
-      - docs/roadmap-history.md
-      - CHANGELOG.md
-    started: '2026-11-08'
-    owner: savigil
-    implementation_review: pending
