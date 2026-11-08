@@ -141,7 +141,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.10_tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold_2fcf08ee-20e7-4751-a9ab-e64e163f5e2a.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold",
       "touch_zones": [
         "tests/scenarios/roadmap_edit/"
