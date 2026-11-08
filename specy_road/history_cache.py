@@ -39,7 +39,9 @@ from specy_road import safe_write
 
 # Bump to invalidate every existing cache. There is deliberately no migration
 # code: a mismatch rebuilds from git, which is always authoritative.
-CACHE_VERSION = 1
+# 2: a cache is appended only from a first-parent ancestor. Version 1 could
+# resume from a merged side-branch tip and disagree with a cold walk.
+CACHE_VERSION = 2
 
 CACHE_DIR = Path(".specyrd") / "cache"
 CACHE_FILENAME = "roadmap-history.json"
