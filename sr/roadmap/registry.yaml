@@ -137,3 +137,14 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
+  - codename: sandboxed-worker-resumes-after-an-account-switch
+    node_id: M22.49
+    branch: feature/rm-sandboxed-worker-resumes-after-an-account-switch
+    touch_zones:
+      - specy_road/worker_sandbox.py
+      - tests/test_worker_sandbox.py
+      - CHANGELOG.md
+      - docs/orchestration-workers.md
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
