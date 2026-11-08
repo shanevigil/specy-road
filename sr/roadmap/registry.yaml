@@ -113,25 +113,6 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: worker-stall-recovery
-    node_id: M22.39
-    branch: feature/rm-worker-stall-recovery
-    touch_zones:
-      - specy_road/worker_ops_slots.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - tests/test_worker_stall_recovery.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/bundled_scripts/grind_session.py
-      - specy_road/worker_state.py
-      - specy_road/schemas/worker-record.schema.json
-      - tests/parity/golden/inventory.json
-      - tests/parity/golden/help/
-      - tests/parity/command_map.yaml
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome
     node_id: M16.1.6
     branch: feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome

@@ -120,7 +120,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.39_worker-stall-recovery_0b69a82d-d3b0-454d-93de-338c1f10836f.md",
       "sibling_order": 38,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Stalled workers are detected on every run and can be recovered in one command",
       "touch_zones": [
         "specy_road/worker_ops_slots.py",

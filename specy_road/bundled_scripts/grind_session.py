@@ -56,6 +56,7 @@ from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch
+from specy_road.worker_ops_slots import recover_stalled
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +107,24 @@ def _run_shell(cmd: str, env: dict, repo_root: Path) -> int:
     return _spawn(cmd, cwd=repo_root, env=env, shell=True)
 
 
+#: Seconds between stalled-worker recoveries while manual mode waits for its signal (M22.39).
+RECOVER_EVERY = 60.0
+
+
+def _recover_stalled(repo_root: Path, emitter: EventEmitter | None = None) -> None:
+    """``worker recover`` for each stalled worker (M22.39): one ``worker_recovered``, ``worker_needs_person`` or
+    ``worker_recover_refused`` event each. Never raises: recovery must not stop the session."""
+    emitter = emitter or EventEmitter(as_json=CHILD_STDOUT_TO_STDERR)   # JSON mode is when children go to stderr
+    try:
+        results = recover_stalled(repo_root)
+    except Exception as e:  # noqa: BLE001 — an unreadable workers directory is reported, not fatal
+        results = [{"worker_id": None, "node_id": None, "outcome": "refused", "detail": str(e)}]
+    for r in results:
+        event = {"recovered": "worker_recovered", "needs_person": "worker_needs_person"}.get(
+            r["outcome"], "worker_recover_refused")
+        emitter.emit(event, node_id=r["node_id"], worker_id=r["worker_id"], detail=r["detail"])
+
+
 def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
     """manual mode: block until the ready-signal file appears (or Enter on a TTY)."""
     path = repo_root / rel
@@ -136,6 +155,8 @@ def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
             return True
         if timeout and waited >= timeout:
             return False
+        if waited and waited % RECOVER_EVERY == 0:
+            _recover_stalled(repo_root)   # a stalled worker does not wait for a person (M22.39)
         time.sleep(interval)
         waited += interval
 
@@ -310,6 +331,7 @@ def _run_loop(
 ) -> tuple[int, bool]:
     """Drive cycles until a bound is hit. Returns (exit code, failed)."""
     for _cycle in range(max(1, args.max_cycles)):
+        _recover_stalled(repo_root, emitter)   # each cycle: a stalled worker does not wait for a person (M22.39)
         nodes, reg, plan = gather_plan(
             repo_root, args.under, allow_unauthored=args.allow_unauthored,
             prefer_agentic=args.prefer_agentic,

@@ -14,6 +14,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road worker recover W` ends a stalled worker, keeps its worktree and commits, and resumes its native
+  session with the continue prompt, or says why it cannot. It runs once and exits. Recoveries are counted on the
+  worker record up to `policy.max_fix_rounds` (default 3); past that the worker is flagged `needs_person` with its
+  last output named. It refuses while another worker holds the leaf. `grind-session` runs it on its own loop.
+  A running worker that never wrote output is now flagged stalled from its launch, and `worker sync`, `worker list`
+  and `doctor` list stalled workers with how long they have been silent.
+
 - A worker turn that moves the local integration ref or its remote-tracking ref, including a ref that appears
   or disappears, is a post-run finding naming the ref and its before and after values. A ref absent at both
   ends stays clean. A failed read is a check error, not a clean turn. A turn that moves only its own branch
