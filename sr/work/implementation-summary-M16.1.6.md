@@ -21,7 +21,23 @@
   - (a) a temporary repo whose orchestration.yaml changes on the integration branch within a live record's `date` day, where `policy-evidence` must report that case `unknown`;
   - (b) a delta approval from a roster entry the gate refuses for another reason (for example, unpinned routing under `reviewers_distinct_families`), where `policy-evidence` must report delta `unchanged`.
 
+## Fix round 3 (gpt-5.6-sol-high at f968a7c0)
+
+This round keeps the interrupted worker's commit `bb0b5e4f`, which already held the design change. On top of it, this round updates the docstring, the sheet and the counts.
+
+- **R1: a pre-check re-applied gate conditions (A2).** The failing class is a pre-check that re-derives a gate condition, such as approver eligibility, applicable zones, delta claims, PRE-EXISTING claims at the READY commit, or which deferral marker is in effect. When the pre-check decided "no change", `classify` returned `unchanged` and the complete gate never ran. An ineligible required-model approval for strong review was the instance the reviewer named, but `_delta` (`delta_problem`), `_resumed` (`fresh_session_problem`), `_pre_existing` (`gate_problems` and READY lookup) and `_deferral` (`deferral_in_effect`) had the same shape. The fix removes the class: a gate policy (`evaluate is None`) is now judged by `Sandbox.outcome` alone. Its `reads` predicate only says whether the case holds an input the policy reads at all, and it returns `True` whenever it might, so a `False` can never hide a change. `moves_others` now compares only the non-gate evaluators (RCA escalation, agreement), because a gate run changes only the selected policy's keys or files. `Sandbox._fill` also copies `RED-GREEN.md`, so red-green with the key on is replayed through the gate instead of being refused.
+- **Docs.** The module docstring and the sheet's method paragraph and evaluator table now describe gate-only judgement.
+- **Recount.** 874 cases from 310 nodes, 830 replayable. delta changed 5 (the same five rounds), RCA escalation 63 (one new round filed today), all others 0. pre-existing went from 825 replayable / 5 cited-only to 830 / 2. Its three claiming rounds used to raise `Missing` for the missing PRE-EXISTING.md. They now replay through the gate, which with no file shows no change.
+- **R2: blocked, outside the touch zones (third round asking).** The public `policy-evidence` regression test belongs in `tests/test_review_effort_study.py`. The roadmap still zones only `scripts/review_effort_study.py` and the sheet, and the coordinator's instruction for this round is to stay inside them. The reviewer's own record ("Limits") names adding that file to the zones as coordinator work. **Coordinator:** add `tests/test_review_effort_study.py` to M16.1.6's zones. The test needs a temporary repo with `strong_review: [{zones: ['**'], require_one_of: [X]}]`, an approve record from X where X is gate-ineligible (for example, not in the roster or in the implementer's family), and an assertion that `cases.csv` reports strong review `changed`. The in-process probe below shows `classify` reaching that verdict.
+
 ## Probes
+
+- R1 class, every gate policy: `POLICIES` lists delta, resumed delta, red-green, pre-existing, deferral and strong review with `evaluate=None`, so `classify` takes the sandbox path for each. Only RCA escalation and agreement keep their own evaluator.
+- R1 class, the predicates: none of `_delta`, `_resumed`, `_red_green`, `_pre_existing`, `_deferral` or `_strong` calls a gate function. They read only the policy key, the record fields, or whether a file is in `work/reviews/<ID>/`, the same directory `Sandbox._fill` copies from.
+- R1 instance: an in-process probe (the script loaded with importlib, and a stub sandbox whose outcome lists an unmet item only when the policy is on). With `strong_review` naming an approver the gate would refuse, `classify` returns `changed` after 2 sandbox runs. With no items, it returns `unchanged` after 0 runs.
+- The screen against defaults: the screen reads `case.config["policy"]`, which `reconstruct` fills from `DEFAULT_POLICY`. `red_green`, `reviewer_resumed_delta` and `strong_review` default to off or empty, so a `False` screen means the gate would not apply them either.
+- `moves_others` after the change: it compares only `_rca` and `_agreement`, which read only their own keys and files, so disabling a gate policy cannot move them. No count changed because of it.
+- Full recount: run under `PATH=/usr/bin:/bin unshare -rn` (no reviewer CLI, no network) in 2m44s. The delta-changed rounds are the same five (M15.22 r4, M15.27 r7, M15.35 r2, M21.3 r3, M22.47 r2).
 
 - Date-only cases: all 44 rounds with a date-only record now fail the stability rule and are unknown; none is replayable (`cases.csv`).
 - M3.10 `68e79afa8d32`: unknown; its filing span 2026-10-29T05:41:32Z..11:59:59Z contains a config commit.
@@ -39,15 +55,15 @@
 ## Acceptance
 
 - **A1:** For each of the eight policies the script reports replayable, cited-only and unknown counts separately. One case is one node_key, commit and round (history order, or `live`) with every record at that commit. `cases.csv` lists each case's provenance: the record count, the filing time and how it was found, and the integration commit the configs were read from. A replayable case is evaluated once with the configured policy and once with only the selected policy disabled.
-- **A2:** Each policy's public evaluator screens for a change, as the sheet's table lists. For a gate policy, the change must also show in the complete `evaluate_gate` outcome with every other condition unchanged. For RCA only the onset of an escalation counts, and a next-step change alone is not counted. A change counts only if no other policy's evaluator moves when this one is disabled.
-- **A3:** The counts are in the sheet: 872 cases, 828 replayable; delta changed 5 and RCA 62. The recommendation is keep all eight. Unused or unknown is not a reason to remove a policy.
+- **A2:** A gate policy is judged by the complete `evaluate_gate` outcome alone, with every other condition unchanged. A screen skips only cases that hold no input the policy reads. RCA escalation and agreement use their own public evaluators, as the sheet's table lists. For RCA only the onset of an escalation counts, and a next-step change alone is not counted. A non-gate change counts only if no other non-gate evaluator moves.
+- **A3:** The counts are in the sheet: 874 cases, 830 replayable; delta changed 5 and RCA 63. The recommendation is keep all eight. Unused or unknown is not a reason to remove a policy.
 - **A4 (human):** I left the decision table empty.
 - **A5:** No package code changed.
-- **A6 (informational):** The script grew by about +418 lines, against the +120 estimate: eight evaluator adapters, archived-node reconstruction, the cross-policy guard, the filing-interval rule and the gate sandbox. `scripts/lean_metrics.py` does not exist yet.
+- **A6 (informational):** The script grew by about +407 lines, against the +120 estimate: eight evaluator adapters, archived-node reconstruction, the cross-policy guard, the filing-interval rule and the gate sandbox. `scripts/lean_metrics.py` does not exist yet.
 
 ## Touch zones
 
-`scripts/review_effort_study.py` and this leaf's planning sheet. `tests/test_review_effort_study.py` is needed and outside the zones (see above). `Case` is a plain class rather than a dataclass, because that test loads the script without registering it in `sys.modules`. The script is 602 lines, within the file-limits cap.
+`scripts/review_effort_study.py` and this leaf's planning sheet. `tests/test_review_effort_study.py` is needed and outside the zones (see above). `Case` is a plain class rather than a dataclass, because that test loads the script without registering it in `sys.modules`. The script is 591 lines, within the file-limits cap.
 
 ## Verification
 
@@ -62,10 +78,11 @@
 - `policy-evidence` dispatch in `main`: the new mode, leaving the study CLI unchanged.
 - `Missing` exception: an evaluator input that cannot be reconstructed for one policy, so the case falls to cited-only or unknown.
 - `Case` class, with `approvals`, `has_orchestration`, `rev` and `day`: one round's records plus the reconstructed node, config, workflow and provenance.
-- `_delta`, `_resumed`, `_red_green`, `_pre_existing`, `_deferral`, `_rca`, `_strong`, `_agreement`: one adapter per policy to its public evaluator (A2's table).
+- `_delta`, `_resumed`, `_red_green`, `_pre_existing`, `_deferral`, `_strong`: input-presence screens for the gate policies, which never re-derive a gate condition (fix round 3, R1). `_rca` and `_agreement`: the two non-gate evaluators.
 - `_rca` round-0 branch: a live-only commit is never a round the RCA rule counts.
 - `_agreement` absent-file and absent-flag defaults: the defaults `review_gate_agreement` and `git_workflow_config` document (fix round 1).
-- `Policy` class and `POLICIES` table: evaluator, disabled form, citation pattern, what "changed" means, whether it is a gate policy, and the files to withhold.
+- `Policy` class and `POLICIES` table: the `reads` screen, the disabled form, the citation pattern, what "changed" means, the own `evaluate` (non-gate policies only), and the files to withhold.
+- `RED-GREEN.md` in `Sandbox._fill`'s copied files: red-green with the key on replays through the gate (fix round 3).
 - `Sandbox` class (`outcome`, `_fill`, `_git`): replays `evaluate_gate` in a throwaway shared clone so a gate policy's change is judged on the complete gate outcome (fix round 2).
 - `OFF`, `STAMP`, `EVIDENCE_OUT` constants: an unreachable escalation threshold, the history filing-time pattern, and the CSV columns.
 - `filed_at` and `_utc`: the single filing-interval rule (an exact stamp, or the `date` day in any time zone) and its UTC formatting.
@@ -77,5 +94,6 @@
 - `classify`: changed, unchanged, cited-only or unknown, per policy and case; it confirms gate policies through the sandbox.
 - `evidence_main`: the argument parser, `cases.csv` and the markdown count table.
 - Removed: the `_git` helper (replaced by `git_text`).
-- Tests: none. The test file is outside the touch zones; the coordinator is asked to add it.
+- Removed (fix round 3): the gate-condition calls in the gate-policy adapters (`delta_problem`, `fresh_session_problem`, `gate_problems`, `deferral_in_effect`, `applicable_items`) and the `Missing` raise for red-green on.
+- Tests: none. The test file is outside the touch zones; the coordinator is asked to add it (R2).
 - Mocks: none.
