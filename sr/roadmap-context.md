@@ -18,7 +18,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.1.6` Review-policy evidence: how often each optional review policy changed a gate outcome `review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` — task — **Not Started**
     - `M16.1.7` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Complete**
     - `M16.1.8` A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided `ruff-quality-baseline` — task — **Not Started**
-    - `M16.1.9` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Not Started**
+    - `M16.1.9` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Complete**
     - `M16.1.10` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Not Started**
     - `M16.1.11` Ruff quality rule families with per-file shrink-only baselines and per-release totals `ruff-quality-family-baseline` — task — **Not Started**
     - `M16.1.12` Shipped agent templates carry no maintainer provenance comments `shipped-templates-carry-no-provenance-comments` — task — **Complete**
@@ -311,7 +311,6 @@ Do not pick these up.
 
 - `M16.1.10` on `feature/rm-tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` since 2026-11-08
 - `M16.1.6` on `feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` since 2026-11-08
-- `M16.1.9` on `feature/rm-tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` since 2026-11-08
 - `M17.13` on `feature/rm-gui-outline-selection-lag` since 2026-11-08
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -327,14 +326,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `CHANGELOG.md` **flagged** | 42 | 0 | 2.55 | 64% | 19 | 2 |
+| `CHANGELOG.md` **flagged** | 41 | 0 | 2.56 | 63% | 19 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 39 | 0 | 2.54 | 62% | 15 | 2 |
+| `docs` **flagged** | 38 | 0 | 2.55 | 61% | 15 | 2 |
 | `gui` **flagged** | 4 | 0 | 2.00 | 75% | 3 | 0 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 43 | 0 | 2.60 | 63% | 19 | 3 |
-| `tests` **flagged** | 45 | 0 | 2.53 | 62% | 21 | 3 |
+| `specy_road` **flagged** | 42 | 0 | 2.62 | 62% | 19 | 3 |
+| `tests` **flagged** | 45 | 0 | 2.51 | 60% | 21 | 3 |
 | `.github` | 2 | 0 | 1.50 | 50% | 13 | 0 |
 | `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
