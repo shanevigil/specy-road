@@ -87,8 +87,18 @@ def _run(repo: Path, argv: list[str], **env_over: str) -> subprocess.CompletedPr
     )
 
 
+def _config_on_dev(repo: Path, rel: str, text: str, msg: str) -> None:
+    """A policy file committed on the integration branch and merged into the leaf: a leaf's own change to it is
+    a steering file finish refuses (M22.31)."""
+    git(repo, "checkout", "-q", "dev")
+    commit_file(repo, rel, text, msg)
+    git(repo, "push", "-q", "origin", "dev")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "-q", "--no-edit", "dev")
+
+
 def _invalid_configuration(repo: Path, tmp_path: Path) -> None:
-    commit_file(repo, "roadmap/orchestration.yaml", ORCHESTRATION, "orchestration")
+    _config_on_dev(repo, "roadmap/orchestration.yaml", ORCHESTRATION, "orchestration")
 
 
 def _directory(repo: Path, tmp_path: Path) -> None:
@@ -165,7 +175,7 @@ def _untracked_summary(repo: Path) -> None:
 def _worker_log_deleted_on_disk(repo: Path) -> None:
     """Logs are tracked; one is deleted on disk but still in the index, and ``git add`` stages their directory."""
     workflow = (repo / "roadmap" / "git-workflow.yaml").read_text()
-    commit_file(repo, "roadmap/git-workflow.yaml", workflow + "track_worker_logs: full\n", "track logs")
+    _config_on_dev(repo, "roadmap/git-workflow.yaml", workflow + "track_worker_logs: full\n", "track logs")
     commit_file(repo, "work/worker-logs/M1.1/a.log", "a\n", "log a")
     commit_file(repo, "work/worker-logs/M1.1/b.log", "b\n", "log b")
     (repo / "work" / "worker-logs" / "M1.1" / "a.log").unlink()
