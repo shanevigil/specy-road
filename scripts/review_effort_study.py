@@ -61,19 +61,15 @@ from specy_road.git_workflow_config import GIT_WORKFLOW_REL, resolve_integration
 from specy_road.orchestration_config import (DEFAULT_CONFIG, DEFAULT_POLICY, ORCHESTRATION_REL, family_of,
                                             load_orchestration_config)
 from specy_road.orchestration_pinned import pinned_config
-from specy_road.review_deferral import deferral_in_effect, load_markers
-from specy_road.review_files import (PACKET_NAME, ReviewFile, latest_ready, list_rcas,
+from specy_road.review_files import (PACKET_NAME, ReviewFile, list_rcas,
                                      list_review_history, list_reviews, reviews_dir, reviews_root)
 from specy_road.registry_yaml import read_registry, registry_path
-from specy_road.review_gate import delta_problem, evaluate_gate
+from specy_road.review_gate import evaluate_gate
 from specy_road.review_policy_ref import committed_yaml
-from specy_road.review_pre_existing import PRE_EXISTING_NAME, gate_problems
+from specy_road.review_pre_existing import PRE_EXISTING_NAME
 from specy_road.review_rca import Round, escalation, review_rounds
-from specy_road.review_resumed_delta import fresh_session_problem
-from specy_road.review_strong import applicable_items
-from specy_road.review_target import full_sha, node_at, same_commit
+from specy_road.review_target import full_sha, node_at
 from specy_road.roadmap_json import nodes_from_chunk_doc
-from specy_road.runtime_paths import project_prefix
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapters import ADAPTERS, placeholder_problem, substitute_prompt
 
@@ -226,45 +222,40 @@ class Case:
         return [r for r in latest.values() if r.data["verdict"] == "approve"]
 
 
-def _delta(c: Case, policy: dict[str, Any]) -> Any:
-    """Which delta approvals count: :func:`review_gate.delta_problem` (outcome: an approval counted)."""
-    return tuple(delta_problem(c.root, c.node, r.data["delta_from"], c.commit, policy) is None
-                 for r in c.approvals() if r.data.get("delta_from"))
+# A gate policy's own effect is judged only by the complete gate (:meth:`Sandbox.outcome`). Its predicate
+# below never re-derives a gate condition (eligibility, zones, claims); it only says whether the case holds an
+# input the policy reads at all, and is ``True`` whenever it might, so a ``False`` can never hide a change.
+
+def _delta(c: Case) -> bool:
+    """A record naming ``delta_from``: the only records the delta rule judges."""
+    return any(r.data.get("delta_from") for r in c.records)
 
 
-def _resumed(c: Case, policy: dict[str, Any]) -> Any:
-    """Which approvals pass the fresh-session rule: :func:`review_resumed_delta.fresh_session_problem`."""
-    return tuple(fresh_session_problem(policy, r.data, None) is None for r in c.approvals())
+def _resumed(c: Case) -> bool:
+    """The waiver is on and a record names ``delta_from`` without ``fresh_session: true``."""
+    return bool(c.config["policy"].get("reviewer_resumed_delta")) and \
+        any(r.data.get("delta_from") and not r.data.get("fresh_session") for r in c.records)
 
 
-def _red_green(c: Case, policy: dict[str, Any]) -> Any:
-    """Off: no problem. On: the replay needs RED-GREEN.md and planned_test_changes as they were then."""
-    if policy.get("red_green"):
-        raise Missing("red_green was on; RED-GREEN.md and planned_test_changes are not reconstructed")
-    return ()
+def _red_green(c: Case) -> bool:
+    return bool(c.config["policy"].get("red_green"))
 
 
-def _pre_existing(c: Case, policy: dict[str, Any]) -> Any:
-    """Failing READY verifiers left as gate problems: :func:`review_pre_existing.gate_problems`."""
-    claims = {str(x) for r in c.approvals() for x in r.data.get("verify_pre_existing") or []}
-    if not claims:
-        return ()
-    ready = latest_ready(c.root, c.node_id)
-    if ready is None or not same_commit(c.root, ready.data["commit"], c.commit) or \
-            not (ready.path.parent / PRE_EXISTING_NAME).is_file():
-        raise Missing("a pre-existing claim, but no READY and PRE-EXISTING.md at this commit")
-    failing = [v for v in ready.data.get("verify") or [] if v.get("exit") != 0]
-    return tuple(gate_problems(ready, failing, claims if policy.get("pre_existing", True) else set()))
+def _pre_existing(c: Case) -> bool:
+    """A record claims ``verify_pre_existing`` and the PRE-EXISTING.md the gate would read exists."""
+    return any(r.data.get("verify_pre_existing") for r in c.records) and \
+        (reviews_dir(c.root, c.node_id) / PRE_EXISTING_NAME).is_file()
 
 
-def _deferral(c: Case, policy: dict[str, Any]) -> Any:
-    """Blocks of this round a DEFERRAL marker in effect resolves (:func:`review_deferral.deferral_in_effect`)."""
-    if not policy.get("deferral", True):
-        return ()
-    blocks = [r for r in c.records if r.data["verdict"] == "block"]
-    return tuple(m.name for m in load_markers(c.root, c.node_id)[0]
-                 if any(x["reviewer"] == b.data["model"] and same_commit(c.root, x["commit"], c.commit)
-                        for x in m.items for b in blocks) and not deferral_in_effect(c.root, c.node_id, m))
+def _deferral(c: Case) -> bool:
+    """The round has a block and the node has a DEFERRAL marker."""
+    return any(r.data.get("verdict") == "block" for r in c.records) and \
+        any(reviews_dir(c.root, c.node_id).glob("DEFERRAL-*"))
+
+
+def _strong(c: Case) -> bool:
+    """``strong_review`` has an item; which items apply and who satisfies them is the gate's to decide."""
+    return bool(c.config["policy"].get("strong_review"))
 
 
 def _rca(c: Case, policy: dict[str, Any]) -> Any:
@@ -283,13 +274,6 @@ def _rca(c: Case, policy: dict[str, Any]) -> Any:
     return now.rule if now and not before else None
 
 
-def _strong(c: Case, policy: dict[str, Any]) -> Any:
-    """Applicable ``strong_review`` items no approval of the round meets (:mod:`review_strong`)."""
-    models = {r.data["model"] for r in c.approvals()}
-    items = applicable_items(policy, (c.node or {}).get("touch_zones"), project_prefix(c.root))
-    return tuple(i for i, item in items if not models & set(item.get("require_one_of") or []))
-
-
 def _agreement(c: Case, policy: dict[str, Any]) -> Any:
     """review_gate_agreement's rule at the round's time: reviewers asked for while finish skips the gate."""
     finish_gate = bool(c.workflow.get("require_implementation_review_before_finish"))   # absent: off
@@ -300,15 +284,17 @@ def _agreement(c: Case, policy: dict[str, Any]) -> Any:
 class Policy:
     """One optional policy: its evaluator, how it is disabled, how a record cites it, and what a change is.
 
-    ``gate`` says whether the outcome is a review-gate outcome. Those changes are confirmed through
-    :func:`review_gate.evaluate_gate` (:class:`Sandbox`), with ``off`` written into ``orchestration.yaml``,
-    or, for a policy that is a file rather than a key, with the ``withhold`` files left out.
+    A gate policy (``evaluate`` is ``None``) is evaluated by :func:`review_gate.evaluate_gate` alone
+    (:class:`Sandbox`), with ``off`` written into ``orchestration.yaml`` or, for a policy that is a file
+    rather than a key, with the ``withhold`` files left out; ``reads`` only skips cases holding no input the
+    policy reads. A policy with no GateResult field (RCA escalation, agreement) has its own ``evaluate``.
     """
 
-    def __init__(self, evaluate: Callable[[Case, dict[str, Any]], Any], off: dict[str, Any], cites: str,
-                 means: str, gate: bool = True, withhold: str | None = None) -> None:
-        self.evaluate, self.off, self.cites, self.means = evaluate, off, cites, means
-        self.gate, self.withhold = gate, withhold
+    def __init__(self, reads: Callable[[Case], bool] | None, off: dict[str, Any], cites: str, means: str,
+                 evaluate: Callable[[Case, dict[str, Any]], Any] | None = None,
+                 withhold: str | None = None) -> None:
+        self.reads, self.off, self.cites, self.means = reads, off, cites, means
+        self.evaluate, self.withhold = evaluate, withhold
 
 
 POLICIES: dict[str, Policy] = {
@@ -322,13 +308,13 @@ POLICIES: dict[str, Policy] = {
                            "a failing verifier it cleared", withhold=PRE_EXISTING_NAME),
     "deferral": Policy(_deferral, {"deferral": False}, r"deferral|defer_findings|review defer",
                        "a deferral it forced (a block resolved)", withhold="DEFERRAL-*"),
-    "RCA escalation": Policy(_rca, {"escalate_same_acceptance_blocks": OFF, "escalate_review_rounds": OFF},
-                             r"\bRCA\b|escalat", "an RCA escalation it forced", gate=False),
+    "RCA escalation": Policy(None, {"escalate_same_acceptance_blocks": OFF, "escalate_review_rounds": OFF},
+                             r"\bRCA\b|escalat", "an RCA escalation it forced", evaluate=_rca),
     "strong review": Policy(_strong, {"strong_review": []}, r"strong_review|strong review",
                             "a gate block it caused"),
-    "agreement": Policy(_agreement, {"agreement": False},
+    "agreement": Policy(None, {"agreement": False},
                         r"require_implementation_review_before_finish|review_gate_agreement",
-                        "a validate/doctor error it raised", gate=False),
+                        "a validate/doctor error it raised", evaluate=_agreement),
 }
 
 
@@ -383,7 +369,7 @@ class Sandbox:
                 shutil.copyfile(r.path, there / "history" / r.path.name)
         for r in case.records:   # the round's latest record per model, as the gate reads it
             shutil.copyfile(r.path, there / f"REVIEW-{r.data['model']}.md")
-        for pattern in ("READY-*.md", "RCA-*.md", PRE_EXISTING_NAME, "DEFERRAL-*"):
+        for pattern in ("READY-*.md", "RCA-*.md", PRE_EXISTING_NAME, "RED-GREEN.md", "DEFERRAL-*"):
             for f in here.glob(pattern):
                 if not (withhold and f.match(withhold)):
                     shutil.copyfile(f, there / f.name)
@@ -491,13 +477,15 @@ def node_cases(root: Path, node_id: str, branch: str) -> list[Case]:
 
 
 def moves_others(case: Case, name: str) -> list[str]:
-    """The other policies whose outcome moves when only ``name`` is disabled; a change is counted only
-    when this is empty, so one policy's count never carries another's."""
+    """The other non-gate policies whose outcome moves when only ``name`` is disabled; a change is counted
+    only when this is empty, so one policy's count never carries another's. (A gate policy's run changes
+    only its own keys or files, and what follows from them in the gate is that policy's effect.)"""
     policy, off = case.config["policy"], POLICIES[name].off
     moved = []
     for other, pol in POLICIES.items():
         try:
-            if other != name and pol.evaluate(case, policy) != pol.evaluate(case, {**policy, **off}):
+            if other != name and pol.evaluate and \
+                    pol.evaluate(case, policy) != pol.evaluate(case, {**policy, **off}):
                 moved.append(other)
         except Missing:
             continue
@@ -507,20 +495,20 @@ def moves_others(case: Case, name: str) -> list[str]:
 def classify(case: Case, name: str, sandbox: Sandbox) -> str:
     """``changed``, ``unchanged``, ``cited-only`` or ``unknown`` for one policy on one case.
 
-    The policy's evaluator screens: equal outcomes with and without the policy are ``unchanged``. A
-    difference counts only when no other policy's evaluator moves too and, for a gate policy, when the
-    whole gate's outcome (:meth:`Sandbox.outcome`) differs as well; a gate that does not differ (another
-    condition refused the record anyway) is ``unchanged``.
+    A gate policy is ``changed`` when the complete gate (:meth:`Sandbox.outcome`) differs with only it
+    disabled, and ``unchanged`` when the case holds nothing it reads. Another policy is ``changed`` when its
+    evaluator differs and no other evaluator moves with it.
     """
     pol = POLICIES[name]
     if not case.problem:
         try:
-            on = pol.evaluate(case, case.config["policy"])
-            if on == pol.evaluate(case, {**case.config["policy"], **pol.off}):
+            if pol.evaluate is None:
+                return "changed" if pol.reads(case) and sandbox.outcome(case) != sandbox.outcome(case, pol) \
+                    else "unchanged"
+            if pol.evaluate(case, case.config["policy"]) == pol.evaluate(case, {**case.config["policy"], **pol.off}):
                 return "unchanged"
             if not moves_others(case, name):
-                return "changed" if not pol.gate or sandbox.outcome(case) != sandbox.outcome(case, pol) \
-                    else "unchanged"
+                return "changed"
         except Missing:
             pass
     text = "\n".join(yaml.safe_dump(r.data) for r in case.records if isinstance(r.data, dict))
