@@ -460,11 +460,13 @@
     },
     {
       "acceptance": [
-        "An approval carries across commits touching only `roadmap/**`, `planning/**`, `roadmap*.md`, the registry and review bookkeeping, and across a merge from the integration branch after which the leaf's non-bookkeeping diff against its merge base is byte-identical",
-        "It never carries when the leaf's `acceptance` or `touch_zones` in the phase JSON, or its sheet's `## Tier` line, changed; tests cover each carry and each refusal; CHANGELOG"
+        "An approval carries when every path in `approved..commit`, after the existing project-prefix rebase, is one of: project-relative `roadmap/**` except `roadmap/orchestration.yaml` and `roadmap/git-workflow.yaml`; `planning/**`; `roadmap.md`; `roadmap-context.md`; this leaf's `work/implementation-summary-<id>.md`; a file under `work/reviews/<id>/`. It also carries across a two-parent merge M, first parent P and second parent I on the policy-resolved integration history, when the non-bookkeeping full-index diffs merge-base(P,I)..P and I..M, with the same diff options and exclusions, are byte-identical; any other merge shape, an unrelated-branch merge or a failed git query refuses the carry for the whole range. Only only_planning_or_review_bookkeeping_since widens, and only for review records: count_at_later_commit's sibling-head logic (M23.1) and M22.51's operator-decision carry keep today's rule",
+        "The carry is refused when this leaf's `acceptance` or `touch_zones` (resolved by node_key across chunk and sheet moves) or the parsed tier value in its sheet's `## Tier` section differs between the approved and target commits, when that sheet has no tier value, or when either graph or sheet cannot be resolved, and handoff status gives the reason; another node's acceptance and zones are bookkeeping. Tests extend tests/test_sheet_edits_keep_approvals.py with the rows of the sheet test table on a temporary repo whose project root is a subdirectory, and the unrelated-merge tests in tests/test_review_hardening.py still pass; CHANGELOG"
       ],
       "codename": "review-wider-carry",
-      "dependencies": [],
+      "dependencies": [
+        "e484b004-5481-4608-831e-b357aba8ba9f"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M22.53",
       "node_key": "16565222-4b33-487d-8d34-419a6384ad6a",
@@ -475,9 +477,9 @@
       "title": "Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones",
       "touch_zones": [
         "specy_road/review_bookkeeping.py",
-        "tests/test_review_bookkeeping_carry.py",
         "docs/orchestration-review.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_sheet_edits_keep_approvals.py"
       ],
       "type": "task"
     }

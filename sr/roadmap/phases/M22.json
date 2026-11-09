@@ -458,11 +458,13 @@
     },
     {
       "acceptance": [
-        "A READY with `fix_of: <reviewer>@<commit>` lets the other family's approval at that commit count across the fix delta when every changed path is in the leaf's zones and the sheet tier on the integration branch is not trust; `delta_problem`'s docs-or-tests and `DELTA_MAX_FILES` limits do not apply to it; otherwise today's rule holds",
-        "The blocking reviewer's prompt for a `fix_of` commit lists its findings and the fix diff, and asks for a verdict on each plus new findings only where the fix broke something; tests cover carry, a trust refusal, an out-of-zone refusal, a new finding and a missing `fix_of`; docs and CHANGELOG"
+        "`specy-road ready --fix-of <model>@<sha>` writes an optional `fix_of` field to READY (specy_road/schemas/handoff.schema.json gains it as a string matching model@7-40 hex; additionalProperties stays false); a READY without it keeps today's behaviour. With a current valid READY carrying `fix_of`, each counting approval at `<sha>` from a family other than the named model counts at the fix commit, through a check beside count_at_later_commit in review_gate.py (review_bookkeeping.py, delta_problem, DELTA_MAX_FILES and delta_from stay as they are), only when all hold: the named model's latest record at `<sha>` is a block and is that round's only block; `<sha>` is the fix commit's sole parent; every path in `<sha>..<fix commit>`, after the project-prefix rebase, is in the leaf's zones as they were at `<sha>` or is this leaf's summary or review files; the integration-branch copy of the sheet (project-relative planning_dir, read with git, not sr/tools/tier.py) parses as plain or behavioural; `policy.delta_review` is not false and no full-packet stamp or delta integrity finding applies. A missing, unreadable or unknown tier, an unresolved integration ref or any failed condition leaves the approval stale as today, and handoff status names why; the carried approval alone never opens the gate: the blocking reviewer must approve the fix commit",
+        "For a READY with `fix_of`, `specy-road prompt --role reviewer --model <the named blocker>` lists each findings string of that block and the exact `<sha>..<fix commit>` diff, and asks for a verdict on each plus a new finding only where the fix broke something; the prompt for any other model has no such section. Tests extend tests/test_delta_review.py and tests/test_role_prompt_reviewer.py with the rows of the sheet test table, through handoff status and prompt on temporary repos; docs and CHANGELOG"
       ],
       "codename": "review-fix-check",
-      "dependencies": [],
+      "dependencies": [
+        "e484b004-5481-4608-831e-b357aba8ba9f"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M22.52",
       "node_key": "8a1f81ea-bf6d-40d0-abcd-83378d39289f",
@@ -475,9 +477,14 @@
         "specy_road/review_gate.py",
         "specy_road/bundled_scripts/role_prompt_rca.py",
         "specy_road/bundled_scripts/role_prompt.py",
-        "tests/test_review_fix_check.py",
         "docs/orchestration-review.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_delta_review.py",
+        "tests/test_role_prompt_reviewer.py",
+        "specy_road/schemas/handoff.schema.json",
+        "specy_road/review_gate_ready.py",
+        "tests/parity/command_map.yaml",
+        "tests/parity/golden/help/specy-road__ready.txt"
       ],
       "type": "task"
     }
