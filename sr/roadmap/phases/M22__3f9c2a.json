@@ -1,0 +1,205 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "scripts/check_machine_paths.py becomes scripts/check_public_hygiene.py with three pattern categories: (a) personal data: email addresses not in scripts/public_hygiene_allow.txt, registry `owner:` values, presence session names built from the username, and the maintainer's name tokens and username, read at run time (git config, the environment, an untracked local list or a CI secret) and never from a tracked file; (b) machine setup: today's path patterns plus `~/` paths outside allowlisted tool config directories (such as ~/.specy-road, ~/.claude, ~/.cursor and ~/.ssh), account-directory names from the local list, `CLAUDE_CONFIG_DIR=` with a literal value, home-prefixed conda or venv paths, apparmor.d profile names, kernel.apparmor_restrict_unprivileged_userns values, `-MacBook` and `.local` hostnames, machine names from the local list, and `/tmp/claude-<uid>`; (c) process content: the path denylist (sr/, docs/design-notes/, scripts/census/, scripts/review_effort_study.py, any research/ directory, *-prompt.md, handoff-*) and the text denylist (`deep-research report`, `claude\\.ai/code/session_`, `Claude-Session:`, `\\bsr/(work|planning|roadmap|tools)` outside .gitignore, and private names and phrases from the local list)",
+        "scripts/public_hygiene_allow.txt holds only patterns: noreply@anthropic.com, *@users.noreply.github.com, noreply@github.com, cursoragent@cursor.com, the dependabot address, the placeholders x and <name>, test identities such as Alice and Test User, the repo-owner handle in github.com URLs, and one public author identity entry that ships as an explicit placeholder for the operator to fill in; while it holds the placeholder the gate treats the public identity as unset and fails closed for author and committer identities of commits in the checked range, and it checks no history before that range",
+        "Pre-commit runs the file check and a commit-msg hook runs the message check; validate.yml runs both, the message and identity check over `git log base..head`; until M22.60 lands the file check skips the tracked sr/ tree on the WIP line, and the path denylist applies to pull requests to main and to release-publish; tests/test_lean_gates.py has one failing row per pattern in a tracked file and in a commit message, one passing row per allowlist entry, and the unset-placeholder case"
+      ],
+      "codename": "public-hygiene-gate",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.54",
+      "node_key": "3f9c2a71-5d8e-4b06-9a43-e1c7b5d20f68",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.54_public-hygiene-gate_3f9c2a71-5d8e-4b06-9a43-e1c7b5d20f68.md",
+      "sibling_order": 49,
+      "status": "Not Started",
+      "title": "Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages",
+      "touch_zones": [
+        "scripts/check_machine_paths.py",
+        "scripts/check_public_hygiene.py",
+        "scripts/public_hygiene_allow.txt",
+        "tests/test_lean_gates.py",
+        ".github/workflows/validate.yml",
+        ".pre-commit-config.yaml",
+        "AGENTS.md",
+        "docs/contributor-guide.md",
+        "specy_road/agent_rule_provenance.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "docs/design-notes/, scripts/census/, scripts/review_effort_study.py and .cursor/rules/ leave the index (`git rm --cached`) and are ignored in .gitignore and .cursorindexingignore; the files stay on disk for the coordinator to archive privately; `git ls-files` lists none of them; sr/ and scripts/lean_metrics.py stay tracked in this pass",
+        "No tracked file outside sr/ links to or cites a removed path, except CHANGELOG.md's released sections and the frozen captures under tests/parity/: the shipped model-profiles README, profiles and harness-facts.yaml under specy_road/templates/project/model-profiles/ cite no docs/design-notes path, docs/ and package docstrings drop or replace their citations (a diff line under specy_road/ outside templates changes only a citation), and constraints/file-limits.yaml drops the design-notes entries in both copies; tests/test_docs_links.py passes",
+        "A test that only reads a removed file goes in the same commit, and the commit names it (tests/test_review_effort_study.py; the design-notes reads in tests/test_review_rca.py, tests/test_roster_generate.py and tests/test_review_record_write.py; the .cursor/rules read in tests/test_release_harness.py); tests that write .cursor/rules into a temporary repository are unchanged; M22.54's gate passes on the tree outside sr/ and scripts/verify_wheel_contents.py passes on a built wheel"
+      ],
+      "codename": "process-content-untracked",
+      "dependencies": [
+        "3f9c2a71-5d8e-4b06-9a43-e1c7b5d20f68"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.55",
+      "node_key": "a6e04b9d-2c71-4f3a-8b5e-7d19c0f4a2e3",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.55_process-content-untracked_a6e04b9d-2c71-4f3a-8b5e-7d19c0f4a2e3.md",
+      "sibling_order": 50,
+      "status": "Not Started",
+      "title": "Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored",
+      "touch_zones": [
+        ".gitignore",
+        ".cursorindexingignore",
+        "docs/",
+        "scripts/census/",
+        "scripts/review_effort_study.py",
+        ".cursor/rules/",
+        "specy_road/",
+        "constraints/file-limits.yaml",
+        "constraints/README.md",
+        "sr/constraints/file-limits.yaml",
+        "sr/constraints/README.md",
+        "tests/test_review_effort_study.py",
+        "tests/test_review_rca.py",
+        "tests/test_roster_generate.py",
+        "tests/test_review_record_write.py",
+        "tests/test_release_harness.py",
+        "tests/test_review_evidence.py",
+        "tests/test_project_layouts_outside.py",
+        "tests/test_agents_md_block.py",
+        "tests/test_shared_checkout_guidance.py",
+        "tests/test_skill_mirrors.py",
+        "tests/test_context_meter_harnesses.py",
+        "tests/fixtures/worker_turn_check/streams.json",
+        "suggested_prompts/bootstrap-agents-md.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "tests/test_claim_traps.py and tests/test_review_record_caller.py use neutral identities (for example Test User and alice) where they name the maintainer today; only the values change, every assertion keeps its meaning, and no other test changes",
+        "The maintainer's name tokens and username, read at run time as M22.54 reads them, match no tracked file under tests/ or specy_road/; the repo-owner handle in github.com URLs stays"
+      ],
+      "codename": "neutral-test-identities",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.56",
+      "node_key": "5b81d7e2-9f04-4c6a-a3d7-02e6b9f1c845",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.56_neutral-test-identities_5b81d7e2-9f04-4c6a-a3d7-02e6b9f1c845.md",
+      "sibling_order": 51,
+      "status": "Not Started",
+      "title": "Neutral identities in tests: no real name or username",
+      "touch_zones": [
+        "tests/test_claim_traps.py",
+        "tests/test_review_record_caller.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "docs/release-runbook.md and docs/toolkit-development.md describe promotion as one commit whose only parent is main's tip, built from the WIP tree with M22.54's denied paths removed (`git checkout <WIP> -- .` then `git rm -r --cached` of each denied path); no runbook step merges the WIP line into chore/release-* or main",
+        "CI on a pull request to main fails when any commit in base..head touches a path in M22.54's path denylist or fails its message and identity check; tests build a temporary repository with a WIP-merge range and a range with an sr/ commit (each refused) and a squashed promotion (accepted)",
+        "release-publish.yml runs M22.54's gate over the unpacked sdist and wheel before the upload step, and scripts/verify_wheel_contents.py checks both for denied paths; a failure stops the publish"
+      ],
+      "codename": "promotion-without-wip-history",
+      "dependencies": [
+        "3f9c2a71-5d8e-4b06-9a43-e1c7b5d20f68"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.57",
+      "node_key": "c2d7f590-4e1b-4a8c-9f26-b3a5e8d07c14",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.57_promotion-without-wip-history_c2d7f590-4e1b-4a8c-9f26-b3a5e8d07c14.md",
+      "sibling_order": 52,
+      "status": "Not Started",
+      "title": "Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish",
+      "touch_zones": [
+        "docs/release-runbook.md",
+        "docs/toolkit-development.md",
+        ".github/workflows/release-publish.yml",
+        ".github/workflows/validate.yml",
+        "scripts/verify_wheel_contents.py",
+        "scripts/check_public_hygiene.py",
+        "tests/test_verify_wheel_contents.py",
+        "tests/test_lean_gates.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "On a fresh `git clone --mirror` with the pull-request refs fetched, never in a working checkout and never pushed, git filter-repo runs with --invert-paths for sr/, docs/design-notes/, scripts/census/, scripts/review_effort_study.py, .cursor/rules/, scripts/lean_metrics.py when the tracked tree no longer holds it, and the pre-sr roots planning/, roadmap/, work/, prompts/, gui-spike/, vision.md and project-design-for-claudeandcursor.md; --replace-text for home paths and for account-directory and private names from M22.54's local list; --mailmap mapping the university, hostname and localhost identities (and the personal address if the operator says so) to the public-identity placeholder; and a --message-callback that deletes Claude-Session: lines, rewrites sr/work mentions to <private> and removes private-name mentions",
+        "The rewritten mirror passes M22.54's gate over every ref's tree, every commit message and every identity; the evidence goes to an untracked folder outside every tracked tree and is never committed: the old-to-new SHA map for every branch and tag, the pull-request refs still holding old commits, the gate output, and a ready-to-run operator script for the force-push route and the new-repository route",
+        "The operator script refuses to run while the public-identity placeholder is unset; the agent runs no push, visibility change, Support request or TestPyPI step"
+      ],
+      "codename": "history-rewrite-rehearsal",
+      "dependencies": [
+        "1d6c8e4b-7a95-4e20-9c3f-d58b2e0a9f16",
+        "15c488ad-2531-4d82-a3a9-363e626a3872"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.58",
+      "node_key": "7e4a19c6-b0d3-4f85-8e2a-61c9d5f3b0a7",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.58_history-rewrite-rehearsal_7e4a19c6-b0d3-4f85-8e2a-61c9d5f3b0a7.md",
+      "sibling_order": 53,
+      "status": "Not Started",
+      "title": "History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map",
+      "touch_zones": [
+        "sr/planning/M22.58_history-rewrite-rehearsal_7e4a19c6-b0d3-4f85-8e2a-61c9d5f3b0a7.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "human: the operator has force-pushed the rewritten refs from M22.58's script or moved to a new repository; filed the GitHub Support request for pull-request refs and cached views; decided yank or delete for each TestPyPI candidate published before the rewrite and carried it out; and re-cloned every machine and worktree"
+      ],
+      "codename": "history-rewritten-and-published",
+      "dependencies": [
+        "7e4a19c6-b0d3-4f85-8e2a-61c9d5f3b0a7"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M22.59",
+      "node_key": "e93b05f8-6a2c-4d17-b4e9-8f0d2a61c7b3",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.59_history-rewritten-and-published_e93b05f8-6a2c-4d17-b4e9-8f0d2a61c7b3.md",
+      "sibling_order": 54,
+      "status": "Not Started",
+      "title": "Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced",
+      "touch_zones": [],
+      "type": "gate"
+    },
+    {
+      "acceptance": [
+        "/sr/ is in .gitignore and .specyrd/manifest.json is untracked and ignored (local); `git ls-files` on the WIP line lists nothing under sr/ and no .specyrd/manifest.json; .gitignore and .cursorindexingignore drop the sr/ lines that only served the tracked tree; no tracked file names the private repository or its URL",
+        "With the private clone mounted at sr/ and a local .specyrd/manifest.json naming project_root sr, validate, export --check, digest --check, brief, do-next-available-task --worktree, finish-this-task, review-packet, grind-session --plan and worker delegate and sync run as before: a leaf's worktree gets its sr/ mount, claims and roadmap bookkeeping commit to the private repository, code lands in the toolkit repository, and the sr/tools wrappers run from the mount",
+        "docs/toolkit-development.md and AGENTS.md say how a maintainer mounts sr/ without naming the repository; the private repository starts from the WIP sr/ tree; this leaf pushes nothing to the toolkit remote"
+      ],
+      "codename": "sr-private-mount",
+      "dependencies": [
+        "a6e04b9d-2c71-4f3a-8b5e-7d19c0f4a2e3",
+        "5b81d7e2-9f04-4c6a-a3d7-02e6b9f1c845",
+        "c2d7f590-4e1b-4a8c-9f26-b3a5e8d07c14",
+        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.60",
+      "node_key": "1d6c8e4b-7a95-4e20-9c3f-d58b2e0a9f16",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.60_sr-private-mount_1d6c8e4b-7a95-4e20-9c3f-d58b2e0a9f16.md",
+      "sibling_order": 55,
+      "status": "Not Started",
+      "title": "The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working",
+      "touch_zones": [
+        ".gitignore",
+        ".cursorindexingignore",
+        ".specyrd/manifest.json",
+        "sr/",
+        "docs/toolkit-development.md",
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "type": "task"
+    }
+  ]
+}
