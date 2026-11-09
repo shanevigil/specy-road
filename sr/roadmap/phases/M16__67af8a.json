@@ -418,6 +418,76 @@
         "docs/orchestration-chores.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Apply each row of this sheet's checklist (D1-D6, decided before pickup): a delete row removes that code, a 'delete with tests' row also removes the tests that exist only to call it, and a keep row leaves that code; keeps are limited to the D5 and D6 names and the two callback parameters D2 retains (_IndentedDumper.increase_indent's `indentless`, which PyYAML passes by keyword, and FixRound.__call__'s `option_string`, which argparse passes positionally), both whitelisted for vulture",
+        "behaviour_changes.py is kept: triage round 1 removed M13.14 but kept M13.8's catalogue for held M13.11; its docstring stops naming M13.14 as its consumer and the vulture whitelist lists it",
+        "CI runs vulture at 60% confidence over specy_road and scripts with a whitelist for routes, fixtures and entry points, as a non-blocking step; vulture is added to the `dev` extra with an exact pin, requirements-ci.txt is regenerated with pip-compile and `pip-audit -r requirements-ci.txt` is clean, as docs/supply-chain-security.md requires, and it is never in project.dependencies",
+        "Parity harness unchanged; the removed tests equal this leaf's planned_test_changes",
+        "Estimated net line change (informational, not a gate): package about -400, tests about -150"
+      ],
+      "codename": "delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step",
+      "dependencies": [
+        "fce532e1-9ed0-4da1-9f16-2465c6e73df0",
+        "c840cf76-95c4-4688-a587-3bc06824fad5",
+        "467b60ed-37a1-4220-ba8a-9507471e9dcc"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.2.1",
+      "node_key": "bdf86710-8da3-4c1b-a1db-c11e0a5c1613",
+      "parent_id": "M16.2",
+      "planned_test_changes": [
+        "assert-loss: tests/test_outline_renumber.py::test_effective_dependency_includes_ancestor 2->1",
+        "assert-loss: tests/test_review_record_rules.py::test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation 7->6",
+        "removed-test: tests/test_export_roadmap_md.py::test_render_phase_doc_decision_decided",
+        "removed-test: tests/test_export_roadmap_md.py::test_render_phase_doc_decision_pending",
+        "removed-test: tests/test_export_roadmap_md.py::test_render_phase_doc_includes_acceptance",
+        "removed-test: tests/test_export_roadmap_md.py::test_render_phase_doc_includes_goal",
+        "removed-test: tests/test_export_roadmap_md.py::test_render_phase_doc_no_details_section_when_absent",
+        "removed-test: tests/test_managed_block.py::test_removing_the_block_leaves_the_rest_alone",
+        "removed-test: tests/test_managed_block.py::test_removing_when_there_is_no_block_is_a_no_op",
+        "removed-test: tests/test_planning_sheet_bootstrap.py::test_ensure_planning_sheet_creates_file_and_sets_planning_dir",
+        "removed-test: tests/test_planning_sheet_bootstrap.py::test_ensure_planning_sheet_gate_writes_gate_template",
+        "removed-test: tests/test_planning_sheet_bootstrap.py::test_ensure_planning_sheet_noop_for_unknown_type",
+        "removed-test: tests/test_planning_sheet_bootstrap.py::test_ensure_planning_sheet_raises_when_planning_path_is_directory",
+        "removed-test: tests/test_planning_sheet_bootstrap.py::test_remove_planning_sheet_if_present",
+        "removed-test: tests/test_review_record_rules.py::test_defect_word",
+        "removed-test: tests/test_worker_state.py::test_intervention_bumps_the_epoch_and_checkpoint_records_head"
+      ],
+      "planning_dir": "planning/M16.2.1_delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step_bdf86710-8da3-4c1b-a1db-c11e0a5c1613.md",
+      "sibling_order": 0,
+      "status": "Not Started",
+      "title": "Delete dead and unwired code from a decided list, and add vulture as an advisory CI step",
+      "touch_zones": [
+        "specy_road/bundled_scripts/migrate_stable_node_keys.py",
+        "specy_road/behaviour_changes.py",
+        "specy_road/bundled_scripts/roadmap_chunk_utils.py",
+        "specy_road/finish_land_integration.py",
+        "specy_road/milestone_session.py",
+        "specy_road/bundled_scripts/roadmap_gui_settings_tokens.py",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/registry_yaml.py",
+        "specy_road/specyrd_hooks.py",
+        "specy_road/integrity_removals.py",
+        "specy_road/bundled_scripts/export_roadmap_md.py",
+        "specy_road/managed_block.py",
+        "specy_road/bundled_scripts/planning_sheet_bootstrap.py",
+        "specy_road/review_record_rules.py",
+        "specy_road/worker_state.py",
+        "specy_road/bundled_scripts/roadmap_layout.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "scripts/vulture_whitelist.py",
+        ".github/workflows/validate.yml",
+        "tests/",
+        "specy_road/bundled_scripts/worker_cli_args.py",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "pyproject.toml",
+        "requirements-ci.in",
+        "requirements-ci.txt"
+      ],
+      "type": "task"
     }
   ]
 }
