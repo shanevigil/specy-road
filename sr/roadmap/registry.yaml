@@ -82,20 +82,3 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: public-hygiene-gate
-    node_id: M22.54
-    branch: feature/rm-public-hygiene-gate
-    touch_zones:
-      - scripts/check_machine_paths.py
-      - scripts/check_public_hygiene.py
-      - scripts/public_hygiene_allow.txt
-      - tests/test_lean_gates.py
-      - .github/workflows/validate.yml
-      - .pre-commit-config.yaml
-      - AGENTS.md
-      - docs/contributor-guide.md
-      - specy_road/agent_rule_provenance.md
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-09T13:28:26+00:00'
