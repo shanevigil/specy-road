@@ -38,7 +38,7 @@
       "D102/D103": 4
     },
     "scripts/lean_metrics.py": {
-      "PL": 4,
+      "PL": 3,
       "D102/D103": 23
     },
     "scripts/line_width_baseline.py": {
@@ -2350,9 +2350,6 @@
     "tests/test_roster_worktree_dry_run.py": {
       "PL": 2,
       "D102/D103": 11
-    },
-    "tests/test_ruff_quality_baseline.py": {
-      "D102/D103": 4
     },
     "tests/test_run_record_no_false_failure.py": {
       "D102/D103": 4

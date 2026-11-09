@@ -14,20 +14,25 @@ Usage:
     python scripts/ruff_quality_baseline.py --shrink            # lower entries, never raise
     python scripts/ruff_quality_baseline.py --transfer OLD NEW  # move OLD onto NEW
 
-The baseline is the count at M16.1.11's pickup. A leaf that moves or folds a
-file and records it as OLD -> NEW runs ``--transfer OLD NEW``; a fold adds
-OLD's count to NEW's, per family. ``--shrink`` rewrites an entry only when the
-current count is lower. A file that is gone counts as zero and its entry is
-removed. A file or family that is not already in the baseline is not added.
-Only maintainers rewrite the whole file.
+The baseline is the count at M16.1.11's pickup. A full rewrite counts the tree
+of the commit it records (``git archive`` of that commit), not the worktree: a
+file that is not in the commit, and a worktree edit of a file that is, stay out
+of the baseline. A leaf that moves or folds a file and records it as OLD -> NEW
+runs ``--transfer OLD NEW``; a fold adds OLD's count to NEW's, per family.
+``--shrink`` rewrites an entry only when the current count is lower. A file that
+is gone counts as zero and its entry is removed. A file or family that is not
+already in the baseline is not added. Only maintainers rewrite the whole file.
 """
 
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import subprocess
 import sys
+import tarfile
+import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -69,6 +74,18 @@ def counts(root: Path = REPO) -> dict[str, dict[str, int]]:
             per_file = found.setdefault(rel, {})
             per_file[name] = per_file.get(name, 0) + 1
     return {rel: _in_family_order(found[rel]) for rel in sorted(found)}
+
+
+def counts_at(commit: str, root: Path = REPO) -> dict[str, dict[str, int]]:
+    """Findings in ``commit``'s tree under the three areas. The worktree is not read."""
+    proc = subprocess.run(
+        ["git", "archive", "--format=tar", commit],
+        cwd=root, capture_output=True, check=True,
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        with tarfile.open(fileobj=io.BytesIO(proc.stdout), mode="r:") as archive:
+            archive.extractall(tmp)
+        return counts(Path(tmp))
 
 
 def _in_family_order(per_file: dict[str, int]) -> dict[str, int]:
@@ -156,7 +173,10 @@ def write(data: dict) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     """Write the baseline, lower it with ``--shrink``, or move a file with ``--transfer``."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog="A full rewrite counts the recorded commit's tree, not the worktree.",
+    )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--shrink", action="store_true",
                       help="lower stored counts to the current ones and never raise one")
@@ -187,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
     commit = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True, check=True,
     ).stdout.strip()
-    files = counts()
+    files = counts_at(commit, REPO)
     write({
         "commands": {
             name: " ".join((*ruff_command(extra), *AREAS)) for name, extra in FAMILIES

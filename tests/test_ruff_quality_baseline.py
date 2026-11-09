@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -168,6 +170,66 @@ def test_shrink_lowers_entries_and_never_raises(
     assert written["files"] == expected
     if expected == files:
         assert baseline.read_text(encoding="utf-8") == original
+
+
+PICKUP = "542aa46c29cf4765c20b6879d322cc53422b1da3"
+
+
+def test_baseline_records_the_pickup_commit_and_only_its_files() -> None:
+    data = json.loads((ROOT / "scripts" / "ruff_quality_baseline.json").read_text(encoding="utf-8"))
+    listed = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", data["commit"]],
+        cwd=ROOT, capture_output=True, text=True, check=True,
+    ).stdout
+    present = set(listed.splitlines())
+
+    assert data["commit"] == PICKUP
+    assert sorted(path for path in data["files"] if path not in present) == []
+
+
+@pytest.mark.skipif(shutil.which("ruff") is None, reason="ruff is not installed")
+def test_rewrite_counts_the_commit_tree_not_the_worktree(tmp_path: Path, monkeypatch) -> None:
+    repo = tmp_path / "repo"
+    (repo / "specy_road").mkdir(parents=True)
+    kept = repo / "specy_road" / "kept.py"
+    kept.write_text(
+        'def kept(items=[]):\n    """Documented."""\n    return items\n',
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "specy_road/kept.py"], cwd=repo, check=True)
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "Baseline Test",
+        "GIT_AUTHOR_EMAIL": "baseline-test@example.com",
+        "GIT_COMMITTER_NAME": "Baseline Test",
+        "GIT_COMMITTER_EMAIL": "baseline-test@example.com",
+    }
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "pickup"],
+        cwd=repo, check=True, env=env,
+    )
+    kept.write_text(
+        'def kept(items=[]):\n    """Documented."""\n    return items\n\n'
+        'def also(items=[]):\n    """Documented."""\n    return items\n',
+        encoding="utf-8",
+    )
+    (repo / "specy_road" / "extra.py").write_text(
+        'def extra(items=[]):\n    """Documented."""\n    return items\n',
+        encoding="utf-8",
+    )
+    baseline = repo / "out.json"
+    monkeypatch.setattr(quality, "REPO", repo)
+    monkeypatch.setattr(quality, "BASELINE", baseline)
+
+    assert quality.main([]) == 0
+
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    written = json.loads(baseline.read_text(encoding="utf-8"))
+    assert written["commit"] == head
+    assert written["files"] == {"specy_road/kept.py": {"B": 1}}
 
 
 def test_report_names_rises_new_files_and_family_totals() -> None:
