@@ -337,6 +337,92 @@ def test_an_idle_worker_resumes_in_its_own_slot(tmp_path: Path) -> None:
     assert wait_for_worker(repo, rec.worker_id).state == "idle"
 
 
+# Writes a fresh READY after an optional hold, so the turn ends ``completed``.
+_COMPLETE = '''
+import json, subprocess, sys, time
+from pathlib import Path
+
+def git(*args):
+    return subprocess.check_output(["git", *args], text=True).strip()
+
+hold, release = Path("work/hold-turn"), Path("work/release-turn")
+if hold.is_file():
+    deadline = time.time() + 30
+    while not release.is_file():
+        if time.time() > deadline:
+            sys.exit(1)
+        time.sleep(0.05)
+head, branch = git("rev-parse", "HEAD"), git("rev-parse", "--abbrev-ref", "HEAD")
+mark = Path("work/ready-mark")
+nonce = mark.read_text() if mark.is_file() else "1"
+ready = Path("work/reviews/M1.1")
+ready.mkdir(parents=True, exist_ok=True)
+(ready / "READY-opus.md").write_text(
+    f"---\\nnode_id: M1.1\\nagent: opus\\nbranch: {branch}\\ncommit: {head}\\n"
+    f"base: {head}\\nchanged_paths: []\\nverify: []\\n---\\n{nonce}\\n")
+for d in ({"type": "system", "subtype": "init", "session_id": "sid-live", "model": "fake"},
+          {"type": "result", "subtype": "success", "result": "done", "session_id": "sid-live"}):
+    print(json.dumps(d), flush=True)
+'''
+
+
+def _completed_worker(tmp_path: Path, *, max_workers: int = 2) -> tuple[Path, Path, Path, str]:
+    """A worker whose turn ended ``completed`` and whose lease ref is already gone."""
+    repo, script = make_worker_repo(tmp_path, max_workers=max_workers)
+    script.write_text(_COMPLETE)
+    remote, clone = remote_and_clone(tmp_path, repo)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
+    rec = wait_for_worker(repo, "w-0001")
+    assert rec.state == "completed" and remote_leases(remote) == []
+    return repo, remote, clone, rec.worker_id
+
+
+def test_a_completed_turn_releases_its_lease(tmp_path: Path) -> None:
+    """While the turn runs the lease ref is present; once it ends READY, the ref is gone."""
+    repo, script = make_worker_repo(tmp_path)
+    script.write_text(_COMPLETE)
+    remote, _clone = remote_and_clone(tmp_path, repo)
+    (repo / "work").mkdir(exist_ok=True)
+    (repo / "work" / "hold-turn").write_text("1")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
+    cid = lease.checkout_id(repo)
+    assert ws.load_record(repo, "w-0001").state == "running"
+    assert remote_leases(remote) == [f"{cid}/w-0001"]
+    (repo / "work" / "release-turn").write_text("go")
+    rec = wait_for_worker(repo, "w-0001")
+    assert rec.state == "completed" and remote_leases(remote) == []
+
+
+def test_another_clone_is_not_held_by_a_completed_worker(tmp_path: Path) -> None:
+    """Clone B at ``max_workers`` 1 can delegate when clone A's only worker has completed."""
+    _repo, _remote, clone, _wid = _completed_worker(tmp_path, max_workers=1)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(clone)) == 0
+    assert [r.node_id for r in ws.list_records(clone)] == ["M1.1"]
+
+
+def test_a_resumed_completed_worker_leases_only_while_its_turn_runs(tmp_path: Path) -> None:
+    """``worker message`` pushes a new lease for the held turn and drops it when that turn completes."""
+    repo, remote, _clone, wid = _completed_worker(tmp_path)
+    cid = lease.checkout_id(repo)
+    (repo / "work" / "hold-turn").write_text("1")
+    assert run_worker_cli("worker", "message", wid, "--text", "again", "--repo-root", str(repo)) == 0
+    assert ws.load_record(repo, wid).state == "running"
+    assert remote_leases(remote) == [f"{cid}/{wid}"]
+    (repo / "work" / "ready-mark").write_text("2")
+    (repo / "work" / "release-turn").write_text("go")
+    assert wait_for_worker(repo, wid).state == "completed" and remote_leases(remote) == []
+
+
+def test_a_refused_resume_of_a_completed_worker_leaves_no_lease(tmp_path: Path, capsys) -> None:
+    """Another clone holds the sole slot: resume is refused, the worker stays completed, and it has no lease ref."""
+    repo, remote, clone, wid = _completed_worker(tmp_path, max_workers=1)
+    theirs = _foreign_worker(clone)
+    assert run_worker_cli("worker", "resume", wid, "--repo-root", str(repo)) == 1
+    assert "leased by other checkouts" in capsys.readouterr().err
+    assert ws.load_record(repo, wid).state == "completed"
+    assert remote_leases(remote) == [f"{lease.checkout_id(clone)}/{theirs.worker_id}"]
+
+
 def test_a_resume_is_refused_when_other_workers_fill_the_limit(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path, max_workers=1)
     rec = idle_worker(repo, "M1.1")
