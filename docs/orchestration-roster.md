@@ -126,6 +126,11 @@ accepted form <form>`) rather than as a profile "not committed on the
 integration branch", and leaves out the `no eligible executor … may_process`
 hint when that drop is the only reason no executor is left.
 
+An entry without `profile:` gets the first profile whose `api_id`, file name or
+alias equals its `id`; only when none does, the first that equals its
+`harness_model` (an id match wins). Matching neither, `validate` warns that
+its model notes never reach its prompts.
+
 ## The coordinator
 
 With no roster entry holding the `coordinator` role, `orchestrate plan` prints

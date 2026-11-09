@@ -74,6 +74,9 @@ body. Keep section bodies focused; link to PRs for detail.
   command and its error as not run in the notes (on an approve, with a `not a defect because` reason), and leave it
   out of `commands_rerun`. `review record` and the gate are unchanged: under `policy.reviewer_reruns_required` an
   approve with no `commands_rerun` is still refused.
+- A roster entry without `profile:` whose `id` matches no model profile now matches one whose `api_id`, file name
+  or alias equals its `harness_model`, in the working tree and on the integration branch alike; an `id` match still
+  wins, and a drifted profile matched that way is refused as before. `validate` no longer warns for such an entry.
 
 - A landing merge that conflicts in a roadmap chunk keeps the integration side of that chunk and sets the finishing leaf back to Complete, found by `node_key`, including when the project root sits under a prefix such as `sr/`. Ancestor statuses are recomputed with the existing rollup and review-hold rules; every other field stays the integration side's. When the bookkeeping commit is known and that leaf is still in the chunk but not Complete, finish aborts the merge before the commit, so nothing is pushed, and the error names the chunk and the branch codename. The merge message says the Complete status was applied again only when the landed chunk has that leaf Complete. A leaf the integration side removed stays absent, and the message does not claim the status was applied.
 

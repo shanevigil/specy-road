@@ -185,7 +185,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.63` A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH `completed-worker-frees-lease` — task — **Complete**
   - `M22.64` The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run `reviewer-and-rca-launch-paths` — task — **Complete**
   - `M22.65` The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work `work-dir-ignored` — task — **Not Started**
-  - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Not Started**
+  - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -335,7 +335,6 @@ Do not pick these up.
 - `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
 - `M22.62` on `feature/rm-shared-notes-digest-refused` since 2026-11-09
 - `M22.65` on `feature/rm-work-dir-ignored` since 2026-11-09
-- `M22.66` on `feature/rm-profile-match-reads-harness-model` since 2026-11-09
 
 ## Quality by area
 
@@ -343,13 +342,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 30 | 0 | 2.37 | 57% | 18 | 2 |
+| `CHANGELOG.md` **flagged** | 30 | 0 | 2.17 | 53% | 18 | 1 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `docs` **flagged** | 34 | 0 | 2.44 | 59% | 52 | 3 |
+| `docs` **flagged** | 34 | 0 | 2.26 | 56% | 52 | 2 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 40 | 0 | 2.33 | 52% | 59 | 3 |
-| `tests` **flagged** | 43 | 0 | 2.30 | 56% | 75 | 3 |
+| `tests` **flagged** | 43 | 0 | 2.16 | 53% | 75 | 2 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.github` | 4 | 0 | 2.00 | 50% | 31 | 0 |
@@ -363,6 +361,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `scripts` | 7 | 0 | 1.86 | 43% | 67 | 0 |
+| `specy_road` | 40 | 0 | 2.17 | 50% | 59 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
