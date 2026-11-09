@@ -146,7 +146,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.5_gui-orch-outline-badges_6341c523-6051-4c9f-8cb7-74ab1a9eeed9.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer",
       "touch_zones": [
         "gui/pm-gantt/src/components/OutlineTable.tsx",

@@ -105,17 +105,3 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
-  - codename: gui-orch-outline-badges
-    node_id: M17.5
-    branch: feature/rm-gui-orch-outline-badges
-    touch_zones:
-      - gui/pm-gantt/src/components/OutlineTable.tsx
-      - gui/pm-gantt/src/orchestrationSnapshot.ts
-      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
-      - gui/pm-gantt/src/App.tsx
-      - gui/pm-gantt/src/App.css
-      - specy_road/pm_gantt_static/
-    started: '2026-11-08'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-09T09:53:24+00:00'
