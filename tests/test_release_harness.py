@@ -240,17 +240,6 @@ def test_release_runbook_exists_and_referenced() -> None:
         "AGENTS.md must link to docs/release-runbook.md"
     )
 
-    cursor_rule = (
-        REPO / ".cursor" / "rules" / "030-git-workflow-management.mdc"
-    ).read_text(encoding="utf-8")
-    assert "release-runbook.md" in cursor_rule, (
-        ".cursor/rules/030-git-workflow-management.mdc must link to "
-        "docs/release-runbook.md"
-    )
-    # The rule must use the v-prefixed marker form, not the bare form.
-    assert "release: vX.Y.Z" in cursor_rule
-    assert "release: x.x.x" not in cursor_rule
-
 
 def test_followup_readme_cleanup_step_has_continue_on_error() -> None:
     """release-publish.yml's PR-create step must tolerate the 'Actions cannot create PRs' policy."""

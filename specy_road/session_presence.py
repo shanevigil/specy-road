@@ -3,8 +3,7 @@
 ``roadmap/registry.yaml`` makes claimed leaves visible to every clone. Work that
 is not a claim — a design note, a merge, a review, a verifier's experiments —
 had nothing, and on 2026-10-26 four agents in one checkout found that out
-(design note ``docs/design-notes/agent-guidance-and-shared-checkouts.md``,
-decisions 5 and 6).
+(agent-guidance and shared-checkouts design note, decisions 5 and 6).
 
 A session records itself in ``work/.sessions/<agent-id>.yaml`` (gitignored,
 and always in the **main** worktree so linked worktrees share one set): its

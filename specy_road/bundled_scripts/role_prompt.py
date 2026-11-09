@@ -106,7 +106,7 @@ CHANNELS = ("cli", "paste", "subagent")
 # `rca` is not a roster role or a profile score: any rostered reviewer that is not a party may analyse.
 PROMPT_ROLES = (*ROLES, "rca")
 # Opt-in pilot (`--context-feedback`): three structured lines on what the brief and prompt got wrong, before
-# the question is asked of every implementation summary (docs/design-notes/context-feedback-pilot.md).
+# the question is asked of every implementation summary.
 CONTEXT_FEEDBACK_LINES = [
     "## Context feedback (pilot)",
     "",

@@ -10,8 +10,7 @@ of the rounds it reviewed in a row, whatever ids or models it named; or after
 (:mod:`specy_road.review_trend`) unless ``policy.escalate_when_converging``. A coordinator may also force an analysis with
 a reason (:func:`forced_escalation`). An ``RCA-*.md`` record resolves every
 round up to its ``trigger.round``, so counting restarts after each analysis.
-Thresholds come from the gate's policy (the integration branch). Design:
-``docs/design-notes/review-loop-rca.md``.
+Thresholds come from the gate's policy (the integration branch).
 """
 
 from __future__ import annotations

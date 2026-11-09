@@ -9,7 +9,7 @@ never an authority: it is shape-checked where it is read (:func:`load_markers`),
 nothing and is reported, and a block counts as resolved only while the marker is in effect
 (:func:`deferral_in_effect`): bound to the valid RCA it names and to the closed decision ``review defer``
 recorded for it in ``roadmap/decisions.yaml``, with items that still qualify. The fix-round budget's next step is
-:mod:`specy_road.review_next_step`. Design: ``docs/design-notes/review-loop-rca.md``.
+:mod:`specy_road.review_next_step`.
 """
 
 from __future__ import annotations

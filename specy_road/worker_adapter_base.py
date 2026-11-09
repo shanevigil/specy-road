@@ -106,7 +106,7 @@ REVIEWER_DISALLOWED = ("Bash(git commit *)", "Bash(git push *)", "Bash(gh *)")
 #: A reviewer writes nothing (M8.3 A2): its read and shell tools only, and the file-writing tools denied outright.
 REVIEWER_TOOLS = "Read,Glob,Grep,Bash"
 REVIEWER_NO_WRITES = ("Write", "Edit", "NotebookEdit")
-# Antigravity's `agy` runs as a `generic` harness (docs/design-notes/harness-compatibility-triage.md); a reviewer turn
+# Antigravity's `agy` runs as a `generic` harness (harness compatibility triage); a reviewer turn
 # needs these, each added when the command lacks it (https://antigravity.google/docs/cli/headless): one JSON envelope
 # whose structured_output is the answer, the terminal sandbox, and more than the 5m default to answer in.
 AGY_REVIEW_FLAGS = (("--output-format", "json"), ("--sandbox", None), ("--print-timeout", "30m"))

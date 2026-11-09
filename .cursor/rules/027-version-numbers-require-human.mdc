@@ -1,8 +1,0 @@
----
-description: Version and tag numbers are a human decision; highlight and wait
-alwaysApply: true
----
-
-# Version / tag numbers require an explicit human choice
-
-Never choose, bump or retarget a toolkit version, tag or `WIP/improvements-*` / `chore/release-v*` name on your own. The rule, and the block to print while you wait for the user's number, is stated once in [`AGENTS.md`](../../AGENTS.md#version-numbers-human-owned).

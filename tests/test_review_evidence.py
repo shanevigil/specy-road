@@ -1,6 +1,6 @@
 """Review evidence: READY verifier results are checked, and approvals can be required to re-run.
 
-From the "SRE for AI" triage (docs/design-notes/sre-for-ai-triage.md): a claim
+From the "SRE for AI" triage: a claim
 the executor declared is reported as such, and a reviewer's "tested" rung can be
 made mandatory by policy.
 """

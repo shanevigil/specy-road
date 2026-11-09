@@ -2,7 +2,7 @@
 
 Cursor reads AGENTS.md, CLAUDE.md and its always-applied `.cursor/rules`; Copilot
 reads AGENTS.md, `.claude/CLAUDE.md` and `.github/copilot-instructions.md`
-(docs/design-notes/harness-compatibility-triage.md, finding 6).
+(harness compatibility triage, finding 6).
 """
 
 from __future__ import annotations

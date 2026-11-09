@@ -10,7 +10,7 @@ first whose ``when`` holds is the state; its ``step`` yields exactly one :class:
 * ``none`` — no budget step (budget not spent, or nothing blocks).
 
 Later leaves add rows here (``review rca`` launcher, convergence-aware escalation): insert a :class:`State`
-before the row it refines. Design: ``docs/design-notes/review-loop-rca.md``.
+before the row it refines.
 """
 
 from __future__ import annotations

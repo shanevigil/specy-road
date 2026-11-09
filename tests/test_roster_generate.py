@@ -246,8 +246,7 @@ def test_the_scan_catches_a_dotted_opus_id_and_a_wrong_profile_path() -> None:
 
 def test_docs_and_starter_roster_examples_name_shipped_profile_ids() -> None:
     shipped = mp.list_profiles(mp.bundled_profiles_root())
-    files = [*sorted((REPO / "docs").glob("orchestration*.md")),
-             REPO / "docs" / "design-notes" / "model-aware-orchestration-proposal.md", STARTER]
+    files = [*sorted((REPO / "docs").glob("orchestration*.md")), STARTER]
     bad = {f.relative_to(REPO).as_posix(): p for f in files if (p := example_problems(f.read_text(), shipped))}
     assert not bad, bad
     assert "id: claude-opus-5-5" in STARTER.read_text() and f"profile: {OPUS_REL}" in STARTER.read_text()

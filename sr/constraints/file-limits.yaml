@@ -16,14 +16,6 @@ override_limits:
     file_globs:
       - "tests/test_set_gate_status.py"
     max_lines_per_function: 120
-  # Verbatim copy of the external model-aware orchestration proposal (0.3.x
-  # source material). Kept byte-for-byte so it can be diffed against the
-  # original; splitting it would break that. Slices are tracked in
-  # docs/design-notes/v0-3-0-orchestration-slices.md.
-  - name: orchestration_proposal_verbatim
-    file_globs:
-      - "docs/design-notes/model-aware-orchestration-proposal.md"
-    max_lines_per_file: 1100
 
 # Warn (do not fail) as a file approaches the cap.
 hard_alerts:

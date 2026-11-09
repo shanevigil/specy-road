@@ -24,10 +24,8 @@ dist/
 .idea/
 .vscode/
 
-# AI / agents — ignore IDE state; version policy under .cursor/rules/
-.cursor/*
-!.cursor/rules/
-!.cursor/rules/**
+# AI / agents — IDE state, including this repository's own Cursor rules
+.cursor/
 .claude/
 CLAUDE.local.md
 CLAUDE.*.local.md
@@ -41,6 +39,11 @@ CLAUDE.*.local.md
 agent-transcripts/
 sample-apps/
 /playground-dev/
+
+# Development-process notes and tools: kept on disk, never committed
+/docs/design-notes/
+/scripts/census/
+/scripts/review_effort_study.py
 
 # Derived indexes for `specy-road history` and `specy-road search`. Rebuilt
 # from git and the working tree on demand, so never committed;

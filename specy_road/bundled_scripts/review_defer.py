@@ -7,7 +7,7 @@ distinct ``follow_up_title`` beside the leaf (the ``add-node`` write), records a
 ``roadmap/decisions.yaml`` naming every deferred finding (with its reviewer, full commit, category, acceptance
 id and input class: the gate binds the marker to them), the follow-up leaf and the approver, and writes
 ``DEFERRAL-<round>.yaml`` beside the RCA record; the review gate then counts only those blocks (reviewer and
-commit) as resolved. Design: ``docs/design-notes/review-loop-rca.md``.
+commit) as resolved.
 """
 
 from __future__ import annotations
