@@ -471,7 +471,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.52_review-fix-check_8a1f81ea-bf6d-40d0-abcd-83378d39289f.md",
       "sibling_order": 47,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "After a block, the blocking reviewer checks only its named findings; the other family's approval carries",
       "touch_zones": [
         "specy_road/review_gate.py",

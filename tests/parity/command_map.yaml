@@ -24,3 +24,6 @@ rows:
   - old: specy-road decisions add
     new: specy-road decisions add
     allowed: "M22.51: `decisions add --kind` gains standing-rule; --why, --id and --expires help name it"
+  - old: specy-road ready
+    new: specy-road ready --fix-of
+    allowed: "M22.52: `ready --fix-of MODEL@SHA` names the one block a fix commit answers"

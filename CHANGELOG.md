@@ -14,6 +14,15 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road ready --fix-of <model>@<sha>` names the one block a fix commit answers, as a new optional READY
+  field `fix_of` (`handoff.schema.json`). While that READY is current, another family's
+  approval of the blocked commit counts at the fix commit when the named record is that commit's only block, the
+  blocked commit is the fix's sole parent, every changed path was in the leaf's zones at the blocked commit, the
+  integration branch's sheet names tier `plain` or `behavioural`, and `delta_review`, a `--full` packet and the
+  integrity report allow it; otherwise the approval is stale as before and `handoff status` says why. The blocker
+  must still approve the fix commit, and its reviewer prompt lists its findings and the fix diff for a fix check.
+  See `docs/orchestration-review.md` (Fix check after a block).
+
 - `specy-road review operator-decision NODE --decision approve|accept-with-limits` records an operator's
   review decision, given in plain words, as a closed `decided_by` decision in `roadmap/decisions.yaml` with an
   `OPERATOR-<commit>.yaml` marker. The operator form takes `--quote` and `--session`; the coordinator form accepts

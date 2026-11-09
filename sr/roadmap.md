@@ -234,7 +234,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.49` | A sandboxed Claude worker resumes after the executor account changes | task | Agentic-led | Complete |
 | `M22.50` | finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk | task | Agentic-led | Complete |
 | `M22.51` | An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both | task | Agentic-led | Complete |
-| `M22.52` | After a block, the blocking reviewer checks only its named findings; the other family's approval carries | task | Agentic-led | Not Started |
+| `M22.52` | After a block, the blocking reviewer checks only its named findings; the other family's approval carries | task | Agentic-led | Complete |
 | `M22.53` | Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones | task | Agentic-led | Not Started |
 | `M22.54` | Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages | task | Agentic-led | Complete |
 | `M22.55` | Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored | task | Agentic-led | Complete |
@@ -242,7 +242,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.57` | Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish | task | Agentic-led | Complete |
 | `M22.58` | History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map | task | Agentic-led | Not Started |
 | `M22.59` | Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced | gate | Human-led | Not Started |
-| `M22.60` | The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
@@ -252,5 +251,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M23.6` | Roster entries split into core fields and a typed run: block, read in both forms | task | Agentic-led | Not Started |
 | `M23.7` | upgrade migrates rosters to core fields plus run: | task | Agentic-led | Not Started |
 | `M23.8` | The guard classifier becomes three rule tables with every verdict unchanged | task | Agentic-led | Not Started |
+| `M23.9` | The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

@@ -63,13 +63,15 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
-from specy_road.bundled_scripts.review_packet import build_packet
+from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.bundled_scripts.review_packet import _fence, build_packet
 from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,
                                                         reviewer_launch_block, reviewer_turn, run_plain_cli)
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
     coordinator_preamble,
     executor_preamble,
+    fix_check_lines,
     precondition,
     profile_lines,
     reviewer_preamble,
@@ -92,9 +94,10 @@ from specy_road.orchestrate_plan import (
 from specy_road.orchestration_config import substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.review_files import PACKET_NAME, reviews_dir
+from specy_road.git_subprocess import git_stdout
+from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_record_write import Outcome, ReviewRunBusy, review_run_lock, schema_lines
-from specy_road.review_gate import delta_basis
+from specy_road.review_gate import delta_basis, fix_of_for
 from specy_road.review_lessons import reviewer_lesson_lines
 from specy_road.review_resumed_delta import resumed_delta_on
 from specy_road.review_record_rules import PROBE_RULES_LINES, REMOVED_TEXT_LINES
@@ -179,6 +182,17 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
     return text, ""
 
 
+def fix_check_section(root: Path, model: str, t: ReviewTarget) -> list[str]:
+    """The fix-check section when the current READY's ``fix_of`` names ``model``'s block of the fix's parent
+    (``review_gate.fix_of_for``); every other reviewer, and a READY without ``fix_of``, gets none."""
+    ready = latest_ready(root, t.node_id, (t.entry or {}).get("branch"), acceptance_ids(t.node))
+    fix = fix_of_for(root, t.node, ready, t.commit)
+    if fix is None or fix.block is None or fix.blocker != model:
+        return []
+    diff = git_stdout(["diff", f"{fix.blocked}..{fix.fix}"], root)
+    return fix_check_lines(fix, _fence(diff if diff is not None else "(git could not produce the diff)", "diff"))
+
+
 def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: str | None,
                    loop, read_back: bool = True, config: dict | None = None) -> tuple[list[str], str | None, str]:
     """``(preamble lines, packet text, error)`` for a reviewer; the packet is ``None`` on error. The preamble
@@ -194,7 +208,8 @@ def reviewer_lines(root: Path, node_id: str, model: str, t: ReviewTarget, ref: s
     resumed = (reviews_dir(root, node_id) / f"PACKET-{model}.md").is_file() and resumed_delta_on(root)
     return (reviewer_preamble(node_id, model, ref, resumed_delta=resumed, signed=signed) + REMOVED_TEXT_LINES
             + PROBE_RULES_LINES + LAUNCH_MODE_LINES + verify_cmd_lines(root) + reviewer_lesson_lines(root)
-            + escalated_note(loop, node_id) + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
+            + escalated_note(loop, node_id) + fix_check_section(root, model, t)
+            + (READ_BACK_LINES if read_back else PASTED_LINES)), packet, ""
 
 
 def role_check(root: Path, node_id: str, role: str, model: str) -> tuple[dict, dict, str | None]:

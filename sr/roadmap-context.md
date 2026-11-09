@@ -172,7 +172,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.49` A sandboxed Claude worker resumes after the executor account changes `sandboxed-worker-resumes-after-an-account-switch` — task — **Complete**
   - `M22.50` finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk `finish-keeps-complete-when-the-chunk-conflicts` — task — **Complete**
   - `M22.51` An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both `operator-decision-record` — task — **Complete**
-  - `M22.52` After a block, the blocking reviewer checks only its named findings; the other family's approval carries `review-fix-check` — task — **Not Started**
+  - `M22.52` After a block, the blocking reviewer checks only its named findings; the other family's approval carries `review-fix-check` — task — **Complete**
   - `M22.53` Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones `review-wider-carry` — task — **Not Started**
   - `M22.54` Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages `public-hygiene-gate` — task — **Complete**
   - `M22.55` Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored `process-content-untracked` — task — **Complete**
@@ -180,7 +180,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.57` Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish `promotion-without-wip-history` — task — **Complete**
   - `M22.58` History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map `history-rewrite-rehearsal` — task — **Not Started**
   - `M22.59` Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced `history-rewritten-and-published` — gate — **Not Started**
-  - `M22.60` The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working `sr-private-mount` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -252,6 +251,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M23.6` Roster entries split into core fields and a typed run: block, read in both forms `roster-core-and-run-block` — task — **Not Started**
   - `M23.7` upgrade migrates rosters to core fields plus run: `roster-upgrade-to-run-block` — task — **Not Started**
   - `M23.8` The guard classifier becomes three rule tables with every verdict unchanged `the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged` — task — **Not Started**
+  - `M23.9` The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working `sr-private-mount` — task — **Not Started**
 
 ## Open gates
 
@@ -326,7 +326,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.52` on `feature/rm-review-fix-check` since 2026-11-09
 - `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
 
 ## Quality by area
@@ -336,14 +335,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 5 | 0 | 2.00 | 60% | 31 | 0 |
-| `CHANGELOG.md` **flagged** | 31 | 0 | 2.65 | 61% | 19 | 3 |
+| `CHANGELOG.md` **flagged** | 31 | 0 | 2.68 | 65% | 19 | 3 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 34 | 0 | 2.59 | 62% | 53 | 3 |
+| `docs` **flagged** | 34 | 0 | 2.62 | 65% | 53 | 3 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 39 | 0 | 2.59 | 56% | 58 | 4 |
-| `tests` **flagged** | 43 | 0 | 2.53 | 60% | 74 | 4 |
+| `specy_road` **flagged** | 39 | 0 | 2.62 | 59% | 58 | 4 |
+| `tests` **flagged** | 43 | 0 | 2.56 | 63% | 74 | 4 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.gitignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
