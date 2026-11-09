@@ -4,6 +4,7 @@ exit: 0
 previewing what specy-road <VERSION> would write: <ROOT>
 Install: specy-road <VERSION> running from <PREFIX>
 - no specy-road or specyrd on PATH
+copying tracked and untracked files into a temporary directory; ignored files are not copied
 
 == refresh-schemas
 would write schemas/git-workflow.schema.json
