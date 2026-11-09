@@ -625,6 +625,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- `specy-road init project` writes `constraints/file-limits.yaml` with the toolkit's own file cap: 1,000 lines,
+  with a warning at 750 (was 400 lines with no warning). `specy-road upgrade` leaves an existing project's
+  `constraints/file-limits.yaml` alone: when its file cap or warning differs from the new default, it prints one
+  notice under `== file-limits default` naming that default. See `docs/file-limits.md` (Template default).
 - The reviewer prompt (`review delegate`, and `prompt --role reviewer` on `--channel cli` and `paste`) tells the
   reviewer to list every required change it can find in one review, re-scan the diff for further instances of each
   defect class (other inputs, call sites, files) and any acceptance line not fully met, and that a later round

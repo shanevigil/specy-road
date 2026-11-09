@@ -2,7 +2,8 @@
 
 # Raised from 400 to 1,000 by the maintainer (2026-11-05): the 400 cap dated from 8k-context agents and had
 # driven cap-only module splits. Touch zones are per file, so a cap still protects parallel pickup and review cost.
-# A 100-character line-width rule and folding the cap-driven splits are planned for M16 (rc5).
+# Lines over 100 characters are reported per file against scripts/line_width_baseline.json, never gated;
+# folding the cap-driven splits is planned for M16 (rc5).
 max_lines_per_file: 1000
 max_lines_per_function: 80  # Python (.py) and TS/JS (.ts .tsx .js .jsx .mjs) functions
 applies_to_globs:

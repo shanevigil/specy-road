@@ -17,7 +17,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.1.5` | AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer | task | Agentic-led | Complete |
 | `M16.1.6` | Review-policy evidence: how often each optional review policy changed a gate outcome | task | Mixed | Complete |
 | `M16.1.7` | Baseline metrics, a coverage floor in CI, and the M16 working rules written down | task | Agentic-led | Complete |
-| `M16.1.8` | A 100-character line-width report against a baseline, and the consumer file-limit default decided | task | Agentic-led | Not Started |
+| `M16.1.8` | A 100-character line-width report against a baseline, and the consumer file-limit default decided | task | Agentic-led | Complete |
 | `M16.1.9` | Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold | task | Agentic-led | Complete |
 | `M16.1.10` | Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold | task | Agentic-led | Complete |
 | `M16.1.11` | Ruff quality rule families reported per file against a baseline, with per-release totals | task | Agentic-led | Not Started |

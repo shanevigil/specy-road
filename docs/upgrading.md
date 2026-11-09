@@ -50,6 +50,12 @@ Call the venv's `specy-road` by its full path: a bare `specy-road` runs whicheve
 
 ---
 
+## Your file-limits values stay
+
+`upgrade` never rewrites `constraints/file-limits.yaml`. New projects get a 1,000-line file cap with a warning at 750 lines; when your file's `max_lines_per_file` or `hard_alerts.max_lines_per_file` differs, `upgrade` prints one notice under `== file-limits default` naming that default and leaves the file as it is. Edit it yourself to adopt the default ([file limits](file-limits.md#template-default)).
+
+---
+
 ## Which install is this
 
 Several installs can coexist (a repo virtualenv, `pip install --user`, pipx, uv tool). 0.1.x has no `--version`, so ask the installer instead:

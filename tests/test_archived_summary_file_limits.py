@@ -46,16 +46,16 @@ def _file_limits(root: Path) -> subprocess.CompletedProcess[str]:
 def test_archived_implementation_summary_exempt_other_work_done_files_are_not(
     tmp_path: Path,
 ) -> None:
-    """Template ``**/*.md`` cap (400 lines): archived summaries pass; other work/done/ md fails."""
+    """Template ``**/*.md`` cap (1000 lines): archived summaries pass; other work/done/ md fails."""
     _init_scaffold(tmp_path)
     done = tmp_path / "work" / "done"
     done.mkdir(parents=True, exist_ok=True)
-    (done / "implementation-summary-M1.md").write_text(_lines(450), encoding="utf-8")
+    (done / "implementation-summary-M1.md").write_text(_lines(1050), encoding="utf-8")
 
     ok = _file_limits(tmp_path)
     assert ok.returncode == 0, ok.stdout + ok.stderr
 
-    (done / "notes.md").write_text(_lines(450), encoding="utf-8")
+    (done / "notes.md").write_text(_lines(1050), encoding="utf-8")
     bad = _file_limits(tmp_path)
     assert bad.returncode == 1
     assert "work/done/notes.md" in bad.stderr

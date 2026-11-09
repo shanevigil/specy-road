@@ -1,6 +1,6 @@
 # Tune globs to match your repository (examples below).
 
-max_lines_per_file: 400
+max_lines_per_file: 1000
 # The function cap covers Python (.py) and TS/JS (.ts .tsx .js .jsx .mjs):
 # declarations, named arrow functions and class methods. Other matched
 # files get the per-file cap only.
@@ -32,10 +32,10 @@ exclude_path_globs:
 
 # Advisory stderr warnings (non-fatal unless `specy-road file-limits --strict-hard-alerts`).
 # `max_lines_per_function` here covers the same languages as enforcement.
-# hard_alerts:
-#   max_lines_per_file: 600
-#   max_lines_per_function: 80
-#   rationale: Prefer smaller units for reviewability.
+hard_alerts:
+  max_lines_per_file: 750
+  # max_lines_per_function: 80
+  rationale: approaching the 1,000-line cap; prefer a cohesive split by topic now
 
 roadmap_manifest_max_lines: 500
 roadmap_json_chunk_max_lines: 500

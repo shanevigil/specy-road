@@ -10,7 +10,9 @@ installed (``pip install -r requirements-ci.txt`` plus ``-e '.[review,gui]'``).
 
 Usage:
     python scripts/lean_metrics.py             # measure and write the baseline
-    python scripts/lean_metrics.py --check     # measure and print deltas against it
+    python scripts/lean_metrics.py --check     # measure and print deltas against it,
+                                               # then the line-width report
+                                               # (scripts/line_width_baseline.py)
     python scripts/lean_metrics.py --contexts  # covered arcs per test -> work/lean/contexts.json
 
 The baseline is rewritten only by M16.8.1 and by maintainers; M16 leaves report
@@ -401,6 +403,17 @@ def print_deltas(baseline: dict, current: dict) -> None:
         print(f"  {key}: {old} -> {new}{delta}")
 
 
+def print_width_report() -> None:
+    """Lines over 100 characters per file against scripts/line_width_baseline.json; never fails."""
+    # Imported here: under ``-p scripts.lean_metrics`` the scripts directory is not on sys.path.
+    import line_width_baseline as width
+
+    print(f"lines over 100 characters against {width.BASELINE.relative_to(REPO)}"
+          " (a report, never a gate):")
+    for line in width.report(width.load()["files"], width.counts()):
+        print(line)
+
+
 def contexts_rcfile(data_dir: Path) -> Path:
     """A coverage config from pyproject's scope with a per-test static context.
 
@@ -488,6 +501,7 @@ def main(argv: list[str] | None = None) -> int:
     current = measure()
     if args.check:
         print_deltas(json.loads(BASELINE.read_text(encoding="utf-8")), current)
+        print_width_report()
         return 0
     BASELINE.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {BASELINE.relative_to(REPO)} at {current['commit'][:12]}")

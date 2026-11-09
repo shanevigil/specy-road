@@ -13,6 +13,7 @@ Test-fixture roadmap validation uses the consumer-shaped sample tree under [`tes
 | Dogfood test-fixture roadmap graph | `tests/fixtures/specy_road_dogfood/roadmap/` | `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` |
 | Coverage floor (line and branch TOTAL, CLI subprocesses included) | [`pyproject.toml`](../pyproject.toml) `[tool.coverage.*]` | CI: `coverage run -m pytest -n auto`, `coverage combine`, `coverage report` |
 | Lean-core baseline metrics (measurements, never a gate) | [`lean-baseline.json`](lean-baseline.json) | `python scripts/lean_metrics.py --check` |
+| Lines over 100 characters per file (a report, never a gate) | [`scripts/line_width_baseline.json`](../scripts/line_width_baseline.json) | `python scripts/lean_metrics.py --check`; a recorded move or fold runs `python scripts/line_width_baseline.py --transfer OLD NEW` |
 
 Per-function / `hard_alerts.max_lines_per_function` apply to **`.py`** and **`.ts` `.tsx` `.js` `.jsx` `.mjs`** sources. TS/JS coverage is `function` declarations, arrow functions bound by `const`/`let`/`var`, and class methods ([`specy_road/file_limits_js.py`](../specy_road/file_limits_js.py)); unnamed callbacks are not measured. **Other files** matched by `applies_to_globs` are checked for **line count per file** only; use your stack’s analyzers in CI for other languages.
 
@@ -55,5 +56,5 @@ Maintainer, 2026-11-05, revision 3: the goal is quality, not lines.
 - **Docstrings and comments that explain intent are kept or improved,** never stripped to save lines.
 - **Names say what the code does.**
 - **No code squashing:** no joined statements, removed blank lines, shortened names or deleted explanations to meet a number.
-- **The quality metrics are reported, not gated:** M16.1.8's ruff family baseline, line width, and M16.2.6's layering report. A rise shows in the report; no test or CI step fails on it.
+- **The quality metrics are reported, not gated:** M16.1.11's ruff family baselines, M16.1.8's line-width baseline, and M16.2.6's layering report. A rise shows in the report; no test or CI step fails on it.
 - **Line-count estimates are informational:** never by themselves a review finding or a gate.
