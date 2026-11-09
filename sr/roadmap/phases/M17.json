@@ -115,7 +115,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.4_gui-orch-leaf-detail_fad930e4-76ee-407d-9ee4-a4d8a07d64c1.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state",
       "touch_zones": [
         "gui/pm-gantt/src/components/LeafOrchestrationDetail.tsx",

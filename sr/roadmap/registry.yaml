@@ -93,18 +93,3 @@ entries:
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending
-  - codename: gui-orch-leaf-detail
-    node_id: M17.4
-    branch: feature/rm-gui-orch-leaf-detail
-    touch_zones:
-      - gui/pm-gantt/src/components/LeafOrchestrationDetail.tsx
-      - gui/pm-gantt/src/components/OrchestrationDrawer.tsx
-      - gui/pm-gantt/src/components/EditModal.tsx
-      - gui/pm-gantt/src/orchestrationSnapshot.ts
-      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
-      - gui/pm-gantt/src/App.css
-      - specy_road/pm_gantt_static/
-    started: '2026-11-08'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-09T06:17:00+00:00'
