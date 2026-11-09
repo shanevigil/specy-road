@@ -94,25 +94,6 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: review-fix-check
-    node_id: M22.52
-    branch: feature/rm-review-fix-check
-    touch_zones:
-      - specy_road/review_gate.py
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/bundled_scripts/role_prompt.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - tests/test_delta_review.py
-      - tests/test_role_prompt_reviewer.py
-      - specy_road/schemas/handoff.schema.json
-      - specy_road/review_gate_ready.py
-      - tests/parity/command_map.yaml
-      - tests/parity/golden/help/specy-road__ready.txt
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-09T20:08:00+00:00'
   - codename: review-wider-carry
     node_id: M22.53
     branch: feature/rm-review-wider-carry

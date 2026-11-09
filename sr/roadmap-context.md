@@ -172,7 +172,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.49` A sandboxed Claude worker resumes after the executor account changes `sandboxed-worker-resumes-after-an-account-switch` — task — **Complete**
   - `M22.50` finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk `finish-keeps-complete-when-the-chunk-conflicts` — task — **Complete**
   - `M22.51` An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both `operator-decision-record` — task — **Complete**
-  - `M22.52` After a block, the blocking reviewer checks only its named findings; the other family's approval carries `review-fix-check` — task — **Not Started**
+  - `M22.52` After a block, the blocking reviewer checks only its named findings; the other family's approval carries `review-fix-check` — task — **Complete**
   - `M22.53` Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones `review-wider-carry` — task — **Not Started**
   - `M22.54` Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages `public-hygiene-gate` — task — **Complete**
   - `M22.55` Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored `process-content-untracked` — task — **Complete**
@@ -326,7 +326,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.52` on `feature/rm-review-fix-check` since 2026-11-09
 - `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
 
 ## Quality by area
