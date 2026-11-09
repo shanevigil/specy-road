@@ -13,6 +13,7 @@ from tests.test_review_cli import ONE_AI
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
+from specy_road.review_record_write import file_review, snapshot
 from specy_road.review_record_rules import (
     NOTES_RULES_LINES,
     clause_problem,
@@ -35,6 +36,9 @@ def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
             "report it, with what it returned, under `commands_rerun`.") in text
     assert ("3. Fail an acceptance item whose observed behaviour differs from its text, even when the difference "
             "looks minor") in text
+    assert ("If the sandbox prevents a test from running, name the command and its error as not run in the notes; "
+            "on an approve, include the existing 'not a defect because <reason>' explanation. Do not put the "
+            "command in `commands_rerun`; the absence of that run alone is no block.") in text
     assert ("4. List every defect your notes or findings describe under `required_changes` (and block), or "
             "explain on that same line why it is not one, starting `not a defect because`.") in text
     executor, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")
@@ -394,3 +398,25 @@ def test_fenced_code_in_the_notes_is_not_checked() -> None:
     body = "Ran it:\n```\nFAILED test_bug - minor\n```\nadvisory: z\n"
     assert unexplained_defects({"findings": {}}, body) == ["notes line 1 is an observation",
                                                            'notes line 5 says "advisory"']
+
+
+# --- M22.64: a test the sandbox could not run is a notes line, never a rerun -------------------------------------
+
+NOT_RUN = ("`pytest tests/test_x.py` not run: `OSError: [Errno 30] Read-only file system`; not a defect because the "
+           "sandbox is read-only and the executor's READY shows it passing.")
+
+
+@pytest.mark.parametrize(("rerun", "state"), [([], "rerun"), (["pytest tests/test_review_record_rules.py"], "recorded")])
+def test_a_not_run_test_does_not_meet_the_rerun_policy(tmp_path: Path, rerun: list[str], state: str) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI + "policy:\n  reviewer_reruns_required: true\n")
+    reviews = reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True, exist_ok=True)
+    answer = {**yaml.safe_load(review_text(git(repo, "rev-parse", "HEAD"), model="opus").split("---")[1]),
+              "commands_rerun": rerun, "notes": "## Acceptance\n\n- **A1:** pass\n- **A2:** pass\n\n" + NOT_RUN}
+    before = snapshot(repo, reviews, "opus")
+    out = file_review(repo, "M1.1", "opus", reviews, answer=answer, before=before,
+                      after=snapshot(repo, reviews, "opus", before))
+    assert out.state == state, out.reason
+    assert review_path(repo, "M1.1", "opus").is_file() == (state == "recorded")
+    if state == "rerun":
+        assert "approved without re-running a command" in out.reason
