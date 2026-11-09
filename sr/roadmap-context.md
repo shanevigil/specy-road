@@ -174,6 +174,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.51` An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both `operator-decision-record` — task — **Not Started**
   - `M22.52` After a block, the blocking reviewer checks only its named findings; the other family's approval carries `review-fix-check` — task — **Not Started**
   - `M22.53` Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones `review-wider-carry` — task — **Not Started**
+  - `M22.54` Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages `public-hygiene-gate` — task — **Not Started**
+  - `M22.55` Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored `process-content-untracked` — task — **Not Started**
+  - `M22.56` Neutral identities in tests: no real name or username `neutral-test-identities` — task — **Not Started**
+  - `M22.57` Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish `promotion-without-wip-history` — task — **Not Started**
+  - `M22.58` History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map `history-rewrite-rehearsal` — task — **Not Started**
+  - `M22.59` Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced `history-rewritten-and-published` — gate — **Not Started**
+  - `M22.60` The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working `sr-private-mount` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -252,12 +259,20 @@ Work behind these is deliberately held back until they clear.
 
 - `M16.8.9 Gate: ready to tag 0.3.1` — **Not Started**
 - `M16.8.10 Gate: 0.3.1 tagged` — **Not Started**
+- `M22.59 Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced` — **Not Started**
 - `M23.2 Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window` — **Not Started**
 
 ## Dependencies that were removed
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-09 `M18.1` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
+- 2026-11-09 `M16.5.7` stopped depending on `M23.7 upgrade migrates rosters to core fields plus run:`
+- 2026-11-09 `M16.6.1` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
+- 2026-11-09 `M16.6.3` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
+- 2026-11-09 `M16.5.12` stopped depending on `M16.1.6 Review-policy evidence: how often each optional review policy changed a gate outcome`
+- 2026-11-09 `M16.5.1` stopped depending on `M23.4 checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose)`
+- 2026-11-09 `M16.5.9` stopped depending on `M23.8 The guard classifier becomes three rule tables with every verdict unchanged`
 - 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M16.8.4` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
@@ -276,14 +291,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-06 `M22.22` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.40` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.43` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
-- 2026-11-06 `M21.44` stopped depending on `M21.38 Review writers and the review lock refuse any symlink on the path from the project root`
-- 2026-11-05 `M17.5` stopped depending on `M17.3 PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags`
-- 2026-11-05 `M19` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
-- 2026-11-05 `M18` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
-- 2026-11-05 `M20` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
-- 2026-11-05 `M17.1` stopped depending on `M16.3.1 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
-- 2026-11-05 `M17.1` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
-- _…and 60 earlier — `specy-road history --json`_
+- _…and 67 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
