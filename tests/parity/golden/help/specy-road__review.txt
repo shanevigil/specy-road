@@ -2,11 +2,11 @@ $ specy-road review --help
 exit: 0
 --- stdout ---
 usage: specy-road review [-h]
-                         {record,list,check-pre-existing,red-green,delegate,usage,defer,accept-policy}
+                         {record,list,check-pre-existing,red-green,delegate,usage,defer,accept-policy,operator-decision}
                          ...
 
 positional arguments:
-  {record,list,check-pre-existing,red-green,delegate,usage,defer,accept-policy}
+  {record,list,check-pre-existing,red-green,delegate,usage,defer,accept-policy,operator-decision}
     record              Validate a reviewer's notes and file them as a review record
     list                Print a node's filed review records and the gate evaluation; writes
                         nothing
@@ -18,6 +18,8 @@ positional arguments:
                         entry, gate marker)
     accept-policy       Human-only: accept a review policy change made on the integration branch
                         since the leaf was claimed
+    operator-decision   Coordinator: record the operator's review decision for the commit under
+                        review, or accept with limits under a standing rule
 
 options:
   -h, --help            show this help message and exit

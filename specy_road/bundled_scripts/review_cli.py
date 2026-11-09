@@ -13,6 +13,8 @@ With ``policy.max_fix_rounds`` set, a leaf that spent that many blocking rounds 
 (exit 1) with its next command; ``review defer`` applies an RCA's deferral (:mod:`review_defer`, human-only).
 ``review accept-policy`` accepts a review policy change made since the claim (:mod:`review_policy_pin`, human-only);
 ``--all-open`` asks once for every open claim whose pin differs and writes one acceptance file per leaf.
+``review operator-decision`` records an operator's review decision, or the coordinator's acceptance with limits
+under a standing operator rule (:mod:`specy_road.review_override`, coordinator only).
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``. It refuses an approve whose
@@ -52,6 +54,7 @@ from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
 from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
 from specy_road.review_policy_pin import add_parser as add_accept_policy_parser
+from specy_road.review_override import add_parser as add_operator_decision_parser
 from specy_road.orphaned_claims import orphaned_claims, report_lines
 from specy_road.review_run_status import (extend_handoff_refused, print_refused_list, refused_by_model,
                                           review_list_payload, unreadable_rejected_lines)
@@ -389,6 +392,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_delegate_parser(rsub)
     add_defer_parser(rsub)
     add_accept_policy_parser(rsub)
+    add_operator_decision_parser(rsub)
     add_ready_parser(sub)
     return p
 
