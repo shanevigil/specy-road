@@ -127,7 +127,8 @@ entries:
       - CHANGELOG.md
     started: '2026-11-09'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-09T22:06:01+00:00'
   - codename: work-dir-ignored
     node_id: M22.65
     branch: feature/rm-work-dir-ignored
