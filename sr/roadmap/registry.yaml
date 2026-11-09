@@ -92,7 +92,8 @@ entries:
       - tests/
     started: '2026-11-09'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-09T19:32:56+00:00'
   - codename: review-fix-check
     node_id: M22.52
     branch: feature/rm-review-fix-check
