@@ -54,6 +54,32 @@ The listed zones, plus these files inside `specy_road/` and `tests/`:
 - `constraints/test-private-imports-baseline.txt` now has two stale entries for `grind_session_events._now_iso`, which the tests no longer patch. That file is outside this leaf's zones, so they are left for a shrink.
 - Running `validate` or `digest` on the dogfood fixture leaves an ignored `.specyrd/` cache there. pytest then refuses to start until `git clean -fdX tests/fixtures` is run, so the READY command runs pytest first.
 
+## Fix round 1 (review by gpt-6.1-sol at fe73f861)
+
+Merged `origin/WIP/improvements-0-3-1` first; it brought no package or test changes.
+
+- **R3, fixed at the class.** The class is "a call to `atomic_write_text` with no per-writer evidence".
+  - The writer matrix in `tests/test_clock_and_atomic_write.py` is now a table keyed by call site (`module:function`), with one row per `atomic_write_text` call in the package, each reached through its public caller.
+  - New rows: `worker_reconcile.sync`, `chore_cli._save` and `chore_cli.close`, `chore_garden.garden`, the worker mailbox flag (`worker_state.append_event`), and `worker_outbox.begin_op` (the second outbox write).
+  - The new `test_every_atomic_text_write_has_a_row` scans the package and fails when a call site has no row, so a later migration cannot skip the matrix. The roadmap chunk writer is the one site tested separately (its rollback removes the temp file), and that exception is named in the table.
+  - The failure trigger is now the same for every row: `os.replace` raises for that row's target only. Writers such as `chore_cli.start` refuse a directory at the target before writing, so a directory could not trigger the failure there.
+  - The failure test also asserts the target's bytes are unchanged. The mode test replaces a 0600 file wherever the caller replaces one, and checks a new file where the caller only creates one (`begin_op`, the first `close` markdown, the garden record).
+- **R1, not fixable in this leaf: it needs an acceptance amendment.** A6 says `history_cache.save_cache` calls `atomic_write_text` "with no repo-root check". Doing that would break `tests/test_ops_writers_refuse_links.py::test_digest_carries_on_past_a_refused_history_cache[history-to-outside-file]` (from M21.39), and it would stop preserving the cache file's mode. I may not weaken that test or edit acceptance text. For the coordinator: amend A2/A6 to say `history_cache.save_cache` stays on `safe_write.write`.
+- **R2, not fixable in this leaf: it needs an acceptance amendment.** `finish_bookkeeping_undo._restore` installs a symlink or exact bytes and mode, and it cannot be expressed through a text writer. `finish_bookkeeping_undo.restore_pre_commit` (git index bytes) and `worker_sandbox._install_seed` (bytes with mode 0600) could only move through a new bytes-and-mode helper that the leaf did not ask for. For the coordinator, two options:
+  - amend A6's allowlist to name these three specialised installers; or
+  - add a follow-up leaf that gives `fs_atomic` a bytes and mode variant for the two byte writers, with `_restore` staying on the allowlist either way.
+
+  Until one of those happens, the allowlist entries stay as committed, each with its reason in `OS_REPLACE_ALLOWED`.
+
+## Probes
+
+- Every `atomic_write_text` call site in `specy_road/`, by AST scan: 11 sites. 10 now have a matrix row; `roadmap_chunk_atomic:write` has its own two tests. `test_every_atomic_text_write_has_a_row` passes.
+- `os.rename(`, `Path.rename(` and `Path.replace(` in `specy_road/`: only file moves (planning_rename, brainstorm_close, sync_planning_artifacts), no temp-file writers outside the scan.
+- Temp files in `specy_road/` (`.tmp`, `mkstemp`, `NamedTemporaryFile`): each belongs to a writer that is on the allowlist or uses `atomic_write_text`. `finish_bookkeeping_undo`'s `mkstemp` at line 321 saves a copy and replaces nothing.
+- The writers A2 names, compared with the code: worker_state, worker_outbox, brainstorm_session and roadmap_chunk_atomic are on the helper. reviewer_run_failure and worker_lease keep their allowlisted installers. history_cache is on `safe_write` (R1). No other named writer has drifted.
+- Mutation: with `atomic_write_text` changed to delete its temp file on a failed replace, all 10 failure rows fail (10 failed, 24 passed). Restored.
+- `os.replace` sites outside `fs_atomic.py`: they are exactly the allowlist (safe_write, `review_write_check.replace_file`, `worker_lease.checkout_id`, plus the three R2 sites). No new site.
+
 ## Added
 
 - `specy_road/clock.py` `utc_now()`, `utc_now_iso()`: the one wall-clock read (A1).
@@ -62,8 +88,9 @@ The listed zones, plus these files inside `specy_road/` and `tests/`:
 - Mocks: `FrozenDatetime` patched over `specy_road.clock.datetime` (a public module attribute), to pin each site's timestamp form. In three grind tests, `monkeypatch.setattr(gse, "utc_now", ...)` replaces the patch of the removed private `_now_iso`.
 - Tests, all in `tests/test_clock_and_atomic_write.py`:
   - `test_each_timestamp_keeps_its_type_and_form`, 9 rows, one per replaced now helper (A1, done-but-wrong check 1). It absorbs `test_the_timestamp_is_utc_to_the_second`, which was removed from `tests/test_grind_session_cleanup.py`.
-  - `test_a_writer_keeps_utf8_lf_and_the_umask_mode`, 4 rows: worker_state, worker_outbox, session_presence, brainstorm_session (A3).
-  - `test_a_failed_write_leaves_its_temporary_file`, the same 4 rows (A3).
+  - `test_a_writer_keeps_utf8_lf_and_the_umask_mode` and `test_a_failed_write_leaves_its_temporary_file`, 10 rows each, one per `atomic_write_text` call site (A3; extended in fix round 1 for R3).
+  - `test_every_atomic_text_write_has_a_row` (fix round 1, R3): every call site has a matrix row.
+  - Mock (fix round 1): `os.replace`, a public name, is patched to raise for one row's target only, so the failure test reaches writers that refuse a directory at the target.
   - `test_a_roadmap_write_keeps_utf8_lf_and_the_umask_mode`: the roadmap_chunk_atomic writer (A3).
   - `test_a_roadmap_write_failing_on_its_second_file_restores_the_first_and_leaves_no_temporary_file`: rollback is kept (done-but-wrong check 2).
   - `test_the_wall_clock_is_read_only_in_clock_py`: scans for wall-clock reads outside clock.py (A1).

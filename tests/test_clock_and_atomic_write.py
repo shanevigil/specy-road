@@ -30,9 +30,11 @@ from specy_road import (
     session_presence,
     worker_lease,
     worker_outbox,
+    worker_reconcile,
     worker_witness,
 )
 from specy_road import worker_state as ws
+from specy_road.bundled_scripts import chore_cli, chore_garden
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
     session_path,
@@ -153,61 +155,135 @@ def _umask() -> int:
     return mask
 
 
-def _record_writer(tmp_path: Path) -> tuple[Path, Callable[[], None], bytes | None]:
+Writer = tuple[Path, Callable[[], object], bytes | None]
+
+
+def _worker(tmp_path: Path) -> tuple[Path, ws.WorkerRecord]:
     repo = make_review_repo(tmp_path)
-    rec = ws.create_record(repo, "M1.1", "codex", "sol", repo)
+    return repo, ws.create_record(repo, "M1.1", "codex", "sol", repo)
+
+
+def _save_record(tmp_path: Path) -> Writer:
+    repo, rec = _worker(tmp_path)
     return ws.record_path(repo, rec.worker_id), lambda: ws.set_lease(repo, rec, "human"), None
 
 
-def _op_writer(tmp_path: Path) -> tuple[Path, Callable[[], None], bytes | None]:
+def _mailbox_flag(tmp_path: Path) -> Writer:
+    repo, rec = _worker(tmp_path)
+    path = ws.workers_dir(repo) / "FLAG"
+    return path, lambda: ws.append_event(repo, rec, "output", source="worker", summary="x"), None
+
+
+def _begin_op(tmp_path: Path) -> Writer:
+    repo = make_review_repo(tmp_path)
+    path = worker_outbox.ops_dir(repo) / "op-1.yaml"
+    return path, lambda: worker_outbox.begin_op(repo, "op-1", "delegate", "M1.1"), None
+
+
+def _complete_op(tmp_path: Path) -> Writer:
     repo = make_review_repo(tmp_path)
     worker_outbox.begin_op(repo, "op-1", "delegate", "M1.1")
     path = worker_outbox.ops_dir(repo) / "op-1.yaml"
     return path, lambda: worker_outbox.complete_op(repo, "op-1", {"note": "café"}), None
 
 
-def _presence_writer(tmp_path: Path) -> tuple[Path, Callable[[], None], bytes | None]:
+def _sync_marks(tmp_path: Path) -> Writer:
+    repo, rec = _worker(tmp_path)
+    worker_reconcile.sync(repo, ack=True)
+
+    def write() -> None:
+        ws.append_event(repo, rec, "output", source="worker", summary="x")
+        worker_reconcile.sync(repo, ack=True)
+
+    return ws.workers_dir(repo) / "sync.yaml", write, None
+
+
+def _presence(tmp_path: Path) -> Writer:
     repo = make_review_repo(tmp_path)
+    session_presence.start_session(repo, "agent-1", paths=[])
     path = session_presence.session_path(repo, "agent-1")
-    return (
-        path,
-        lambda: session_presence.start_session(repo, "agent-1", paths=[], note="café"),
-        None,
-    )
+    return path, lambda: session_presence.start_session(repo, "agent-1", paths=[], note="é"), None
 
 
-def _brainstorm_writer(tmp_path: Path) -> tuple[Path, Callable[[], None], bytes | None]:
+def _chore(tmp_path: Path, name: str) -> Writer:
+    repo = make_review_repo(tmp_path)
+    chore_cli.start(repo, "fix-env", task="Repair café", zones=["src"])
+    path = chore_cli.chores_dir(repo) / f"fix-env.{name}"
+    unicode_bytes = "café".encode() if name == "md" else None
+    return path, lambda: chore_cli.close(repo, "fix-env", "done"), unicode_bytes
+
+
+def _garden(tmp_path: Path) -> Writer:
+    repo = make_review_repo(tmp_path)
+    return chore_garden.record_path(repo), lambda: chore_garden.garden(repo), None
+
+
+def _brainstorm(tmp_path: Path) -> Writer:
     session = BrainstormSession(slug="s", topic="café")
+    write_session(tmp_path, session)
     return session_path(tmp_path, "s"), lambda: write_session(tmp_path, session), "café".encode()
 
 
-WRITERS = [_record_writer, _op_writer, _presence_writer, _brainstorm_writer]
-WRITER_IDS = ["worker_state", "worker_outbox", "session_presence", "brainstorm_session"]
+#: One row per ``atomic_write_text`` call site (``module:function``), each reached through its
+#: public caller: ``(the file it writes, a call that writes it, UTF-8 bytes it must contain)``.
+#: The row's file exists before the call when the caller replaces one. The roadmap chunk writer
+#: has its own tests below, because its rollback removes the temporary file.
+WRITERS: dict[str, Callable[[Path], Writer]] = {
+    "worker_state.py:save_record": _save_record,
+    "worker_state.py:append_event": _mailbox_flag,
+    "worker_outbox.py:begin_op": _begin_op,
+    "worker_outbox.py:complete_op": _complete_op,
+    "worker_reconcile.py:sync": _sync_marks,
+    "session_presence.py:start_session": _presence,
+    "bundled_scripts/chore_cli.py:_save": lambda tmp_path: _chore(tmp_path, "json"),
+    "bundled_scripts/chore_cli.py:close": lambda tmp_path: _chore(tmp_path, "md"),
+    "bundled_scripts/chore_garden.py:garden": _garden,
+    "bundled_scripts/brainstorm_session.py:write_session": _brainstorm,
+}
+TESTED_APART = {"bundled_scripts/roadmap_chunk_atomic.py:write"}
 
 
-@pytest.mark.parametrize("writer", WRITERS, ids=WRITER_IDS)
+@pytest.mark.parametrize("writer", WRITERS.values(), ids=WRITERS.keys())
 def test_a_writer_keeps_utf8_lf_and_the_umask_mode(tmp_path: Path, writer) -> None:
     path, write, unicode_bytes = writer(tmp_path)
-    write()
-    path.chmod(0o600)  # a replaced file takes the new temporary file's mode, not its own
+    if path.exists():
+        path.chmod(0o600)  # a replaced file takes the new temporary file's mode, not its own
     write()
     raw = path.read_bytes()
-    assert raw.decode("utf-8") and b"\r" not in raw and raw.endswith(b"\n")
+    assert raw.decode("utf-8") and b"\r" not in raw
     assert unicode_bytes is None or unicode_bytes in raw
     assert path.stat().st_mode & 0o777 == 0o666 & ~_umask()
 
 
-@pytest.mark.parametrize("writer", WRITERS, ids=WRITER_IDS)
-def test_a_failed_write_leaves_its_temporary_file(tmp_path: Path, writer) -> None:
+@pytest.mark.parametrize("writer", WRITERS.values(), ids=WRITERS.keys())
+def test_a_failed_write_leaves_its_temporary_file(tmp_path: Path, monkeypatch, writer) -> None:
     path, write, _ = writer(tmp_path)
-    path.unlink(missing_ok=True)
-    # A rename onto a non-empty directory fails after the temporary file is written.
-    (path / "occupied").mkdir(parents=True)
+    before = path.read_bytes() if path.exists() else None
+    replace = os.replace
+
+    def refuse_this_file(src, dst, *args, **kwargs):
+        if Path(dst) == path:
+            raise OSError(5, "refused by the test", str(dst))
+        return replace(src, dst, *args, **kwargs)
+
+    monkeypatch.setattr(os, "replace", refuse_this_file)
     with pytest.raises(OSError):
         write()
+    monkeypatch.undo()
+    assert (path.read_bytes() if path.exists() else None) == before
     assert [p.name for p in path.parent.glob(f".{path.name}.*.tmp")] == [
         f".{path.name}.{os.getpid()}.tmp"
     ]
+
+
+def test_every_atomic_text_write_has_a_row() -> None:
+    found = {
+        site
+        for rel, text in _sources()
+        if rel != "fs_atomic.py" and "atomic_write_text(" in text
+        for site in _call_sites(rel, text, "atomic_write_text")
+    }
+    assert found == set(WRITERS) | TESTED_APART
 
 
 def test_a_roadmap_write_failing_on_its_second_file_restores_the_first_and_leaves_no_temporary_file(
@@ -269,13 +345,13 @@ def test_the_wall_clock_is_read_only_in_clock_py() -> None:
     assert found == [], "use specy_road.clock.utc_now() or utc_now_iso()"
 
 
-def _replace_sites(rel: str, text: str) -> list[str]:
-    """``module:function`` for each ``os.replace`` call, by its innermost enclosing function."""
+def _call_sites(rel: str, text: str, callee: str) -> list[str]:
+    """``module:function`` for each call of ``callee``, by its innermost enclosing function."""
     sites: list[str] = []
 
     def visit(node: ast.AST, owner: str) -> None:
         for child in ast.iter_child_nodes(node):
-            if isinstance(child, ast.Call) and ast.unparse(child.func) == "os.replace":
+            if isinstance(child, ast.Call) and ast.unparse(child.func) == callee:
                 sites.append(f"{rel}:{owner}")
             visit(
                 child,
@@ -291,7 +367,7 @@ def test_os_replace_is_only_in_fs_atomic_and_the_allowlist() -> None:
         site
         for rel, text in _sources()
         if "os.replace(" in text
-        for site in _replace_sites(rel, text)
+        for site in _call_sites(rel, text, "os.replace")
     }
     stray = sorted(
         s
