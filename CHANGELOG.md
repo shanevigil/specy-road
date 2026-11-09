@@ -14,6 +14,15 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road review operator-decision NODE --decision approve|accept-with-limits` records an operator's
+  review decision, given in plain words, as a closed `decided_by` decision in `roadmap/decisions.yaml` with an
+  `OPERATOR-<commit>.yaml` marker. The operator form takes `--quote` and `--session`; the coordinator form accepts
+  with limits under a `standing-rule` entry (`decisions add --kind standing-rule`), citing two RCAs and two
+  alignment reviews, never on a trust-boundary leaf. Any set `SPECY_ROAD_ORCHESTRATION_ROLE` other than
+  `coordinator` is refused. The gate settles only the blocks and shortfall the decision names at its commit;
+  every other gate condition still applies. Both decisions schemas gain `decided_by` and the `standing-rule` kind
+  (run `refresh-schemas`). See `docs/orchestration-review.md` (Operator decision).
+
 - `specy-road worker recover W` ends a stalled worker, keeps its worktree and commits, and resumes its native
   session with the continue prompt, or says why it cannot. It runs once and exits. Recoveries are counted on the
   worker record up to `policy.max_fix_rounds` (default 3); past that the worker is flagged `needs_person` with its
