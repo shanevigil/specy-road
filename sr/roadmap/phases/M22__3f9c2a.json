@@ -333,7 +333,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.64_reviewer-and-rca-launch-paths_a4905618-b868-46fa-a23b-d9e1b2846cd2.md",
       "sibling_order": 58,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/harness-facts.yaml",

@@ -30,6 +30,11 @@ names the size and the fix: use `{prompt}` (the prompt file's path), for example
 or `codex exec -m <id> - < {prompt}`. A worker launch is refused before its record is created; a reviewer run
 becomes a rerun request; `prompt --channel cli` exits 1.
 
+The bundled OpenAI GPT profiles' `access.cli` (rendered from the `codex` executor template in `harness-facts.yaml`)
+ends `- < {prompt}`, so `prompt --role rca --channel cli --run` with one of them gives `codex exec` the prompt on
+standard input, however large. The other bundled profiles still pass `"<prompt>"`, so a prompt over 128 KiB on them
+is refused as above.
+
 ## Which harness binary runs
 
 The default commands run `claude`, `codex` or `agent`. Before launching, specy-road resolves the binary:

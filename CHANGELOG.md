@@ -67,6 +67,13 @@ body. Keep section bodies focused; link to PRs for detail.
 ### Fixed
 
 - A worker whose turn ends `completed` releases its slot lease on the integration remote, as a `failed` one does, so another checkout at `max_workers` is not held by it. `worker message` or `resume` of a `completed` or `failed` worker pushes a new lease, and a resume the limit refuses leaves no lease behind. An `idle` worker keeps its lease. A turn started by a queued message gets the delegating caller's `PYTHONPATH`, or none, without the wrapper's package-path prefix. See `docs/orchestration-workers.md` (What `max_workers` counts).
+- The bundled OpenAI GPT profiles' `access.cli` now reads the prompt on standard input (`codex exec ... - < {prompt}`),
+  so `prompt --role rca --channel cli --run` with one of them is no longer refused once the prompt passes 128 KiB.
+  Run `specy-road refresh-profiles --render` (or `upgrade`) to re-render your copies.
+- The reviewer prompt's first probe rule says what to do when the sandbox prevents a test from running: name the
+  command and its error as not run in the notes (on an approve, with a `not a defect because` reason), and leave it
+  out of `commands_rerun`. `review record` and the gate are unchanged: under `policy.reviewer_reruns_required` an
+  approve with no `commands_rerun` is still refused.
 
 - A landing merge that conflicts in a roadmap chunk keeps the integration side of that chunk and sets the finishing leaf back to Complete, found by `node_key`, including when the project root sits under a prefix such as `sr/`. Ancestor statuses are recomputed with the existing rollup and review-hold rules; every other field stays the integration side's. When the bookkeeping commit is known and that leaf is still in the chunk but not Complete, finish aborts the merge before the commit, so nothing is pushed, and the error names the chunk and the branch codename. The merge message says the Complete status was applied again only when the landed chunk has that leaf Complete. A leaf the integration side removed stays absent, and the message does not claim the status was applied.
 

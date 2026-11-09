@@ -27,7 +27,7 @@ supersedes: none
 access:
   context_tokens: 1000000
   output_tokens: unknown
-  cli: codex exec --model gpt-5.6-sol --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+  cli: codex exec --model gpt-5.6-sol --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
   cli_verified_from: codex-cli 0.165.0, run 2026-10-28 (exec has no --ask-for-approval)
   subagents: 'yes Cursor agent harness; native OpenAI multi-agent is documented for GPT-6.1 Sol on the API, not verified for this Cursor id [S3]'
   effort_controls: none documented; Cursor model ids carry the effort (gpt-5.6-sol-high, -xhigh, …)
