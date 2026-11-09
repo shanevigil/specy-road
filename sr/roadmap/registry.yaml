@@ -163,3 +163,15 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
+  - codename: profile-match-reads-harness-model
+    node_id: M22.66
+    branch: feature/rm-profile-match-reads-harness-model
+    touch_zones:
+      - specy_road/model_profiles.py
+      - specy_road/orchestration_pinned.py
+      - tests/test_model_profile_aliases.py
+      - docs/orchestration-roster.md
+      - CHANGELOG.md
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending

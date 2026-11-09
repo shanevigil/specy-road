@@ -337,6 +337,7 @@ Do not pick these up.
 - `M22.63` on `feature/rm-completed-worker-frees-lease` since 2026-11-09
 - `M22.64` on `feature/rm-reviewer-and-rca-launch-paths` since 2026-11-09
 - `M22.65` on `feature/rm-work-dir-ignored` since 2026-11-09
+- `M22.66` on `feature/rm-profile-match-reads-harness-model` since 2026-11-09
 
 ## Quality by area
 
