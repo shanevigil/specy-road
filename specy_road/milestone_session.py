@@ -80,10 +80,3 @@ def read_milestone_session(path: Path) -> MilestoneSession | None:
         integration_branch=ib.strip(),
         remote=rem.strip(),
     )
-
-
-def remove_milestone_session(path: Path) -> None:
-    try:
-        path.unlink()
-    except OSError:
-        pass

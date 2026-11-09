@@ -210,22 +210,6 @@ def _merge_and_push(
     return True, ""
 
 
-def integration_commits_ahead_of_remote(
-    repo: Path, *, remote: str, integration_branch: str,
-) -> int | None:
-    """How many commits on the local integration branch are not on ``remote/integration_branch``."""
-    local = f"refs/heads/{integration_branch}"
-    tracked = f"refs/remotes/{remote}/{integration_branch}"
-    if not _ref_exists_local(repo, local):
-        return None
-    if not _ref_exists_local(repo, tracked):
-        return None
-    code, out = git_code(["rev-list", "--count", f"{tracked}..{integration_branch}"], repo)
-    if code != 0 or not out.strip().isdigit():
-        return None
-    return int(out.strip())
-
-
 def _ref_sha(repo: Path, ref: str) -> str | None:
     ok, sha = git_ok(["rev-parse", "--verify", "--quiet", ref], repo)
     return sha if ok else None

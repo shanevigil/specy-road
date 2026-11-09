@@ -291,12 +291,6 @@
       "PL": 3,
       "D102/D103": 1
     },
-    "specy_road/bundled_scripts/migrate_stable_node_keys.py": {
-      "C901": 2,
-      "PL": 3,
-      "SIM": 1,
-      "D102/D103": 3
-    },
     "specy_road/bundled_scripts/models_cli.py": {
       "C901": 1,
       "PL": 1,
@@ -784,8 +778,7 @@
     },
     "specy_road/milestone_session.py": {
       "PL": 1,
-      "SIM": 1,
-      "D102/D103": 5
+      "D102/D103": 4
     },
     "specy_road/model_profiles.py": {
       "C901": 1,
@@ -1038,9 +1031,6 @@
       "PL": 5,
       "SIM": 1,
       "D102/D103": 4
-    },
-    "specy_road/worker_adapter_parsers.py": {
-      "D102/D103": 1
     },
     "specy_road/worker_adapters.py": {
       "D102/D103": 1
@@ -1508,7 +1498,7 @@
     },
     "tests/test_export_roadmap_md.py": {
       "PL": 1,
-      "D102/D103": 7
+      "D102/D103": 2
     },
     "tests/test_file_limits_engine.py": {
       "PL": 1,
@@ -1778,7 +1768,7 @@
       "D102/D103": 13
     },
     "tests/test_managed_block.py": {
-      "D102/D103": 9
+      "D102/D103": 7
     },
     "tests/test_mark_implementation_reviewed_gate.py": {
       "PL": 5,
@@ -1912,7 +1902,7 @@
       "D102/D103": 8
     },
     "tests/test_planning_sheet_bootstrap.py": {
-      "D102/D103": 11
+      "D102/D103": 6
     },
     "tests/test_pm_gui_concurrency_autoff.py": {
       "PL": 20
@@ -2158,7 +2148,7 @@
       "D102/D103": 9
     },
     "tests/test_review_record_rules.py": {
-      "D102/D103": 21
+      "D102/D103": 20
     },
     "tests/test_review_record_write.py": {
       "D102/D103": 18

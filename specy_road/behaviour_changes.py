@@ -2,8 +2,9 @@
 
 Each entry records the version a change shipped in, the command and flags it
 concerns, one line on what happens now, and an optional pattern for project
-text that still states the old behaviour. Leaf M13.14 wires these patterns into
-``validate`` notices; this module is the tracked catalogue only.
+text that still states the old behaviour. This module is the tracked catalogue
+only: no command reads it yet. It is kept for a planned report of changes that
+affect an adopting project; until then only its tests read it.
 """
 
 from __future__ import annotations

@@ -10,7 +10,6 @@ from specy_road.bundled_scripts.roadmap_outline_renumber import (
     renumber_display_ids_inplace,
 )
 from specy_road.bundled_scripts.roadmap_layout import (
-    compute_depths,
     dependency_inheritance_display,
     effective_dependency_keys,
 )
@@ -71,8 +70,6 @@ def test_effective_dependency_includes_ancestor() -> None:
     ]
     eff = effective_dependency_keys(nodes)
     assert kx in eff[k2]
-    depths = compute_depths(nodes)
-    assert depths["M0.1.1"] >= 1
 
 
 def test_dependency_inheritance_display_splits_explicit() -> None:

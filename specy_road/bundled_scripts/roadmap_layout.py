@@ -173,12 +173,6 @@ def compute_dependency_steps(
     return start, span
 
 
-def compute_depths(nodes: list[dict]) -> dict[str, int]:
-    """0-based dependency **start** step (finish-to-start + outline rollup); keyed by display ``id``."""
-    starts, _ = compute_dependency_steps(nodes)
-    return starts
-
-
 def sibling_sort_key(
     nid: str, by_id: dict[str, dict]
 ) -> tuple[int, tuple[tuple[int, int | str], ...]]:

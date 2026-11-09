@@ -33,6 +33,9 @@ dev = [
   # Required by starlette.testclient.TestClient (tests/test_gui_app.py); not a transitive install.
   "httpx>=0.27",
   "requests>=2.31",
+  # The advisory dead-code step in CI (.github/workflows/validate.yml); pinned exactly
+  # so its findings do not change under the step. Never a runtime dependency.
+  "vulture==2.16",
 ]
 review = [
   "openai>=1.40",

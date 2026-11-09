@@ -89,10 +89,3 @@ def restore_secrets(name: str, block: dict[str, Any], stored: dict[str, Any]) ->
     """A copy of ``block`` with each :data:`SECRET_MASK` replaced by the ``stored`` credential."""
     return {k: stored.get(k, "") if k in TOKEN_FIELDS.get(name, ()) and v == SECRET_MASK else v
             for k, v in block.items()}
-
-
-def _obfuscate_llm_git(
-    llm: dict[str, Any],
-    git_remote: dict[str, Any],
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    return obfuscate_block("llm", llm), obfuscate_block("git_remote", git_remote)

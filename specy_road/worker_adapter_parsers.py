@@ -95,10 +95,6 @@ def placeholder_problem(cli: str | None) -> str | None:
     return None
 
 
-def has_prompt_placeholder(cli: str | None) -> bool:
-    return placeholder_problem(cli) is None
-
-
 def effort_note(cli: str | None, level: str | None) -> str | None:
     """The one note for a profile that sets this role's effort when ``cli`` names no ``{effort}``."""
     if not cli or not level or placeholder_problem(cli) or any(ph == "{effort}" for _s, _e, ph, _p in _tokens(cli)):

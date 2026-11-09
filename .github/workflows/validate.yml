@@ -146,6 +146,12 @@ jobs:
         run: python scripts/check_clones.py
       - name: Lean-code gate - private imports in tests (vs constraints/test-private-imports-baseline.txt)
         run: python scripts/check_test_private_imports.py
+      # Advisory: the findings show in the log and never fail the job. vulture is
+      # exact-pinned in the dev extra (requirements-ci.txt); routes, hooks and kept
+      # names are listed in scripts/vulture_whitelist.py, which the run reads.
+      - name: Dead code (vulture, 60% confidence, advisory)
+        continue-on-error: true
+        run: vulture specy_road scripts --min-confidence 60
       # Tracked files on every run. A pull request or branch push also checks the
       # messages of its range, and one to main adds --promotion (path denylist,
       # identity check). A workflow_call run (a tag push or dispatch in the

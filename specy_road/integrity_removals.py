@@ -18,7 +18,6 @@ with one of them; the check itself applies to every target kind.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
@@ -29,8 +28,6 @@ from specy_road.review_target import ReviewTarget, leaf_descendants
 
 REQUIRED_HEADING = "Required check: unplanned test removal"
 REMOVAL_KINDS = ("removed-test", "removed-test-file", "new-skip", "assert-loss")
-# An acceptance key in a review record for one such line: the line exactly as integrity prints it.
-REMOVAL_KEY = re.compile(r"^(?:removed-test|removed-test-file|new-skip|assert-loss): \S")
 
 
 def unplanned_removals(lines: list[str], planned: set[str]) -> list[str]:

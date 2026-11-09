@@ -241,22 +241,3 @@ def build_node_chunk_map(root: Path) -> dict[str, Path]:
             if isinstance(nid, str):
                 by_id[nid] = chunk
     return by_id
-
-
-def resolve_chunk_file(root: Path, chunk_arg: str) -> Path:
-    """
-    Resolve ``chunk_arg`` to an existing file under ``roadmap/``.
-    Accepts ``phases/M0.json`` or ``roadmap/phases/M0.json``.
-    """
-    base = roadmap_dir(root)
-    raw = chunk_arg.strip().replace("\\", "/")
-    if raw.startswith("roadmap/"):
-        raw = raw.removeprefix("roadmap/")
-    candidate = (base / raw).resolve()
-    try:
-        candidate.relative_to(base)
-    except ValueError as e:
-        raise ValueError(f"chunk path escapes roadmap/: {chunk_arg!r}") from e
-    if not candidate.is_file():
-        raise FileNotFoundError(f"chunk file not found: {candidate}")
-    return candidate
