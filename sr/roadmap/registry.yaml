@@ -115,3 +115,14 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
+  - codename: shared-notes-digest-refused
+    node_id: M22.62
+    branch: feature/rm-shared-notes-digest-refused
+    touch_zones:
+      - specy_road/review_rejected.py
+      - tests/test_review_record_write.py
+      - docs/orchestration-reviewer-output.md
+      - CHANGELOG.md
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
