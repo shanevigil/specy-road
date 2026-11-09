@@ -38,7 +38,7 @@ cd "$ROOT"
 V=$(grep -m1 '^verdict' "sr/work/reviews/$ID/REVIEW-${R1:-cursor-grok-4.6-high}.md" 2>/dev/null | awk '{print $2}')
 if [ "$V" != "approve" ]; then echo "$ID: ${R1:-cursor-grok-4.6-high} ${V:-no-record}"; exit 5; fi
 # A leaf Grok wrote: a Grok review does not count for it, so the second family is Claude (maintainer 2026-11-08).
-if ls "sr/work/reviews/$ID"/READY-grok* "sr/work/reviews/$ID"/READY-cursor-grok* >/dev/null 2>&1; then R2=claude-opus-5-5-review; fi
+if compgen -G "sr/work/reviews/$ID/READY-grok*" >/dev/null || compgen -G "sr/work/reviews/$ID/READY-cursor-grok*" >/dev/null; then R2=claude-opus-5-5-review; fi
 cd "sr/work/.worktrees/$WT/sr" || exit 2
 review_once "${R2:-gpt-5.6-sol-high}" "$LOG/$ID-r2.log"
 cd "$ROOT"
