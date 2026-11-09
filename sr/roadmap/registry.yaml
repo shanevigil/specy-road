@@ -129,3 +129,15 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
+  - codename: ruff-quality-family-baseline
+    node_id: M16.1.11
+    branch: feature/rm-ruff-quality-family-baseline
+    touch_zones:
+      - scripts/ruff_quality_baseline.py
+      - scripts/ruff_quality_baseline.json
+      - tests/test_ruff_quality_baseline.py
+      - scripts/lean_metrics.py
+      - docs/release-runbook.md
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
