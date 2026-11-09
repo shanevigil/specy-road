@@ -242,7 +242,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.57` | Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish | task | Agentic-led | Complete |
 | `M22.58` | History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map | task | Agentic-led | Not Started |
 | `M22.59` | Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced | gate | Human-led | Not Started |
-| `M22.61` | A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable | task | Agentic-led | Not Started |
+| `M22.61` | A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable | task | Agentic-led | Complete |
 | `M22.62` | review record refuses empty notes and a notes digest another model already filed at the same commit | task | Agentic-led | Not Started |
 | `M22.63` | A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH | task | Agentic-led | Not Started |
 | `M22.64` | The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run | task | Agentic-led | Not Started |

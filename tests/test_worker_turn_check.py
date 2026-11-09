@@ -256,6 +256,113 @@ def test_cursor_creates_the_chat_first_passes_trust_sandbox_and_never_w(
         wa.adapter_for("cursor").launch(_prompt(tmp_path), tmp_path, "m", None)
 
 
+QUESTION_CAPTURE = Path(__file__).parent / "fixtures/cursor_question_tool.jsonl"
+
+
+def _question_capture() -> list[dict]:
+    """Events from the coordinator-supplied Cursor capture.
+
+    That file carries no agent-build or date comment. Its first line is a ``system``/``init`` object
+    (model ``Grok 4.7 256K High``). A leading ``#`` line is skipped so a later build note still replays.
+    """
+    events = []
+    for raw in QUESTION_CAPTURE.read_text(encoding="utf-8").splitlines():
+        text = raw.strip()
+        if not text or text.startswith("#"):
+            continue
+        events.append(json.loads(text))
+    return events
+
+
+def _captured_question_tool(events: list[dict]) -> str:
+    """The tool key on the capture's ``tool_call`` lines (the dict key ending in ``ToolCall``)."""
+    names: list[str] = []
+    for event in events:
+        call = event.get("tool_call")
+        if event.get("type") != "tool_call" or not isinstance(call, dict):
+            continue
+        names.extend(key for key, body in call.items() if isinstance(body, dict) and key.endswith("ToolCall"))
+    unique = list(dict.fromkeys(names))
+    assert len(unique) == 1
+    return unique[0]
+
+
+def _question_calls(events: list[dict], tool: str) -> int:
+    return sum(1 for event in events if event.get("type") == "tool_call" and tool in (event.get("tool_call") or {}))
+
+
+def _keep_question_calls(events: list[dict], tool: str, keep: int) -> list[dict]:
+    seen = 0
+    out: list[dict] = []
+    for event in events:
+        call = event.get("tool_call")
+        if event.get("type") == "tool_call" and isinstance(call, dict) and tool in call:
+            seen += 1
+            if seen > keep:
+                continue
+        out.append(event)
+    return out
+
+
+def _run_stream(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, harness: str, binary: str, lines: list[dict],
+                model: str) -> tuple[Path, ws.WorkerRecord]:
+    """Replay ``lines`` through ``worker_runner.run`` with a fake harness binary, then the record after close."""
+    repo = make_review_repo(tmp_path)
+    _harness(tmp_path, monkeypatch, binary, lines=lines)
+    rec = ws.create_record(repo, "M1.1", harness, model, repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, wa.adapter_for(harness).launch(_prompt(tmp_path), repo, model, None)) == 0
+    return repo, ws.load_record(repo, rec.worker_id)
+
+
+@pytest.mark.parametrize("keep", [None, 1])
+def test_a_cursor_question_tool_is_one_interactive_finding_per_turn(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, keep: int | None) -> None:
+    """The capture names no agent build or date (no comment line; the first line is system/init)."""
+    events = _question_capture()
+    tool = _captured_question_tool(events)
+    assert _question_calls(events, tool) > 1   # started and completed are two lines of one call
+    replay = events if keep is None else _keep_question_calls(events, tool, keep)
+    repo, rec = _run_stream(tmp_path, monkeypatch, "cursor", "agent", replay, "composer-2.5")
+    logged = _events(repo, rec.worker_id, "interactive_tool")
+    assert len(logged) == _question_calls(replay, tool)
+    assert {event.detail["tool_name"] for event in logged} == {tool}
+    check = _events(repo, rec.worker_id, "post_run_check")[-1]
+    interactive = [f for f in check.detail["findings"] if f["kind"] == "interactive_tool"]
+    assert len(interactive) == 1
+    assert tool in interactive[0]["summary"] and "no person saw it" in interactive[0]["summary"]
+    assert check.summary != "post-run check: clean" and tc.FLAG_POST_RUN in rec.flags
+
+
+def test_cursor_shell_read_and_edit_calls_are_not_an_interactive_tool(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    lines: list[dict] = [{"type": "system", "subtype": "init", "session_id": "c-other", "model": "composer-2.5"}]
+    for key in ("shellToolCall", "readToolCall", "editToolCall"):
+        for subtype in ("started", "completed"):
+            lines.append({"type": "tool_call", "subtype": subtype, "session_id": "c-other",
+                          "tool_call": {key: {"args": {}}}})
+    lines.append({"type": "result", "subtype": "success", "is_error": False, "result": "done", "session_id": "c-other"})
+    repo, rec = _run_stream(tmp_path, monkeypatch, "cursor", "agent", lines, "composer-2.5")
+    assert _events(repo, rec.worker_id, "interactive_tool") == []
+    assert "interactive_tool" not in _findings(repo, rec.worker_id)
+
+
+def test_a_claude_denial_of_the_question_tool_is_not_an_interactive_tool(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    tool = _captured_question_tool(_question_capture())
+    sid = "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50"
+    lines = [
+        {"type": "system", "subtype": "init", "session_id": sid, "model": "claude-opus-5-5"},
+        {"type": "result", "subtype": "success", "is_error": False, "result": "not asked", "session_id": sid,
+         "permission_denials": [{"tool_name": tool, "tool_use_id": "toolu_q", "tool_input": {}}]},
+    ]
+    repo, rec = _run_stream(tmp_path, monkeypatch, "claude-code", "claude", lines, "claude-opus-5-5")
+    denied = [f for f in _events(repo, rec.worker_id, "post_run_check")[-1].detail["findings"]
+              if f["kind"] == "permission_denied"]
+    assert len(denied) == 1 and tool in denied[0]["summary"]
+    assert _events(repo, rec.worker_id, "interactive_tool") == []
+    assert "interactive_tool" not in _findings(repo, rec.worker_id)
+
+
 # --- A3: the git half of the post-run check ---------------------------------------------------------------
 
 

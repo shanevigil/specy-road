@@ -249,7 +249,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.61_headless-question-tool-flagged_dac9d0ff-b463-4508-8218-41532f1c20f4.md",
       "sibling_order": 55,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rca.py",

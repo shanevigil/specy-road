@@ -99,22 +99,6 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: headless-question-tool-flagged
-    node_id: M22.61
-    branch: feature/rm-headless-question-tool-flagged
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/worker_turn_check.py
-      - specy_road/worker_adapter_cursor.py
-      - tests/test_worker_turn_check.py
-      - tests/test_models_and_prompt.py
-      - tests/fixtures/cursor_question_tool.jsonl
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-      - specy_road/schemas/worker-event.schema.json
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: pending
   - codename: shared-notes-digest-refused
     node_id: M22.62
     branch: feature/rm-shared-notes-digest-refused
@@ -140,6 +124,53 @@ entries:
       - tests/test_harness_launch.py
       - tests/test_review_record_rules.py
       - docs/orchestration-harness-launch.md
+      - CHANGELOG.md
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
+  - codename: work-dir-ignored
+    node_id: M22.65
+    branch: feature/rm-work-dir-ignored
+    touch_zones:
+      - specy_road/agent_ignores.py
+      - specy_road/templates/project/.gitignore
+      - specy_road/templates/project/work/README.md
+      - specy_road/templates/project/roadmap/git-workflow.yaml
+      - .gitignore
+      - tests/test_agent_ignores.py
+      - tests/test_runtime_dirs_not_dirty.py
+      - tests/test_init_project_gitignore.py
+      - docs/git-workflow.md
+      - docs/git-workflow-preferences.md
+      - CHANGELOG.md
+      - tests/test_init_project_reports.py
+      - tests/test_worker_state.py
+      - sr/work/done/
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
+  - codename: completed-worker-frees-lease
+    node_id: M22.63
+    branch: feature/rm-completed-worker-frees-lease
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_ops_message.py
+      - specy_road/worker_lease.py
+      - tests/test_worker_max_workers_global.py
+      - tests/test_worker_queue_message.py
+      - docs/orchestration-workers.md
+      - CHANGELOG.md
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
+  - codename: profile-match-reads-harness-model
+    node_id: M22.66
+    branch: feature/rm-profile-match-reads-harness-model
+    touch_zones:
+      - specy_road/model_profiles.py
+      - specy_road/orchestration_pinned.py
+      - tests/test_model_profile_aliases.py
+      - docs/orchestration-roster.md
       - CHANGELOG.md
     started: '2026-11-09'
     owner: savigil
