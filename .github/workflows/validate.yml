@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # the public-hygiene message check reads every commit of the event range
       - name: Assert packaged Gantt UI static assets exist
         run: test -f specy_road/pm_gantt_static/index.html
       - uses: actions/setup-python@v7
@@ -144,8 +146,30 @@ jobs:
         run: python scripts/check_clones.py
       - name: Lean-code gate - private imports in tests (vs constraints/test-private-imports-baseline.txt)
         run: python scripts/check_test_private_imports.py
-      - name: No machine-specific paths or hostnames in tracked files
-        run: python scripts/check_machine_paths.py
+      # Tracked files on every run. A pull request or branch push also checks the
+      # messages of its range, and one to main adds --promotion (path denylist,
+      # identity check). A workflow_call run (a tag push or dispatch in the
+      # caller) checks files only: it has no range of its own.
+      - name: Public hygiene - personal data, machine setup and process content
+        env:
+          PUBLIC_HYGIENE_LOCAL: ${{ secrets.PUBLIC_HYGIENE_LOCAL }}
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BASE_REF: ${{ github.base_ref }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          args=()
+          if [ "$EVENT" = pull_request ]; then
+            args+=(--range "$PR_BASE..$PR_HEAD")
+            if [ "$BASE_REF" = main ]; then args+=(--promotion); fi
+          elif [ "$EVENT" = push ] && [[ "$REF" == refs/heads/* ]]; then
+            args+=(--range "$BEFORE..$SHA")
+            if [ "$REF" = refs/heads/main ]; then args+=(--promotion); fi
+          fi
+          python scripts/check_public_hygiene.py "${args[@]}"
       # [tool.coverage.*] in pyproject.toml is the whole configuration: source,
       # branch arcs, subprocess capture and fail_under. `coverage report` exits
       # non-zero below fail_under; the branch percentage is informational.

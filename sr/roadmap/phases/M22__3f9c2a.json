@@ -17,7 +17,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.54_public-hygiene-gate_3f9c2a71-5d8e-4b06-9a43-e1c7b5d20f68.md",
       "sibling_order": 49,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages",
       "touch_zones": [
         "scripts/check_machine_paths.py",

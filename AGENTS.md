@@ -48,6 +48,7 @@ If this repository ran **`specyrd init`**, you may have skills under `.agents/sk
 - **Adoption prompts:** [`suggested_prompts/`](suggested_prompts/) must match the real formats (templates under `specy_road/templates/project/`, JSON schemas, validators, `docs/roadmap-authoring.md`). A significant change to graph shape, registry rules, the `init project` layout or another format those prompts describe updates the affected `suggested_prompts/*.md` in the same change set or immediately after.
 - **PM Gantt UI:** after changing [`gui/pm-gantt/`](gui/pm-gantt/), run `npm ci && npm run lint && npm test && npm run build` there (ESLint 10 with `@eslint-react/eslint-plugin`; see [`docs/contributor-guide.md`](docs/contributor-guide.md#supply-chain--dependency-audits)).
 - **Gates:** `specy-road validate`, `export --check` and `digest --check` with `--repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`, `pytest -n auto` ([`docs/toolkit-development.md`](docs/toolkit-development.md#validate-and-test-dogfood-fixture)).
+- **Public hygiene:** `scripts/check_public_hygiene.py` refuses personal data, machine setup and development-process content in tracked files outside `sr/` and in commit messages. Install both hooks once per clone, `pre-commit install` and `pre-commit install --hook-type commit-msg`; the rules, the local list and the allow file are in the [contributor guide](docs/contributor-guide.md#public-hygiene-gate).
 
 ## Version numbers (human-owned)
 

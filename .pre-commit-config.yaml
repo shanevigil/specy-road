@@ -1,4 +1,8 @@
 # See https://pre-commit.com — install: pip install pre-commit && pre-commit install
+# and, for the commit-message check, pre-commit install --hook-type commit-msg
+
+# Hooks without `stages` run on commit only, not again at the commit-msg stage.
+default_stages: [pre-commit]
 
 repos:
   - repo: local
@@ -39,9 +43,14 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-      - id: lean-machine-paths
-        name: no machine-specific paths or hostnames in tracked files
-        entry: python scripts/check_machine_paths.py
+      - id: public-hygiene
+        name: no personal data, machine setup or process content in tracked files
+        entry: python scripts/check_public_hygiene.py
         language: system
         pass_filenames: false
         always_run: true
+      - id: public-hygiene-commit-msg
+        name: no personal data, machine setup or process content in the commit message
+        entry: python scripts/check_public_hygiene.py --commit-msg
+        language: system
+        stages: [commit-msg]
