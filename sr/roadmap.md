@@ -233,7 +233,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.48` | A shared reviewer name closes the gate only when it could be the leaf's writer | task | — | Complete |
 | `M22.49` | A sandboxed Claude worker resumes after the executor account changes | task | Agentic-led | Complete |
 | `M22.50` | finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk | task | Agentic-led | Complete |
-| `M22.51` | An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both | task | Agentic-led | Not Started |
+| `M22.51` | An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both | task | Agentic-led | Complete |
 | `M22.52` | After a block, the blocking reviewer checks only its named findings; the other family's approval carries | task | Agentic-led | Not Started |
 | `M22.53` | Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones | task | Agentic-led | Not Started |
 | `M22.54` | Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages | task | Agentic-led | Complete |

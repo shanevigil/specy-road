@@ -1,8 +1,8 @@
 $ specy-road decisions add --help
 exit: 0
 --- stdout ---
-usage: specy-road decisions add [-h] --kind {decision,human-action,preference} --summary SUMMARY
-                                [--why WHY] [--option LABEL|EFFECT]
+usage: specy-road decisions add [-h] --kind {decision,human-action,preference,standing-rule}
+                                --summary SUMMARY [--why WHY] [--option LABEL|EFFECT]
                                 [--recommendation RECOMMENDATION]
                                 [--recommendation-reason RECOMMENDATION_REASON]
                                 [--default DEFAULT] [--id ID] [--needed-by NEEDED_BY]
@@ -12,19 +12,21 @@ usage: specy-road decisions add [-h] --kind {decision,human-action,preference} -
                                 [NODE]
 
 positional arguments:
-  NODE                  Roadmap node id this entry belongs to (optional for a preference)
+  NODE                  Roadmap node id this entry belongs to (optional for a preference or
+                        standing rule)
 
 options:
   -h, --help            show this help message and exit
-  --kind {decision,human-action,preference}
-  --summary SUMMARY     Plain-words summary; for a preference, the rule
-  --why WHY             Why now and what it blocks (decision); the human's reason (preference)
+  --kind {decision,human-action,preference,standing-rule}
+  --summary SUMMARY     Plain-words summary; for a preference or standing rule, the rule
+  --why WHY             Why now and what it blocks (decision); the human's reason (preference);
+                        the operator's words, quoted (standing-rule, required)
   --option LABEL|EFFECT
                         Repeat for each option (label|effect); decision and human-action
   --recommendation RECOMMENDATION
   --recommendation-reason RECOMMENDATION_REASON
   --default DEFAULT     Default if unanswered
-  --id ID               Entry id (default: next D#, or P# for a preference)
+  --id ID               Entry id (default: next D#; P# for a preference, R# for a standing rule)
   --needed-by NEEDED_BY
                         ISO date by which an answer is needed
   --asked ASKED         ISO date when asked or stated (default: today)
@@ -35,7 +37,8 @@ options:
   --applies-to LEAF_KIND
                         Preference: a leaf kind it covers, such as docs or data; repeat (default:
                         every leaf)
-  --expires EXPIRES     Preference: active through this date (YYYY-MM-DD) or until this datetime
+  --expires EXPIRES     Preference or standing rule: active through this date (YYYY-MM-DD) or
+                        until this datetime
   --supersedes ID       Preference: close this open preference in the same write
   --local               Write the gitignored roadmap/decisions.local.yaml (this clone only, no
                         commit needed) instead of roadmap/decisions.yaml; readers merge it over

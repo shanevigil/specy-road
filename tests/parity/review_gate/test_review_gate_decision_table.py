@@ -23,6 +23,7 @@ from tests.test_review_defer import bound_ledger
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
+from specy_road.orchestration_role_env import ROLE_ENV
 from specy_road.review_answer import final_answer
 from specy_road.review_files import archive_review, load_ready, load_review, render_front_matter, reviews_dir
 from specy_road.review_gate import GateResult, evaluate_gate
@@ -159,6 +160,14 @@ class Leaf:
         (self.repo / "roadmap" / "decisions.yaml").write_text(yaml.safe_dump(bound_ledger("RCA-2.md", [item])))
         (self.reviews() / "DEFERRAL-2.yaml").write_text(yaml.safe_dump(
             {"node_id": NODE_ID, "rca": "RCA-2.md", "round": 2, "decision": "D9", "deferred": [item]}))
+
+    def operator(self, quote: str = "approved") -> None:
+        """The coordinator records the operator's ``approve`` for the commit at HEAD (role unset)."""
+        with pytest.MonkeyPatch.context() as mp, pytest.raises(SystemExit) as e:
+            mp.delenv(ROLE_ENV, raising=False)
+            review_cli.main(["review", "operator-decision", NODE_ID, "--decision", "approve", "--quote", quote,
+                             "--session", "table", "--repo-root", str(self.repo)])
+        assert e.value.code == 0
 
     def run(self, step: dict[str, Any]) -> None:
         (op, arg), = step.items()

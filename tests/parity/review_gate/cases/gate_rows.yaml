@@ -23,6 +23,8 @@
 #   defer: {finding, category, acceptance_id, input_class}
 #                                     an RCA-2 defer_findings record, the closed decision `review defer` records
 #                                     and its DEFERRAL-2 marker, for opus's block at HEAD
+#   operator: {quote?}                `specy-road review operator-decision --decision approve` (role unset): the
+#                                     closed decision and its OPERATOR-<commit> marker, for the commit at HEAD
 # A roster entry's `public_key: "@key:<name>"` is the public half of a key the test generates.
 
 # Every field GateResult.passed and GateResult.problems() read at pickup. The test derives the same set from the
@@ -38,6 +40,7 @@ branches:
   - {branch: verifier, reads: [verifier_problems], can_pass: true}
   - {branch: strong_unmet, reads: [strong_unmet], can_pass: true}
   - {branch: policy_pin, reads: [policy_pin], can_pass: true}
+  - {branch: shortfall_settled, reads: [shortfall_settled], can_pass: true}   # an operator decision (M22.51)
 
 rosters:
   human:
@@ -176,6 +179,21 @@ rows:
     roster: human
     steps: [{claim: {}}, {review: {model: human}}]
     expect: {passed: true, approvals: 1, problems: 0}
+
+  # --- an approval shortfall an operator decision names (M22.51) ---
+  - id: operator-decision-settles-the-shortfall
+    branch: shortfall_settled
+    roster: team
+    policy: {reviewers_required: 2}
+    steps: [{review: {model: opus}}, {operator: {}}]
+    expect: {passed: true, approvals: 1, problems: 0, required: 2}
+  - id: operator-decision-under-signed-reviews
+    branch: shortfall_settled
+    roster: human
+    policy: {reviewers_required: 1, signed_reviews: true}
+    steps: [{operator: {}}]
+    expect: {passed: false, approvals: 0, problems: 1}
+    says: {"need 1 approvals at this commit, have 0": tests/test_review_override.py::test_other_gate_failures_still_fail}
 
   # --- exclusions: executor, coordinator, fresh session ---
   - id: executor-excluded

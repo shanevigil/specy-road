@@ -15,3 +15,12 @@ rows:
   - old: specy-road upgrade
     new: specy-road upgrade
     allowed: "M22.35: upgrade --help says the mirror leaves gitignored files out"
+  - old: ""
+    new: specy-road review operator-decision
+    allowed: "M22.51: new `review operator-decision` subcommand (the coordinator records an operator's review decision)"
+  - old: specy-road review
+    new: specy-road review
+    allowed: "M22.51: `review --help` lists the new operator-decision subcommand"
+  - old: specy-road decisions add
+    new: specy-road decisions add
+    allowed: "M22.51: `decisions add --kind` gains standing-rule; --why, --id and --expires help name it"

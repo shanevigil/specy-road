@@ -7,6 +7,7 @@ Install: specy-road <VERSION> running from <PREFIX>
 copying tracked and untracked files into a temporary directory; ignored files are not copied
 
 == refresh-schemas
+would write schemas/decisions.schema.json
 would write schemas/git-workflow.schema.json
 would write schemas/orchestration.schema.json
 

@@ -32,7 +32,9 @@ finding the node did not declare in ``planned_test_changes`` on the integration 
 (:mod:`specy_road.integrity_gate`). Each ``policy.strong_review`` item the leaf's touch zones meet needs one counted
 approval from its ``require_one_of`` (:mod:`specy_road.review_strong`). An approval naming ``delta_from`` (a delta
 review) must also meet :func:`delta_problem`. A block a human-applied deferral names (reviewer and commit) does not
-count (:func:`specy_road.review_deferral.apply_deferrals`). A policy change since the claim: :mod:`review_policy_pin`.
+count (:func:`specy_road.review_deferral.apply_deferrals`). An operator decision recorded by the coordinator settles
+only the blocks and the approval shortfall it names, at the commit it names
+(:func:`specy_road.review_override.apply_operator_decisions`). A policy change since the claim: :mod:`review_policy_pin`.
 """
 
 from __future__ import annotations
@@ -61,6 +63,7 @@ from specy_road.review_signing import (  # noqa: F401 — SigningError re-export
 from specy_road.review_deferral import apply_deferrals
 from specy_road.review_eligible import reviews_to_judge
 from specy_road.review_model_check import model_mismatch_problem
+from specy_road.review_override import apply_operator_decisions
 from specy_road.review_bookkeeping import CARRY_NOTE, count_at_later_commit, only_planning_or_review_bookkeeping_since
 from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
                                      list_review_history, list_reviews, review_semantic_errors, reviews_dir,
@@ -128,6 +131,8 @@ class GateResult:
     bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict)
     strong_unmet: list[tuple[int, dict[str, Any]]] = field(default_factory=list)   # unmet policy.strong_review items
     policy_pin: str | None = None   # the policy changed since the claim and no human accepted it (review_policy_pin)
+    accepted: list[str] = field(default_factory=list)   # one line per honoured operator decision (review_override)
+    shortfall_settled: bool = False   # an honoured operator decision names the approval shortfall
 
     @property
     def approval_count(self) -> int:
@@ -136,12 +141,14 @@ class GateResult:
     @property
     def passed(self) -> bool:
         return (self.config_error is None and self.commit is not None and not self.blocks and not self.policy_pin
-                and not self.verifier_problems and not self.strong_unmet and self.approval_count >= self.required)
+                and not self.verifier_problems and not self.strong_unmet
+                and (self.approval_count >= self.required or self.shortfall_settled))
 
     def summary(self) -> str:
         unit = "distinct-family approvals" if self.distinct_families else "approvals"
         state = "met" if self.passed else "not met"
-        return f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): {state}" + (CARRY_NOTE if self.bookkeeping_carry else "")
+        return (f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): {state}"
+                + (CARRY_NOTE if self.bookkeeping_carry else "") + "".join(f"; {a}" for a in self.accepted))
 
     def problems(self) -> list[str]:
         out = []
@@ -157,7 +164,7 @@ class GateResult:
             out.append(f"{r.path.name}: invalid — {'; '.join(r.errors)}")
         for r, why in self.ineligible:
             out.append(f"{r.path.name}: does not count — {why}")
-        if self.approval_count < self.required:
+        if self.approval_count < self.required and not self.shortfall_settled:
             unit = "distinct-family approvals" if self.distinct_families else "approvals"
             out.append(f"need {self.required} {unit} at this commit, have {self.approval_count}")
         out.extend(self.verifier_problems + [strong_problem(i, item) for i, item in self.strong_unmet])
@@ -347,6 +354,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
         else:
             _count(result, counted)
     apply_deferrals(repo_root, result)   # a human-applied deferral resolves only the block it names
+    apply_operator_decisions(repo_root, result, node, ref)   # likewise: only the blocks and shortfall it names
     ready = latest_ready(repo_root, node["id"], branch, acceptance_ids(node))
     result.verifier_problems = authorship + verifier_gate_problems(ready, result.approvals)
     if ready is not None and same_commit(repo_root, ready.data["commit"], result.commit):

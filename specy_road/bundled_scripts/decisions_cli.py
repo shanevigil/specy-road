@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for ``specy-road decisions add|list|close`` (M11.34; preferences M11.58)."""
+"""CLI for ``specy-road decisions add|list|close`` (M11.34; preferences M11.58; standing rules M22.51)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.decisions import (
     PREFERENCE,
+    STANDING_RULE,
     active_preferences,
     add_entry,
     add_preference,
@@ -71,6 +72,11 @@ def _kind_flag_error(ns: argparse.Namespace) -> str | None:
     if ns.kind == PREFERENCE:
         bad = [flag for attr, flag in _QUESTION_ONLY if getattr(ns, attr)]
         return f"--kind preference does not take {', '.join(bad)}" if bad else None
+    if ns.kind == STANDING_RULE:
+        bad = [flag for attr, flag in _QUESTION_ONLY + _PREFERENCE_ONLY if attr != "expires" and getattr(ns, attr)]
+        if bad:
+            return f"--kind standing-rule does not take {', '.join(bad)}"
+        return None if (ns.why or "").strip() else "--kind standing-rule needs --why: the operator's words, quoted"
     missing = [flag for attr, flag in _QUESTION_FLAGS if not getattr(ns, attr)]
     if missing:
         return f"--kind {ns.kind} needs {', '.join(missing)}"
@@ -79,17 +85,18 @@ def _kind_flag_error(ns: argparse.Namespace) -> str | None:
 
 
 def _add_preference(root: Path, ns: argparse.Namespace) -> int:
+    """A preference, or a standing rule (the same write with ``kind``)."""
     try:
         entry = add_preference(
             root, summary=ns.summary, role=ns.role, models=ns.model, applies_to=ns.applies_to,
             expires=ns.expires, why=ns.why, node_id=ns.node, preference_id=ns.id,
-            supersedes=ns.supersedes, asked=ns.asked, local=ns.local,
+            supersedes=ns.supersedes, asked=ns.asked, local=ns.local, kind=ns.kind,
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     tail = f"; closed {ns.supersedes}" if ns.supersedes else ""
-    print(f"added {entry['id']} (preference){tail} → {decisions_path(root, ns.local)}")
+    print(f"added {entry['id']} ({ns.kind}){tail} → {decisions_path(root, ns.local)}")
     return 0
 
 
@@ -99,8 +106,8 @@ def cmd_add(ns: argparse.Namespace) -> int:
         print(f"error: {err}", file=sys.stderr)
         return 1
     # One id sequence across both ledgers: a new entry must not shadow, or be shadowed by, the other's.
-    ns.id = ns.id or next_free_id(root, "P" if ns.kind == PREFERENCE else "D")
-    if ns.kind == PREFERENCE:
+    ns.id = ns.id or next_free_id(root, {PREFERENCE: "P", STANDING_RULE: "R"}.get(ns.kind, "D"))
+    if ns.kind in (PREFERENCE, STANDING_RULE):
         return _add_preference(root, ns)
     options = [_parse_option(o) for o in ns.option]
     try:
@@ -159,7 +166,7 @@ def cmd_close(ns: argparse.Namespace) -> int:
         print(f"error: no decision {ns.decision_id!r} in roadmap/decisions.yaml or roadmap/decisions.local.yaml",
               file=sys.stderr)
         return 1
-    sheet = None if target.get("kind") == PREFERENCE else _sheet_for_node(root, target["node"])[1]
+    sheet = None if target.get("kind") in (PREFERENCE, STANDING_RULE) else _sheet_for_node(root, target["node"])[1]
     close_entry(root, ns.decision_id, ns.answer, sheet_text=sheet, local=ns.decision_id in local_ids)
     print(f"closed {ns.decision_id!r}")
     return 0
@@ -173,16 +180,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     add = dsub.add_parser("add", help="Open a self-contained human decision, or record a routing preference")
     add.add_argument("node", metavar="NODE", nargs="?",
-                     help="Roadmap node id this entry belongs to (optional for a preference)")
-    add.add_argument("--kind", required=True, choices=["decision", "human-action", PREFERENCE])
-    add.add_argument("--summary", required=True, help="Plain-words summary; for a preference, the rule")
-    add.add_argument("--why", help="Why now and what it blocks (decision); the human's reason (preference)")
+                     help="Roadmap node id this entry belongs to (optional for a preference or standing rule)")
+    add.add_argument("--kind", required=True, choices=["decision", "human-action", PREFERENCE, STANDING_RULE])
+    add.add_argument("--summary", required=True, help="Plain-words summary; for a preference or standing rule, "
+                                                      "the rule")
+    add.add_argument("--why", help="Why now and what it blocks (decision); the human's reason (preference); "
+                                   "the operator's words, quoted (standing-rule, required)")
     add.add_argument("--option", action="append", metavar="LABEL|EFFECT",
                      help="Repeat for each option (label|effect); decision and human-action")
     add.add_argument("--recommendation")
     add.add_argument("--recommendation-reason")
     add.add_argument("--default", dest="default", help="Default if unanswered")
-    add.add_argument("--id", dest="id", help="Entry id (default: next D#, or P# for a preference)")
+    add.add_argument("--id", dest="id", help="Entry id (default: next D#; P# for a preference, R# for a "
+                                             "standing rule)")
     add.add_argument("--needed-by", help="ISO date by which an answer is needed")
     add.add_argument("--asked", help="ISO date when asked or stated (default: today)")
     add.add_argument("--role", choices=ROLES, help="Preference: the role the rule routes")
@@ -191,7 +201,8 @@ def build_parser() -> argparse.ArgumentParser:
                           "Availability is not a preference: set available/paused_until in the roster")
     add.add_argument("--applies-to", action="append", metavar="LEAF_KIND",
                      help="Preference: a leaf kind it covers, such as docs or data; repeat (default: every leaf)")
-    add.add_argument("--expires", help="Preference: active through this date (YYYY-MM-DD) or until this datetime")
+    add.add_argument("--expires", help="Preference or standing rule: active through this date (YYYY-MM-DD) or "
+                                       "until this datetime")
     add.add_argument("--supersedes", metavar="ID", help="Preference: close this open preference in the same write")
     add.add_argument("--local", action="store_true",
                      help="Write the gitignored roadmap/decisions.local.yaml (this clone only, no commit needed) "

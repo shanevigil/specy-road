@@ -448,7 +448,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.51_operator-decision-record_e484b004-5481-4608-831e-b357aba8ba9f.md",
       "sibling_order": 46,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both",
       "touch_zones": [
         "specy_road/review_override.py",
