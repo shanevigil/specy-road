@@ -45,7 +45,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.4` | One command surface and one checks: config (aliases kept for rc5) | milestone | — | Not Started |
 | `M16.4.1` | doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases | task | Agentic-led | Not Started |
 | `M16.4.2` | upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update | task | Agentic-led | Not Started |
-| `M16.4.3` | review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session | task | Agentic-led | Not Started |
+| `M16.4.3` | review status, review packet, and decisions --kind lesson replace handoff status, review list, review-packet and lessons | task | Agentic-led | Not Started |
 | `M16.4.4` | milestone and planning command groups, and archive --hard-remove replaces archive-node | task | Agentic-led | Not Started |
 | `M16.4.5` | One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points | task | Agentic-led | Not Started |
 | `M16.4.6` | checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose) | task | Agentic-led | Not Started |
@@ -82,8 +82,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.7.8` | Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses | task | Agentic-led | Not Started |
 | `M16.8` | rc5 close, alias window, end-to-end pass and the 0.3.1 tag | milestone | — | Not Started |
 | `M16.8.1` | rc5 close: lean metrics measured against the baseline | task | Mixed | Not Started |
-| `M16.8.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
-| `M16.8.3` | After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims | task | Agentic-led | Not Started |
 | `M16.8.4` | End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 | task | Human-led | Not Started |
 | `M16.8.8` | Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships | task | — | Not Started |
 | `M16.8.9` | Gate: ready to tag 0.3.1 | gate | Human-led | Not Started |
@@ -242,5 +240,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.49` | A sandboxed Claude worker resumes after the executor account changes | task | Agentic-led | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
+| `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
+| `M23.3` | After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

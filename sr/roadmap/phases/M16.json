@@ -182,7 +182,7 @@
     {
       "acceptance": [
         "Before any move, this sheet lists the modules under specy_road/bundled_scripts that a specy_road module outside bundled_scripts imports at pickup, excluding every module named by cli.py's `_SCRIPTS` or `_FORWARDED` and excluding review_node.py (M16.3.4); exactly those move to the specy_road package with `git mv`, and no other module moves (the code report counted 29; this rule gave 39 on 2026-11-05)",
-        "A moved module keeps a one-line re-export at its old path only if a console entry point, a shipped template or a documented `python specy_road/bundled_scripts/...` command names that path; each kept re-export is listed in this sheet for M16.8.3",
+        "A moved module keeps a one-line re-export at its old path only if a console entry point, a shipped template or a documented `python specy_road/bundled_scripts/...` command names that path; each kept re-export is listed in this sheet for the post-0.3.1 removal leaf",
         "Imports are updated and nothing else changes; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json are rewritten for the new paths only (M16.1.8's transfer rule); parity harness, full suite and `scripts/check_test_private_imports.py` green",
         "Estimated net line change (informational, not a gate): package about -40"
       ],
@@ -379,7 +379,7 @@
         "Before the switch, a reconciliation table in this sheet fixes the action and reason for each fixture item under each old command and under `doctor --prune --kind` branches, registry, worktrees or stashes; one planner with one merged rule and one live rule (live read from the M16.3.1 snapshot) selects exactly the table's rows for the new form and for each alias; a safety-driven reduction from an old command's selection is a decided row of that table; applying removes exactly the planned items",
         "`worktree prune <ID>` stays as the single-leaf path on the same planner; `branches prune`, `registry-prune` and `grind-session --delete-merged-branches` still work for one release, print one deprecation line naming the new form, are hidden from top-level help and are rows of tests/parity/command_map.yaml",
         "Docs, templates and suggested_prompts name the new form in the same change; the stale-command check passes; goldens differ only for map rows",
-        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the release after 0.3.1 (maintainer, 2026-11-08)); no version heading is written",
         "Estimated net line change (informational, not a gate): package about -300"
       ],
       "codename": "doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases",
@@ -419,10 +419,10 @@
     {
       "acceptance": [
         "`review status [NODE_ID] [--ref] [--json]` shows what `handoff status` and `review list` show today (READY hand-offs, filed records with verdict, commit and family, and the gate evaluation) with handoff status's exit codes (0 met or complete_no_claim, 1 not met, 2 undeterminable); a parity row per old invocation checks that every line the old command printed is present",
-        "`review packet` replaces `review-packet` with the same flags and output; `decisions --kind lesson` replaces `lessons` with the same record file and format; `presence` (start, touch, end, list, check) replaces `session` with the same records under work/.sessions/",
+        "`review packet` replaces `review-packet` with the same flags and output; `decisions --kind lesson` replaces `lessons` with the same record file and format; `session` keeps its name (maintainer, 2026-11-08: no presence rename)",
         "Each old name works for one release with one deprecation line, is hidden from top-level help and is a row of tests/parity/command_map.yaml",
         "Docs, templates, skills and stubs, and suggested_prompts use the new names in the same change; the stale-command check passes; goldens differ only for map rows",
-        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the release after 0.3.1 (maintainer, 2026-11-08)); no version heading is written",
         "Estimated net line change (informational, not a gate): package about -80"
       ],
       "codename": "review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session",
@@ -437,7 +437,7 @@
       "planning_dir": "planning/M16.4.3_review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session_ca41116c-978b-4215-a69e-2f52400009fa.md",
       "sibling_order": 2,
       "status": "Not Started",
-      "title": "review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session",
+      "title": "review status, review packet, and decisions --kind lesson replace handoff status, review list, review-packet and lessons",
       "touch_zones": [
         "specy_road/cli.py",
         "specy_road/cli_usage.py",
