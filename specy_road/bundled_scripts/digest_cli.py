@@ -22,7 +22,8 @@ from specy_road import safe_write
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.generated_files import gitignore_resolution_hint
-from specy_road.runtime_paths import add_repo_root_arg, git_root, resolve_repo_root
+from specy_road.git_subprocess import git_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.cli_entry import run_forwarded_cli
 
 

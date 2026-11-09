@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import os
 import subprocess
 from pathlib import Path
@@ -8,7 +9,8 @@ import pytest
 
 from tests.review_repo_helpers import advance_dev, git, make_review_repo
 
-from specy_road.git_subprocess import git_ok, merge_conflicts, run
+import specy_road
+from specy_road.git_subprocess import git_ok, is_worktree_root, merge_conflicts, run
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -81,3 +83,41 @@ def test_merge_conflicts_is_in_memory_and_names_conflicted_paths(tmp_path: Path)
     assert merge_conflicts(repo, "feature/rm-thing", "no-such-ref") is None
     assert merge_conflicts(tmp_path, "feature/rm-thing", "dev") is None   # not a repository
     assert git(repo, "status", "--porcelain") == ""   # no checkout, index or working-tree change
+
+
+_ROOT_AND_BRANCH_FLAGS = {"--show-toplevel", "--show-current"}
+
+
+def _asks_git_for_root_or_branch(source: str) -> bool:
+    """A string constant that is exactly one of the flags: an argument to git, not prose."""
+    return any(isinstance(n, ast.Constant) and n.value in _ROOT_AND_BRANCH_FLAGS
+               for n in ast.walk(ast.parse(source)))
+
+
+def test_only_git_subprocess_asks_git_for_the_root_or_the_branch() -> None:
+    """Every other module calls git_root, current_branch_name or is_worktree_root instead."""
+    assert _asks_git_for_root_or_branch('git_text(["branch", "--show-current"], here)')
+    assert not _asks_git_for_root_or_branch('PROMPT = "cd \\"$(git rev-parse --show-toplevel)\\""')
+    package = Path(specy_road.__file__).parent
+    offenders = [p.relative_to(package).as_posix() for p in sorted(package.rglob("*.py"))
+                 if p != package / "git_subprocess.py"
+                 and _asks_git_for_root_or_branch(p.read_text(encoding="utf-8"))]
+    assert offenders == []
+
+
+@pytest.mark.parametrize("where, branch, expected", [
+    ("top", None, True),
+    ("top", "main", True),
+    ("top", "other", False),
+    ("subdir", None, False),
+    ("outside", None, False),
+])
+def test_is_worktree_root(tmp_path: Path, where: str, branch: str | None, expected: bool) -> None:
+    """Only a worktree's top counts, and only with the named branch checked out when one is given."""
+    repo = tmp_path / "repo"
+    (repo / "subdir").mkdir(parents=True)
+    (tmp_path / "outside").mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    path = {"top": repo, "subdir": repo / "subdir", "outside": tmp_path / "outside"}[where]
+
+    assert is_worktree_root(path, branch) is expected

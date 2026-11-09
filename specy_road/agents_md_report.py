@@ -14,9 +14,10 @@ from collections import Counter
 from pathlib import Path
 
 from specy_road import __version__
+from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import AGENTS_MD, RULES_MD, _imports_in, claude_paths, claude_rules
 from specy_road.managed_block import HTML_COMMENT, _split
-from specy_road.runtime_paths import SPECYRD_MANIFEST, git_root
+from specy_road.runtime_paths import SPECYRD_MANIFEST
 from specy_road.text_sections import normalize_heading
 
 #: ``agents_block`` in ``.specyrd/manifest.json``: ``full`` (default) or ``minimal``.

@@ -25,7 +25,7 @@ from pathlib import Path
 
 from specy_road.finish_implementation_check import _clean, base_ref, in_zones, zone_matches
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import git_code, git_ok, git_text
+from specy_road.git_subprocess import current_branch_name, git_code, git_ok, git_text, is_worktree_root
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.runtime_paths import nested_repo_path, project_prefix, rebase_to_project
 
@@ -56,12 +56,6 @@ def nested_repos(repo_root: Path) -> list[NestedRepo]:
                               spec.get("remote", data["remote"]), spec.get("land", "push"),
                               spec.get("base", "remote"), bool(spec.get("refuse_behind_remote", False))))
     return out
-
-
-def is_repo_top(path: Path) -> bool:
-    """``path`` is the top of a git worktree (its own repository, not a directory of an enclosing one)."""
-    top = git_text(["rev-parse", "--show-toplevel"], path) if path.is_dir() else None
-    return bool(top) and Path(top).resolve() == path.resolve()
 
 
 def covers(zones, path: str, prefix: str) -> bool:
@@ -102,11 +96,11 @@ def existing_worktree_problem(src: Path, dest: Path, branch: str | None, tip: st
     one at another commit would show the worker code the integration tip does
     not have. ``tip`` is the ref a new worktree would be made at, read in ``src``.
     """
-    if not is_repo_top(dest):
+    if not is_worktree_root(dest):
         return f"{dest} exists but is not a git worktree"
     if _common_dir(dest) != _common_dir(src):
         return f"{dest} is a worktree of another repository, not of {src}"
-    current = git_text(["branch", "--show-current"], dest) or ""
+    current = current_branch_name(dest) or ""
     if branch and current != branch:
         return f"{dest} has {current or 'a detached HEAD'} checked out, not {branch}"
     if not branch and current:
@@ -138,7 +132,7 @@ def _source_and_tip(repo_root: Path, nr: NestedRepo) -> tuple[Path, str]:
     ahead of is refused only when the entry sets ``refuse_behind_remote``.
     """
     src = repo_root / nr.path
-    if not is_repo_top(src):
+    if not is_worktree_root(src):
         raise NestedRepoError(f"nested repo {nr.path!r} (roadmap/git-workflow.yaml): {src} is not "
                               "the top of a git repository")
     tip = nested_base_ref(src, nr)
@@ -243,7 +237,7 @@ def nested_worktree_dirs(repo_root: Path, leaf_root: Path) -> list[tuple[str, Pa
     """
     prefix = project_prefix(repo_root)
     return [(f"{prefix}{nr.path}", leaf_root / nr.path) for nr in nested_repos(repo_root)
-            if is_repo_top(leaf_root / nr.path)]
+            if is_worktree_root(leaf_root / nr.path)]
 
 
 def _merge_base(repo: Path, nr: NestedRepo, tip: str) -> str | None:
@@ -261,7 +255,7 @@ def nested_changes(repo_root: Path, leaf_root: Path) -> tuple[list[str], list[st
     prefix, changed, untracked = project_prefix(repo_root), [], []
     for nr in nested_repos(repo_root):
         d = leaf_root / nr.path
-        mb = _merge_base(d, nr, "HEAD") if is_repo_top(d) else None
+        mb = _merge_base(d, nr, "HEAD") if is_worktree_root(d) else None
         if not mb:
             continue
         lead = f"{prefix}{nr.path}/"
@@ -283,7 +277,7 @@ def branch_tip(repo: Path, nr: NestedRepo, branch: str) -> str | None:
 def branch_diff_range(repo_root: Path, nr: NestedRepo, branch: str) -> str | None:
     """``<merge base>...<tip>`` of ``branch`` in the nested repository, or ``None`` when it has no such branch."""
     d = repo_root / nr.path
-    tip = branch_tip(d, nr, branch) if is_repo_top(d) else None
+    tip = branch_tip(d, nr, branch) if is_worktree_root(d) else None
     mb = _merge_base(d, nr, tip) if tip else None
     return f"{mb}...{tip}" if mb else None
 
@@ -294,7 +288,7 @@ def nested_zone_paths(repo_root: Path, zones) -> list[str]:
     For finish's implementation gate: a leaf whose work lives only in a nested
     repository changes nothing in the main one but its bookkeeping.
     """
-    branch = git_text(["branch", "--show-current"], repo_root)
+    branch = current_branch_name(repo_root)
     prefix, out = project_prefix(repo_root), []
     for nr in nested_repos(repo_root) if branch else []:
         rng = branch_diff_range(repo_root, nr, branch)

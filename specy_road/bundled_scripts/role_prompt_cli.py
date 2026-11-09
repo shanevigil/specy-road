@@ -25,7 +25,7 @@ from typing import Any
 
 from specy_road.clock import utc_now_iso
 from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
-from specy_road.git_subprocess import git_ok, git_text
+from specy_road.git_subprocess import git_ok, git_text, is_worktree_root
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
@@ -144,11 +144,10 @@ def worktree_problem(root: Path, path: Path, t: ReviewTarget) -> str:
     """Why a reviewer may not run in ``path``, else ``""``: it must be the top of a git checkout, must not have the
     integration branch checked out, and, when the leaf has a claimed branch, must have its ``HEAD`` at that branch's
     tip. Both an explicit ``--worktree`` and the one :func:`leaf_worktree` finds are checked."""
-    top = git_text(["rev-parse", "--show-toplevel"], path) if path.is_dir() else None
-    if not top or Path(top).resolve() != path.resolve():
+    if not is_worktree_root(path):
         return f"{path} is not the top of a git checkout"
     base = resolve_integration_defaults(root, explicit_base=None, explicit_remote=None)[0]
-    if git_text(["branch", "--show-current"], path) == base:
+    if is_worktree_root(path, base):
         return f"{path} has the integration branch {base} checked out, and a reviewer never runs there"
     branch = (t.entry or {}).get("branch")
     tip = git_text(["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{commit}}"], root) if branch else None

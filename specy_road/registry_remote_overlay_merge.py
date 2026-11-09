@@ -17,8 +17,8 @@ from specy_road.git_workflow_config import (
 from specy_road.pm_integration_registry import (
     remote_registry_overlay_fingerprint_addendum as remote_feature_refs_fingerprint_addendum,
 )
+from specy_road.registry_yaml import REGISTRY_REL
 
-REGISTRY_REL = Path("roadmap") / "registry.yaml"
 DEFAULT_MAX_REFS = 48
 DEFAULT_TOTAL_BUDGET_S = 5.0
 PER_SHOW_TIMEOUT_S = 4.0

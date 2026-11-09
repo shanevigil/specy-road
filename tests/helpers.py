@@ -22,10 +22,9 @@ def script_subprocess_env() -> dict[str, str]:
 
 def sorted_diff_paths_project_relative(project: Path, base: str, tip: str) -> list[str]:
     """Paths ``git diff base...tip`` touches, in the same project-relative form as review-packet."""
-    from specy_road.git_changed_paths import diff_paths
-    from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
+    from specy_road import git_changed_paths, git_subprocess, runtime_paths
 
-    top = git_root(project) or project
-    prefix = project_prefix(project)
-    raw = diff_paths(top, f"{base}...{tip}") or []
-    return sorted(rebase_to_project(path, prefix) or path for path in raw)
+    top = git_subprocess.git_root(project) or project
+    prefix = runtime_paths.project_prefix(project)
+    raw = git_changed_paths.diff_paths(top, f"{base}...{tip}") or []
+    return sorted(runtime_paths.rebase_to_project(path, prefix) or path for path in raw)

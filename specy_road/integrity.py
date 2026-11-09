@@ -11,13 +11,12 @@ from __future__ import annotations
 
 import ast
 import re
-import subprocess
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_stdout
+from specy_road.git_subprocess import git_bytes, git_stdout
 from specy_road.orchestration_config import effective_config
 from specy_road.review_policy_ref import policy_source
 
@@ -182,29 +181,15 @@ def _blob_additions(root: Path, old: str | None, new: str) -> list[tuple[int, st
     every other file is still checked.
     """
     if old is not None:
-        patch = _utf8(_git_bytes(root, [*_BLOB_DIFF, old, new]))
+        patch = _utf8(git_bytes([*_BLOB_DIFF, old, new], root))
         return _hunk_additions(patch) if patch is not None else []
-    text = _utf8(_git_bytes(root, ["cat-file", "blob", new]))
+    text = _utf8(git_bytes(["cat-file", "blob", new], root))
     if text is None:
         return []
     lines = text.split("\n")
     if lines[-1] == "":
         lines.pop()
     return list(enumerate(lines, 1))
-
-
-def _git_bytes(root: Path, args: list[str]) -> bytes:
-    """``git <args>`` raw stdout; empty on failure.
-
-    Spawned here, not through :mod:`specy_road.git_subprocess`, because that decodes the
-    whole output strictly: one non-UTF-8 file name would hide every other path. Callers
-    decode each name or file's diff on its own.
-    """
-    try:
-        r = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
-    except (OSError, subprocess.SubprocessError):
-        return b""
-    return r.stdout if r.returncode == 0 else b""
 
 
 def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[str, str | None, str]]:
@@ -217,7 +202,7 @@ def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[
     skipped.
     """
     args = ["diff", "--raw", "-z", "--no-abbrev", "--no-relative", renames, base, ref]
-    fields = _git_bytes(root, args).split(b"\0")
+    fields = git_bytes(args, root).split(b"\0")
     out: list[tuple[str, str | None, str]] = []
     i = 0
     while i < len(fields) and fields[i].startswith(b":"):

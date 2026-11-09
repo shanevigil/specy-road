@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 
 from specy_road.clock import utc_now_iso
+from specy_road.git_subprocess import git_run
 from specy_road.review_gate import (
     SigningError,
     GateResult,
@@ -44,16 +45,12 @@ from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
 from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run
+from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
 #: importing the module shell out to git.
 ROOT = Path.cwd()
-
-
-def _save_registry(doc: dict) -> None:
-    write_registry(registry_path(ROOT), doc)
 
 
 def _summary_path(node_id: str) -> Path:
@@ -177,7 +174,7 @@ def _commit_registry_approved(codename: str, reg: dict, trailers: list[str]) -> 
             e["implementation_review"] = "approved"
             e["implementation_review_at"] = now
             break
-    _save_registry(reg)
+    write_registry(registry_path(ROOT), reg)
     print(f"[ok] registry: implementation_review -> approved ({now})\n")
 
     rel = str(registry_path(ROOT).relative_to(ROOT))

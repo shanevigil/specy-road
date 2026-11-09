@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from specy_road.git_subprocess import git_text
+from specy_road.git_subprocess import current_branch_name
 from specy_road.review_files import list_ready
 from specy_road.worker_state import (
     FLAG_ORPHAN,
@@ -406,7 +406,7 @@ def branch_mismatch(worktree: Path, branch: str | None) -> str | None:
     """Why the worktree is not on the worker's branch, or ``None`` when it is (or no branch is recorded)."""
     if not branch:
         return None
-    actual = git_text(["branch", "--show-current"], Path(worktree))
+    actual = current_branch_name(Path(worktree))
     if actual == branch:
         return None
     return f"{worktree} has {actual or 'a detached HEAD'} checked out, not the worker's branch {branch}"

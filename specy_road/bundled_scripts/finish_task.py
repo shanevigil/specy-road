@@ -10,6 +10,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.finish_task_args import parse_finish_args
+from specy_road.git_subprocess import git_run
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
     resolve_integration_defaults,
@@ -56,7 +57,7 @@ from specy_road.on_complete_session import (
     read_on_complete_session,
 )
 from specy_road.runtime_paths import resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import current_branch, git_run
+from specy_road.bundled_scripts.repo_ops import current_branch
 from specy_road.repo_lock import pickup_finish_lock
 from specy_road.worker_orphans import end_finished_workers
 from specy_road.worker_state import WorkerError
@@ -75,10 +76,6 @@ ROOT = Path.cwd()
 # ---------------------------------------------------------------------------
 # Registry helpers
 # ---------------------------------------------------------------------------
-
-
-def _save_registry(doc: dict) -> None:
-    write_registry(registry_path(ROOT), doc)
 
 
 # ---------------------------------------------------------------------------
@@ -277,7 +274,7 @@ def _bookkeeping_commit_phase(
             changed_files.append(rel)
     changed_files.append(str(registry_path(ROOT).relative_to(ROOT)))
     reg["entries"] = [e for e in reg.get("entries", []) if e.get("codename") != codename]
-    _save_registry(reg)
+    write_registry(registry_path(ROOT), reg)
     print(f"[ok] removed registry entry for '{codename}'\n")
     print("-> specy-road validate")
     print("-> specy-road export")

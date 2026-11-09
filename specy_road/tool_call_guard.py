@@ -31,8 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import tool_call_guard_shapes as shapes
-from specy_road.git_subprocess import git_text
-from specy_road.runtime_paths import git_root
+from specy_road.git_subprocess import git_root, git_text
 from specy_road.session_presence import list_sessions, unreadable_records
 
 ALLOW = "allow"

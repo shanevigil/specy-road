@@ -22,9 +22,9 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
-from specy_road.bundled_scripts.repo_ops import git_run, sync_integration_branch
+from specy_road.bundled_scripts.repo_ops import sync_integration_branch
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.git_subprocess import local_branch_exists
+from specy_road.git_subprocess import git_run, local_branch_exists
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.repo_lock import pickup_finish_lock
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root

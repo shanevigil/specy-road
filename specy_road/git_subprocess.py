@@ -7,11 +7,13 @@ policies — including three (``archive_git``, ``history_git``,
 ``node_activity``) that passed no timeout at all and could hang a CLI or a GUI
 request forever against an unresponsive remote.
 
-A few callers still spawn git themselves, deliberately, because they need
-something this signature does not offer: ``file_limits_engine`` pipes a NUL
--separated path list into ``check-ignore --stdin``; ``repo_ops.git_run`` wants
-``check_call``'s raise-on-failure for scripted sequences. Those are the
-exceptions, and they are the only ones.
+Output that must stay bytes — paths git prints, which may hold a newline, an
+edge space or bytes that are not UTF-8 — goes through :func:`run_bytes` and the
+views on it (:func:`git_out`, :func:`git_path`, :func:`git_root`). Interactive
+sequences whose progress the user watches go through :func:`git_run`, which
+passes output through. ``file_limits_engine`` still spawns git itself, because
+it pipes a NUL-separated path list into ``check-ignore --stdin`` under its own
+failure rule; it is the one exception.
 
 The shapes callers actually need are all views on one result, so :class:`GitResult`
 carries the raw fields and names each view:
@@ -28,6 +30,7 @@ caller in this toolkit is best-effort about git and none wants a traceback.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -89,6 +92,132 @@ def run(
     except (ValueError, subprocess.SubprocessError) as e:
         return GitResult(-1, "", str(e), "error")
     return GitResult(r.returncode, r.stdout or "", r.stderr or "")
+
+
+@dataclass(frozen=True)
+class GitBytes:
+    """Outcome of one git invocation read as bytes.
+
+    ``code == -1`` means git never ran; ``err`` then says why.
+    """
+
+    code: int
+    out: bytes
+    err: bytes
+
+    @property
+    def ok(self) -> bool:
+        """Whether git ran and exited 0."""
+        return self.code == 0
+
+    @property
+    def message(self) -> str:
+        """stderr, falling back to stdout, decoded for display."""
+        return os.fsdecode(self.err or self.out).strip()
+
+    def checked(self, args: list[str], ok: tuple[int, ...] = (0,)) -> bytes:
+        """stdout when the exit code is in ``ok``.
+
+        Otherwise :class:`GitError`, naming the subcommand of ``args`` (the first
+        word that is neither an option nor a ``-c`` value) and stderr's last line.
+        """
+        if self.code in ok:
+            return self.out
+        lines = os.fsdecode(self.err).strip().splitlines()
+        command = next(a for i, a in enumerate(args)
+                       if not a.startswith("-") and (i == 0 or args[i - 1] != "-c"))
+        raise GitError(f"git {command}: {lines[-1] if lines else f'exit {self.code}'}")
+
+
+class GitError(Exception):
+    """A git call whose exit code the caller does not accept (:meth:`GitBytes.checked`)."""
+
+
+def run_bytes(
+    args: list[str], cwd: Path, *, timeout: float = DEFAULT_TIMEOUT,
+    env: dict[str, str] | None = None, stdin: bytes | None = None,
+) -> GitBytes:
+    """Run ``git <args>`` in ``cwd`` and keep stdout and stderr as bytes. Never raises.
+
+    For output text mode would corrupt: universal newlines turn a ``\\r`` in a path
+    into ``\\n``, stripping drops an edge space, and strict decoding of one
+    non-UTF-8 name hides every other line.
+    """
+    try:
+        r = subprocess.run(["git", *args], cwd=cwd, input=stdin, capture_output=True,
+                           timeout=timeout, check=False, env=env)
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
+        return GitBytes(-1, b"", os.fsencode(str(e)))
+    return GitBytes(r.returncode, r.stdout or b"", r.stderr or b"")
+
+
+def git_bytes(args: list[str], cwd: Path) -> bytes:
+    """``git <args>``'s raw stdout, empty on failure.
+
+    For callers that decode each name or file on its own, so one non-UTF-8
+    entry cannot hide the rest.
+    """
+    r = run_bytes(args, cwd)
+    return r.out if r.ok else b""
+
+
+def git_out(args: list[str], cwd: Path) -> str | None:
+    """``git <args>``'s stdout less its final newline, or ``None`` on failure.
+
+    Decoded with :func:`os.fsdecode`. Unlike :func:`git_text` nothing else is
+    stripped, and any byte round-trips.
+    """
+    r = run_bytes(args, cwd)
+    return os.fsdecode(r.out.removesuffix(b"\n")) if r.ok else None
+
+
+def git_path(args: list[str], cwd: Path) -> Path | None:
+    """The one path ``git <args>`` prints in ``cwd``, resolved; ``None`` on failure or none printed.
+
+    Each query asks for exactly one value: a path may hold a newline, so a
+    multi-value output could not be split back into paths.
+    """
+    out = git_out(args, cwd)
+    return Path(out).resolve() if out else None
+
+
+def git_root(start: Path | None = None) -> Path | None:
+    """The enclosing git worktree root of ``start`` (default: the working directory).
+
+    ``None`` outside one. Read as bytes (:func:`git_path`), so any directory name
+    round-trips.
+    """
+    return git_path(["rev-parse", "--show-toplevel"], start or Path.cwd())
+
+
+def is_worktree_root(path: Path, branch: str | None = None) -> bool:
+    """Whether ``path`` is the top of a git worktree, not a directory inside one.
+
+    With ``branch``, also whether that branch is checked out there.
+    """
+    if not path.is_dir() or git_root(path) != path.resolve():
+        return False
+    return branch is None or current_branch_name(path, is_worktree=True) == branch
+
+
+def git_run(repo_root: Path, *args: str) -> None:
+    """Run ``git <args>`` in ``repo_root``, output passed through. Raises ``CalledProcessError``.
+
+    Not captured on purpose: ``git fetch`` and ``git push`` write progress to the
+    terminal, and the task-lifecycle commands that use this are the ones a user
+    is watching.
+    """
+    subprocess.check_call(["git", *args], cwd=repo_root)
+
+
+def git_capture(repo_root: Path, *args: str) -> str:
+    """Raw stdout of ``git <args>`` in ``repo_root``. Raises ``CalledProcessError`` on failure.
+
+    Unlike :func:`git_checked` it keeps leading spaces: ``status --porcelain``
+    lines start with one.
+    """
+    return subprocess.run(["git", *args], cwd=repo_root, capture_output=True, text=True,
+                          check=True).stdout
 
 
 def git_text(
@@ -179,8 +308,8 @@ def merge_conflicts(repo_root: Path, ours: str, theirs: str) -> list[str] | None
     from the repository root.
     """
     # merge-tree names paths relative to the working directory, so run it at the top level.
-    top = git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root   # not a repo: merge-tree fails below
-    r = run(["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", ours, theirs], Path(top))
+    top = git_root(repo_root) or repo_root   # not a repo: merge-tree fails below
+    r = run(["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", ours, theirs], top)
     # Both outcomes print the merged tree id first; an unknown ref also exits 1, with nothing on stdout.
     fields = r.out.split("\0")
     if r.code not in (0, 1) or not fields[0].strip():

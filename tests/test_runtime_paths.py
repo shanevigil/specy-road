@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
+from specy_road.git_subprocess import git_root
 from specy_road.runtime_paths import (
     discover_project_root,
-    git_root,
     prefix_within,
     project_prefix,
     project_root,

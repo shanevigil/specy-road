@@ -24,7 +24,7 @@ from typing import Any
 from specy_road.clock import utc_now_iso
 from specy_road.fs_atomic import atomic_write_text
 from specy_road.finish_implementation_check import _clean
-from specy_road.git_subprocess import git_text, head_sha
+from specy_road.git_subprocess import current_branch_name, git_root, head_sha, is_worktree_root
 from specy_road.review_files import list_reviews, reviews_dir, reviews_root
 from specy_road.review_target import ReviewTarget
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -108,11 +108,10 @@ def start(repo_root: Path, slug: str, *, task: str, zones: list[str], review: bo
         raise WorkerError(f"every --zone must name a path; got {zones!r}")
     if (chores_dir(repo_root) / f"{slug}.json").exists():
         raise WorkerError(f"chore {slug} already exists under {chores_dir(repo_root)}; pick another slug")
-    wt = Path(worktree or git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root).resolve()
-    top = git_text(["rev-parse", "--show-toplevel"], wt) if wt.is_dir() else None
-    if not top or Path(top).resolve() != wt:
+    wt = Path(worktree or git_root(repo_root) or repo_root).resolve()
+    if not is_worktree_root(wt):
         raise WorkerError(f"{wt} is not a git worktree root")
-    branch = git_text(["branch", "--show-current"], wt)
+    branch = current_branch_name(wt, is_worktree=True)
     if not branch:
         raise WorkerError(f"{wt} has a detached HEAD; check out a branch for the chore to run on")
     chore = {"slug": slug, "task": task, "touch_zones": zones, "review": review, "model": model, "harness": harness,

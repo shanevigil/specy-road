@@ -41,7 +41,7 @@ def _repo_with_tracked_session_files(tmp_path: Path, monkeypatch) -> list[list[s
     monkeypatch.setattr(ft, "git_run", lambda _root, *a: git_calls.append(list(a)))
     monkeypatch.setattr(ft, "_update_chunk_status", lambda _n: [])
     monkeypatch.setattr(ft, "_validate_export_digest", lambda: None)
-    monkeypatch.setattr(ft, "_save_registry", lambda _d: None)
+    monkeypatch.setattr(ft, "write_registry", lambda _path, _doc: None)
     return git_calls
 
 

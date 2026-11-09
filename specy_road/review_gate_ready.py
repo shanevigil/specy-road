@@ -15,9 +15,11 @@ from specy_road import review_lock
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import base_ref, in_zones
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import commits_behind, git_stdout, git_text, merge_conflicts
+from specy_road.git_subprocess import (
+    commits_behind, current_branch_name, git_stdout, git_text, is_worktree_root, merge_conflicts,
+)
 from specy_road.nested_repos import (
-    NestedRepo, branch_tip, covers, in_nested, is_repo_top, nested_base_ref, nested_prefixes, nested_repos,
+    NestedRepo, branch_tip, covers, in_nested, nested_base_ref, nested_prefixes, nested_repos,
 )
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration_config import effective_config, roster_entry
@@ -231,7 +233,7 @@ def uncommitted_in_zone(root: Path, zones: list[str]) -> list[str] | None:
         if not covers(zones, nr.path, prefix):
             continue
         repo = root / nr.path
-        if not is_repo_top(repo):   # absent here: the nested-zone diff helper has nothing to read either
+        if not is_worktree_root(repo):   # absent here: the nested-zone diff helper has nothing to read either
             continue
         sub = _status_paths(repo)
         if sub is None:
@@ -255,14 +257,14 @@ def _nested_in_zone(root: Path, zones: list[str]) -> tuple[list[str], str | None
     command does not invent a checkout. ``nested_zone_paths`` is not used: it turns a missing base
     or an unreadable diff into no paths.
     """
-    branch = git_text(["branch", "--show-current"], root) or ""
+    branch = current_branch_name(root) or ""
     prefix = project_prefix(root)
     found: list[str] = []
     for nr in nested_repos(root):
         if not covers(zones, nr.path, prefix):
             continue
         repo = root / nr.path
-        if not is_repo_top(repo):
+        if not is_worktree_root(repo):
             continue
         base_ref_name = nested_base_ref(repo, nr)
         if not base_ref_name:
@@ -410,7 +412,7 @@ def cmd_ready(ns: argparse.Namespace) -> int:
         return _refuse(live_err)
     if failing := [f"`{v['cmd']}` exited {v['exit']}" for v in verify if v["exit"] != 0]:
         return _refuse(f"failing verifier: {'; '.join(failing)}. {_RED_GREEN_HINT}")
-    branch = git_text(["branch", "--show-current"], root)
+    branch = current_branch_name(root)
     if not branch or not t.base or not t.commit:
         return _refuse("needs a checked-out branch with a merge base on the integration branch")
     changed = diff_paths(root, f"{t.base}...{t.commit}")

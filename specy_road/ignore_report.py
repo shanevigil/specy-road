@@ -41,6 +41,8 @@ from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
+from specy_road.git_subprocess import GitError, run_bytes
+
 GITIGNORE = ".gitignore"
 #: How many matching paths the note lists before it gives a count.
 MATCH_LIMIT = 20
@@ -62,15 +64,12 @@ T = TypeVar("T")
 _isolated: Path | None = None
 
 
-class IgnoreCheckSkipped(Exception):
-    """A git call the note depends on failed; the note is skipped, never guessed."""
-
-
 def attempt(fn: Callable[[], T]) -> T | str:
     """``fn()``, or the reason it failed as a string: the note never stops the command."""
     try:
         return fn()
-    except (OSError, ValueError, subprocess.SubprocessError, IgnoreCheckSkipped) as e:
+    # GitError: a git call the note depends on failed; the note is skipped, never guessed.
+    except (OSError, ValueError, subprocess.SubprocessError, GitError) as e:
         return str(e) or type(e).__name__
 
 
@@ -103,14 +102,9 @@ def isolate_git(scratch: Path | None) -> Path | None:
 
 
 def _git(args: list[str], cwd: Path, *, stdin: bytes | None = None, ok: tuple[int, ...] = (0,)) -> bytes:
-    """Raw stdout bytes of ``git <args>``; :class:`IgnoreCheckSkipped` on any other exit."""
-    r = subprocess.run(["git", *args], cwd=cwd, input=stdin, capture_output=True, check=False, timeout=60,
-                       env=scratch_git_env(_isolated))
-    if r.returncode not in ok:
-        lines = os.fsdecode(r.stderr).strip().splitlines()
-        command = next(a for i, a in enumerate(args) if not a.startswith("-") and (i == 0 or args[i - 1] != "-c"))
-        raise IgnoreCheckSkipped(f"git {command}: {lines[-1] if lines else f'exit {r.returncode}'}")
-    return r.stdout
+    """Raw stdout bytes of ``git <args>`` in the environment :func:`isolate_git` set (bounded by
+    :data:`specy_road.git_subprocess.DEFAULT_TIMEOUT`); :class:`GitError` on any other exit."""
+    return run_bytes(args, cwd, env=scratch_git_env(_isolated), stdin=stdin).checked(args, ok)
 
 
 def _paths(raw: bytes) -> list[str]:

@@ -24,7 +24,7 @@ from typing import Any
 
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.review_files import reviews_root
-from specy_road.runtime_paths import git_path
+from specy_road.git_subprocess import git_out
 
 
 class EnvSetupError(Exception):
@@ -113,7 +113,8 @@ def exclude_links(leaf_top: Path, targets: list[Path]) -> None:
     repository, the main checkout included (where it matches the real directory, already ignored). A
     directory-only pattern such as ``node_modules/`` never matches a symlink, which git sees as a file.
     Existing bytes are never rewritten; new patterns are appended only."""
-    exclude = git_path(["rev-parse", "--path-format=absolute", "--git-path", "info/exclude"], leaf_top)
+    out = git_out(["rev-parse", "--path-format=absolute", "--git-path", "info/exclude"], leaf_top)
+    exclude = Path(out) if out else None   # not resolved: a symlinked exclude file is written through, as git reads it
     if exclude is None:
         raise EnvSetupError(f"env_setup: cannot find the git exclude file for {leaf_top}")
     existing = exclude.read_bytes() if exclude.is_file() else b""
