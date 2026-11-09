@@ -82,3 +82,18 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
+  - codename: promotion-without-wip-history
+    node_id: M22.57
+    branch: feature/rm-promotion-without-wip-history
+    touch_zones:
+      - docs/release-runbook.md
+      - docs/toolkit-development.md
+      - .github/workflows/release-publish.yml
+      - .github/workflows/validate.yml
+      - scripts/verify_wheel_contents.py
+      - scripts/check_public_hygiene.py
+      - tests/test_verify_wheel_contents.py
+      - tests/test_lean_gates.py
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
