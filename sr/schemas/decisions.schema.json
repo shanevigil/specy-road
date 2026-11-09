@@ -34,12 +34,17 @@
         "node": {
           "type": "string",
           "pattern": "^M[0-9]+(\\.[0-9]+)*$",
-          "description": "Roadmap node the entry belongs to; required for decision and human-action, optional for preference"
+          "description": "Roadmap node the entry belongs to; required for decision and human-action, optional for preference and standing-rule"
         },
         "kind": {
           "type": "string",
-          "enum": ["decision", "human-action", "preference"],
-          "description": "decision and human-action ask a person something about a leaf; preference records a routing rule the human stated for this project's sessions"
+          "enum": ["decision", "human-action", "preference", "standing-rule"],
+          "description": "decision and human-action ask a person something about a leaf; preference records a routing rule the human stated for this project's sessions; standing-rule records an operator rule under which the coordinator may accept a leaf with limits (review operator-decision --rule), with the operator's words in why_now; it is never an open question nor applied as routing"
+        },
+        "decided_by": {
+          "type": "string",
+          "enum": ["operator", "coordinator"],
+          "description": "A closed decision written by review operator-decision: operator (the operator's own words) or coordinator (under a standing rule). The review gate reads only such a decision for the blocks and shortfall its answer names"
         },
         "summary": {
           "type": "string",
@@ -77,7 +82,7 @@
         "expires": {
           "type": "string",
           "minLength": 10,
-          "description": "Preference only: active through this calendar date (YYYY-MM-DD, inclusive) or until this datetime (ISO 8601); omit for no expiry"
+          "description": "Preference and standing-rule only: active through this calendar date (YYYY-MM-DD, inclusive) or until this datetime (ISO 8601); omit for no expiry"
         },
         "asked": {
           "type": "string",
@@ -133,6 +138,25 @@
                 { "required": ["recommendation_reason"] },
                 { "required": ["default_if_unanswered"] },
                 { "required": ["needed_by"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "standing-rule" } }, "required": ["kind"] },
+          "then": {
+            "required": ["why_now"],
+            "not": {
+              "anyOf": [
+                { "required": ["options"] },
+                { "required": ["recommendation"] },
+                { "required": ["recommendation_reason"] },
+                { "required": ["default_if_unanswered"] },
+                { "required": ["needed_by"] },
+                { "required": ["role"] },
+                { "required": ["models"] },
+                { "required": ["applies_to"] },
+                { "required": ["decided_by"] }
               ]
             }
           }

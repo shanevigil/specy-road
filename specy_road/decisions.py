@@ -4,7 +4,10 @@ The same ledger holds the human's routing preferences (``kind: preference``,
 M11.58): rules stated in chat, such as which executor takes docs-only leaves,
 kept where a later session, an account switch or another agent can read them.
 Whether a model is available or paused is never a preference; that stays in the
-roster's ``available`` / ``paused_until`` fields.
+roster's ``available`` / ``paused_until`` fields. A standing operator rule
+(``kind: standing-rule``, M22.51) quotes the operator in ``why_now``; ``review
+operator-decision --rule`` accepts a leaf with limits under it. It is neither an
+open question nor a routing preference.
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ from specy_road.text_sections import find_section
 DECISIONS_REL = Path("roadmap") / "decisions.yaml"
 DECISIONS_LOCAL_REL = Path("roadmap") / "decisions.local.yaml"   # this clone only (M15.22)
 PREFERENCE = "preference"
+STANDING_RULE = "standing-rule"
 _SCHEMA_NAME = "decisions.schema.json"
 _DECISION_HEADINGS = {"decisions and notes", "decisions"}
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -108,17 +112,27 @@ def open_entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
 
 def open_questions(doc: dict[str, Any]) -> list[dict[str, Any]]:
     """Open decision and human-action entries: what the human is asked, in needed-by order."""
-    return sort_for_list([e for e in open_entries(doc) if e.get("kind") != PREFERENCE])
+    return sort_for_list([e for e in open_entries(doc) if e.get("kind") not in (PREFERENCE, STANDING_RULE)])
 
 
-def preference_active(e: dict[str, Any], now: datetime | date | None = None) -> bool:
-    """An open preference whose ``expires`` (a date, inclusive, or a datetime) has not passed."""
+def _open_unexpired(e: dict[str, Any], now: datetime | date | None) -> bool:
+    """Open, and its ``expires`` (a date, inclusive, or a datetime) has not passed."""
     # Same boundary rule as a roster pause, so `expires` and `paused_until` read alike.
     from specy_road.orchestrate_plan import _pause_active
 
-    if e.get("kind") != PREFERENCE or e.get("status") != "open":
+    if e.get("status") != "open":
         return False
     return not e.get("expires") or _pause_active({"paused_until": e["expires"]}, now)
+
+
+def preference_active(e: dict[str, Any], now: datetime | date | None = None) -> bool:
+    """An open preference whose ``expires`` has not passed."""
+    return e.get("kind") == PREFERENCE and _open_unexpired(e, now)
+
+
+def standing_rule_active(e: dict[str, Any], now: datetime | date | None = None) -> bool:
+    """An open standing operator rule whose ``expires`` has not passed."""
+    return e.get("kind") == STANDING_RULE and _open_unexpired(e, now)
 
 
 def active_preferences(doc: dict[str, Any], now: datetime | date | None = None) -> list[dict[str, Any]]:
@@ -384,8 +398,10 @@ def add_preference(
     supersedes: str | None = None,
     asked: str | None = None,
     local: bool = False,
+    kind: str = PREFERENCE,
 ) -> dict[str, Any]:
-    """Record a routing preference; ``supersedes`` closes an open preference in the same write."""
+    """Record a routing preference, or with ``kind=STANDING_RULE`` a standing operator rule whose ``why``
+    quotes the operator; ``supersedes`` closes an open preference in the same write."""
     path = decisions_path(root, local)
     doc = read_decisions(path)
     entries = doc.setdefault("entries", [])
@@ -394,7 +410,7 @@ def add_preference(
         raise ValueError(f"decision id {entry_id!r} already exists")
     if expires and (err := _paused_until_error("expires", expires.strip())):
         raise ValueError(err)
-    entry: dict[str, Any] = {"id": entry_id, "kind": PREFERENCE, "summary": summary.strip()}
+    entry: dict[str, Any] = {"id": entry_id, "kind": kind, "summary": summary.strip()}
     for key, val in (("node", node_id), ("role", role), ("why_now", (why or "").strip()),
                      ("models", models), ("applies_to", applies_to), ("expires", (expires or "").strip())):
         if val:
@@ -413,8 +429,8 @@ def add_preference(
 
 def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | None,
                 ledger_only: bool = False, local: bool = False) -> dict[str, Any]:
-    """Close an open entry. A preference (``sheet_text`` None) needs no planning-sheet record:
-    it belongs to the project's sessions, not to one leaf. ``ledger_only`` closes a decision without one
+    """Close an open entry. A preference or standing rule (``sheet_text`` None) needs no planning-sheet
+    record: it belongs to the project's sessions, not to one leaf. ``ledger_only`` closes a decision without one
     for a caller that keeps its own audit trail (``review defer``: the RCA record and its deferral marker)."""
     if sheet_text is not None and not recorded_on_sheet(sheet_text, decision_id, answer):
         print(
@@ -433,7 +449,7 @@ def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | 
             if e.get("status") != "open":
                 print(f"error: decision {decision_id!r} is not open", file=sys.stderr)
                 raise SystemExit(1)
-            if sheet_text is None and e.get("kind") != PREFERENCE and not ledger_only:
+            if sheet_text is None and e.get("kind") not in (PREFERENCE, STANDING_RULE) and not ledger_only:
                 print(f"error: decision {decision_id!r} closes only with its planning-sheet record",
                       file=sys.stderr)
                 raise SystemExit(1)
