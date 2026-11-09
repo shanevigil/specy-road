@@ -24,7 +24,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.1.12` Shipped agent templates carry no maintainer provenance comments `shipped-templates-carry-no-provenance-comments` — task — **Complete**
   - `M16.2` Mechanical clean-up, layering and the in-process CLI `mechanical-clean-up-layering-and-the-in-process-cli` — milestone — **Not Started**
     - `M16.2.1` Delete dead and unwired code from a decided list, and add vulture as an advisory CI step `delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step` — task — **Complete**
-    - `M16.2.2` Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers `shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` — task — **Not Started**
+    - `M16.2.2` Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers `shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` — task — **Complete**
     - `M16.2.3` Git queries and registry I/O go through one helper each `git-queries-and-registry-i-o-go-through-one-helper-each` — task — **Not Started**
     - `M16.2.4` One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready `one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` — task — **Not Started**
     - `M16.2.5` Library modules imported by the package move out of bundled_scripts `library-modules-imported-by-the-package-move-out-of-bundled` — task — **Not Started**
@@ -320,7 +320,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.2.2` on `feature/rm-shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` since 2026-11-09
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -335,20 +334,19 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 5 | 0 | 2.00 | 60% | 31 | 0 |
-| `CHANGELOG.md` **flagged** | 32 | 0 | 2.69 | 62% | 19 | 3 |
+| `CHANGELOG.md` **flagged** | 32 | 0 | 2.72 | 62% | 18 | 3 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 35 | 0 | 2.63 | 63% | 53 | 3 |
+| `docs` **flagged** | 34 | 0 | 2.65 | 62% | 52 | 3 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 39 | 0 | 2.59 | 56% | 57 | 4 |
-| `tests` **flagged** | 43 | 0 | 2.53 | 60% | 73 | 4 |
+| `specy_road` **flagged** | 39 | 0 | 2.62 | 56% | 56 | 4 |
+| `tests` **flagged** | 43 | 0 | 2.56 | 60% | 72 | 4 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.gitignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 3 | 0 | 2.67 | 33% | 2 | 1 |
-| `constitution` | 2 | 0 | 1.50 | 50% | 1 | 0 |
+| `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
 | `constraints` | 3 | 0 | 1.00 | 0% | 36 | 0 |
 | `gui` | 7 | 0 | 1.43 | 43% | 2 | 0 |
 | `pyproject.toml` | 4 | 0 | 2.00 | 50% | 33 | 0 |
