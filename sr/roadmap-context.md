@@ -333,6 +333,7 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
+- `M22.61` on `feature/rm-headless-question-tool-flagged` since 2026-11-09
 
 ## Quality by area
 
