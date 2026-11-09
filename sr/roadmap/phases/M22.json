@@ -455,6 +455,31 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A READY with `fix_of: <reviewer>@<commit>` lets the other family's approval at that commit count across the fix delta when every changed path is in the leaf's zones and the sheet tier on the integration branch is not trust; `delta_problem`'s docs-or-tests and `DELTA_MAX_FILES` limits do not apply to it; otherwise today's rule holds",
+        "The blocking reviewer's prompt for a `fix_of` commit lists its findings and the fix diff, and asks for a verdict on each plus new findings only where the fix broke something; tests cover carry, a trust refusal, an out-of-zone refusal, a new finding and a missing `fix_of`; docs and CHANGELOG"
+      ],
+      "codename": "review-fix-check",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.52",
+      "node_key": "8a1f81ea-bf6d-40d0-abcd-83378d39289f",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.52_review-fix-check_8a1f81ea-bf6d-40d0-abcd-83378d39289f.md",
+      "sibling_order": 47,
+      "status": "Not Started",
+      "title": "After a block, the blocking reviewer checks only its named findings; the other family's approval carries",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "tests/test_review_fix_check.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

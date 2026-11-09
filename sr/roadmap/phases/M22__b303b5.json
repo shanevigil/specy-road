@@ -457,6 +457,29 @@
         "tests/test_finish_land_roadmap_graph.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "An approval carries across commits touching only `roadmap/**`, `planning/**`, `roadmap*.md`, the registry and review bookkeeping, and across a merge from the integration branch after which the leaf's non-bookkeeping diff against its merge base is byte-identical",
+        "It never carries when the leaf's `acceptance` or `touch_zones` in the phase JSON, or its sheet's `## Tier` line, changed; tests cover each carry and each refusal; CHANGELOG"
+      ],
+      "codename": "review-wider-carry",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.53",
+      "node_key": "16565222-4b33-487d-8d34-419a6384ad6a",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.53_review-wider-carry_16565222-4b33-487d-8d34-419a6384ad6a.md",
+      "sibling_order": 48,
+      "status": "Not Started",
+      "title": "Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones",
+      "touch_zones": [
+        "specy_road/review_bookkeeping.py",
+        "tests/test_review_bookkeeping_carry.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

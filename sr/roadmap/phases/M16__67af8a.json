@@ -2,10 +2,11 @@
   "nodes": [
     {
       "acceptance": [
-        "Before the move, this sheet lists each moved module's destination under specy_road/orchestration/ (M16.5.4, M16.5.5 and later leaves resolve their zones through it); roster, model-profile, harness-facts, orchestrate plan and assign, and role-prompt library modules move there with `git mv`; role_prompt_stream folds into role_prompt; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
+        "Before the move, this sheet lists each moved module's destination under specy_road/orchestration/ (later leaves, including M23.5 and M23.6, resolve their zones through it); roster, model-profile, harness-facts, orchestrate plan and assign, and role-prompt library modules move there with `git mv`; role_prompt_stream folds into role_prompt; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
         "Their tests pass with only import paths and patch targets edited",
         "Parity harness and decision table unchanged",
-        "Estimated net line change (informational, not a gate): package about -30"
+        "Estimated net line change (informational, not a gate): package about -30",
+        "`prompt`'s options and its `would run:` line are unchanged (a parity row pins them)"
       ],
       "codename": "roster-model-profiles-harness-facts-orchestrate-and-role-prompts-move-into-orchestration",
       "dependencies": [
@@ -46,7 +47,8 @@
         "Chore, decision and preference, and lesson code moves under specy_road/orchestration/; shared internal adapters keep each record type's path, schema, ordering, ids, metadata and write behaviour; no new on-disk format; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string (expected callers: decisions_local, review_deferral, the review defer CLI, role_prompt and orchestrate)",
         "On tests/parity/records/ fixtures (a decisions.yaml with every kind including an expired preference, a review-lessons.md with prose around the lessons, a chore record mid-execution), each existing public read, add and update operation gives the same file bytes and the same returned data as before the change; no generic load-and-save round-trip API is introduced",
         "Preference routing and lesson injection into reviewer prompts give the same prompt text as at pickup",
-        "Estimated net line change (informational, not a gate): package about -60"
+        "Estimated net line change (informational, not a gate): package about -60",
+        "If M22.51 is Complete at pickup, `tests/parity/records/` includes an operator decision and a coordinator decision"
       ],
       "codename": "chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte",
       "dependencies": [
@@ -57,7 +59,7 @@
       "node_key": "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d",
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.10_chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte_24c28b1f-7b6d-4f86-8a89-a6963d9eb65d.md",
-      "sibling_order": 9,
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "Chore, decision and lesson records share internal adapters and keep their files byte for byte",
       "touch_zones": [
@@ -83,7 +85,7 @@
         "orchestration-workers, orchestration-roster and orchestration-chores merge into one workers reference; architecture folds into roadmap-authoring and install-release-candidates into install-and-usage; pm-gui-brainstorm and pm-llm-review are appended to pm-gui.md as new sections (its existing sections belong to the PM GUI work in phase M17); optional-ai-tooling-patterns becomes a short pointer",
         "A test fails when README.md or a file under docs/ matches `\\d+\\.\\d+\\.\\d+rc\\d+`, except the install section of docs/install-and-usage.md and docs/release-runbook.md (worked release examples); CHANGELOG.md and pyproject.toml are not scanned; README's setup steps describe skills, not slash-command stubs; templates cite no doc an adopter cannot open",
         "The `[gui-next]` extra stays as an alias of `[gui]` for one release with a note (project.version untouched); every moved doc's inbound links resolve, checked by tests/test_docs_links.py; a test that opens a moved doc's path (test_review_rca, test_review_record_write, test_roster_generate, test_docs_install_extras, and any other the sheet's disposition table lists) changes only that path",
-        "The roster part of the workers reference (from today's orchestration-roster.md) documents an entry as two groups: core fields (id, family, roles, may_process, public_key, available, paused_until, unavailable_until, family_pinned, class, subagent_family_lock) that the gate, eligibility and the local overlay read, and the `run:` block chosen by `run.harness`, with M16.5.5's per-harness field table and one example per harness; the version-1 form is named as deprecated until the release after 0.3.1",
+        "The roster part of the workers reference (from today's orchestration-roster.md) documents today's flat roster entry as it ships in 0.3.1; it describes no core/`run:` split and names no roster form as deprecated",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the release after 0.3.1 (maintainer, 2026-11-08)); no version heading is written",
         "Estimated net line change (informational, not a gate): docs about -1,500 in docs/ (archived text excluded)",
         "Stale notes found by the 2026-11-05 milestone audit (sr/work/milestone-audit-2026-11-05.md) are fixed: the 'Deferred past 0.3.1rc2' note is removed from M5.4, M5.6, M5.7, M5.8, M7.1, M7.2 and M8.1–M8.7; the held/proposed/'do not pick up' notes on M9, M9.1 and M9.10 and M10's 'acceptance and touch zones still to author' become a one-line landed note; M10.20's sheet drops 'deferred until after rc3'; regression-prevention.md marks 'Open decision: what green means' and 'M9.10 stays proposed' settled (M9.1 and M9.10 landed; M16.4.5's checks: block); the scaffold phase sheets of M7, M8, M9 and M10 get Intent and Approach, and phases M7–M11 get a goal, both from the audit's Purpose lines",
@@ -91,16 +93,17 @@
         "F5 lands as its own commit with tests/test_cli_help_text.py, and each --help it changes has a tests/parity/command_map.yaml row",
         "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node",
         "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies",
-        "The workers reference documents worker status/list --json as a stable interface, that a claim locks development work and not a runtime resource, that a gitignored roadmap/ needs a force-added orchestration.yaml, and that a Codex workspace-write executor needs channels.cli to commit (folded from M16.1.3 batch H: H1.7, H1.8 and H2.14 docs halves, H2.22)"
+        "The workers reference documents worker status/list --json as a stable interface, that a claim locks development work and not a runtime resource, that a gitignored roadmap/ needs a force-added orchestration.yaml, and that a Codex workspace-write executor needs channels.cli to commit (folded from M16.1.3 batch H: H1.7, H1.8 and H2.14 docs halves, H2.22)",
+        "docs/orchestration-review.md describes the review tiers, the fix-check, operator decisions and accept-with-limits, as far as each has shipped at this leaf's merge base; it describes nothing that has not shipped; it also says that a root-cause analysis precedes every escalation and that the escalate_* keys are current, not deprecated"
       ],
       "codename": "docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra",
       "dependencies": [
         "01db66ad-a91c-48e3-953e-4083f5f14a13",
-        "7b52d543-e78c-4e74-bcd1-24d5a8b3034b",
         "c840cf76-95c4-4688-a587-3bc06824fad5",
         "467b60ed-37a1-4220-ba8a-9507471e9dcc",
         "121934a1-3ec8-416e-b66c-0305b77665b5",
-        "02771e58-14a5-472d-8292-a1fb1dce7e3e"
+        "02771e58-14a5-472d-8292-a1fb1dce7e3e",
+        "93190765-913e-4da9-b5c5-70c258e2c285"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.6.1",
@@ -144,13 +147,14 @@
     },
     {
       "acceptance": [
-        "A new test tests/test_docs_shipped_commands.py (at the path M16.6.5's tests/support/layout.csv assigns, if that has landed) reuses M16.6.2's invocation extraction (shell fences and single-line code spans beginning with specy-road or specyrd; shlex; stop at a shell operator or a bare --; documented placeholders skipped) over README.md, AGENTS.md, CLAUDE.md, docs/**/*.md, constitution/**/*.md and constraints/README.md, and fails with `<path>: <token>` when a command path or option is not canonical in M16.1.1's parity inventory (a deprecated alias in tests/parity/command_map.yaml is reported as deprecated, not as a failure); it also fails when a code span or YAML key is exactly baseline_cmd, land_check_cmd, verify_cmd, one of the four grind_session_* keys, pinned, gui-next or M16.4.5's legacy review-before-finish key, unless the same line names its replacement; prose outside code spans is ignored; table-driven rows cover canonical command, unknown command, unknown option, argument after --, placeholder, removed config token, same-line replacement and prose mention; no network or harness launch; the scanned docs are fixed until it passes",
+        "A new test tests/test_docs_shipped_commands.py (at the path M16.6.5's tests/support/layout.csv assigns, if that has landed) reuses M16.6.2's invocation extraction (shell fences and single-line code spans beginning with specy-road or specyrd; shlex; stop at a shell operator or a bare --; documented placeholders skipped) over README.md, AGENTS.md, CLAUDE.md, docs/**/*.md, constitution/**/*.md and constraints/README.md, and fails with `<path>: <token>` when a command path or option is not canonical in M16.1.1's parity inventory (a deprecated alias in tests/parity/command_map.yaml is reported as deprecated, not as a failure); it also fails when a code span or YAML key is exactly baseline_cmd, land_check_cmd, verify_cmd, one of the four grind_session_* keys, gui-next or M16.4.5's legacy review-before-finish key, unless the same line names its replacement; prose outside code spans is ignored; table-driven rows cover canonical command, unknown command, unknown option, argument after --, placeholder, removed config token, same-line replacement and prose mention; no network or harness launch; the scanned docs are fixed until it passes",
         "suggested_prompts/*.md match the real formats at the branch head (templates under specy_road/templates/project/, JSON schemas, validators, docs/roadmap-authoring.md), per CLAUDE.md's adoption-prompt rule; this sheet has one line per suggested_prompts/*.md file at pickup, each `unchanged` or naming the lines edited; command and option tokens in prompts stay covered by M16.6.2's tests/test_suggested_prompts_commands.py",
-        "CHANGELOG.md's [Unreleased] section is consolidated into one adopter-facing summary (Added, Changed, Deprecated and Removed, Fixed, Upgrading); Deprecated lists each alias and old form that 0.3.1 still accepts, with the release after 0.3.1 as its removal, as old -> replacement: every former tests/parity/command_map.yaml alias, baseline_cmd, land_check_cmd, verify_cmd, M16.4.5's review-before-finish key, the four grind_session_* keys, roster `pinned` and the `[gui-next]` extra; Upgrading names specy-road upgrade, the roster run: migration and the checks: block; the diff adds no `## [0.3.1]` or `## [v0.3.1]` heading, does not change project.version and creates no tag (human-owned at promotion)",
+        "CHANGELOG.md's [Unreleased] section is consolidated into one adopter-facing summary (Added, Changed, Deprecated and Removed, Fixed, Upgrading); Deprecated lists each alias and old form that 0.3.1 still accepts, with the release after 0.3.1 as its removal, as old -> replacement: every former tests/parity/command_map.yaml alias, baseline_cmd, land_check_cmd, verify_cmd, M16.4.5's review-before-finish key, the four grind_session_* keys and the `[gui-next]` extra; Upgrading names specy-road upgrade and the checks: block; the diff adds no `## [0.3.1]` or `## [v0.3.1]` heading, does not change project.version and creates no tag (human-owned at promotion)",
         "validate, export --check and digest --check on sr/ and the dogfood fixture, file-limits, tests/test_docs_links.py and M16.6.1's release-candidate pin scan pass; this sheet lists every doc touched and the promotion steps from docs/release-runbook.md, marking the human-owned ones (version bump, CHANGELOG heading, tag)",
         "Estimated net line change (informational, not a gate): package 0; docs small; one new test about +120",
         "The upgrading notes say that reviews filed by hand no longer count toward the review gate",
-        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies"
+        "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies",
+        "docs/orchestration-review.md describes the review tiers, the fix-check, operator decisions and accept-with-limits, as far as each ships in 0.3.1; it describes nothing that does not ship; it also says that a root-cause analysis precedes every escalation and that the escalate_* keys are current, not deprecated"
       ],
       "codename": "release-docs-0-3-1",
       "dependencies": [
@@ -320,8 +324,8 @@
     },
     {
       "acceptance": [
-        "scripts/ruff_quality_baseline.json records, per file under specy_road, scripts and tests, the number of ruff findings per rule family — C901 (waivers ignored: counted with `--ignore-noqa`), PL, B, SIM, RET, N, and D102/D103 (docstrings on public methods and functions) — counted at pickup by scripts/ruff_quality_baseline.py with `ruff check --select <family> --output-format json`; tests/test_ruff_quality_baseline.py fails when a file's count in a family rises or a file outside the baseline has a finding; `python scripts/ruff_quality_baseline.py --shrink` lowers entries and never raises one",
-        "For a move or fold a leaf records as old path -> new path, `python scripts/ruff_quality_baseline.py --transfer OLD NEW` moves OLD's entries onto NEW, summed per family; the per-family totals never rise; outside recorded moves every file keeps its own shrink-only check. No code is fixed in this leaf",
+        "scripts/ruff_quality_baseline.json records, per file under specy_road, scripts and tests, the number of ruff findings per rule family — C901 (waivers ignored: counted with `--ignore-noqa`), PL, B, SIM, RET, N, and D102/D103 (docstrings on public methods and functions) — counted at pickup by scripts/ruff_quality_baseline.py with `ruff check --select <family> --output-format json`; `python scripts/lean_metrics.py --check` reports each file whose count in a family rose or that is outside the baseline; the report never fails, and no test or CI step fails on a family count; `python scripts/ruff_quality_baseline.py --shrink` lowers entries and never raises one",
+        "For a move or fold a leaf records as old path -> new path, `python scripts/ruff_quality_baseline.py --transfer OLD NEW` moves OLD's entries onto NEW, summed per family, so the report compares moved code with its old counts. No code is fixed in this leaf",
         "The families are selected only by the baseline script: pyproject.toml's ruff selection and today's `ruff check` CI gate are unchanged, and no tool other than ruff is added (mypy, radon and duplication detectors are out of scope for M16)",
         "`python scripts/lean_metrics.py --check` (M16.1.7) prints each family's total and its delta from the baseline commit, and docs/release-runbook.md's checklist records those totals, the width total and M16.2.6's import-cycle count for each release",
         "Estimated net line change (informational, not a gate): package 0; scripts and tests about +80 plus the generated quality baseline file"
@@ -338,7 +342,7 @@
       "planning_dir": "planning/M16.1.11_ruff-quality-family-baseline_467b60ed-37a1-4220-ba8a-9507471e9dcc.md",
       "sibling_order": 10,
       "status": "Not Started",
-      "title": "Ruff quality rule families with per-file shrink-only baselines and per-release totals",
+      "title": "Ruff quality rule families reported per file against a baseline, with per-release totals",
       "touch_zones": [
         "scripts/ruff_quality_baseline.py",
         "scripts/ruff_quality_baseline.json",
@@ -357,10 +361,10 @@
       ],
       "codename": "worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only",
       "dependencies": [
-        "449eeb3e-1874-4b25-841c-2b1fed8e2363",
         "e129232c-a131-477e-bb91-12699f010034",
         "17405142-e2fa-4516-83e2-e536820d1ec2",
-        "9022edcd-0ffa-48b3-829d-0ad51f8d6866"
+        "9022edcd-0ffa-48b3-829d-0ad51f8d6866",
+        "74ac34a2-084a-4dd3-84ec-ac37b20dd983"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.5.1",

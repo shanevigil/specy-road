@@ -17,10 +17,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.1.5` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Complete**
     - `M16.1.6` Review-policy evidence: how often each optional review policy changed a gate outcome `review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` — task — **Complete**
     - `M16.1.7` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Complete**
-    - `M16.1.8` A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided `ruff-quality-baseline` — task — **Not Started**
+    - `M16.1.8` A 100-character line-width report against a baseline, and the consumer file-limit default decided `ruff-quality-baseline` — task — **Not Started**
     - `M16.1.9` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Complete**
     - `M16.1.10` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Complete**
-    - `M16.1.11` Ruff quality rule families with per-file shrink-only baselines and per-release totals `ruff-quality-family-baseline` — task — **Not Started**
+    - `M16.1.11` Ruff quality rule families reported per file against a baseline, with per-release totals `ruff-quality-family-baseline` — task — **Not Started**
     - `M16.1.12` Shipped agent templates carry no maintainer provenance comments `shipped-templates-carry-no-provenance-comments` — task — **Complete**
   - `M16.2` Mechanical clean-up, layering and the in-process CLI `mechanical-clean-up-layering-and-the-in-process-cli` — milestone — **Not Started**
     - `M16.2.1` Delete dead and unwired code from a decided list, and add vulture as an advisory CI step `delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step` — task — **Not Started**
@@ -28,7 +28,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.3` Git queries and registry I/O go through one helper each `git-queries-and-registry-i-o-go-through-one-helper-each` — task — **Not Started**
     - `M16.2.4` One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready `one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` — task — **Not Started**
     - `M16.2.5` Library modules imported by the package move out of bundled_scripts `library-modules-imported-by-the-package-move-out-of-bundled` — task — **Not Started**
-    - `M16.2.6` A shrink-only layering gate records the import cycles and package-to-entry-point imports `a-shrink-only-layering-gate-records-the-import-cycles-and-package-to-entry-point-imports` — task — **Not Started**
+    - `M16.2.6` A committed report of the import cycles and package-to-entry-point imports `a-committed-report-of-the-import-cycles-and-package-to-entry` — task — **Not Started**
     - `M16.2.7` Break the 45-module import cycle through the graph loader, the brief and validate `break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate` — task — **Not Started**
     - `M16.2.8` Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI `break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli` — task — **Not Started**
     - `M16.2.9` Commands run in the CLI's process: no python -m re-launch, no cwd globals `commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals` — task — **Not Started**
@@ -48,22 +48,16 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.4.3` review status, review packet, and decisions --kind lesson replace handoff status, review list, review-packet and lessons `review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session` — task — **Not Started**
     - `M16.4.4` milestone and planning command groups, and archive --hard-remove replaces archive-node `milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node` — task — **Not Started**
     - `M16.4.5` One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points `one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points` — task — **Not Started**
-    - `M16.4.6` checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose) `checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose` — task — **Not Started**
   - `M16.5` Orchestration subpackage, roster split and review-gate folds `orchestration-subpackage-roster-split-and-review-gate-folds` — milestone — **Not Started**
     - `M16.5.1` Worker runtime moves into orchestration/workers with import-path edits only `worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only` — task — **Not Started**
     - `M16.5.2` worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes `worker-ops-parts-and-the-worker-siblings-fold-into-their-parents-and-the-module-class-swap-goes` — task — **Not Started**
     - `M16.5.3` Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration `roster-model-profiles-harness-facts-orchestrate-and-role-prompts-move-into-orchestration` — task — **Not Started**
-    - `M16.5.4` One check_assignment decides eligibility for every launch and for the gate `one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate` — task — **Not Started**
-    - `M16.5.5` Roster entries split into core fields and a typed run: block, read in both forms `roster-core-and-run-block` — task — **Not Started**
-    - `M16.5.6` upgrade migrates rosters to core fields plus run: `roster-upgrade-to-run-block` — task — **Not Started**
     - `M16.5.7` Shared-checkout guard and session presence move into orchestration `shared-checkout-guard-and-session-presence-move-into-orchestration` — task — **Not Started**
-    - `M16.5.8` The guard classifier becomes three rule tables with every verdict unchanged `the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged` — task — **Not Started**
     - `M16.5.9` Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings `grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings` — task — **Not Started**
     - `M16.5.10` Chore, decision and lesson records share internal adapters and keep their files byte for byte `chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte` — task — **Not Started**
     - `M16.5.11` Grind settings move under grind: in git-workflow.yaml, migrated by upgrade `grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade` — task — **Not Started**
-    - `M16.5.12` Fold the review gate and escalation fragments, and mark the policies the evidence did not keep as deprecated `fold-the-review-gate-and-escalation-fragments-and-mark-the-policies-the-evidence-did-not-keep-as-deprecated` — task — **Not Started**
+    - `M16.5.12` Fold the review gate fragments; no review policy is deprecated `fold-the-review-gate-fragments-no-review-policy-is-deprecated` — task — **Not Started**
     - `M16.5.13` The review packet fragments fold into review_packet `the-review-packet-fragments-fold-into-review-packet` — task — **Not Started**
-    - `M16.5.14` Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it `post-fix-refactor-gate-ready-and-the-review-packet-report-any-complexity-growth-and-policy-can-block-on-it` — task — **Not Started**
   - `M16.6` Docs and tests reorganised by topic `docs-and-tests-reorganised-by-topic` — milestone — **Not Started**
     - `M16.6.1` Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra `docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` — task — **Not Started**
     - `M16.6.2` suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout `suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` — task — **Not Started**
@@ -177,7 +171,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.48` A shared reviewer name closes the gate only when it could be the leaf's writer `shared-names-close-only-when-they-could-be-the-writer` — task — **Complete**
   - `M22.49` A sandboxed Claude worker resumes after the executor account changes `sandboxed-worker-resumes-after-an-account-switch` — task — **Complete**
   - `M22.50` finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk `finish-keeps-complete-when-the-chunk-conflicts` — task — **Complete**
-  - `M22.51` The operator decides a leaf's review outcome by saying so; the coordinator records it `operator-decision-record` — task — **Not Started**
+  - `M22.51` An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both `operator-decision-record` — task — **Not Started**
+  - `M22.52` After a block, the blocking reviewer checks only its named findings; the other family's approval carries `review-fix-check` — task — **Not Started**
+  - `M22.53` Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones `review-wider-carry` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -244,6 +240,11 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M23.1` Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review `sibling-heads-come-from-the-reviewed-checkout` — task — **Not Started**
   - `M23.2` Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window `gate-the-release-that-shipped-the-m16-aliases-is-out-and-the-maintainer-closes-the-alias-window` — gate — **Not Started**
   - `M23.3` After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims `after-the-alias-window-delete-the-deprecated-command-aliases-config-form-fallbacks-and-re-export-shims` — task — **Not Started**
+  - `M23.4` checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose) `checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose` — task — **Not Started**
+  - `M23.5` One check_assignment decides eligibility for every launch and for the gate `one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate` — task — **Not Started**
+  - `M23.6` Roster entries split into core fields and a typed run: block, read in both forms `roster-core-and-run-block` — task — **Not Started**
+  - `M23.7` upgrade migrates rosters to core fields plus run: `roster-upgrade-to-run-block` — task — **Not Started**
+  - `M23.8` The guard classifier becomes three rule tables with every verdict unchanged `the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged` — task — **Not Started**
 
 ## Open gates
 

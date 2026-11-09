@@ -28,7 +28,7 @@ Per-function / `hard_alerts.max_lines_per_function` apply to **`.py`** and **`.t
 
 Every M16 leaf follows these rules; review checks them.
 
-- **Behaviour is preserved.** The parity harness ([`tests/parity/`](../../tests/parity/README.md)), the review-gate decision table and the leaf's own parity tables stay green. Two named exceptions add behaviour: zone-scoped `checks:` gates (M16.4.6) and the complexity gate (M16.5.14).
+- **Behaviour is preserved.** The parity harness ([`tests/parity/`](../../tests/parity/README.md)), the review-gate decision table and the leaf's own parity tables stay green.
 - **Line estimates are informational.** Each leaf carries an estimated line change as its last acceptance line; it is never a gate.
 - **No new knob without a removal.** No new config key, policy key or command without retiring one.
 - **Adopter feedback is parked** until M16 ends.
@@ -51,9 +51,9 @@ Maintainer, 2026-11-05, revision 3: the goal is quality, not lines.
   - clear module boundaries and no new import cycle (M16.2.6);
   - explicit dependencies: module globals, and functions that call the clock or git themselves, are given those as parameters where a test needs a seam, with no dependency-injection framework;
   - one statement of each rule rather than copies.
-- **No touched function rises in complexity** (the M16.5.14 rule).
+- **No touched function rises in complexity.**
 - **Docstrings and comments that explain intent are kept or improved,** never stripped to save lines.
 - **Names say what the code does.**
 - **No code squashing:** no joined statements, removed blank lines, shortened names or deleted explanations to meet a number.
-- **The quality metrics never regress in a leaf:** M16.1.8's ruff family baseline, line width, and M16.2.6's layering gate.
+- **The quality metrics are reported, not gated:** M16.1.8's ruff family baseline, line width, and M16.2.6's layering report. A rise shows in the report; no test or CI step fails on it.
 - **Line-count estimates are informational:** never by themselves a review finding or a gate.

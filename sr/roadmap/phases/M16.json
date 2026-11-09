@@ -215,7 +215,8 @@
         "The top-level CLI imports a command's module and calls its `main(argv)` in the same process. These are gone: doctor.py's nested registry_prune launch, mark_implementation_reviewed.py's nested specy_road.cli launch, `cli._args_repo_root_first`, `cli_entry.run_forwarded_cli` (history_cli, digest_cli, search_cli and brainstorm_cli call their parsers directly) and the guard CLI's prefix stripping, and the module-level `ROOT = Path.cwd()` globals in mark_implementation_reviewed, pm_sync, do_next_task, abort_task_pickup, finish_task and start_milestone_session; a test fails if cli.py, cli_entry.py, doctor.py or mark_implementation_reviewed.py starts `python -m specy_road`; any other command module changes only its main's argv handling, as the dispatcher table records",
         "Every recorded case gives byte-identical stdout, stderr and exit code in process, including two `main(argv)` calls in one process from two repo roots",
         "Parity harness byte-identical",
-        "Estimated net line change (informational, not a gate): package about -100"
+        "Estimated net line change (informational, not a gate): package about -100",
+        "`prompt`'s options and its `would run:` line are unchanged (a parity row pins them)"
       ],
       "codename": "commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals",
       "dependencies": [
@@ -254,7 +255,7 @@
     {
       "acceptance": [
         "The consumer template's constraints/file-limits.yaml matches the toolkit: max_lines_per_file 1,000 with a 750-line warning (maintainer decision, 2026-11-05)",
-        "scripts/line_width_baseline.json records, per file under specy_road, scripts and tests, the number of lines over 100 characters at pickup (counted with `ruff check --select E501 --line-length 100 --output-format json`); a test fails when a file's count rises or a file outside the baseline has any, and when a count falls the entry must be lowered in the same change; for a move or fold a leaf records as old path -> new path, the width baseline's `--transfer OLD NEW` moves OLD's count onto NEW and the total never rises. No code is reformatted or fixed in this leaf; the fold leaves rewrap the files they merge and lower their width entries",
+        "scripts/line_width_baseline.json records, per file under specy_road, scripts and tests, the number of lines over 100 characters at pickup (counted with `ruff check --select E501 --line-length 100 --output-format json`); `python scripts/lean_metrics.py --check` reports each file whose count rose or that is outside the baseline, and the total against the baseline; the report never fails, and no test or CI step fails on a width count; for a move or fold a leaf records as old path -> new path, the width baseline's `--transfer OLD NEW` moves OLD's count onto NEW. No code is reformatted or fixed in this leaf; the fold leaves rewrap the files they merge and lower their width entries",
         "upgrade never rewrites an existing project's constraints/file-limits.yaml: it prints one notice naming the new template default when the project's values differ, and docs/file-limits.md and docs/upgrading.md say the same; the rc3-shaped `upgrade --dry-run` golden differs only by that notice; the toolkit stays at 1,000 lines with a 750 warning; tests/test_upgrade_file_limits_notice.py pins that notice",
         "CHANGELOG.md's [Unreleased] section records the new consumer default and that upgrade leaves existing projects' files alone; no version heading is written",
         "Estimated net line change (informational, not a gate): package 0; config about +40; scripts and tests about +70 plus the generated width baseline file",
@@ -276,7 +277,7 @@
       "planning_dir": "planning/M16.1.8_ruff-quality-baseline_c840cf76-95c4-4688-a587-3bc06824fad5.md",
       "sibling_order": 7,
       "status": "Not Started",
-      "title": "A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided",
+      "title": "A 100-character line-width report against a baseline, and the consumer file-limit default decided",
       "touch_zones": [
         "pyproject.toml",
         "constraints/file-limits.yaml",
@@ -292,7 +293,8 @@
         "tests/test_upgrade_file_limits_notice.py",
         "sr/constraints/file-limits.yaml",
         "sr/constraints/README.md",
-        "scripts/line_width_baseline.py"
+        "scripts/line_width_baseline.py",
+        "scripts/lean_metrics.py"
       ],
       "type": "task"
     },
@@ -423,7 +425,8 @@
         "Each old name works for one release with one deprecation line, is hidden from top-level help and is a row of tests/parity/command_map.yaml",
         "Docs, templates, skills and stubs, and suggested_prompts use the new names in the same change; the stale-command check passes; goldens differ only for map rows",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the release after 0.3.1 (maintainer, 2026-11-08)); no version heading is written",
-        "Estimated net line change (informational, not a gate): package about -80"
+        "Estimated net line change (informational, not a gate): package about -80",
+        "Commands the package prints (next-step rows, RCA and coordinator prompt text) use the new names"
       ],
       "codename": "review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session",
       "dependencies": [
@@ -452,7 +455,10 @@
         "specy_road/templates/specyrd/",
         "tests/parity/",
         "tests/",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/review_next_step.py",
+        "specy_road/review_rca.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py"
       ],
       "type": "task"
     },
