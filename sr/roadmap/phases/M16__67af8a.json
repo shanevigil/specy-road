@@ -2,7 +2,7 @@
   "nodes": [
     {
       "acceptance": [
-        "Before the move, this sheet lists each moved module's destination under specy_road/orchestration/ (M16.5.4, M16.5.5 and later leaves resolve their zones through it); roster, model-profile, harness-facts, orchestrate plan and assign, and role-prompt library modules move there with `git mv`; role_prompt_stream folds into role_prompt; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
+        "Before the move, this sheet lists each moved module's destination under specy_road/orchestration/ (later leaves, including M23.5 and M23.6, resolve their zones through it); roster, model-profile, harness-facts, orchestrate plan and assign, and role-prompt library modules move there with `git mv`; role_prompt_stream folds into role_prompt; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
         "Their tests pass with only import paths and patch targets edited",
         "Parity harness and decision table unchanged",
         "Estimated net line change (informational, not a gate): package about -30",
