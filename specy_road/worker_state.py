@@ -14,8 +14,8 @@ hold everything together. There is **one writer** per worker, named by the
 lease (``broker`` while specy-road sends turns, ``human`` after a handoff,
 ``native`` for an adopted session we only watch); and the log is
 **authoritative**: a vendor transcript is evidence, this log is what the
-coordinator is entitled to assume (design note
-``docs/design-notes/v0-3-1-worker-orchestration.md``, decisions D3 and D5).
+coordinator is entitled to assume (v0.3.1 worker-orchestration design note,
+decisions D3 and D5).
 """
 
 from __future__ import annotations

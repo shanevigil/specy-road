@@ -7,8 +7,7 @@ the **failing acceptance ids**. A loop is **converging** when, over its last
 least once, and the latest round fails no acceptance id. Fewer than ``n`` rounds
 (or any of them with an unknown count) is not enough evidence: never converging. While it converges,
 ``review_rca.escalation`` defers its ``same_family`` and ``review_rounds`` rules
-unless ``policy.escalate_when_converging`` is true. Design:
-``docs/design-notes/review-loop-rca.md``.
+unless ``policy.escalate_when_converging`` is true.
 """
 
 from __future__ import annotations

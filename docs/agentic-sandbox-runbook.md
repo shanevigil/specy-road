@@ -400,7 +400,7 @@ Opt-in, outside every pass criterion. Render the executor prompts of §2.8, §4.
 prompt then asks for three lines at the end of the summary, `missing:` / `wrong:` / `unused:`, each quoting the brief or
 prompt line or naming the turn, or `none`. Copy them into the evidence file with the prompt's `sha256`. **Triage rule:**
 act on an item only when it quotes a line or names a turn **and** recurs in another run or reproduces against the brief
-and the transcript; record offered / cited / reproduced per run. Hit rate and shipping decision: [`design-notes/context-feedback-pilot.md`](design-notes/context-feedback-pilot.md).
+and the transcript; record offered / cited / reproduced per run.
 
 ## 11. Driving a guest over MCP
 

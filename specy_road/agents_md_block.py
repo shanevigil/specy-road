@@ -3,8 +3,8 @@
 ``init project`` used to write the whole of ``AGENTS.md`` and skip an existing
 one; then it wrote the full rule set as a managed block inside it, which still
 took over much of a file the team owns and left no place for a team's own
-specy-road notes that ``upgrade`` would never touch. So (design note
-``docs/design-notes/agent-guidance-and-shared-checkouts.md``, 2026-11-04):
+specy-road notes that ``upgrade`` would never touch. So (agent-guidance and
+shared-checkouts design note, 2026-11-04):
 
 - ``.specyrd/AGENTS.md`` under the project root holds the full rule set.
   specy-road owns it; ``refresh-stubs`` (so ``upgrade``) rewrites it whole.

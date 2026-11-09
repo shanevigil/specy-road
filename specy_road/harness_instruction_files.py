@@ -4,7 +4,7 @@ Split from :mod:`specy_road.agents_md_block`, which measures and reports what
 these walkers find. Sources: code.claude.com/docs/en/memory,
 developers.openai.com/codex/guides/agents-md, the Cursor CLI changelog
 (2026.10.22) and the Copilot CLI release notes (1.0.100), as summarised in
-docs/design-notes/harness-compatibility-triage.md and the 2026-11-02
+the harness compatibility triage and the 2026-11-02
 harness-capabilities research.
 """
 

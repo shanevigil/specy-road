@@ -24,9 +24,6 @@ from specy_road.worker_adapter_base import file_instruction
 from specy_road.worker_adapter_codex import profile_home
 from specy_road.worker_adapters import Codex, Cursor, Unsupported, reviewer_cli
 
-M87_NOTE = Path(__file__).resolve().parents[1] / "docs" / "design-notes" / "M8.7-runtime-verification-harness-facts.md"
-
-
 def _record(repo: Path) -> Path:
     return rf.review_path(repo, "M1.1", "opus")
 
@@ -201,7 +198,6 @@ def test_cursor_reviewer_runs_ask_mode_without_force(tmp_path: Path) -> None:
     resumed = Cursor().reviewer_launch(prompt, None, tmp_path, session=("s1", True))
     assert resumed.argv == ["agent", "-p", "--resume", "s1", "--output-format", "stream-json", "--mode", "ask",
                             "--trust", told] and resumed.session_id == "s1"
-    assert "Review-only runs omit `--force`" in M87_NOTE.read_text(encoding="utf-8")   # the note the code matches
     assert "--force" not in Cursor().launch(prompt, tmp_path, None, None).argv          # executors: sandboxed
     assert "--force" in Cursor().launch(prompt, tmp_path, None, None, force=True).argv  # unless the roster opts in
 
@@ -221,7 +217,6 @@ def test_codex_reviewer_runs_read_only_with_the_output_schema(tmp_path: Path) ->
     assert resumed.argv == ["codex", "exec", "resume", "--json", "-m", "gpt-6.1-sol", "-c", "sandbox_mode=read-only",
                             "-c", "approval_policy=never", *memory, "t1", "-"]
     assert resumed.env == {"CODEX_HOME": str(profile_home("gpt-6.1-sol"))}
-    assert "sandbox_mode=read-only" in M87_NOTE.read_text(encoding="utf-8")
 
 
 def test_a_codex_review_delegate_files_the_verdict_from_its_output_file(tmp_path: Path, monkeypatch) -> None:

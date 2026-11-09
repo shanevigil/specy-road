@@ -36,7 +36,7 @@ The command is `specy-road brainstorm`. It runs in four passes, and keeping them
 | Evidence | `brainstorm evidence` | Sources for the shortlist `recommend` produced: a verbatim quote, URL, date and tool per claim, with at least one disconfirming search. |
 | Triage, promote | `accept` / `reject` / `park`, `promote` | Nothing. These are the human's. |
 
-The design rests on what the research found about today's models (design note: [`design-notes/v0-3-1-brainstorm-v2.md`](design-notes/v0-3-1-brainstorm-v2.md)): model-generated idea pools are **homogeneous** — one long pass mostly buys duplicates after the first few dozen — and the cheap mechanics that measurably widen them are regeneration against the visible pool, planned allocation across directions, personas and constraints, and concept cards in prose before any form. Named methods (SCAMPER, TRIZ) add little on their own, so the lenses stay as coverage scaffolding. Agent citations are right 40–80% of the time, so a URL is not evidence until a quote on the page backs it.
+The design rests on what the research found about today's models: model-generated idea pools are **homogeneous** — one long pass mostly buys duplicates after the first few dozen — and the cheap mechanics that measurably widen them are regeneration against the visible pool, planned allocation across directions, personas and constraints, and concept cards in prose before any form. Named methods (SCAMPER, TRIZ) add little on their own, so the lenses stay as coverage scaffolding. Agent citations are right 40–80% of the time, so a URL is not evidence until a quote on the page backs it.
 
 ### What the agent may write
 

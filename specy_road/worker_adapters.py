@@ -2,7 +2,7 @@
 
 One adapter per harness the roster may name (``claude-code``, ``codex``, ``cursor``, ``generic``). Each builds
 the documented one-shot command of its CLI (verified against the vendors' docs on 2026-10-27, see
-``docs/design-notes/v0-3-1-worker-orchestration.md`` D2), turns the CLI's JSON output lines into worker events,
+the v0.3.1 worker-orchestration design note, D2), turns the CLI's JSON output lines into worker events,
 and says which of the lifecycle operations it supports. What it does not support is declared, never emulated:
 a one-shot CLI has no interrupt short of killing the process, so ``interrupt`` is ``False`` and the command says
 so, rather than a kill being dressed up as one. The long-lived protocols (Codex app-server, Cursor ACP) are the

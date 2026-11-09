@@ -15,8 +15,8 @@
 # contains plan, memory, task, todo, worktree, branch, commit, push, pr, background,
 # delegate, cloud, schedule, review, resume, fork, autopilot, goal, loop, queue, persist,
 # gist, fleet, teleport, remote or spawn fails `refresh-profiles --capture` until it is
-# listed here. Rows F1-F22 of the 2026-11-02 triage are recorded in
-# docs/design-notes/harness-facts-2026-11-02-triage.md.
+# listed here. Rows F1-F22 of the 2026-11-02 triage are recorded in the toolkit
+# maintainers' triage notes, which are not published.
 version: 1
 harnesses:
   - id: claude-code
@@ -29,7 +29,7 @@ harnesses:
     headless_command:
       value: claude -p --output-format stream-json --verbose --session-id <uuid> --model <id> --permission-mode acceptEdits (prompt on stdin)
       label: documented
-      source: specy_road/worker_adapters.py; docs/design-notes/harness-compatibility-triage.md
+      source: specy_road/worker_adapters.py; harness compatibility triage (2026-10-28)
     executor_template:
       value: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
       renders_cli_for: [Anthropic Claude]
@@ -38,11 +38,11 @@ harnesses:
     session_flags:
       value: --session-id <uuid> chosen up front; --resume <id> to continue, from any directory or worktree on the machine (the session is found by its id); never --continue across worktrees. Transcripts are ~/.claude/projects/<project>/<session-id>.jsonl, kept 30 days by default (cleanupPeriodDays), so a worker idle longer cannot resume
       label: documented
-      source: https://code.claude.com/docs/en/headless (continue conversations); https://code.claude.com/docs/en/sessions; docs/design-notes/harness-compatibility-triage.md; 2026-11-02 triage F8
+      source: https://code.claude.com/docs/en/headless (continue conversations); https://code.claude.com/docs/en/sessions; harness compatibility triage (2026-10-28); 2026-11-02 triage F8
     permission_example:
       value: --permission-mode acceptEdits, or dontAsk with --allowedTools allow rules; bypassPermissions only inside an external sandbox. Since 2.1.302 -p silently denies unapproved tools. A denial does not stop the run - stream-json emits permission_denied system messages, the result lists them in permission_denials, and the process exits 0 (M8.7 run, 2.1.312); --permission-prompts none (2.1.259+) denies anything that would prompt and tells Claude not to retry; deny rules go in --disallowedTools, e.g. "Bash(git push *)" (a trailing ' *' is a prefix match)
       label: documented
-      source: https://code.claude.com/docs/en/headless (auto-approve tools; turn off permission prompts); docs/design-notes/M8.7-runtime-verification-harness-facts.md (exit 0 on a denial); harness-captures/claude-code/help.txt (--disallowedTools); 2026-11-02 triage F5
+      source: https://code.claude.com/docs/en/headless (auto-approve tools; turn off permission prompts); M8.7 runtime verification (exit 0 on a denial); harness-captures/claude-code/help.txt (--disallowedTools); 2026-11-02 triage F5
     instruction_files:
       value: [CLAUDE.md, .claude/CLAUDE.md, .claude/rules/*.md, CLAUDE.local.md]
       size_guidance: under 200 lines per file (vendor target); a file over 4 MiB is skipped and none of it loads; .claude/rules/ is read recursively; subdirectory CLAUDE.md files and path-scoped rules load on demand, when Claude touches a file there, with a smaller per-file limit; the managed policy CLAUDE.md and ~/.claude/CLAUDE.md (and ~/.claude/rules/) load on every machine-level session; AGENTS.md and .claude/AGENTS.md only when none of the project files exists; AGENTS.override.md is never read; --bare skips all of these
@@ -51,7 +51,7 @@ harnesses:
     skill_dirs:
       value: [.claude/skills, .claude/commands, .claude/agents]
       label: documented
-      source: https://code.claude.com/docs/en/headless (bare mode lists skills, custom commands and subagents as discovered; --agents <json> adds subagents; subagent messages carry parent_tool_use_id); docs/design-notes/harness-compatibility-triage.md; 2026-11-02 triage F3
+      source: https://code.claude.com/docs/en/headless (bare mode lists skills, custom commands and subagents as discovered; --agents <json> adds subagents; subagent messages carry parent_tool_use_id); harness compatibility triage (2026-10-28); 2026-11-02 triage F3
     hooks:
       value: PreToolUse hooks in .claude/settings.json fire under claude -p and block with exit 2; --bare skips every hook. Exit 1 (or any code but 0 and 2) does not block; a hook that times out does not block unless it sets onFailure "block" (2.1.295+); hookSpecificOutput.permissionDecision "deny" on exit 0 also blocks; -p runs a project's hooks with no trust prompt, even in a folder never trusted
       label: documented
@@ -60,7 +60,7 @@ harnesses:
       - action: commits when asked, with an attribution trailer by default
         switch: unknown (attribution CLI setting not checked; Co-Authored-By trailer observed at runtime)
         label: runtime
-        source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (claude 2.1.312, nested/sub commit 2026-11-02)
+        source: M8.7 runtime verification (claude 2.1.312, nested/sub commit 2026-11-02)
       - action: --worktree / -w creates its own git worktree
         switch: never pass -w/--worktree; specy-road creates the worktree
         label: runtime
@@ -68,7 +68,7 @@ harnesses:
       - action: --bg / --background and routines run sessions specy-road does not own (-p rejects --bg)
         switch: never pass --bg; CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1
         label: documented
-        source: https://code.claude.com/docs/en/headless; docs/design-notes/harness-compatibility-triage.md; 2026-11-02 triage F7
+        source: https://code.claude.com/docs/en/headless; harness compatibility triage (2026-10-28); 2026-11-02 triage F7
       - action: claude -p stays open after its reply for background commands, background subagents and workflows, Monitor watches and pending /loop wakeups it started, ending them after 10 minutes of continuous idle waiting (a running background command or a pending /loop wakeup extends the wait past that cap)
         switch: CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 or --bare (no background tasks); CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS changes the 10-minute cap; --max-budget-usd stops the remaining work
         label: documented
@@ -88,7 +88,7 @@ harnesses:
     model_families:
       value: [anthropic]
       label: documented
-      source: docs/design-notes/harness-compatibility-triage.md
+      source: harness compatibility triage (2026-10-28)
     quota:
       value: a usage limit prints a message with a reset time; grind-session waits out a timed limit and stops on a spend cap or unrecognised wording. A retryable API failure emits system/api_retry (error "rate_limit", retry_delay_ms, attempt, max_retries) before retrying; the reset time is only in the message text. The exit code on a limit is not dependable - vendor issues report exit 0 with subtype success and the error only in result (#79500), exit 1 with api_error usage_limit_reached and nothing on stdout (#103820), and exit 1 "No messages returned from query" (#103253) - so read the result line and the transcript, never the exit code
       label: documented
@@ -161,7 +161,7 @@ harnesses:
     session_flags:
       value: thread id from the thread.started event; codex exec resume <id> - to continue; --last is cwd-scoped. A resume carries only the conversation, so sandbox, approval, model and memory settings are passed again; 0.166.0 keeps acknowledged approval and permission settings on resume and fork; resume by id from a sibling worktree is undocumented
       label: documented
-      source: https://github.com/openai/codex/pull/4583; https://learn.chatgpt.com/docs/changelog (Codex CLI 0.166.0); docs/design-notes/harness-compatibility-triage.md; 2026-11-02 triage F11
+      source: https://github.com/openai/codex/pull/4583; https://learn.chatgpt.com/docs/changelog (Codex CLI 0.166.0); harness compatibility triage (2026-10-28); 2026-11-02 triage F11
     permission_example:
       value: -c sandbox_mode=workspace-write -c approval_policy=never (exec has no --ask-for-approval; its default sandbox is read-only); --full-auto is no longer supported (use --sandbox workspace-write)
       label: runtime
@@ -174,7 +174,7 @@ harnesses:
     skill_dirs:
       value: [.agents/skills]
       label: runtime
-      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (codex-cli 0.165.0 loads .agents/skills at exec start, 2026-11-02)
+      source: M8.7 runtime verification (codex-cli 0.165.0 loads .agents/skills at exec start, 2026-11-02)
     hooks:
       value: PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently. Hooks are on by default (features list shows hooks stable true on a fresh CODEX_HOME, 0.166.0; [features] hooks = false turns them off); --dangerously-bypass-hook-trust runs enabled hooks without persisted trust for one invocation
       label: documented
@@ -183,7 +183,7 @@ harnesses:
       - action: .git and the linked gitdir are read-only inside workspace-write, so the executor cannot commit
         switch: none; the adapter commits on the worker's behalf (decision 2026-10-29, M8.2)
         label: documented
-        source: docs/design-notes/harness-compatibility-triage.md
+        source: harness compatibility triage (2026-10-28)
       - action: --worktree runs the session in a new managed git worktree
         switch: never pass --worktree
         label: runtime
@@ -195,7 +195,7 @@ harnesses:
       - action: memories (memories.use_memories, memories.generate_memories); the 0.165.0 changelog enables memory v2 by default for fresh profiles, while the 0.166.0 features list on a fresh CODEX_HOME shows the memories feature stable false; the key names under v2 are not documented
         switch: --disable memories and both memories keys false; per-profile CODEX_HOME
         label: documented
-        source: https://learn.chatgpt.com/docs/changelog (Codex CLI 0.165.0); harness-captures/codex/inventory-features.txt (0.166.0); docs/design-notes/harness-compatibility-triage.md; 2026-11-02 triage F13
+        source: https://learn.chatgpt.com/docs/changelog (Codex CLI 0.165.0); harness-captures/codex/inventory-features.txt (0.166.0); harness compatibility triage (2026-10-28); 2026-11-02 triage F13
       - action: multi_agent (stable, on in the 0.166.0 capture) lets the session spawn its own subagents
         switch: --disable multi_agent
         label: runtime
@@ -211,11 +211,11 @@ harnesses:
     model_families:
       value: [openai]
       label: documented
-      source: docs/design-notes/harness-compatibility-triage.md
+      source: harness compatibility triage (2026-10-28)
     quota:
       value: a usage limit arrives as a failure whose free text names the reset ("You've hit your usage limit ... try again in <duration>"), so the reset time is read from that message; exit code on a limit unknown, and one failure exit is documented, so the event stream (turn.failed) is read, not the exit code
       label: runtime
-      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (turn.failed with exit 0 on model error, codex-cli 0.165.0, 2026-11-02); https://github.com/openai/codex/issues/4764 (message text); 2026-11-02 triage F12
+      source: M8.7 runtime verification (turn.failed with exit 0 on model error, codex-cli 0.165.0, 2026-11-02); https://github.com/openai/codex/issues/4764 (message text); 2026-11-02 triage F12
     capture_commands:
       version.txt: [codex, --version]
       help.txt: [codex, --help]
@@ -298,20 +298,20 @@ harnesses:
     headless_command:
       value: agent -p --output-format stream-json --force --trust --model <id> --workspace <worktree> "<prompt>"
       label: documented
-      source: specy_road/worker_adapters.py; docs/design-notes/harness-compatibility-triage.md
+      source: specy_road/worker_adapters.py; harness compatibility triage (2026-10-28)
     executor_template:
       value: agent -p --force "<prompt>"
       renders_cli_for: [Cursor Composer]
       label: runtime
-      source: model-profiles/cursor-composer/composer-2.5.md (source S2); --force alone passes a fresh worktree's trust prompt and a bare agent -p exits 1, so --trust is not needed here (agent 2026.10.22-27dcf5f, 2026-11-02, docs/design-notes/harness-facts-2026-11-02-triage.md K13; https://cursor.com/docs/cli/reference/parameters; triage F22)
+      source: model-profiles/cursor-composer/composer-2.5.md (source S2); --force alone passes a fresh worktree's trust prompt and a bare agent -p exits 1, so --trust is not needed here (agent 2026.10.22-27dcf5f, 2026-11-02, 2026-11-02 harness-facts triage K13; https://cursor.com/docs/cli/reference/parameters; triage F22)
     session_flags:
       value: session id from the first stream event (or agent create-chat); --resume <id> to continue (with a new prompt in print mode undocumented), from any directory since 2026.07.06; agent ls is not headless; concurrent CLI processes no longer corrupt cli-config.json (2026.07.06)
       label: documented
-      source: https://cursor.com/docs/cli/changelog; https://cursor.com/docs/cli/reference/parameters; docs/design-notes/harness-compatibility-triage.md; 2026-11-02 triage F17
+      source: https://cursor.com/docs/cli/changelog; https://cursor.com/docs/cli/reference/parameters; harness compatibility triage (2026-10-28); 2026-11-02 triage F17
     permission_example:
       value: --force force-allows every command not denied; --trust skips a new worktree's trust prompt; pair with hooks or an external sandbox. Deny rules are permissions.deny tokens (Shell(git), Read(...), Write(...), WebFetch(...), Mcp(server:tool)) in ~/.cursor/cli-config.json or <project>/.cursor/cli.json and take precedence over allow rules; --sandbox enabled|disabled; --mode ask is read-only Q&A (reviewers)
       label: documented
-      source: https://cursor.com/docs/cli/reference/permissions; https://cursor.com/docs/cli/reference/parameters; harness-captures/cursor/help.txt (--mode); docs/design-notes/harness-compatibility-triage.md; 2026-11-02 triage F18
+      source: https://cursor.com/docs/cli/reference/permissions; https://cursor.com/docs/cli/reference/parameters; harness-captures/cursor/help.txt (--mode); harness compatibility triage (2026-10-28); 2026-11-02 triage F18
     instruction_files:
       value: [AGENTS.md, CLAUDE.md, .cursor/rules]
       size_guidance: no documented limit; only .cursor/rules with alwaysApply true load every session; nested AGENTS.md files apply once the agent edits or creates a file in their directory (2026.10.22)
@@ -320,11 +320,11 @@ harnesses:
     skill_dirs:
       value: [.agents/skills, .cursor/skills, .claude/skills, .codex/skills]
       label: documented
-      source: docs/design-notes/harness-compatibility-triage.md
+      source: harness compatibility triage (2026-10-28)
     hooks:
       value: beforeShellExecution in .cursor/hooks.json answers allow or deny as JSON (failClosed true, or empty output fails open); also reads and merges .claude/settings.json hooks; preToolUse and postToolUse events also fire for subagents (2026.10.17); the preToolUse blocking contract is not documented. Project hooks load and block under agent -p --force, with or without --trust, an empty matcher matching every command; beforeShellExecution sees only the shell tool, so the agent's own file edit and delete tools pass it
       label: runtime
-      source: docs/optional-ai-tooling-patterns.md (Cursor CLI 2026.10.22, sandbox run 2026-10-28); https://cursor.com/docs/cli/changelog; 2026-11-02 triage F21; agent 2026.10.22-27dcf5f, composer-2.5, 2026-11-04 (a throwaway repo's appending hook fired under agent -p --force, and a deny hook blocked under -p --force --trust --workspace; the CR3 replay transcripts show the session guard rejecting git restore before the edit/delete tools discarded the files, docs/design-notes/context-regressions-2026-11-04-triage.md)
+      source: docs/optional-ai-tooling-patterns.md (Cursor CLI 2026.10.22, sandbox run 2026-10-28); https://cursor.com/docs/cli/changelog; 2026-11-02 triage F21; agent 2026.10.22-27dcf5f, composer-2.5, 2026-11-04 (a throwaway repo's appending hook fired under agent -p --force, and a deny hook blocked under -p --force --trust --workspace; the CR3 replay transcripts show the session guard rejecting git restore before the edit/delete tools discarded the files, 2026-11-04 context-regressions triage)
     git_actions:
       - action: -w / --worktree makes its own worktrees under ~/.cursor/worktrees
         switch: never pass -w/--worktree
@@ -333,7 +333,7 @@ harnesses:
       - action: /split-to-prs, /autopilot and Cloud Agents create branches and PRs
         switch: do not use them on a leaf
         label: documented
-        source: docs/design-notes/harness-compatibility-triage.md
+        source: harness compatibility triage (2026-10-28)
       - action: plan mode (--plan, --mode plan) and generate-rule write harness planning or rules
         switch: never pass --plan; do not run generate-rule
         label: runtime
@@ -353,7 +353,7 @@ harnesses:
     quota:
       value: unknown (no usage-limit event observed on this account during M8.7 runs)
       label: documented
-      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (still unknown, agent 2026.10.22, 2026-11-02)
+      source: M8.7 runtime verification (still unknown, agent 2026.10.22, 2026-11-02)
     capture_commands:
       version.txt: [agent, --version]
       help.txt: [agent, --help]
@@ -392,7 +392,7 @@ harnesses:
     version:
       value: none of its own; the version is that of whatever binary access.cli names
       label: documented
-      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (by definition; not one binary, 2026-11-02)
+      source: M8.7 runtime verification (by definition; not one binary, 2026-11-02)
     headless_command:
       value: the roster channels.cli, else the profile's access.cli, with {prompt} (the prompt file path) or <prompt> (the prompt text) substituted
       label: documented
@@ -409,16 +409,16 @@ harnesses:
     permission_example:
       value: whatever the command's own flags grant; specy-road adds none
       label: documented
-      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (still unknown per access.cli; not exercised, 2026-11-02)
+      source: M8.7 runtime verification (still unknown per access.cli; not exercised, 2026-11-02)
     instruction_files:
       value: [AGENTS.md]
       size_guidance: unknown
       label: documented
-      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (specy-road init convention; not verified per generic binary, 2026-11-02)
+      source: M8.7 runtime verification (specy-road init convention; not verified per generic binary, 2026-11-02)
     skill_dirs:
       value: [.agents/skills]
       label: documented
-      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (init layout; per-binary load still unknown, 2026-11-02)
+      source: M8.7 runtime verification (init layout; per-binary load still unknown, 2026-11-02)
     hooks:
       value: no hook of its own; the session guard's generic contract reads a JSON object with a command field on stdin and exits 2 to deny, for any harness that can call it
       label: documented
@@ -427,11 +427,11 @@ harnesses:
       - action: unknown; depends on the binary access.cli names
         switch: unknown
         label: documented
-        source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (still unknown per access.cli, 2026-11-02)
+        source: M8.7 runtime verification (still unknown per access.cli, 2026-11-02)
     model_families:
       value: []
       label: documented
-      source: docs/design-notes/M8.7-runtime-verification-harness-facts.md (roster contract; empty list by design, 2026-11-02)
+      source: M8.7 runtime verification (roster contract; empty list by design, 2026-11-02)
     quota:
       value: unknown; no usage is reported (every usage field is null)
       label: documented

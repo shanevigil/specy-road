@@ -2,7 +2,7 @@
 
 Regression 2 needed a nested project whose leaf also touches the git root
 outside the project tree; regression 5 needed the same checks beyond the
-embedded layout only. See ``docs/design-notes/regression-prevention.md``.
+embedded layout only.
 """
 
 from __future__ import annotations

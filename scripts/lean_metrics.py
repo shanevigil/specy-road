@@ -61,7 +61,6 @@ DOCS_PATHSPECS = (
     "AGENTS.md",
     "CLAUDE.md",
     ":(glob)docs/**/*.md",
-    ":(exclude,glob)docs/design-notes/**",
     ":(glob)constitution/*.md",
     ":(glob)suggested_prompts/*.md",
 )
