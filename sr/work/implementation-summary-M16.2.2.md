@@ -71,7 +71,29 @@ Merged `origin/WIP/improvements-0-3-1` first; it brought no package or test chan
 
   Until one of those happens, the allowlist entries stay as committed, each with its reason in `OS_REPLACE_ALLOWED`.
 
+## Fix round 2 (review by gpt-6.1-sol at 5aee4e05): blocked on an acceptance amendment
+
+Merged `origin/WIP/improvements-0-3-1` first: already up to date. No code changes this round. Both findings are the round-1 R1 and R2 again; their class is "the acceptance text names a route that the code merged since planning cannot take without losing a delivered contract". The reviewer offers two ways out: an approved amendment, or an implementation that meets the criteria without weakening anything. I checked the second way for each finding; it does not exist, and I may not edit acceptance text. **For the coordinator:** amend A2/A6 as proposed in fix round 1, or rescope the leaf.
+
+- **R1.** A6 says `history_cache.save_cache` calls `atomic_write_text` directly with no repo-root check. That loses three contracts `safe_write.write` gives today:
+  - the refusal of a symlink at the cache file (M21.39);
+  - descriptor-anchored replacement, so a parent swapped after the walk is not followed (M22.29);
+  - keeping an existing file's mode.
+
+  A final-component `lstat` check before `atomic_write_text` would restore only the first, and it reopens the race M22.29 closed. Run with A6's code, the M21.39 test fails (probe below).
+- **R2.**
+  - `finish_bookkeeping_undo._restore` installs a symlink when the snapshot was one, which no text writer can do.
+  - Its regular-file branch, and `restore_pre_commit` and `worker_sandbox._install_seed`, write arbitrary bytes. Bytes that are not UTF-8 (git's index, a copied `.claude.json`) cannot pass through `atomic_write_text(text: str)` unchanged. `_restore` and `_install_seed` also set an exact mode.
+  - Moving them needs a bytes-and-mode variant of `fs_atomic`, a new helper the leaf did not authorise, and `_restore` would stay on the allowlist anyway.
+  - Keeping them on the allowlist is the only behaviour-preserving option inside this leaf's acceptance.
+
 ## Probes
+
+- (round 2) `save_cache` switched temporarily to `atomic_write_text(path, ...)`, the A6 route: `tests/test_ops_writers_refuse_links.py::test_digest_carries_on_past_a_refused_history_cache[history-to-outside-file]` fails (1 failed, 3 passed); the file is restored, with no diff.
+- (round 2) `safe_write._replace`, read: it holds the parent directory by descriptor, re-checks before `os.replace`, keeps the old mode (`_keep_mode`) and removes its temp file on failure. `atomic_write_text` does none of these, by its stated rule (no root, no checks).
+- (round 2) The other users of `safe_write` in the change: none moved. `history_cache` was the only A2-named writer on it, so the class stops at R1.
+- (round 2) The three R2 installers: `_restore` has a symlink branch (`os.symlink(value, tmp)`). `restore_pre_commit` writes `snap.index_bytes` (git index, binary). `_install_seed` copies bytes and sets 0600. None is a UTF-8 text write.
+- (round 2) Other `os.replace` sites against A6's four names: the only extras are the three R2 sites, unchanged since round 1.
 
 - Every `atomic_write_text` call site in `specy_road/`, by AST scan: 11 sites. 10 now have a matrix row; `roadmap_chunk_atomic:write` has its own two tests. `test_every_atomic_text_write_has_a_row` passes.
 - `os.rename(`, `Path.rename(` and `Path.replace(` in `specy_road/`: only file moves (planning_rename, brainstorm_close, sync_planning_artifacts), no temp-file writers outside the scan.
