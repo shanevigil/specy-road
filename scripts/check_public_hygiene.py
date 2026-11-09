@@ -47,8 +47,8 @@ import subprocess
 import sys
 import tarfile
 import zipfile
-from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 ALLOW_FILE = Path("scripts") / "public_hygiene_allow.txt"
 LOCAL_FILE = Path("info") / "public-hygiene-local.txt"
@@ -91,8 +91,7 @@ SHIPPED_PATH = re.compile(r"(?:^|/)(?:specy_road/templates|tests/parity)/")
 SCISSORS = "# ------------------------ >8 ------------------------"
 
 
-@dataclass
-class Rules:
+class Rules(NamedTuple):
     """The allow file's address patterns and every text rule, the local list's included."""
 
     allowed: list[re.Pattern[str]]

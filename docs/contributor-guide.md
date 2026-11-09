@@ -306,15 +306,60 @@ warning in `specy-road update --help`).
 
 ## Pre-commit hook
 
-The repo ships with a `.pre-commit-config.yaml`. Install once per clone:
+The repo ships with a `.pre-commit-config.yaml`. Install both hook types once
+per clone:
 
 ```bash
 pip install pre-commit
 pre-commit install
+pre-commit install --hook-type commit-msg
 ```
 
 Hooks mirror CI minus `pytest` and supply-chain audits: roadmap validate,
-markdown export drift, file line-count limits.
+markdown export drift, file line-count limits, the lean-code gates and the
+public-hygiene file check. The commit-msg hook runs the public-hygiene check
+on each commit message.
+
+### Public-hygiene gate
+
+`scripts/check_public_hygiene.py` keeps personal data, one machine's setup
+and development-process content out of the public tree and its history. Its
+docstring lists every rule; in short:
+
+- **Personal data:** an email address not in
+  [`scripts/public_hygiene_allow.txt`](../scripts/public_hygiene_allow.txt)
+  (an entry exempts only the address, never its line), and the name tokens and
+  username of your local list as whole words.
+- **Machine setup:** home, temp and hostname paths, a home path into one of
+  your local list's account directories (`~/.<tool>` config paths pass),
+  home-prefixed conda and venv paths, a literal `CLAUDE_CONFIG_DIR` path, a
+  literal apparmor sysctl value, and your local list's machine and profile
+  names. Variable references and placeholders pass.
+- **Process content:** research-report and Claude Code session mentions and
+  your local list's phrases; in commit messages also `sr/work`, `sr/planning`,
+  `sr/roadmap` and `sr/tools` mentions.
+
+Default mode (pre-commit, the WIP line) scans tracked files outside `sr/`.
+CI adds the messages of the pushed or pull-request range, and on `main` adds
+`--promotion`: a path denylist (`sr/`, design notes, research and prompt
+files, except under `specy_road/templates/` and `tests/parity/`) and an
+author and committer identity check against the allow file's `public:` and
+`bot:` entries. The identity check only reports while `public:` reads
+`PUBLIC_IDENTITY_UNSET`.
+
+The values that must never be written down live in a **local list**, never
+tracked: `<kind>: <value>` lines (kinds `name`, `handle`, `home`, `machine`,
+`phrase`) in `$(git rev-parse --git-common-dir)/info/public-hygiene-local.txt`,
+which every linked worktree shares. CI reads the same format from the
+`PUBLIC_HYGIENE_LOCAL` repository secret. With neither, the local-list rules
+are skipped and the rest still run.
+
+A `handle` entry is the repo-owner GitHub handle: a `github.com/<handle>` URL
+is not a name hit.
+
+The gate's script and tests build each denied literal by concatenation
+(`"Claude-" + "Session:"`) and its docs describe the rules without one, so
+they pass with no allow entry.
 
 ---
 
