@@ -247,16 +247,20 @@ def _ready(repo: Path, fix_of: str | None) -> int:
 
 def fix_round(tmp_path: Path, *, fix: Callable[[Path], object] | None = None, fix_of: str | None = "sol",
               tier: str | None = "plain", branch_tier: str | None = None, policy: str = "",
-              roster: str = ROSTER) -> tuple[Path, str, str]:
+              roster: str = ROSTER, delta: bool = False) -> tuple[Path, str, str]:
     """``(repo, P, F)``: opus (anthropic) approves ``P``, sol (openai) blocks it with :data:`FINDING`, and ``fix``
     (default: commit ``src/b.py``) makes the fix commit ``F``; composer's READY at ``F`` names ``<fix_of>@P``.
     The integration branch's sheet names ``tier`` (``None``: today's sheet, which has no ``## Tier``);
-    ``branch_tier`` sets the branch's own copy before ``P``."""
+    ``branch_tier`` sets the branch's own copy before ``P``. ``delta``: opus approved ``P``'s parent in full and
+    ``P`` (a test-only change) as a delta review from it."""
     repo = make_review_repo(tmp_path, orchestration=roster % policy)
     if branch_tier:
         commit_file(repo, NODE["planning_dir"], SHEET % branch_tier, "branch sheet")
+    basis = git(repo, "rev-parse", "HEAD")
+    if delta:
+        _file(repo, "opus", basis)
     approved = commit_file(repo, TEST_FILE, TEST_SRC, "first round")
-    _file(repo, "opus", approved)
+    _file(repo, "opus", approved, delta_from=basis if delta else None)
     _file(repo, "sol", approved, verdict="block", findings={"correctness": [FINDING]})
     if tier:
         advance_dev(repo, NODE["planning_dir"], SHEET % tier)
@@ -284,9 +288,10 @@ def _status(repo: Path, capsys) -> dict:
 @pytest.mark.parametrize("roster", [ROSTER, ROSTER.replace("reviewers_required: 2, reviewers_distinct_families: true",
                                                            "reviewers_required: 1, reviewers_distinct_families: false")])
 @pytest.mark.parametrize("then", [None, "approve", "block"])
+@pytest.mark.parametrize("delta", [False, True])   # True: the carried approval is itself a delta review
 def test_a_fix_of_the_only_block_carries_the_other_familys_approval_until_the_blocker_decides(
-        tmp_path: Path, capsys, roster: str, then: str | None) -> None:
-    repo, approved, head = fix_round(tmp_path, roster=roster)
+        tmp_path: Path, capsys, roster: str, then: str | None, delta: bool) -> None:
+    repo, approved, head = fix_round(tmp_path, roster=roster, delta=delta)
     g = _gate(repo)
     assert [a.model for a in g.approvals] == ["opus"] and not g.blocks   # the old block no longer counts
     assert "sol" in [r.data["model"] for r in g.stale] and not g.passed   # carried alone: never met
@@ -355,18 +360,32 @@ def _malformed(repo: Path) -> None:
     ready.write_text(ready.read_text().replace("fix_of: sol@", "fix_of: sol-"))
 
 
-@pytest.mark.parametrize(("fix_of", "after"), [
-    (None, None),                                                         # absent
-    ("sol", _malformed),                                                  # not <model>@<sha>
-    ("sol", lambda r: commit_file(r, "src/c.py", "z = 3\n", "later")),   # READY no longer at HEAD
-    ("opus", None),                                                       # names an approver
+def _outcome(repo: Path) -> tuple:
+    g = _gate(repo)
+    return (g.passed, sorted(a.model for a in g.approvals), sorted(b.model for b in g.blocks),
+            sorted(r.data["model"] for r in g.stale), g.problems())
+
+
+def _summary_only(repo: Path) -> None:
+    commit_file(repo, "work/implementation-summary-M1.1.md", "# s\n", "summary")
+
+
+@pytest.mark.parametrize(("fix_of", "fix", "after", "carried"), [
+    (None, None, None, False),                                                         # absent
+    ("sol", None, _malformed, False),                                                  # not <model>@<sha>
+    ("sol", None, lambda r: commit_file(r, "src/c.py", "z = 3\n", "later"), False),   # READY no longer at HEAD
+    ("opus", None, None, False),                                                       # names an approver
+    ("sonnet", _summary_only, lambda r: _file(r, "sol", git(r, "rev-parse", "HEAD")), True),   # bookkeeping carry
 ])
-def test_a_missing_or_unusable_fix_of_gives_todays_result(tmp_path: Path, fix_of, after) -> None:
-    repo, approved, _ = fix_round(tmp_path, fix_of=fix_of)
+def test_a_missing_or_unusable_fix_of_gives_todays_result(tmp_path: Path, fix_of, fix, after, carried) -> None:
+    repo, approved, _ = fix_round(tmp_path, fix_of=fix_of, fix=fix)
     if after:
         after(repo)
-    g = _gate(repo)
-    assert not g.approvals and {"opus", "sol"} <= {r.data["model"] for r in g.stale}
+    with_fix_of = _outcome(repo)
+    ready = reviews_dir(repo, "M1.1") / "READY-composer.md"
+    ready.write_text("".join(ln for ln in ready.read_text().splitlines(True) if not ln.startswith("fix_of:")))
+    assert with_fix_of == _outcome(repo)   # the same gate as without fix_of
+    assert with_fix_of[0] is carried and ("opus" in with_fix_of[1]) is carried
 
 
 def test_ready_refuses_a_malformed_fix_of(tmp_path: Path) -> None:

@@ -138,6 +138,7 @@ class GateResult:
     config_error: str | None = None
     bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict)
     carry_refused: list[str] = field(default_factory=list)   # why an older approval did not carry (policy_line)
+    fix_carried: list[Path] = field(default_factory=list)   # records a fix_of carry let count (judged at their commit)
     strong_unmet: list[tuple[int, dict[str, Any]]] = field(default_factory=list)   # unmet policy.strong_review items
     policy_pin: str | None = None   # the policy changed since the claim and no human accepted it (review_policy_pin)
     accepted: list[str] = field(default_factory=list)   # one line per honoured operator decision (review_override)
@@ -437,13 +438,26 @@ def _carried_by_fix(result: GateResult, repo_root: Path, review: ReviewFile, fix
         result.carry_refused.append(f"{d['model']}'s approve at {fix.blocked[:12]} is stale: fix_of {fix.spec}: {why}")
         return False
     result.stale.remove(review)
+    result.fix_carried.append(review.path)
     return True
 
 
-def _blocker_must_approve(result: GateResult, repo_root: Path, fix: FixOf | None) -> list[str]:
-    """The carried approval alone never opens the gate: once one counts, the blocker must approve the fix commit."""
-    if fix is None or any(a.model == fix.blocker for a in result.approvals) or \
-            not any(review_commit(result, repo_root, a.review) == fix.blocked for a in result.approvals):
+def _judged_at(result: GateResult, repo_root: Path, node: dict[str, Any], review: ReviewFile, fix: FixOf | None,
+               fix_why: str | None) -> str | None:
+    """The commit ``review`` is judged at, or ``None`` when it is stale: the commit under review, or, for an approval
+    a fix carries, the blocked commit, so it counts at the fix exactly when it counted where it was filed."""
+    refused = len(result.carry_refused)   # count_at_later_commit lists its refusals there (siblings, a bad sha)
+    if count_at_later_commit(result, repo_root, node, review):
+        return result.commit
+    if len(result.carry_refused) > refused or not _carried_by_fix(result, repo_root, review, fix, fix_why):
+        return None
+    return fix.blocked
+
+
+def _blocker_must_approve(result: GateResult, fix: FixOf | None) -> list[str]:
+    """The carried approval alone never opens the gate: once a fix carry counts, the blocker must approve the fix."""
+    if not any(a.review.path in result.fix_carried for a in result.approvals) or \
+            any(a.model == fix.blocker for a in result.approvals):
         return []
     return [f"fix_of {fix.spec}: {fix.blocker} must approve {fix.fix[:12]}; a carried approval alone does not "
             "open the gate"]
@@ -482,24 +496,22 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
         if not review.ok:
             result.invalid.append(review)
             continue
-        refused = len(result.carry_refused)   # count_at_later_commit lists its refusals there (siblings, a bad sha)
-        if not count_at_later_commit(result, repo_root, node, review) and \
-                (len(result.carry_refused) > refused or not _carried_by_fix(result, repo_root, review, fix, fix_why)):
+        if (at := _judged_at(result, repo_root, node, review, fix, fix_why)) is None:
             continue
         counted, why = _eligibility(repo_root, config, node, review, today)
         if counted is not None and counted.verdict == "approve" and review.data.get("delta_from"):
-            priors = prior_approvals(repo_root, config, node, review.data["model"], result.commit, today)
-            why = _delta_why(repo_root, node, priors, review, result.commit, policy)
+            priors = prior_approvals(repo_root, config, node, review.data["model"], at, today)
+            why = _delta_why(repo_root, node, priors, review, at, policy)
             counted = None if why else counted
         if counted is None:
-            result.ineligible.append((review, fresh_only_note(repo_root, config, node, review, result.commit, today)
+            result.ineligible.append((review, fresh_only_note(repo_root, config, node, review, at, today)
                                       if why == FRESH_SESSION else why or "not eligible"))
         else:
             _count(result, counted)
     apply_deferrals(repo_root, result)   # a human-applied deferral resolves only the block it names
     apply_operator_decisions(repo_root, result, node, ref)   # likewise: only the blocks and shortfall it names
     result.verifier_problems = (authorship + verifier_gate_problems(ready, result.approvals)
-                                + _blocker_must_approve(result, repo_root, fix))
+                                + _blocker_must_approve(result, fix))
     if ready is not None and same_commit(repo_root, ready.data["commit"], result.commit):
         result.verifier_problems += executor_blocked_gate_problems(ready)
     result.verifier_problems += integrity_gate_problems(repo_root, policy, node["id"], result.commit, ref)

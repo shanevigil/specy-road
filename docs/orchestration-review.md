@@ -243,13 +243,16 @@ commit when all of these hold:
   for the fix commit, and the `specy-road integrity` report for the fix has no findings;
 - no sibling repository is present.
 
+A carried approval is judged as at the blocked commit: one that names `delta_from`
+counts when its delta qualified there, as it did before the fix.
+
 A missing or unreadable sheet, a sheet without `## Tier`, any other tier
 (`trust boundary` included), an integration branch that cannot be found, or any
 other failed condition leaves the approval stale as before, and the `policy:`
 line of `handoff status` says why (`<model>'s approve at <sha> is stale: fix_of
 <blocker>@<sha>: <why>`). A carried approval is listed as `carried from an older
 commit`. The blocker's old block no longer counts, but the carried approval alone
-never opens the gate: until the blocker approves the fix commit, the gate reports
+never opens the gate: once an approval is carried, and until the blocker approves the fix commit, the gate reports
 `fix_of …: <blocker> must approve <fix>`, and a new block from it keeps the gate
 unmet. A READY without `fix_of`, or one that is not at the commit under review,
 gives the same result as before.
