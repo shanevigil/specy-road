@@ -18,8 +18,11 @@ import pytest
 import yaml
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
-from tests.helpers import script_subprocess_env
-from tests.review_repo_helpers import NODE, commit_file, git
+from tests.helpers import REPO, script_subprocess_env
+from tests.review_repo_helpers import (
+    NODE, commit_file, git, git_root_relative, make_layout_finish_repo,
+    prepare_layout_merge_mode_remote,
+)
 from tests.test_finish_merge_mode import merge_mode_finish_repo
 
 
@@ -171,3 +174,105 @@ def test_an_ancestor_chunk_conflict_lands_with_the_ancestor_recomputed(
     leaf = json.loads(git(bare, "show", "dev:roadmap/phases/M1.json"))["nodes"][0]
     assert (phase["status"], phase["sibling_order"], leaf["status"]) == ("Complete", 2, "Complete")
     _assert_generated_files_current(repo)
+
+
+OTHER = {
+    "id": "M1.2", "node_key": "33333333-3333-5333-8333-333333333333", "codename": "other",
+    "title": "Other", "type": "task", "parent_id": None, "sibling_order": 2,
+    "status": "Not Started", "dependencies": [], "touch_zones": ["docs"],
+    "goal": "Do the other thing.", "acceptance": ["noted"],
+    "planning_dir": "planning/M1.2_other_33333333-3333-5333-8333-333333333333.md",
+}
+
+
+def _nested_chunk_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path, Path]:
+    """Nested merge-mode repo whose chunk holds the finishing leaf and a sibling."""
+    monkeypatch.setenv("PYTHONPATH", str(REPO))
+    git_top, project = make_layout_finish_repo(tmp_path, "nested")
+    git(git_top, "checkout", "-q", "dev")
+    chunk = project / "roadmap" / "phases" / "M1.json"
+    write_json_chunk(chunk, [*load_json_chunk(chunk), json.loads(json.dumps(OTHER))])
+    sheet = OTHER["planning_dir"]
+    (project / sheet).write_text("# M1.2 Other\n\n## Intent\n\nThe other thing.\n", encoding="utf-8")
+    git(git_top, "add", git_root_relative(git_top, project, "roadmap/phases/M1.json"),
+        git_root_relative(git_top, project, sheet))
+    git(git_top, "commit", "-qm", "add a sibling in the same chunk")
+    git(git_top, "checkout", "-q", "feature/rm-thing")
+    git(git_top, "merge", "-q", "--no-edit", "dev")
+    return git_top, project, prepare_layout_merge_mode_remote(git_top, project, tmp_path)
+
+
+def _diverge_chunk(git_top: Path, project: Path, case: str) -> None:
+    """Integration edits the same chunk after the claim, then the feature branch is current."""
+    chunk = project / "roadmap" / "phases" / "M1.json"
+    nodes = json.loads(json.dumps(load_json_chunk(chunk)))
+    if case == "removed":
+        nodes = [n for n in nodes if n["id"] != "M1.1"]
+    else:
+        for node in nodes:
+            if node["id"] == "M1.1":
+                node["sibling_order"] = 4
+            elif node["id"] == "M1.2" and case == "reapplied":
+                node["touch_zones"] = ["docs", "notes"]
+    git(git_top, "checkout", "-q", "dev")
+    write_json_chunk(chunk, nodes)
+    commit_file(
+        git_top, git_root_relative(git_top, project, "roadmap/phases/M1.json"),
+        chunk.read_text(encoding="utf-8"), "integration edits the same chunk",
+    )
+    git(git_top, "push", "-q", "origin", "dev")
+    git(git_top, "checkout", "-q", "feature/rm-thing")
+
+
+def _hide_claim_from_parent(git_top: Path, project: Path) -> None:
+    """Commit the registry without the claim; the worktree still has the row, uncommitted."""
+    rel = git_root_relative(git_top, project, "roadmap/registry.yaml")
+    path = git_top / rel
+    saved = path.read_text(encoding="utf-8")
+    doc = yaml.safe_load(saved)
+    doc["entries"] = [e for e in doc["entries"] if e.get("codename") != "thing"]
+    path.write_text(yaml.safe_dump(doc), encoding="utf-8")
+    git(git_top, "add", rel)
+    git(git_top, "commit", "-qm", "branch copy of the registry drops the claim")
+    path.write_text(saved, encoding="utf-8")
+
+
+@pytest.mark.parametrize("case", ["reapplied", "missing-row", "removed"])
+def test_a_conflicted_chunk_keeps_the_leaf_complete_or_stops(
+    tmp_path: Path, monkeypatch, case: str,
+) -> None:
+    """The integration side edits the finishing leaf's chunk after the claim.
+
+    Nested project: sibling_order and another node's touch zones change, so the
+    status line conflicts, and the landed chunk keeps Complete plus those
+    integration fields. The same conflict with no registry row for the codename
+    on the bookkeeping commit's parent stops before the merge commit. When that
+    chunk no longer contains the leaf, the land keeps it absent and does not
+    claim the status was applied.
+    """
+    git_top, project, bare = _nested_chunk_repo(tmp_path, monkeypatch)
+    _diverge_chunk(git_top, project, case)
+    dev_before = git(bare, "rev-parse", "dev")
+    if case != "reapplied":
+        _hide_claim_from_parent(git_top, project)
+    result = _cli(project, "finish-this-task")
+    if case == "missing-row":
+        assert result.returncode != 0, result.stdout + result.stderr
+        text = result.stdout + result.stderr
+        assert "roadmap/phases/M1.json" in text and "thing" in text, text
+        assert git(bare, "rev-parse", "dev") == dev_before
+        return
+    assert result.returncode == 0, result.stdout + result.stderr
+    message = git(bare, "log", "-1", "--format=%B", "dev")
+    nodes = json.loads(git(bare, "show", "dev:sr/roadmap/phases/M1.json"))["nodes"]
+    if case == "removed":
+        assert all(n.get("codename") != "thing" for n in nodes)
+        assert "Complete status was applied again" not in message
+        return
+    leaf = next(n for n in nodes if n["id"] == "M1.1")
+    other = next(n for n in nodes if n["id"] == "M1.2")
+    assert (leaf["status"], leaf["sibling_order"], other["touch_zones"]) == (
+        "Complete", 4, ["docs", "notes"],
+    )
+    assert "Complete status was applied again" in message
+    _assert_generated_files_current(project)

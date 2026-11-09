@@ -238,7 +238,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.47` | Cursor workers start and keep their config under the sandbox | task | — | Complete |
 | `M22.48` | A shared reviewer name closes the gate only when it could be the leaf's writer | task | — | Complete |
 | `M22.49` | A sandboxed Claude worker resumes after the executor account changes | task | Agentic-led | Complete |
-| `M22.50` | finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk | task | Agentic-led | Not Started |
+| `M22.50` | finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk | task | Agentic-led | Complete |
 | `M22.51` | The operator decides a leaf's review outcome by saying so; the coordinator records it | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
