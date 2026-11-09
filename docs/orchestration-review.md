@@ -7,14 +7,27 @@ review record only when:
 
 - it validates, and its `node_id` is this node;
 - its `commit` resolves, through git, to the commit under review — any later
-  commit makes it stale, so a substantive fix restarts every review. Every
-  merge counts as new work, including `git merge -s ours`, whose tree equals
-  its first parent's; commits that touch only `roadmap/registry.yaml` are
-  skipped, so claim bookkeeping does not. When the only paths in
-  `git diff <reviewed>..<commit>` are this leaf's planning sheet,
-  `work/implementation-summary-<NODE_ID>.md`, or files under
-  `work/reviews/<NODE_ID>/`, earlier approvals still count and `handoff status`
-  says so in the policy line;
+  commit makes it stale, so a substantive fix restarts every review. Trailing
+  commits that touch only `roadmap/registry.yaml` are skipped, so claim
+  bookkeeping does not move the commit under review; a merge still does,
+  including `git merge -s ours`. An earlier approval still counts when every
+  path since it, after the project-prefix rebase, is project-relative
+  `roadmap/**` except `roadmap/orchestration.yaml` and `roadmap/git-workflow.yaml`,
+  `planning/**`, `roadmap.md`, `roadmap-context.md`, this leaf's
+  `work/implementation-summary-<NODE_ID>.md`, or a file under
+  `work/reviews/<NODE_ID>/`. It also counts across a two-parent merge whose
+  second parent is on the integration history the policy is read from, when the
+  non-bookkeeping `git diff --full-index` from the merge base of the two parents
+  to the first parent is byte-identical to the diff from the second parent to
+  the merge. Any other merge shape, a second parent off that history, or a
+  failed git query refuses the whole range. The carry is refused, and
+  `handoff status` gives the reason, when this leaf's acceptance or touch zones
+  (the node is found by `node_key` across a chunk or sheet move) or the parsed
+  value under its sheet's `## Tier` heading differs, when that sheet has no
+  tier value except on a change that stays inside this leaf's own sheet, summary
+  and review files, or when the graph or the sheet cannot be read. Another
+  node's acceptance and zones are bookkeeping. `handoff status` says so on the
+  policy line;
 - its model is a rostered reviewer, or the substitute in an active substitution that covers this
   node; its family comes from the roster, and its roster `may_process` includes the node's `sensitivity`;
 - no other record from the same model already counts — one vote per model, and
@@ -345,7 +358,7 @@ The operator owns the rules and may decide a leaf's review outcome in plain word
 
 The coordinator form accepts with limits under a standing operator rule instead of the operator's words: `--decision accept-with-limits --rule <id> --rca <model>=<path> --rca <model>=<path> --alignment <model>=<path> --alignment <model>=<path> --limit <text>` (repeat `--limit`), with the same role and refusal checks. `<id>` must be an open, unexpired `kind: standing-rule` entry, recorded with `specy-road decisions add --kind standing-rule --summary '<the rule>' --why '<the operator's words, quoted>'` (optional `NODE` and `--expires`; it closes with `decisions close <id> --answer` alone). A standing rule is never listed as an open question and never applied as routing; a `preference` or any other kind is refused, since a routing preference is no authority to settle findings. The two RCAs are by two roster families, neither a party to the leaf (its executors and reviewers, `rca_parties`); the two alignment reviews are by two roster families, neither an RCA analyst nor a blocking reviewer; each cited file is inside the project and is recorded by model, project-relative path and sha256. The form refuses when the leaf's planning sheet on the integration branch (read with git) has no `## Tier` value or its value is trust boundary (only the operator's own words may decide a trust-boundary leaf), when no block counts, or when a counted finding's text is not named by exactly one `--limit`. The entry records `decided_by: coordinator`, the rule id, the limits and the evidence.
 
-The decision entry is the authority and the marker a cache. The gate reads a decision only through a marker, from the ledger in the checkout running the gate and, failing that, the ledger committed on the integration branch (the ref the policy is read from): commit `roadmap/decisions.yaml` on the integration branch, because `mark-implementation-reviewed` runs on the leaf branch, refuses an uncommitted ledger there, and a ledger commit on the leaf branch would end the decision. It honours only a closed decision of the node with `decided_by` whose answer names the marker's commit, while that commit is the one under review or only the leaf's sheet or review bookkeeping changed since (the bookkeeping carry approvals have). A marker without its entry, an unreadable marker or ledger, and a decision without `decided_by` settle nothing. An honoured decision settles only what its answer names: each named block is listed as `does not count — accepted by operator decision <id>` (or `accepted with limits under rule <rule> by coordinator, decision <id>`), and the named shortfall is settled while the current one is no larger, never under `policy.signed_reviews: true`. No review record is added. An unnamed or later block still counts, and a policy pin, an unmet `strong_review` item, a verifier problem, `executor_blocked`, a config error or a missing registry stamp fail as before. `handoff status` and `review list` append the accepted line to the gate summary. Quotes, session ids, recorder identity and evidence paths are audit assertions, not authentication; there is no revoke command.
+The decision entry is the authority and the marker a cache. The gate reads a decision only through a marker, from the ledger in the checkout running the gate and, failing that, the ledger committed on the integration branch (the ref the policy is read from): commit `roadmap/decisions.yaml` on the integration branch, because `mark-implementation-reviewed` runs on the leaf branch, refuses an uncommitted ledger there, and a ledger commit on the leaf branch would end the decision. It honours only a closed decision of the node with `decided_by` whose answer names the marker's commit, while that commit is the one under review or only this leaf's own planning sheet, `work/implementation-summary-<NODE_ID>.md`, or files under `work/reviews/<NODE_ID>/` changed since. A decision does not use the wider approval carry, so a roadmap, registry or policy commit ends it. A marker without its entry, an unreadable marker or ledger, and a decision without `decided_by` settle nothing. An honoured decision settles only what its answer names: each named block is listed as `does not count — accepted by operator decision <id>` (or `accepted with limits under rule <rule> by coordinator, decision <id>`), and the named shortfall is settled while the current one is no larger, never under `policy.signed_reviews: true`. No review record is added. An unnamed or later block still counts, and a policy pin, an unmet `strong_review` item, a verifier problem, `executor_blocked`, a config error or a missing registry stamp fail as before. `handoff status` and `review list` append the accepted line to the gate summary. Quotes, session ids, recorder identity and evidence paths are audit assertions, not authentication; there is no revoke command.
 
 ## Milestone full review
 
