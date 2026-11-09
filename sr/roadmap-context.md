@@ -258,6 +258,13 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-09 `M18.1` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
+- 2026-11-09 `M16.5.7` stopped depending on `M23.7 upgrade migrates rosters to core fields plus run:`
+- 2026-11-09 `M16.6.1` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
+- 2026-11-09 `M16.6.3` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
+- 2026-11-09 `M16.5.12` stopped depending on `M16.1.6 Review-policy evidence: how often each optional review policy changed a gate outcome`
+- 2026-11-09 `M16.5.1` stopped depending on `M23.4 checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose)`
+- 2026-11-09 `M16.5.9` stopped depending on `M23.8 The guard classifier becomes three rule tables with every verdict unchanged`
 - 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M16.8.4` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
@@ -276,14 +283,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-06 `M22.22` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.40` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.43` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
-- 2026-11-06 `M21.44` stopped depending on `M21.38 Review writers and the review lock refuse any symlink on the path from the project root`
-- 2026-11-05 `M17.5` stopped depending on `M17.3 PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags`
-- 2026-11-05 `M19` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
-- 2026-11-05 `M18` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
-- 2026-11-05 `M20` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
-- 2026-11-05 `M17.1` stopped depending on `M16.3.1 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
-- 2026-11-05 `M17.1` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
-- _…and 60 earlier — `specy-road history --json`_
+- _…and 67 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
