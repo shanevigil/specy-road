@@ -273,6 +273,62 @@ export function leafBadge(leaf: SnapshotLeaf): LeafBadge | null {
   return null;
 }
 
+export type OutlineBadgeView = {
+  /** Badge label. One per leaf; the same text `leafBadge` chooses. */
+  text: string;
+  /** Claim, workers, worktree count, READY, reviews, and each hold. */
+  hover: string;
+  /** Leaf `node_key` a click passes to the drawer's `filterLeafId`. */
+  leafKey: string;
+};
+
+/** Hold-list holds name the reason; a gate hold names the open gate id. */
+function holdPhrase(hold: SnapshotHold): string {
+  if (hold.source === "hold_list") {
+    return hold.reason == null ? "hold list" : `hold list: ${text(hold.reason)}`;
+  }
+  return text(hold.id);
+}
+
+function badgeHover(leaf: SnapshotLeaf, now: Date): string {
+  const claim = leaf.claim
+    ? `${text(leaf.claim.codename)} · ${text(leaf.claim.branch)} · ${age(leaf.claim.registered_at, now)}`
+    : "—";
+  const workers =
+    leaf.workers.length > 0 ? leaf.workers.map((w) => `${w.id} ${w.status}`).join(", ") : "—";
+  const reviews =
+    leaf.reviews.length > 0
+      ? leaf.reviews.map((r) => `${text(r.model)} ${text(r.verdict)}`).join("; ")
+      : "—";
+  const ready = leaf.ready ? shortCommit(text(leaf.ready.commit)) : "—";
+  const holds = leaf.holds?.length ? leaf.holds.map(holdPhrase).join("; ") : "—";
+  return [
+    `claim: ${claim}`,
+    `workers: ${workers}`,
+    `worktrees: ${leaf.worktrees.length}`,
+    `READY: ${ready}`,
+    `reviews: ${reviews}`,
+    `holds: ${holds}`,
+  ].join("\n");
+}
+
+/**
+ * One outline badge for `leafKey`, or null when this load is not a snapshot
+ * (404 and any other failure) or the leaf has no orchestration state.
+ */
+export function outlineBadge(
+  load: OrchestrationLoad,
+  leafKey: string,
+  now: Date,
+): OutlineBadgeView | null {
+  if (load.kind !== "ok") return null;
+  const leaf = load.snapshot.leaves[leafKey];
+  if (!leaf) return null;
+  const badge = leafBadge(leaf);
+  if (!badge) return null;
+  return { text: badge.text, hover: badgeHover(leaf, now), leafKey };
+}
+
 function leafGroup(
   key: string,
   leaf: SnapshotLeaf,
@@ -374,16 +430,39 @@ export type OrchestrationLoad =
   | { kind: "unavailable" }
   | { kind: "error"; message: string };
 
-/** One GET of `/api/orchestration`; never throws. */
+export type OrchestrationNotice = { load: OrchestrationLoad; at: Date };
+
+/**
+ * Listeners for each `loadOrchestration` result. The outline badge subscribes
+ * so a roadmap refresh and every drawer load (its poll included) update it.
+ * The badge has no timer of its own.
+ */
+const orchestrationListeners = new Set<(notice: OrchestrationNotice) => void>();
+
+/** Subscribe to later loads. The returned function removes the listener. */
+export function subscribeOrchestration(
+  listener: (notice: OrchestrationNotice) => void,
+): () => void {
+  orchestrationListeners.add(listener);
+  return () => {
+    orchestrationListeners.delete(listener);
+  };
+}
+
+/** One GET of `/api/orchestration`; never throws. Notifies subscribers. */
 export async function loadOrchestration(fetchImpl: typeof fetch): Promise<OrchestrationLoad> {
+  let load: OrchestrationLoad;
   try {
     const r = await fetchImpl("/api/orchestration");
-    if (r.status === 404) return { kind: "unavailable" };
-    if (!r.ok) return { kind: "error", message: `orchestration: HTTP ${r.status}` };
-    return { kind: "ok", snapshot: (await r.json()) as OrchestrationSnapshot };
+    if (r.status === 404) load = { kind: "unavailable" };
+    else if (!r.ok) load = { kind: "error", message: `orchestration: HTTP ${r.status}` };
+    else load = { kind: "ok", snapshot: (await r.json()) as OrchestrationSnapshot };
   } catch (e: unknown) {
-    return { kind: "error", message: String(e) };
+    load = { kind: "error", message: String(e) };
   }
+  const notice = { load, at: new Date() };
+  for (const listener of orchestrationListeners) listener(notice);
+  return load;
 }
 
 /** M17.1 question 5: refresh every 15 s, only while the drawer is open. */

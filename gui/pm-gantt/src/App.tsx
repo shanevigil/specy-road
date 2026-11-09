@@ -13,6 +13,7 @@ import {
   deleteNode,
   fetchGovernanceCompletion,
   fetchPublishStatus,
+  fetchOrchestration,
   fetchRoadmap,
   fetchRoadmapFingerprints,
   shouldRefreshSnapshotFromViewFingerprint,
@@ -25,6 +26,7 @@ import {
   setPmGuiFingerprintGetter,
   getSettings,
 } from "./api";
+import { subscribeOrchestration, type OrchestrationNotice } from "./orchestrationSnapshot";
 import {
   BRAINSTORM_WINDOW_ID,
   computeSpawnRect,
@@ -240,6 +242,8 @@ export default function App() {
   const [workersOpen, setWorkersOpen] = useState(false);
   const [workersInitialId, setWorkersInitialId] = useState<string | null>(null);
   const [orchestrationOpen, setOrchestrationOpen] = useState(false);
+  const [orch, setOrch] = useState<OrchestrationNotice | null>(null);
+  const [orchLeaf, setOrchLeaf] = useState<string | null>(null);
   /** When set, Vision / Constitution need human content beyond blank or starter templates. */
   const [govCompletion, setGovCompletion] = useState<{
     vision: boolean;
@@ -411,6 +415,7 @@ export default function App() {
   const loadSnapshot = useCallback(async () => {
     setErr(null);
     try {
+      void fetchOrchestration();
       const [r, repoRes] = await Promise.all([
         fetchRoadmap(),
         fetch("/api/repo").then((x) => x.json()),
@@ -652,6 +657,8 @@ export default function App() {
   useEffect(() => {
     setPmGuiFingerprintGetter(() => lastFingerprintRef.current);
   }, []);
+
+  useEffect(() => subscribeOrchestration(setOrch), []);
 
   useEffect(() => {
     void loadSnapshot();
@@ -1666,7 +1673,10 @@ export default function App() {
                 <button
                   type="button"
                   className="app-header-doc-btn"
-                  onClick={() => setOrchestrationOpen(true)}
+                  onClick={() => {
+                    setOrchLeaf(null);
+                    setOrchestrationOpen(true);
+                  }}
                 >
                   Orchestration
                 </button>
@@ -1735,6 +1745,11 @@ export default function App() {
               onGapInsert={onGapInsert}
               parentNodeIds={parentNodeIds}
               activity={displayData?.activity}
+              orchestration={orch}
+              onOpenOrchestration={(leafKey) => {
+                setOrchLeaf(leafKey);
+                setOrchestrationOpen(true);
+              }}
             />
           </div>
           <div
@@ -1875,6 +1890,7 @@ export default function App() {
             setWorkersInitialId(id);
             setWorkersOpen(true);
           }}
+          filterLeafId={orchLeaf}
         />
         <WorkersDrawer
           open={workersOpen}

@@ -7,8 +7,10 @@ import {
   leafBadge,
   loadOrchestration,
   optionalKeys,
+  outlineBadge,
   pollOrchestration,
   requiredKeys,
+  subscribeOrchestration,
   type OrchestrationSnapshot,
   type OutlineNodeRef,
   type SnapshotLeaf,
@@ -224,6 +226,125 @@ describe("leafBadge", () => {
   });
 });
 
+describe("outlineBadge", () => {
+  it("present, 404 and no state: badge text, hover and the leaf key a click passes", () => {
+    const present = outlineBadge({ kind: "ok", snapshot: mock }, "k-blocked", NOW);
+    expect(present).toEqual({
+      text: "blocked (1)",
+      leafKey: "k-blocked",
+      hover: [
+        "claim: alpha · feature/rm-alpha · 3h ago",
+        "workers: w-0001 running",
+        "worktrees: 2",
+        "READY: abc1234",
+        "reviews: sol block",
+        "holds: —",
+      ].join("\n"),
+    });
+
+    const heldList = outlineBadge({ kind: "ok", snapshot: mock }, "k-held-list", NOW);
+    expect(heldList).toEqual({
+      text: "held",
+      leafKey: "k-held-list",
+      hover: [
+        "claim: gamma · feature/rm-gamma · 2d ago",
+        "workers: w-0003 exited_ok",
+        "worktrees: 0",
+        "READY: —",
+        "reviews: grok approve",
+        "holds: hold list: waiting on the maintainer",
+      ].join("\n"),
+    });
+    expect(outlineBadge({ kind: "ok", snapshot: mock }, "k-held-gate", NOW)?.hover).toContain(
+      "holds: M9.3",
+    );
+
+    const counted = outlineBadge(
+      {
+        kind: "ok",
+        snapshot: {
+          schema: 2,
+          leaves: {
+            k: merge({
+              gate: { state: "executor_blocked", approvals: 0, blocks: 0, fresh_for_head: true },
+              ready: {
+                commit: "c",
+                model: "m",
+                at: "2026-11-08T11:00:00Z",
+                blocked_on: [
+                  { acceptance: "A1", reason: "x" },
+                  { acceptance: "A2", reason: "y" },
+                ],
+              },
+            }),
+          },
+          leafless_workers: [],
+        },
+      },
+      "k",
+      NOW,
+    );
+    expect(counted?.text).toBe("blocked (2)");
+    expect(counted?.leafKey).toBe("k");
+
+    const named = outlineBadge(
+      {
+        kind: "ok",
+        snapshot: {
+          schema: 2,
+          leaves: {
+            k: merge({
+              holds: [
+                { source: "hold_list", id: "M1", reason: null },
+                { source: "gate", id: "G9", reason: "a title" },
+              ],
+            }),
+          },
+          leafless_workers: [],
+        },
+      },
+      "k",
+      NOW,
+    );
+    expect(named?.text).toBe("held (2)");
+    expect(named?.leafKey).toBe("k");
+    expect(named?.hover.endsWith("holds: hold list; G9")).toBe(true);
+
+    const claimed = outlineBadge(
+      {
+        kind: "ok",
+        snapshot: {
+          schema: 1,
+          leaves: {
+            k: merge({
+              claim: { codename: "c", branch: "b", registered_at: "2026-11-08T11:59:30Z" },
+            }),
+          },
+          leafless_workers: [],
+        },
+      },
+      "k",
+      NOW,
+    );
+    expect(claimed?.text).toBe("claimed");
+    expect(claimed?.hover).toContain("workers: —");
+    expect(claimed?.hover).toContain("worktrees: 0");
+    expect(claimed?.hover).toContain("READY: —");
+    expect(claimed?.hover).toContain("reviews: —");
+    expect(claimed?.hover.endsWith("holds: —")).toBe(true);
+
+    expect(outlineBadge({ kind: "unavailable" }, "k-blocked", NOW)).toBeNull();
+    expect(
+      outlineBadge(
+        { kind: "ok", snapshot: { schema: 1, leaves: { k: emptyLeaf() }, leafless_workers: [] } },
+        "k",
+        NOW,
+      ),
+    ).toBeNull();
+    expect(outlineBadge({ kind: "ok", snapshot: mock }, "missing", NOW)).toBeNull();
+  });
+});
+
 const outlineNode = (id: string, node_key: string, title = `title ${id}`): OutlineNodeRef => ({
   id,
   node_key,
@@ -433,6 +554,25 @@ describe("loadOrchestration", () => {
     const { requests, fetchImpl } = recordingFetch(respond("Not Found", 404));
     expect(await loadOrchestration(fetchImpl)).toEqual({ kind: "unavailable" });
     expect(requests).toEqual(["GET /api/orchestration"]);
+  });
+
+  it("tells subscribers about that load, including a 404, until they unsubscribe", async () => {
+    const seen: string[] = [];
+    const stop = subscribeOrchestration((notice) => seen.push(notice.load.kind));
+    try {
+      expect(await loadOrchestration(recordingFetch(respond(JSON.stringify(mockJson), 200)).fetchImpl)).toEqual({
+        kind: "ok",
+        snapshot: mock,
+      });
+      expect(await loadOrchestration(recordingFetch(respond("Not Found", 404)).fetchImpl)).toEqual({
+        kind: "unavailable",
+      });
+      expect(seen).toEqual(["ok", "unavailable"]);
+    } finally {
+      stop();
+    }
+    await loadOrchestration(recordingFetch(respond("Not Found", 404)).fetchImpl);
+    expect(seen).toEqual(["ok", "unavailable"]);
   });
 
   it.each([
