@@ -81,6 +81,7 @@ entries:
       - docs/upgrading.md
       - CHANGELOG.md
       - specy_road/sibling_repos.py
+      - tests/parity/command_map.yaml
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending

@@ -24,7 +24,8 @@
         "tests/test_upgrade_preview.py",
         "docs/upgrading.md",
         "CHANGELOG.md",
-        "specy_road/sibling_repos.py"
+        "specy_road/sibling_repos.py",
+        "tests/parity/command_map.yaml"
       ],
       "type": "task"
     },
