@@ -134,7 +134,7 @@ def test_an_attestation_must_be_one_non_empty_line(tmp_path: Path, monkeypatch: 
     assert _tree(repo) == before
 
 
-@pytest.mark.parametrize("extra", [(), ("--human-filed", "savigil, pasted notes")])
+@pytest.mark.parametrize("extra", [(), ("--human-filed", "alice, pasted notes")])
 def test_the_models_own_harness_files_and_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys,
                                                  extra) -> None:
     repo = make_review_repo(tmp_path, orchestration=_roster())
@@ -153,7 +153,7 @@ def test_the_workers_own_model_files(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert handoff_status_node(repo, capsys)["policy_met"]
 
 
-@pytest.mark.parametrize("attest", ["  savigil, notes pasted from a claude.ai chat ", "Alice\tpasted independent review",
+@pytest.mark.parametrize("attest", ["  alice, notes pasted from a claude.ai chat ", "Alice\tpasted independent review",
                                     "Zoë \x07 by hand", os.fsdecode(b"me \xff, by hand")])
 @pytest.mark.parametrize("count_human", [False, True])
 def test_a_hand_filed_record_counts_only_under_the_policy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys,
@@ -174,8 +174,8 @@ def test_a_signed_hand_filed_record_counts(tmp_path: Path, monkeypatch: pytest.M
     subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", OPUS, "-f", str(key)], check=True)
     repo = make_review_repo(tmp_path, orchestration=_roster(opus_pub=Path(f"{key}.pub").read_text().strip()))
     _env(monkeypatch, {})
-    assert _record(repo, OPUS, "--human-filed", "savigil, by hand", "--sign-key", str(key)) == 0
-    assert _filed(repo, OPUS)["human_filed"] == "savigil, by hand"
+    assert _record(repo, OPUS, "--human-filed", "alice, by hand", "--sign-key", str(key)) == 0
+    assert _filed(repo, OPUS)["human_filed"] == "alice, by hand"
     assert handoff_status_node(repo, capsys)["policy_met"]
 
 
