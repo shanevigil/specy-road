@@ -144,3 +144,24 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
+  - codename: work-dir-ignored
+    node_id: M22.65
+    branch: feature/rm-work-dir-ignored
+    touch_zones:
+      - specy_road/agent_ignores.py
+      - specy_road/templates/project/.gitignore
+      - specy_road/templates/project/work/README.md
+      - specy_road/templates/project/roadmap/git-workflow.yaml
+      - .gitignore
+      - tests/test_agent_ignores.py
+      - tests/test_runtime_dirs_not_dirty.py
+      - tests/test_init_project_gitignore.py
+      - docs/git-workflow.md
+      - docs/git-workflow-preferences.md
+      - CHANGELOG.md
+      - tests/test_init_project_reports.py
+      - tests/test_worker_state.py
+      - sr/work/done/
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
