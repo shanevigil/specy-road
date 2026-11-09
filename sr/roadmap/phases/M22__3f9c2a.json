@@ -28,7 +28,8 @@
         ".pre-commit-config.yaml",
         "AGENTS.md",
         "docs/contributor-guide.md",
-        "specy_road/agent_rule_provenance.md"
+        "specy_road/agent_rule_provenance.md",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     },

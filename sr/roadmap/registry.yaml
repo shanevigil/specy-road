@@ -95,6 +95,7 @@ entries:
       - AGENTS.md
       - docs/contributor-guide.md
       - specy_road/agent_rule_provenance.md
+      - docs/orchestration-workers.md
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
