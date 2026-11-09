@@ -8,7 +8,11 @@ nothing of its own to lose: each conflicted file takes the integration
 branch's version, and the bookkeeping commit's one graph edit, the finished
 leaf set to Complete (and the ancestors that rolled up with it), is applied
 again on top, found by ``node_key`` because the integration branch may have
-moved or renumbered it. Provenance comes from the branch's first-parent
+moved or renumbered it. When that commit is known and the leaf is still in
+the resolved graph but not Complete, the merge stops before it is committed.
+The merge message says the status was applied again only when the leaf
+landed Complete; a leaf the integration branch removed stays absent.
+Provenance comes from the branch's first-parent
 history (:func:`branch_roadmap_edits`). A branch that authored an edit to a
 conflicted graph file is refused with the files named; its edit is never
 silently dropped. Merging two real roadmap edits, and the milestone-rollup
@@ -196,7 +200,12 @@ def _finished_node_key(repo: Path, codename: str | None, bookkeeping: str) -> st
 def _graph_paths_at(repo: Path, commit: str) -> list[str]:
     """Git-root-relative roadmap graph paths in ``commit``'s tree."""
     prefix = project_prefix(repo)
-    ok, out = git_ok(["ls-tree", "-r", "--name-only", commit, "--", f":(top){prefix}roadmap"], repo)
+    # ``--full-name``: from a nested project root, ls-tree otherwise prints
+    # paths relative to that directory, and the prefix filter drops every one.
+    ok, out = git_ok(
+        ["ls-tree", "-r", "--name-only", "--full-name", commit, "--", f":(top){prefix}roadmap"],
+        repo,
+    )
     names = [line.strip() for line in out.splitlines()] if ok else []
     return [n for n in names if n.startswith(prefix) and is_roadmap_graph_path(n[len(prefix):])]
 
@@ -237,12 +246,53 @@ def _complete_again(repo: Path, node_key: str) -> list[str]:
     return []
 
 
+def _landed_leaf(
+    repo: Path, codename: str | None, node_key: str | None,
+) -> tuple[str, str] | None:
+    """Project-relative chunk and status of the finishing leaf, or ``None`` if it is gone.
+
+    ``node_key`` wins when this run found one: a removed leaf must not match
+    some other node that happens to carry the codename. With no key, the
+    codename is the only name the bookkeeping commit still gives us.
+    """
+    if node_key is None and not codename:
+        return None
+    for chunk in sorted(set(build_node_chunk_map(repo).values())):
+        for node in load_json_chunk(chunk):
+            if node_key is not None:
+                hit = node.get("node_key") == node_key
+            else:
+                hit = node.get("codename") == codename
+            if hit:
+                return chunk.relative_to(repo.resolve()).as_posix(), str(node.get("status"))
+    return None
+
+
+def _require_reapplied(repo: Path, codename: str | None, node_key: str | None) -> None:
+    """Abort when the bookkeeping commit's leaf is still present and not Complete."""
+    found = _landed_leaf(repo, codename, node_key)
+    if found is None or found[1] == "Complete":
+        return
+    raise GraphResolveError(f"{found[0]}: could not re-apply Complete for {codename}")
+
+
+def leaf_landed_complete(repo: Path, codename: str | None, bookkeeping: str | None) -> bool:
+    """Whether the finishing leaf is Complete in the worktree graph."""
+    node_key = _finished_node_key(repo, codename, bookkeeping) if bookkeeping else None
+    found = _landed_leaf(repo, codename, node_key)
+    return found is not None and found[1] == "Complete"
+
+
 def resolve_graph(
     repo: Path, codename: str | None, paths: Sequence[str], bookkeeping: str | None
 ) -> list[str]:
     """Take HEAD's version of ``paths``, then apply ``bookkeeping``'s Complete again.
 
-    Returns the project-relative paths to stage.
+    Returns the project-relative paths to stage. When ``bookkeeping`` is known
+    and the leaf is still in the graph but not Complete, raises
+    :class:`GraphResolveError` naming the chunk and the codename: the caller
+    aborts the merge before the commit. A leaf the integration branch removed
+    is left absent.
 
     ``bookkeeping`` is the sha :func:`branch_roadmap_edits` found, or ``None``
     when the branch has no bookkeeping commit (nothing to apply again).
@@ -250,7 +300,10 @@ def resolve_graph(
     if not paths:
         return []
     staged = take_integration_graph(repo, paths)
-    node_key = _finished_node_key(repo, codename, bookkeeping) if bookkeeping else None
+    if not bookkeeping:
+        return staged
+    node_key = _finished_node_key(repo, codename, bookkeeping)
     if node_key is not None:
         staged.extend(p for p in _complete_again(repo, node_key) if p not in staged)
+    _require_reapplied(repo, codename, node_key)
     return staged
