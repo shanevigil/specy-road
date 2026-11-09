@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from specy_road.git_subprocess import git_code, git_ok, git_text
+from specy_road.git_subprocess import git_code, git_ok, git_text, is_worktree_root
 
 if TYPE_CHECKING:
     from specy_road.nested_repos import NestedRepo
@@ -166,12 +166,12 @@ def land_nested_branches(repo_root: Path, feature_branch: str) -> tuple[bool, st
     remote-tracking) lacks the branch is not-ok too, with the merge command to
     run there; once merged by hand, a re-run passes it.
     """
-    from specy_road.nested_repos import _has_branch, is_repo_top, nested_repos   # noqa: PLC0415
+    from specy_road.nested_repos import _has_branch, nested_repos   # noqa: PLC0415
 
     manual = []
     for nr in nested_repos(repo_root):
         repo = repo_root / nr.path
-        if not is_repo_top(repo):
+        if not is_worktree_root(repo):
             err = (f"{repo} is not the top of a git repository (roadmap/git-workflow.yaml names it), so its "
                    "leaf branch cannot be landed; restore it or drop it from nested_repos")
         elif not _has_branch(repo, feature_branch):
@@ -216,13 +216,13 @@ def unpushed_branches(repo_root: Path) -> list[dict]:
     is left out, and so is a configured path that is not a repository: delegate
     and finish report that one.
     """
-    from specy_road.nested_repos import is_repo_top, nested_repos   # noqa: PLC0415
+    from specy_road.nested_repos import nested_repos   # noqa: PLC0415
 
     fmt = "%(refname:short)%09%(upstream:short)%09%(upstream:track,nobracket)"
     out = []
     for nr in nested_repos(repo_root):
         repo = repo_root / nr.path
-        if not is_repo_top(repo):
+        if not is_worktree_root(repo):
             continue
         has_remote = bool(git_text(["remote"], repo))
         for line in (git_text(["for-each-ref", f"--format={fmt}", "refs/heads"], repo) or "").splitlines():

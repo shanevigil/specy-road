@@ -47,20 +47,12 @@ from specy_road.git_workflow_config import (
     load_git_workflow_config,
     resolve_integration_defaults,
 )
+from specy_road.git_subprocess import git_out, is_worktree_root, run_bytes
 from specy_road.nested_repos import nested_repos
 from specy_road.review_files import reviews_root
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_state import list_records
-from specy_road.worktree_delete_set import (
-    cmd,
-    common_dir,
-    deletions,
-    foreign_refusal,
-    git_out,
-    git_run,
-    is_repo_top,
-    walk_foreign,
-)
+from specy_road.worktree_delete_set import cmd, common_dir, deletions, foreign_refusal, walk_foreign
 
 
 class PruneError(RuntimeError):
@@ -86,7 +78,7 @@ def leaf_worktree(root: Path, node_id: str) -> tuple[Path, Path, str]:
         raise PruneError(f"no roadmap node {node_id!r} with a codename")
     main = reviews_root(root).parent.parent
     wt = main / "work" / ".worktrees" / node["codename"]
-    if not is_repo_top(wt) or common_dir(wt) != common_dir(main):
+    if not is_worktree_root(wt) or common_dir(wt) != common_dir(main):
         raise PruneError(f"{wt} is not a worktree of this repository; nothing to prune")
     return main, wt, f"feature/rm-{node['codename']}"
 
@@ -98,11 +90,11 @@ def _status(d: Path, skip: tuple[str, ...] = ()) -> tuple[list[str], list[str]] 
     # path as the next field. --untracked-files=all names each file inside an untracked or ignored
     # directory, so the list says exactly what removal deletes. Foreign repositories are not found from
     # this list (a clean tracked one is not in it): see walk_foreign.
-    code, out, _msg = git_run(["status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all"], d)
-    if code:
+    r = run_bytes(["status", "--porcelain=v1", "-z", "--ignored", "--untracked-files=all"], d)
+    if not r.ok:
         return None
     changed, ignored = [], []
-    fields = iter(os.fsdecode(f) for f in out.split(b"\0"))
+    fields = iter(os.fsdecode(f) for f in r.out.split(b"\0"))
     for rec in fields:
         if not rec:
             continue
@@ -157,7 +149,7 @@ def _check_nested(plan: PrunePlan, main: Path, prefix: str) -> None:
     leaf_root = plan.worktree / prefix
     for nr in nested_repos(main):
         d, src = leaf_root / nr.path, main / nr.path
-        if not is_repo_top(d):
+        if not is_worktree_root(d):
             continue
         linked = common_dir(d) == common_dir(src)
         plan.nested.append((src, d, linked))
@@ -190,17 +182,17 @@ def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[st
     the remote, or any of those commits, cannot be read.
     """
     want = {f"refs/heads/{b}": b for b in branches}
-    code, out, msg = git_run(["ls-remote", remote, *want], main)
-    if code:
-        return {}, f"cannot read {remote} ({shlex.join(['git', 'ls-remote', remote])}: {msg})"
-    lines = os.fsdecode(out).split("\n")
+    listed = run_bytes(["ls-remote", remote, *want], main)
+    if not listed.ok:
+        return {}, f"cannot read {remote} ({shlex.join(['git', 'ls-remote', remote])}: {listed.message})"
+    lines = os.fsdecode(listed.out).split("\n")
     tips = {want[ref]: sha for sha, _, ref in (line.partition("\t") for line in lines) if ref in want}
     if tips:
-        code, _out_b, msg = git_run(["fetch", "--no-tags", "--no-write-fetch-head", remote,
-                                  *(f"refs/heads/{b}" for b in tips)], main)
-        if code:
-            return {}, f"cannot fetch {', '.join(tips)} from {remote}: {msg}"
-    missing = [b for b, sha in tips.items() if git_run(["cat-file", "-e", f"{sha}^{{commit}}"], main)[0]]
+        fetched = run_bytes(["fetch", "--no-tags", "--no-write-fetch-head", remote,
+                             *(f"refs/heads/{b}" for b in tips)], main)
+        if not fetched.ok:
+            return {}, f"cannot fetch {', '.join(tips)} from {remote}: {fetched.message}"
+    missing = [b for b, sha in tips.items() if not run_bytes(["cat-file", "-e", f"{sha}^{{commit}}"], main).ok]
     if missing:
         return {}, f"the commits {remote} has at {', '.join(missing)} are not here after fetching them"
     return tips, None
@@ -277,9 +269,9 @@ def remove(plan: PrunePlan) -> str | None:
     for step in steps:
         if step.owner:
             argv = ["worktree", "remove", "--force", str(step.path)]
-            code, _o, msg = git_run(argv, step.owner)
-            if code:
-                return f"{cmd('git', '-C', step.owner, *argv)} failed: {msg}"
+            r = run_bytes(argv, step.owner)
+            if not r.ok:
+                return f"{cmd('git', '-C', step.owner, *argv)} failed: {r.message}"
         else:
             try:
                 shutil.rmtree(step.path)

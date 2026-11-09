@@ -32,10 +32,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
 from pathlib import Path
 
-from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_text
+from specy_road.git_subprocess import git_path, git_root, git_text
 
 #: Overrides discovery for both the CLI and the GUI.
 REPO_ROOT_ENV = "SPECY_ROAD_REPO_ROOT"
@@ -55,12 +54,6 @@ def specy_road_package_dir() -> Path:
 def bundled_scripts_dir() -> Path:
     """Directory with roadmap validators and helpers (shipped in the wheel)."""
     return specy_road_package_dir() / "bundled_scripts"
-
-
-def git_root(start: Path | None = None) -> Path | None:
-    """The enclosing git worktree root, or ``None`` outside one."""
-    out = git_text(["rev-parse", "--show-toplevel"], start or Path.cwd())
-    return Path(out).resolve() if out else None
 
 
 def project_prefix(root: Path) -> str:
@@ -152,28 +145,12 @@ def discover_project_root(start: Path | None = None) -> Path | None:
     return None
 
 
-def git_path(args: list[str], start: Path) -> Path | None:
-    """The one path ``git <args>`` prints in ``start``, or ``None`` on failure.
-
-    Read as bytes, with only git's single trailing newline removed, then decoded with :func:`os.fsdecode`: a
-    path may hold a newline, trailing spaces or bytes that are not UTF-8, which a stripped or line-split text
-    read would corrupt. So each query asks for exactly one value. Spawns git itself because
-    :func:`specy_road.git_subprocess.run` decodes to text.
-    """
-    try:
-        r = subprocess.run(["git", *args], cwd=start, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
-    except (OSError, ValueError, subprocess.SubprocessError):
-        return None
-    out = r.stdout.removesuffix(b"\n")
-    return Path(os.fsdecode(out)) if r.returncode == 0 and out else None
-
-
 def _worktree_and_common_dir(start: Path) -> tuple[Path, Path] | None:
     """``(worktree top, common git dir)`` of the checkout holding ``start``, or ``None`` outside one
     (one :func:`git_path` query per value)."""
-    top = git_path(["rev-parse", "--path-format=absolute", "--show-toplevel"], start)
+    top = git_root(start)
     common = git_path(["rev-parse", "--path-format=absolute", "--git-common-dir"], start) if top else None
-    return (top.resolve(), common.resolve()) if top and common else None
+    return (top, common) if top and common else None
 
 
 def enclosing_worktree_root(named: Path) -> Path:

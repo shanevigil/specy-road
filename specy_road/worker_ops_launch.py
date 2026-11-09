@@ -16,7 +16,7 @@ from typing import Any
 from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, open_chore
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.git_subprocess import git_text, run
+from specy_road.git_subprocess import current_branch_name, git_root, is_worktree_root, run
 from specy_road.nested_repos import (
     NestedRepoError, add_nested_worktrees, align_nested_checkouts, in_nested, nested_prefixes, nested_worktree_dirs,
 )
@@ -29,7 +29,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.reviewer_auth import claude_worker_refusal
-from specy_road.runtime_paths import REPO_ROOT_ENV, git_root, project_prefix
+from specy_road.runtime_paths import REPO_ROOT_ENV, project_prefix
 from specy_road.worker_adapter_parsers import effort_note, output_mode_note, resume_form_note
 from specy_road.worker_adapters import adapter_for
 from specy_road.worker_lease import acquire_lease, foreign_leases, release_lease
@@ -98,11 +98,10 @@ def _check_eligible(entry: dict[str, Any], node: dict[str, Any], model: str) -> 
 def _check_tree(wt: Path, branch: str) -> Path:
     """``wt`` must be a git worktree rooted there with ``branch`` checked out: a stale directory is refused."""
     wt = wt.resolve()
-    top = git_text(["rev-parse", "--show-toplevel"], wt) if wt.is_dir() else None
-    if not top or Path(top).resolve() != wt:
+    if not is_worktree_root(wt):
         raise WorkerError(f"{wt} is not a git worktree; remove it or pass --worktree to a real one")
-    current = git_text(["branch", "--show-current"], wt)
-    if current != branch:
+    if not is_worktree_root(wt, branch):
+        current = current_branch_name(wt, is_worktree=True)
         raise WorkerError(f"{wt} has {current or 'a detached HEAD'} checked out, not the claim's branch {branch}")
     return wt
 
@@ -110,7 +109,7 @@ def _check_tree(wt: Path, branch: str) -> Path:
 def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | None) -> Path:
     if explicit:
         return _check_tree(Path(explicit), branch)
-    if git_text(["branch", "--show-current"], repo_root) == branch:
+    if current_branch_name(repo_root) == branch:
         # The git root, not a nested project root: the harness runs in the recorded
         # tree, and the prompt and brief give their paths from the git root.
         return git_root(repo_root)

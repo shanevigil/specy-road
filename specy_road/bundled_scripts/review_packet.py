@@ -47,14 +47,15 @@ from specy_road.bundled_scripts.review_packet_observed import (
 from specy_road.bundled_scripts.review_packet_uncommitted_refs import uncommitted_refs_section
 from specy_road.finish_implementation_check import in_zones
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import git_stdout, git_text, head_sha
+from specy_road.git_subprocess import git_root, git_stdout, git_text, head_sha
 from specy_road.impact import impact_for_diff, section_lines
+from specy_road.registry_yaml import REGISTRY_REL
 from specy_road.review_files import PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 from specy_road.review_gate import FULL_MARK
 from specy_road.review_gate_ready import policy_source_line, trial_merge_lines
 from specy_road.review_resumed_delta import RESUMED_KEY, resumed_delta_on
 from specy_road.review_target import (
-    MILESTONE_SUMMARY, REGISTRY_REL, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
+    MILESTONE_SUMMARY, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
     resolve_target_or_exit, same_commit,
 )
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
@@ -89,7 +90,7 @@ _INVENTORY = re.compile(r"(?im)^(?:#+\s*added\b|\*\*added\b|added:)")
 RENDERED = "_Rendered from the roadmap at the working tree._"
 # The registry stays in the diff: only this node's claim row and approval stamp are bookkeeping.
 BOOKKEEPING_MARK = "  _← toolkit bookkeeping; any edit beyond this node's claim and approval is under review_"
-BOOKKEEPING_NOTE = (f"_`{REGISTRY_REL}` is in this diff. Expected there: this node's claim row (pickup) and its "
+BOOKKEEPING_NOTE = (f"_`{REGISTRY_REL.as_posix()}` is in this diff. Expected there: this node's claim row (pickup) and its "
                     "approval stamp (`mark-implementation-reviewed`). Any other edit in that file is under review._")
 
 
@@ -157,7 +158,7 @@ def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[
         mark = "" if inside or bookkeeping else "  **← outside touch zones**"
         if p in policy:
             mark = "  **← review policy changed on this branch**"
-        if p == REGISTRY_REL:
+        if p == REGISTRY_REL.as_posix():
             mark = BOOKKEEPING_MARK
         lines.append(f"- `{p}`{mark}")
     if not paths:
@@ -217,7 +218,7 @@ def _generated(root: Path, commit: str, paths: list[str]) -> set[str]:
     """The git-root ``paths`` under GENERATED_PATHS, marked ``linguist-generated`` at ``commit``, or a
     LOCKFILES name with no ``linguist-generated`` entry there."""
     out = {p for p in paths if p.startswith(GENERATED_PATHS)}
-    top = Path(git_text(["rev-parse", "--show-toplevel"], root) or root)   # check-attr paths are cwd-relative
+    top = git_root(root) or root   # check-attr paths are cwd-relative
     attr = ["check-attr", "-z", "linguist-generated", "--", *paths]
     raw = git_stdout(attr[:2] + [f"--source={commit}"] + attr[2:], top) or git_stdout(attr, top) or ""
     f = raw.split("\0")   # path, attribute, value; repeated
@@ -266,7 +267,7 @@ def _diff(root: Path, t: ReviewTarget, paths: list[str], max_diff_lines: int = M
     (reviews_dir(root, t.node_id) / patch_name).unlink(missing_ok=True)   # only a capped packet names one
     if not t.base or not t.commit:
         return out + ["_(cannot compute)_", ""]
-    note = [BOOKKEEPING_NOTE, ""] if REGISTRY_REL in paths else []
+    note = [BOOKKEEPING_NOTE, ""] if REGISTRY_REL.as_posix() in paths else []
     diff = git_stdout(["diff", f"{t.base}...{t.commit}"], root) or ""
     if not diff.strip():
         print(f"warning: {_empty_diff_reason(t)}", file=sys.stderr)

@@ -11,9 +11,9 @@ These take ``repo_root`` explicitly. None of them stashes: the stash stack is
 shared by every session in the checkout, so registry commits name their one
 path and the clean-tree checks can ignore ``work/`` instead.
 
-Unlike :mod:`specy_road.git_subprocess`, :func:`git_run` does **not** capture
-output: ``git fetch`` and ``git push`` write progress to the terminal, and these
-are the interactive commands where a user is watching for it.
+Their git calls go through :mod:`specy_road.git_subprocess`; the interactive
+ones (``fetch``, ``checkout``, ``merge``) use its :func:`~specy_road.git_subprocess.git_run`,
+which passes progress through to the terminal a user is watching.
 """
 
 from __future__ import annotations
@@ -23,23 +23,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from specy_road.git_subprocess import git_checked
+from specy_road.git_subprocess import git_capture, git_checked, git_run
 
 UNCLEAN_TREE_MESSAGE = (
     "error: working tree is not clean (commit, stash, or discard changes first)."
 )
-
-
-def git_run(repo_root: Path, *args: str) -> None:
-    """Run git with output passed through. Raises ``CalledProcessError``."""
-    subprocess.check_call(["git", *args], cwd=repo_root)
-
-
-def git_capture(repo_root: Path, *args: str) -> str:
-    """Raw stdout. Raises ``CalledProcessError`` on a non-zero exit."""
-    return subprocess.run(
-        ["git", *args], cwd=repo_root, capture_output=True, text=True, check=True
-    ).stdout
 
 
 def current_branch(repo_root: Path) -> str:

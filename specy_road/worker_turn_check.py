@@ -29,7 +29,7 @@ from typing import Any
 from specy_road.clock import utc_now
 from specy_road.finish_implementation_check import _clean, in_zones
 from specy_road.git_changed_paths import branch_commit_paths
-from specy_road.git_subprocess import git_text, head_sha, run
+from specy_road.git_subprocess import current_branch_name, head_sha, run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import project_prefix, rebase_to_project
@@ -100,7 +100,7 @@ def git_state(worktree: Path, repo_root: Path, refs: tuple[str, ...] | None = No
     stash = run(["stash", "list", "--format=%H"], worktree)
     entries = status_entries(worktree)
     watched = _integration_refs(repo_root) if refs is None else refs
-    return GitState(head_sha(worktree), git_text(["branch", "--show-current"], worktree),
+    return GitState(head_sha(worktree), current_branch_name(worktree),
                     tuple(stash.out.split()) if stash.ok else None,
                     {p: _content(worktree, p) for _xy, p in entries} if entries is not None else None,
                     tuple(_ref_tip(worktree, ref) for ref in watched))

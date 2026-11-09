@@ -18,6 +18,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.git_subprocess import git_checked, git_root, git_run, git_text
+
 # Canonical upstream (SSH/HTTPS variants accepted via normalization).
 CANONICAL_OWNER_REPO = "shanevigil/specy-road"
 
@@ -62,50 +64,15 @@ def is_canonical_specy_road_remote(url: str) -> bool:
     return path == CANONICAL_OWNER_REPO.lower()
 
 
-def _git_output(cwd: Path, *args: str) -> str:
-    r = subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return r.stdout.strip()
-
-
-def _git_succeeds(cwd: Path, *args: str) -> bool:
-    r = subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return r.returncode == 0
-
-
-def _git_toplevel(start: Path) -> Path | None:
-    if not _git_succeeds(start, "rev-parse", "--show-toplevel"):
-        return None
-    out = _git_output(start, "rev-parse", "--show-toplevel")
-    return Path(out)
-
-
-def _remote_url(cwd: Path, remote: str) -> str | None:
-    if not _git_succeeds(cwd, "remote", "get-url", remote):
-        return None
-    return _git_output(cwd, "remote", "get-url", remote)
-
-
 def _find_kit_root_from(start: Path, remote: str) -> Path | None:
     """Walk ancestors; return first git root whose *remote* is canonical."""
     cur = start.resolve()
     seen: set[Path] = set()
     while True:
-        top = _git_toplevel(cur)
+        top = git_root(cur)
         if top is not None and top not in seen:
             seen.add(top)
-            url = _remote_url(top, remote)
+            url = git_text(["remote", "get-url", remote], top)
             if url and is_canonical_specy_road_remote(url):
                 return top
         if cur.parent == cur:
@@ -137,14 +104,7 @@ def _default_kit_root(remote: str) -> Path:
 
 
 def _working_tree_clean(cwd: Path) -> bool:
-    r = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return not r.stdout.strip()
+    return not git_checked(["status", "--porcelain"], cwd)
 
 
 def _exit_bad_remote(remote: str, url: str | None) -> None:
@@ -157,7 +117,7 @@ def _exit_bad_remote(remote: str, url: str | None) -> None:
 
 
 def _assert_canonical_remote(kit: Path, remote: str) -> None:
-    url = _remote_url(kit, remote)
+    url = git_text(["remote", "get-url", remote], kit)
     if not url or not is_canonical_specy_road_remote(url):
         _exit_bad_remote(remote, url)
 
@@ -212,14 +172,11 @@ def _emit_reset_warning() -> None:
 
 
 def _git_reset_to_match_origin(kit: Path, remote: str, branch: str) -> None:
-    subprocess.check_call(["git", "fetch", remote], cwd=kit)
+    git_run(kit, "fetch", remote)
     # ``-f``: destructive reset must succeed when untracked files would block
     # checkout (e.g. untracked README.md that exists on the target branch).
-    subprocess.check_call(["git", "checkout", "-f", branch], cwd=kit)
-    subprocess.check_call(
-        ["git", "reset", "--hard", f"{remote}/{branch}"],
-        cwd=kit,
-    )
+    git_run(kit, "checkout", "-f", branch)
+    git_run(kit, "reset", "--hard", f"{remote}/{branch}")
 
 
 def _git_clean_reset_build_paths(kit: Path) -> None:
@@ -227,17 +184,14 @@ def _git_clean_reset_build_paths(kit: Path) -> None:
         p = kit / rel
         if not p.exists():
             continue
-        subprocess.check_call(["git", "clean", "-fd", "--", rel], cwd=kit)
+        git_run(kit, "clean", "-fd", "--", rel)
 
 
 def _git_fast_forward(kit: Path, remote: str, branch: str) -> None:
-    subprocess.check_call(["git", "fetch", remote], cwd=kit)
-    subprocess.check_call(["git", "checkout", branch], cwd=kit)
+    git_run(kit, "fetch", remote)
+    git_run(kit, "checkout", branch)
     try:
-        subprocess.check_call(
-            ["git", "merge", "--ff-only", f"{remote}/{branch}"],
-            cwd=kit,
-        )
+        git_run(kit, "merge", "--ff-only", f"{remote}/{branch}")
     except subprocess.CalledProcessError:
         print(
             f"error: could not fast-forward local {branch!r} to "
@@ -336,11 +290,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _resolve_kit_explicit(start: Path, remote: str) -> Path:
-    top = _git_toplevel(start)
+    top = git_root(start)
     if top is None:
         print(f"error: not a git work tree: {start}", file=sys.stderr)
         raise SystemExit(2)
-    url = _remote_url(top, remote)
+    url = git_text(["remote", "get-url", remote], top)
     if not url or not is_canonical_specy_road_remote(url):
         _exit_bad_remote(remote, url)
     return top

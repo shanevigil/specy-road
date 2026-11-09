@@ -17,7 +17,8 @@ from typing import Any
 
 from specy_road.clock import utc_now
 from specy_road.claude_code_limits import NONE, TIMED, classify_limit
-from specy_road.runtime_paths import git_root, recorded_project_root
+from specy_road.git_subprocess import git_root
+from specy_road.runtime_paths import recorded_project_root
 
 
 def _text(prompt_path: Path) -> str:

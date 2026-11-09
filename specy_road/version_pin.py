@@ -8,7 +8,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.bundled_scripts.refresh_stubs import MANIFEST_REL
-from specy_road.runtime_paths import git_root
+from specy_road.git_subprocess import git_root
 from specy_road.specyrd_init import _load_manifest
 
 _REQUIREMENT_PIN = re.compile(

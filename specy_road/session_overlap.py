@@ -22,7 +22,7 @@ from pathlib import Path
 
 from specy_road.finish_implementation_check import base_ref, zone_matches
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import git_stdout, git_text
+from specy_road.git_subprocess import git_root, git_stdout
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 from specy_road.session_presence import Session, current_user, warn_lines
@@ -59,13 +59,13 @@ def edit_state(worktree: str | None, hits: list[tuple[str, str]], *, base: str, 
                prefix: str) -> str:
     """One line: the other worktree's uncommitted and unmerged edits inside the overlap."""
     wt = Path(worktree) if worktree else None
-    top = git_text(["rev-parse", "--show-toplevel"], wt) if wt and wt.is_dir() else None
+    top = git_root(wt) if wt and wt.is_dir() else None
     if top is None:
         return f"edits there: unknown (no git checkout at {worktree or 'an unrecorded worktree'})"
-    ref = base_ref(Path(top), remote, base)
-    unmerged = diff_paths(Path(top), f"{ref}...HEAD") if ref else None
+    ref = base_ref(top, remote, base)
+    unmerged = diff_paths(top, f"{ref}...HEAD") if ref else None
     found, unknown = [], []
-    for label, files in (("uncommitted", _uncommitted(Path(top))),
+    for label, files in (("uncommitted", _uncommitted(top)),
                          (f"committed, not merged into {base}", unmerged)):
         if files is None:
             unknown.append(label)

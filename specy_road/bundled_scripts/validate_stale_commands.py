@@ -8,9 +8,9 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.cli import REPLACED_COMMANDS, registered_agent_command_names
+from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import TEAM_MD
 from specy_road.managed_block import agent_file_lines_outside_block
-from specy_road.runtime_paths import git_root
 
 _FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 # Emphasis directly attached to the product name is markup, so "_" is not a word

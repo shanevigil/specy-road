@@ -38,8 +38,8 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 
 from specy_road.finish_implementation_check import zone_matches
-from specy_road.git_subprocess import git_stdout
-from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
+from specy_road.git_subprocess import git_root, git_stdout
+from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 _GLOB_CHARS = "*?["
 _SETTLED = {"complete", "archived", "cancelled"}

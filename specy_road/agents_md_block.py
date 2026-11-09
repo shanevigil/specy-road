@@ -34,6 +34,7 @@ from specy_road.agent_guide_block import strip_provenance
 from specy_road.agents_md_report import MINIMAL, agents_block_mode, claude_reread, minimal_lines, print_rules_overlap, total
 from specy_road.digest import DEFAULT_OUTPUT as DIGEST
 from specy_road.doc_links import link_toolkit_docs
+from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import (
     AGENTS_MD,
     CLAUDE_MAX_FILE_BYTES,
@@ -68,7 +69,6 @@ from specy_road.managed_block import (
     render_block,
     resolves_outside,
 )
-from specy_road.runtime_paths import git_root
 
 #: Codex truncates its project instructions at ``project_doc_max_bytes``, 32 KiB by default:
 #: https://developers.openai.com/codex/guides/agents-md

@@ -12,6 +12,7 @@ from pathlib import Path
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_integration import integration_worktree
 from specy_road.finish_work_artifacts import remove_main_checkout_pickup_files
+from specy_road.git_subprocess import git_capture, git_root, git_run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
@@ -20,7 +21,7 @@ from specy_road.on_complete_session import (
 )
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.abort_task_pickup_own_commit import only_own_registration_ahead
-from specy_road.bundled_scripts.repo_ops import current_branch, git_capture, git_run
+from specy_road.bundled_scripts.repo_ops import current_branch
 from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
@@ -82,10 +83,6 @@ def _git_keeping_untracked(what: str, *args: str, retry: str = "retry abort-task
 
 def _checkout_base(base: str) -> None:
     _git_keeping_untracked(f"check out '{base}'", "checkout", base)
-
-
-def _save_registry(doc: dict) -> None:
-    write_registry(registry_path(ROOT), doc)
 
 
 def _count_commits_ahead_of_remote_base(remote: str, base: str) -> int:
@@ -272,7 +269,7 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
         )
         raise SystemExit(1)
     reg["entries"] = [e for e in entries if e.get("codename") != codename]
-    _save_registry(reg)
+    write_registry(registry_path(ROOT), reg)
     rel_reg = str(registry_path(ROOT).relative_to(ROOT))
     paths = [rel_reg, *regenerated_tracked_paths(ROOT)]
     git_run(ROOT, "add", *paths)
@@ -290,7 +287,7 @@ def _exit_if_base_checked_out_elsewhere(base: str, branch: str, node_id: str) ->
     holder = integration_worktree(ROOT, base)
     if holder is None:
         return
-    wt = shlex.quote(git_capture(ROOT, "rev-parse", "--show-toplevel").strip())
+    wt = shlex.quote(str(git_root(ROOT) or ROOT))
     print(f"error: '{base}' is checked out in {holder}, and abort-task-pickup needs it here.", file=sys.stderr)
     print("  For a delegated leaf: `specy-road worker terminate <W>`; then, in that checkout:", file=sys.stderr)
     print(f"  `git -C {wt} status --short` lists what removing this worktree discards: pickup's untracked "

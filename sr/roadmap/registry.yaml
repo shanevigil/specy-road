@@ -81,30 +81,3 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: git-queries-and-registry-i-o-go-through-one-helper-each
-    node_id: M16.2.3
-    branch: feature/rm-git-queries-and-registry-i-o-go-through-one-helper-each
-    touch_zones:
-      - specy_road/git_subprocess.py
-      - specy_road/runtime_paths.py
-      - specy_road/worktree_delete_set.py
-      - specy_road/bundled_scripts/update_specy_road.py
-      - specy_road/bundled_scripts/repo_ops.py
-      - specy_road/ignore_report.py
-      - specy_road/integrity.py
-      - specy_road/pm_publish.py
-      - specy_road/worker_ops_launch.py
-      - specy_road/bundled_scripts/chore_cli.py
-      - specy_road/session_overlap.py
-      - specy_road/registry_yaml.py
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/bundled_scripts/abort_task_pickup.py
-      - specy_road/pm_integration_registry.py
-      - specy_road/registry_remote_overlay_merge.py
-      - specy_road/review_target.py
-      - specy_road/
-      - tests/
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: pending

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from dataclasses import dataclass
 from importlib import resources
@@ -14,6 +13,7 @@ from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report  # noqa: F401 — re-exported
 from specy_road.agent_ignores import apply_and_report, check_ignore_files
 from specy_road.agents_md_block import apply_agents_and_report
+from specy_road.git_subprocess import git_root
 from specy_road.managed_block import raise_rule_refusal
 from specy_road.specyrd_hooks import hook_destinations
 from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refresh_stubs
@@ -28,7 +28,6 @@ from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refres
 )
 from specy_road.runtime_paths import (
     discover_project_root,
-    git_root,
     prefix_within,
     recorded_project_root,
 )
@@ -129,17 +128,7 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
 def resolve_repo_root(start: Path) -> Path:
     """Prefer git worktree root; else the resolved start path."""
     start = start.resolve()
-    try:
-        r = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=start,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return Path(r.stdout.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return start
+    return git_root(start) or start
 
 
 def _read_dot_specyrd_readme() -> str:

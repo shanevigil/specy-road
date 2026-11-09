@@ -45,9 +45,9 @@ from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, apply_agent_guide_block
 from specy_road.agents_md_block import AGENTS_FILES, agents_block_mode, apply_agents_and_report, apply_agents_files, print_migration
 from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE, GITIGNORE, apply_agent_ignores, apply_and_report
+from specy_road.git_subprocess import git_root
 from specy_road.runtime_paths import (
     add_repo_root_arg,
-    git_root,
     prefix_within,
     project_root,
     recorded_project_root,

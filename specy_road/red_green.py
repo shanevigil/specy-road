@@ -36,8 +36,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from specy_road.git_subprocess import git_code
-from specy_road.integrity import _block_statements, _changed_files, _file_at, _git_bytes, _is_python_test_module
+from specy_road.git_subprocess import git_bytes, git_code
+from specy_road.integrity import _block_statements, _changed_files, _file_at, _is_python_test_module
 from specy_road.review_files import _read, render_front_matter, reviews_dir
 from specy_road.review_policy_ref import policy_source
 from specy_road.review_target import ReviewTargetError, resolve_target, same_commit
@@ -141,7 +141,7 @@ def run_red_green(repo_root: Path, base: str, head: str, tests: list[str]) -> li
         return []
     root = repo_root.resolve()
     files = sorted({t.split("::", 1)[0] for t in tests})
-    overlay = {p: _git_bytes(root, ["cat-file", "blob", f"{head}:{p}"]) for p in files}
+    overlay = {p: git_bytes(["cat-file", "blob", f"{head}:{p}"], root) for p in files}
     at_base = _outcomes_at(root, base, tests, overlay)
     if isinstance(at_base, str):
         return at_base

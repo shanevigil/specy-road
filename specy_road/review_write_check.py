@@ -43,7 +43,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from specy_road.git_subprocess import git_stdout, git_text
+from specy_road.git_subprocess import git_root, git_stdout
 from specy_road.review_files import HISTORY_DIRNAME, REVIEW_PREFIX, project_of
 
 OUTPUT_SCHEMA_NAME = "review-output.schema.json"
@@ -264,7 +264,7 @@ def snapshot(cwd: Path, reviews: Path, model: str, like: Snapshot | None = None)
     if like is not None:
         top, real, owned = like.top, like.reviews, like.owned
     else:
-        top = Path(git_text(["rev-parse", "--show-toplevel"], cwd) or os.path.abspath(cwd))
+        top = git_root(cwd) or Path(os.path.abspath(cwd))
         real = reviews.resolve()   # before the run: specy-road's own directory
         owned = project_of(reviews)
     handoff = PurePosixPath(real.relative_to(top).as_posix()) if real.is_relative_to(top) else None

@@ -13,8 +13,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
-from specy_road.bundled_scripts.repo_ops import git_capture
 from specy_road.generated_files import GENERATED_COMMITTED
+from specy_road.git_subprocess import git_capture
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import REGISTRY_REL
 from specy_road.runtime_paths import project_prefix

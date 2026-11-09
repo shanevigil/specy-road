@@ -19,7 +19,7 @@ from typing import Any, Callable
 
 from specy_road import session_presence, worker_state
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
-from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
+from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_root, git_text
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import read_registry, registry_path
 
@@ -263,7 +263,7 @@ def _remove_worktree(root: Path, path: str) -> str | None:
 
 def worktree_findings(ctx: Any, local: dict[str, tuple[str, str]]) -> list[Finding]:
     """``local``: each local ``feature/rm-*`` branch -> (evidence, containment), the inputs of :func:`classify`."""
-    here = Path(git_checked(["rev-parse", "--show-toplevel"], ctx.root)).resolve()
+    here = git_root(ctx.root)
     found = []
     for wt in _worktrees(ctx.root)[1:]:   # the first is the main worktree
         path = wt["worktree"]
