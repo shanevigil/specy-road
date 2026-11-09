@@ -8,10 +8,10 @@ of a second approximation of it that can drift.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from specy_road.clock import utc_now_iso
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import find_record, load_archive_index, node_summary
 from specy_road.milestone_subtree import subtree_node_ids
@@ -54,10 +54,6 @@ class ArchivePlan:
     @property
     def node_ids(self) -> list[str]:
         return [n["id"] for n in self.nodes if isinstance(n.get("id"), str)]
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def build_archive_id(node: dict[str, Any], archived_at: str) -> str:

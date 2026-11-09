@@ -215,11 +215,11 @@ def _triage(ns: argparse.Namespace, status: str) -> int:
     reason = (ns.reason or "").strip()
     if status == "rejected" and not reason:
         raise BrainstormError("reject needs --reason: the record of why is worth more than the reject")
-    from datetime import datetime, timezone
+    from specy_road.clock import utc_now
 
     ideas = [set_status(session, ident, status) for ident in ns.idea_id]
     seq = _next_decision_seq(session)
-    now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    now = utc_now().isoformat(timespec="milliseconds")
     for idea in ideas:
         dec = {"status": status, "decided_at": now, "seq": str(seq)}
         if reason:

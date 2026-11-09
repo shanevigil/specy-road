@@ -29,10 +29,11 @@ from typing import Any
 
 import yaml
 
+from specy_road.clock import utc_now
 from specy_road.finish_implementation_check import zone_matches
+from specy_road.fs_atomic import atomic_write_text
 from specy_road.git_subprocess import git_text, run
 from specy_road.review_files import reviews_root
-from specy_road.worker_state import _write_atomic as write_atomic
 
 SESSIONS_DIRNAME = ".sessions"
 DEFAULT_TTL_HOURS = 4
@@ -53,7 +54,7 @@ class Session:
     user: str = ""
 
     def is_live(self, now: datetime | None = None) -> bool:
-        return _parse(self.expires) > (now or _now())
+        return _parse(self.expires) > (now or utc_now().replace(microsecond=0))
 
     def stale_reason(self) -> str | None:
         """``worktree gone`` or ``branch gone`` once the recorded checkout or local branch no longer exists (worktree
@@ -73,10 +74,6 @@ class Session:
         if self.note:
             d["note"] = self.note
         return d
-
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc).replace(microsecond=0)
 
 
 def _parse(s: str) -> datetime:
@@ -186,7 +183,7 @@ def start_session(repo_root: Path, agent: str, *, paths: list[str] | None, note:
     if paths is None:
         old = load_session(path) if path.is_file() else None
         paths = list(old.paths) if old else []
-    now = _now()
+    now = utc_now().replace(microsecond=0)
     old = load_session(path) if path.is_file() else None
     wt = git_worktree_top(worktree or repo_root)
     s = Session(agent, git_text(["branch", "--show-current"], wt) or None, str(wt),
@@ -195,7 +192,7 @@ def start_session(repo_root: Path, agent: str, *, paths: list[str] | None, note:
                 (now + timedelta(hours=ttl_hours)).isoformat(), note or (old.note if old else ""), path,
                 current_user())
     path.parent.mkdir(parents=True, exist_ok=True)
-    write_atomic(path, yaml.safe_dump(s.to_dict(), sort_keys=False))   # the guard may be reading it now
+    atomic_write_text(path, yaml.safe_dump(s.to_dict(), sort_keys=False))   # the guard may be reading it now
     return s
 
 

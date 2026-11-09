@@ -26,7 +26,7 @@ import json
 import os
 import stat
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -35,6 +35,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from specy_road import safe_write
+from specy_road.clock import utc_now
 from specy_road.git_subprocess import git_text
 from specy_road.runtime_paths import specy_road_package_dir
 from specy_road.schema_revision import accepted_at_revision
@@ -363,7 +364,7 @@ def archive_review(repo_root: Path, node_id: str, model: str, text: str) -> Path
     """
     reviews = reviews_dir(repo_root, node_id)
     d = reviews / HISTORY_DIRNAME
-    path = d / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}-{model}.md"
+    path = d / f"{utc_now().strftime('%Y%m%dT%H%M%S%fZ')}-{model}.md"
     owned = project_of(reviews)
     safe_write.check(owned, d, safe_write.DIRECTORY)
     safe_write.check(owned, path)

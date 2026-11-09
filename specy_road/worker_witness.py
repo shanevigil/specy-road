@@ -17,9 +17,9 @@ import json
 import threading
 import time
 from collections.abc import Iterator
-from datetime import datetime, timezone
 from pathlib import Path
 
+from specy_road.clock import utc_now_iso
 from specy_road.worker_lock import _LOCAL, _THREAD_LOCKS, WorkerError, workers_dir
 from specy_road.worker_state import WorkerRecord, list_records, record_path
 
@@ -28,10 +28,6 @@ WITNESS_TIMEOUT = 2.0
 
 def interventions_path(repo_root: Path, worker_id: str) -> Path:
     return record_path(repo_root, worker_id).with_suffix(".interventions.jsonl")
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _try_flock(f, deadline: float) -> bool:
@@ -134,6 +130,6 @@ def record_hook_prompt(repo_root: Path, session_id: str, prompt: str, *, harness
             return None   # the broker's own prompts, and closed records, are not interventions
         path = interventions_path(repo_root, rec.worker_id)
         with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps({"at": _now(), "session_id": session_id, "harness": rec.harness,
+            f.write(json.dumps({"at": utc_now_iso(), "session_id": session_id, "harness": rec.harness,
                                 "prompt": prompt}) + "\n")   # verbatim
     return rec

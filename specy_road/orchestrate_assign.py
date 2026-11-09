@@ -14,6 +14,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, NamedTuple
 
+from specy_road.clock import utc_now
 from specy_road.model_names import same_model
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_config import active_substitutions, harness_model
@@ -57,7 +58,7 @@ def _pause_boundary(entry: dict[str, Any]) -> str | None:
 
 def _as_utc(now: datetime | date | None) -> datetime:
     if now is None:
-        return datetime.now(timezone.utc)
+        return utc_now()
     if isinstance(now, date) and not isinstance(now, datetime):
         return datetime.combine(now, datetime.min.time(), tzinfo=timezone.utc)
     if now.tzinfo is None:

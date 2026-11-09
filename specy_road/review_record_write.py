@@ -45,10 +45,10 @@ import time
 from contextlib import redirect_stderr, redirect_stdout
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from specy_road.clock import utc_now_iso
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.generate_brief import index, load_nodes
 from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, UNREADABLE_ANSWER, Rerun, drop_nulls, events,
@@ -69,7 +69,7 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     written,
 )
 from specy_road.orchestration_role_env import harness_env
-from specy_road.reviewer_run_failure import _now, close_run, harness_error_line, record_reviewer_failure_event
+from specy_road.reviewer_run_failure import close_run, harness_error_line, record_reviewer_failure_event
 from specy_road.worker_process import end_group
 
 
@@ -390,7 +390,7 @@ def run_logged(launch: Any, adapter: Any, cwd: Path, log: Path, transcript: list
     ``span`` gets the output's ``[start, end]`` offsets in the log (:func:`run_text`)."""
     span = span if span is not None else []
     with append_log(log) as raw:   # never through a symlink
-        raw.write(f"[review prompt] {datetime.now(timezone.utc).replace(microsecond=0).isoformat()} {launch.argv[0]}\n")
+        raw.write(f"[review prompt] {utc_now_iso()} {launch.argv[0]}\n")
         out = SpanWriter(raw)
         span[:] = [out.start, out.start, None]
         said: list[str] = []   # an error delivering the prompt (reviewer_output)
@@ -425,7 +425,7 @@ def delegate_turn(adapter: Any, harness: str, log: Path, cwd: Path, launch: Any)
     # (Codex: the isolated CODEX_HOME) over that, then no caches (M8.3), as run_logged does for prompt --run
     env = reviewer_env({**harness_env(os.environ, "reviewer", harness=harness), **(launch.env or {})})
     with append_log(log) as raw:   # never through a symlink (review_write_check)
-        raw.write(f"[review delegate] {_now()} {launch.argv[0]}\n")   # for people; never parsed
+        raw.write(f"[review delegate] {utc_now_iso()} {launch.argv[0]}\n")   # for people; never parsed
         span = SpanWriter(raw)   # the attempt's span: specy-road's own offsets and digest
         out.update(log_start=span.start, log_end=span.start, log_sha256=None)
         said: list[str] = []   # an error delivering the prompt (reviewer_output)

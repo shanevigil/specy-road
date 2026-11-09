@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.milestone_subtree import leaf_ids_under_parent
-from specy_road.archive_plan import utc_now_iso
+from specy_road.clock import utc_now_iso
 
 
 def build_active_milestone_execution(

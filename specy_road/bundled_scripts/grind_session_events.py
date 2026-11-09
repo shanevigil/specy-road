@@ -20,8 +20,8 @@ supervisors already built against these codes.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 
+from specy_road.clock import utc_now
 from specy_road.orphaned_claims import stays_claimed
 
 EXIT_OK = 0
@@ -33,11 +33,6 @@ EXIT_PICKUP_FAILED = 5
 EXIT_IN_FLIGHT = 6
 
 
-def _now_iso() -> str:
-    """UTC, to the second. Monkeypatched in tests to freeze event timestamps."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
 class EventEmitter:
     """Emit structured (``--json``) or human-readable session events."""
 
@@ -46,7 +41,8 @@ class EventEmitter:
 
     def emit(self, event: str, **fields) -> None:
         if self.as_json:
-            payload = {"event": event, "ts": _now_iso(), **fields}
+            # UTC to the second, Z-suffixed
+            payload = {"event": event, "ts": utc_now().strftime("%Y-%m-%dT%H:%M:%SZ"), **fields}
             print(json.dumps(payload, sort_keys=False), flush=True)
             return
         print(self._human(event, fields), flush=True)

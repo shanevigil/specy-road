@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from specy_road.clock import utc_now
 from specy_road.claude_code_limits import NONE, TIMED, classify_limit
 from specy_road.runtime_paths import git_root, recorded_project_root
 
@@ -385,7 +386,7 @@ def limit_detail(text: str, *, failed: bool, now: datetime | None = None) -> dic
     a reply that only mentions rate limits is not read as one. Codex's "try again" time is read when Claude's
     "resets" wording is absent.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or utc_now()
     verdict = classify_limit(text, now=now)
     if verdict.kind == NONE or not (failed or verdict.kind == TIMED):
         return None

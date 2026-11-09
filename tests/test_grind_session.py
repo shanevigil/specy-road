@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -103,7 +104,7 @@ class _Harness:
             return self.implement_rc == 0
 
         monkeypatch.setattr(gsc, "git_code", self._fake_git)
-        monkeypatch.setattr(gse, "_now_iso", lambda: TS)
+        monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
         monkeypatch.setattr(gs, "CHILD_STDOUT_TO_STDERR", False)
         monkeypatch.setattr(gs, "gather_plan", fake_gather)
         monkeypatch.setattr(gs, "_run_cli", fake_run_cli)

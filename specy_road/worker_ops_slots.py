@@ -7,9 +7,10 @@ these through that module.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
+from specy_road.clock import utc_now
 from specy_road.orchestration_config import DEFAULT_POLICY
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.worker_lease import max_workers, slot_error
@@ -76,7 +77,7 @@ def sweep_stalled(repo_root: Path, *, now: datetime | None = None) -> list[Worke
     silence (the wrapper's next output write clears the flag; so does leaving ``running``); returns those flagged.
     A worker that never wrote output is measured from its launch (M22.39)."""
     limit = int(_policy(repo_root).get("stall_after_seconds", DEFAULT_POLICY["stall_after_seconds"]))
-    now = now or datetime.now(timezone.utc)
+    now = now or utc_now()
     out = []
     with workers_lock(repo_root):
         for rec in list_records(repo_root):   # failed and terminated too: a closed worker keeps no stall
@@ -113,7 +114,7 @@ def recovery_pending(repo_root: Path, rec: WorkerRecord) -> bool:
 def stalled_workers(repo_root: Path, *, now: datetime | None = None) -> list[dict]:
     """After a sweep, each stalled worker and each pending recovery: id, leaf, seconds silent (``None`` once the
     turn is ended), recoveries used and allowed, ``needs_person`` and ``pending``."""
-    now = now or datetime.now(timezone.utc)
+    now = now or utc_now()
     sweep_stalled(repo_root, now=now)
     limit = recovery_limit(repo_root)
     return [{"worker_id": r.worker_id, "node_id": r.node_id, "silent_seconds": silent_seconds(repo_root, r, now),
