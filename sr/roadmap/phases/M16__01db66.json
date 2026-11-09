@@ -169,7 +169,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.3_git-queries-and-registry-i-o-go-through-one-helper-each_3b4b0524-3dc1-4acb-9d9f-1b8fd01be350.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Git queries and registry I/O go through one helper each",
       "touch_zones": [
         "specy_road/git_subprocess.py",
