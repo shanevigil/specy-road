@@ -25,7 +25,8 @@
         "docs/upgrading.md",
         "CHANGELOG.md",
         "specy_road/sibling_repos.py",
-        "tests/parity/command_map.yaml"
+        "tests/parity/command_map.yaml",
+        "tests/parity/golden/upgrade/rc3-dry-run.txt"
       ],
       "type": "task"
     },
