@@ -104,6 +104,7 @@ Tests:
 - `test_an_unsearchable_directory_is_left_out_of_the_mirror`: a mode-000 directory and a link to it stay out of both temp directories, and both the real run and the dry run exit 0.
 - `test_large_ignored_content_does_not_change_the_plan`: the dry-run plan with a 1MB ignored tree and a secret equals the plan without them.
 - `test_a_tracked_read_only_directory_does_not_stop_either_run`: a tracked mode-0555 directory; both runs exit 0 (round 5).
+- `tests/parity/command_map.yaml` row `specy-road upgrade` -> `specy-road upgrade`: declares the changed `upgrade --help` mirror paragraph, which the parity golden transcript otherwise fails on.
 - `build_without_git` forwards `build`'s new keywords so the existing no-`.git` assertion still runs (decision 5).
 
 Mocks: none.
