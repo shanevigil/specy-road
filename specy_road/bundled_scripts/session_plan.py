@@ -30,12 +30,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from specy_road.bundled_scripts.do_next_available import (
-    _available,
-    _claimed_node_ids,
-    _statuses_by_node_key,
-)
-from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, natural_id_sort_key
+from specy_road.bundled_scripts.do_next_available import _available, _claimed_node_ids
+from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
+from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 from specy_road.bundled_scripts.session_plan_render import DEFAULT_SHARED_ZONES, session_plan_to_dict, split_on_zone_overlap
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.milestone_subtree import leaf_ids_under_parent, structural_leaf_ids
@@ -106,7 +103,7 @@ class SessionPlan:
 def _status(node: dict) -> str:
     """A node's own status, for bucketing the node itself (not its dependents).
 
-    Dependency satisfaction must use ``_statuses_by_node_key`` instead, which
+    Dependency satisfaction must use ``RoadmapIndex.unmet`` instead, which
     rolls parent status up from leaf descendants. Mixing the two is what made
     ``grind-session --plan`` report a leaf as ready in ``totals`` while leaving
     it out of every wave.
@@ -125,29 +122,6 @@ def _scope_leaf_ids(nodes: list[dict], under: str | None) -> set[str]:
     return leaves
 
 
-def _unmet_dep_keys(
-    node: dict,
-    statuses_by_key: dict[str, str],
-    eff: dict[str, set[str]],
-) -> list[str]:
-    nk = node.get("node_key")
-    if not nk:
-        return []
-    return [
-        d
-        for d in eff.get(nk, set())
-        if statuses_by_key.get(d, "") != "complete"
-    ]
-
-
-def _gate_keys(nodes: list[dict]) -> set[str]:
-    return {
-        n["node_key"]
-        for n in nodes
-        if is_gate(n.get("type")) and n.get("node_key")
-    }
-
-
 # ---------------------------------------------------------------------------
 # Classification
 # ---------------------------------------------------------------------------
@@ -162,11 +136,7 @@ def _classify(
     prefer_agentic: bool = False,
 ) -> dict:
     """Bucket scoped leaves into ready / unauthored / blocked / active / closed / gated."""
-    by_key = {n["node_key"]: n for n in nodes if n.get("node_key")}
-    key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
-    statuses_by_key = _statuses_by_node_key(nodes)
-    eff = effective_dependency_keys(nodes)
-    gate_keys = _gate_keys(nodes)
+    index = RoadmapIndex(nodes)
     claimed = _claimed_node_ids(reg)
     scope = _scope_leaf_ids(nodes, under)
 
@@ -203,14 +173,12 @@ def _classify(
         if not n.get("codename"):
             buckets["needs_codename"].append(nid)
             continue
-        unmet = _unmet_dep_keys(n, statuses_by_key, eff)
+        unmet = index.unmet(n)
         if not unmet:
             # Deps met but not pickable for a reason already handled above; skip.
             continue
-        waiting_on = _sorted_ids(
-            key_to_id[d] for d in unmet if d in key_to_id
-        )
-        gate_blocked = any(d in gate_keys for d in unmet)
+        waiting_on = _sorted_ids(index.by_key[d]["id"] for d in unmet)
+        gate_blocked = any(is_gate(index.by_key[d].get("type")) for d in unmet)
         leaf = BlockedLeaf(
             node_id=nid,
             codename=n.get("codename") or "",
@@ -221,40 +189,24 @@ def _classify(
         if gate_blocked:
             buckets["gated"].append(nid)
 
-    gates_open = _open_gates_blocking(nodes, eff, scope, gate_keys)
     return {
         "buckets": buckets,
-        "by_key": by_key,
-        "key_to_id": key_to_id,
-        "statuses_by_key": statuses_by_key,
-        "eff": eff,
-        "gate_keys": gate_keys,
+        "index": index,
         "claimed": claimed,
         "scope": scope,
-        "gates_open": gates_open,
+        "gates_open": _open_gates_blocking(index, scope),
     }
 
 
-def _open_gates_blocking(
-    nodes: list[dict],
-    eff: dict[str, set[str]],
-    scope: set[str],
-    gate_keys: set[str],
-) -> list[str]:
+def _open_gates_blocking(index: RoadmapIndex, scope: set[str]) -> list[str]:
     """Gate node ids (not Complete) that block at least one scoped leaf."""
-    statuses = _statuses_by_node_key(nodes)
-    key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
-    needed: set[str] = set()
-    for n in nodes:
-        if n.get("id") not in scope:
-            continue
-        nk = n.get("node_key")
-        if not nk:
-            continue
-        for d in eff.get(nk, set()):
-            if d in gate_keys and statuses.get(d, "") != "complete":
-                needed.add(d)
-    return _sorted_ids(key_to_id[k] for k in needed if k in key_to_id)
+    needed = {
+        index.by_key[d]["id"]
+        for nid in scope
+        for d in index.unmet(index.by_id[nid])
+        if is_gate(index.by_key[d].get("type"))
+    }
+    return _sorted_ids(needed)
 
 
 # ---------------------------------------------------------------------------
@@ -265,9 +217,7 @@ def _open_gates_blocking(
 def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
     """Layer schedulable leaves by dependency depth (finish-to-start)."""
     buckets = ctx["buckets"]
-    statuses_by_key = ctx["statuses_by_key"]
-    eff = ctx["eff"]
-    key_to_id = ctx["key_to_id"]
+    index: RoadmapIndex = ctx["index"]
     gated = set(buckets["gated"])
 
     blocked_dep_ids = {
@@ -279,23 +229,13 @@ def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
         set(buckets["ready"]) | blocked_dep_ids | set(buckets["active"])
         | {u.node_id for u in buckets["unauthored"]}
     ) - gated
-    id_to_key = {
-        n["id"]: n["node_key"]
-        for n in nodes
-        if n.get("node_key") and n["id"] in schedulable
-    }
+    unmet = {nid: set(index.unmet(index.by_id[nid])) for nid in schedulable}
     # Per unmet dependency key, its leaves (the node itself, or a container's
     # descendants) that are not Complete; the dep resolves once all are placed.
-    unmet_keys = {
-        d
-        for nid in schedulable
-        for d in eff.get(id_to_key.get(nid), set())
-        if statuses_by_key.get(d, "") != "complete"
-    }
     incomplete = {n["id"] for n in nodes if _status(n) != "complete"}
     open_leaves = {
-        d: leaf_ids_under_parent(key_to_id[d], nodes) & incomplete
-        for d in unmet_keys
+        d: leaf_ids_under_parent(index.by_key[d]["id"], nodes) & incomplete
+        for d in set().union(*unmet.values())
     }
 
     assigned: dict[str, int] = {}
@@ -304,9 +244,8 @@ def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
     while remaining:
         layer = []
         for nid in remaining:
-            unmet = eff.get(id_to_key.get(nid), set()) & unmet_keys
             # Schedulable iff every unmet dep is resolved by an earlier wave.
-            if all(open_leaves[d] <= assigned.keys() for d in unmet):
+            if all(open_leaves[d] <= assigned.keys() for d in unmet[nid]):
                 layer.append(nid)
         if not layer:
             break  # remaining depend on unschedulable nodes (gate/external)
@@ -317,10 +256,12 @@ def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
 
     waves: list[Wave] = []
     max_wave = max(assigned.values(), default=-1)
-    zones = {n["id"]: list(n["touch_zones"]) for n in nodes if n.get("touch_zones")}
     for k in range(max_wave + 1):
         ids = _sorted_ids(nid for nid, w in assigned.items() if w == k)
-        waves.append(Wave(index=k, node_ids=ids, touch_zones={i: zones[i] for i in ids if i in zones}))
+        zones = {
+            i: list(index.by_id[i]["touch_zones"]) for i in ids if index.by_id[i].get("touch_zones")
+        }
+        waves.append(Wave(index=k, node_ids=ids, touch_zones=zones))
     return waves
 
 

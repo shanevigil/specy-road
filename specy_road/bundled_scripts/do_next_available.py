@@ -20,12 +20,10 @@ from typing import Any, Iterable
 from specy_road.bundled_scripts.roadmap_gui_lib import load_settings, registry_by_node_id
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.bundled_scripts.roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
-from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, ordered_tree_rows
 from specy_road.bundled_scripts.repo_ops import working_tree_clean
-from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
 from specy_road.git_subprocess import git_ok
 from specy_road.git_workflow_config import resolve_baseline_cmd
-from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_pickable
 from specy_road.planning_scaffold_check import pickup_unauthored_leaves as unauthored_leaves
 
@@ -104,36 +102,7 @@ def _statuses_by_node_key(
     the rollup is computed, so a leaf whose feature branch is already Complete
     also counts toward its ancestors' rollup.
     """
-    by_key = {
-        n["node_key"]: n
-        for n in nodes
-        if isinstance(n.get("node_key"), str) and n["node_key"]
-    }
-    own_by_id: dict[str, str] = {}
-    for key, value in (status_overrides or {}).items():
-        node = by_key.get(key)
-        if node is not None and isinstance(node.get("id"), str):
-            own_by_id[node["id"]] = value or ""
-    rollup = compute_rollup_status(nodes, own_by_id or None)
-    return {
-        key: (rollup.get(node.get("id", ""), node.get("status") or "") or "").lower()
-        for key, node in by_key.items()
-    }
-
-
-def _unmet_effective_dependency_keys(
-    node: dict,
-    statuses_by_key: dict[str, str],
-    effective_dep_keys: dict[str, set[str]],
-) -> list[str]:
-    nk = node.get("node_key")
-    if not nk:
-        return []
-    return [
-        d
-        for d in effective_dep_keys.get(nk, set())
-        if statuses_by_key.get(d, "") != "complete"
-    ]
+    return RoadmapIndex(nodes, status_overrides=status_overrides).status
 
 
 def interactive_deps_blocked_entries(
@@ -144,14 +113,13 @@ def interactive_deps_blocked_entries(
     ready_ids: Iterable[str],
 ) -> list[tuple[dict, list[str]]]:
     """Leaves that look pickable except dependencies fail on integration-only statuses."""
-    effective_dep_keys = effective_dependency_keys(nodes)
+    index = RoadmapIndex(nodes)
     ready_set = set(ready_ids)
     claimed = _claimed_node_ids(reg)
-    leaf_ids = structural_leaf_ids(nodes)
     pairs: list[tuple[dict, list[str]]] = []
     for n in nodes:
         nid = n["id"]
-        if nid not in leaf_ids or nid in ready_set:
+        if nid not in index.leaf_ids or nid in ready_set:
             continue
         if not n.get("codename"):
             continue
@@ -160,17 +128,14 @@ def interactive_deps_blocked_entries(
         stv = (n.get("status") or "Not Started").lower()
         if stv in ("complete", "cancelled", "in progress"):
             continue
-        unmet = _unmet_effective_dependency_keys(
-            n, integration_statuses, effective_dep_keys
-        )
+        unmet = index.unmet(n, integration_statuses)
         if not unmet:
             continue
         pairs.append((n, unmet))
-    order_index = _outline_order_index(nodes)
     tail = 10**9
 
     def sort_key(t: tuple[dict, list[str]]) -> int:
-        return order_index.get(t[0]["id"], tail)
+        return index.outline_position.get(t[0]["id"], tail)
 
     pairs.sort(key=sort_key)
     return pairs
@@ -189,43 +154,6 @@ def blocked_pick_notice(node: dict) -> str | None:
         "status: Blocked — offered first because a blocked leaf is the one "
         "most worth unblocking. Check why before implementing."
     )
-
-
-def _effective_deps_met(
-    node: dict,
-    statuses_by_key: dict[str, str],
-    effective_dep_keys: dict[str, set[str]],
-) -> bool:
-    nk = node.get("node_key")
-    if not nk:
-        return True
-    for dep in effective_dep_keys.get(nk, set()):
-        if statuses_by_key.get(dep, "") != "complete":
-            return False
-    return True
-
-
-def _base_agentic_candidate(
-    n: dict,
-    statuses_by_key: dict[str, str],
-    claimed: set[str],
-    effective_dep_keys: dict[str, set[str]],
-) -> bool:
-    if not is_pickable(n):
-        return False
-    if not n.get("codename"):
-        return False
-    if not _effective_deps_met(n, statuses_by_key, effective_dep_keys):
-        return False
-    if n["id"] in claimed:
-        return False
-    return True
-
-
-def _outline_order_index(nodes: list[dict]) -> dict[str, int]:
-    """Pre-order outline index: siblings ordered by (sibling_order, id)."""
-    rows = ordered_tree_rows(nodes)
-    return {row[0]["id"]: i for i, row in enumerate(rows)}
 
 
 def _sort_by_outline(
@@ -254,14 +182,11 @@ def _load_branch_enrichment(root: Path) -> dict[str, dict[str, Any]]:
 
 def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int]:
     """Deterministic diagnostics when no actionable leaf exists."""
-    effective_dep_keys = effective_dependency_keys(nodes)
-    statuses_by_key = _statuses_by_node_key(nodes)
+    index = RoadmapIndex(nodes)
     claimed = _claimed_node_ids(reg)
-    leaf_ids = structural_leaf_ids(nodes)
-    order_index = _outline_order_index(nodes)
 
-    leaf_nodes = [n for n in nodes if n.get("id") in leaf_ids]
-    leaf_nodes = _sort_by_outline(leaf_nodes, order_index)
+    leaf_nodes = [n for n in nodes if n.get("id") in index.leaf_ids]
+    leaf_nodes = _sort_by_outline(leaf_nodes, index.outline_position)
 
     claimed_leaf_ids: list[str] = []
     deps_blocked_leaf_ids: list[str] = []
@@ -283,7 +208,7 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
         if not n.get("codename"):
             missing_codename_leaf_ids.append(nid)
             continue
-        if not _effective_deps_met(n, statuses_by_key, effective_dep_keys):
+        if index.unmet(n):
             deps_blocked_leaf_ids.append(nid)
             continue
         if status in ("complete", "cancelled"):
@@ -360,22 +285,15 @@ def _available(
     ``virtual_complete_keys`` prefers leaves that depend on those keys within the
     non-blocked, non-MR-rejected tier (``rest``).
     """
-    statuses_by_key = _statuses_by_node_key(nodes, status_overrides)
-    effective_dep_keys = effective_dependency_keys(nodes)
-    claimed = _claimed_node_ids(reg)
-    leaf_ids = structural_leaf_ids(nodes)
+    index = RoadmapIndex(nodes, status_overrides=status_overrides, claimed=_claimed_node_ids(reg))
+    ready_ids = {n["id"] for n in index.ready()}
     enr = enrich or {}
-    order_index = _outline_order_index(nodes)
 
     def st(node: dict) -> str:
         return (node.get("status") or "Not Started").lower()
 
     def base_ok(n: dict) -> bool:
-        if n["id"] not in leaf_ids:
-            return False
-        return _base_agentic_candidate(
-            n, statuses_by_key, claimed, effective_dep_keys
-        )
+        return n["id"] in ready_ids
 
     blocked, mr_rejected, rest = _collect_do_next_tiers(nodes, base_ok, st, enr)
 
@@ -384,7 +302,7 @@ def _available(
     rest_other: list[dict] = []
     for n in rest:
         nk = n.get("node_key")
-        deps = set(effective_dep_keys.get(nk, set())) if nk else set()
+        deps = index.effective_dependencies.get(nk, set()) if nk else set()
         if deps & vc:
             rest_dep.append(n)
         else:
@@ -393,5 +311,5 @@ def _available(
     return [
         n
         for tier in (blocked, mr_rejected, rest_dep, rest_other)
-        for n in _sort_by_outline(tier, order_index, prefer_agentic=prefer_agentic)
+        for n in _sort_by_outline(tier, index.outline_position, prefer_agentic=prefer_agentic)
     ]
