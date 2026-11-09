@@ -432,6 +432,29 @@
         "docs/orchestration-workers.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "When finish merges a leaf whose bookkeeping commit set it Complete in a roadmap chunk that the integration branch also changed since the claim, the merged chunk has that leaf Complete (and the ancestors that rolled up with it), and the rest of the chunk equals the integration side. If the Complete status cannot be re-applied, finish stops before pushing and names the chunk and the leaf; the merge message says the status was applied again only when it was",
+        "tests/test_finish_land_deterministic.py reproduces the 2026-11-08 case through the public finish path on a temporary repository: the integration side edits another node's touch zones in the same chunk after the claim, then the leaf finishes. The merged chunk has the leaf Complete. The test fails on the code before the fix. CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "finish-keeps-complete-when-the-chunk-conflicts",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.50",
+      "node_key": "749e0a55-5f3f-4fa4-b093-1252f5cd1fd1",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.50_finish-keeps-complete-when-the-chunk-conflicts_749e0a55-5f3f-4fa4-b093-1252f5cd1fd1.md",
+      "sibling_order": 45,
+      "status": "Not Started",
+      "title": "finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk",
+      "touch_zones": [
+        "specy_road/finish_land_roadmap_graph.py",
+        "specy_road/finish_land_deterministic.py",
+        "tests/test_finish_land_deterministic.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
