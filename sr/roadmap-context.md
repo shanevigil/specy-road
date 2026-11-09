@@ -9,7 +9,7 @@ The current state of this project's roadmap, generated from the merged graph, th
 Status is the computed rollup: a non-leaf is Complete only when every leaf descendant is.
 
 - `M16` lean core: harden and optimize code and docs, all delivered functionality kept `lean-core` — phase — **Not Started**
-  - `M16.1` Freeze, rules, parity harness and baselines `freeze-rules-parity-harness-and-baselines` — milestone — **Not Started**
+  - `M16.1` Freeze, rules, parity harness and baselines `freeze-rules-parity-harness-and-baselines` — milestone — **In Progress**
     - `M16.1.1` Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs `parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` — task — **Complete**
     - `M16.1.2` Parity harness: a review-gate decision table covering every review policy `parity-harness-a-review-gate-decision-table-covering-every-review-policy` — task — **Complete**
     - `M16.1.3` Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf `triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf` — task — **Complete**
@@ -20,7 +20,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.1.8` A 100-character line-width report against a baseline, and the consumer file-limit default decided `ruff-quality-baseline` — task — **Complete**
     - `M16.1.9` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Complete**
     - `M16.1.10` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Complete**
-    - `M16.1.11` Ruff quality rule families reported per file against a baseline, with per-release totals `ruff-quality-family-baseline` — task — **Not Started**
+    - `M16.1.11` Ruff quality rule families reported per file against a baseline, with per-release totals `ruff-quality-family-baseline` — task — **Complete**
     - `M16.1.12` Shipped agent templates carry no maintainer provenance comments `shipped-templates-carry-no-provenance-comments` — task — **Complete**
   - `M16.2` Mechanical clean-up, layering and the in-process CLI `mechanical-clean-up-layering-and-the-in-process-cli` — milestone — **Not Started**
     - `M16.2.1` Delete dead and unwired code from a decided list, and add vulture as an advisory CI step `delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step` — task — **Not Started**
@@ -320,7 +320,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.1.11` on `feature/rm-ruff-quality-family-baseline` since 2026-11-09
+- `M16.2.1` on `feature/rm-delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step` since 2026-11-09
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -334,13 +334,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 35 | 0 | 2.66 | 63% | 20 | 3 |
+| `CHANGELOG.md` **flagged** | 34 | 0 | 2.68 | 62% | 20 | 3 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 33 | 0 | 2.67 | 61% | 39 | 3 |
+| `docs` **flagged** | 34 | 0 | 2.68 | 62% | 52 | 3 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 41 | 0 | 2.54 | 56% | 42 | 4 |
-| `tests` **flagged** | 43 | 0 | 2.49 | 58% | 45 | 4 |
+| `specy_road` **flagged** | 40 | 0 | 2.55 | 55% | 42 | 4 |
+| `tests` **flagged** | 43 | 0 | 2.51 | 58% | 58 | 4 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.github` | 3 | 0 | 1.33 | 33% | 15 | 0 |
@@ -353,7 +353,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `pyproject.toml` | 3 | 0 | 1.33 | 33% | 17 | 0 |
 | `requirements-ci.in` | 1 | 0 | 1.00 | 0% | 13 | 0 |
 | `requirements-ci.txt` | 1 | 0 | 1.00 | 0% | 13 | 0 |
-| `scripts` | 4 | 0 | 1.00 | 0% | 38 | 0 |
+| `scripts` | 5 | 0 | 1.40 | 20% | 51 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

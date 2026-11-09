@@ -891,6 +891,20 @@ byte-for-byte against `specy_road/pm_gantt_static/`; if `git status`
 shows changes after the build, **commit them** as part of the release
 PR (the bundle ships inside the wheel).
 
+### 8.1 Quality measures recorded for each release
+
+These are reports, not gates. A rise is written into the release notes
+and does not fail a test, CI, or this checklist.
+`python scripts/lean_metrics.py --check` prints the first two after its
+other deltas.
+
+- [ ] Each ruff quality-family total and its delta from the commit
+  recorded in `scripts/ruff_quality_baseline.json`: C901, PL, B, SIM,
+  RET, N, and D102/D103
+- [ ] The line-width total against `scripts/line_width_baseline.json`
+- [ ] M16.2.6's import-cycle count, from the committed report in
+  `constraints/import-layers-baseline.json` (M16.2.6 records the value)
+
 ## 9. Where this runbook lives in the docs graph
 
 | Doc | Role |

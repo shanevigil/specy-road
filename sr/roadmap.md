@@ -9,7 +9,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | ID | Title | Type | Gate | Status |
 |----|-------|------|------|--------|
 | `M16` | lean core: harden and optimize code and docs, all delivered functionality kept | phase | — | Not Started |
-| `M16.1` | Freeze, rules, parity harness and baselines | milestone | — | Not Started |
+| `M16.1` | Freeze, rules, parity harness and baselines | milestone | — | In Progress |
 | `M16.1.1` | Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs | task | Agentic-led | Complete |
 | `M16.1.2` | Parity harness: a review-gate decision table covering every review policy | task | Agentic-led | Complete |
 | `M16.1.3` | Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf | task | Human-led | Complete |
@@ -20,7 +20,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.1.8` | A 100-character line-width report against a baseline, and the consumer file-limit default decided | task | Agentic-led | Complete |
 | `M16.1.9` | Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold | task | Agentic-led | Complete |
 | `M16.1.10` | Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold | task | Agentic-led | Complete |
-| `M16.1.11` | Ruff quality rule families reported per file against a baseline, with per-release totals | task | Agentic-led | Not Started |
+| `M16.1.11` | Ruff quality rule families reported per file against a baseline, with per-release totals | task | Agentic-led | Complete |
 | `M16.1.12` | Shipped agent templates carry no maintainer provenance comments | task | — | Complete |
 | `M16.2` | Mechanical clean-up, layering and the in-process CLI | milestone | — | Not Started |
 | `M16.2.1` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Not Started |
