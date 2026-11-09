@@ -112,6 +112,17 @@ def _pack(path: Path, fmt: str, files: dict[str, str]) -> None:
                 archive.writestr(name, content)
         return
     with tarfile.open(path, "w:gz") as archive:
+        directories = {"pkg-1.0"}
+        for name in files:
+            parent = Path(name).parent
+            while str(parent) not in (".", ""):
+                directories.add(f"pkg-1.0/{parent.as_posix()}")
+                parent = parent.parent
+        for directory in sorted(directories):
+            for stored in (directory, f"{directory}/"):
+                info = tarfile.TarInfo(stored)
+                info.type = tarfile.DIRTYPE
+                archive.addfile(info)
         for name, content in files.items():
             data = content.encode()
             info = tarfile.TarInfo(f"pkg-1.0/{name}")
@@ -135,6 +146,9 @@ def test_sdist_and_wheel_promotion_scan(tmp_path: Path, fmt: str, scenario: str)
     if scenario == "denied-member":
         assert "docs/design-notes/x.md" in result.stderr
         assert "pkg-1.0/docs/design-notes/x.md" not in result.stderr
+    if scenario == "denied-text" and fmt == "gztar":
+        assert "README.md" in result.stderr
+        assert "pkg-1.0/README.md" not in result.stderr
 
 
 @pytest.mark.parametrize("name", ["broken.zip", "broken.tar.gz"])

@@ -30,7 +30,10 @@ commit is diffed too, side branches included and merges with ``-m``: an addition
 at a denied path is refused, and a deletion passes. The script and the allow file are taken from the base commit
 when that commit has them. A missing endpoint or any failed git query in the range exits 1 and says the history is
 incomplete. ``--tree DIR`` checks an unpacked distribution (no git index; paths relative to that directory).
-``--drop-denied`` removes every tracked path the denylist refuses. ``--commit-msg FILE`` checks one message (the
+``--archive`` reports an sdist member relative to the distribution root: a directory entry (a trailing slash, or a
+name another member sits under) is not a file, and that single top directory is then removed. A directory entry with
+neither mark is kept, because it cannot be told from a file. A wheel is not stripped. ``--drop-denied`` removes every
+tracked path the denylist refuses. ``--commit-msg FILE`` checks one message (the
 commit-msg hook), without git's ``#`` comment lines and the diff under the scissors line.
 
 The local list holds what must never be written into a tracked file: ``<kind>: <value>`` lines with kinds ``name``
@@ -260,7 +263,9 @@ def denied_paths(paths: list[str]) -> list[str]:
 def promotion_path_hits(paths: list[str], archives: list[Path]) -> list[str]:
     hits = [f"{p}: process content path" for p in denied_paths(paths)]
     for archive in archives:
-        hits += [f"{archive}: {m}: process content path" for m in denied_paths(archive_members(archive))]
+        sdist = not zipfile.is_zipfile(archive)
+        members = [rel for _, rel in _relative_members(archive_members(archive), sdist=sdist)]
+        hits += [f"{archive}: {member}: process content path" for member in denied_paths(members)]
     return hits
 
 
@@ -333,11 +338,20 @@ def changed_path_hits(root: Path, base: str, head: str) -> list[str]:
     return hits
 
 
+def _file_members(names: list[str]) -> list[str]:
+    """Stored file names. A directory ends with ``/`` or has another member under it."""
+    return [
+        name for name in names
+        if name and not name.endswith("/") and not any(other.startswith(f"{name}/") for other in names if other)
+    ]
+
+
 def _relative_members(names: list[str], *, sdist: bool) -> list[tuple[str, str]]:
     """``(stored name, path relative to the distribution root)``. An sdist's single top directory is removed."""
-    files = [name for name in names if name and not name.endswith("/")]
-    if sdist and files and len({name.split("/", 1)[0] for name in files}) == 1 and all("/" in name for name in files):
-        prefix = files[0].split("/", 1)[0] + "/"
+    files = _file_members(names)
+    tops = {name.split("/", 1)[0] for name in files}
+    if sdist and len(tops) == 1 and all("/" in name for name in files):
+        prefix = next(iter(tops)) + "/"
         return [(name, name[len(prefix):]) for name in files]
     return [(name, name) for name in files]
 
@@ -521,7 +535,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--promotion", action="store_true",
                         help="add the path denylist and, over --range, history, identity and the base commit's policy")
     parser.add_argument("--archive", type=Path, action="append", default=[], metavar="FILE",
-                        help="with --promotion, also check a wheel's or sdist's member names")
+                        help="with --promotion, check member names; an sdist directory entry (a trailing slash, or a "
+                             "name another member sits under) is not a file, and the single top directory is removed")
     parser.add_argument("--tree", type=Path, action="append", default=[], metavar="DIR",
                         help="with --promotion, check this unpacked tree instead of the git index")
     parser.add_argument("--drop-denied", action="store_true",
