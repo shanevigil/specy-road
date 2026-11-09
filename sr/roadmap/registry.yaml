@@ -110,25 +110,6 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: reviewer-and-rca-launch-paths
-    node_id: M22.64
-    branch: feature/rm-reviewer-and-rca-launch-paths
-    touch_zones:
-      - specy_road/templates/project/model-profiles/harness-facts.yaml
-      - specy_road/templates/project/model-profiles/README.md
-      - specy_road/templates/project/model-profiles/openai-gpt/gpt-6.1-terra.md
-      - specy_road/templates/project/model-profiles/openai-gpt/gpt-6.1-sol.md
-      - specy_road/templates/project/model-profiles/openai-gpt/gpt-6-sol.md
-      - specy_road/templates/project/model-profiles/openai-gpt/gpt-5.6-sol.md
-      - specy_road/review_record_rules.py
-      - tests/test_harness_launch.py
-      - tests/test_review_record_rules.py
-      - docs/orchestration-harness-launch.md
-      - CHANGELOG.md
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-09T22:06:01+00:00'
   - codename: work-dir-ignored
     node_id: M22.65
     branch: feature/rm-work-dir-ignored
