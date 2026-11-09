@@ -104,11 +104,11 @@
     {
       "acceptance": [
         "specy_road/clock.py defines `utc_now()` and `utc_now_iso()`; the nine now helpers in session_presence, worker_witness, reviewer_run_failure, worker_lease, worker_outbox, grind_session_events, decisions, worker_turn_check and worker_state are replaced, and a test fails on `datetime.now(timezone.utc)` anywhere in specy_road outside clock.py",
-        "specy_road/fs_atomic.py defines `atomic_write_text()`; the hand-written temp-file writers in worker_state (and worker_outbox's import of its private helper), history_cache, brainstorm_session, roadmap_chunk_atomic, reviewer_run_failure and worker_lease call it, and a test fails on `os.replace(` in specy_road outside fs_atomic.py and an allowlist committed with the test",
+        "specy_road/fs_atomic.py defines `atomic_write_text()`; the hand-written temp-file writers in worker_state (and worker_outbox's import of its private helper), brainstorm_session, roadmap_chunk_atomic, reviewer_run_failure and worker_lease call it, and a test fails on `os.replace(` in specy_road outside fs_atomic.py and an allowlist committed with the test; history_cache keeps safe_write.write (M21.39's symlink refusal) and is not a writer this leaf replaces (maintainer amendment, 2026-11-09)",
         "A parametrised test per replaced writer asserts the encoding, newline handling, file mode and the leftover temp file on a failed write are what they were at pickup; review_write_check.replace_file's symlink protections and worker_lease.checkout_id's link-if-absent install are kept as specialised installers on the allowlist and tested through their public callers",
         "Parity harness unchanged",
         "Estimated net line change (informational, not a gate): package about -60",
-        "The os.replace( allowlist is fs_atomic.py, safe_write.py (specialised and descriptor-anchored after M22.29, not routed through atomic_write_text), review_write_check.replace_file and worker_lease.checkout_id; worker_state, history_cache.save_cache and the brainstorm session's replace call atomic_write_text directly, with no repo-root check; safe_write's directory-descriptor replace and its re-check where dir_fd is unsupported are unchanged"
+        "The os.replace( allowlist is exactly seven entries: fs_atomic.py, safe_write.py (specialised and descriptor-anchored after M22.29, not routed through atomic_write_text), review_write_check.replace_file, worker_lease.checkout_id, finish_bookkeeping_undo._restore and finish_bookkeeping_undo.restore_pre_commit (M22.20: they restore exact bytes, modes or a symlink) and worker_sandbox._install_seed (M22.49: a 0600 copy); worker_state and the brainstorm session's replace call atomic_write_text directly, with no repo-root check; history_cache.save_cache stays on safe_write.write; safe_write's directory-descriptor replace and its re-check where dir_fd is unsupported are unchanged (maintainer amendment, 2026-11-09, after the M16.2.2 park)"
       ],
       "codename": "shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers",
       "dependencies": [
@@ -142,7 +142,8 @@
         "specy_road/bundled_scripts/brainstorm_session.py",
         "specy_road/bundled_scripts/roadmap_chunk_atomic.py",
         "specy_road/",
-        "tests/"
+        "tests/",
+        "specy_road/review_override.py"
       ],
       "type": "task"
     },

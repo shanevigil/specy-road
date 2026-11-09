@@ -90,6 +90,7 @@ entries:
       - specy_road/bundled_scripts/roadmap_chunk_atomic.py
       - specy_road/
       - tests/
+      - specy_road/review_override.py
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
@@ -108,6 +109,17 @@ entries:
       - specy_road/review_gate_ready.py
       - tests/parity/command_map.yaml
       - tests/parity/golden/help/specy-road__ready.txt
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
+  - codename: review-wider-carry
+    node_id: M22.53
+    branch: feature/rm-review-wider-carry
+    touch_zones:
+      - specy_road/review_bookkeeping.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+      - tests/test_sheet_edits_keep_approvals.py
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
