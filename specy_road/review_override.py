@@ -29,12 +29,13 @@ import json
 import os
 import re
 import sys
-from datetime import date, datetime, timezone
+from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
 
+from specy_road.clock import utc_now_iso
 from specy_road.decisions import (DECISIONS_REL, STANDING_RULE, decisions_path, read_decisions,
                                   standing_rule_active, write_decisions)
 from specy_road.decisions_local import next_free_id
@@ -328,7 +329,7 @@ def _entry(root: Path, ns: argparse.Namespace, sha: str, answer: str) -> dict[st
                     {"label": "keep reviewing", "effect": "the blocks and shortfall still count"}],
         "recommendation": ns.decision, "recommendation_reason": f"decided by the {by}",
         "default_if_unanswered": "keep reviewing", "asked": date.today().isoformat(), "status": "closed",
-        "answer": answer, "closed": datetime.now(timezone.utc).replace(microsecond=0).isoformat(), "decided_by": by,
+        "answer": answer, "closed": utc_now_iso(), "decided_by": by,
     }
 
 
