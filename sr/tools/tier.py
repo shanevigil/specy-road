@@ -25,10 +25,10 @@ def sheet_tier(node: str) -> str:
     sheets = glob.glob(str(ROOT / "sr" / "planning" / f"{node}_*.md"))
     if not sheets:
         return "behavioural"
-    m = re.search(r"^## Tier\s*\n+\s*([a-z ]+?)[:.\n]", Path(sheets[0]).read_text(), re.M)
+    m = re.search(r"^## Tier\s*\n+\s*([A-Za-z]+(?: boundary)?)", Path(sheets[0]).read_text(), re.M)
     if not m:
         return "behavioural"
-    word = m.group(1).strip()
+    word = m.group(1).strip().lower()
     return "trust" if word.startswith("trust") else word if word in RANK else "behavioural"
 
 
