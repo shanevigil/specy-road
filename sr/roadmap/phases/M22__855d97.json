@@ -436,8 +436,8 @@
     },
     {
       "acceptance": [
-        "specy-road review override <NODE_ID> is human-only (an interactive terminal, no --yes, like review defer): it shows the leaf's open blocks and missing approvals at the current commit, asks for one reason line and a y, and then writes a closed decision entry in roadmap/decisions.yaml naming the commit, each overridden finding (reviewer, commit, text) and the operator's git user.name and user.email. It also writes OVERRIDE-<commit>.yaml beside the reviews (signed when policy.signed_reviews is on). Nothing else is required: no RCA record, and correctness findings may be overridden",
-        "The gate treats an override in effect for the exact current commit as meeting the review requirement and lists each overridden finding as 'overridden by <decision id>'. A new commit needs new reviews or a new override. handoff status and review list show the override. finish lands the leaf. tests/test_review_override.py covers an override of a counted block, an override of a missing approval, a stale override after a new commit, a marker whose decision entry is missing (no effect) and a non-interactive run (refused). CHANGELOG [Unreleased] entry"
+        "An operator decision is one record that only the coordinator role can write (a launch in the executor or reviewer role is refused, through the existing role guard): specy-road review operator-decision <NODE_ID> --decision approve|accept-with-limits --quote <the operator's words> --session <link or id>, which writes a closed decision entry in roadmap/decisions.yaml naming the leaf, the commit, each open block or missing approval it settles (reviewer, commit, finding) and the operator's git user.name and user.email, plus OPERATOR-<commit>.yaml beside the reviews. No terminal prompt, no RCA, and correctness findings may be settled",
+        "The gate treats an operator decision for the exact current commit as meeting the review requirement and lists each settled finding as 'accepted by operator decision <id>'; a commit that changes only planning or review bookkeeping keeps it, as approvals are kept today, and any other new commit needs new reviews or a new decision. handoff status and review list show it, and finish lands the leaf. tests/test_review_override.py covers settling a counted block, a missing approval, a later code commit (stale), a bookkeeping-only commit (kept), a marker without its decision entry (no effect) and a refused executor-role launch. CHANGELOG [Unreleased] entry"
       ],
       "codename": "operator-decision-record",
       "dependencies": [],
@@ -448,7 +448,7 @@
       "planning_dir": "planning/M22.51_operator-decision-record_e484b004-5481-4608-831e-b357aba8ba9f.md",
       "sibling_order": 46,
       "status": "Not Started",
-      "title": "The operator can decide a leaf's review outcome with one recorded, attributed decision",
+      "title": "The operator decides a leaf's review outcome by saying so; the coordinator records it",
       "touch_zones": [
         "specy_road/review_override.py",
         "specy_road/review_gate.py",
