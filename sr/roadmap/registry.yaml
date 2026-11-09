@@ -99,22 +99,6 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: headless-question-tool-flagged
-    node_id: M22.61
-    branch: feature/rm-headless-question-tool-flagged
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/worker_turn_check.py
-      - specy_road/worker_adapter_cursor.py
-      - tests/test_worker_turn_check.py
-      - tests/test_models_and_prompt.py
-      - tests/fixtures/cursor_question_tool.jsonl
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-      - specy_road/schemas/worker-event.schema.json
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: pending
   - codename: shared-notes-digest-refused
     node_id: M22.62
     branch: feature/rm-shared-notes-digest-refused

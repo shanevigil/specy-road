@@ -189,6 +189,10 @@ def test_executor_prompt_has_precondition_boundary_rules_and_brief(tmp_path: Pat
     assert "Known failure modes of this model" in text
     assert "Effort for implementation: `medium`" in text
     assert "# Work-packet brief: `M1.1`" in text and "- **A1:** a.py exists" in text
+    headless = ("In a headless turn (`worker delegate`, `worker message`, a grind) no person can answer a question "
+                "tool: open questions go in the implementation summary under a heading marking them unanswered, "
+                "and the summary never says a person was asked.")
+    assert text.count(headless) == 1   # executor_preamble, so every executor prompt carries it once
 
 
 def test_executor_prompt_keeps_verifier_and_tests_in_the_foreground(tmp_path: Path) -> None:

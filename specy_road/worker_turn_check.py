@@ -3,7 +3,7 @@
 A turn can exit 0 and still have gone wrong: Claude Code exits 0 after denying a tool, reports some usage
 limits as subtype success, and retries a rate limit on its own (harness-facts). So the wrapper reads each turn
 twice. While it runs, a :class:`TurnWatch` sees every event the adapter parsed (``permission_denied``,
-``api_retry``, ``error``, ``usage_limited``) and is the retry watchdog: a run that keeps retrying on
+``interactive_tool``, ``api_retry``, ``error``, ``usage_limited``) and is the retry watchdog: a run that keeps retrying on
 ``rate_limit`` past :data:`LIMIT_WAIT_CAP_SECONDS` of announced waits is stopped instead of being left to wait
 out a usage limit. When it ends, :func:`close_turn` compares the worktree's git state (HEAD, branch, stash list,
 porcelain, and the local and remote-tracking integration refs) with the state at the turn's start, records the
@@ -114,6 +114,7 @@ class TurnWatch:
         self.before = git_state(Path(rec.worktree), repo_root)
         self.proc: subprocess.Popen | None = None   # the harness, once started: what the watchdog stops
         self.denials: list[str] = []
+        self.interactive: list[str] = []   # question-tool names this turn; one finding however many lines
         self.failed: str | None = None   # the last error no completed turn followed: the turn failed
         self.retries: list[dict[str, Any]] = []
         self.limit: dict[str, Any] | None = None     # a usage limit the harness's output named, or the watchdog's
@@ -125,6 +126,8 @@ class TurnWatch:
         detail = parsed.detail or {}
         if parsed.type == "permission_denied":
             self.denials.append(parsed.summary)
+        elif parsed.type == "interactive_tool":
+            self.interactive.append(str(detail.get("tool_name") or ""))
         elif parsed.type == "error":
             self.failed = parsed.summary
         elif parsed.type == "usage_limited":
@@ -161,6 +164,9 @@ class TurnWatch:
         if self.denials:
             out.append({"kind": "permission_denied", "count": len(self.denials),
                         "summary": f"{len(self.denials)} permission denial(s): " + "; ".join(self.denials[:3])})
+        if self.interactive:
+            out.append({"kind": "interactive_tool",
+                        "summary": f"question tool {self.interactive[0]}: no person saw it"})
         if self.failed:
             out.append({"kind": "failed_turn", "summary": f"failed turn: {self.failed}"})
         if self.retries:
