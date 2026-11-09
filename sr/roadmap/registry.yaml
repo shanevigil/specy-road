@@ -90,6 +90,7 @@ entries:
       - specy_road/bundled_scripts/roadmap_chunk_atomic.py
       - specy_road/
       - tests/
+      - specy_road/review_override.py
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
