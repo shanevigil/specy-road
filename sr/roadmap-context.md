@@ -176,7 +176,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.53` Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones `review-wider-carry` — task — **Not Started**
   - `M22.54` Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages `public-hygiene-gate` — task — **Not Started**
   - `M22.55` Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored `process-content-untracked` — task — **Not Started**
-  - `M22.56` Neutral identities in tests: no real name or username `neutral-test-identities` — task — **Not Started**
+  - `M22.56` Neutral identities in tests: no real name or username `neutral-test-identities` — task — **Complete**
   - `M22.57` Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish `promotion-without-wip-history` — task — **Not Started**
   - `M22.58` History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map `history-rewrite-rehearsal` — task — **Not Started**
   - `M22.59` Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced `history-rewritten-and-published` — gate — **Not Started**
@@ -266,6 +266,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-09 `M22.55` stopped depending on `M22.54 Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages`
 - 2026-11-09 `M18.1` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
 - 2026-11-09 `M16.5.7` stopped depending on `M23.7 upgrade migrates rosters to core fields plus run:`
 - 2026-11-09 `M16.6.1` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
@@ -290,8 +291,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-06 `M22.22` stopped depending on `M21.40 upgrade's scratch git drops every GIT_ variable, runs no hook, and times out`
 - 2026-11-06 `M22.22` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
 - 2026-11-06 `M21.40` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
-- 2026-11-06 `M21.43` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
-- _…and 67 earlier — `specy-road history --json`_
+- _…and 68 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -326,7 +326,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.56` on `feature/rm-neutral-test-identities` since 2026-11-09
 
 ## Quality by area
 
