@@ -182,7 +182,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.59` Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced `history-rewritten-and-published` — gate — **Not Started**
   - `M22.61` A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable `headless-question-tool-flagged` — task — **Not Started**
   - `M22.62` review record refuses empty notes and a notes digest another model already filed at the same commit `shared-notes-digest-refused` — task — **Not Started**
-  - `M22.63` A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH `completed-worker-frees-lease` — task — **Not Started**
+  - `M22.63` A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH `completed-worker-frees-lease` — task — **Complete**
   - `M22.64` The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run `reviewer-and-rca-launch-paths` — task — **Not Started**
   - `M22.65` The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work `work-dir-ignored` — task — **Not Started**
   - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Not Started**
@@ -272,6 +272,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-09 `M22.64` stopped depending on `M16.2.3 Git queries and registry I/O go through one helper each`
 - 2026-11-09 `M22.58` stopped depending on `M23.9 The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working`
 - 2026-11-09 `M22.55` stopped depending on `M22.54 Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages`
 - 2026-11-09 `M18.1` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
@@ -296,8 +297,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-07 `M16.8.8` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
 - 2026-11-07 `M16.8.8` stopped depending on `1cfcf177-4014-4267-9000-d5b81d912f95` (no longer live)
 - 2026-11-06 `M22.22` stopped depending on `M21.40 upgrade's scratch git drops every GIT_ variable, runs no hook, and times out`
-- 2026-11-06 `M22.22` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
-- _…and 69 earlier — `specy-road history --json`_
+- _…and 70 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -335,7 +335,6 @@ Do not pick these up.
 - `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
 - `M22.61` on `feature/rm-headless-question-tool-flagged` since 2026-11-09
 - `M22.62` on `feature/rm-shared-notes-digest-refused` since 2026-11-09
-- `M22.63` on `feature/rm-completed-worker-frees-lease` since 2026-11-09
 - `M22.64` on `feature/rm-reviewer-and-rca-launch-paths` since 2026-11-09
 - `M22.65` on `feature/rm-work-dir-ignored` since 2026-11-09
 
