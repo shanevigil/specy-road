@@ -11,7 +11,7 @@ analyses and two alignment reviews by model, path and sha256 (:func:`evidence_pr
 finding in exactly one ``--limit``, never applies to a trust-boundary leaf (:func:`sheet_tier` on the integration
 branch), and records ``decided_by: coordinator``. Only the coordinator records either: the command reads
 ``SPECY_ROAD_ORCHESTRATION_ROLE`` itself before anything else (:func:`role_refusal`; unset is the manual
-coordinator).
+coordinator, and any set value but exactly ``coordinator`` is refused).
 
 The entry is the authority and the marker a cache, as ``review defer``'s are (:mod:`specy_road.review_deferral`).
 The gate (:func:`apply_operator_decisions`) reads a decision only through a marker, and honours it only while the
@@ -165,10 +165,10 @@ def sheet_tier(text: str | None) -> str | None:
 
 
 def role_refusal() -> str | None:
-    """Why the launch role may not record a decision; unset (or empty) is the manual coordinator."""
+    """Why the launch role may not record a decision. One rule: unset is the manual coordinator, and the only set
+    value accepted is exactly ``coordinator``; any other, including empty, padded or differently cased, is refused."""
     raw = os.environ.get(ROLE_ENV)
-    role = (raw or "").strip().lower()
-    if role and role != COORDINATOR:
+    if raw is not None and raw != COORDINATOR:
         return (f"{ROLE_ENV} is {raw!r}: only the coordinator records an operator decision (unset is the manual "
                 "coordinator); an executor, reviewer or root-cause analyst may not")
     return None

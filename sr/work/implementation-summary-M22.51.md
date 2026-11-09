@@ -41,6 +41,25 @@ The listed zones are accurate; no file outside them changed.
 `pytest -n 4` full suite: 7107 passed, 17 skipped, 1 failed before the §7 rewording (the round-6 docs assertion),
 all pass after it. `ruff`, `file-limits`, `validate` / `export --check` / `digest --check` on the dogfood fixture pass.
 
+## Fix round 1 (gpt-6.1-sol, R1)
+
+Merged `origin/WIP/improvements-0-3-1` first (no conflicts). Class: a launch-role value that is set but is not
+exactly `coordinator` (empty, whitespace, other case, padding) was normalised to "unset" or "coordinator" and
+accepted. Fix at the cause: `role_refusal` now has one rule, stated in its docstring, the module docstring and
+`docs/orchestration-review.md`: unset is the manual coordinator, and the only accepted set value is exactly
+`coordinator`. No normalisation remains, and no branch was added (the condition replaced the old one).
+
+## Probes
+
+- Every reader of `SPECY_ROAD_ORCHESTRATION_ROLE` in this change (`grep ROLE_ENV specy_road/review_override.py`):
+  only `role_refusal`, called once by `cmd_operator_decision` before any write for both forms. Fixed there.
+- Both forms (operator and `--rule`) share that one call: confirmed, so the coordinator form is covered too.
+- Other `.lower()` / `.strip()` normalisation in the module: only `sheet_tier`, which parses the sheet's tier; its
+  leniency makes more sheets read as trust boundary (more refusals), so it widens no authority. Left as is.
+- The help golden for `review operator-decision` does not describe the role; no change needed.
+- Red-green: with the old `role_refusal`, the four new cases `role_empty`, `role_whitespace`, `role_uppercase`,
+  `role_padded` fail (4 failed); with the fix all pass.
+
 ## Added
 
 - `specy_road/review_override.py` (module): the command, its refusals, and the gate hook; kept apart so
@@ -63,3 +82,5 @@ all pass after it. `ruff`, `file-limits`, `validate` / `export --check` / `diges
   block/shortfall, bookkeeping, code commit, later block, marker only / other decision, role, identity, trust rule,
   rule, evidence, limits, no block, other gate failures, stamp. No mocks; role env cleared with `monkeypatch`.
 - Constitution and CHANGELOG text: required by A3.
+- Fix round 1: four `test_refusals_write_nothing` cases (`role_empty`, `role_whitespace`, `role_uppercase`,
+  `role_padded`) for R1; no helper, branch or guard added.
