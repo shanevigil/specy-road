@@ -9,7 +9,7 @@ import pytest
 
 from tests.integrity_repo_helpers import commit, git, make_repo, merge_base, merge_dev, on_dev
 from specy_road.bundled_scripts import integrity_cli
-from specy_road.bundled_scripts import review_packet as rp
+from specy_road.bundled_scripts import review_packet_observed as observed
 from specy_road.integrity import compare_integrity
 from specy_road.review_target import resolve_target_or_exit
 
@@ -184,5 +184,5 @@ def test_nested_project_root_reports_git_root_paths(tmp_path: Path, capsys) -> N
         integrity_cli.main(["T1", "--repo-root", str(project), "--ref", head])
     assert ex.value.code == 1
     assert capsys.readouterr().out.splitlines() == expected
-    section = rp.test_integrity_section(project, resolve_target_or_exit(project, "T1", head))
+    section = observed.test_integrity_section(project, resolve_target_or_exit(project, "T1", head))
     assert section[-1 - len(expected):-1] == expected

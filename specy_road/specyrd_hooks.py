@@ -12,7 +12,6 @@ from typing import Any
 from specy_road import safe_write
 from specy_road.specyrd_skills import _package_templates_dir
 
-HOOKS_REL = Path("templates/specyrd/hooks")
 PRE_PUSH_NAME = "pre-push"
 _HARNESS_HOOK_FILES = {
     "claude-code": (Path("claude-code") / "settings.json", Path(".claude") / "settings.json"),

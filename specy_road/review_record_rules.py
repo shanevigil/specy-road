@@ -133,15 +133,6 @@ def _named_defect(text: str) -> str | None:
     return None
 
 
-def defect_word(line: str) -> str | None:
-    """The first word in ``line`` that names a defect, or ``None``; a line carrying :data:`NOT_A_DEFECT`,
-    a heading, a ``>`` quote and code spans name none."""
-    text = _CODE_SPAN.sub("", line).strip()
-    if explained(text) or text.startswith(("#", ">")):
-        return None
-    return _named_defect(text)
-
-
 def _observation(clause: str) -> str | None:
     """Why one clause would need a reason: it names a defect, or it has two words or more and is not a bare
     acceptance result or a table separator row or horizontal rule."""

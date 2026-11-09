@@ -171,29 +171,6 @@ def plan_planning_sheet_for_new_node(
     return dest, render_planning_sheet_template(nid.strip(), node_type=t)
 
 
-def ensure_planning_sheet_for_new_node(repo_root: Path, node: dict) -> None:
-    """Eager variant of :func:`plan_planning_sheet_for_new_node` for non-transactional callers."""
-    planned = plan_planning_sheet_for_new_node(repo_root, node)
-    if planned is None:
-        return
-    dest, content = planned
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(content, encoding="utf-8")
-
-
-def remove_planning_sheet_if_present(repo_root: Path, planning_dir: object) -> None:
-    """Unlink the feature sheet when ``planning_dir`` resolves to a file; otherwise no-op."""
-    if not isinstance(planning_dir, str) or not planning_dir.strip():
-        return
-    try:
-        norm = normalize_planning_dir(planning_dir.strip())
-    except ValueError:
-        return
-    p = resolve_planning_path(repo_root, norm)
-    if p.is_file():
-        p.unlink()
-
-
 #: The line ``brainstorm promote`` writes under ``## Approach``. ``<ID>`` stays
 #: a token: the display id is not written into the sheet, so a later rename
 #: cannot leave one behind. While the line is still there, nobody has written

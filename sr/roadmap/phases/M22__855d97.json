@@ -466,7 +466,10 @@
         "tests/parity/golden/help/specy-road__review__operator-decision.txt",
         "tests/parity/golden/help/specy-road__decisions__add.txt",
         "constitution/principles.md",
-        "sr/constitution/principles.md"
+        "sr/constitution/principles.md",
+        "tests/parity/golden/upgrade/rc3-dry-run.txt",
+        "tests/parity/review_gate/cases/gate_rows.yaml",
+        "tests/parity/review_gate/test_review_gate_decision_table.py"
       ],
       "type": "task"
     }

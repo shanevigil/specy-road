@@ -17,7 +17,6 @@ from specy_road.managed_block import (
     UNCHANGED,
     UPDATED,
     apply_managed_block,
-    remove_managed_block,
     render_block,
 )
 
@@ -115,24 +114,6 @@ def test_the_note_is_rendered_as_comments_without_trailing_space() -> None:
     assert "# why this exists" in block
     assert "\n#\n" in block  # a blank note line, not "# "
     assert not any(line.endswith(" ") for line in block.splitlines())
-
-
-def test_removing_the_block_leaves_the_rest_alone(tmp_path: Path) -> None:
-    path = tmp_path / ".gitignore"
-    path.write_text(USER_CONTENT, encoding="utf-8")
-    apply_managed_block(path, ["a/"])
-
-    assert remove_managed_block(path) == UPDATED
-    assert path.read_text(encoding="utf-8").startswith("# my own rules")
-    assert MARKER_START not in path.read_text(encoding="utf-8")
-
-
-def test_removing_when_there_is_no_block_is_a_no_op(tmp_path: Path) -> None:
-    path = tmp_path / ".gitignore"
-    path.write_text(USER_CONTENT, encoding="utf-8")
-
-    assert remove_managed_block(path) == UNCHANGED
-    assert path.read_text(encoding="utf-8") == USER_CONTENT
 
 
 def test_an_unwritable_path_reports_failure_rather_than_raising(
