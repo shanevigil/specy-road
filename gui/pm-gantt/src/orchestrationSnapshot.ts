@@ -286,40 +286,48 @@ function leafGroup(
     title: node?.title ?? MISSING,
     badge: leafBadge(leaf),
     claim: claim
-      ? { codename: claim.codename, branch: claim.branch, registered: age(claim.registered_at, now) }
+      ? {
+          codename: text(claim.codename),
+          branch: text(claim.branch),
+          registered: age(claim.registered_at, now),
+        }
       : null,
     workers: leaf.workers.map((w) => workerRow(w, now)),
     worktrees: leaf.worktrees.map((t) => ({
-      path: t.path,
-      branch: t.branch,
+      path: text(t.path),
+      branch: text(t.branch),
       dirty: yesNo(t.dirty, "yes", "no"),
       ahead: text(t.ahead),
       behind: text(t.behind),
     })),
     reviews: reviewsBlockingFirst(leaf.reviews).map((r) => ({
-      model: r.model,
-      verdict: r.verdict,
-      commit: r.commit,
+      model: text(r.model),
+      verdict: text(r.verdict),
+      commit: text(r.commit),
       // fresh_for_head only: a commit that differs from READY.commit stays fresh when the snapshot says so.
       fresh: yesNo(r.fresh_for_head, "fresh", "stale"),
     })),
     ready: ready
       ? {
-          commit: shortCommit(ready.commit),
-          model: ready.model,
+          commit: shortCommit(text(ready.commit)),
+          model: text(ready.model),
           age: age(ready.at, now),
-          blockedOn: (ready.blocked_on ?? []).map((b) => `${b.acceptance}: ${b.reason}`),
+          blockedOn: (ready.blocked_on ?? []).map((b) => `${text(b.acceptance)}: ${text(b.reason)}`),
         }
       : null,
     gate: gate
       ? {
-          state: gate.state,
+          state: text(gate.state),
           approvals: text(gate.approvals),
           blocks: text(gate.blocks),
           fresh: yesNo(gate.fresh_for_head, "fresh", "stale"),
         }
       : null,
-    holds: (leaf.holds ?? []).map((h) => ({ source: h.source, id: h.id, reason: text(h.reason) })),
+    holds: (leaf.holds ?? []).map((h) => ({
+      source: text(h.source),
+      id: text(h.id),
+      reason: text(h.reason),
+    })),
   };
 }
 

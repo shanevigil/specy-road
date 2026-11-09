@@ -335,6 +335,37 @@ describe("buildOrchestrationView", () => {
     expect([g.ready, g.gate, g.holds]).toEqual([null, null, []]);
   });
 
+  it("null or omitted claim, worktree, review, READY and gate text shows —", () => {
+    const snap = {
+      schema: 2,
+      leaves: {
+        k: {
+          claim: { codename: null, branch: null, registered_at: null },
+          workers: [],
+          worktrees: [{ path: null, branch: null, dirty: null }],
+          reviews: [{ model: null, verdict: null, commit: null, fresh_for_head: null }],
+          ready: { commit: null, at: null, blocked_on: [{ acceptance: null, reason: null }] },
+          gate: { state: null, blocks: null, fresh_for_head: null },
+          holds: [{ source: null, id: null, reason: null }],
+        },
+      },
+      leafless_workers: [],
+    } as unknown as OrchestrationSnapshot;
+    const [g] = buildOrchestrationView(snap, [outlineNode("M1", "k")], NOW);
+    expect(g.claim).toEqual({ codename: "—", branch: "—", registered: "—" });
+    expect(g.worktrees[0]).toEqual({
+      path: "—",
+      branch: "—",
+      dirty: "—",
+      ahead: "—",
+      behind: "—",
+    });
+    expect(g.reviews).toEqual([{ model: "—", verdict: "—", commit: "—", fresh: "—" }]);
+    expect(g.ready).toEqual({ commit: "—", model: "—", age: "—", blockedOn: ["—: —"] });
+    expect(g.gate).toEqual({ state: "—", approvals: "—", blocks: "—", fresh: "—" });
+    expect(g.holds).toEqual([{ source: "—", id: "—", reason: "—" }]);
+  });
+
   it("freshness follows fresh_for_head only: a carried approval stays fresh, a block lists first, unknown stays unknown", () => {
     const readyCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     const carried = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
