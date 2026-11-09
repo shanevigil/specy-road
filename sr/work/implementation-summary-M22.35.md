@@ -105,6 +105,7 @@ Tests:
 - `test_large_ignored_content_does_not_change_the_plan`: the dry-run plan with a 1MB ignored tree and a secret equals the plan without them.
 - `test_a_tracked_read_only_directory_does_not_stop_either_run`: a tracked mode-0555 directory; both runs exit 0 (round 5).
 - `tests/parity/command_map.yaml` row `specy-road upgrade` -> `specy-road upgrade`: declares the changed `upgrade --help` mirror paragraph, which the parity golden transcript otherwise fails on.
+- `tests/parity/golden/upgrade/rc3-dry-run.txt` regenerated (`SPECY_ROAD_PARITY_REGEN=1`): the only changed line is the added `copying tracked and untracked files into a temporary directory; ignored files are not copied`, printed before the copy; nothing else in the golden changed.
 - `build_without_git` forwards `build`'s new keywords so the existing no-`.git` assertion still runs (decision 5).
 
 Mocks: none.
