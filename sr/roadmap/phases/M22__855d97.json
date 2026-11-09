@@ -433,6 +433,31 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road review override <NODE_ID> is human-only (an interactive terminal, no --yes, like review defer): it shows the leaf's open blocks and missing approvals at the current commit, asks for one reason line and a y, and then writes a closed decision entry in roadmap/decisions.yaml naming the commit, each overridden finding (reviewer, commit, text) and the operator's git user.name and user.email. It also writes OVERRIDE-<commit>.yaml beside the reviews (signed when policy.signed_reviews is on). Nothing else is required: no RCA record, and correctness findings may be overridden",
+        "The gate treats an override in effect for the exact current commit as meeting the review requirement and lists each overridden finding as 'overridden by <decision id>'. A new commit needs new reviews or a new override. handoff status and review list show the override. finish lands the leaf. tests/test_review_override.py covers an override of a counted block, an override of a missing approval, a stale override after a new commit, a marker whose decision entry is missing (no effect) and a non-interactive run (refused). CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "operator-decision-record",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.51",
+      "node_key": "e484b004-5481-4608-831e-b357aba8ba9f",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.51_operator-decision-record_e484b004-5481-4608-831e-b357aba8ba9f.md",
+      "sibling_order": 46,
+      "status": "Not Started",
+      "title": "The operator can decide a leaf's review outcome with one recorded, attributed decision",
+      "touch_zones": [
+        "specy_road/review_override.py",
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "tests/test_review_override.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
