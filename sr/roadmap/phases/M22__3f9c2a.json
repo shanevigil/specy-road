@@ -236,9 +236,10 @@
     {
       "acceptance": [
         "Every executor prompt (executor_preamble) holds one line saying that in a headless turn (worker delegate, worker message, a grind) no person can answer a question tool, that open questions go in the implementation summary under a heading marking them unanswered, and that the summary never says a person was asked",
-        "A Cursor turn whose stream holds a tool_call for the question tool (name taken from a captured real stream saved as tests/fixtures/cursor_question_tool.jsonl) gives exactly one post-run finding of kind interactive_tool naming the tool; its post_run_check event is not clean and the worker is flagged post_run_findings. A Cursor stream with only shell, read and edit tool calls gives no such finding. A Claude result whose permission_denials names the question tool gives one permission_denied finding naming it (pinned, unchanged)",
-        "Tests extend tests/test_worker_turn_check.py and tests/test_models_and_prompt.py with the rows of the sheet test table; docs/orchestration-workers.md (post-run check paragraph) and CHANGELOG [Unreleased]. Out of scope: chore executor prompts, harnesses whose stream has no event for the tool",
-        "Estimated net line change (informational, not a gate): package about +25, tests about +50, docs about +3"
+        "Replaying tests/fixtures/cursor_question_tool.jsonl (one real agent -p --output-format stream-json capture, supplied by the coordinator before pickup; the tool name is read from that file) through the Cursor adapter and the worker runner into close_turn persists the interactive_tool event and yields one post_run_check finding of kind interactive_tool naming that tool, one per turn whether the capture holds one such tool_call line or several (started and completed). The post_run_check event is not clean and the worker is flagged post_run_findings; other findings that stream already produces may also be present. A Cursor stream whose tool_call lines are only shell, read and edit yields no interactive_tool finding. A Claude result whose permission_denials names only the question tool yields one permission_denied finding naming it and no interactive_tool finding (pinned, unchanged)",
+        "The worker-event schema (specy_road/schemas/worker-event.schema.json) type enum accepts interactive_tool, so the runner persists the parsed event before TurnWatch.observe collects it. Detection is bounded: only a Cursor tool_call whose tool key is the one in the fixture; not assistant text and not any other tool",
+        "Tests extend tests/test_worker_turn_check.py and tests/test_models_and_prompt.py with the rows of the sheet test table, through the public close_turn and worker_runner.run path with a fake harness (no private patch, no sleep, no network); docs/orchestration-workers.md (post-run check paragraph and event list) and CHANGELOG [Unreleased]. Out of scope: chore executor prompts, harnesses whose stream has no event for the tool, and capturing the stream (when the fixture is absent at pickup the executor stops and reports it)",
+        "Estimated net line change (informational, not a gate): package about +25, schema 1 line, tests about +50, docs about +4"
       ],
       "codename": "headless-question-tool-flagged",
       "dependencies": [],
@@ -258,16 +259,18 @@
         "tests/test_models_and_prompt.py",
         "tests/fixtures/cursor_question_tool.jsonl",
         "docs/orchestration-workers.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/schemas/worker-event.schema.json"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "review record refuses (exit 1, REJECTED-<model>.md written, no REVIEW record) a record whose Markdown body below the front matter is empty after notes_digest normalisation, saying the notes go below the front matter and that notes_sha256 covers only that body; file_review with whitespace-only notes gets the same refusal as a rerun outcome",
-        "review record refuses a record whose notes_sha256 equals that of another model's valid record for the same leaf at the same commit, naming both models; the same model re-filing at that commit, and an equal body at another commit, are filed as today. Two file_review calls with different notes at one commit give different notes_sha256. The gate (review_gate.py) and notes_digest are unchanged: a record filed before this change counts as today",
-        "Tests extend tests/test_review_record_write.py with the rows of the sheet test table, the first written to fail before the fix (two front-matter-only records share one digest); docs/orchestration-reviewer-output.md says what notes_sha256 covers; CHANGELOG [Unreleased]",
-        "Estimated net line change (informational, not a gate): package about +25, tests about +60, docs about +3"
+        "review record refuses (exit 1, REJECTED-<model>.md written, no REVIEW record) a schema-valid record whose body below the front matter is empty or whitespace only after notes_digest normalisation. The message says the notes go in that body and that notes_sha256 covers only it. A front-matter notes key is not a case: the schema already refuses it. file_review with whitespace-only notes gets the same refusal, as a rerun outcome",
+        "review record refuses a record whose non-empty notes_sha256 equals notes_digest of the stored body of another model's REVIEW record for the same leaf at the same commit. Candidates are the current REVIEW-*.md files list_reviews returns for the leaf with ok true, another model id and the same resolved commit, whether or not the gate would count them (signature, roster and policy are not checked); history/ copies, REJECTED- files and files list_reviews reports with errors are not candidates. The message names both models, says the two notes bodies are the same after normalisation, that findings and commands_rerun are not in the digest, and that a body left as the notes template matches too; it asks for this review's own notes in the body and does not say the record was copied. The same model re-filing at that commit, and an equal body at another commit, are filed as today",
+        "Normalisation follows notes_digest: the other model's body with CRLF line endings, or with whitespace or blank lines added at its end, is refused; a body with one substantive change is filed. Two file_review calls with different bodies at one commit give different notes_sha256. The gate (review_gate.py) and notes_digest are unchanged, so a record filed before this change, empty body included, counts as today",
+        "Tests extend tests/test_review_record_write.py with the rows of the sheet test table; the two red rows, written to fail before the fix, are a schema-valid record with an empty or whitespace body, and a second model filing the first model's body with different findings and commands_rerun (both filed today). docs/orchestration-reviewer-output.md says what notes_sha256 covers and that two models' identical bodies at one commit are refused; CHANGELOG [Unreleased]",
+        "Estimated net line change (informational, not a gate): package about +30, tests about +70, docs about +4"
       ],
       "codename": "shared-notes-digest-refused",
       "dependencies": [],
@@ -289,10 +292,10 @@
     },
     {
       "acceptance": [
-        "A worker whose turn ends completed has its lease ref deleted from the integration remote, as a failed one does; another clone at max_workers 1 is then not refused because of it; worker message or resume of that worker pushes a lease again (acquire_lease new=True for completed and failed). An idle worker keeps its lease as today",
-        "The worker wrapper restores its process PYTHONPATH to the harness_pythonpath it was given (or removes it when there was none) before the turn, so a turn started by a queued message gives the harness the delegating caller's PYTHONPATH, or none, and never a path of the specy-road package; the wrapper still runs with -P and imports the same package",
+        "A worker whose turn ends completed has its lease ref deleted from the integration remote, as a failed one does; another clone at max_workers 1 is then not refused because of it. worker message or resume of a completed or failed worker pushes its lease as new (acquire_lease new=True): while the resumed turn is held running the ref is present, and after that turn ends completed it is gone. A resume refused because another clone holds the sole slot leaves the worker completed and no lease ref of it on the remote. An idle worker keeps its lease as today",
+        "The worker wrapper sets its process PYTHONPATH back to the harness_pythonpath it was given (or removes it when there was none) before the turn, so a turn started by a queued message gives the harness the delegating caller's PYTHONPATH, or none, without adding the wrapper's package-path prefix; the wrapper still runs with -P and imports the same package",
         "Tests extend tests/test_worker_max_workers_global.py and tests/test_worker_queue_message.py with the rows of the sheet test table; the lease comment in worker_lease.py and the lease paragraph of docs/orchestration-workers.md state the new rule; CHANGELOG [Unreleased]",
-        "Estimated net line change (informational, not a gate): package about +10, tests about +60, docs about +2"
+        "Estimated net line change (informational, not a gate): package about +10, tests about +80, docs about +2"
       ],
       "codename": "completed-worker-frees-lease",
       "dependencies": [],
@@ -318,15 +321,12 @@
     {
       "acceptance": [
         "The codex executor_template in harness-facts.yaml ends with - < {prompt} instead of the prompt text, and refresh-profiles --render re-renders the four OpenAI GPT profiles and the README harness block with no drift; prompt <leaf> --role rca --model <codex roster id> --channel cli --force --reason x --run with a bundled OpenAI profile and a 200 KiB prompt exits 0 and the harness receives the whole prompt on stdin, with no argument over 32 KiB. oversized_arg and its tests are unchanged",
-        "PROBE_RULES_LINES rule 1 says that a test the reviewer sandbox cannot run (for example, it cannot write temporary files) is named with its error in the notes as not run, is no block by itself, and is not listed under commands_rerun",
-        "The chore reviewer prompt (chore_prompt) says A1 is the task as a whole, given pass or fail, with no other A# key; a chore record with only A1 is still read by the chore verdicts",
-        "Tests extend tests/test_harness_launch.py, tests/test_review_record_rules.py and tests/test_chore_mode.py with the rows of the sheet test table; docs/orchestration-harness-launch.md and CHANGELOG [Unreleased]. Out of scope: profiles of other harnesses, a writable temp root for Codex reviewers, review record reading stdin",
-        "Estimated net line change (informational, not a gate): package about +5, profile data about 6 lines changed, tests about +60, docs about +3"
+        "PROBE_RULES_LINES rule 1 gains this sentence: if the sandbox prevents a test from running, name the command and its error as not run in the notes, on an approve with the existing \"not a defect because <reason>\" explanation; do not put the command in commands_rerun; the absence of that run alone is no block. The sentence does not change what review record or the gate accepts: under policy.reviewer_reruns_required an approve with no commands_rerun is still refused, a block still blocks, and a non-empty commands_rerun still meets the policy",
+        "Tests extend tests/test_harness_launch.py and tests/test_review_record_rules.py with the rows of the sheet test table, the not-run rows through the public file_review; docs/orchestration-harness-launch.md and CHANGELOG [Unreleased]. Out of scope: profiles of other harnesses, a writable temp root for Codex reviewers, review record reading stdin, and the chore reviewer A1 sentence (M23 intake)",
+        "Estimated net line change (informational, not a gate): package about +3, profile data about 6 lines changed, tests about +50, docs about +3"
       ],
       "codename": "reviewer-and-rca-launch-paths",
-      "dependencies": [
-        "3b4b0524-3dc1-4acb-9d9f-1b8fd01be350"
-      ],
+      "dependencies": [],
       "execution_milestone": "Agentic-led",
       "id": "M22.64",
       "node_key": "a4905618-b868-46fa-a23b-d9e1b2846cd2",
@@ -334,7 +334,7 @@
       "planning_dir": "planning/M22.64_reviewer-and-rca-launch-paths_a4905618-b868-46fa-a23b-d9e1b2846cd2.md",
       "sibling_order": 58,
       "status": "Not Started",
-      "title": "The bundled Codex command reads its prompt on stdin, a reviewer lists a test its sandbox cannot run, and a chore reviewer uses A1 only",
+      "title": "The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/harness-facts.yaml",
         "specy_road/templates/project/model-profiles/README.md",
@@ -343,10 +343,8 @@
         "specy_road/templates/project/model-profiles/openai-gpt/gpt-6-sol.md",
         "specy_road/templates/project/model-profiles/openai-gpt/gpt-5.6-sol.md",
         "specy_road/review_record_rules.py",
-        "specy_road/bundled_scripts/chore_cli.py",
         "tests/test_harness_launch.py",
         "tests/test_review_record_rules.py",
-        "tests/test_chore_mode.py",
         "docs/orchestration-harness-launch.md",
         "CHANGELOG.md"
       ],
@@ -354,12 +352,13 @@
     },
     {
       "acceptance": [
-        "GITIGNORE_LINES holds work/* and the re-includes !work/README.md, !work/.gitkeep and !work/*.template.md in place of every per-path work/ line; under a nested project the prefix follows a leading !; init project, specyrd init and refresh-stubs write that block, and the toolkit root .gitignore block is re-rendered",
-        "With work/chores/<slug>.json and .md present after chore start and chore close in a clone holding a claimed leaf, the reviewer dirty_check prints nothing, worker reconcile reports no breach and delegate passes its uncommitted-work check; RUNTIME_WORK_DIRS and dirty_check are unchanged. A fresh clone of an initialised project has work/README.md and the three templates",
-        "The project template git-workflow.yaml sets implementation_summary: local, so validate on a new project prints no summary notice; the template .gitignore comments, work/README.md, docs/git-workflow.md and docs/git-workflow-preferences.md say work/ is local and never committed. upgrade on a project with a tracked work/ file lists it and prints git rm --cached for it without running it (existing ignore_report path); CHANGELOG [Unreleased] carries that upgrade note",
-        "Tests extend tests/test_agent_ignores.py, tests/test_runtime_dirs_not_dirty.py and tests/test_init_project_gitignore.py with the rows of the sheet test table; tests that pin the old per-path lines are updated row by row and named in the summary",
-        "Golden rule: it never regenerates a whole golden file; any changed transcript or golden under tests/parity/ (upgrade dry run, leaf loop) needs an asserted before/after fragment named in the summary, and each such file is first added to the touch zones by exact path with specy-road edit-node",
-        "Estimated net line change (informational, not a gate): package about -5, templates about -20, tests about +50, docs about +6"
+        "GITIGNORE_LINES holds work/* and the re-includes !work/README.md, !work/.gitkeep and !work/*.template.md in place of every per-path work/ line; under a nested project the prefix follows a leading !; init project, specyrd init and refresh-stubs write that block",
+        "With the new block, work/chores/<slug>.json and .md after chore start and chore close in a clone holding a claimed leaf are not seen: the reviewer dirty_check prints nothing, worker reconcile reports no breach and delegate passes its uncommitted-work check. A tracked work/brief-M1.md and a tracked work/chores/<slug>.md that are then modified are still reported by dirty_check and reconcile, and delegate's uncommitted-work check fails on them. RUNTIME_WORK_DIRS and dirty_check are source-identical. A fresh clone of an initialised project has work/README.md, work/.gitkeep and the three templates",
+        "Implementation summaries are no longer committed by default: the project template git-workflow.yaml sets implementation_summary: local, so validate on a new project prints no summary notice, and the docs say plainly that a reviewer in another clone does not see the summary. The template .gitignore comments, work/README.md, docs/git-workflow.md and docs/git-workflow-preferences.md say: work/ runtime artifacts are ignored by default; README.md, .gitkeep and the top-level *.template.md files stay tracked as scaffold; a project may re-include other paths (work/worker-logs/, work/done/) after the block; files already tracked under work/ stay tracked until the printed git rm --cached. upgrade on a project with a tracked work/ file lists it and prints git rm --cached for it without running it (existing ignore_report path); CHANGELOG [Unreleased] carries that upgrade note and the summary default",
+        "The toolkit root .gitignore block is re-rendered (sr/ layout), and in the same change sr/work/done/ is untracked with git rm --cached, its files kept on disk",
+        "Tests extend tests/test_agent_ignores.py, tests/test_runtime_dirs_not_dirty.py and tests/test_init_project_gitignore.py with the rows of the sheet test table; tests that pin the old per-path lines are updated row by row and named in the summary: tests/test_init_project_gitignore.py (work/prompt-*.md), tests/test_init_project_reports.py (SESSION_WORK_FILES lines, sr/work/prompt-*.md under nested), tests/test_worker_state.py (another leaf's work/worker-logs/ is now ignored, so it no longer shows or blocks delegate)",
+        "Golden rule: it never regenerates a whole golden file; any changed transcript or golden under tests/parity/ (upgrade dry run, leaf loop) needs an asserted before/after fragment named in the summary. Zone changes are the coordinator's: the coordinator adds any needed exact golden path before execution; otherwise the executor stops and names the path and its before/after fragment",
+        "Estimated net line change (informational, not a gate): package about -5, templates about -20, tests about +70, docs about +8"
       ],
       "codename": "work-dir-ignored",
       "dependencies": [],
@@ -382,17 +381,21 @@
         "tests/test_init_project_gitignore.py",
         "docs/git-workflow.md",
         "docs/git-workflow-preferences.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_init_project_reports.py",
+        "tests/test_worker_state.py",
+        "sr/work/done/"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "Without a profile: path, an entry matches the first profile whose api_id, file name or alias equals its id, else its harness_model, through one lookup order shared by profile_for_entry (working tree) and the integration-branch lookup in orchestration_pinned; an entry that matches by id today keeps that profile; an explicit profile: path is unchanged",
+        "Without a profile: path, the lookup is two passes in one order shared by profile_for_entry (working tree) and the integration-branch lookup in orchestration_pinned: first the first profile whose api_id, file name or alias equals the entry's id; only when none does, the first whose api_id, file name or alias equals its harness_model. An absent or blank harness_model is no key. An id match always beats a harness_model match, whatever the profile order; an entry that matches by id today keeps that profile; an explicit profile: path is unchanged",
         "validate prints no no-profile warning for an entry whose harness_model is a profile api_id or alias, and prompt for that entry holds the profile prompting rules; an entry matching by neither still gets the warning naming the closest profile, its text naming id or harness_model",
+        "On the integration-branch lookup, a profile matched by harness_model (api_id or alias) whose working-tree copy differs from the committed one (access.cli changed) is refused with the existing integration-drift reason, as an id match is today, and no local command runs",
         "Tests extend tests/test_model_profile_aliases.py with the rows of the sheet test table; docs/orchestration-roster.md and CHANGELOG [Unreleased]. Out of scope: the warning printed by add-node and edit-node",
-        "Golden rule: a changed validate transcript under tests/parity/ needs an asserted before/after fragment named in the summary, and that file is first added to the touch zones by exact path with specy-road edit-node",
-        "Estimated net line change (informational, not a gate): package about +10, tests about +50, docs about +2"
+        "Golden rule: a changed validate transcript under tests/parity/ needs an asserted before/after fragment named in the summary. Zone changes are the coordinator's: the coordinator adds any needed exact golden path before execution; otherwise the executor stops and names the path and its before/after fragment",
+        "Estimated net line change (informational, not a gate): package about +12, tests about +70, docs about +2"
       ],
       "codename": "profile-match-reads-harness-model",
       "dependencies": [],

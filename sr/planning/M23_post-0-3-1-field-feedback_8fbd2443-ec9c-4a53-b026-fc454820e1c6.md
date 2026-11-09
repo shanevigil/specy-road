@@ -38,3 +38,4 @@ From the sanitized field report and its triage; items 7, 13â€“15, 17, 19 and 21â
 - `chore start --base <commit>` (item 16); `ready` accepts a chore slug (item 18).
 - An authorized rerun carries a round count and escalates again when it runs out (item 20).
 - A writable temp root for Codex reviewers, with the write check after the run (item 21 remainder); `review record` reads notes from stdin (item 23b).
+- The chore reviewer prompt (`chore_cli.chore_prompt`) says `A1` is the task as a whole, given pass or fail, with no other `A#` key; a chore record with only `A1` is still read by the chore verdicts (item 23a, moved out of M22.64).

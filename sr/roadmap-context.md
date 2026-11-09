@@ -183,7 +183,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.61` A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable `headless-question-tool-flagged` — task — **Not Started**
   - `M22.62` review record refuses empty notes and a notes digest another model already filed at the same commit `shared-notes-digest-refused` — task — **Not Started**
   - `M22.63` A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH `completed-worker-frees-lease` — task — **Not Started**
-  - `M22.64` The bundled Codex command reads its prompt on stdin, a reviewer lists a test its sandbox cannot run, and a chore reviewer uses A1 only `reviewer-and-rca-launch-paths` — task — **Not Started**
+  - `M22.64` The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run `reviewer-and-rca-launch-paths` — task — **Not Started**
   - `M22.65` The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work `work-dir-ignored` — task — **Not Started**
   - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
