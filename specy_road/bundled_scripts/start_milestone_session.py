@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.git_subprocess import git_run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.milestone_chunk_io import (
     build_active_milestone_execution,
@@ -21,7 +22,7 @@ from specy_road.milestone_session import (
 )
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import git_run, sync_integration_branch
+from specy_road.bundled_scripts.repo_ops import sync_integration_branch
 
 _CODENAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 

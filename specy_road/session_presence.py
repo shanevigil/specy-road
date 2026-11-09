@@ -32,7 +32,7 @@ import yaml
 from specy_road.clock import utc_now
 from specy_road.finish_implementation_check import zone_matches
 from specy_road.fs_atomic import atomic_write_text
-from specy_road.git_subprocess import git_text, run
+from specy_road.git_subprocess import current_branch_name, git_root, run
 from specy_road.review_files import reviews_root
 
 SESSIONS_DIRNAME = ".sessions"
@@ -149,8 +149,7 @@ def list_sessions(repo_root: Path, *, live_only: bool = True, now: datetime | No
 
 def git_worktree_top(cwd: Path) -> Path:
     """Resolved checkout top for ``cwd`` (including when ``cwd`` is already the top)."""
-    top = git_text(["rev-parse", "--show-toplevel"], cwd) or ""
-    return Path(top).resolve() if top else cwd.resolve()
+    return git_root(cwd) or cwd.resolve()
 
 
 def own_live_sessions(repo_root: Path) -> list[Session]:
@@ -163,7 +162,7 @@ def own_live_sessions(repo_root: Path) -> list[Session]:
 def own_session_here(repo_root: Path, *, worktree: Path | None = None) -> Session | None:
     """Among this user's live sessions, the one for this git top and branch, when unique."""
     here = git_worktree_top(worktree or repo_root)
-    branch = git_text(["branch", "--show-current"], here) or None
+    branch = current_branch_name(here)
     matches = [
         s for s in own_live_sessions(repo_root)
         if s.worktree and git_worktree_top(Path(s.worktree)) == here and s.branch == branch
@@ -186,7 +185,7 @@ def start_session(repo_root: Path, agent: str, *, paths: list[str] | None, note:
     now = utc_now().replace(microsecond=0)
     old = load_session(path) if path.is_file() else None
     wt = git_worktree_top(worktree or repo_root)
-    s = Session(agent, git_text(["branch", "--show-current"], wt) or None, str(wt),
+    s = Session(agent, current_branch_name(wt), str(wt),
                 sorted({p.strip().strip("/") for p in paths if p.strip()}),
                 old.started if old else now.isoformat(), now.isoformat(),
                 (now + timedelta(hours=ttl_hours)).isoformat(), note or (old.note if old else ""), path,

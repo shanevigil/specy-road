@@ -96,7 +96,13 @@
       ],
       "codename": "e2e-pass-and-fix-round",
       "dependencies": [
-        "ed19381c-5265-4909-a70c-f9c5a9cf1853"
+        "ed19381c-5265-4909-a70c-f9c5a9cf1853",
+        "dac9d0ff-b463-4508-8218-41532f1c20f4",
+        "9c3e6e09-f3d1-4da1-a719-af19db35fe12",
+        "d3fb22ae-b63e-47ea-b422-231f6a3f8258",
+        "a4905618-b868-46fa-a23b-d9e1b2846cd2",
+        "4193dccc-c9b5-46a4-a5dc-3a9705587c14",
+        "8670a5b8-b6f6-4b91-b5c8-cfd5e890a50e"
       ],
       "execution_milestone": "Human-led",
       "id": "M16.8.4",

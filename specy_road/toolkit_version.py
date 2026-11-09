@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import __version__
-from specy_road.git_subprocess import head_sha, run, working_tree_clean
-from specy_road.runtime_paths import git_root, specy_road_package_dir
+from specy_road.git_subprocess import git_root, head_sha, run, working_tree_clean
+from specy_road.runtime_paths import specy_road_package_dir
 
 
 def _toolkit_git_root() -> Path | None:

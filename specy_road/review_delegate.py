@@ -49,7 +49,7 @@ from specy_road import safe_write
 from specy_road.clock import utc_now_iso
 from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.git_subprocess import git_text
+from specy_road.git_subprocess import git_root
 from specy_road.orchestrate_assign import guidance_bypass_refusal, guidance_bypass_warning
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_delegate_harness import HarnessSetupError, _Harness
@@ -387,7 +387,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, ref: str | None = Non
             raise DelegateError(f"{model} wrote {wrote[0]} on {node_id}; the executor never reviews its own leaf")
     entry = _entry(repo_root, model)
     _guidance_check(repo_root, entry)   # M21.44: before the harness, the prompt and _start (fresh, resume, chore)
-    cwd = (worktree or Path(git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root)).resolve()
+    cwd = (worktree or git_root(repo_root) or repo_root).resolve()
     try:
         h = _Harness(repo_root, entry, node_id, cwd, chore=chore is not None)
     except HarnessSetupError as e:

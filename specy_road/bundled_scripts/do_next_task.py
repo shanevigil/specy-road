@@ -44,6 +44,7 @@ from specy_road.bundled_scripts.do_next_task_virtual_complete import (
 )
 from specy_road.bundled_scripts.do_next_finished_unmerged import finished_unmerged_ids
 from specy_road.bundled_scripts.do_next_task_held_claim import refuse_second_claim, validate_or_exit
+from specy_road.git_subprocess import git_run
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_policy_pin import pinned_message
 from specy_road.do_next_milestone_pickup import (
@@ -63,7 +64,7 @@ from specy_road.nested_repos import announce_nested_worktrees
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.planning_scaffold_check import warn_scaffold_at_pickup
 from specy_road.runtime_paths import resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch
+from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, sync_integration_branch
 from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder

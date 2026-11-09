@@ -8,9 +8,8 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import _chain_sheet_paths
-from specy_road.git_subprocess import git_ok, git_stdout
+from specy_road.git_subprocess import git_ok, git_root, git_stdout
 from specy_road.review_target import ReviewTarget
-from specy_road.runtime_paths import git_root
 
 UNCOMMITTED_REF_NOTE = ("_The brief, a planning sheet or the implementation summary names these paths, but they "
                         "are not in the tree at the commit under review (untracked or uncommitted). Commit them "

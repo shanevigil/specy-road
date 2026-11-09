@@ -30,12 +30,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.runtime_paths import git_root, project_prefix
+from specy_road.runtime_paths import project_prefix
 from specy_road.finish_land_check import resolve_land_check_cmd, run_land_check
 from specy_road.finish_land_deterministic import (
     merge_feature_deterministically,
 )
-from specy_road.git_subprocess import git_code, git_ok
+from specy_road.git_subprocess import git_code, git_ok, git_root
 from specy_road.nested_repos import land_nested_branches
 
 

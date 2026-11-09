@@ -30,12 +30,9 @@ from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_stdout, git_text, local_branch_exists
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.registry_yaml import REGISTRY_REL, read_registry, registry_path
 from specy_road.roadmap_json import nodes_from_chunk_doc
 from specy_road.runtime_paths import project_prefix
-
-REGISTRY_REL = "roadmap/registry.yaml"
-
 
 class ReviewTargetError(Exception):
     """The node, branch, or commit to review cannot be resolved."""
@@ -147,7 +144,7 @@ def reviewed_commit(repo_root: Path, ref: str, base: str | None) -> str | None:
         return None
     # git names changed paths from the repository root; the registry sits
     # under the project prefix in the nested layout.
-    registry = project_prefix(repo_root) + REGISTRY_REL
+    registry = project_prefix(repo_root) + REGISTRY_REL.as_posix()
     span = [f"{base}..{tip}"] if base else ["-n", "20", tip]
     shas = (git_text(["log", "--first-parent", "--format=%H", *span], repo_root) or "").split()
     for sha in shas:

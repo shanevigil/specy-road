@@ -12,11 +12,11 @@ from specy_road import __version__, safe_write
 from specy_road.agent_ignores import apply_and_report, check_ignore_files
 from specy_road.agents_md_block import apply_agents_files
 from specy_road.generated_files import GENERATED_COMMITTED, regenerate_generated_files
+from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import AGENTS_MD
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, raise_rule_refusal
 from specy_road.model_profiles import PROFILES_REL, load_profile
 from specy_road.runtime_paths import (
-    git_root,
     prefix_within,
     project_root,
     specy_road_package_dir,

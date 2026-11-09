@@ -25,7 +25,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2` | Mechanical clean-up, layering and the in-process CLI | milestone | — | Not Started |
 | `M16.2.1` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Complete |
 | `M16.2.2` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Complete |
-| `M16.2.3` | Git queries and registry I/O go through one helper each | task | Agentic-led | Not Started |
+| `M16.2.3` | Git queries and registry I/O go through one helper each | task | Agentic-led | Complete |
 | `M16.2.4` | One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready | task | Agentic-led | Not Started |
 | `M16.2.5` | Library modules imported by the package move out of bundled_scripts | task | Agentic-led | Not Started |
 | `M16.2.6` | A committed report of the import cycles and package-to-entry-point imports | task | Agentic-led | Not Started |
@@ -242,6 +242,12 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.57` | Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish | task | Agentic-led | Complete |
 | `M22.58` | History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map | task | Agentic-led | Not Started |
 | `M22.59` | Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced | gate | Human-led | Not Started |
+| `M22.61` | A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable | task | Agentic-led | Not Started |
+| `M22.62` | review record refuses empty notes and a notes digest another model already filed at the same commit | task | Agentic-led | Not Started |
+| `M22.63` | A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH | task | Agentic-led | Not Started |
+| `M22.64` | The bundled Codex command reads its prompt on stdin, a reviewer lists a test its sandbox cannot run, and a chore reviewer uses A1 only | task | Agentic-led | Not Started |
+| `M22.65` | The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work | task | Agentic-led | Not Started |
+| `M22.66` | A roster entry matches a model profile by its harness_model when its id matches none | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |

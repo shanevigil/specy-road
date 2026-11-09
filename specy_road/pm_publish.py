@@ -14,6 +14,7 @@ from specy_road.generated_files import (
 from specy_road.git_subprocess import (
     current_branch_name,
     git_ok,
+    git_text,
     is_git_worktree,
     run,
 )
@@ -53,16 +54,6 @@ def path_in_publish_scope(rel: str) -> bool:
     return False
 
 
-def _git_lines(repo_root: Path, args: list[str], *, timeout: float = 60.0) -> list[str]:
-    ok, out = git_ok(args, repo_root, timeout=timeout)
-    if not ok:
-        return []
-    text = (out or "").strip()
-    if not text:
-        return []
-    return text.splitlines()
-
-
 def scope_changed_files(repo_root: Path) -> list[str]:
     """Paths with any working-tree change that fall under the publish scope."""
     staged, unstaged, untracked = _collect_changed_paths(repo_root)
@@ -72,10 +63,10 @@ def scope_changed_files(repo_root: Path) -> list[str]:
 
 def _collect_changed_paths(repo_root: Path) -> tuple[set[str], set[str], set[str]]:
     """Return (staged_paths, unstaged_tracked_paths, untracked_paths), repo-relative."""
-    staged = set(_git_lines(repo_root, ["diff", "--cached", "--name-only"]))
-    unstaged = set(_git_lines(repo_root, ["diff", "--name-only"]))
+    staged = set((git_text(["diff", "--cached", "--name-only"], repo_root) or "").splitlines())
+    unstaged = set((git_text(["diff", "--name-only"], repo_root) or "").splitlines())
     untracked = set(
-        _git_lines(repo_root, ["ls-files", "--others", "--exclude-standard"]),
+        (git_text(["ls-files", "--others", "--exclude-standard"], repo_root) or "").splitlines(),
     )
     staged = {_norm_rel(p) for p in staged if p.strip()}
     unstaged = {_norm_rel(p) for p in unstaged if p.strip()}
@@ -111,14 +102,14 @@ def _upstream_ref(repo_root: Path) -> str | None:
 
 def _push_remote_missing(repo_root: Path, branch: str | None) -> bool:
     """True when ``git push`` has no remote: none configured, or the configured one is gone."""
-    remotes = set(_git_lines(repo_root, ["remote"]))
+    remotes = set((git_text(["remote"], repo_root) or "").splitlines())
     if not remotes:
         return True
     keys = ["remote.pushDefault"]
     if branch:
         keys = [f"branch.{branch}.pushRemote", *keys, f"branch.{branch}.remote"]
     for key in keys:
-        named = _git_lines(repo_root, ["config", "--get", key])
+        named = (git_text(["config", "--get", key], repo_root) or "").splitlines()
         if named:
             return named[0] not in remotes and named[0] != "."
     return False
@@ -312,8 +303,7 @@ def publish_roadmap(repo_root: Path, message: str) -> dict[str, Any]:
     _verify_staged_index_not_empty(repo_root)
     _git_commit_roadmap(repo_root, msg)
 
-    sha_lines = _git_lines(repo_root, ["rev-parse", "--short", "HEAD"])
-    short_sha = sha_lines[0] if sha_lines else None
+    short_sha = git_text(["rev-parse", "--short", "HEAD"], repo_root) or None
 
     r_push = run(["push"], repo_root, timeout=300.0)
     if not r_push.ok:

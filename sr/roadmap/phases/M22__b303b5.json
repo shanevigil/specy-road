@@ -479,7 +479,9 @@
         "specy_road/review_bookkeeping.py",
         "docs/orchestration-review.md",
         "CHANGELOG.md",
-        "tests/test_sheet_edits_keep_approvals.py"
+        "tests/test_sheet_edits_keep_approvals.py",
+        "tests/test_sibling_repo_approvals.py",
+        "tests/test_delta_review.py"
       ],
       "type": "task"
     }

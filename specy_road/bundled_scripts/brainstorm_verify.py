@@ -39,8 +39,7 @@ from urllib.parse import urljoin, urlunsplit, urlsplit
 from specy_road.bundled_scripts.brainstorm_research import _is_off_host  # noqa: PLC2701 — same guard as the GUI
 from specy_road.bundled_scripts.brainstorm_fields import REPO, is_no_result
 from specy_road.bundled_scripts.brainstorm_session import BrainstormError, BrainstormSession, Idea
-from specy_road.git_subprocess import git_ok, git_stdout, git_text, head_sha
-from specy_road.runtime_paths import git_root
+from specy_road.git_subprocess import git_ok, git_root, git_stdout, git_text, head_sha
 
 TIMEOUT_SECONDS = 20
 MAX_BYTES = 2_000_000
