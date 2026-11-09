@@ -26,6 +26,7 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
     render_json_chunk,
     render_manifest,
 )
+from specy_road.fs_atomic import atomic_write_text
 
 
 @dataclass
@@ -86,9 +87,8 @@ class AtomicWritePlan:
         for path, text in self.pending.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_name(f".{path.name}.tmp-{uuid.uuid4().hex}")
-            self.tmp_paths.append(tmp)
-            tmp.write_text(text, encoding="utf-8")
-            os.replace(tmp, path)
+            self.tmp_paths.append(tmp)   # recorded first: rollback removes it whatever fails
+            atomic_write_text(path, text, tmp=tmp)
         for path in self.deletions:
             if path.is_file():
                 path.unlink()

@@ -167,7 +167,7 @@ def auto_archive_candidates(
     from specy_road.bundled_scripts.roadmap_load import compute_rollup_status, load_roadmap
 
     from specy_road.node_activity import node_activity
-    from specy_road.archive_plan import utc_now_iso
+    from specy_road.clock import utc_now_iso
     from specy_road.milestone_subtree import subtree_node_ids
 
     nodes = load_roadmap(root)["nodes"]

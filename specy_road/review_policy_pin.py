@@ -35,7 +35,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import datetime
 import getpass
 import hashlib
 import json
@@ -49,6 +48,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from specy_road import review_lock, safe_write
+from specy_road.clock import utc_now_iso
 from specy_road.bundled_scripts.registration_pickup_commit import with_policy_trailer
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_text, run
@@ -332,7 +332,7 @@ def _write_acceptances(root: Path, rows: list[dict[str, Any]]) -> int:
     """
     ordered = sorted(rows, key=lambda row: row["node_id"])
     user = _user(root)
-    at = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
+    at = utc_now_iso()
     with contextlib.ExitStack() as stack:
         for row in ordered:
             try:

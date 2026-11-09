@@ -264,7 +264,8 @@ def test_archive_ids_do_not_collide_with_a_live_record(repo: Path) -> None:
     share a chunk filename.
     """
     from specy_road.archive_index import write_archive_index
-    from specy_road.archive_plan import build_archive_id, unique_archive_id, utc_now_iso
+    from specy_road.archive_plan import build_archive_id, unique_archive_id
+    from specy_road.clock import utc_now_iso
 
     node = {"id": "M0.1", "node_key": "44ef4a9d-923f-545c-8187-eaabc7ca86ba"}
     base = build_archive_id(node, utc_now_iso())

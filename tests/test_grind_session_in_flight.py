@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 import pytest
 
@@ -98,7 +99,7 @@ def test_ownership_probe_is_resolved_at_call_time(monkeypatch, tmp_path):
 
 def test_own_claim_wins_over_a_blocked_leaf_waiting_on_it(monkeypatch, capsys, tmp_path):
     """The downstream leaf is blocked *on* the claim, so both buckets are full."""
-    monkeypatch.setattr(gse, "_now_iso", lambda: TS)
+    monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
     plan = _plan(
         ready=[],
         blocked=[BlockedLeaf("M1.2", "cn2", ["M1.1"], "dependency")],
@@ -117,7 +118,7 @@ def test_own_claim_wins_over_a_blocked_leaf_waiting_on_it(monkeypatch, capsys, t
 
 
 def test_in_flight_emits_branch_complete_when_tip_is_done(monkeypatch, capsys, tmp_path):
-    monkeypatch.setattr(gse, "_now_iso", lambda: TS)
+    monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
     monkeypatch.setattr(
         gsif,
         "node_complete_on_ref",
@@ -273,7 +274,7 @@ def test_loop_resumes_instead_of_exiting_six(monkeypatch, capsys, tmp_path):
     from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 
     _artifacts(tmp_path, "M1.1")
-    monkeypatch.setattr(gse, "_now_iso", lambda: TS)
+    monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
     monkeypatch.setattr(gsif, "local_branch_exists", lambda _root, _b: True)
     monkeypatch.setattr(gsif, "checkout_branch", lambda _root, _b: (0, ""))
 
@@ -314,7 +315,7 @@ def test_loop_resumes_instead_of_exiting_six(monkeypatch, capsys, tmp_path):
 def test_loop_without_the_flag_stops_with_exit_six(monkeypatch, capsys, tmp_path):
     from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 
-    monkeypatch.setattr(gse, "_now_iso", lambda: TS)
+    monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
     monkeypatch.setattr(gsif, "local_branch_exists", lambda _root, _b: True)
     monkeypatch.setattr(
         gs, "gather_plan",

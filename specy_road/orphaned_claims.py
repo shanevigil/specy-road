@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from specy_road.clock import utc_now
 from specy_road.git_subprocess import git_text
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_files import latest_ready
@@ -38,7 +39,7 @@ def orphaned_claims(repo_root: Path) -> list[dict[str, str]]:
     ``age`` is from the branch's last commit, else the registry row's ``started`` date. ``since`` is that
     timestamp, or ``""`` when neither exists.
     """
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     records = list_records(repo_root)
     sessions = {s.branch for s in list_sessions(repo_root) if s.branch}
     out = []

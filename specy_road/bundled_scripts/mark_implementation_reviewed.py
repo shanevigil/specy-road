@@ -18,12 +18,12 @@ set Complete in one roadmap commit (``policy.milestone_full_review``).
 from __future__ import annotations
 
 import argparse
-import datetime
 import re
 import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.clock import utc_now_iso
 from specy_road.review_gate import (
     SigningError,
     GateResult,
@@ -171,7 +171,7 @@ def _user_approves(
 
 
 def _commit_registry_approved(codename: str, reg: dict, trailers: list[str]) -> None:
-    now = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
+    now = utc_now_iso()
     for e in reg.get("entries", []):
         if e.get("codename") == codename:
             e["implementation_review"] = "approved"

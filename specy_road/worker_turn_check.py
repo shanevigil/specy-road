@@ -22,10 +22,11 @@ import os
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from specy_road.clock import utc_now
 from specy_road.finish_implementation_check import _clean, in_zones
 from specy_road.git_changed_paths import branch_commit_paths
 from specy_road.git_subprocess import git_text, head_sha, run
@@ -105,14 +106,10 @@ def git_state(worktree: Path, repo_root: Path, refs: tuple[str, ...] | None = No
                     tuple(_ref_tip(worktree, ref) for ref in watched))
 
 
-def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-
 class TurnWatch:
     """One turn's events as the post-run check needs them; created at the turn's start, before the harness."""
 
-    def __init__(self, repo_root: Path, rec: WorkerRecord, *, now: Callable[[], datetime] = _utcnow) -> None:
+    def __init__(self, repo_root: Path, rec: WorkerRecord, *, now: Callable[[], datetime] = utc_now) -> None:
         self.repo_root, self.rec, self.now = repo_root, rec, now
         self.before = git_state(Path(rec.worktree), repo_root)
         self.proc: subprocess.Popen | None = None   # the harness, once started: what the watchdog stops
@@ -268,6 +265,6 @@ def limit_gate(rec: WorkerRecord, now: datetime | None = None) -> None:
         reset = datetime.fromisoformat(rec.limit_reset_at)
     except ValueError:
         return   # not a time this module wrote; the human decides
-    if (now or _utcnow()) < reset:
+    if (now or utc_now()) < reset:
         raise WorkerError(f"{rec.worker_id} is paused by a usage limit until {rec.limit_reset_at}; "
                           "`worker resume` picks it up after that")

@@ -27,12 +27,13 @@ import stat
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, fields
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from specy_road.clock import utc_now_iso
+from specy_road.fs_atomic import atomic_write_text
 from specy_road.git_subprocess import head_sha, run
 from specy_road.review_files import reviews_root  # noqa: F401 — re-exported for callers
 from specy_road.toolkit_version import running_toolkit_version
@@ -120,18 +121,6 @@ class WorkerEvent:
         return {k: v for k, v in asdict(self).items() if v is not None}
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def _write_atomic(path: Path, text: str) -> None:
-    """Replace ``path`` in one step: the wrapper and the CLI both write records,
-    and a reader must never see a half-written file."""
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
-
-
 def _refresh(repo_root: Path, rec: WorkerRecord) -> None:
     """Replace ``rec``'s fields with what is on disk, when a record exists there."""
     path = record_path(repo_root, rec.worker_id)
@@ -170,14 +159,14 @@ def new_worker_id(repo_root: Path) -> str:
 
 
 def save_record(repo_root: Path, rec: WorkerRecord) -> Path:
-    rec.updated = _now()
+    rec.updated = utc_now_iso()
     data = rec.to_dict()
     errs = schema_errors(data, "worker-record.schema.json", repo_root, rec.branch)
     if errs:
         raise WorkerError(f"{rec.worker_id}: " + "; ".join(errs))
     path = record_path(repo_root, rec.worker_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    _write_atomic(path, yaml.safe_dump(data, sort_keys=False))
+    atomic_write_text(path, yaml.safe_dump(data, sort_keys=False))
     return path
 
 
@@ -236,7 +225,7 @@ def create_record(repo_root: Path, node_id: str, harness: str, model: str, workt
         raise WorkerError(f"harness {harness!r}: expected one of {', '.join(HARNESSES)}")
     with workers_lock(repo_root):
         attempts = [r.attempt for r in list_records(repo_root) if r.node_id == node_id]
-        now = _now()
+        now = utc_now_iso()
         rec = WorkerRecord(new_worker_id(repo_root), node_id, harness, model, str(Path(worktree).resolve()),
                            "starting", {"holder": lease, "since": now}, 0, max(attempts, default=0) + 1, 0,
                            now, now, branch=branch, contract_hash=contract_hash, billing_route=billing_route,
@@ -279,7 +268,7 @@ def append_event(repo_root: Path, rec: WorkerRecord, type_: str, *, source: str,
         # A crash between the append and the record save leaves the record a
         # step behind the log; the log is the truth for the next sequence.
         rec.last_event_seq = max(rec.last_event_seq, _last_logged_seq(repo_root, rec.worker_id))
-        ev = WorkerEvent(rec.last_event_seq + 1, rec.worker_id, _now(), type_, source, authority,
+        ev = WorkerEvent(rec.last_event_seq + 1, rec.worker_id, utc_now_iso(), type_, source, authority,
                          (summary or "(empty)")[:500], rec.instruction_epoch, detail, op_id)
         data = ev.to_dict()
         errs = schema_errors(data, "worker-event.schema.json")
@@ -291,7 +280,7 @@ def append_event(repo_root: Path, rec: WorkerRecord, type_: str, *, source: str,
             f.write(json.dumps(data, sort_keys=True) + "\n")
         rec.last_event_seq = ev.seq
         save_record(repo_root, rec)
-        _write_atomic(workers_dir(repo_root) / MAILBOX_FLAG, f"{rec.worker_id} #{ev.seq} {ev.at}\n")
+        atomic_write_text(workers_dir(repo_root) / MAILBOX_FLAG, f"{rec.worker_id} #{ev.seq} {ev.at}\n")
     return ev
 
 
@@ -363,7 +352,7 @@ def require_writer(rec: WorkerRecord, holder: str = "broker") -> None:
 def set_lease(repo_root: Path, rec: WorkerRecord, holder: str) -> None:
     if holder not in LEASE_HOLDERS:
         raise WorkerError(f"lease holder {holder!r}: expected one of {', '.join(LEASE_HOLDERS)}")
-    mutate(repo_root, rec, lambda r: setattr(r, "lease", {"holder": holder, "since": _now()}))
+    mutate(repo_root, rec, lambda r: setattr(r, "lease", {"holder": holder, "since": utc_now_iso()}))
 
 
 def status_entries(worktree: Path) -> list[tuple[str, str]] | None:
@@ -393,7 +382,7 @@ def dirty_paths(worktree: Path) -> list[str]:
 
 def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None = None) -> dict[str, Any]:
     """Remember where the worktree and session stood; a reclaim diffs from here."""
-    cp = {"git_head": head_sha(Path(rec.worktree)), "native_turn": native_turn, "at": _now(),
+    cp = {"git_head": head_sha(Path(rec.worktree)), "native_turn": native_turn, "at": utc_now_iso(),
           "dirty_paths": dirty_paths(Path(rec.worktree))}
     mutate(repo_root, rec, lambda r: setattr(r, "checkpoint", cp))
     return cp

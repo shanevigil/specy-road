@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import re
 import sys
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -20,6 +20,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from specy_road.clock import utc_now_iso
 from specy_road.init_project import project_template_root
 from specy_road.orchestration_config import _paused_until_error
 from specy_road.registry_yaml import dump_registry_text
@@ -99,10 +100,6 @@ def require_iso_date(name: str, value: str) -> str:
     except ValueError as e:
         raise ValueError(f"{name} must be an ISO date YYYY-MM-DD, got {value!r}") from e
     return text
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def open_entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
@@ -408,7 +405,7 @@ def add_preference(
         old = next((e for e in entries if isinstance(e, dict) and e.get("id") == supersedes), None)
         if not old or old.get("kind") != PREFERENCE or old.get("status") != "open":
             raise ValueError(f"--supersedes {supersedes!r} is not an open preference")
-        old.update(status="closed", answer=f"superseded by {entry_id}", closed=_now_iso())
+        old.update(status="closed", answer=f"superseded by {entry_id}", closed=utc_now_iso())
     entries.append(entry)
     write_decisions(path, doc)
     return entry
@@ -442,7 +439,7 @@ def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | 
                 raise SystemExit(1)
             e["status"] = "closed"
             e["answer"] = answer.strip()
-            e["closed"] = _now_iso()
+            e["closed"] = utc_now_iso()
             write_decisions(path, doc)
             return e
     print(f"error: no decision {decision_id!r} in {path.relative_to(root).as_posix()}", file=sys.stderr)

@@ -26,6 +26,7 @@ from datetime import date
 from pathlib import Path
 
 from specy_road import __version__
+from specy_road.fs_atomic import atomic_write_text
 from specy_road.agent_guide_block import PROVENANCE
 from specy_road.bundled_scripts.chore_cli import chores_dir
 from specy_road.bundled_scripts.validate_stale_commands import (
@@ -39,7 +40,7 @@ from specy_road.integrity import _ratchet_findings, integration_ratchet_paths
 from specy_road.orchestration_config import effective_config
 from specy_road.review_policy_ref import policy_source
 from specy_road.runtime_paths import git_root
-from specy_road.worker_state import WorkerError, _write_atomic
+from specy_road.worker_state import WorkerError
 
 #: Finding class -> the title of the chore leaf ``--open-chores`` files for it.
 CLASSES = {
@@ -212,7 +213,7 @@ def garden(root: Path, under: str | None = None) -> dict:
     findings, notes = scan(root)
     chores = open_chores(root, findings, under) if under else []
     chores_dir(root).mkdir(parents=True, exist_ok=True)
-    _write_atomic(record_path(root), json.dumps({"last_run": date.today().isoformat()}) + "\n")
+    atomic_write_text(record_path(root), json.dumps({"last_run": date.today().isoformat()}) + "\n")
     return {"findings": findings, "notes": notes, "chores": chores}
 
 

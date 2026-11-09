@@ -12,6 +12,8 @@ from typing import Any
 
 import yaml
 
+from specy_road.clock import utc_now_iso
+from specy_road.fs_atomic import atomic_write_text
 from specy_road.agent_ignores import RUNTIME_WORK_DIRS
 from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.generate_brief import index, render_brief
@@ -30,8 +32,6 @@ from specy_road.worker_state import (
     FLAG_RECONCILE,
     WorkerError,
     WorkerRecord,
-    _now,
-    _write_atomic,
     add_flag,
     append_event,
     clear_flag,
@@ -298,7 +298,7 @@ def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
         sweep_dead_wrappers(repo_root)
         sweep_stalled(repo_root)   # after the sweep: a dead wrapper is failed, not stalled
         marks = sync_marks(repo_root)
-        now = _now()
+        now = utc_now_iso()
         out = []
         for rec in list_records(repo_root):
             mark = marks.get(rec.worker_id, {}).get("seq", 0)
@@ -317,6 +317,6 @@ def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
                 marks[rec.worker_id] = {"seq": last, "acked_at": now}
         if ack and out:
             path.parent.mkdir(parents=True, exist_ok=True)
-            _write_atomic(path, yaml.safe_dump(marks, sort_keys=True))
+            atomic_write_text(path, yaml.safe_dump(marks, sort_keys=True))
     sync_leases(repo_root)   # this checkout's lease refs to match its active records; network calls, after the lock
     return out
