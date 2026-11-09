@@ -17,7 +17,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.1.5` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Complete**
     - `M16.1.6` Review-policy evidence: how often each optional review policy changed a gate outcome `review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` — task — **Complete**
     - `M16.1.7` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Complete**
-    - `M16.1.8` A 100-character line-width report against a baseline, and the consumer file-limit default decided `ruff-quality-baseline` — task — **Not Started**
+    - `M16.1.8` A 100-character line-width report against a baseline, and the consumer file-limit default decided `ruff-quality-baseline` — task — **Complete**
     - `M16.1.9` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Complete**
     - `M16.1.10` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Complete**
     - `M16.1.11` Ruff quality rule families reported per file against a baseline, with per-release totals `ruff-quality-family-baseline` — task — **Not Started**
@@ -320,7 +320,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.1.8` on `feature/rm-ruff-quality-baseline` since 2026-11-09
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05

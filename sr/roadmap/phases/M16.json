@@ -276,7 +276,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.8_ruff-quality-baseline_c840cf76-95c4-4688-a587-3bc06824fad5.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A 100-character line-width report against a baseline, and the consumer file-limit default decided",
       "touch_zones": [
         "pyproject.toml",
