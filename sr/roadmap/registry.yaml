@@ -103,3 +103,26 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
+  - codename: operator-decision-record
+    node_id: M22.51
+    branch: feature/rm-operator-decision-record
+    touch_zones:
+      - specy_road/review_override.py
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/review_cli.py
+      - tests/test_review_override.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+      - specy_road/templates/project/schemas/decisions.schema.json
+      - sr/schemas/decisions.schema.json
+      - specy_road/decisions.py
+      - specy_road/bundled_scripts/decisions_cli.py
+      - tests/parity/command_map.yaml
+      - tests/parity/golden/help/specy-road__review.txt
+      - tests/parity/golden/help/specy-road__review__operator-decision.txt
+      - tests/parity/golden/help/specy-road__decisions__add.txt
+      - constitution/principles.md
+      - sr/constitution/principles.md
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
