@@ -88,6 +88,8 @@ _FORCE = re.compile(rf"--force|--yolo|{_SWITCHES}f.*")
 _PERMISSION = re.compile(rf"--trust|--sandbox=.*|{_FORCE.pattern}")
 #: A word that asks ``agent`` for its own worktree.
 _WORKTREE = re.compile(rf"--worktree(=.*)?|{_SWITCHES}w.*")
+#: What a sandboxed shell prints when Cursor refuses the write (checked on agent 2026.11.05-86047df, 2026-11-08).
+_DENIAL = re.compile(r"Permission denied|Read-only file system|Operation not permitted")
 
 
 def permission_flags(force: bool) -> list[str]:
@@ -164,6 +166,36 @@ def force_warnings(roster: list[dict[str, Any]]) -> list[str]:
     return out
 
 
+def _shell_bodies(d: dict[str, Any]) -> list[dict[str, Any]]:
+    """The ``success`` and ``failure`` objects of a completed shell ``tool_call``, either of which can carry a denial."""
+    if d.get("type") != "tool_call" or d.get("subtype") != "completed":
+        return []
+    call = d.get("tool_call")
+    shell = call.get("shellToolCall") if isinstance(call, dict) else None
+    result = shell.get("result") if isinstance(shell, dict) else None
+    if not isinstance(result, dict):
+        return []
+    return [body for key in ("failure", "success") if isinstance(body := result.get(key), dict)]
+
+
+def _sandbox_denial(d: dict[str, Any] | None) -> Parsed | None:
+    """One ``permission_denied`` when a shell result's stderr is a sandbox refusal, else ``None``.
+
+    A denied ``touch`` is ``result.failure`` and exit 1; a script that keeps going puts the same text on
+    ``result.success``. The turn's own ``result`` line stays ``success`` either way, so this is what the
+    post-run check sees.
+    """
+    if not d:
+        return None
+    for body in _shell_bodies(d):
+        text = str(body.get("stderr") or body.get("interleavedOutput") or "")
+        if _DENIAL.search(text):
+            return Parsed("permission_denied", f"denied shell: {_snip(text.strip(), 160)}", d.get("session_id"),
+                          {"tool_name": "shell", "tool_input": {"command": _snip(str(body.get("command") or ""), 160)},
+                           "exit_code": body.get("exitCode")})
+    return None
+
+
 def _no_worktree_flag(cli: str | None) -> None:
     """A custom command must not pass ``-w``/``--worktree`` (by the bounded rule of :func:`_shell_words`): ``agent``
     would make its own worktree under ``~/.cursor/worktrees`` and work there, not in the one specy-road created
@@ -179,7 +211,8 @@ class Cursor(Adapter):
                               "the prompt a file the agent is told to read (--trust skips a new worktree's trust prompt; "
                               "the sandbox confines shell commands; roster cursor_force: true passes --trust --force "
                               "instead, which force-allows every command not denied; never -w); resume = `agent -p "
-                              "--resume` (undocumented with a new prompt: verify)")
+                              "--resume` with a new prompt (same session id, the new prompt answered; agent "
+                              "2026.11.05-86047df, 2026-11-08)")
 
     def __init__(self) -> None:
         self._usage_parts: list[dict[str, Any]] = []
@@ -260,6 +293,10 @@ class Cursor(Adapter):
             self._usage_parts = []
             return Parsed("turn_completed" if ok else "error", summary, sid, detail, usage)
         return None
+
+    def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
+        denied = _sandbox_denial(_json(line))
+        return [*super().parse_events(line, launch), *([denied] if denied else [])]
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         return ["agent", "--resume", session_id]

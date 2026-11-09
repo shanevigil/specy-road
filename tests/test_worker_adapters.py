@@ -115,6 +115,21 @@ def test_parsers_map_each_harness_output_to_events() -> None:
     assert cu.parse('{"type":"system","subtype":"init","session_id":"c1"}').session_id == "c1"
     assert cu.parse('{"type":"tool_call","subtype":"started","session_id":"c1"}').summary == "tool call started"
     assert cu.parse('{"type":"result","subtype":"success","session_id":"c1","result":"fin"}').type == "turn_completed"
+    # A sandboxed shell refusal is a permission_denied beside the tool line (M22.37). The turn result stays success.
+    launch = wa.Launch(["agent"])
+    failure = {"type": "tool_call", "subtype": "completed", "session_id": "c1", "tool_call": {"shellToolCall": {
+        "result": {"failure": {"command": "touch outside", "exitCode": 1,
+                               "stderr": "touch: cannot touch 'outside': Permission denied\n"}}}}}
+    events = cu.parse_events(json.dumps(failure), launch)
+    assert [e.type for e in events] == ["output", "permission_denied"]
+    assert events[1].summary.startswith("denied shell:") and events[1].detail["exit_code"] == 1
+    carried = {"type": "tool_call", "subtype": "completed", "session_id": "c1", "tool_call": {"shellToolCall": {
+        "result": {"success": {"command": "git add x", "exitCode": 0,
+                               "stderr": "fatal: Unable to create index.lock: Operation not permitted\n"}}}}}
+    assert [e.type for e in cu.parse_events(json.dumps(carried), launch)] == ["output", "permission_denied"]
+    clean = {"type": "tool_call", "subtype": "completed", "session_id": "c1", "tool_call": {"shellToolCall": {
+        "result": {"success": {"command": "git status", "exitCode": 0, "stderr": ""}}}}}
+    assert [e.type for e in cu.parse_events(json.dumps(clean), launch)] == ["output"]
     plain = wa.adapter_for("generic").parse("plain line")
     assert plain.summary == "plain line" and plain.detail == {"message": "plain line"}
 

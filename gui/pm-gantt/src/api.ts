@@ -10,6 +10,8 @@ import type {
   WorkerDetail,
   WorkerRow,
 } from "./types";
+import type { GroupOutlineBody } from "./outlineGroup";
+import { loadOrchestration, type OrchestrationLoad } from "./orchestrationSnapshot";
 
 const API = "/api";
 
@@ -217,6 +219,16 @@ export async function moveOutline(
       new_parent_id: newParentId,
       new_index: newIndex,
     }),
+  });
+  await throwIfMutationFailed(r);
+}
+
+/** ``group-nodes``: a refusal throws an ``Error`` whose message is the server's 400 detail. */
+export async function groupOutline(body: GroupOutlineBody): Promise<void> {
+  const r = await fetch(`${API}/outline/group`, {
+    method: "POST",
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(body),
   });
   await throwIfMutationFailed(r);
 }
@@ -834,4 +846,9 @@ export async function fetchWorkerEvents(
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json() as Promise<WorkerDetail>;
+}
+
+/** Read-only: the orchestration snapshot; a 404 (server without the route) is `unavailable`. */
+export function fetchOrchestration(): Promise<OrchestrationLoad> {
+  return loadOrchestration((input, init) => fetch(input, init));
 }

@@ -23,6 +23,7 @@ from specy_road import worker_state as ws
 from specy_road.git_workflow_config import worker_sandbox_mode
 from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import Launch
+from specy_road.worker_sandbox import state_home
 from specy_road.worker_turn_check import PAUSED_BY_LIMIT
 
 
@@ -70,6 +71,10 @@ for p in spec["create"]:                    # steering the user does not have: t
 for p in spec["state"]:                     # auth files and seeded copies stay writable
     with open(p, "a") as f:
         f.write("state\n")
+for p in spec["renamed"]:                   # a seed in a replaced directory is replaced by rename, as Cursor does
+    with open(p + ".tmp", "w") as f:
+        f.write("renamed\n")
+    os.replace(p + ".tmp", p)
 persist = {}
 for p in spec["persist"]:                   # the worker's own transcripts outlive its turn
     os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -115,8 +120,8 @@ def box(monkeypatch) -> dict:
 #: Per harness, paths under the temporary home: the user's files; steering the user has (writes refused);
 #: paths whose creation or append must not reach the home (absent steering, existing transcripts and new files in
 #: transcript directories: no directory is shared); auth files (writes reach the user's file); seeded
-#: configuration (writable, but a per-worker copy); transcripts the worker keeps across its turns. Codex's
-#: profile home links its auth.json to ~/.codex.
+#: configuration (writable, but a per-worker copy); the seeds the harness replaces by rename; transcripts the
+#: worker keeps across its turns. Codex's profile home links its auth.json to ~/.codex.
 HARNESSES = {
     "claude-code": {"env": {}, "files": [".claude/settings.json", ".claude/projects/t.jsonl", ".claude/.credentials.json",
                                          ".claude.json", ".cache/claude-cli-nodejs/log"],
@@ -124,7 +129,7 @@ HARNESSES = {
                     "create": [".claude/settings.local.json", ".claude/hooks/h.sh", ".claude/skills/s/SKILL.md",
                                ".claude/CLAUDE.md", ".cache/claude-cli-nodejs/log", ".claude/projects/t.jsonl",
                                ".claude/projects/slug/memory/MEMORY.md", ".claude/projects/planted.md"],
-                    "through": [".claude/.credentials.json"], "seeded": [".claude.json"],
+                    "through": [".claude/.credentials.json"], "seeded": [".claude.json"], "renamed": [],
                     "persist": [".claude/projects/-wt/s.jsonl"]},
     "cursor": {"env": {}, "files": [".cursor/hooks.json", ".cursor/cli-config.json", ".cursor/chats/c.db",
                                     ".config/cursor/auth.json", ".cursor/sandbox-policies/policy.json"],
@@ -133,13 +138,14 @@ HARNESSES = {
                           ".config/cursor/cli.json", ".cursor/chats/c.db", ".cursor/chats/planted.md",
                           ".cursor/sandbox-policies/policy.json"],   # Cursor writes it on every start
                "through": [".config/cursor/auth.json"], "seeded": [".cursor/cli-config.json"],
+               "renamed": [".cursor/cli-config.json"],   # Cursor renames it on start (EBUSY when bound)
                "persist": [".cursor/chats/x/store.db"]},
     "codex": {"env": {"CODEX_HOME": "codex-home"}, "files": ["codex-home/config.toml", "codex-home/sessions/s.jsonl",
                                                             ".codex/auth.json"],
               "refused": ["codex-home/config.toml"],
               "create": ["codex-home/AGENTS.md", "codex-home/hooks/h", "codex-home/skills/s/SKILL.md",
                          "codex-home/sessions/s.jsonl", "codex-home/sessions/planted.md"],
-              "through": ["codex-home/auth.json"], "seeded": [],
+              "through": ["codex-home/auth.json"], "seeded": [], "renamed": [],
               "persist": ["codex-home/sessions/2026/r.jsonl"]},
 }
 
@@ -173,6 +179,7 @@ def _turn(b: dict, rec: ws.WorkerRecord, marker: str, env: dict, *, resumed: boo
             "env": list(SECRETS),
             "create": [str(home / r) for r in h["create"]],
             "state": [str(home / r) for r in h["through"] + h["seeded"]],
+            "renamed": [str(home / r) for r in h["renamed"]],
             "persist": [str(home / r) for r in h["persist"]]}
     return wr.run(b["repo"], rec.worker_id, Launch([sys.executable, "-c", FAKE], stdin=json.dumps(spec), env=env),
                   resumed=resumed)
@@ -265,3 +272,65 @@ def test_a_sandboxed_claude_turn_that_stops_at_a_limit_is_read_from_the_workers_
     rec = ws.create_record(b["repo"], "M1.1", "claude-code", "opus", b["wt"], branch="feature/rm-thing")
     assert wr.run(b["repo"], rec.worker_id, Launch([sys.executable, "-c", code], session_id=sid)) == 1
     assert ws.load_record(b["repo"], rec.worker_id).state == PAUSED_BY_LIMIT and not transcript.exists()
+
+
+#: Parses ``.claude.json`` at the config path and replaces it by rename, as the harness does on start.
+CLAUDE_COPY = r'''
+import json, os, sys
+spec = json.loads(sys.stdin.read())
+data = json.loads(open(spec["config"]).read())
+if data.get("id") != spec["id"] or bool(data.get("rewritten")) != spec["rewritten"]:
+    raise SystemExit("saw " + json.dumps(data))
+path = spec["config"]
+open(path + ".tmp", "w").write(json.dumps({**data, "rewritten": True}))
+os.replace(path + ".tmp", path)
+'''
+
+
+def _claude_account(home: Path, name: str, ident: str) -> Path:
+    """A config directory whose ``.claude.json`` identifies ``ident``."""
+    account = home.parent / name
+    account.mkdir()
+    (account / ".claude.json").write_text(json.dumps({"id": ident}) + "\n")
+    return account
+
+
+def _config_turn(b: dict, rec: ws.WorkerRecord, account: Path, ident: str, *, rewritten: bool) -> int:
+    """One sandboxed turn whose harness parses the config copy and replaces it by rename."""
+    spec = json.dumps({"config": str(account / ".claude.json"), "id": ident, "rewritten": rewritten})
+    return wr.run(b["repo"], rec.worker_id,
+                  Launch([sys.executable, "-c", CLAUDE_COPY], stdin=spec, env={"CLAUDE_CONFIG_DIR": str(account)}))
+
+
+@pytest.mark.parametrize("case", ["same", "same-dotdot", "different-text", "different-placeholder", "unrecorded"])
+def test_a_sandboxed_claude_worker_refreshes_claude_json_when_the_config_directory_changes(box, case: str) -> None:
+    """The same resolved directory keeps a harness rewrite; a different directory, or no record, copies again."""
+    b = box
+    old, now = _claude_account(b["home"], "account-old", "old"), _claude_account(b["home"], "account-now", "now")
+    old_bytes, now_bytes = (old / ".claude.json").read_bytes(), (now / ".claude.json").read_bytes()
+    rec = ws.create_record(b["repo"], "M1.1", "claude-code", "opus", b["wt"], branch="feature/rm-thing")
+    state = state_home(b["repo"], rec.worker_id)
+    transcript = state / ".claude" / "projects" / "slug" / "s.jsonl"
+    if case == "unrecorded":
+        planted = state / ".claude" / ".claude.json"
+        planted.parent.mkdir(parents=True)
+        planted.write_text('{"id": "stale"}\n')
+    else:
+        assert _config_turn(b, rec, old, "old", rewritten=False) == 0
+        copy = state / ".claude" / ".claude.json"
+        if case == "different-text":
+            copy.write_text('{"id": "stale"}\n')
+        elif case == "different-placeholder":
+            copy.write_bytes(b"")
+            copy.chmod(0o444)
+    transcript.parent.mkdir(parents=True, exist_ok=True)
+    transcript.write_bytes(b"before\n")
+    # ``same-dotdot`` is the same directory with an absolute ``..`` spelling; the rewrite must survive.
+    account = Path(f"{old}/../{old.name}") if case == "same-dotdot" else old if case == "same" else now
+    ident, rewritten = ("old", True) if case in ("same", "same-dotdot") else ("now", False)
+    assert _config_turn(b, rec, account, ident, rewritten=rewritten) == 0
+    assert (old / ".claude.json").read_bytes() == old_bytes and (now / ".claude.json").read_bytes() == now_bytes
+    assert transcript.read_bytes() == b"before\n"
+    want = str(Path(account).resolve())
+    hits = [p for p in state.rglob("*") if p.is_file() and p.read_text(encoding="utf-8").strip() == want]
+    assert len(hits) == 1 and hits[0].parent == state

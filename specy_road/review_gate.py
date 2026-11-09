@@ -8,8 +8,8 @@ reports. A review record counts only when all of these hold:
 * its ``commit`` is the commit under review — any later commit makes it stale,
   which is how "a substantive fix restarts both reviews" needs no extra state;
 * it is for this node, its model wrote no READY on the leaf (names compared after
-  :class:`~specy_road.review_eligible.Identity`; an ambiguous name or an unreadable READY closes the gate), and no
-  other record from that model already counts;
+  :class:`~specy_road.review_eligible.Identity`; a record name whose roster entries wrote nothing but span two
+  families, or an unreadable READY, closes the gate), and no other record from that model already counts;
 * its model is rostered with the ``reviewer`` role, or is the substitute in an active substitution covering this
   node — its family always comes from the roster, never from the file, and under ``reviewers_distinct_families``
   an approval counts only from an entry whose routing is fixed or pinned (:func:`routing_problem`);
@@ -327,7 +327,7 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
     result = GateResult(node_id=node["id"], commit=full_sha(repo_root, commit),
                         required=int(policy["reviewers_required"]),
                         distinct_families=bool(policy["reviewers_distinct_families"]), config_error=err, config=config)
-    authorship: list[str] = []   # an ambiguous READY author or record model, or an unreadable READY: gate closed
+    authorship: list[str] = []   # a record name spanning families, or an unreadable READY: gate closed
     for review in reviews_to_judge(repo_root, node, branch, result.ineligible, config, authorship):
         if review.ok and review.data.get("node_id") != node["id"]:
             review.errors.append(f"node_id is {review.data.get('node_id')!r}, not {node['id']!r}")

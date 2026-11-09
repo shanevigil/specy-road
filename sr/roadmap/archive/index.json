@@ -4386,6 +4386,132 @@
           "node_key": "78805bfe-0798-47a0-8ace-cdc0caebd261"
         }
       ]
+    },
+    {
+      "archive_id": "M18.12-fc76ea81-20261108",
+      "archived_at": "2026-11-08T17:56:42+00:00",
+      "bundle": null,
+      "chunk": "roadmap/archive/chunks/M18.12-fc76ea81-20261108.json",
+      "depth": "shallow",
+      "git": {
+        "closed_at": null,
+        "integration_branch": null,
+        "merge_commit": null,
+        "nearest_tag": null,
+        "rollup_branch": null,
+        "rollup_tip": null
+      },
+      "node_keys": [
+        "fc76ea81-b466-431d-a899-b078e86c7503"
+      ],
+      "nodes_summary": [
+        {
+          "id": "M18.12",
+          "node_key": "fc76ea81-b466-431d-a899-b078e86c7503",
+          "status": "Not Started",
+          "title": "Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance",
+          "type": "task"
+        }
+      ],
+      "planning": [
+        {
+          "origin": "planning/M18.12_role-observed-acceptance-needs-that-role_fc76ea81-b466-431d-a899-b078e86c7503.md",
+          "stored": "roadmap/archive/planning/M18.12-fc76ea81-20261108/M18.12_role-observed-acceptance-needs-that-role_fc76ea81-b466-431d-a899-b078e86c7503.md"
+        }
+      ],
+      "root_node_id": "M18.12",
+      "root_node_key": "fc76ea81-b466-431d-a899-b078e86c7503",
+      "sources": [
+        {
+          "chunk": "phases/M15.json",
+          "index": 3,
+          "node_key": "fc76ea81-b466-431d-a899-b078e86c7503"
+        }
+      ]
+    },
+    {
+      "archive_id": "M19.5-939470c3-20261108",
+      "archived_at": "2026-11-08T17:56:54+00:00",
+      "bundle": null,
+      "chunk": "roadmap/archive/chunks/M19.5-939470c3-20261108.json",
+      "depth": "shallow",
+      "git": {
+        "closed_at": null,
+        "integration_branch": null,
+        "merge_commit": null,
+        "nearest_tag": null,
+        "rollup_branch": null,
+        "rollup_tip": null
+      },
+      "node_keys": [
+        "939470c3-706a-48d7-bab6-d4c20cdf414c"
+      ],
+      "nodes_summary": [
+        {
+          "id": "M19.5",
+          "node_key": "939470c3-706a-48d7-bab6-d4c20cdf414c",
+          "status": "Not Started",
+          "title": "A tracked tech-debt ledger that planning can turn into leaves",
+          "type": "task"
+        }
+      ],
+      "planning": [
+        {
+          "origin": "planning/M19.5_a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves_939470c3-706a-48d7-bab6-d4c20cdf414c.md",
+          "stored": "roadmap/archive/planning/M19.5-939470c3-20261108/M19.5_a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves_939470c3-706a-48d7-bab6-d4c20cdf414c.md"
+        }
+      ],
+      "root_node_id": "M19.5",
+      "root_node_key": "939470c3-706a-48d7-bab6-d4c20cdf414c",
+      "sources": [
+        {
+          "chunk": "phases/M12.json",
+          "index": 0,
+          "node_key": "939470c3-706a-48d7-bab6-d4c20cdf414c"
+        }
+      ]
+    },
+    {
+      "archive_id": "M19.9-bd6783a8-20261108",
+      "archived_at": "2026-11-08T17:57:05+00:00",
+      "bundle": null,
+      "chunk": "roadmap/archive/chunks/M19.9-bd6783a8-20261108.json",
+      "depth": "shallow",
+      "git": {
+        "closed_at": null,
+        "integration_branch": null,
+        "merge_commit": null,
+        "nearest_tag": null,
+        "rollup_branch": null,
+        "rollup_tip": null
+      },
+      "node_keys": [
+        "bd6783a8-ba79-4012-86ed-e2d0f9bbed31"
+      ],
+      "nodes_summary": [
+        {
+          "id": "M19.9",
+          "node_key": "bd6783a8-ba79-4012-86ed-e2d0f9bbed31",
+          "status": "Not Started",
+          "title": "upgrade --prompt writes an agent upgrade prompt filled in from this repo",
+          "type": "task"
+        }
+      ],
+      "planning": [
+        {
+          "origin": "planning/M19.9_upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo_bd6783a8-ba79-4012-86ed-e2d0f9bbed31.md",
+          "stored": "roadmap/archive/planning/M19.9-bd6783a8-20261108/M19.9_upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo_bd6783a8-ba79-4012-86ed-e2d0f9bbed31.md"
+        }
+      ],
+      "root_node_id": "M19.9",
+      "root_node_key": "bd6783a8-ba79-4012-86ed-e2d0f9bbed31",
+      "sources": [
+        {
+          "chunk": "phases/M13.json",
+          "index": 2,
+          "node_key": "bd6783a8-ba79-4012-86ed-e2d0f9bbed31"
+        }
+      ]
     }
   ],
   "version": 1

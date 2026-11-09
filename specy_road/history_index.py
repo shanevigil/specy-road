@@ -1,8 +1,10 @@
 """Public API for roadmap history: build it, cache it, query it.
 
 ``history_index`` is the one call everything else goes through. It reuses the
-on-disk cache when ``HEAD`` has not moved, appends only the new commits when it
-has, and rebuilds from scratch when history was rewritten underneath it.
+on-disk cache when ``HEAD`` has not moved, appends only the new commits when
+the cached commit is on ``HEAD``'s first-parent line, and rebuilds from
+scratch otherwise: history was rewritten, or the cached commit is an ancestor
+only through a merge.
 
 Resolving a node is the subtle part. ``id`` renumbers as the outline is
 reorganised, so "M1.2" does not identify one node across history — it is a
@@ -25,7 +27,7 @@ from specy_road.history_cache import (
 )
 from specy_road.history_events import ARCHIVED, RESTORED
 from specy_road.git_subprocess import head_sha
-from specy_road.history_git import is_ancestor
+from specy_road.history_git import is_first_parent_ancestor
 from specy_road.history_walk import walk
 from specy_road.archive_index import iter_archived_summaries
 
@@ -43,9 +45,10 @@ def history_index(root: Path, *, rebuild: bool = False) -> dict[str, Any]:
     """The event index for ``root``, cached and incremental.
 
     Three paths: ``HEAD`` unchanged reuses the cache verbatim; ``HEAD`` moved
-    forward from the last indexed commit walks only the new commits; anything
-    else — a rebase, an amend, a force-push, a missing or unrecognised cache —
-    rebuilds from the beginning.
+    forward along the first-parent line from the last indexed commit walks
+    only the new commits; anything else — a rebase, an amend, a force-push, a
+    cache whose commit is only reachable through a merge, a missing or
+    unrecognised cache — rebuilds from the beginning.
     """
     head = head_sha(root)
     if head is None:
@@ -78,16 +81,18 @@ def _resume_point(
 ) -> tuple[str | None, list[dict[str, Any]]]:
     """Where to resume from, and the events already known at that point.
 
-    A cached commit that is no longer an ancestor of ``HEAD`` means history was
-    rewritten, so its events describe commits that no longer exist. Appending to
-    them would leave the index permanently wrong; start over instead.
+    Appending is only sound when the cached commit is on ``HEAD``'s first-parent
+    line, the commits this walk would have listed. A merged side-branch tip is
+    an ancestor, but its events are steps the mainline records only as the
+    merge. Appending them disagrees with a cold walk, so start over. The same
+    for a cached commit that is no longer an ancestor at all.
     """
     if cached is None:
         return None, []
     last = cached.get("last_indexed_commit")
     if not isinstance(last, str) or not last:
         return None, []
-    if not is_ancestor(root, last, head):
+    if not is_first_parent_ancestor(root, last, head):
         return None, []
     events = cached.get("events")
     return last, list(events) if isinstance(events, list) else []

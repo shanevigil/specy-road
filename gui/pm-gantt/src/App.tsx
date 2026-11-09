@@ -16,6 +16,7 @@ import {
   fetchRoadmap,
   fetchRoadmapFingerprints,
   shouldRefreshSnapshotFromViewFingerprint,
+  groupOutline,
   indentNode,
   outdentNode,
   patchNode,
@@ -50,7 +51,9 @@ import { transitiveEffectivePrereqIds } from "./depChain";
 import { minDependencyDepth } from "./ganttDepthOffset";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
 import { GanttPane } from "./components/GanttPane";
+import { GroupSiblingsModal } from "./components/GroupSiblingsModal";
 import { OutlineTable } from "./components/OutlineTable";
+import { groupDialogState, type GroupOutlineBody } from "./outlineGroup";
 import { PublishRoadmapModal } from "./components/PublishRoadmapModal";
 import type { ThemeMode } from "./components/SettingsDrawer";
 import {
@@ -127,6 +130,9 @@ const WorkersDrawer = lazy(() =>
     default: m.WorkersDrawer,
   })),
 );
+const OrchestrationDrawer = lazy(() =>
+  import("./components/OrchestrationDrawer").then((m) => ({ default: m.OrchestrationDrawer })),
+);
 const BrainstormDrawer = lazy(() =>
   import("./components/BrainstormDrawer").then((m) => ({
     default: m.BrainstormDrawer,
@@ -163,6 +169,17 @@ export default function App() {
   const [repoId, setRepoId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Selection at the last click. Toolbar actions read this, not the render that painted the button. */
+  const selectedIdRef = useRef<string | null>(null);
+  const selectRow = useCallback((id: string | null) => {
+    selectedIdRef.current = id;
+    setSelectedId(id);
+  }, []);
+  useLayoutEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+  /** Row the "Group siblings…" dialog was opened on (null: closed). */
+  const [groupRowId, setGroupRowId] = useState<string | null>(null);
   /** Node ids with an open edit dialog (order = stack; last is topmost). */
   const [editOpenIds, setEditOpenIds] = useState<string[]>([]);
   /** Open task ids shown in the bottom strip; order = minimize order. */
@@ -221,6 +238,8 @@ export default function App() {
   );
   const [workNotesOpen, setWorkNotesOpen] = useState(false);
   const [workersOpen, setWorkersOpen] = useState(false);
+  const [workersInitialId, setWorkersInitialId] = useState<string | null>(null);
+  const [orchestrationOpen, setOrchestrationOpen] = useState(false);
   /** When set, Vision / Constitution need human content beyond blank or starter templates. */
   const [govCompletion, setGovCompletion] = useState<{
     vision: boolean;
@@ -1219,24 +1238,27 @@ export default function App() {
   );
 
   const addAbove = () => {
-    if (!selectedId) return;
+    const id = selectedIdRef.current;
+    if (!id) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    triggerAddNode(selectedId, "above", t, "task", "Adding task…");
+    triggerAddNode(id, "above", t, "task", "Adding task…");
   };
 
   const addBelow = () => {
-    if (!selectedId) return;
+    const id = selectedIdRef.current;
+    if (!id) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    triggerAddNode(selectedId, "below", t, "task", "Adding task…");
+    triggerAddNode(id, "below", t, "task", "Adding task…");
   };
 
   const insertGateAtSelection = () => {
-    if (!selectedId) return;
+    const id = selectedIdRef.current;
+    if (!id) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    triggerAddNode(selectedId, "above", t, "gate", "Inserting gate…");
+    triggerAddNode(id, "above", t, "gate", "Inserting gate…");
   };
 
   const onGapInsert = (referenceNodeId: string) => {
@@ -1246,8 +1268,9 @@ export default function App() {
   };
 
   const onDeleteSelected = () => {
-    if (!selectedId) return;
-    const label = byId[selectedId]?.id ?? selectedId;
+    const id = selectedIdRef.current;
+    if (!id) return;
+    const label = byId[id]?.id ?? id;
     if (
       !window.confirm(
         `Remove task "${label}" from the roadmap? This cannot be undone.`,
@@ -1258,14 +1281,33 @@ export default function App() {
     setErr(null);
     void performOptimisticMutation(
       "Removing task…",
-      { kind: "delete", nodeId: selectedId },
-      [selectedId],
+      { kind: "delete", nodeId: id },
+      [id],
       "delete",
       async () => {
-        await deleteNode(selectedId);
+        await deleteNode(id);
       },
     ).catch((e) => setErr(String(e)));
   };
+
+  /** No optimistic overlay: a refused group leaves the outline as it was. */
+  const submitGroup = useCallback(
+    async (body: GroupOutlineBody) => {
+      const sent = { ok: false };
+      await performOptimisticMutation(
+        "Grouping rows…",
+        null,
+        body.node_ids,
+        "move",
+        async () => {
+          await groupOutline(body);
+          sent.ok = true;
+        },
+      );
+      if (sent.ok) selectRow(body.into_new);
+    },
+    [performOptimisticMutation, selectRow],
+  );
 
   const publishReady =
     Boolean(
@@ -1412,11 +1454,12 @@ export default function App() {
                     : "Edit selected task"
                 }
                 aria-label="Edit selected task"
-                onClick={() =>
-                  guardRowAction(selectedId, () => {
-                    if (selectedId) openEditNode(selectedId);
-                  })
-                }
+                onClick={() => {
+                  const id = selectedIdRef.current;
+                  guardRowAction(id, () => {
+                    if (id) openEditNode(id);
+                  });
+                }}
               >
                 <IconPencil />
               </button>
@@ -1426,11 +1469,12 @@ export default function App() {
                 disabled={queueOverloaded || indentDisabled}
                 title="Indent"
                 aria-label="Indent"
-                onClick={() =>
-                  guardRowAction(selectedId, () => {
-                    if (selectedId) void triggerIndent(selectedId);
-                  })
-                }
+                onClick={() => {
+                  const id = selectedIdRef.current;
+                  guardRowAction(id, () => {
+                    if (id) void triggerIndent(id);
+                  });
+                }}
               >
                 <IconIndent />
               </button>
@@ -1440,11 +1484,12 @@ export default function App() {
                 disabled={queueOverloaded || outdentDisabled}
                 title="Outdent"
                 aria-label="Outdent"
-                onClick={() =>
-                  guardRowAction(selectedId, () => {
-                    if (selectedId) void triggerOutdent(selectedId);
-                  })
-                }
+                onClick={() => {
+                  const id = selectedIdRef.current;
+                  guardRowAction(id, () => {
+                    if (id) void triggerOutdent(id);
+                  });
+                }}
               >
                 <IconOutdent />
               </button>
@@ -1452,9 +1497,26 @@ export default function App() {
                 type="button"
                 className="toolbar-icon-btn"
                 disabled={queueOverloaded || !selectedId}
+                title="Group siblings… — put the selected row and chosen siblings under a new parent"
+                aria-label="Group siblings…"
+                onClick={() => {
+                  const id = selectedIdRef.current;
+                  guardRowAction(id, () => {
+                    if (id) setGroupRowId(id);
+                  });
+                }}
+              >
+                <span className="toolbar-gate-icon" aria-hidden="true">
+                  {"{ }"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="toolbar-icon-btn"
+                disabled={queueOverloaded || !selectedId}
                 title="Add task above selection"
                 aria-label="Add task above selection"
-                onClick={() => guardRowAction(selectedId, addAbove)}
+                onClick={() => guardRowAction(selectedIdRef.current, addAbove)}
               >
                 <IconRowAbove />
               </button>
@@ -1464,7 +1526,7 @@ export default function App() {
                 disabled={queueOverloaded || !selectedId}
                 title="Add task below selection"
                 aria-label="Add task below selection"
-                onClick={() => guardRowAction(selectedId, addBelow)}
+                onClick={() => guardRowAction(selectedIdRef.current, addBelow)}
               >
                 <IconRowBelow />
               </button>
@@ -1480,7 +1542,9 @@ export default function App() {
                       : "Insert gate at selection (above this row); display ids renumber. PM hold, not dev pickup"
                 }
                 aria-label="Insert gate at selection"
-                onClick={() => guardRowAction(selectedId, insertGateAtSelection)}
+                onClick={() =>
+                  guardRowAction(selectedIdRef.current, insertGateAtSelection)
+                }
               >
                 <span className="toolbar-gate-icon" aria-hidden="true">
                   G
@@ -1492,7 +1556,9 @@ export default function App() {
                 disabled={queueOverloaded || !selectedId}
                 title="Delete selected row"
                 aria-label="Delete selected row"
-                onClick={() => guardRowAction(selectedId, onDeleteSelected)}
+                onClick={() =>
+                  guardRowAction(selectedIdRef.current, onDeleteSelected)
+                }
               >
                 <IconTrash />
               </button>
@@ -1600,6 +1666,15 @@ export default function App() {
                 <button
                   type="button"
                   className="app-header-doc-btn"
+                  onClick={() => setOrchestrationOpen(true)}
+                >
+                  Orchestration
+                </button>
+              </div>
+              <div className="app-header-doc-slot">
+                <button
+                  type="button"
+                  className="app-header-doc-btn"
                   // Re-pressing raises and un-minimizes rather than doing
                   // nothing, which is what the button appears to promise once
                   // the window can be sent to the dock.
@@ -1648,9 +1723,9 @@ export default function App() {
               onApplyDepEdit={() => void applyDepEdit()}
               onCancelDepEdit={cancelDepEdit}
               onClearDepDraft={clearDepDraft}
-              onSelect={setSelectedId}
+              onSelect={selectRow}
               onDoubleClick={(id) => {
-                setSelectedId(id);
+                selectRow(id);
                 openEditNode(id);
               }}
               performRoadmapMutation={performRoadmapMutation}
@@ -1689,9 +1764,9 @@ export default function App() {
               showInheritedEdges={showInheritedDeps}
               selectedId={selectedId}
               highlightRowIds={highlightDepRowIds}
-              onSelect={setSelectedId}
+              onSelect={selectRow}
               onBarDoubleClick={(id) => {
-                setSelectedId(id);
+                selectRow(id);
                 openEditNode(id);
               }}
               onChartBackgroundMouseDown={
@@ -1791,9 +1866,23 @@ export default function App() {
           open={workNotesOpen}
           onClose={() => setWorkNotesOpen(false)}
         />
+        <OrchestrationDrawer
+          open={orchestrationOpen}
+          onClose={() => setOrchestrationOpen(false)}
+          nodes={displayData?.nodes ?? []}
+          onOpenNode={openEditNode}
+          onOpenWorker={(id) => {
+            setWorkersInitialId(id);
+            setWorkersOpen(true);
+          }}
+        />
         <WorkersDrawer
           open={workersOpen}
-          onClose={() => setWorkersOpen(false)}
+          initialWorkerId={workersInitialId}
+          onClose={() => {
+            setWorkersOpen(false);
+            setWorkersInitialId(null);
+          }}
         />
         <BrainstormDrawer
           open={brainstormOpen}
@@ -1840,6 +1929,19 @@ export default function App() {
           onPublish={handlePublishRoadmap}
           headerMinTop={0}
         />
+        {groupRowId && data ? (
+          <GroupSiblingsModal
+            key={groupRowId}
+            initial={groupDialogState(
+              data.ordered_ids,
+              nodesByIdFrom(data.nodes),
+              groupRowId,
+            )}
+            nodesById={byId}
+            onSubmit={submitGroup}
+            onClose={() => setGroupRowId(null)}
+          />
+        ) : null}
       </Suspense>
       {/* Not gated on the roadmap having loaded: the dock is the only way back
           to a minimized window, and Brainstorm can be minimized without one. */}

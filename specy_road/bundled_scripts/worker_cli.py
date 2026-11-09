@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import worker_ops as ops
+from specy_road import worker_ops_slots as slots
 from specy_road.bundled_scripts.role_prompt_rework import rework_check
 from specy_road.bundled_scripts.worker_cli_args import FixRound
 from specy_road.bundled_scripts.worker_cli_render import (_line, _row, timeline, timeline_lines, usage,
@@ -102,13 +103,18 @@ def cmd_delegate(ns: argparse.Namespace) -> int:
                              f"in {state['worktree']}", "Poll with `specy-road worker sync`."])
 
 
+def _with_stalls(data: dict[str, Any], lines: list[str], stalls: list[dict]) -> tuple[dict[str, Any], list[str]]:
+    """Add each stalled worker, with how long it has been silent, to ``list`` and ``sync`` output (M22.39)."""
+    return ({**data, "stalled": stalls}, [*lines, *slots.stall_lines(stalls)]) if stalls else (data, lines)
+
+
 def cmd_list(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
-    ops.sweep_stalled(root)
+    stalls = slots.stalled_workers(root)   # sweeps first, so the flags listed below are current
     recs = list_records(root, active_only=not ns.all)
-    if not recs:
-        return _emit(ns, {"workers": []}, ["No workers under work/.workers/."])
-    return _emit(ns, *list_view(root, recs, _row, _line))   # held workers whose leaf is over are marked orphaned
+    if not recs:   # a pending recovery on a failed worker is still listed
+        return _emit(ns, *_with_stalls({"workers": []}, ["No workers under work/.workers/."], stalls))
+    return _emit(ns, *_with_stalls(*list_view(root, recs, _row, _line), stalls))   # orphaned: held, leaf over
 
 
 def cmd_status(ns: argparse.Namespace) -> int:
@@ -130,7 +136,8 @@ def cmd_events(ns: argparse.Namespace) -> int:
 
 
 def cmd_sync(ns: argparse.Namespace) -> int:
-    return _cmd_sync(ns, emit=_emit)
+    root = resolve_repo_root(ns)   # sync sweeps stalls itself; the report reads them after it
+    return _cmd_sync(ns, emit=lambda ns, data, lines: _emit(ns, *_with_stalls(data, lines, slots.stalled_workers(root))))
 
 
 def _mutate(ns: argparse.Namespace, kind: str, fn, render, inputs: dict[str, Any] | None = None) -> int:
@@ -179,6 +186,13 @@ def cmd_resume(ns: argparse.Namespace) -> int:
                                               ready_only=getattr(ns, "ready_only", False))),
                    lambda o: [f"{o['worker_id']}: resumed (pid {o['pid']})"],
                    inputs=_resume_op_inputs(ns))
+
+
+def cmd_recover(ns: argparse.Namespace) -> int:
+    return _mutate(ns, "recover", lambda root: _row(slots.recover(root, ns.worker_id, offline=ns.offline)),
+                   lambda o: [f"{o['worker_id']}: recovered — ended the stalled turn, kept the worktree, resumed "
+                              f"(pid {o['pid']}, recovery {o.get('recoveries')})"],
+                   inputs={"offline": True} if ns.offline else None)
 
 
 def cmd_interrupt(ns: argparse.Namespace) -> int:
@@ -331,6 +345,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--ready-only", action="store_true",
                     help="Resume with a short prompt to write READY for HEAD only (after READY missing)")
     sp.set_defaults(func=cmd_resume)
+    sp = ws.add_parser("recover", help="End a stalled worker, keep its work, and resume its session (one shot)")
+    _w(sp); _offline_arg(sp); sp.set_defaults(func=cmd_recover)
     sp = ws.add_parser("interrupt", help="Stop the current turn (declared unsupported by the CLI adapters)"); _w(sp, op=False)
     sp.set_defaults(func=cmd_interrupt)
     add_terminate(ws, cmd_terminate, _emit)   # `terminate W`, or `--orphaned` for every held worker whose leaf is over

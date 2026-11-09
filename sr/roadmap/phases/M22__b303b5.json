@@ -14,7 +14,7 @@
       "node_key": "b303b556-fa59-422a-a1c4-f1ce47d429ef",
       "parent_id": "M22",
       "planning_dir": "planning/M22.35_upgrade-mirror-skips-ignored-files_b303b556-fa59-422a-a1c4-f1ce47d429ef.md",
-      "sibling_order": 34,
+      "sibling_order": 31,
       "status": "Not Started",
       "title": "upgrade mirrors only what the refreshes need, never ignored files",
       "touch_zones": [
@@ -40,7 +40,7 @@
       "node_key": "00b3ae55-3843-44f0-94ad-61ba72868d91",
       "parent_id": "M22",
       "planning_dir": "planning/M22.36_rc-publishes-wheel-url-and-project-urls_00b3ae55-3843-44f0-94ad-61ba72868d91.md",
-      "sibling_order": 35,
+      "sibling_order": 32,
       "status": "Complete",
       "title": "Each RC publishes its wheel URL and install line, and the package links to the guide",
       "touch_zones": [
@@ -66,14 +66,15 @@
       "node_key": "bc7839a4-9796-4a0c-a544-d53116c1d045",
       "parent_id": "M22",
       "planning_dir": "planning/M22.37_cursor-cli-harness-test-pass_bc7839a4-9796-4a0c-a544-d53116c1d045.md",
-      "sibling_order": 36,
-      "status": "Not Started",
+      "sibling_order": 33,
+      "status": "Complete",
       "title": "Test the Cursor CLI harness on the documented default",
       "touch_zones": [
         "docs/orchestration-workers.md",
         "sr/planning/",
         "specy_road/worker_adapter_cursor.py",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_worker_adapters.py"
       ],
       "type": "task"
     },
@@ -89,7 +90,7 @@
       "node_key": "ee340317-9162-4a87-a51a-cc4ee3725421",
       "parent_id": "M22",
       "planning_dir": "planning/M22.38_doctor-fix-keeps-other-clones-claims_ee340317-9162-4a87-a51a-cc4ee3725421.md",
-      "sibling_order": 37,
+      "sibling_order": 34,
       "status": "Complete",
       "title": "doctor --fix never removes a claim that may belong to another clone",
       "touch_zones": [
@@ -119,8 +120,8 @@
       "node_key": "0b69a82d-d3b0-454d-93de-338c1f10836f",
       "parent_id": "M22",
       "planning_dir": "planning/M22.39_worker-stall-recovery_0b69a82d-d3b0-454d-93de-338c1f10836f.md",
-      "sibling_order": 38,
-      "status": "Not Started",
+      "sibling_order": 35,
+      "status": "Complete",
       "title": "Stalled workers are detected on every run and can be recovered in one command",
       "touch_zones": [
         "specy_road/worker_ops_slots.py",
@@ -149,7 +150,7 @@
       "node_key": "b48b07b0-1aba-4444-abfe-0620d8bf76a2",
       "parent_id": "M22",
       "planning_dir": "planning/M22.40_cursor-display-names-match-the-model_b48b07b0-1aba-4444-abfe-0620d8bf76a2.md",
-      "sibling_order": 39,
+      "sibling_order": 36,
       "status": "Complete",
       "title": "Cursor display names match the model they name",
       "touch_zones": [
@@ -176,7 +177,7 @@
       "node_key": "121934a1-3ec8-416e-b66c-0305b77665b5",
       "parent_id": "M22",
       "planning_dir": "planning/M22.14_deps-ids-briefs-and-landed-branch_121934a1-3ec8-416e-b66c-0305b77665b5.md",
-      "sibling_order": 13,
+      "sibling_order": 12,
       "status": "Complete",
       "title": "Roadmap and finish lows: set-dependencies takes display ids, no leftover briefs in the main checkout, finish says the checkout is on the landed branch",
       "touch_zones": [
@@ -202,9 +203,9 @@
     },
     {
       "acceptance": [
-        "specy-road ready, before any --run command, refuses when no implementation exists: an empty committed diff in the outer repository and in every configured nested repository the leaf's zones name; or uncommitted in-zone changes (staged, unstaged, deleted or non-ignored untracked, by the claim's zones), naming the paths. ready accepts --blocked-on A<n>=REASON, which permits an empty or dirty handoff. After --run commands, the same checks repeat and HEAD must not have moved; on failure no READY is written",
-        "handoff status does not show ok or offer review for an existing READY whose commit equals its base",
-        "tests/test_ready_empty_leaf.py covers no commits, a dirty zone path, a dirty path outside the zones, blocked_on, and an old empty READY; CHANGELOG [Unreleased] entry"
+        "Using the claim's zones (falling back to the node's zones) and the existing in_zones matching in both project-root and git-root spellings, specy-road ready refuses before any --run command when no committed in-zone path differs from the integration merge base in the outer repository or in any configured nested repository the zones cover, or when in-zone changes are uncommitted (staged, unstaged, deleted or non-ignored untracked), naming the paths. After the --run commands the same checks repeat and HEAD must not have moved; on any refusal no READY is written and an existing READY is left byte-for-byte unchanged",
+        "For a leaf with no covered configured nested repository, handoff status shows an existing READY without blocked_on whose commit resolves to its base as INVALID in text and with a non-empty errors list in --json; without independent review records its state is waiting and no reviewer prompt is suggested. A READY with blocked_on still reports executor_blocked",
+        "tests/test_ready_empty_leaf.py, through the in-process CLI and local temporary git repositories (reuse tests.review_repo_helpers; no sleeps, network or harness), one table: staged, unstaged, deleted and non-ignored untracked in-zone paths; an outside-zone path and one whose name starts with a zone's; no committed in-zone diff; nested-only committed work (accepted). Assert exit code, named paths and READY existence. A marker-writing --run shows a preflight refusal runs nothing; --run commands that dirty an in-zone file or move HEAD refuse afterwards and leave an existing READY unchanged. Status rows for an old empty, a blocked and a non-empty READY in text and --json. CHANGELOG [Unreleased] entry"
       ],
       "codename": "ready-refuses-a-leaf-with-no-commits",
       "dependencies": [
@@ -215,15 +216,16 @@
       "node_key": "ac3ad49e-21e0-4e99-afd3-f91340af713a",
       "parent_id": "M22",
       "planning_dir": "planning/M22.41_ready-refuses-a-leaf-with-no-commits_ac3ad49e-21e0-4e99-afd3-f91340af713a.md",
-      "sibling_order": 40,
-      "status": "Not Started",
+      "sibling_order": 37,
+      "status": "Complete",
       "title": "ready refuses a leaf with no commits, and handoff status stops offering it for review",
       "touch_zones": [
         "specy_road/review_gate_ready.py",
         "specy_road/review_files.py",
         "tests/test_ready_empty_leaf.py",
         "docs/orchestration-review.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/review_cli.py"
       ],
       "type": "task"
     },
@@ -241,11 +243,11 @@
         "855d9738-4b87-480b-8404-d6a1aa85c714",
         "ac3ad49e-21e0-4e99-afd3-f91340af713a"
       ],
-      "id": "M22.42",
+      "id": "M23.1",
       "node_key": "181434e9-497e-4969-9329-3659d4fc0908",
-      "parent_id": "M22",
-      "planning_dir": "planning/M22.42_sibling-heads-come-from-the-reviewed-checkout_181434e9-497e-4969-9329-3659d4fc0908.md",
-      "sibling_order": 41,
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.1_sibling-heads-come-from-the-reviewed-checkout_181434e9-497e-4969-9329-3659d4fc0908.md",
+      "sibling_order": 0,
       "status": "Not Started",
       "title": "Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review",
       "touch_zones": [
@@ -263,9 +265,9 @@
     },
     {
       "acceptance": [
-        "digest and digest --check give the same bytes from a fresh clone and from a checkout with a warm .specyrd/cache, on a history where a dependency edge is removed on a merged side branch",
-        "CACHE_VERSION is bumped so an old cache at this HEAD is rebuilt",
-        "tests/test_digest_cold_warm.py builds that history and asserts both renders match, and that upgrade's render in a fresh worktree keeps the line; CHANGELOG [Unreleased] entry"
+        "With fixed commit dates, on a repository where main has a dependency edge, a side branch removes it, main then takes one more roadmap commit, and a non-fast-forward merge keeps the removal: digest writes byte-identical roadmap-context.md when .specyrd/cache/roadmap-history.json is absent and when that file was produced by indexing the side branch before the merge. The file contains exactly one 'stopped depending on' line for that edge, dated with the merge commit. digest --check exits 0 and does not modify the file",
+        "Indexing main before that merge, then again after it, writes that same file. A cache at the merge commit with an older cache_version and no removal event is rebuilt to that same file; CACHE_VERSION is bumped. A cached commit on HEAD's first-parent line is appended to; any other ancestor, including a merged side-branch tip, is a full rebuild, and docs/roadmap-history.md says so",
+        "tests/test_digest_cold_warm.py drives the three cache states above in one table through render_digest or the digest CLI, calling clear_memo before each state; the side-branch cache row fails on the code before the fix. A second checkout of the merge commit with no history cache renders the same file. No sleeps, network or harness. CHANGELOG [Unreleased] entry"
       ],
       "codename": "digest-is-the-same-cold-or-warm",
       "dependencies": [],
@@ -273,8 +275,8 @@
       "node_key": "936cac0b-872f-4f66-82ae-9a987f865b57",
       "parent_id": "M22",
       "planning_dir": "planning/M22.43_digest-is-the-same-cold-or-warm_936cac0b-872f-4f66-82ae-9a987f865b57.md",
-      "sibling_order": 42,
-      "status": "Not Started",
+      "sibling_order": 38,
+      "status": "Complete",
       "title": "digest gives the same result with a cold or warm history cache",
       "touch_zones": [
         "specy_road/history_index.py",
@@ -282,7 +284,8 @@
         "tests/test_digest_cold_warm.py",
         "CHANGELOG.md",
         "specy_road/history_git.py",
-        "specy_road/history_walk.py"
+        "specy_road/history_walk.py",
+        "docs/roadmap-history.md"
       ],
       "type": "task"
     },
@@ -301,7 +304,7 @@
       "node_key": "9022edcd-0ffa-48b3-829d-0ad51f8d6866",
       "parent_id": "M22",
       "planning_dir": "planning/M22.44_workers-run-in-a-sandbox_9022edcd-0ffa-48b3-829d-0ad51f8d6866.md",
-      "sibling_order": 43,
+      "sibling_order": 39,
       "status": "Complete",
       "title": "Unattended workers run in a read-only sandbox on Linux",
       "touch_zones": [
@@ -328,7 +331,7 @@
       "node_key": "49e7b2a8-6486-47cb-a9c7-ba757373b6c8",
       "parent_id": "M22",
       "planning_dir": "planning/M22.45_integration-refs-stay-put-during-a-turn_49e7b2a8-6486-47cb-a9c7-ba757373b6c8.md",
-      "sibling_order": 44,
+      "sibling_order": 40,
       "status": "Complete",
       "title": "A worker turn that moves the integration ref is flagged",
       "touch_zones": [
@@ -351,7 +354,7 @@
       "node_key": "43366e49-21ee-4162-8748-cd1ec4b0b76f",
       "parent_id": "M22",
       "planning_dir": "planning/M22.46_sandboxed-workers-can-read-their-reviews_43366e49-21ee-4162-8748-cd1ec4b0b76f.md",
-      "sibling_order": 45,
+      "sibling_order": 41,
       "status": "Complete",
       "title": "Sandboxed workers can read their leaf's review records",
       "touch_zones": [
@@ -373,8 +376,8 @@
       "node_key": "d4c82f4c-c50c-4f31-b15c-e7c4041a9727",
       "parent_id": "M22",
       "planning_dir": "planning/M22.47_cursor-starts-under-the-sandbox_d4c82f4c-c50c-4f31-b15c-e7c4041a9727.md",
-      "sibling_order": 46,
-      "status": "Not Started",
+      "sibling_order": 42,
+      "status": "Complete",
       "title": "Cursor workers start and keep their config under the sandbox",
       "touch_zones": [
         "specy_road/worker_sandbox.py",
@@ -395,8 +398,8 @@
       "node_key": "e6ac4cbe-9a89-469a-9670-56cb116c10ff",
       "parent_id": "M22",
       "planning_dir": "planning/M22.48_shared-names-close-only-when-they-could-be-the-writer_e6ac4cbe-9a89-469a-9670-56cb116c10ff.md",
-      "sibling_order": 47,
-      "status": "Not Started",
+      "sibling_order": 43,
+      "status": "Complete",
       "title": "A shared reviewer name closes the gate only when it could be the leaf's writer",
       "touch_zones": [
         "specy_road/review_eligible.py",
@@ -404,6 +407,52 @@
         "tests/test_review_gate_ready_author.py",
         "docs/roadmap-history.md",
         "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A sandboxed claude-code worker records, in its state directory outside the mounted .claude tree, the resolved CLAUDE_CONFIG_DIR its .claude.json copy was made from. A turn whose resolved directory differs from the record, or that finds no record (workers launched before this change), replaces the copy with one from the new directory's file, including when the old copy is the empty read-only mount placeholder; a turn with the same recorded directory keeps the worker's copy. The user's source file is never written, and the worker's transcripts and sessions stay where they were",
+        "tests/test_worker_sandbox.py, through worker_runner.run and the existing bwrap fixture (no real harness, no network): (1) same recorded directory, copy rewritten by the harness: kept; (2) different directory, parametrized over a non-empty old copy and a zero-byte mode-0444 copy: the fake harness reads and parses the new file's JSON at its config path, can replace it by rename, the user's source bytes are unchanged and a transcript written before the switch is unchanged; (3) no record: the copy is made from the current directory's file. The Worker sandbox section of docs/orchestration-workers.md says the copy is made again when the config directory changes; CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "sandboxed-worker-resumes-after-an-account-switch",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.49",
+      "node_key": "e6bafcd8-c5d5-41f0-a0c4-e1b498b4baf8",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.49_sandboxed-worker-resumes-after-an-account-switch_e6bafcd8-c5d5-41f0-a0c4-e1b498b4baf8.md",
+      "sibling_order": 44,
+      "status": "Complete",
+      "title": "A sandboxed Claude worker resumes after the executor account changes",
+      "touch_zones": [
+        "specy_road/worker_sandbox.py",
+        "tests/test_worker_sandbox.py",
+        "CHANGELOG.md",
+        "docs/orchestration-workers.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the landing merge conflicts in a roadmap chunk and the branch's changes there are only inherited integration content plus this run's bookkeeping commit, the landed chunk is the integration side's chunk with the finishing leaf set to Complete, found by node_key. Ancestor statuses are recomputed with the existing rollup and review-hold rules. Every other field in that chunk stays the integration side's. If the bookkeeping commit is known and the leaf is still in the landed chunk but not Complete, finish aborts the merge before the commit, so nothing is pushed, and the error names the chunk and the branch codename. The merge message says the Complete status was applied again only when the landed chunk has that leaf Complete.",
+        "Extend tests/test_finish_land_roadmap_graph.py through finish-this-task on a temporary repository and a local bare remote (no network, no real harness), one table: (1) nested project root, roadmap under a non-empty prefix: after the claim, integration changes the finishing node's sibling_order and another node's touch_zones in the same chunk, so the status line conflicts; the landed chunk has the leaf Complete, the integration sibling_order, and that other touch_zones value; the merge message claims the status was applied again. This row fails on current code, where the leaf stays Not Started. (2) a real chunk conflict and a bookkeeping commit whose parent registry has no row for the branch codename: finish exits non-zero, the error names the chunk and the codename, and the integration ref is unchanged. (3) the same conflict, but the integration side's chunk no longer contains the leaf: finish lands, the leaf stays absent, and the merge message does not claim the status was applied. CHANGELOG [Unreleased] entry."
+      ],
+      "codename": "finish-keeps-complete-when-the-chunk-conflicts",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.50",
+      "node_key": "749e0a55-5f3f-4fa4-b093-1252f5cd1fd1",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.50_finish-keeps-complete-when-the-chunk-conflicts_749e0a55-5f3f-4fa4-b093-1252f5cd1fd1.md",
+      "sibling_order": 45,
+      "status": "Not Started",
+      "title": "finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk",
+      "touch_zones": [
+        "specy_road/finish_land_roadmap_graph.py",
+        "specy_road/finish_land_deterministic.py",
+        "CHANGELOG.md",
+        "tests/test_finish_land_roadmap_graph.py"
       ],
       "type": "task"
     }

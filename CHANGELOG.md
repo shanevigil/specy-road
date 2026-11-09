@@ -14,6 +14,22 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road worker recover W` ends a stalled worker, keeps its worktree and commits, and resumes its native
+  session with the continue prompt, or says why it cannot. It runs once and exits. Recoveries are counted on the
+  worker record up to `policy.max_fix_rounds` (default 3); past that the worker is flagged `needs_person` with its
+  last output named. It refuses while another worker holds the leaf. `grind-session` runs it on its own loop.
+  A running worker that never wrote output is now flagged stalled from its launch, and `worker sync`, `worker list`
+  and `doctor` list stalled workers with how long they have been silent.
+
+- The PM GUI's node edit dialog shows and edits a node's acceptance criteria: one field per criterion, with add,
+  remove and move up / down, saved through the existing `PATCH /api/nodes/{id}` as `edit-node --set acceptance=`
+  (one criterion per line; an empty list removes the field). A line break inside a criterion is refused with a
+  message. See `docs/pm-gui.md` (Node edit dialog).
+- The PM GUI toolbar's **Group siblings…** action puts the selected row and the siblings you check under a new
+  parent through the existing `POST /api/outline/group` (`group-nodes`): the new id defaults to one past the
+  parent's highest child number, a title is required, the type defaults to milestone and prose references are
+  rewritten only when asked. A refusal shows the server's message in the dialog and changes nothing. See
+  `docs/pm-gui.md` (Group siblings).
 - A worker turn that moves the local integration ref or its remote-tracking ref, including a ref that appears
   or disappears, is a post-run finding naming the ref and its before and after values. A ref absent at both
   ends stays clean. A failed read is a check error, not a clean turn. A turn that moves only its own branch
@@ -33,6 +49,33 @@ body. Keep section bodies focused; link to PRs for detail.
 ### Fixed
 
 - `specy-road upgrade` copies tracked files, untracked files git does not ignore, and files the refreshes read into its temporary directory. Gitignored paths such as `.env` files, virtualenvs, `node_modules` and nested repositories are not copied, on a real run or `--dry-run`, including when a symlink points at them. A directory that cannot be searched is left out of that copy, and neither a real run nor `--dry-run` stops on it; `validate`'s sibling-repository search skips it too. A global excludes file applies to that copy on both paths. An ignored `roadmap-context.md` that is already current is not reported as a rewrite. `--dry-run` prints a line before that copy and builds it once, then reuses it for the preview.
+- `specy-road ready` refuses, before any `--run` and again after, when the branch has no committed in-zone change against the integration merge base (this repository or a configured nested repository the zones cover) or when an in-zone path is staged, unstaged, deleted or untracked and not ignored. The refusal names those paths. A `--run` that moves `HEAD` is refused too. Nothing is written, and an existing READY file is left unchanged. A covered nested repository that is checked out but whose integration base does not resolve, or whose committed diff cannot be listed, is refused as well, naming the repository and the missing git evidence. No leaf branch there is not that failure. For a leaf whose zones cover no nested repository, `handoff status` shows an existing unblocked READY whose commit is its base as INVALID, and with no independent review records the state is `waiting` (no reviewer prompt). A READY that declares `blocked_on` stays `executor_blocked`.
+- A Cursor shell denial under the documented default (`--sandbox enabled`, no `--force`) is a `permission_denied`
+  worker event: `Permission denied`, `Read-only file system` or `Operation not permitted` in the shell tool
+  result's stderr. On agent 2026.11.05-86047df (2026-11-08) that default commits in a linked worktree, `system/init`
+  reports the model, `--resume` with a new prompt continues the chat, and `--mode ask` stays read-only. See
+  `docs/orchestration-workers.md` (Cursor CLI, checked 2026-11-08).
+- `specy-road digest` writes the same `roadmap-context.md` when the history cache is missing and when it was
+  written on a branch that later merged. A cache is appended only when its commit is on `HEAD`'s first-parent
+  line; a merged side-branch tip, and any cache from before this change, is rebuilt. A dependency removed on a
+  side branch and kept by the merge is recorded once, dated with the merge commit. See `docs/roadmap-history.md`.
+
+- A sandboxed Claude worker whose `CLAUDE_CONFIG_DIR` changes gets a new copy of that directory's `.claude.json`,
+  including a worker launched before the directory was recorded and one whose copy is the empty read-only mount
+  placeholder. The same resolved directory keeps the worker's copy, including another spelling such as
+  `account/../account`. The user's file is not written, and the
+  worker's transcripts stay in its state directory.
+- The PM GUI selects an outline row on the click itself, so Add above, Add below,
+  Indent, Outdent and Delete clicked right after it act on that row. A double
+  click still opens the edit modal. A row that cannot be dragged is no longer
+  marked aria-disabled.
+
+- A roster name that several entries share (profile effort aliases, or one model in an executor row and a reviewer
+  row) no longer closes the review gate by itself. A READY author is still excluded under every entry it may be,
+  and a record that may be any entry that wrote the leaf still does not count. A record whose entries wrote
+  nothing counts when they share one family, and closes the gate only when they span families. Leaves with two
+  real approvals can land again.
+
 - The review gate compares READY authors and review-record models after one normalization: case-folded, and a
   name stands for every roster entry whose id, `harness_model`, or profile `api_id`, file name or alias it is. An
   exact id gets no precedence. A READY naming `Opus` or the executor's alias still excludes the executor's own
@@ -65,6 +108,10 @@ body. Keep section bodies focused; link to PRs for detail.
   never reaches the reviews directory. Cursor turns start under the sandbox again: `~/.cursor/sandbox-policies/`
   is no longer read-only, because Cursor writes its policy file there on every start. It is now the worker's own
   state.
+- Cursor workers start under the sandbox. The worker's copy of `~/.cursor/cli-config.json` is now a plain file
+  in its own `.cursor` state directory instead of a file bound over yours, so Cursor can replace it by rename on
+  start; it failed with `EBUSY` before. The same holds for `$CLAUDE_CONFIG_DIR/.claude.json`. `~/.claude.json`
+  is still a per-worker copy bound over yours. Your own copy never changes.
 - Reviewer runs (rc4 re-test D15c, D17, D18). A refused answer's one-line reason names the first
   offending line whole, then `(N more; full text in work/reviews/<ID>/REJECTED-<model>.md)`, for the
   first refusal and for a repair turn's, instead of the last 400 characters cut mid-word. A
@@ -650,6 +697,10 @@ body. Keep section bodies focused; link to PRs for detail.
 - `specy-road file-limits` now counts functions in `.tsx` files, so the same
   tree can report different function counts under 0.3.1 than under 0.2.x, and
   a local run can disagree with CI pinned to an older version.
+- The shipped agent templates (`agents-rules.md`, `agents-md-block.md` and `claude-md-block.md` under
+  `specy_road/templates/specyrd/`) no longer carry maintainer provenance comments. The comments live in
+  `specy_road/agent_rule_provenance.md`, which no wheel ships, and `chore garden` reports advisory rules there
+  instead of in the templates. The files specy-road writes into a project are unchanged.
 
 ### Fixed
 

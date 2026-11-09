@@ -5,7 +5,7 @@
         "AGENTS.md is the only agent entry; CLAUDE.md points to it and holds only Claude-specific notes (about 20 lines, an estimate, not a gate); branch policy and the version-numbers rule each appear in one place, and every other copy (including .cursor/rules/027-version-numbers-require-human.mdc and .cursor/rules/030-git-workflow-management.mdc) is replaced with a link to it",
         "The load order is task-conditional: always purpose, principles and constraints; then by task (orchestration or review, roadmap data, dependencies or release, the dogfood fixture, sr/ roadmap work); supply-chain-security.md is not in the default order, here or in the consumer agents-rules template",
         "tests/test_agent_start_up_reading.py counts the unique files in the unconditional start-up closure (AGENTS.md, the entry stubs and the always-applied managed rule files, each once per repo; task-conditional references excluded), prints the counted paths and each total, and fails when a file in the default load order is missing or the total is over 400 lines, for this repo and for a freshly initialised consumer repo; CLAUDE.md's size (about 20 lines) is printed as a soft check, not enforced",
-        "The shipped agents-rules.md loses its provenance comments and cites only files an adopter has",
+        "The shipped agents-rules.md cites only files an adopter has. Removing the provenance comments from the shipped templates moved to M16.1.12 (coordinator split, 2026-11-08)",
         "Estimated net line change (informational, not a gate): docs about -200"
       ],
       "codename": "agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer",
@@ -20,7 +20,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.5_agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer_01db66ad-a91c-48e3-953e-4083f5f14a13.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer",
       "touch_zones": [
         "AGENTS.md",
@@ -30,7 +30,11 @@
         "docs/context-regressions.yaml",
         "tests/test_agent_start_up_reading.py",
         ".cursor/rules/027-version-numbers-require-human.mdc",
-        ".cursor/rules/030-git-workflow-management.mdc"
+        ".cursor/rules/030-git-workflow-management.mdc",
+        "docs/contributor-guide.md",
+        "docs/release-runbook.md",
+        "docs/git-workflow.md",
+        ".cursor/rules/026-release-version-tag-sync.mdc"
       ],
       "type": "task"
     },
@@ -66,7 +70,7 @@
       "acceptance": [
         "`lean_metrics --check` prints package, test and docs lines and files, the C901 and long-line counts, and the command and alias counts against the M16.1.7 baseline, beside the sum of the leaves' informational estimates; none of the line numbers fails the check",
         "The canonical command count is at most 56 and the alias count is printed; coverage is at or above fail_under; each effectiveness measure recorded in M16.7.8's sheet is at or above the value or threshold recorded there; suite time is printed for information only and never fails this leaf",
-        "This sheet lists, for M16.8.3, every deprecated form still accepted at rc5 with the notice it prints: the tests/parity/command_map.yaml rows, the old checks keys and the review-before-finish switch (M16.4.5), the four grind_session_* keys (M16.5.11), the version-1 roster form (M16.5.5), the `[gui-next]` extra (M16.6.1) and the re-exports kept by M16.2.5; each has its CHANGELOG [Unreleased] entry",
+        "This sheet lists, for the 0.3.1 release notes and the post-0.3.1 removal leaf, every deprecated form still accepted at 0.3.1 with the notice it prints: the tests/parity/command_map.yaml rows, the old checks keys and the review-before-finish switch (M16.4.5), the four grind_session_* keys (M16.5.11), the version-1 roster form (M16.5.5), the `[gui-next]` extra (M16.6.1) and the re-exports kept by M16.2.5; each has its CHANGELOG [Unreleased] entry",
         "The M16.1.7 baseline stays as committed; the rc5 measurements are committed as a separate end-state section of constraints/lean-baseline.json that names the baseline commit, and the summary states the source lines, command count, test count and effectiveness measures reached, with suite time as an informational figure",
         "Estimated net line change (informational, not a gate): package 0"
       ],
@@ -107,7 +111,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.3_triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf_eaee2f90-4953-4580-b772-570043326e4b.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf",
       "touch_zones": [
         "sr/roadmap/",
@@ -137,7 +141,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.10_tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold_2fcf08ee-20e7-4751-a9ab-e64e163f5e2a.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold",
       "touch_zones": [
         "tests/scenarios/roadmap_edit/"
