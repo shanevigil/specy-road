@@ -6,7 +6,7 @@ summary and its review files, and never a merge. Review records pass
 ``records=True``. That carry also accepts project-relative roadmap and planning
 paths, and a two-parent merge from the integration branch whose non-bookkeeping
 diff is unchanged. It refuses when this leaf's acceptance, touch zones or tier
-changed, or when the graph or sheet cannot be read.
+changed, when its sheet has no tier value, or when the graph or sheet cannot be read.
 """
 
 from __future__ import annotations
@@ -189,14 +189,14 @@ def _contract_problem(before: dict[str, Any], after: dict[str, Any]) -> str | No
     return None
 
 
-def _tier_problem(old: str, new: str, narrow: bool) -> str | None:
-    """Why the sheet's tier refuses the carry. A missing tier still allows today's narrow paths."""
+def _tier_problem(old: str, new: str) -> str | None:
+    """Why the sheet's tier refuses the carry. A sheet with no tier value is not eligible."""
     from specy_road.review_override import sheet_tier
 
     old_tier, new_tier = sheet_tier(old), sheet_tier(new)
     if old_tier != new_tier:
         return "this leaf's tier changed"
-    if old_tier is None and not narrow:
+    if old_tier is None:
         return "this leaf's planning sheet has no tier value"
     return None
 
@@ -211,7 +211,7 @@ def _evidence_problem(repo_root: Path, approved: str, commit: str, node: dict[st
     old, new = _sheet_text(repo_root, approved, before), _sheet_text(repo_root, commit, after)
     if old is None or new is None:
         return "this leaf's planning sheet cannot be resolved"
-    return _tier_problem(old, new, _narrow_since(repo_root, node, approved, commit))
+    return _tier_problem(old, new)
 
 
 def only_planning_or_review_bookkeeping_since(
@@ -222,7 +222,7 @@ def only_planning_or_review_bookkeeping_since(
     Without ``records`` (operator decisions), today's rule: a bool, false for a merge or any path
     other than this leaf's sheet, summary and review files. With ``records``, the wider carry: true
     when it holds, false when the paths or a merge do not qualify, or a reason string when this
-    leaf's acceptance, zones, tier, graph or sheet refuses it.
+    leaf's acceptance, zones, tier (including a sheet with no tier value), graph or sheet refuses it.
     """
     if not records:
         return _narrow_since(repo_root, node, approved, commit)

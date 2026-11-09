@@ -24,8 +24,7 @@ review record only when:
   `handoff status` gives the reason, when this leaf's acceptance or touch zones
   (the node is found by `node_key` across a chunk or sheet move) or the parsed
   value under its sheet's `## Tier` heading differs, when that sheet has no
-  tier value except on a change that stays inside this leaf's own sheet, summary
-  and review files, or when the graph or the sheet cannot be read. Another
+  tier value, or when the graph or the sheet cannot be read. Another
   node's acceptance and zones are bookkeeping. `handoff status` says so on the
   policy line;
 - its model is a rostered reviewer, or the substitute in an active substitution that covers this

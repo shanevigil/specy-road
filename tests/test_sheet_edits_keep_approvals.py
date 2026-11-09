@@ -31,9 +31,10 @@ def _gate(repo: Path):
 
 def test_sheet_only_delta_keeps_approval(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    commit_file(repo, NODE["planning_dir"], _with_tier(), "tier")
     _review(repo)
     assert _gate(repo).passed
-    commit_file(repo, NODE["planning_dir"], "# M1.1 Thing\n\n## Intent\n\nUpdated.\n\n## References\n", "sheet")
+    commit_file(repo, NODE["planning_dir"], _with_tier("Updated."), "sheet")
     g = _gate(repo)
     assert g.passed and g.bookkeeping_carry
     assert not g.stale
@@ -42,6 +43,7 @@ def test_sheet_only_delta_keeps_approval(tmp_path: Path) -> None:
 
 def test_summary_only_delta_keeps_approval(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    commit_file(repo, NODE["planning_dir"], _with_tier(), "tier")
     _review(repo)
     commit_file(
         repo,
@@ -90,13 +92,10 @@ def test_unresolved_commit_leaves_approval_stale(tmp_path: Path) -> None:
 
 def test_nested_sheet_carry_and_git_root_namesake_stales(tmp_path: Path) -> None:
     git_top, project = make_layout_finish_repo(tmp_path / "keep", "nested")
+    rel = git_root_relative(git_top, project, NODE["planning_dir"])
+    commit_file(git_top, rel, _with_tier(), "tier")
     _review(project)
-    commit_file(
-        git_top,
-        git_root_relative(git_top, project, NODE["planning_dir"]),
-        "# M1.1 Thing\n\n## Intent\n\nUpdated.\n\n## References\n",
-        "in-project sheet",
-    )
+    commit_file(git_top, rel, _with_tier("Updated."), "in-project sheet")
     g = evaluate_gate(project, NODE, git(git_top, "rev-parse", "HEAD"))
     assert g.passed and g.bookkeeping_carry
     assert not g.stale
@@ -113,8 +112,9 @@ def test_nested_sheet_carry_and_git_root_namesake_stales(tmp_path: Path) -> None
 
 def test_handoff_status_reports_bookkeeping_carry(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    commit_file(repo, NODE["planning_dir"], _with_tier(), "tier")
     _review(repo)
-    commit_file(repo, NODE["planning_dir"], "# M1.1 Thing\n\n## Intent\n\nNotes.\n\n## References\n", "sheet")
+    commit_file(repo, NODE["planning_dir"], _with_tier("Notes."), "sheet")
     st = _status(repo, capsys)
     assert st["policy_met"]
     assert "still count" in st["policy"]
@@ -174,6 +174,15 @@ def _registry(git_top: Path, project: Path) -> None:
 
 def _summary(git_top: Path, project: Path) -> None:
     commit_file(git_top, _rel(git_top, project, "work/implementation-summary-M1.1.md"), "# Summary\n\nDone.\n", "summary")
+
+
+def _review_note(git_top: Path, project: Path) -> None:
+    rel = _rel(git_top, project, "work/reviews/M1.1/note.md")
+    path = git_top / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("a note\n", encoding="utf-8")
+    git(git_top, "add", "-f", rel)
+    git(git_top, "commit", "-qm", "review note")
 
 
 def _own_sheet(git_top: Path, project: Path) -> None:
@@ -258,6 +267,9 @@ _REASONS = {
     "bad-graph": "graph cannot be resolved",
     "bad-sheet": "planning sheet cannot be resolved",
     "no-tier": "no tier value",
+    "no-tier-sheet": "no tier value",
+    "no-tier-summary": "no tier value",
+    "no-tier-reviews": "no tier value",
 }
 _ROWS = {
     "other-node": _other_node, "registry": _registry, "summary": _summary, "own-sheet": _own_sheet,
@@ -265,13 +277,14 @@ _ROWS = {
     "policy-workflow": _policy_workflow, "policy-orchestration": _policy_orchestration, "namesake": _namesake,
     "merge-same": _merge_same, "merge-code": _merge_code, "ours-merge": _ours_merge, "other-merge": _other_merge,
     "bad-graph": _bad_graph, "bad-sheet": _bad_sheet, "no-tier": _other_node,
+    "no-tier-sheet": _own_sheet, "no-tier-summary": _summary, "no-tier-reviews": _review_note,
 }
 
 
 @pytest.mark.parametrize("row", list(_ROWS))
 def test_wider_carry_on_a_nested_project(tmp_path: Path, capsys, row: str) -> None:
     """Each row of the M22.53 table, through ``handoff status``, on a project under a prefix."""
-    git_top, project = _prepare(tmp_path, tier=row != "no-tier")
+    git_top, project = _prepare(tmp_path, tier=not row.startswith("no-tier"))
     _ROWS[row](git_top, project)
     st = _status(project, capsys)
     if row in _CARRY:
