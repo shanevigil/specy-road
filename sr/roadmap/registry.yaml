@@ -94,12 +94,3 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: neutral-test-identities
-    node_id: M22.56
-    branch: feature/rm-neutral-test-identities
-    touch_zones:
-      - tests/test_claim_traps.py
-      - tests/test_review_record_caller.py
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: pending

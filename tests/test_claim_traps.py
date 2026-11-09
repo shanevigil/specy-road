@@ -61,9 +61,9 @@ def test_claim_row_carries_owner(tmp_path: Path) -> None:
     node = {"id": "M1.2", "codename": "two", "touch_zones": ["src"]}
     register_and_commit(registry_path=repo / "roadmap" / "registry.yaml", git_runner=lambda *a: calls.append(a),
                         node=node, branch="feature/rm-two", reg=reg, commit_message="m",
-                        impl_review_gate=False, owner="Shane V")
+                        impl_review_gate=False, owner="Test User")
     row = yaml.safe_load((repo / "roadmap" / "registry.yaml").read_text())["entries"][-1]
-    assert row["owner"] == "Shane V" and row["touch_zones"] == ["src"]
+    assert row["owner"] == "Test User" and row["touch_zones"] == ["src"]
     register_and_commit(registry_path=repo / "roadmap" / "registry.yaml", git_runner=lambda *a: calls.append(a),
                         node={"id": "M1.3", "codename": "three"}, branch="feature/rm-three", reg=reg,
                         commit_message="m", impl_review_gate=False, owner=None)
@@ -93,7 +93,7 @@ def test_local_pickup_skips_sync_and_push(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *a, **k: synced.append("sync"))
     monkeypatch.setattr(dnt, "_push_integration_branch", lambda remote, base: pushed.append((remote, base)),
                         raising=False)
-    monkeypatch.setattr(dnt, "git_config_user_name", lambda _r: "Shane V")
+    monkeypatch.setattr(dnt, "git_config_user_name", lambda _r: "Test User")
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _r, oc: "merge")
     import pytest
     try:
@@ -103,5 +103,5 @@ def test_local_pickup_skips_sync_and_push(tmp_path: Path, monkeypatch) -> None:
     assert synced == []
     assert pushed == []
     row = yaml.safe_load(git(repo, "show", "dev:roadmap/registry.yaml"))["entries"][0]
-    assert row["node_id"] == "M1.1" and row["owner"] == "Shane V"
+    assert row["node_id"] == "M1.1" and row["owner"] == "Test User"
     assert git(repo, "branch", "--show-current") == "feature/rm-thing"

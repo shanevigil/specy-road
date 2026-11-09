@@ -117,7 +117,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.56_neutral-test-identities_5b81d7e2-9f04-4c6a-a3d7-02e6b9f1c845.md",
       "sibling_order": 51,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Neutral identities in tests: no real name or username",
       "touch_zones": [
         "tests/test_claim_traps.py",
