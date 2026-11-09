@@ -152,4 +152,5 @@ entries:
       - tests/fixtures/worker_turn_check/streams.json
     started: '2026-11-09'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-09T12:17:28+00:00'
