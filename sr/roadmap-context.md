@@ -177,7 +177,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.54` Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages `public-hygiene-gate` — task — **Complete**
   - `M22.55` Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored `process-content-untracked` — task — **Complete**
   - `M22.56` Neutral identities in tests: no real name or username `neutral-test-identities` — task — **Complete**
-  - `M22.57` Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish `promotion-without-wip-history` — task — **Not Started**
+  - `M22.57` Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish `promotion-without-wip-history` — task — **Complete**
   - `M22.58` History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map `history-rewrite-rehearsal` — task — **Not Started**
   - `M22.59` Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced `history-rewritten-and-published` — gate — **Not Started**
   - `M22.60` The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working `sr-private-mount` — task — **Not Started**
@@ -326,7 +326,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.57` on `feature/rm-promotion-without-wip-history` since 2026-11-09
 
 ## Quality by area
 
@@ -334,16 +333,16 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 34 | 0 | 2.68 | 62% | 20 | 3 |
+| `CHANGELOG.md` **flagged** | 33 | 0 | 2.73 | 64% | 18 | 3 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 34 | 0 | 2.68 | 62% | 52 | 3 |
+| `docs` **flagged** | 35 | 0 | 2.66 | 63% | 52 | 3 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 40 | 0 | 2.55 | 55% | 42 | 4 |
-| `tests` **flagged** | 43 | 0 | 2.51 | 58% | 58 | 4 |
+| `specy_road` **flagged** | 39 | 0 | 2.59 | 56% | 40 | 4 |
+| `tests` **flagged** | 43 | 0 | 2.53 | 60% | 56 | 4 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
-| `.github` | 3 | 0 | 1.33 | 33% | 15 | 0 |
+| `.github` | 4 | 0 | 1.50 | 50% | 15 | 0 |
 | `.gitignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 3 | 0 | 2.67 | 33% | 2 | 1 |
@@ -353,7 +352,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `pyproject.toml` | 3 | 0 | 1.33 | 33% | 17 | 0 |
 | `requirements-ci.in` | 1 | 0 | 1.00 | 0% | 13 | 0 |
 | `requirements-ci.txt` | 1 | 0 | 1.00 | 0% | 13 | 0 |
-| `scripts` | 5 | 0 | 1.40 | 20% | 51 | 0 |
+| `scripts` | 6 | 0 | 1.50 | 33% | 51 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

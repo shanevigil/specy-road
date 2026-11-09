@@ -133,11 +133,47 @@ jobs:
         run: python scripts/check_release_version.py "${{ needs.resolve.outputs.tag }}"
       - name: Build sdist + wheel
         run: python -m build
+      - name: Public hygiene on the unpacked sdist and wheel
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import subprocess
+          import sys
+          import tarfile
+          import tempfile
+          import zipfile
+          from pathlib import Path
+
+          dist = Path("dist")
+          wheels = sorted(dist.glob("*.whl"))
+          sdists = sorted(dist.glob("*.tar.gz"))
+          if len(wheels) != 1 or len(sdists) != 1:
+              sys.exit(f"expected one wheel and one sdist, found {wheels} and {sdists}")
+          wheel_dir = Path(tempfile.mkdtemp())
+          sdist_dir = Path(tempfile.mkdtemp())
+          try:
+              with zipfile.ZipFile(wheels[0]) as archive:
+                  archive.extractall(wheel_dir)
+              with tarfile.open(sdists[0]) as archive:
+                  archive.extractall(sdist_dir, filter="data")
+          except (OSError, zipfile.BadZipFile, tarfile.TarError) as exc:
+              sys.exit(f"cannot unpack the distribution: {exc}")
+          tops = [path for path in sdist_dir.iterdir() if path.is_dir()]
+          if len(tops) != 1:
+              sys.exit("sdist must unpack to one distribution directory")
+          # Member paths are relative to the distribution root: the wheel root,
+          # and the sdist with its single top directory removed.
+          sys.exit(subprocess.call([
+              sys.executable, "scripts/check_public_hygiene.py", "--promotion",
+              "--tree", str(wheel_dir), "--tree", str(tops[0]),
+          ]))
+          PY
       - name: Verify wheel contains PM Gantt UI assets
         run: |
           set -euo pipefail
           wheel="$(ls dist/*.whl)"
-          python scripts/verify_wheel_contents.py "${wheel}"
+          sdist="$(ls dist/*.tar.gz)"
+          python scripts/verify_wheel_contents.py "${wheel}" "${sdist}"
       - name: Capture artifact names
         id: find
         run: |

@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0   # the public-hygiene message check reads every commit of the event range
+          fetch-depth: 0   # the promotion range check reads every reachable commit; a shallow clone cannot decide
       - name: Assert packaged Gantt UI static assets exist
         run: test -f specy_road/pm_gantt_static/index.html
       - uses: actions/setup-python@v7
@@ -153,9 +153,13 @@ jobs:
         continue-on-error: true
         run: vulture specy_road scripts --min-confidence 60
       # Tracked files on every run. A pull request or branch push also checks the
-      # messages of its range, and one to main adds --promotion (path denylist,
-      # identity check). A workflow_call run (a tag push or dispatch in the
-      # caller) checks files only: it has no range of its own.
+      # messages of its range, and one to main adds --promotion: every newly
+      # reachable commit (side branches included, merges diffed with -m) is
+      # refused for an addition, modification or rename onto a denied path;
+      # a deletion passes, and the message and identity checks apply. The
+      # script and allowlist are the base commit's when that commit has them,
+      # so a candidate-local widening does not apply. A workflow_call run (a
+      # tag push or dispatch in the caller) checks files only: it has no range.
       - name: Public hygiene - personal data, machine setup and process content
         env:
           PUBLIC_HYGIENE_LOCAL: ${{ secrets.PUBLIC_HYGIENE_LOCAL }}
@@ -167,15 +171,34 @@ jobs:
           BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
         run: |
+          set -euo pipefail
           args=()
+          base=""
+          promotion=0
           if [ "$EVENT" = pull_request ]; then
             args+=(--range "$PR_BASE..$PR_HEAD")
-            if [ "$BASE_REF" = main ]; then args+=(--promotion); fi
+            base="$PR_BASE"
+            if [ "$BASE_REF" = main ]; then promotion=1; fi
           elif [ "$EVENT" = push ] && [[ "$REF" == refs/heads/* ]]; then
             args+=(--range "$BEFORE..$SHA")
-            if [ "$REF" = refs/heads/main ]; then args+=(--promotion); fi
+            base="$BEFORE"
+            if [ "$REF" = refs/heads/main ]; then promotion=1; fi
           fi
-          python scripts/check_public_hygiene.py "${args[@]}"
+          script="scripts/check_public_hygiene.py"
+          if [ "$promotion" = 1 ]; then
+            args+=(--promotion)
+            policy="$(mktemp -d)"
+            if git cat-file -e "${base}:scripts/check_public_hygiene.py" 2>/dev/null; then
+              git show "${base}:scripts/check_public_hygiene.py" > "$policy/check_public_hygiene.py"
+              script="$policy/check_public_hygiene.py"
+              export PUBLIC_HYGIENE_FROM_BASE=1
+            fi
+            if git cat-file -e "${base}:scripts/public_hygiene_allow.txt" 2>/dev/null; then
+              git show "${base}:scripts/public_hygiene_allow.txt" > "$policy/public_hygiene_allow.txt"
+              export PUBLIC_HYGIENE_ALLOW="$policy/public_hygiene_allow.txt"
+            fi
+          fi
+          python "$script" --root "$GITHUB_WORKSPACE" "${args[@]}"
       # [tool.coverage.*] in pyproject.toml is the whole configuration: source,
       # branch arcs, subprocess capture and fail_under. `coverage report` exits
       # non-zero below fail_under; the branch percentage is informational.
