@@ -256,6 +256,8 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
+- 2026-11-08 `M16.8.4` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
 - 2026-11-07 `M16.1.2` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
 - 2026-11-07 `M16.1.1` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
@@ -279,9 +281,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M20` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
 - 2026-11-05 `M17.1` stopped depending on `M16.3.1 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
 - 2026-11-05 `M17.1` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
-- 2026-11-05 `M16.60` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
-- 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
-- _…and 58 earlier — `specy-road history --json`_
+- _…and 60 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
