@@ -12,8 +12,9 @@ cd "$ROOT" || exit 2
 # low-effort pair, cheapest first (maintainer 2026-11-09). Behavioural and trust leaves keep the configured pair.
 TIER=$("$PY" "$ROOT/sr/tools/tier.py" "$ID" "sr/work/.worktrees/$WT" 2>/dev/null || echo behavioural)
 if [ "$TIER" = plain ]; then R1=gpt-5.6-sol-low; R2=grok-4.7-low; fi
-# While Cursor is unavailable (flag file present), xAI reviewers run nowhere: the second family is Claude.
-[ -e "$ROOT/sr/work/orchestrator-2026-11-04/cursor-capped" ] && case "${R2:-}" in grok*|cursor-*) R2=claude-opus-5-5-review;; esac
+# While Cursor's Opus and GPT/Sol models are capped (flag file present), never route a Sol review through Cursor;
+# Grok through Cursor still works. gpt-5.6-sol-high is the Cursor-routed Sol id; use Codex Sol instead.
+[ -e "$ROOT/sr/work/orchestrator-2026-11-04/cursor-capped" ] && { [ "${R1:-}" = gpt-5.6-sol-high ] && R1=gpt-6.1-sol; [ "${R2:-}" = gpt-5.6-sol-high ] && R2=gpt-6.1-sol; }
 # One reviewer turn; since M8.3 a refused one-shot record ("rerun requested") gets one automatic retry.
 # A landing rewrites the checkout the reviewer's tooling imports from; an ImportError mid-run is that race, not
 # the leaf: wait for the coordinator's git lock (held for the whole landing) and run the reviewer once more.
