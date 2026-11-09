@@ -12,3 +12,6 @@ rows:
   - old: specy-road worker
     new: specy-road worker
     allowed: "M22.39: `worker --help` lists the new recover subcommand"
+  - old: specy-road upgrade
+    new: specy-road upgrade
+    allowed: "M22.35: upgrade --help says the mirror leaves gitignored files out"
