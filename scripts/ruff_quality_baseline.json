@@ -1,0 +1,2666 @@
+{
+  "commands": {
+    "C901": "ruff check --no-cache --select C901 --ignore-noqa --output-format json specy_road scripts tests",
+    "PL": "ruff check --no-cache --select PL --output-format json specy_road scripts tests",
+    "B": "ruff check --no-cache --select B --output-format json specy_road scripts tests",
+    "SIM": "ruff check --no-cache --select SIM --output-format json specy_road scripts tests",
+    "RET": "ruff check --no-cache --select RET --output-format json specy_road scripts tests",
+    "N": "ruff check --no-cache --select N --output-format json specy_road scripts tests",
+    "D102/D103": "ruff check --no-cache --select D102,D103 --output-format json specy_road scripts tests"
+  },
+  "ruff": "ruff 0.17.3",
+  "commit": "542aa46c29cf4765c20b6879d322cc53422b1da3",
+  "files": {
+    "scripts/census/coverage_overlap.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
+    "scripts/census/private_coupling.py": {
+      "PL": 1,
+      "SIM": 1,
+      "D102/D103": 2
+    },
+    "scripts/census/unexecuted_guards.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "scripts/check_clones.py": {
+      "D102/D103": 5
+    },
+    "scripts/check_machine_paths.py": {
+      "D102/D103": 1
+    },
+    "scripts/check_release_version.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "scripts/check_test_private_imports.py": {
+      "D102/D103": 4
+    },
+    "scripts/lean_metrics.py": {
+      "PL": 3,
+      "D102/D103": 23
+    },
+    "scripts/line_width_baseline.py": {
+      "D102/D103": 3
+    },
+    "scripts/mutation_report.py": {
+      "D102/D103": 5
+    },
+    "scripts/post_release_readme_cleanup.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "scripts/review_effort_study.py": {
+      "PL": 6,
+      "N": 1,
+      "D102/D103": 5
+    },
+    "scripts/verify_wheel_contents.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/agents_md_block.py": {
+      "B": 1,
+      "D102/D103": 1
+    },
+    "specy_road/agents_md_report.py": {
+      "PL": 1
+    },
+    "specy_road/archive_deep.py": {
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "specy_road/archive_index.py": {
+      "PL": 1,
+      "D102/D103": 10
+    },
+    "specy_road/archive_ops.py": {
+      "PL": 12
+    },
+    "specy_road/archive_plan.py": {
+      "PL": 6,
+      "D102/D103": 4
+    },
+    "specy_road/archive_restore.py": {
+      "PL": 6
+    },
+    "specy_road/bundled_scripts/abort_task_pickup.py": {
+      "PL": 3,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/abort_task_pickup_own_commit.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/archive_cli.py": {
+      "PL": 2,
+      "D102/D103": 7
+    },
+    "specy_road/bundled_scripts/author_approach.py": {
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/brainstorm_chat.py": {
+      "PL": 4
+    },
+    "specy_road/bundled_scripts/brainstorm_cli.py": {
+      "PL": 1,
+      "D102/D103": 10
+    },
+    "specy_road/bundled_scripts/brainstorm_cli_args_v2.py": {
+      "PL": 2,
+      "B": 2,
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/brainstorm_cli_revise.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/brainstorm_cli_v2.py": {
+      "PL": 2,
+      "B": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/brainstorm_close.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/brainstorm_fields.py": {
+      "C901": 1,
+      "PL": 3,
+      "B": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/brainstorm_lenses.py": {
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/brainstorm_promote.py": {
+      "PL": 5
+    },
+    "specy_road/bundled_scripts/brainstorm_promote_plan.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/brainstorm_prompt.py": {
+      "PL": 3
+    },
+    "specy_road/bundled_scripts/brainstorm_prompt_diverge.py": {
+      "D102/D103": 7
+    },
+    "specy_road/bundled_scripts/brainstorm_prompt_evidence.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/brainstorm_research.py": {
+      "PL": 3
+    },
+    "specy_road/bundled_scripts/brainstorm_search_providers.py": {
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/brainstorm_session.py": {
+      "D102/D103": 7
+    },
+    "specy_road/bundled_scripts/brainstorm_verify.py": {
+      "PL": 2
+    },
+    "specy_road/bundled_scripts/branches_cli.py": {
+      "D102/D103": 4
+    },
+    "specy_road/bundled_scripts/brief_acceptance.py": {
+      "B": 2,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/brief_dependency_context.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/brief_history_context.py": {
+      "PL": 2
+    },
+    "specy_road/bundled_scripts/chore_cli.py": {
+      "PL": 1,
+      "D102/D103": 7
+    },
+    "specy_road/bundled_scripts/chore_garden.py": {
+      "PL": 1,
+      "D102/D103": 5
+    },
+    "specy_road/bundled_scripts/decisions_cli.py": {
+      "D102/D103": 5
+    },
+    "specy_road/bundled_scripts/digest_cli.py": {
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/do_next_available.py": {
+      "C901": 1,
+      "PL": 2,
+      "SIM": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/do_next_finished_unmerged.py": {
+      "C901": 1
+    },
+    "specy_road/bundled_scripts/do_next_prompt.py": {
+      "PL": 2
+    },
+    "specy_road/bundled_scripts/do_next_task.py": {
+      "PL": 3,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/do_next_task_args.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/do_next_task_interactive.py": {
+      "PL": 1,
+      "B": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/do_next_task_leaf_guards.py": {
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/do_next_task_pickup_helpers.py": {
+      "PL": 3,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/do_next_task_register.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/do_next_task_self_heal.py": {
+      "PL": 2
+    },
+    "specy_road/bundled_scripts/doctor.py": {
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/effective_dependency_checks.py": {
+      "PL": 1,
+      "B": 1
+    },
+    "specy_road/bundled_scripts/export_roadmap_md.py": {
+      "PL": 1,
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/finish_task.py": {
+      "PL": 3,
+      "RET": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/finish_task_args.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/generate_brief.py": {
+      "PL": 2,
+      "D102/D103": 5
+    },
+    "specy_road/bundled_scripts/grind_session.py": {
+      "PL": 6,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/grind_session_args.py": {
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/grind_session_events.py": {
+      "C901": 1,
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/grind_session_implement.py": {
+      "PL": 6,
+      "SIM": 1
+    },
+    "specy_road/bundled_scripts/grind_session_in_flight.py": {
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/grind_session_step.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/history_cli.py": {
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/impact_cli.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/integrity_cli.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/lessons_cli.py": {
+      "D102/D103": 4
+    },
+    "specy_road/bundled_scripts/llm_throughput.py": {
+      "C901": 1,
+      "PL": 4,
+      "N": 1,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/mark_implementation_reviewed.py": {
+      "PL": 3,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/migrate_stable_node_keys.py": {
+      "C901": 2,
+      "PL": 3,
+      "SIM": 1,
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/models_cli.py": {
+      "C901": 1,
+      "PL": 1,
+      "D102/D103": 6
+    },
+    "specy_road/bundled_scripts/open_milestone_pr.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/orchestrate_cli.py": {
+      "D102/D103": 5
+    },
+    "specy_road/bundled_scripts/orchestration_guard_cli.py": {
+      "PL": 1,
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/planning_artifacts.py": {
+      "PL": 4
+    },
+    "specy_road/bundled_scripts/planning_rename.py": {
+      "PL": 7,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/pm_gui_git_remote_verify.py": {
+      "PL": 3,
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/pm_sync.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/reconcile_branch_cli.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/reconcile_milestone_status.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/refresh_profiles.py": {
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/refresh_schemas.py": {
+      "SIM": 1,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/refresh_stubs.py": {
+      "PL": 3,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/refresh_stubs_report.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/registration_pickup_commit.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/registry_claim_status.py": {
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/registry_prune.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/repo_ops.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/review_cli.py": {
+      "D102/D103": 4
+    },
+    "specy_road/bundled_scripts/review_defer.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/review_node.py": {
+      "PL": 7,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/review_packet.py": {
+      "PL": 5,
+      "B": 2,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/review_packet_nested.py": {
+      "PL": 2
+    },
+    "specy_road/bundled_scripts/review_packet_observed.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/review_packet_uncommitted_refs.py": {
+      "PL": 3,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/roadmap_apply_entries.py": {
+      "PL": 4
+    },
+    "specy_road/bundled_scripts/roadmap_chunk_atomic.py": {
+      "SIM": 2
+    },
+    "specy_road/bundled_scripts/roadmap_chunk_router.py": {
+      "PL": 8
+    },
+    "specy_road/bundled_scripts/roadmap_chunk_router_pick.py": {
+      "N": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/roadmap_chunk_utils.py": {
+      "PL": 1,
+      "RET": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/roadmap_codename_cap.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/roadmap_crud.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/roadmap_crud_argparse.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/roadmap_crud_chunk_report.py": {
+      "PL": 11,
+      "D102/D103": 6
+    },
+    "specy_road/bundled_scripts/roadmap_crud_delete.py": {
+      "PL": 5,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py": {
+      "PL": 6,
+      "D102/D103": 6
+    },
+    "specy_road/bundled_scripts/roadmap_crud_ops.py": {
+      "PL": 8,
+      "SIM": 1,
+      "D102/D103": 7
+    },
+    "specy_road/bundled_scripts/roadmap_crud_prepare.py": {
+      "PL": 3
+    },
+    "specy_road/bundled_scripts/roadmap_edit_fields.py": {
+      "C901": 1,
+      "PL": 4,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/roadmap_gui_lib.py": {
+      "C901": 1,
+      "PL": 1,
+      "SIM": 1,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/roadmap_gui_pr_pickers.py": {
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/roadmap_gui_remote.py": {
+      "PL": 9,
+      "SIM": 1,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/roadmap_gui_settings.py": {
+      "PL": 3,
+      "SIM": 2,
+      "D102/D103": 5
+    },
+    "specy_road/bundled_scripts/roadmap_gui_settings_scope.py": {
+      "PL": 3,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/roadmap_gui_tree.py": {
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/roadmap_id_rewrite_staging.py": {
+      "B": 1
+    },
+    "specy_road/bundled_scripts/roadmap_layout.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/roadmap_load.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/roadmap_load_at_ref.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/roadmap_move_id_forms.py": {
+      "PL": 2
+    },
+    "specy_road/bundled_scripts/roadmap_move_node.py": {
+      "PL": 2,
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/roadmap_node_keys.py": {
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/roadmap_outline_group.py": {
+      "PL": 1,
+      "D102/D103": 5
+    },
+    "specy_road/bundled_scripts/roadmap_outline_ops.py": {
+      "PL": 5,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/roadmap_query_cli.py": {
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/roadmap_rebalance.py": {
+      "C901": 1,
+      "PL": 3,
+      "SIM": 3,
+      "RET": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/role_prompt.py": {
+      "PL": 6,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/role_prompt_cli.py": {
+      "PL": 16
+    },
+    "specy_road/bundled_scripts/role_prompt_rca.py": {
+      "PL": 4,
+      "D102/D103": 4
+    },
+    "specy_road/bundled_scripts/role_prompt_stream.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/scaffold_planning.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/search_cli.py": {
+      "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/session_cli.py": {
+      "D102/D103": 5
+    },
+    "specy_road/bundled_scripts/session_plan.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/session_plan_render.py": {
+      "B": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/start_milestone_session.py": {
+      "PL": 1,
+      "B": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/touch_zone_tracked.py": {
+      "PL": 2,
+      "SIM": 1
+    },
+    "specy_road/bundled_scripts/update_specy_road.py": {
+      "PL": 6,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/upgrade.py": {
+      "PL": 3,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/upgrade_generated.py": {
+      "N": 1
+    },
+    "specy_road/bundled_scripts/upgrade_plan.py": {
+      "PL": 3,
+      "D102/D103": 4
+    },
+    "specy_road/bundled_scripts/validate_file_limits.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/validate_registry_overlap.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/validate_roadmap.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/validate_roadmap_checks.py": {
+      "PL": 2,
+      "D102/D103": 6
+    },
+    "specy_road/bundled_scripts/validate_self_heal.py": {
+      "C901": 1,
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/validate_stale_commands.py": {
+      "PL": 2,
+      "B": 1,
+      "SIM": 1,
+      "RET": 1,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/validate_touch_zones.py": {
+      "SIM": 1
+    },
+    "specy_road/bundled_scripts/worker_cli.py": {
+      "PL": 1,
+      "D102/D103": 20
+    },
+    "specy_road/bundled_scripts/worker_cli_args.py": {
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/worker_cli_render.py": {
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/worker_cli_sync.py": {
+      "D102/D103": 2
+    },
+    "specy_road/bundled_scripts/worktree_cli.py": {
+      "D102/D103": 3
+    },
+    "specy_road/claude_code_limits.py": {
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "specy_road/cli.py": {
+      "PL": 7,
+      "SIM": 1,
+      "D102/D103": 1
+    },
+    "specy_road/cli_init.py": {
+      "PL": 1
+    },
+    "specy_road/context_notice_cache.py": {
+      "PL": 1
+    },
+    "specy_road/decisions.py": {
+      "PL": 6,
+      "D102/D103": 13
+    },
+    "specy_road/digest.py": {
+      "PL": 6
+    },
+    "specy_road/do_next_milestone_pickup.py": {
+      "D102/D103": 1
+    },
+    "specy_road/doctor_worktrees.py": {
+      "PL": 1,
+      "B": 1,
+      "D102/D103": 2
+    },
+    "specy_road/feature_rm_registry.py": {
+      "PL": 5,
+      "SIM": 1
+    },
+    "specy_road/file_limits_engine.py": {
+      "D102/D103": 6
+    },
+    "specy_road/file_limits_jsx.py": {
+      "PL": 1
+    },
+    "specy_road/finish_ancestor_rollup.py": {
+      "PL": 10,
+      "D102/D103": 1
+    },
+    "specy_road/finish_implementation_check.py": {
+      "PL": 1
+    },
+    "specy_road/finish_land_deterministic.py": {
+      "PL": 1
+    },
+    "specy_road/finish_land_integration.py": {
+      "PL": 3
+    },
+    "specy_road/finish_land_local.py": {
+      "PL": 1
+    },
+    "specy_road/finish_milestone_rollout.py": {
+      "PL": 3,
+      "D102/D103": 1
+    },
+    "specy_road/finish_modes.py": {
+      "PL": 9,
+      "D102/D103": 1
+    },
+    "specy_road/finish_pr_body.py": {
+      "PL": 2
+    },
+    "specy_road/finish_pr_merge.py": {
+      "PL": 1
+    },
+    "specy_road/finish_task_gates.py": {
+      "B": 1,
+      "D102/D103": 1
+    },
+    "specy_road/finish_work_artifacts.py": {
+      "PL": 1
+    },
+    "specy_road/generated_files.py": {
+      "PL": 1
+    },
+    "specy_road/git_changed_paths.py": {
+      "PL": 1
+    },
+    "specy_road/git_subprocess.py": {
+      "D102/D103": 1
+    },
+    "specy_road/git_sync_status.py": {
+      "D102/D103": 6
+    },
+    "specy_road/git_workflow_config.py": {
+      "D102/D103": 2
+    },
+    "specy_road/governance_completion.py": {
+      "SIM": 2
+    },
+    "specy_road/gui_app.py": {
+      "PL": 2,
+      "D102/D103": 2
+    },
+    "specy_road/gui_app_api.py": {
+      "D102/D103": 1
+    },
+    "specy_road/gui_app_routes_archive.py": {
+      "PL": 4
+    },
+    "specy_road/gui_app_routes_brainstorm.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/gui_app_routes_core.py": {
+      "D102/D103": 1
+    },
+    "specy_road/gui_app_routes_nodes.py": {
+      "D102/D103": 1
+    },
+    "specy_road/gui_app_routes_planning.py": {
+      "B": 3,
+      "D102/D103": 6
+    },
+    "specy_road/gui_app_routes_publish.py": {
+      "D102/D103": 1
+    },
+    "specy_road/gui_app_routes_workers.py": {
+      "D102/D103": 1
+    },
+    "specy_road/gui_app_routes_workspace.py": {
+      "B": 1,
+      "SIM": 1,
+      "D102/D103": 2
+    },
+    "specy_road/harness_facts.py": {
+      "B": 1,
+      "D102/D103": 7
+    },
+    "specy_road/history_cache.py": {
+      "SIM": 1,
+      "D102/D103": 1
+    },
+    "specy_road/history_git.py": {
+      "PL": 3,
+      "D102/D103": 1
+    },
+    "specy_road/history_index.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/history_walk.py": {
+      "PL": 2,
+      "D102/D103": 2
+    },
+    "specy_road/ignore_report.py": {
+      "PL": 1,
+      "B": 1,
+      "N": 1
+    },
+    "specy_road/impact.py": {
+      "D102/D103": 1
+    },
+    "specy_road/init_project.py": {
+      "PL": 5,
+      "D102/D103": 4
+    },
+    "specy_road/integrity.py": {
+      "PL": 1,
+      "SIM": 1,
+      "D102/D103": 3
+    },
+    "specy_road/managed_block.py": {
+      "PL": 1
+    },
+    "specy_road/milestone_chunk_io.py": {
+      "PL": 4,
+      "D102/D103": 1
+    },
+    "specy_road/milestone_rollup_git.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
+    "specy_road/milestone_session.py": {
+      "PL": 1,
+      "SIM": 1,
+      "D102/D103": 5
+    },
+    "specy_road/model_profiles.py": {
+      "C901": 1,
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "specy_road/node_activity.py": {
+      "PL": 1
+    },
+    "specy_road/on_complete_pickup.py": {
+      "PL": 1,
+      "B": 1
+    },
+    "specy_road/on_complete_session.py": {
+      "PL": 1,
+      "SIM": 1
+    },
+    "specy_road/orchestrate_assign.py": {
+      "PL": 3,
+      "D102/D103": 12
+    },
+    "specy_road/orchestrate_plan.py": {
+      "D102/D103": 2
+    },
+    "specy_road/orchestration_config.py": {
+      "PL": 1,
+      "D102/D103": 5
+    },
+    "specy_road/orchestration_pinned.py": {
+      "PL": 2
+    },
+    "specy_road/orchestration_role_guard.py": {
+      "PL": 2,
+      "B": 1,
+      "D102/D103": 3
+    },
+    "specy_road/orphaned_claims.py": {
+      "PL": 1
+    },
+    "specy_road/pm_integration_registry.py": {
+      "PL": 3
+    },
+    "specy_road/pm_publish.py": {
+      "PL": 1
+    },
+    "specy_road/reconcile_branch.py": {
+      "PL": 1
+    },
+    "specy_road/red_green.py": {
+      "PL": 1
+    },
+    "specy_road/registry_remote_overlay.py": {
+      "PL": 3
+    },
+    "specy_road/registry_remote_overlay_merge.py": {
+      "D102/D103": 5
+    },
+    "specy_road/repo_lock.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "specy_road/review_answer.py": {
+      "PL": 1,
+      "B": 1
+    },
+    "specy_road/review_bookkeeping.py": {
+      "PL": 1
+    },
+    "specy_road/review_deferral.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "specy_road/review_delegate.py": {
+      "PL": 15,
+      "D102/D103": 3
+    },
+    "specy_road/review_eligible.py": {
+      "PL": 2
+    },
+    "specy_road/review_files.py": {
+      "PL": 3,
+      "D102/D103": 6
+    },
+    "specy_road/review_gate.py": {
+      "PL": 5,
+      "D102/D103": 7
+    },
+    "specy_road/review_gate_ready.py": {
+      "PL": 4,
+      "D102/D103": 3
+    },
+    "specy_road/review_lessons.py": {
+      "D102/D103": 2
+    },
+    "specy_road/review_lock.py": {
+      "PL": 2,
+      "N": 1
+    },
+    "specy_road/review_next_step.py": {
+      "PL": 2,
+      "D102/D103": 2
+    },
+    "specy_road/review_policy_pin.py": {
+      "N": 1,
+      "D102/D103": 2
+    },
+    "specy_road/review_policy_ref.py": {
+      "D102/D103": 1
+    },
+    "specy_road/review_pre_existing.py": {
+      "PL": 1
+    },
+    "specy_road/review_rca.py": {
+      "PL": 2,
+      "D102/D103": 7
+    },
+    "specy_road/review_ready_merge.py": {
+      "D102/D103": 2
+    },
+    "specy_road/review_record_rules.py": {
+      "PL": 3,
+      "SIM": 1,
+      "D102/D103": 1
+    },
+    "specy_road/review_record_write.py": {
+      "PL": 9,
+      "D102/D103": 1
+    },
+    "specy_road/review_rejected.py": {
+      "PL": 8,
+      "D102/D103": 3
+    },
+    "specy_road/review_resumed_delta.py": {
+      "PL": 3
+    },
+    "specy_road/review_run_status.py": {
+      "PL": 1,
+      "D102/D103": 3
+    },
+    "specy_road/review_signing.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/review_strong.py": {
+      "D102/D103": 1
+    },
+    "specy_road/review_tally.py": {
+      "PL": 9,
+      "D102/D103": 3
+    },
+    "specy_road/review_target.py": {
+      "D102/D103": 4
+    },
+    "specy_road/review_trend.py": {
+      "PL": 1,
+      "B": 1
+    },
+    "specy_road/review_usage.py": {
+      "D102/D103": 2
+    },
+    "specy_road/reviewer_run_failure.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "specy_road/rework_rca.py": {
+      "N": 1,
+      "D102/D103": 1
+    },
+    "specy_road/roster_generate.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
+    "specy_road/roster_local.py": {
+      "PL": 1
+    },
+    "specy_road/safe_write.py": {
+      "B": 1
+    },
+    "specy_road/search_corpus.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/search_fallback.py": {
+      "C901": 1,
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "specy_road/search_index.py": {
+      "PL": 2,
+      "SIM": 1,
+      "D102/D103": 1
+    },
+    "specy_road/search_sources.py": {
+      "PL": 5
+    },
+    "specy_road/session_presence.py": {
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "specy_road/shared_zones.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "specy_road/specyrd_cli.py": {
+      "C901": 1,
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "specy_road/specyrd_hooks.py": {
+      "D102/D103": 1
+    },
+    "specy_road/specyrd_init.py": {
+      "PL": 7,
+      "D102/D103": 1
+    },
+    "specy_road/specyrd_skills.py": {
+      "C901": 1,
+      "PL": 4,
+      "D102/D103": 5
+    },
+    "specy_road/steering_gate.py": {
+      "PL": 5
+    },
+    "specy_road/tool_call_guard.py": {
+      "C901": 2,
+      "PL": 10,
+      "D102/D103": 2
+    },
+    "specy_road/tool_call_guard_shapes.py": {
+      "B": 1
+    },
+    "specy_road/version_skew.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "specy_road/worker_adapter_base.py": {
+      "PL": 4,
+      "N": 1,
+      "D102/D103": 4
+    },
+    "specy_road/worker_adapter_claude.py": {
+      "PL": 3,
+      "D102/D103": 6
+    },
+    "specy_road/worker_adapter_codex.py": {
+      "PL": 4,
+      "D102/D103": 5
+    },
+    "specy_road/worker_adapter_cursor.py": {
+      "PL": 5,
+      "SIM": 1,
+      "D102/D103": 4
+    },
+    "specy_road/worker_adapter_parsers.py": {
+      "D102/D103": 1
+    },
+    "specy_road/worker_adapters.py": {
+      "D102/D103": 1
+    },
+    "specy_road/worker_exit.py": {
+      "PL": 1
+    },
+    "specy_road/worker_hook.py": {
+      "D102/D103": 1
+    },
+    "specy_road/worker_lease.py": {
+      "D102/D103": 2
+    },
+    "specy_road/worker_lock.py": {
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "specy_road/worker_models.py": {
+      "PL": 1
+    },
+    "specy_road/worker_ops_launch.py": {
+      "PL": 4
+    },
+    "specy_road/worker_ops_lifecycle.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "specy_road/worker_ops_message.py": {
+      "PL": 2,
+      "D102/D103": 3
+    },
+    "specy_road/worker_orphans.py": {
+      "D102/D103": 1
+    },
+    "specy_road/worker_outbox.py": {
+      "PL": 6,
+      "D102/D103": 2
+    },
+    "specy_road/worker_process.py": {
+      "PL": 2,
+      "SIM": 2,
+      "D102/D103": 3
+    },
+    "specy_road/worker_reconcile.py": {
+      "D102/D103": 1
+    },
+    "specy_road/worker_runner.py": {
+      "PL": 10,
+      "B": 1,
+      "SIM": 1,
+      "D102/D103": 4
+    },
+    "specy_road/worker_runner_ready.py": {
+      "PL": 3,
+      "SIM": 1,
+      "D102/D103": 1
+    },
+    "specy_road/worker_sandbox.py": {
+      "B": 1
+    },
+    "specy_road/worker_state.py": {
+      "PL": 3
+    },
+    "specy_road/worker_turn_check.py": {
+      "B": 1,
+      "D102/D103": 2
+    },
+    "specy_road/worker_usage_plausibility.py": {
+      "SIM": 1
+    },
+    "specy_road/worker_witness.py": {
+      "PL": 4,
+      "D102/D103": 1
+    },
+    "specy_road/workflow_prefs.py": {
+      "PL": 1
+    },
+    "specy_road/worktree_delete_set.py": {
+      "B": 1,
+      "D102/D103": 1
+    },
+    "specy_road/worktree_env.py": {
+      "PL": 2
+    },
+    "specy_road/written_entry.py": {
+      "D102/D103": 1
+    },
+    "tests/conftest.py": {
+      "PL": 7,
+      "D102/D103": 3
+    },
+    "tests/decisions_repo_helpers.py": {
+      "D102/D103": 3
+    },
+    "tests/fixture_guard.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
+    "tests/fixtures/worker_usage/sanitize_cursor_worker_log_turn.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
+    "tests/helpers.py": {
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "tests/integrity_repo_helpers.py": {
+      "D102/D103": 8
+    },
+    "tests/m13_7_ignore_helpers.py": {
+      "D102/D103": 5
+    },
+    "tests/milestone_repo_helpers.py": {
+      "D102/D103": 5
+    },
+    "tests/move_node_helpers.py": {
+      "PL": 2,
+      "B": 1,
+      "D102/D103": 9
+    },
+    "tests/parity/conftest.py": {
+      "D102/D103": 1
+    },
+    "tests/parity/help_surface.py": {
+      "PL": 1
+    },
+    "tests/parity/review_gate/test_review_gate_decision_table.py": {
+      "PL": 2,
+      "D102/D103": 19
+    },
+    "tests/parity/support.py": {
+      "PL": 3
+    },
+    "tests/parity/test_command_surface.py": {
+      "PL": 3,
+      "D102/D103": 6
+    },
+    "tests/parity/test_generated_outputs.py": {
+      "PL": 1,
+      "D102/D103": 3
+    },
+    "tests/parity/test_leaf_loop.py": {
+      "PL": 2,
+      "D102/D103": 5
+    },
+    "tests/pickup_repo_helpers.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "tests/review_delegate_helpers.py": {
+      "PL": 4,
+      "D102/D103": 7
+    },
+    "tests/review_repo_helpers.py": {
+      "PL": 3,
+      "D102/D103": 7
+    },
+    "tests/rework_rca_helpers.py": {
+      "D102/D103": 2
+    },
+    "tests/scenarios/milestone/repos.py": {
+      "D102/D103": 2
+    },
+    "tests/scenarios/roadmap_edit/test_archive_scaffold_update.py": {
+      "D102/D103": 9
+    },
+    "tests/scenarios/roadmap_edit/test_edit_fields.py": {
+      "D102/D103": 5
+    },
+    "tests/scenarios/roadmap_edit/test_outline.py": {
+      "D102/D103": 8
+    },
+    "tests/test_abort_task_pickup.py": {
+      "PL": 2,
+      "N": 1,
+      "D102/D103": 7
+    },
+    "tests/test_agent_ignores.py": {
+      "D102/D103": 4
+    },
+    "tests/test_agent_start_up_reading.py": {
+      "D102/D103": 2
+    },
+    "tests/test_agents_md_block.py": {
+      "PL": 1,
+      "D102/D103": 13
+    },
+    "tests/test_agents_md_report.py": {
+      "PL": 3,
+      "D102/D103": 4
+    },
+    "tests/test_archive_auto_and_cli.py": {
+      "D102/D103": 7
+    },
+    "tests/test_archive_deep.py": {
+      "PL": 2,
+      "D102/D103": 8
+    },
+    "tests/test_archive_dependencies.py": {
+      "PL": 7,
+      "D102/D103": 6
+    },
+    "tests/test_archive_git_provenance.py": {
+      "PL": 1,
+      "D102/D103": 5
+    },
+    "tests/test_archive_limits_and_locks.py": {
+      "PL": 5,
+      "D102/D103": 1
+    },
+    "tests/test_archive_ops.py": {
+      "PL": 4,
+      "D102/D103": 6
+    },
+    "tests/test_author_approach.py": {
+      "D102/D103": 11
+    },
+    "tests/test_baseline_gate.py": {
+      "D102/D103": 8
+    },
+    "tests/test_baseline_gate_cli.py": {
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "tests/test_behaviour_changes.py": {
+      "D102/D103": 2
+    },
+    "tests/test_brainstorm_batch_io.py": {
+      "D102/D103": 20
+    },
+    "tests/test_brainstorm_chat.py": {
+      "PL": 6,
+      "D102/D103": 9
+    },
+    "tests/test_brainstorm_cli.py": {
+      "PL": 3,
+      "D102/D103": 23
+    },
+    "tests/test_brainstorm_decisions.py": {
+      "PL": 2,
+      "D102/D103": 20
+    },
+    "tests/test_brainstorm_lenses.py": {
+      "SIM": 2,
+      "D102/D103": 11
+    },
+    "tests/test_brainstorm_promote.py": {
+      "PL": 6,
+      "D102/D103": 15
+    },
+    "tests/test_brainstorm_promote_judgement.py": {
+      "D102/D103": 12
+    },
+    "tests/test_brainstorm_promote_m37.py": {
+      "PL": 1,
+      "D102/D103": 9
+    },
+    "tests/test_brainstorm_promote_structured.py": {
+      "PL": 2,
+      "D102/D103": 13
+    },
+    "tests/test_brainstorm_prompt_fixes.py": {
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "tests/test_brainstorm_repo_evidence.py": {
+      "D102/D103": 15
+    },
+    "tests/test_brainstorm_search_providers.py": {
+      "PL": 1,
+      "D102/D103": 11
+    },
+    "tests/test_brainstorm_session.py": {
+      "D102/D103": 13
+    },
+    "tests/test_brainstorm_skill_first_call.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "tests/test_brainstorm_triage_m36.py": {
+      "PL": 1,
+      "D102/D103": 6
+    },
+    "tests/test_brainstorm_v2.py": {
+      "PL": 7,
+      "D102/D103": 20
+    },
+    "tests/test_brainstorm_verify.py": {
+      "PL": 6,
+      "D102/D103": 10
+    },
+    "tests/test_branch_cleanup.py": {
+      "D102/D103": 6
+    },
+    "tests/test_brief_call_sites.py": {
+      "D102/D103": 8
+    },
+    "tests/test_brief_dependency_context.py": {
+      "PL": 1,
+      "D102/D103": 13
+    },
+    "tests/test_brief_placeholder_intent.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
+    "tests/test_check_release_version.py": {
+      "D102/D103": 5
+    },
+    "tests/test_chore_garden_lifecycle.py": {
+      "PL": 1
+    },
+    "tests/test_chore_mode.py": {
+      "PL": 2,
+      "D102/D103": 11
+    },
+    "tests/test_claim_traps.py": {
+      "PL": 6,
+      "D102/D103": 4
+    },
+    "tests/test_claude_code_limits.py": {
+      "D102/D103": 11
+    },
+    "tests/test_claude_config_dir.py": {
+      "D102/D103": 9
+    },
+    "tests/test_cli.py": {
+      "PL": 7,
+      "D102/D103": 17
+    },
+    "tests/test_cli_help_text.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "tests/test_cli_imports_without_gui_extra.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "tests/test_cli_init.py": {
+      "PL": 1,
+      "D102/D103": 5
+    },
+    "tests/test_cli_loop_base_dependencies.py": {
+      "D102/D103": 1
+    },
+    "tests/test_cli_query_commands.py": {
+      "PL": 6,
+      "D102/D103": 12
+    },
+    "tests/test_cli_version.py": {
+      "PL": 2,
+      "D102/D103": 2
+    },
+    "tests/test_constitution_scaffold.py": {
+      "D102/D103": 6
+    },
+    "tests/test_context_meter_harnesses.py": {
+      "D102/D103": 5
+    },
+    "tests/test_context_meter_rules_memory_nested.py": {
+      "D102/D103": 8
+    },
+    "tests/test_context_regressions.py": {
+      "D102/D103": 2
+    },
+    "tests/test_contract_citations.py": {
+      "D102/D103": 10
+    },
+    "tests/test_cursor_display_name_cost.py": {
+      "PL": 5,
+      "D102/D103": 4
+    },
+    "tests/test_cursor_usage_cost.py": {
+      "PL": 9,
+      "D102/D103": 8
+    },
+    "tests/test_cursor_usage_segments.py": {
+      "PL": 10,
+      "D102/D103": 10
+    },
+    "tests/test_decision_preferences.py": {
+      "D102/D103": 10
+    },
+    "tests/test_decisions.py": {
+      "PL": 1,
+      "D102/D103": 9
+    },
+    "tests/test_delta_review.py": {
+      "PL": 2,
+      "D102/D103": 14
+    },
+    "tests/test_dependency_rollup_satisfaction.py": {
+      "D102/D103": 5
+    },
+    "tests/test_digest.py": {
+      "PL": 5
+    },
+    "tests/test_digest_cold_warm.py": {
+      "D102/D103": 2
+    },
+    "tests/test_digest_quality.py": {
+      "PL": 3
+    },
+    "tests/test_do_next_finished_unmerged.py": {
+      "D102/D103": 6
+    },
+    "tests/test_do_next_gate.py": {
+      "D102/D103": 3
+    },
+    "tests/test_do_next_prompt.py": {
+      "D102/D103": 1
+    },
+    "tests/test_do_next_queue.py": {
+      "D102/D103": 16
+    },
+    "tests/test_do_next_task_branch_resume.py": {
+      "PL": 2,
+      "D102/D103": 5
+    },
+    "tests/test_do_next_task_git_helpers.py": {
+      "D102/D103": 6
+    },
+    "tests/test_do_next_task_pickup.py": {
+      "D102/D103": 2
+    },
+    "tests/test_do_next_task_self_heal.py": {
+      "D102/D103": 7
+    },
+    "tests/test_do_next_virtual_pickup.py": {
+      "PL": 2,
+      "D102/D103": 5
+    },
+    "tests/test_doc_links.py": {
+      "D102/D103": 3
+    },
+    "tests/test_docs_install_extras.py": {
+      "D102/D103": 1
+    },
+    "tests/test_docs_rc_install_recipe.py": {
+      "PL": 1,
+      "D102/D103": 3
+    },
+    "tests/test_doctor.py": {
+      "PL": 5,
+      "D102/D103": 9
+    },
+    "tests/test_doctor_classification.py": {
+      "B": 1,
+      "D102/D103": 2
+    },
+    "tests/test_doctor_live.py": {
+      "D102/D103": 9
+    },
+    "tests/test_doctor_version_skew.py": {
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "tests/test_dynamic_routing_reviewers.py": {
+      "PL": 3
+    },
+    "tests/test_effective_model.py": {
+      "D102/D103": 1
+    },
+    "tests/test_enforced_rules_pointers.py": {
+      "D102/D103": 3
+    },
+    "tests/test_export_roadmap_md.py": {
+      "PL": 1,
+      "D102/D103": 7
+    },
+    "tests/test_file_limits_engine.py": {
+      "PL": 1,
+      "D102/D103": 9
+    },
+    "tests/test_file_limits_gitignore.py": {
+      "D102/D103": 3
+    },
+    "tests/test_file_limits_js.py": {
+      "D102/D103": 5
+    },
+    "tests/test_finish_ancestor_rollup.py": {
+      "D102/D103": 5
+    },
+    "tests/test_finish_bookkeeping_wiring.py": {
+      "D102/D103": 2
+    },
+    "tests/test_finish_config_preflight.py": {
+      "PL": 2
+    },
+    "tests/test_finish_implementation_check.py": {
+      "D102/D103": 6
+    },
+    "tests/test_finish_land_check.py": {
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "tests/test_finish_land_deterministic.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
+    "tests/test_finish_land_regenerates.py": {
+      "D102/D103": 1
+    },
+    "tests/test_finish_merge_mode.py": {
+      "D102/D103": 4
+    },
+    "tests/test_finish_modes_pr_body.py": {
+      "D102/D103": 2
+    },
+    "tests/test_finish_on_complete_override.py": {
+      "D102/D103": 4
+    },
+    "tests/test_finish_pr_body.py": {
+      "D102/D103": 4
+    },
+    "tests/test_finish_pr_mode_merge.py": {
+      "D102/D103": 2
+    },
+    "tests/test_finish_scaffold_planning.py": {
+      "D102/D103": 2
+    },
+    "tests/test_finish_task_commands.py": {
+      "PL": 2,
+      "D102/D103": 7
+    },
+    "tests/test_finish_work_cleanup.py": {
+      "PL": 36,
+      "D102/D103": 10
+    },
+    "tests/test_fix_round_class_audit.py": {
+      "PL": 1,
+      "D102/D103": 6
+    },
+    "tests/test_fixture_guard.py": {
+      "PL": 1,
+      "D102/D103": 3
+    },
+    "tests/test_gate_config_agree.py": {
+      "D102/D103": 4
+    },
+    "tests/test_generate_brief.py": {
+      "PL": 15,
+      "D102/D103": 9
+    },
+    "tests/test_git_milestone_delivery.py": {
+      "D102/D103": 2
+    },
+    "tests/test_git_subprocess.py": {
+      "D102/D103": 6
+    },
+    "tests/test_git_workflow_remote_tip.py": {
+      "D102/D103": 4
+    },
+    "tests/test_governance_completion.py": {
+      "PL": 3,
+      "D102/D103": 6
+    },
+    "tests/test_grind_session.py": {
+      "PL": 7,
+      "D102/D103": 15
+    },
+    "tests/test_grind_session_claude.py": {
+      "D102/D103": 1
+    },
+    "tests/test_grind_session_cleanup.py": {
+      "D102/D103": 16
+    },
+    "tests/test_grind_session_implement.py": {
+      "PL": 5,
+      "D102/D103": 12
+    },
+    "tests/test_grind_session_implement_resilience.py": {
+      "PL": 6,
+      "D102/D103": 9
+    },
+    "tests/test_grind_session_in_flight.py": {
+      "PL": 2,
+      "D102/D103": 12
+    },
+    "tests/test_grind_session_resume_command.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "tests/test_grind_session_step.py": {
+      "PL": 3,
+      "D102/D103": 18
+    },
+    "tests/test_gui_app.py": {
+      "PL": 26,
+      "D102/D103": 16
+    },
+    "tests/test_gui_app_brainstorm.py": {
+      "PL": 23,
+      "D102/D103": 17
+    },
+    "tests/test_gui_app_milestone_lock.py": {
+      "PL": 7,
+      "D102/D103": 5
+    },
+    "tests/test_gui_app_mutations.py": {
+      "PL": 22,
+      "D102/D103": 13
+    },
+    "tests/test_gui_app_routes_nodes_errors.py": {
+      "PL": 10,
+      "D102/D103": 2
+    },
+    "tests/test_gui_app_workers.py": {
+      "PL": 12,
+      "D102/D103": 6
+    },
+    "tests/test_gui_archive_routes.py": {
+      "PL": 18,
+      "D102/D103": 16
+    },
+    "tests/test_gui_node_write_slot.py": {
+      "PL": 7,
+      "D102/D103": 3
+    },
+    "tests/test_gui_outline_contract.py": {
+      "PL": 22,
+      "D102/D103": 20
+    },
+    "tests/test_gui_safe_saves.py": {
+      "PL": 13,
+      "D102/D103": 6
+    },
+    "tests/test_gui_workspace_file.py": {
+      "PL": 10,
+      "D102/D103": 9
+    },
+    "tests/test_guidance_bypass_roles.py": {
+      "PL": 6,
+      "D102/D103": 24
+    },
+    "tests/test_harness_facts.py": {
+      "D102/D103": 27
+    },
+    "tests/test_harness_launch.py": {
+      "D102/D103": 12
+    },
+    "tests/test_headless_limits_denials.py": {
+      "D102/D103": 8
+    },
+    "tests/test_history_cache.py": {
+      "PL": 1
+    },
+    "tests/test_history_cli.py": {
+      "PL": 4
+    },
+    "tests/test_history_events.py": {
+      "D102/D103": 17
+    },
+    "tests/test_history_walk.py": {
+      "PL": 3,
+      "D102/D103": 9
+    },
+    "tests/test_hook_adapters.py": {
+      "PL": 4,
+      "D102/D103": 7
+    },
+    "tests/test_human_acceptance.py": {
+      "D102/D103": 3
+    },
+    "tests/test_impact.py": {
+      "PL": 1,
+      "D102/D103": 9
+    },
+    "tests/test_init_profiles_subset.py": {
+      "PL": 4,
+      "D102/D103": 9
+    },
+    "tests/test_init_project.py": {
+      "PL": 3,
+      "D102/D103": 2
+    },
+    "tests/test_init_project_first_run.py": {
+      "D102/D103": 1
+    },
+    "tests/test_init_project_gitignore.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "tests/test_init_project_reports.py": {
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "tests/test_integrity.py": {
+      "D102/D103": 12
+    },
+    "tests/test_integrity_gate.py": {
+      "D102/D103": 11
+    },
+    "tests/test_integrity_python.py": {
+      "D102/D103": 12
+    },
+    "tests/test_integrity_ratchet.py": {
+      "D102/D103": 16
+    },
+    "tests/test_lean_gates.py": {
+      "PL": 1,
+      "D102/D103": 14
+    },
+    "tests/test_lean_rules.py": {
+      "PL": 3,
+      "D102/D103": 8
+    },
+    "tests/test_line_width_baseline.py": {
+      "D102/D103": 3
+    },
+    "tests/test_linked_worktrees_root.py": {
+      "D102/D103": 19
+    },
+    "tests/test_llm_throughput.py": {
+      "PL": 4,
+      "D102/D103": 12
+    },
+    "tests/test_m11_27_small_cli_fixes.py": {
+      "D102/D103": 6
+    },
+    "tests/test_m13_12_context_cache.py": {
+      "D102/D103": 14
+    },
+    "tests/test_m13_12_quieter_notices.py": {
+      "PL": 2,
+      "D102/D103": 12
+    },
+    "tests/test_m13_12_untrack_command.py": {
+      "D102/D103": 3
+    },
+    "tests/test_m13_7_gitignore_symlinks.py": {
+      "D102/D103": 1
+    },
+    "tests/test_m13_7_notices.py": {
+      "PL": 1,
+      "D102/D103": 13
+    },
+    "tests/test_managed_block.py": {
+      "D102/D103": 9
+    },
+    "tests/test_mark_implementation_reviewed_gate.py": {
+      "PL": 5,
+      "D102/D103": 9
+    },
+    "tests/test_milestone_full_review.py": {
+      "PL": 2,
+      "D102/D103": 10
+    },
+    "tests/test_milestone_lock.py": {
+      "D102/D103": 4
+    },
+    "tests/test_milestone_review_hold_notice.py": {
+      "D102/D103": 5
+    },
+    "tests/test_milestone_session.py": {
+      "D102/D103": 3
+    },
+    "tests/test_milestone_subtree.py": {
+      "D102/D103": 5
+    },
+    "tests/test_model_names.py": {
+      "D102/D103": 1
+    },
+    "tests/test_model_profile_aliases.py": {
+      "D102/D103": 4
+    },
+    "tests/test_models_and_prompt.py": {
+      "PL": 2,
+      "D102/D103": 25
+    },
+    "tests/test_move_node_cli.py": {
+      "D102/D103": 6
+    },
+    "tests/test_move_node_subtree.py": {
+      "D102/D103": 7
+    },
+    "tests/test_nested_repo_finish.py": {
+      "B": 1,
+      "D102/D103": 12
+    },
+    "tests/test_nested_repo_land_modes.py": {
+      "PL": 1,
+      "D102/D103": 10
+    },
+    "tests/test_nested_repo_worktrees.py": {
+      "D102/D103": 13
+    },
+    "tests/test_nested_unpushed_report.py": {
+      "D102/D103": 9
+    },
+    "tests/test_nested_zone_paths.py": {
+      "D102/D103": 3
+    },
+    "tests/test_node_activity.py": {
+      "PL": 2,
+      "D102/D103": 7
+    },
+    "tests/test_node_routing_fields.py": {
+      "D102/D103": 4
+    },
+    "tests/test_on_complete.py": {
+      "PL": 1,
+      "D102/D103": 10
+    },
+    "tests/test_on_complete_session_tracked.py": {
+      "D102/D103": 3
+    },
+    "tests/test_one_readiness_rule.py": {
+      "D102/D103": 2
+    },
+    "tests/test_ops_writers_refuse_links.py": {
+      "PL": 4
+    },
+    "tests/test_orchestrate_plan.py": {
+      "D102/D103": 15
+    },
+    "tests/test_orchestrate_spread.py": {
+      "D102/D103": 5
+    },
+    "tests/test_orchestration_config.py": {
+      "PL": 7,
+      "D102/D103": 12
+    },
+    "tests/test_orchestration_guard_hooks.py": {
+      "PL": 8,
+      "D102/D103": 13
+    },
+    "tests/test_orphaned_claims.py": {
+      "D102/D103": 5
+    },
+    "tests/test_outline_group_cli.py": {
+      "B": 1,
+      "D102/D103": 10
+    },
+    "tests/test_outline_renumber.py": {
+      "D102/D103": 5
+    },
+    "tests/test_package_data_dotfiles.py": {
+      "D102/D103": 1
+    },
+    "tests/test_package_data_schemas.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "tests/test_phase_root_chunk_routing.py": {
+      "D102/D103": 6
+    },
+    "tests/test_pick_ordering.py": {
+      "D102/D103": 10
+    },
+    "tests/test_pickup_orchestration_hint.py": {
+      "D102/D103": 3
+    },
+    "tests/test_pickup_register_digest.py": {
+      "PL": 2,
+      "D102/D103": 2
+    },
+    "tests/test_pickup_second_claim_guard.py": {
+      "PL": 1,
+      "D102/D103": 5
+    },
+    "tests/test_pickup_worktree.py": {
+      "D102/D103": 4
+    },
+    "tests/test_planned_test_changes.py": {
+      "PL": 3,
+      "D102/D103": 12
+    },
+    "tests/test_planning_artifacts.py": {
+      "D102/D103": 8
+    },
+    "tests/test_planning_sheet_bootstrap.py": {
+      "D102/D103": 11
+    },
+    "tests/test_pm_gui_concurrency_autoff.py": {
+      "PL": 20
+    },
+    "tests/test_pm_gui_field_repros.py": {
+      "PL": 6
+    },
+    "tests/test_pm_gui_fingerprint.py": {
+      "PL": 12,
+      "D102/D103": 5
+    },
+    "tests/test_pm_gui_git_remote_verify.py": {
+      "D102/D103": 5
+    },
+    "tests/test_pm_integration_registry.py": {
+      "D102/D103": 3
+    },
+    "tests/test_pm_publish.py": {
+      "PL": 9,
+      "D102/D103": 13
+    },
+    "tests/test_post_release_readme_cleanup.py": {
+      "D102/D103": 1
+    },
+    "tests/test_prerelease_apps.py": {
+      "PL": 2
+    },
+    "tests/test_prerelease_files.py": {
+      "PL": 2,
+      "D102/D103": 2
+    },
+    "tests/test_prerelease_review.py": {
+      "D102/D103": 4
+    },
+    "tests/test_prerelease_s2.py": {
+      "D102/D103": 2
+    },
+    "tests/test_prerelease_s5.py": {
+      "PL": 1,
+      "D102/D103": 3
+    },
+    "tests/test_prerelease_workers.py": {
+      "D102/D103": 1
+    },
+    "tests/test_project_layouts.py": {
+      "PL": 17
+    },
+    "tests/test_project_layouts_outside.py": {
+      "PL": 1,
+      "D102/D103": 6
+    },
+    "tests/test_project_preferences.py": {
+      "D102/D103": 10
+    },
+    "tests/test_prompt_channel_cli_run.py": {
+      "PL": 4,
+      "D102/D103": 22
+    },
+    "tests/test_ready_changelog_warning.py": {
+      "PL": 2,
+      "D102/D103": 2
+    },
+    "tests/test_ready_command.py": {
+      "PL": 6,
+      "D102/D103": 22
+    },
+    "tests/test_ready_empty_leaf.py": {
+      "D102/D103": 4
+    },
+    "tests/test_reconcile_branch.py": {
+      "PL": 5,
+      "D102/D103": 4
+    },
+    "tests/test_reconcile_milestone_status.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "tests/test_reconcile_milestone_status_errors.py": {
+      "PL": 1,
+      "N": 2
+    },
+    "tests/test_red_green.py": {
+      "D102/D103": 9
+    },
+    "tests/test_refresh_profiles_roster.py": {
+      "D102/D103": 6
+    },
+    "tests/test_refresh_schemas.py": {
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "tests/test_refresh_stubs.py": {
+      "PL": 2,
+      "D102/D103": 10
+    },
+    "tests/test_refusals_name_their_fix.py": {
+      "PL": 3,
+      "D102/D103": 7
+    },
+    "tests/test_registry_commit_scope.py": {
+      "PL": 3,
+      "D102/D103": 2
+    },
+    "tests/test_registry_overlap_warnings.py": {
+      "PL": 3,
+      "D102/D103": 9
+    },
+    "tests/test_registry_prune.py": {
+      "D102/D103": 8
+    },
+    "tests/test_registry_remote_overlay.py": {
+      "D102/D103": 8
+    },
+    "tests/test_registry_remote_overlay_sync.py": {
+      "PL": 5,
+      "D102/D103": 11
+    },
+    "tests/test_registry_yaml.py": {
+      "PL": 2,
+      "D102/D103": 3
+    },
+    "tests/test_release_harness.py": {
+      "PL": 6,
+      "D102/D103": 4
+    },
+    "tests/test_remove_node.py": {
+      "PL": 3,
+      "D102/D103": 9
+    },
+    "tests/test_rename_refs.py": {
+      "PL": 2,
+      "D102/D103": 7
+    },
+    "tests/test_repo_lock.py": {
+      "PL": 1,
+      "SIM": 2,
+      "D102/D103": 5
+    },
+    "tests/test_research_register.py": {
+      "PL": 1,
+      "B": 1,
+      "D102/D103": 1
+    },
+    "tests/test_resumed_delta_review.py": {
+      "PL": 1,
+      "D102/D103": 13
+    },
+    "tests/test_review_answer.py": {
+      "PL": 2,
+      "D102/D103": 4
+    },
+    "tests/test_review_attempt_span.py": {
+      "D102/D103": 5
+    },
+    "tests/test_review_cli.py": {
+      "PL": 4,
+      "D102/D103": 16
+    },
+    "tests/test_review_concurrent_writers.py": {
+      "D102/D103": 4
+    },
+    "tests/test_review_defer.py": {
+      "PL": 1,
+      "D102/D103": 10
+    },
+    "tests/test_review_defer_rounds.py": {
+      "PL": 10,
+      "D102/D103": 12
+    },
+    "tests/test_review_delegate.py": {
+      "PL": 4,
+      "D102/D103": 21
+    },
+    "tests/test_review_delegate_claude_schema.py": {
+      "D102/D103": 3
+    },
+    "tests/test_review_delegate_repair.py": {
+      "PL": 1,
+      "D102/D103": 11
+    },
+    "tests/test_review_effort_study.py": {
+      "D102/D103": 18
+    },
+    "tests/test_review_eligible.py": {
+      "D102/D103": 7
+    },
+    "tests/test_review_evidence.py": {
+      "D102/D103": 18
+    },
+    "tests/test_review_file_case.py": {
+      "D102/D103": 6
+    },
+    "tests/test_review_files.py": {
+      "PL": 11,
+      "D102/D103": 18
+    },
+    "tests/test_review_friction_m15_17.py": {
+      "PL": 1,
+      "D102/D103": 14
+    },
+    "tests/test_review_gate.py": {
+      "PL": 2,
+      "D102/D103": 12
+    },
+    "tests/test_review_gate_ready_author.py": {
+      "PL": 2,
+      "D102/D103": 7
+    },
+    "tests/test_review_hardening.py": {
+      "PL": 9,
+      "D102/D103": 20
+    },
+    "tests/test_review_lessons.py": {
+      "D102/D103": 6
+    },
+    "tests/test_review_next_step.py": {
+      "D102/D103": 9
+    },
+    "tests/test_review_node.py": {
+      "PL": 5,
+      "D102/D103": 16
+    },
+    "tests/test_review_packet.py": {
+      "PL": 1,
+      "D102/D103": 20
+    },
+    "tests/test_review_policy_pin.py": {
+      "PL": 5,
+      "D102/D103": 10
+    },
+    "tests/test_review_policy_ref_no_remote_head.py": {
+      "D102/D103": 4
+    },
+    "tests/test_review_pre_existing.py": {
+      "D102/D103": 5
+    },
+    "tests/test_review_rca.py": {
+      "PL": 3,
+      "D102/D103": 13
+    },
+    "tests/test_review_record_caller.py": {
+      "PL": 3,
+      "D102/D103": 9
+    },
+    "tests/test_review_record_rules.py": {
+      "D102/D103": 21
+    },
+    "tests/test_review_record_write.py": {
+      "D102/D103": 18
+    },
+    "tests/test_review_record_write_closure.py": {
+      "D102/D103": 3
+    },
+    "tests/test_review_rejected_m15_33.py": {
+      "D102/D103": 11
+    },
+    "tests/test_review_round2_routing.py": {
+      "D102/D103": 10
+    },
+    "tests/test_review_round4_sol.py": {
+      "PL": 2,
+      "D102/D103": 21
+    },
+    "tests/test_review_round4_sol_b.py": {
+      "PL": 3,
+      "D102/D103": 6
+    },
+    "tests/test_review_round5.py": {
+      "PL": 7,
+      "D102/D103": 18
+    },
+    "tests/test_review_round6_brainstorm.py": {
+      "PL": 7,
+      "D102/D103": 13
+    },
+    "tests/test_review_round6_docs.py": {
+      "D102/D103": 10
+    },
+    "tests/test_review_round6_evidence.py": {
+      "PL": 1,
+      "D102/D103": 13
+    },
+    "tests/test_review_round6_guard.py": {
+      "PL": 2,
+      "D102/D103": 16
+    },
+    "tests/test_review_round6_ops.py": {
+      "PL": 1,
+      "SIM": 1,
+      "D102/D103": 17
+    },
+    "tests/test_review_round6_policy.py": {
+      "D102/D103": 13
+    },
+    "tests/test_review_round6_runner.py": {
+      "PL": 1,
+      "D102/D103": 11
+    },
+    "tests/test_review_run_lows_rc5.py": {
+      "PL": 1,
+      "D102/D103": 5
+    },
+    "tests/test_review_run_state_trusted.py": {
+      "D102/D103": 2
+    },
+    "tests/test_review_signing.py": {
+      "PL": 8,
+      "D102/D103": 9
+    },
+    "tests/test_review_strict_schema_removals.py": {
+      "D102/D103": 3
+    },
+    "tests/test_review_tally.py": {
+      "D102/D103": 6
+    },
+    "tests/test_review_total_parsing.py": {
+      "D102/D103": 3
+    },
+    "tests/test_review_trend.py": {
+      "PL": 1,
+      "D102/D103": 14
+    },
+    "tests/test_review_tripwire_symlinks.py": {
+      "D102/D103": 3
+    },
+    "tests/test_review_untrusted_output.py": {
+      "PL": 1,
+      "D102/D103": 6
+    },
+    "tests/test_review_usage.py": {
+      "PL": 5,
+      "D102/D103": 2
+    },
+    "tests/test_review_writers_refuse_links.py": {
+      "SIM": 1,
+      "D102/D103": 27
+    },
+    "tests/test_reviewer_auth.py": {
+      "PL": 3,
+      "D102/D103": 9
+    },
+    "tests/test_rework_findings_in_prompt.py": {
+      "D102/D103": 10
+    },
+    "tests/test_rework_rca.py": {
+      "D102/D103": 9
+    },
+    "tests/test_roadmap_apply.py": {
+      "PL": 6,
+      "D102/D103": 16
+    },
+    "tests/test_roadmap_chunk_router.py": {
+      "PL": 6,
+      "N": 1,
+      "D102/D103": 9
+    },
+    "tests/test_roadmap_crud.py": {
+      "PL": 4,
+      "D102/D103": 19
+    },
+    "tests/test_roadmap_crud_atomicity.py": {
+      "PL": 4,
+      "D102/D103": 9
+    },
+    "tests/test_roadmap_crud_dependencies.py": {
+      "D102/D103": 6
+    },
+    "tests/test_roadmap_crud_edit_add_remove.py": {
+      "D102/D103": 6
+    },
+    "tests/test_roadmap_crud_edit_claim_zones.py": {
+      "D102/D103": 4
+    },
+    "tests/test_roadmap_crud_edit_node_chunks.py": {
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "tests/test_roadmap_crud_ops.py": {
+      "D102/D103": 3
+    },
+    "tests/test_roadmap_edit_fields.py": {
+      "D102/D103": 6
+    },
+    "tests/test_roadmap_explain.py": {
+      "PL": 1,
+      "D102/D103": 11
+    },
+    "tests/test_roadmap_gui_lib.py": {
+      "D102/D103": 7
+    },
+    "tests/test_roadmap_gui_pr_pickers.py": {
+      "PL": 2,
+      "D102/D103": 4
+    },
+    "tests/test_roadmap_gui_remote.py": {
+      "D102/D103": 13
+    },
+    "tests/test_roadmap_gui_tree.py": {
+      "D102/D103": 6
+    },
+    "tests/test_roadmap_layout.py": {
+      "PL": 5,
+      "D102/D103": 3
+    },
+    "tests/test_roadmap_load.py": {
+      "D102/D103": 4
+    },
+    "tests/test_roadmap_rebalance.py": {
+      "PL": 3,
+      "D102/D103": 5
+    },
+    "tests/test_role_prompt_file_limits.py": {
+      "D102/D103": 2
+    },
+    "tests/test_role_prompt_reviewer.py": {
+      "D102/D103": 1
+    },
+    "tests/test_rollup_branch_cleanup.py": {
+      "D102/D103": 3
+    },
+    "tests/test_roster_availability.py": {
+      "D102/D103": 6
+    },
+    "tests/test_roster_generate.py": {
+      "PL": 2,
+      "D102/D103": 17
+    },
+    "tests/test_roster_harness_model.py": {
+      "D102/D103": 8
+    },
+    "tests/test_roster_source.py": {
+      "PL": 2,
+      "D102/D103": 2
+    },
+    "tests/test_roster_worktree_dry_run.py": {
+      "PL": 2,
+      "D102/D103": 11
+    },
+    "tests/test_run_record_no_false_failure.py": {
+      "D102/D103": 4
+    },
+    "tests/test_running_toolkit_version.py": {
+      "PL": 5,
+      "D102/D103": 8
+    },
+    "tests/test_runtime_dirs_not_dirty.py": {
+      "D102/D103": 4
+    },
+    "tests/test_runtime_paths.py": {
+      "PL": 1,
+      "D102/D103": 9
+    },
+    "tests/test_safe_write.py": {
+      "PL": 3,
+      "D102/D103": 8
+    },
+    "tests/test_sandbox_setup_polish.py": {
+      "D102/D103": 5
+    },
+    "tests/test_scaffold_planning.py": {
+      "D102/D103": 2
+    },
+    "tests/test_schema_revision.py": {
+      "D102/D103": 10
+    },
+    "tests/test_search_cli.py": {
+      "PL": 5,
+      "D102/D103": 14
+    },
+    "tests/test_search_corpus.py": {
+      "PL": 4,
+      "D102/D103": 17
+    },
+    "tests/test_search_index.py": {
+      "PL": 4,
+      "D102/D103": 22
+    },
+    "tests/test_session_end_others.py": {
+      "PL": 2,
+      "D102/D103": 2
+    },
+    "tests/test_session_overlap.py": {
+      "D102/D103": 6
+    },
+    "tests/test_session_plan.py": {
+      "PL": 9,
+      "D102/D103": 13
+    },
+    "tests/test_session_plan_git.py": {
+      "D102/D103": 5
+    },
+    "tests/test_session_plan_touch_zones.py": {
+      "D102/D103": 4
+    },
+    "tests/test_session_presence.py": {
+      "PL": 1,
+      "D102/D103": 18
+    },
+    "tests/test_set_gate_status.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "tests/test_setup_writers_refuse_links.py": {
+      "D102/D103": 9
+    },
+    "tests/test_shared_checkout_guidance.py": {
+      "D102/D103": 3
+    },
+    "tests/test_shared_zones.py": {
+      "D102/D103": 14
+    },
+    "tests/test_sheet_edits_keep_approvals.py": {
+      "D102/D103": 7
+    },
+    "tests/test_sibling_repo_approvals.py": {
+      "D102/D103": 10
+    },
+    "tests/test_skill_mirrors.py": {
+      "D102/D103": 8
+    },
+    "tests/test_specyrd_init.py": {
+      "PL": 6,
+      "D102/D103": 14
+    },
+    "tests/test_specyrd_init_guide_block.py": {
+      "D102/D103": 4
+    },
+    "tests/test_specyrd_skills.py": {
+      "PL": 3,
+      "D102/D103": 10
+    },
+    "tests/test_start_milestone_session_reentry.py": {
+      "PL": 1
+    },
+    "tests/test_steering_file_guard.py": {
+      "PL": 2,
+      "D102/D103": 3
+    },
+    "tests/test_strong_review.py": {
+      "PL": 2,
+      "D102/D103": 15
+    },
+    "tests/test_sync_planning_outline.py": {
+      "D102/D103": 3
+    },
+    "tests/test_text_sections.py": {
+      "D102/D103": 18
+    },
+    "tests/test_tool_call_guard.py": {
+      "PL": 9,
+      "D102/D103": 9
+    },
+    "tests/test_touch_zone_tracked.py": {
+      "PL": 1,
+      "D102/D103": 16
+    },
+    "tests/test_unauthored_leaf_guard.py": {
+      "PL": 2,
+      "D102/D103": 18
+    },
+    "tests/test_update_specy_road.py": {
+      "D102/D103": 8
+    },
+    "tests/test_upgrade.py": {
+      "PL": 4,
+      "D102/D103": 4
+    },
+    "tests/test_upgrade_file_limits_notice.py": {
+      "D102/D103": 1
+    },
+    "tests/test_upgrade_parity.py": {
+      "D102/D103": 3
+    },
+    "tests/test_upgrade_plan_parity.py": {
+      "D102/D103": 1
+    },
+    "tests/test_upgrade_preview.py": {
+      "PL": 20,
+      "D102/D103": 10
+    },
+    "tests/test_upgrade_work_templates.py": {
+      "D102/D103": 5
+    },
+    "tests/test_validate_acceptance_coverage.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
+    "tests/test_validate_file_limits.py": {
+      "D102/D103": 3
+    },
+    "tests/test_validate_gates.py": {
+      "D102/D103": 3
+    },
+    "tests/test_validate_inherited_cycles.py": {
+      "D102/D103": 2
+    },
+    "tests/test_validate_roadmap.py": {
+      "PL": 3,
+      "D102/D103": 18
+    },
+    "tests/test_validate_self_heal.py": {
+      "D102/D103": 3
+    },
+    "tests/test_validate_stale_commands.py": {
+      "PL": 2,
+      "D102/D103": 9
+    },
+    "tests/test_validate_strict.py": {
+      "PL": 3,
+      "D102/D103": 2
+    },
+    "tests/test_validate_touch_zones.py": {
+      "D102/D103": 14
+    },
+    "tests/test_verify_cmd.py": {
+      "D102/D103": 4
+    },
+    "tests/test_verify_wheel_contents.py": {
+      "D102/D103": 4
+    },
+    "tests/test_version_skew_install.py": {
+      "D102/D103": 9
+    },
+    "tests/test_why_blocked_plan_holds.py": {
+      "D102/D103": 5
+    },
+    "tests/test_worker_adapters.py": {
+      "PL": 2,
+      "D102/D103": 19
+    },
+    "tests/test_worker_claude_auth.py": {
+      "PL": 6,
+      "D102/D103": 4
+    },
+    "tests/test_worker_cli.py": {
+      "PL": 12,
+      "D102/D103": 11
+    },
+    "tests/test_worker_cli_fixes.py": {
+      "D102/D103": 17
+    },
+    "tests/test_worker_faults.py": {
+      "PL": 10,
+      "D102/D103": 6
+    },
+    "tests/test_worker_handoff_writable.py": {
+      "D102/D103": 5
+    },
+    "tests/test_worker_m310_reconcile_status.py": {
+      "D102/D103": 6
+    },
+    "tests/test_worker_max_workers_global.py": {
+      "PL": 1,
+      "D102/D103": 21
+    },
+    "tests/test_worker_orphans.py": {
+      "PL": 2,
+      "D102/D103": 12
+    },
+    "tests/test_worker_queue_message.py": {
+      "PL": 4,
+      "D102/D103": 7
+    },
+    "tests/test_worker_reconcile_contract.py": {
+      "D102/D103": 6
+    },
+    "tests/test_worker_reconcile_merged.py": {
+      "D102/D103": 6
+    },
+    "tests/test_worker_resume_failed.py": {
+      "D102/D103": 7
+    },
+    "tests/test_worker_resume_permissions.py": {
+      "PL": 2,
+      "D102/D103": 15
+    },
+    "tests/test_worker_review_round1.py": {
+      "PL": 3,
+      "D102/D103": 9
+    },
+    "tests/test_worker_review_round2.py": {
+      "D102/D103": 17
+    },
+    "tests/test_worker_reviews_dir_before_launch.py": {
+      "D102/D103": 2
+    },
+    "tests/test_worker_runner_safe_path.py": {
+      "D102/D103": 1
+    },
+    "tests/test_worker_sandbox.py": {
+      "PL": 1,
+      "D102/D103": 3
+    },
+    "tests/test_worker_stall_recovery.py": {
+      "PL": 4,
+      "D102/D103": 6
+    },
+    "tests/test_worker_state.py": {
+      "PL": 11,
+      "D102/D103": 16
+    },
+    "tests/test_worker_sync_m15_13.py": {
+      "PL": 6,
+      "D102/D103": 14
+    },
+    "tests/test_worker_terminate_descendants.py": {
+      "PL": 5,
+      "SIM": 1,
+      "D102/D103": 4
+    },
+    "tests/test_worker_turn_accounting.py": {
+      "PL": 9
+    },
+    "tests/test_worker_turn_check.py": {
+      "PL": 5,
+      "D102/D103": 10
+    },
+    "tests/test_worker_usage_shell_cli.py": {
+      "D102/D103": 1
+    },
+    "tests/test_worktree_env_setup.py": {
+      "D102/D103": 18
+    },
+    "tests/test_worktree_paths_agree.py": {
+      "D102/D103": 3
+    },
+    "tests/test_worktree_prune.py": {
+      "D102/D103": 26
+    },
+    "tests/test_worktree_prune_foreign.py": {
+      "D102/D103": 11
+    },
+    "tests/test_writers_refuse_links_out.py": {
+      "D102/D103": 3
+    },
+    "tests/unauthored_repo_helpers.py": {
+      "N": 1,
+      "D102/D103": 2
+    },
+    "tests/worker_cli_helpers.py": {
+      "D102/D103": 2
+    },
+    "tests/worker_lease_helpers.py": {
+      "D102/D103": 3
+    },
+    "tests/worker_repo_helpers.py": {
+      "PL": 1,
+      "D102/D103": 2
+    }
+  }
+}

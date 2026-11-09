@@ -340,7 +340,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.11_ruff-quality-family-baseline_467b60ed-37a1-4220-ba8a-9507471e9dcc.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Ruff quality rule families reported per file against a baseline, with per-release totals",
       "touch_zones": [
         "scripts/ruff_quality_baseline.py",

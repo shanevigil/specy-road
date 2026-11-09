@@ -12,7 +12,9 @@ Usage:
     python scripts/lean_metrics.py             # measure and write the baseline
     python scripts/lean_metrics.py --check     # measure and print deltas against it,
                                                # then the line-width report
-                                               # (scripts/line_width_baseline.py)
+                                               # (scripts/line_width_baseline.py) and
+                                               # the ruff quality-family report
+                                               # (scripts/ruff_quality_baseline.py)
     python scripts/lean_metrics.py --contexts  # covered arcs per test -> work/lean/contexts.json
 
 The baseline is rewritten only by M16.8.1 and by maintainers; M16 leaves report
@@ -413,6 +415,18 @@ def print_width_report() -> None:
         print(line)
 
 
+def print_quality_report() -> None:
+    """Per-file ruff family counts against scripts/ruff_quality_baseline.json; never fails."""
+    # Imported here: under ``-p scripts.lean_metrics`` the scripts directory is not on sys.path.
+    import ruff_quality_baseline as quality
+
+    data = quality.load()
+    print(f"ruff quality families against {quality.BASELINE.relative_to(REPO)}"
+          f" (a report, never a gate; baseline {data['commit'][:12]}):")
+    for line in quality.report(data["files"], quality.counts()):
+        print(line)
+
+
 def contexts_rcfile(data_dir: Path) -> Path:
     """A coverage config from pyproject's scope with a per-test static context.
 
@@ -501,6 +515,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.check:
         print_deltas(json.loads(BASELINE.read_text(encoding="utf-8")), current)
         print_width_report()
+        print_quality_report()
         return 0
     BASELINE.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {BASELINE.relative_to(REPO)} at {current['commit'][:12]}")
