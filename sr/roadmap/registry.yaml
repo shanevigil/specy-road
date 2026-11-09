@@ -117,4 +117,5 @@ entries:
       - specy_road/pm_gantt_static/
     started: '2026-11-08'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-09T09:53:24+00:00'
