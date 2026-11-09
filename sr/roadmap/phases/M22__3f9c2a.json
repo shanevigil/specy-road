@@ -164,8 +164,9 @@
       ],
       "codename": "history-rewrite-rehearsal",
       "dependencies": [
-        "1d6c8e4b-7a95-4e20-9c3f-d58b2e0a9f16",
-        "15c488ad-2531-4d82-a3a9-363e626a3872"
+        "15c488ad-2531-4d82-a3a9-363e626a3872",
+        "c2d7f590-4e1b-4a8c-9f26-b3a5e8d07c14",
+        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M22.58",
@@ -210,14 +211,15 @@
         "a6e04b9d-2c71-4f3a-8b5e-7d19c0f4a2e3",
         "5b81d7e2-9f04-4c6a-a3d7-02e6b9f1c845",
         "c2d7f590-4e1b-4a8c-9f26-b3a5e8d07c14",
-        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0"
+        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0",
+        "1d9b9c91-dec8-4f55-bd57-c8eb6368612f"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M22.60",
+      "id": "M23.9",
       "node_key": "1d6c8e4b-7a95-4e20-9c3f-d58b2e0a9f16",
-      "parent_id": "M22",
-      "planning_dir": "planning/M22.60_sr-private-mount_1d6c8e4b-7a95-4e20-9c3f-d58b2e0a9f16.md",
-      "sibling_order": 55,
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.9_sr-private-mount_1d6c8e4b-7a95-4e20-9c3f-d58b2e0a9f16.md",
+      "sibling_order": 8,
       "status": "Not Started",
       "title": "The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working",
       "touch_zones": [
