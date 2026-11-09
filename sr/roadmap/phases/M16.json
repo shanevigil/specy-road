@@ -294,7 +294,8 @@
         "sr/constraints/file-limits.yaml",
         "sr/constraints/README.md",
         "scripts/line_width_baseline.py",
-        "scripts/lean_metrics.py"
+        "scripts/lean_metrics.py",
+        "tests/test_archived_summary_file_limits.py"
       ],
       "type": "task"
     },

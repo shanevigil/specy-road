@@ -90,6 +90,7 @@ entries:
       - sr/constraints/README.md
       - scripts/line_width_baseline.py
       - scripts/lean_metrics.py
+      - tests/test_archived_summary_file_limits.py
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
