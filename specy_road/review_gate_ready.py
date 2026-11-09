@@ -417,7 +417,8 @@ def cmd_ready(ns: argparse.Namespace) -> int:
     if changed is None:
         return _refuse(f"git cannot list the paths changed in {t.base[:12]}...{t.commit[:12]}")
     data = {"node_id": ns.node_id, "agent": ns.model, "branch": branch, "commit": t.commit, "base": t.base,
-            "changed_paths": changed, "verify": verify, **sibling_heads_field(root)}
+            "changed_paths": changed, "verify": verify, **sibling_heads_field(root),
+            **({"fix_of": ns.fix_of} if getattr(ns, "fix_of", None) else {})}
     body = ready_body(red_green, ns.note)
     if errs := _ready_errors(render_front_matter(data, body), ns.node_id, t):
         return _refuse("; ".join(errs))
@@ -457,6 +458,10 @@ def add_ready_parser(sub: argparse._SubParsersAction) -> None:
                         "a non-zero exit is refused")
     r.add_argument("--red-green", action="append", default=[], metavar="CMD=EXIT",
                    help="A check that fails without the fix, by design (repeatable); goes in the notes, not verify")
+    r.add_argument("--fix-of", metavar="MODEL@SHA",
+                   help="The one block this commit fixes: the blocking reviewer and the commit it blocked, which "
+                        "must be HEAD's sole parent; another family's approval of that commit may then count here, "
+                        "and the blocker checks the fix")
     r.add_argument("--note", help="Notes for the coordinator: anything you could not finish, and why")
     add_repo_root_arg(r)
     r.set_defaults(func=cmd_ready)

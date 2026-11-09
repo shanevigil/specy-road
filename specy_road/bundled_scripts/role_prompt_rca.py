@@ -243,6 +243,34 @@ def reviewer_preamble(node_id: str, model: str, ref: str | None = None, *, resum
     ]
 
 
+def fix_check_lines(fix, fenced_diff: list[str]) -> list[str]:
+    """The blocking reviewer's fix check (M22.52): ``fix`` is :class:`specy_road.review_gate.FixOf`, answering its
+    block; each of the block's findings, then ``fenced_diff``, the fix commit's whole diff from the blocked one."""
+    findings = [f"- {kind}: {text}" for kind, items in (fix.block.data.get("findings") or {}).items()
+                for text in items or []]
+    return [
+        "## Fix check: your block",
+        "",
+        f"The commit under review, `{fix.fix}`, is the executor's one-commit fix of your block of `{fix.blocked}` "
+        f"(`fix_of: {fix.spec}`). Another family's approval of `{fix.blocked}` may count at this commit, so you "
+        "check the fix, not the whole change again:",
+        "",
+        "1. For each finding below, say in your notes whether the fix resolves it, citing the diff.",
+        "2. Add a finding only where this fix broke something; do not re-review what the diff does not touch.",
+        "3. Still give a result for every acceptance item; an item the fix does not touch may cite your record at "
+        f"`{fix.blocked}` as its evidence. Approve only when every finding is resolved and nothing new broke.",
+        "",
+        f"Your findings at `{fix.blocked}`:",
+        "",
+        *(findings or ["- _(none recorded; see your required changes there)_"]),
+        "",
+        f"The fix, `git diff {fix.blocked}..{fix.fix}`:",
+        "",
+        *fenced_diff,
+        "",
+    ]
+
+
 def coordinator_preamble(node_id: str) -> list[str]:
     return [
         "## Your role: coordinator",

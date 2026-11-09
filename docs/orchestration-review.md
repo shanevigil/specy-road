@@ -218,6 +218,58 @@ review, no delta packet is built and no `delta_from` approval counts. Rebuilding
 the packet without `--full`, or a new commit, lifts the stamp. `delta_review:
 false` turns the rule off everywhere.
 
+## Fix check after a block
+
+A code fix after a block normally makes every approval stale, so each fix round
+costs a full review from each family. When one reviewer blocks and the executor
+answers that block with one commit, the executor names it:
+`specy-road ready <NODE_ID> --model <id> --fix-of <blocker>@<blocked commit>`
+writes `fix_of` to READY (`handoff.schema.json`; a hand-written key outside the
+schema makes READY invalid). While that READY is the current one, each approval
+of the blocked commit from a family other than the blocker's counts at the fix
+commit when all of these hold:
+
+- the blocker's latest record of the blocked commit is a block, and it is that
+  commit's only block (each model's latest record there is its verdict);
+- the blocked commit is the fix commit's sole parent: one fix commit, no merge;
+- every path in `<blocked>..<fix>` (both sides of a rename) is inside the leaf's
+  touch zones **as committed at the blocked commit** (the registry claim's, else
+  the node's), or is the leaf's `work/implementation-summary-<NODE_ID>.md` or
+  review files; zones widened later do not count;
+- the leaf's planning sheet as committed on the integration branch (the ref the
+  policy is read from, never the branch under review) has a `## Tier` whose first
+  word is `plain` or `behavioural`;
+- `policy.delta_review` is not `false`, no `review-packet --full` stamp is current
+  for the fix commit, and the `specy-road integrity` report for the fix has no findings;
+- no sibling repository is present.
+
+A carried approval is judged as at the blocked commit: one that names `delta_from`
+counts when its delta qualified there, as it did before the fix.
+
+A missing or unreadable sheet, a sheet without `## Tier`, any other tier
+(`trust boundary` included), an integration branch that cannot be found, or any
+other failed condition leaves the approval stale as before, and the `policy:`
+line of `handoff status` says why (`<model>'s approve at <sha> is stale: fix_of
+<blocker>@<sha>: <why>`). A carried approval is listed as `carried from an older
+commit`. The blocker's old block no longer counts, but the carried approval alone
+never opens the gate: once an approval is carried, and until the blocker approves the fix commit, the gate reports
+`fix_of …: <blocker> must approve <fix>`, and a new block from it keeps the gate
+unmet. A READY without `fix_of`, or one that is not at the commit under review,
+gives the same result as before.
+
+`specy-road prompt <NODE_ID> --role reviewer --model <blocker>` then adds a
+**Fix check: your block** section: each finding of that block, and the exact
+`git diff <blocked>..<fix>`. It asks for a verdict on each finding and a new
+finding only where the fix broke something; the reviewer still gives a result for
+every acceptance item, and may cite its earlier record for an item the fix does
+not touch. Every other reviewer's prompt has no such section.
+
+Limits: one block answered by one commit at a time (a fix answering two blocks
+needs full reviews); the gate does not check that the blocker looked only at its
+findings; the gate applies no path floor of its own, so a coordinator that raises
+a leaf's tier by the paths it touches does not write `fix_of` for it; `fix_of` is
+executor-written, and the block and parent checks are what bind it.
+
 **Under the default policy** the interactive menu's **approve** files
 `REVIEW-human.md` and closes the gate in one step; a human approval is offered
 only when it would complete the policy. **`--yes` never creates a review:** it
