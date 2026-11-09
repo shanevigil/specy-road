@@ -81,7 +81,8 @@ entries:
       - docs/release-runbook.md
     started: '2026-11-09'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-09T13:40:34+00:00'
   - codename: public-hygiene-gate
     node_id: M22.54
     branch: feature/rm-public-hygiene-gate
