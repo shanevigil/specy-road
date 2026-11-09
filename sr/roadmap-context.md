@@ -182,7 +182,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.59` Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced `history-rewritten-and-published` — gate — **Not Started**
   - `M22.61` A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable `headless-question-tool-flagged` — task — **Complete**
   - `M22.62` review record refuses empty notes and a notes digest another model already filed at the same commit `shared-notes-digest-refused` — task — **Not Started**
-  - `M22.63` A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH `completed-worker-frees-lease` — task — **Not Started**
+  - `M22.63` A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH `completed-worker-frees-lease` — task — **Complete**
   - `M22.64` The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run `reviewer-and-rca-launch-paths` — task — **Not Started**
   - `M22.65` The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work `work-dir-ignored` — task — **Not Started**
   - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Not Started**
@@ -334,7 +334,6 @@ Do not pick these up.
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
 - `M22.62` on `feature/rm-shared-notes-digest-refused` since 2026-11-09
-- `M22.63` on `feature/rm-completed-worker-frees-lease` since 2026-11-09
 - `M22.64` on `feature/rm-reviewer-and-rca-launch-paths` since 2026-11-09
 - `M22.65` on `feature/rm-work-dir-ignored` since 2026-11-09
 - `M22.66` on `feature/rm-profile-match-reads-harness-model` since 2026-11-09
@@ -346,14 +345,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 5 | 0 | 2.00 | 60% | 31 | 0 |
-| `CHANGELOG.md` **flagged** | 30 | 0 | 2.53 | 60% | 18 | 3 |
+| `CHANGELOG.md` **flagged** | 30 | 0 | 2.37 | 57% | 18 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 33 | 0 | 2.48 | 61% | 52 | 3 |
+| `docs` **flagged** | 34 | 0 | 2.44 | 59% | 52 | 3 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 39 | 0 | 2.46 | 54% | 59 | 4 |
-| `tests` **flagged** | 43 | 0 | 2.42 | 58% | 75 | 4 |
+| `specy_road` **flagged** | 39 | 0 | 2.33 | 51% | 59 | 3 |
+| `tests` **flagged** | 43 | 0 | 2.30 | 56% | 75 | 3 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.gitignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |

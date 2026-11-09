@@ -175,7 +175,8 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
     # The wrapper must run this very package, not whichever specy_road the
     # interpreter would import from the worker's cwd or an editable install.
     # The harness itself gets the caller's PYTHONPATH back (``run`` restores it
-    # from the payload), so the adopter's tests never see ours. ``-P`` keeps
+    # from the payload), and ``main`` puts that value back on this process before
+    # the turn, so a queued message's spawn records it too. ``-P`` keeps
     # the cwd (a worktree that may hold an older specy_road) off sys.path for
     # this interpreter only; PYTHONSAFEPATH would leak into the harness.
     pkg_parent = str(Path(__file__).resolve().parent.parent)
@@ -411,9 +412,9 @@ def _exit_state(repo_root: Path, rec: WorkerRecord, state: str) -> None:
     def fn(r: WorkerRecord) -> None:
         r.state = state
         r.pid = r.pgid = r.harness_pid = r.harness_start = None
-    with workers_lock(repo_root):   # a resume (which acquires under this lock) sees failed only once the lease is gone
+    with workers_lock(repo_root):   # a resume acquires under this lock, so it sees completed or failed only once that lease is gone
         mutate(repo_root, rec, fn)
-        if state == "failed":   # the slot lease follows the record: idle and completed keep it
+        if state in ("failed", "completed"):   # idle keeps its lease; completed releases it, as failed does
             release_lease(repo_root, rec.worker_id)
     _deliver_queued(repo_root, rec.worker_id)
 
@@ -434,8 +435,16 @@ def main(argv: list[str] | None = None) -> None:
     payload = json.loads(path.read_text(encoding="utf-8"))
     path.unlink(missing_ok=True)   # read once; the prompt text does not stay on disk twice
     launch = Launch(**payload["launch"])
+    # The caller's PYTHONPATH, not this process's package-path prefix: a queued
+    # message's spawn reads this environment. sys.path stays as the interpreter
+    # started it (``-P`` and the package path).
+    harness_pythonpath = payload.get("harness_pythonpath")
+    if harness_pythonpath:
+        os.environ["PYTHONPATH"] = harness_pythonpath
+    else:
+        os.environ.pop("PYTHONPATH", None)
     raise SystemExit(run(Path(argv[0]), argv[1], launch, resumed=bool(payload.get("resumed")),
-                         harness_pythonpath=payload.get("harness_pythonpath")))
+                         harness_pythonpath=harness_pythonpath))
 
 
 if __name__ == "__main__":

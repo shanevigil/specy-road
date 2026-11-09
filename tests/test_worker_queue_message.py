@@ -351,3 +351,55 @@ def test_undelivered_queued_message(tmp_path: Path, capsys, case: str) -> None:
     rec = ws.load_record(repo, wid)
     assert rec.queued_message is None and ws.FLAG_UNDELIVERED not in rec.flags
     wait_for_worker(repo, wid)
+
+
+# Records PYTHONPATH each turn. The first turn waits until work/release-turn exists.
+_QUEUED_PATH = '''
+import json, os, sys, time
+from pathlib import Path
+seen = Path("work/pythonpaths")
+seen.parent.mkdir(parents=True, exist_ok=True)
+with seen.open("a", encoding="utf-8") as f:
+    f.write(os.environ.get("PYTHONPATH", "") + "\\n")
+if seen.read_text(encoding="utf-8").count("\\n") == 1:
+    Path("work/holding").write_text("1")
+    gate = Path("work/release-turn")
+    deadline = time.time() + 30
+    while not gate.is_file():
+        if time.time() > deadline:
+            sys.exit(1)
+        time.sleep(0.05)
+print(json.dumps({"type": "system", "subtype": "init", "session_id": "sid-live", "model": "fake"}), flush=True)
+print(json.dumps({"type": "result", "subtype": "success", "result": "done", "session_id": "sid-live"}), flush=True)
+'''
+
+
+@pytest.mark.parametrize("caller_path", ["/caller", None])
+def test_a_queued_turn_gets_the_callers_pythonpath(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                                   caller_path: str | None) -> None:
+    """A message queued during the first turn starts a harness with the caller's PYTHONPATH, or with none."""
+    repo, script = make_worker_repo(tmp_path)
+    script.write_text(_QUEUED_PATH)
+    if caller_path is None:
+        monkeypatch.delenv("PYTHONPATH", raising=False)
+    else:
+        monkeypatch.setenv("PYTHONPATH", caller_path)
+    rec, _ = ops.delegate(repo, "M1.1", "opus")
+    deadline = time.time() + 30
+    while not (repo / "work" / "holding").is_file():
+        if time.time() > deadline:
+            raise AssertionError("first turn never held")
+        time.sleep(0.05)
+    assert run_worker_cli("worker", "message", rec.worker_id, "--text", "follow up", "--repo-root", str(repo)) == 0
+    (repo / "work" / "release-turn").write_text("go", encoding="utf-8")
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        types = [e.type for e in ws.events_since(repo, rec.worker_id)]
+        final = ws.load_record(repo, rec.worker_id)
+        if types.count("completion") >= 2 and final.pid is None and final.state != "running":
+            break
+        time.sleep(0.1)
+    else:
+        raise AssertionError("queued turn did not finish")
+    want = caller_path if caller_path is not None else ""
+    assert (repo / "work" / "pythonpaths").read_text(encoding="utf-8").splitlines() == [want, want]

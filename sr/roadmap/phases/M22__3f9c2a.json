@@ -305,7 +305,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.63_completed-worker-frees-lease_d3fb22ae-b63e-47ea-b422-231f6a3f8258.md",
       "sibling_order": 57,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH",
       "touch_zones": [
         "specy_road/worker_runner.py",
