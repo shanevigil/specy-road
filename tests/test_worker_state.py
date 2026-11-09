@@ -139,14 +139,11 @@ def test_lease_blocks_the_broker_until_reclaimed(tmp_path: Path) -> None:
     assert ws.load_record(repo, rec.worker_id).lease["holder"] == "broker"
 
 
-def test_intervention_bumps_the_epoch_and_checkpoint_records_head(tmp_path: Path) -> None:
+def test_checkpoint_records_head_and_a_flag_is_set_once(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "codex", "sol", repo)
     cp = ws.take_checkpoint(repo, rec, native_turn="turn-7")
     assert cp["git_head"] == git(repo, "rev-parse", "HEAD") and cp["native_turn"] == "turn-7"
-    ev = ws.record_intervention(repo, rec, "use the existing helper", source="hook", detail={"prompt": "..."})
-    assert ev.authority == "human_authoritative" and ev.epoch == 1 and ev.type == "intervention"
-    assert ws.load_record(repo, rec.worker_id).instruction_epoch == 1
     ws.add_flag(repo, rec, ws.FLAG_EXTERNAL)
     ws.add_flag(repo, rec, ws.FLAG_EXTERNAL)
     assert ws.load_record(repo, rec.worker_id).flags == [ws.FLAG_EXTERNAL]

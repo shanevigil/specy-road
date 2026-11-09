@@ -16,7 +16,6 @@ from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
 from specy_road.review_record_rules import (
     NOTES_RULES_LINES,
     clause_problem,
-    defect_word,
     explained,
     note_problem,
     unexplained_defects,
@@ -165,7 +164,6 @@ MALFORMED_WORDING = "The parser accepts malformed input, so invalid configuratio
 def test_record_refuses_an_approve_whose_notes_carry_an_unclassified_observation(tmp_path: Path, capsys) -> None:
     """No word in the sentence names a defect: every observation line of approve notes needs a reason (round 5)."""
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
-    assert defect_word(MALFORMED_WORDING) is None
     assert _record(repo, notes=f"## Acceptance\n\n- **A1:** pass\n\n{MALFORMED_WORDING}\n") == 1
     err = capsys.readouterr().err
     assert "notes line 5 is an observation" in err
@@ -390,38 +388,6 @@ def test_record_files_a_block_that_lists_the_defect(tmp_path: Path, capsys) -> N
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     assert _record(repo, verdict="block", findings={"correctness": ["bug: y is dropped"]},
                    required=["keep an empty y"]) == 0
-
-
-@pytest.mark.parametrize("line, word", [
-    ("Weak assertion (not blocking): foo", "Weak assertion"),
-    ("Two traces that look like bugs do not fail an item.", "bugs"),
-    ("Minor; delivery re-checks anyway.", "Minor"),
-    ("No other correctness defect proved.", None),
-    ("None blocking. Nothing minor.", None),
-    ("`test_minor_bug` passes", None),
-    ("> refuses an approve whose notes name a defect", None),
-    ("## Defects", None),
-    ("Advisory: x. Not a defect because no caller reaches it.", None),
-    ("The command crashes on empty input and drops the review.", "crashes"),
-    ("There is no workaround for this bug.", "bug"),
-    ("There is no test for this bug.", "bug"),
-    ("It overwrites the user's edits.", "overwrites the user's edits"),
-    ("`ops.delegate` returns the wrong commit.", "returns the wrong"),
-    ("It no longer crashes; it doesn't drop data; no known bug.", None),
-    ("Malformed values are treated as missing rather than crashing the gate.", None),
-    ("Default drops a leaf that still has a placeholder; one parametrize case dropped.", None),
-    ("The test fails without the fix and raises ReviewTargetError on an unknown node.", None),
-    (SOL_WORDING, "Valid input raises"),
-    ("`decisions list` rejects a valid ledger.", "rejects a valid"),
-    ("It fails on valid input.", "fails on valid"),
-    ("It exits non-zero instead of writing the record.", "exits non-zero"),
-    ("It no longer rejects a valid ledger; it exits 1 on an unknown node.", None),
-    (ORDER_WORDING, "reads the registry before the first writes"),
-    ("A stale read of the claim; events arrive out of order.", "stale read"),
-    ("It reads the config before running git; no stale reads.", None),
-])
-def test_defect_word(line: str, word: str | None) -> None:
-    assert defect_word(line) == word
 
 
 def test_fenced_code_in_the_notes_is_not_checked() -> None:

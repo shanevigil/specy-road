@@ -348,7 +348,7 @@ def events_since(repo_root: Path, worker_id: str, seq: int = 0) -> list[WorkerEv
     return out
 
 
-# --- lease, checkpoint, intervention ---------------------------------------
+# --- lease, checkpoint ---------------------------------------
 
 def require_writer(rec: WorkerRecord, holder: str = "broker") -> None:
     """Raise unless ``holder`` may send the worker a turn now."""
@@ -398,13 +398,6 @@ def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None 
     mutate(repo_root, rec, lambda r: setattr(r, "checkpoint", cp))
     return cp
 
-
-def record_intervention(repo_root: Path, rec: WorkerRecord, summary: str, *, source: str = "human",
-                        detail: dict[str, Any] | None = None) -> WorkerEvent:
-    """A human direction reached the worker: new epoch, one authoritative event."""
-    with workers_lock(repo_root):
-        mutate(repo_root, rec, lambda r: setattr(r, "instruction_epoch", r.instruction_epoch + 1))
-        return append_event(repo_root, rec, "intervention", source=source, authority="human_authoritative", summary=summary, detail=detail)
 
 # The operations outbox lives in worker_outbox; re-exported here for callers.
 __all__ = [n for n in dir() if not n.startswith("_")]

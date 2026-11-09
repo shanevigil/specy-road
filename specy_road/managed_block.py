@@ -211,21 +211,6 @@ def _write(path: Path, text: str, outcome: str, dry_run: bool = False, strict: b
     return outcome
 
 
-def remove_managed_block(path: Path, *, style: MarkerStyle = HASH) -> str:
-    """Drop the block, leaving the rest of the file alone."""
-    try:
-        if not path.is_file():
-            return UNCHANGED
-        existing = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return FAILED
-    before, current, after = _split(existing, style)
-    if current is None:
-        return UNCHANGED
-    rest = (before.rstrip("\n") + "\n" + after).lstrip("\n") if after.strip() else before
-    return _write(path, rest, UPDATED)
-
-
 def agent_file_lines_outside_block(
     text: str, *, style: MarkerStyle = HTML_COMMENT
 ) -> list[tuple[int, str]]:

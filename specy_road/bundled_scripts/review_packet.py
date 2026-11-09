@@ -42,7 +42,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.review_packet_nested import nested_diff_section
 from specy_road.bundled_scripts.review_packet_observed import (
-    computed_note as _computed, integrity_sections, test_integrity_section,
+    computed_note as _computed, integrity_sections,
 )
 from specy_road.bundled_scripts.review_packet_uncommitted_refs import uncommitted_refs_section
 from specy_road.finish_implementation_check import in_zones
