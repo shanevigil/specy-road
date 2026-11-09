@@ -22,6 +22,9 @@ would write .gitignore (updated)
 would write AGENTS.md (updated)
 would write .specyrd/AGENTS.md (updated)
 
+== file-limits default
+constraints/file-limits.yaml caps files at 400 lines with no warning; the template default is now 1000 lines with a warning at 750. upgrade leaves this file as it is; edit it to adopt the default.
+
 == applying the refreshes to a temporary copy, then validating it
 
 == validate

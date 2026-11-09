@@ -227,7 +227,10 @@ def _refresh(
     _report_schemas(project, verb)
     _report_profiles(project, verb)
     declined_docs = _report_shipped_docs(project, verb, existence_project or project)
-    return _report_stubs_declined(project, checkout, preview=preview, prune=prune, declined_docs=declined_docs)
+    declined = _report_stubs_declined(project, checkout, preview=preview, prune=prune,
+                                      declined_docs=declined_docs)
+    _report_file_limits_default(existence_project or project)
+    return declined
 
 
 _VALIDATE_FAILED = "Fix the validate errors above; the refreshes are written either way."
@@ -273,18 +276,48 @@ _DIGEST_STEP = ("Run specy-road digest (and specy-road export if roadmap.md is t
                 " them. Not specy-road sync: it also fast-forwards the integration branch.")
 
 
+FILE_LIMITS = "constraints/file-limits.yaml"
+
+
+def _file_limits_config(root: Path) -> dict | None:
+    """``root``'s ``constraints/file-limits.yaml`` as a mapping; None when absent or unreadable."""
+    cfg_path = root / FILE_LIMITS
+    try:
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) if cfg_path.is_file() else None
+    except (OSError, yaml.YAMLError):
+        cfg = None
+    return cfg if isinstance(cfg, dict) else None
+
+
+def _file_cap(cfg: dict) -> tuple[object, object]:
+    """``(max_lines_per_file, hard_alerts.max_lines_per_file)``, the values the template sets."""
+    alerts = cfg.get("hard_alerts")
+    warn = alerts.get("max_lines_per_file") if isinstance(alerts, dict) else None
+    return cfg.get("max_lines_per_file"), warn
+
+
+def _report_file_limits_default(project: Path) -> None:
+    """One notice when the project's file cap differs from the template's; never a rewrite."""
+    cfg = _file_limits_config(project)
+    default = _file_limits_config(project_template_root())
+    if cfg is None or _file_cap(cfg) == _file_cap(default):
+        return
+    (cap, warn), (new_cap, new_warn) = _file_cap(cfg), _file_cap(default)
+    warning = "no warning" if warn is None else f"a warning at {warn}"
+    _section("file-limits default")
+    print(f"{FILE_LIMITS} caps files at {cap} lines with {warning}; the template default"
+          f" is now {new_cap} lines with a warning at {new_warn}. upgrade leaves this file"
+          " as it is; edit it to adopt the default.")
+
+
 def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
     """``{path: (lines, cap)}`` for every file the project's ``constraints/file-limits.yaml`` caps.
 
     Read the way ``specy-road file-limits`` reads it: globs anchored at the
     source scan root, overlays applied, git-ignored files skipped.
     """
-    cfg_path = project / "constraints" / "file-limits.yaml"
-    try:
-        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) if cfg_path.is_file() else None
-    except (OSError, yaml.YAMLError):
-        cfg = None
-    if not isinstance(cfg, dict):
+    cfg = _file_limits_config(project)
+    if cfg is None:
         return {}
     root = source_scan_root(project)
     overlays = build_overlay_match_sets(root, cfg)
