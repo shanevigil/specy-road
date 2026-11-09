@@ -335,6 +335,7 @@ Do not pick these up.
 - `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
 - `M22.61` on `feature/rm-headless-question-tool-flagged` since 2026-11-09
 - `M22.62` on `feature/rm-shared-notes-digest-refused` since 2026-11-09
+- `M22.63` on `feature/rm-completed-worker-frees-lease` since 2026-11-09
 - `M22.64` on `feature/rm-reviewer-and-rca-launch-paths` since 2026-11-09
 - `M22.65` on `feature/rm-work-dir-ignored` since 2026-11-09
 
