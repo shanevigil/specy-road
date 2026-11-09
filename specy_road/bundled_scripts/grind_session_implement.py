@@ -20,9 +20,10 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
+from specy_road.clock import utc_now
 from specy_road.claude_code_limits import (
     SPEND,
     UNRECOGNIZED,
@@ -147,7 +148,7 @@ def seconds_until(
     grace_seconds: int | None = None,
 ) -> float:
     """Seconds to wait for ``reset_at``, plus grace. Never negative."""
-    current = now or datetime.now(timezone.utc)
+    current = now or utc_now()
     grace = GRACE_SECONDS if grace_seconds is None else grace_seconds
     return max(0.0, (reset_at - current).total_seconds() + grace)
 

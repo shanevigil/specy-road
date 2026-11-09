@@ -23,6 +23,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from specy_road.clock import utc_now_iso
 from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
 from specy_road.git_subprocess import git_ok, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
@@ -35,7 +36,7 @@ from specy_road.review_write_check import path_ancestor_link
 from specy_road.review_model_check import resolve_effective_model
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
 from specy_road.reviewer_auth import claude_launch_decision, launch_note
-from specy_road.reviewer_run_failure import _now, harness_error_line, save_run, turn_capacity_error
+from specy_road.reviewer_run_failure import harness_error_line, save_run, turn_capacity_error
 from specy_road.worker_adapter_base import checked, oversized_arg
 from specy_road.worker_adapter_parsers import effort_note
 from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, placeholder_problem, reviewer_cli, substitute_prompt
@@ -377,12 +378,12 @@ def _finish_cli_review_run(root: Path, t: ReviewTarget, model: str, path: Path, 
     replace_file(path.with_suffix(".log"), "\n".join(transcript) + ("\n" if transcript else ""))   # no symlink
     tail = [ln.strip() for ln in transcript[-20:] if ln.strip()]
     failed = filed.exit not in (0, None)
-    run["attempts"] = [{"at": _now(), "exit": filed.exit, "capacity": bool(turn_capacity_error([], transcript)),
+    run["attempts"] = [{"at": utc_now_iso(), "exit": filed.exit, "capacity": bool(turn_capacity_error([], transcript)),
                         "error": None if filed.state == "recorded" else harness_error_line(
                             exit_code=filed.exit, errors=[], tail=tail, fallback=filed.reason)[:300] or None}]
     close_review_run(root, t, model, run, filed, reason=f"harness exited {filed.exit}" if failed else "",
                      tail=transcript)
-    run["ended_at"] = _now()
+    run["ended_at"] = utc_now_iso()
     save_run(path, run)
 
 

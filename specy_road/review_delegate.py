@@ -46,6 +46,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import safe_write
+from specy_road.clock import utc_now_iso
 from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text
@@ -67,7 +68,7 @@ from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_ta
 from specy_road.review_usage import add_parser as add_usage_parser, archive_round
 from specy_road.reviewer_run_failure import capacity_error, valid_record  # noqa: F401 — re-exported
 from specy_road.reviewer_run_failure import gate_policy_summary as _gate_policy_summary
-from specy_road.reviewer_run_failure import (_now, _read_json, close_run, run_path as _run_path, save_run,
+from specy_road.reviewer_run_failure import (_read_json, close_run, run_path as _run_path, save_run,
                                              turn_capacity_error)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.worker_adapters import Unsupported
@@ -203,7 +204,7 @@ def _attempts(h: _Harness, run: dict[str, Any], path: Path, prompts: tuple[Path,
         if failed and not said:   # no parsed error: the last non-blank line of this turn's log span (the harness's own)
             lines = [ln.strip() for ln in _span_text(owned, h.log, turn).splitlines() if ln.strip()]
             said = lines[-1][:200] if lines else "no error text"
-        run["attempts"].append({"at": _now(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None,
+        run["attempts"].append({"at": utc_now_iso(), "exit": turn["exit"], "capacity": bool(cap), "error": said[:300] or None,
                                 "log_start": turn["log_start"], "log_end": turn["log_end"],   # the span run_text reads
                                 "log_sha256": turn["log_sha256"], **({"repair": True} if "refusal" in run else {})})
         if path.is_symlink():   # replaced below, never followed; the tripwire still reports it (review_write_check)
@@ -329,7 +330,7 @@ def _delegate_locked(repo_root: Path, t: ReviewTarget, node_id: str, model: str,
     archive_round(repo_root, node_id, model)   # M14.6: the previous round's RUN json, log and notes, kept in history/
     run = {"node_id": node_id, "model": model, "harness": h.harness, "ref": t.ref, "commit": t.commit,
            "state": "running", "session_id": session, "resumed": resume, "source": "review-delegate",
-           "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
+           "started_at": utc_now_iso(), "ended_at": None, "attempts": [], "events": [], "reason": None,
            "launch_mode": h.launch_mode, "requested_model": h.api_id, "reported_model": None,
            "log": str(path.with_suffix(".log"))}
     if stored is not None:   # this resume is the repair turn: it gets no second one
@@ -359,7 +360,7 @@ def _delegate_locked(repo_root: Path, t: ReviewTarget, node_id: str, model: str,
         close_review_run(repo_root, t, model, run, Outcome("rerun", f"interrupted: {e or type(e).__name__}", exit=None))
         raise
     finally:
-        run["ended_at"] = _now()
+        run["ended_at"] = utc_now_iso()
         _save(path, run)
     return run
 

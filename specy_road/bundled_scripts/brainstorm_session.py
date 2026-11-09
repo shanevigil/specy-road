@@ -24,6 +24,7 @@ import yaml
 from specy_road import safe_write
 from specy_road.bundled_scripts.brainstorm_fields import extra_to_dict, parse_extra
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
+from specy_road.fs_atomic import atomic_write_text
 from specy_road.history_cache import CACHE_DIR, ensure_cache_dir
 from specy_road.worker_lock import _lock_file
 
@@ -354,10 +355,8 @@ def write_session(root: Path, session: BrainstormSession) -> Path:
     path = session_path(root, session.slug)
     path.parent.mkdir(parents=True, exist_ok=True)
     # Temp file + replace: a panel shard reading mid-write sees the old or the new session, never half.
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    tmp.write_text(yaml.dump(session.to_dict(), default_flow_style=False, allow_unicode=True, sort_keys=False),
-                   encoding="utf-8")
-    os.replace(tmp, path)
+    atomic_write_text(path, yaml.dump(session.to_dict(), default_flow_style=False, allow_unicode=True,
+                                      sort_keys=False))
     return path
 
 

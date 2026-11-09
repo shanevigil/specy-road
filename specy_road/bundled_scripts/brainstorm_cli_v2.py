@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date, datetime, timezone
+from datetime import date
 
+from specy_road.clock import utc_now
 from specy_road.bundled_scripts.brainstorm_cli_args import file_namespaces
 from specy_road.bundled_scripts.brainstorm_cli_args_v2 import evidence_record, frame_answers, quoted_sources
 from specy_road.bundled_scripts.brainstorm_fields import parse_origin
@@ -147,7 +148,7 @@ def cmd_frame(ns: argparse.Namespace) -> int:
     if ns.amend is not None and ns.amend.strip() not in session.frame:
         raise BrainstormError(f"--amend {ns.amend.strip()!r}: the frame has no such answer to amend; "
                               f"record it with --answer {ns.amend.strip()}=TEXT")
-    now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    now = utc_now().isoformat(timespec="milliseconds")
     for key, text in answers:
         _set_answer(session, key, text, now)
     if ns.allocation is not None:
@@ -239,7 +240,7 @@ def cmd_decide(ns: argparse.Namespace) -> int:
     if not text:
         raise BrainstormError("decide needs --decision TEXT: the decision is what promote writes into the sheet")
     idea = set_status(session, ns.idea_id, "decided")   # refuses a promoted or merged idea
-    now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    now = utc_now().isoformat(timespec="milliseconds")
     idea.decision = {"status": "decided", "decision": text, "decided_at": now}
     write_session(root, session)
     print(f"[ok] {idea.id} decided: {text}")
@@ -335,7 +336,7 @@ def cmd_merge(ns: argparse.Namespace) -> int:
     idea.merged_into = [t.id for t in targets]
     for t in targets:
         t.merged_from = [*t.merged_from, idea.id] if idea.id not in t.merged_from else t.merged_from
-    now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    now = utc_now().isoformat(timespec="milliseconds")
     idea.decision = {"status": "merged", "decided_at": now, "into": ", ".join(idea.merged_into)}
     write_session(root, session)
     print(f"[ok] {idea.id} merged into {', '.join(idea.merged_into)}; promote skips it")

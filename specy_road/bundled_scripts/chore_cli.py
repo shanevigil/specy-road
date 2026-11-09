@@ -21,12 +21,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from specy_road.clock import utc_now_iso
+from specy_road.fs_atomic import atomic_write_text
 from specy_road.finish_implementation_check import _clean
 from specy_road.git_subprocess import git_text, head_sha
 from specy_road.review_files import list_reviews, reviews_dir, reviews_root
 from specy_road.review_target import ReviewTarget
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.worker_state import HARNESSES, WorkerError, _now, _write_atomic, events_since, list_records
+from specy_road.worker_state import HARNESSES, WorkerError, events_since, list_records
 
 # Lower case, so never a node id (``M1.2``); not ``w-``, which names a worker id where a target is either.
 _SLUG = re.compile(r"^(?!w-)[a-z0-9][a-z0-9-]*$")
@@ -54,7 +56,7 @@ def open_chore(repo_root: Path, slug: str) -> dict[str, Any] | None:
 
 def _save(repo_root: Path, chore: dict[str, Any]) -> None:
     chores_dir(repo_root).mkdir(parents=True, exist_ok=True)
-    _write_atomic(chores_dir(repo_root) / f"{chore['slug']}.json", json.dumps(chore, indent=2) + "\n")
+    atomic_write_text(chores_dir(repo_root) / f"{chore['slug']}.json", json.dumps(chore, indent=2) + "\n")
 
 
 def chore_node(chore: dict[str, Any]) -> dict[str, Any]:
@@ -114,7 +116,7 @@ def start(repo_root: Path, slug: str, *, task: str, zones: list[str], review: bo
     if not branch:
         raise WorkerError(f"{wt} has a detached HEAD; check out a branch for the chore to run on")
     chore = {"slug": slug, "task": task, "touch_zones": zones, "review": review, "model": model, "harness": harness,
-             "worktree": str(wt), "branch": branch, "base": head_sha(wt), "started_at": _now(), "closed_at": None}
+             "worktree": str(wt), "branch": branch, "base": head_sha(wt), "started_at": utc_now_iso(), "closed_at": None}
     _save(repo_root, chore)
     return chore
 
@@ -142,7 +144,7 @@ def close(repo_root: Path, slug: str, summary: str) -> tuple[Path, dict[str, Any
     end_finished_workers(repo_root, slug)
     used = usage_lines(usage([(r, [e.to_dict() for e in events_since(repo_root, r.worker_id)]) for r in recs])) \
         if recs else ["no workers ran"]
-    chore.update(closed_at=_now(), summary=summary, head=head_sha(Path(chore["worktree"])),
+    chore.update(closed_at=utc_now_iso(), summary=summary, head=head_sha(Path(chore["worktree"])),
                  verdicts=_verdicts(repo_root, chore))
     lines = [f"# Chore `{slug}`", "", f"- Task: {chore['task']}", f"- Worktree: `{chore['worktree']}` on "
              f"`{chore['branch']}`, {str(chore['base'])[:12]}..{str(chore['head'])[:12]}",
@@ -150,7 +152,7 @@ def close(repo_root: Path, slug: str, summary: str) -> tuple[Path, dict[str, Any
              f"- Started {chore['started_at']}, closed {chore['closed_at']}", "", "## Summary", "", summary, "",
              "## Usage", "", *(f"    {line}" for line in used), "", "## Review", "", *(f"- {v}" for v in chore["verdicts"]), ""]
     path = chores_dir(repo_root) / f"{slug}.md"
-    _write_atomic(path, "\n".join(lines))
+    atomic_write_text(path, "\n".join(lines))
     _save(repo_root, chore)
     return path, chore
 

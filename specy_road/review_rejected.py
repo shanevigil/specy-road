@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 
 from specy_road import safe_write
+from specy_road.clock import utc_now, utc_now_iso
 from specy_road.orphaned_claims import relative_age
 from specy_road.orchestration_config import substitute_for
 from specy_road.review_files import (
@@ -47,7 +48,7 @@ def write_rejected(reviews: Path, model: str, commit: str, reason: str) -> Path:
     except safe_write.SafeWriteError as e:
         print(f"error: {e}", file=sys.stderr)
         return path
-    refused_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    refused_at = utc_now_iso()
     body = reason if reason.endswith("\n") else reason + "\n"
     write_review(path, render_front_matter({"commit": commit, "refused_at": refused_at}, body))   # replaces rejected-x.md
     return path
@@ -135,7 +136,7 @@ def rejected_state(reviews: Path, model: str, commit: str | None,
     if when is None:
         return None
     first = body.strip().split("\n", 1)[0] if body.strip() else ""
-    return relative_age(when, now or datetime.now(timezone.utc)), first
+    return relative_age(when, now or utc_now()), first
 
 
 class ReviewRecordTrace:

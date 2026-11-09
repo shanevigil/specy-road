@@ -15,7 +15,6 @@ import pytest
 
 from specy_road.bundled_scripts import grind_session as gs
 from specy_road.bundled_scripts import grind_session_cleanup as gsc
-from specy_road.bundled_scripts import grind_session_events as gse
 from specy_road.bundled_scripts.grind_session_events import (
     EXIT_NO_LEAVES,
     EXIT_OK,
@@ -203,11 +202,6 @@ def test_every_json_event_carries_a_timestamp(monkeypatch, capsys):
     for event in evs:
         assert list(event)[:2] == ["event", "ts"]
         assert event["ts"] == TS
-
-
-def test_the_timestamp_is_utc_to_the_second():
-    assert gse._now_iso().endswith("Z")
-    assert len(gse._now_iso()) == len("2026-09-06T00:00:00Z")
 
 
 def test_json_mode_keeps_child_output_off_stdout(monkeypatch, tmp_path, capfd):

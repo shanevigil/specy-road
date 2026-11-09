@@ -124,7 +124,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.2_shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers_95c1e571-3280-4f29-893b-f8e891092e78.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers",
       "touch_zones": [
         "specy_road/clock.py",

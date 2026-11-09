@@ -12,23 +12,15 @@ inspect (the worker record and events) before removing it.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from specy_road.clock import utc_now_iso
+from specy_road.fs_atomic import atomic_write_text
+
 _OP = re.compile(r"^[A-Za-z0-9._-]{1,80}$")
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def _write_atomic(path: Path, text: str) -> None:
-    from specy_road.worker_state import _write_atomic as write
-
-    write(path, text)
 
 
 def ops_dir(repo_root: Path) -> Path:
@@ -82,9 +74,9 @@ def begin_op(repo_root: Path, op_id: str, kind: str, target: str | None = None,
                 raise _error(f"op {op_id} ran with different arguments; an op id names one operation")
             return old
         path.parent.mkdir(parents=True, exist_ok=True)
-        _write_atomic(path, yaml.safe_dump({"op_id": op_id, "kind": kind, "target": target,
-                                            "inputs": inputs_hash(inputs), "state": "pending",
-                                            "at": _now()}, sort_keys=False))
+        atomic_write_text(path, yaml.safe_dump({"op_id": op_id, "kind": kind, "target": target,
+                                                "inputs": inputs_hash(inputs), "state": "pending",
+                                                "at": utc_now_iso()}, sort_keys=False))
     return None
 
 
@@ -109,5 +101,5 @@ def lookup_op(repo_root: Path, op_id: str, kind: str, target: str | None = None)
 def complete_op(repo_root: Path, op_id: str, result: dict[str, Any], *, ok: bool = True) -> None:
     path = _op_path(repo_root, op_id)
     data = yaml.safe_load(path.read_text(encoding="utf-8")) if path.is_file() else {"op_id": op_id}
-    data.update({"state": "applied" if ok else "failed", "result": result, "at": _now()})
-    _write_atomic(path, yaml.safe_dump(data, sort_keys=False))
+    data.update({"state": "applied" if ok else "failed", "result": result, "at": utc_now_iso()})
+    atomic_write_text(path, yaml.safe_dump(data, sort_keys=False))

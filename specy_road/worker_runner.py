@@ -24,6 +24,7 @@ from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 
+from specy_road.clock import utc_now_iso
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
 from specy_road import worker_sandbox
@@ -48,7 +49,6 @@ from specy_road.worker_state import (
     FLAG_UNDELIVERED,
     WorkerError,
     WorkerRecord,
-    _now,
     add_flag,
     append_event,
     events_path,
@@ -242,7 +242,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         def seen(r: WorkerRecord) -> None:
             r.harness_pid, r.harness_start, r.pgid = proc.pid, start_token(proc.pid), os.getpgid(0)
             # A new turn is a new silence: measured from the launch, not the last turn's output.
-            r.last_output_at = _now()
+            r.last_output_at = utc_now_iso()
             r.flags = [f for f in r.flags if f != FLAG_STALLED]
         mutate(repo_root, rec, seen)
         watch.proc = proc
@@ -344,7 +344,7 @@ def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: 
         return marked
 
     def fn(r: WorkerRecord) -> None:
-        r.last_output_at = _now()
+        r.last_output_at = utc_now_iso()
         r.flags = [f for f in r.flags if f != FLAG_STALLED]
     mutate(repo_root, rec, fn)
     return now

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.clock import utc_now_iso
 from specy_road.review_bookkeeping import policy_line
 from specy_road.review_files import list_reviews, reviews_dir
 from specy_road.review_write_check import replace_file
@@ -22,10 +22,6 @@ RUN_PREFIX = "RUN-"
 CAPACITY = re.compile(r"rate[ _-]?limit|usage limit|\b429\b|\b529\b|overloaded|too many requests"
                       r"|(?:at|over|out of) capacity|insufficient[ _]quota|quota exceeded|exceeded your (?:current )?quota"
                       r"|resource[ _-]?exhausted", re.IGNORECASE)
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def run_path(repo_root: Path, node_id: str, model: str) -> Path:
@@ -103,7 +99,7 @@ def harness_error_line(*, exit_code: int | None, errors: list[str], tail: list[s
 
 
 def record_reviewer_failure_event(run: dict[str, Any], error: str) -> None:
-    run.setdefault("events", []).append({"type": "reviewer-failure", "at": _now(), "error": error[:500]})
+    run.setdefault("events", []).append({"type": "reviewer-failure", "at": utc_now_iso(), "error": error[:500]})
 
 
 def reviewer_failure_gate_note(runs: list[dict[str, Any]]) -> str:
@@ -137,7 +133,7 @@ def open_reviewer_cli_run(repo_root: Path, t: ReviewTarget, model: str, harness:
     path = run_path(repo_root, t.node["id"], model)
     run = {"node_id": t.node["id"], "model": model, "harness": harness or "generic", "ref": t.ref,
            "commit": t.commit, "state": "running", "session_id": None, "resumed": False, "source": "prompt-cli",
-           "started_at": _now(), "ended_at": None, "attempts": [], "events": [], "reason": None,
+           "started_at": utc_now_iso(), "ended_at": None, "attempts": [], "events": [], "reason": None,
            "log": str(path.with_suffix(".log"))}
     save_run(path, run)
     return path, run

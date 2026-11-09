@@ -70,30 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers
-    node_id: M16.2.2
-    branch: feature/rm-shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers
-    touch_zones:
-      - specy_road/clock.py
-      - specy_road/fs_atomic.py
-      - specy_road/session_presence.py
-      - specy_road/worker_witness.py
-      - specy_road/reviewer_run_failure.py
-      - specy_road/worker_lease.py
-      - specy_road/worker_outbox.py
-      - specy_road/bundled_scripts/grind_session_events.py
-      - specy_road/decisions.py
-      - specy_road/worker_turn_check.py
-      - specy_road/worker_state.py
-      - specy_road/history_cache.py
-      - specy_road/bundled_scripts/brainstorm_session.py
-      - specy_road/bundled_scripts/roadmap_chunk_atomic.py
-      - specy_road/
-      - tests/
-      - specy_road/review_override.py
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: pending
   - codename: review-fix-check
     node_id: M22.52
     branch: feature/rm-review-fix-check

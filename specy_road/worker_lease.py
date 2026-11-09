@@ -18,10 +18,10 @@ import os
 import re
 import sys
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from specy_road.clock import utc_now_iso
 from specy_road.git_subprocess import GitResult, git_text, run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration_pinned import pinned_config
@@ -46,10 +46,6 @@ from specy_road.worker_orphans import holding_slots, slot_breakdown
 from specy_road.worker_witness import interventions_path, record_hook_prompt  # noqa: F401 — re-exported
 
 CLOSED_STATES = TERMINAL_STATES
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def handoff(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, list[str]]:
@@ -79,7 +75,7 @@ def _handoff_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord, l
 
     def move(r: WorkerRecord) -> None:   # one write: the lease never changes hands without its checkpoint
         r.checkpoint["interventions_seen"] = seen
-        r.lease = {"holder": "human", "since": _now()}
+        r.lease = {"holder": "human", "since": utc_now_iso()}
         r.state = "handed_off"
     mutate(repo_root, rec, move)
     append_event(repo_root, rec, "handoff", source="orchestrator", authority="orchestrator",
@@ -154,7 +150,7 @@ def _reclaim_locked(repo_root: Path, rec: WorkerRecord, note: str) -> tuple[Work
             r.instruction_epoch += 1
             if not heard and FLAG_EXTERNAL not in r.flags:
                 r.flags.append(FLAG_EXTERNAL)
-            r.lease = {"holder": "broker", "since": _now()}
+            r.lease = {"holder": "broker", "since": utc_now_iso()}
             r.state = "idle"
         mutate(repo_root, rec, move)
     else:
