@@ -405,7 +405,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.66_profile-match-reads-harness-model_8670a5b8-b6f6-4b91-b5c8-cfd5e890a50e.md",
       "sibling_order": 60,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A roster entry matches a model profile by its harness_model when its id matches none",
       "touch_zones": [
         "specy_road/model_profiles.py",
