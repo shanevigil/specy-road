@@ -232,6 +232,186 @@
         "CLAUDE.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Every executor prompt (executor_preamble) holds one line saying that in a headless turn (worker delegate, worker message, a grind) no person can answer a question tool, that open questions go in the implementation summary under a heading marking them unanswered, and that the summary never says a person was asked",
+        "A Cursor turn whose stream holds a tool_call for the question tool (name taken from a captured real stream saved as tests/fixtures/cursor_question_tool.jsonl) gives exactly one post-run finding of kind interactive_tool naming the tool; its post_run_check event is not clean and the worker is flagged post_run_findings. A Cursor stream with only shell, read and edit tool calls gives no such finding. A Claude result whose permission_denials names the question tool gives one permission_denied finding naming it (pinned, unchanged)",
+        "Tests extend tests/test_worker_turn_check.py and tests/test_models_and_prompt.py with the rows of the sheet test table; docs/orchestration-workers.md (post-run check paragraph) and CHANGELOG [Unreleased]. Out of scope: chore executor prompts, harnesses whose stream has no event for the tool",
+        "Estimated net line change (informational, not a gate): package about +25, tests about +50, docs about +3"
+      ],
+      "codename": "headless-question-tool-flagged",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.61",
+      "node_key": "dac9d0ff-b463-4508-8218-41532f1c20f4",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.61_headless-question-tool-flagged_dac9d0ff-b463-4508-8218-41532f1c20f4.md",
+      "sibling_order": 55,
+      "status": "Not Started",
+      "title": "A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/worker_turn_check.py",
+        "specy_road/worker_adapter_cursor.py",
+        "tests/test_worker_turn_check.py",
+        "tests/test_models_and_prompt.py",
+        "tests/fixtures/cursor_question_tool.jsonl",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "review record refuses (exit 1, REJECTED-<model>.md written, no REVIEW record) a record whose Markdown body below the front matter is empty after notes_digest normalisation, saying the notes go below the front matter and that notes_sha256 covers only that body; file_review with whitespace-only notes gets the same refusal as a rerun outcome",
+        "review record refuses a record whose notes_sha256 equals that of another model's valid record for the same leaf at the same commit, naming both models; the same model re-filing at that commit, and an equal body at another commit, are filed as today. Two file_review calls with different notes at one commit give different notes_sha256. The gate (review_gate.py) and notes_digest are unchanged: a record filed before this change counts as today",
+        "Tests extend tests/test_review_record_write.py with the rows of the sheet test table, the first written to fail before the fix (two front-matter-only records share one digest); docs/orchestration-reviewer-output.md says what notes_sha256 covers; CHANGELOG [Unreleased]",
+        "Estimated net line change (informational, not a gate): package about +25, tests about +60, docs about +3"
+      ],
+      "codename": "shared-notes-digest-refused",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.62",
+      "node_key": "9c3e6e09-f3d1-4da1-a719-af19db35fe12",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.62_shared-notes-digest-refused_9c3e6e09-f3d1-4da1-a719-af19db35fe12.md",
+      "sibling_order": 56,
+      "status": "Not Started",
+      "title": "review record refuses empty notes and a notes digest another model already filed at the same commit",
+      "touch_zones": [
+        "specy_road/review_rejected.py",
+        "tests/test_review_record_write.py",
+        "docs/orchestration-reviewer-output.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A worker whose turn ends completed has its lease ref deleted from the integration remote, as a failed one does; another clone at max_workers 1 is then not refused because of it; worker message or resume of that worker pushes a lease again (acquire_lease new=True for completed and failed). An idle worker keeps its lease as today",
+        "The worker wrapper restores its process PYTHONPATH to the harness_pythonpath it was given (or removes it when there was none) before the turn, so a turn started by a queued message gives the harness the delegating caller's PYTHONPATH, or none, and never a path of the specy-road package; the wrapper still runs with -P and imports the same package",
+        "Tests extend tests/test_worker_max_workers_global.py and tests/test_worker_queue_message.py with the rows of the sheet test table; the lease comment in worker_lease.py and the lease paragraph of docs/orchestration-workers.md state the new rule; CHANGELOG [Unreleased]",
+        "Estimated net line change (informational, not a gate): package about +10, tests about +60, docs about +2"
+      ],
+      "codename": "completed-worker-frees-lease",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.63",
+      "node_key": "d3fb22ae-b63e-47ea-b422-231f6a3f8258",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.63_completed-worker-frees-lease_d3fb22ae-b63e-47ea-b422-231f6a3f8258.md",
+      "sibling_order": 57,
+      "status": "Not Started",
+      "title": "A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH",
+      "touch_zones": [
+        "specy_road/worker_runner.py",
+        "specy_road/worker_ops_message.py",
+        "specy_road/worker_lease.py",
+        "tests/test_worker_max_workers_global.py",
+        "tests/test_worker_queue_message.py",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The codex executor_template in harness-facts.yaml ends with - < {prompt} instead of the prompt text, and refresh-profiles --render re-renders the four OpenAI GPT profiles and the README harness block with no drift; prompt <leaf> --role rca --model <codex roster id> --channel cli --force --reason x --run with a bundled OpenAI profile and a 200 KiB prompt exits 0 and the harness receives the whole prompt on stdin, with no argument over 32 KiB. oversized_arg and its tests are unchanged",
+        "PROBE_RULES_LINES rule 1 says that a test the reviewer sandbox cannot run (for example, it cannot write temporary files) is named with its error in the notes as not run, is no block by itself, and is not listed under commands_rerun",
+        "The chore reviewer prompt (chore_prompt) says A1 is the task as a whole, given pass or fail, with no other A# key; a chore record with only A1 is still read by the chore verdicts",
+        "Tests extend tests/test_harness_launch.py, tests/test_review_record_rules.py and tests/test_chore_mode.py with the rows of the sheet test table; docs/orchestration-harness-launch.md and CHANGELOG [Unreleased]. Out of scope: profiles of other harnesses, a writable temp root for Codex reviewers, review record reading stdin",
+        "Estimated net line change (informational, not a gate): package about +5, profile data about 6 lines changed, tests about +60, docs about +3"
+      ],
+      "codename": "reviewer-and-rca-launch-paths",
+      "dependencies": [
+        "3b4b0524-3dc1-4acb-9d9f-1b8fd01be350"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.64",
+      "node_key": "a4905618-b868-46fa-a23b-d9e1b2846cd2",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.64_reviewer-and-rca-launch-paths_a4905618-b868-46fa-a23b-d9e1b2846cd2.md",
+      "sibling_order": 58,
+      "status": "Not Started",
+      "title": "The bundled Codex command reads its prompt on stdin, a reviewer lists a test its sandbox cannot run, and a chore reviewer uses A1 only",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/harness-facts.yaml",
+        "specy_road/templates/project/model-profiles/README.md",
+        "specy_road/templates/project/model-profiles/openai-gpt/gpt-6.1-terra.md",
+        "specy_road/templates/project/model-profiles/openai-gpt/gpt-6.1-sol.md",
+        "specy_road/templates/project/model-profiles/openai-gpt/gpt-6-sol.md",
+        "specy_road/templates/project/model-profiles/openai-gpt/gpt-5.6-sol.md",
+        "specy_road/review_record_rules.py",
+        "specy_road/bundled_scripts/chore_cli.py",
+        "tests/test_harness_launch.py",
+        "tests/test_review_record_rules.py",
+        "tests/test_chore_mode.py",
+        "docs/orchestration-harness-launch.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "GITIGNORE_LINES holds work/* and the re-includes !work/README.md, !work/.gitkeep and !work/*.template.md in place of every per-path work/ line; under a nested project the prefix follows a leading !; init project, specyrd init and refresh-stubs write that block, and the toolkit root .gitignore block is re-rendered",
+        "With work/chores/<slug>.json and .md present after chore start and chore close in a clone holding a claimed leaf, the reviewer dirty_check prints nothing, worker reconcile reports no breach and delegate passes its uncommitted-work check; RUNTIME_WORK_DIRS and dirty_check are unchanged. A fresh clone of an initialised project has work/README.md and the three templates",
+        "The project template git-workflow.yaml sets implementation_summary: local, so validate on a new project prints no summary notice; the template .gitignore comments, work/README.md, docs/git-workflow.md and docs/git-workflow-preferences.md say work/ is local and never committed. upgrade on a project with a tracked work/ file lists it and prints git rm --cached for it without running it (existing ignore_report path); CHANGELOG [Unreleased] carries that upgrade note",
+        "Tests extend tests/test_agent_ignores.py, tests/test_runtime_dirs_not_dirty.py and tests/test_init_project_gitignore.py with the rows of the sheet test table; tests that pin the old per-path lines are updated row by row and named in the summary",
+        "Golden rule: it never regenerates a whole golden file; any changed transcript or golden under tests/parity/ (upgrade dry run, leaf loop) needs an asserted before/after fragment named in the summary, and each such file is first added to the touch zones by exact path with specy-road edit-node",
+        "Estimated net line change (informational, not a gate): package about -5, templates about -20, tests about +50, docs about +6"
+      ],
+      "codename": "work-dir-ignored",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.65",
+      "node_key": "4193dccc-c9b5-46a4-a5dc-3a9705587c14",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.65_work-dir-ignored_4193dccc-c9b5-46a4-a5dc-3a9705587c14.md",
+      "sibling_order": 59,
+      "status": "Not Started",
+      "title": "The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work",
+      "touch_zones": [
+        "specy_road/agent_ignores.py",
+        "specy_road/templates/project/.gitignore",
+        "specy_road/templates/project/work/README.md",
+        "specy_road/templates/project/roadmap/git-workflow.yaml",
+        ".gitignore",
+        "tests/test_agent_ignores.py",
+        "tests/test_runtime_dirs_not_dirty.py",
+        "tests/test_init_project_gitignore.py",
+        "docs/git-workflow.md",
+        "docs/git-workflow-preferences.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Without a profile: path, an entry matches the first profile whose api_id, file name or alias equals its id, else its harness_model, through one lookup order shared by profile_for_entry (working tree) and the integration-branch lookup in orchestration_pinned; an entry that matches by id today keeps that profile; an explicit profile: path is unchanged",
+        "validate prints no no-profile warning for an entry whose harness_model is a profile api_id or alias, and prompt for that entry holds the profile prompting rules; an entry matching by neither still gets the warning naming the closest profile, its text naming id or harness_model",
+        "Tests extend tests/test_model_profile_aliases.py with the rows of the sheet test table; docs/orchestration-roster.md and CHANGELOG [Unreleased]. Out of scope: the warning printed by add-node and edit-node",
+        "Golden rule: a changed validate transcript under tests/parity/ needs an asserted before/after fragment named in the summary, and that file is first added to the touch zones by exact path with specy-road edit-node",
+        "Estimated net line change (informational, not a gate): package about +10, tests about +50, docs about +2"
+      ],
+      "codename": "profile-match-reads-harness-model",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.66",
+      "node_key": "8670a5b8-b6f6-4b91-b5c8-cfd5e890a50e",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.66_profile-match-reads-harness-model_8670a5b8-b6f6-4b91-b5c8-cfd5e890a50e.md",
+      "sibling_order": 60,
+      "status": "Not Started",
+      "title": "A roster entry matches a model profile by its harness_model when its id matches none",
+      "touch_zones": [
+        "specy_road/model_profiles.py",
+        "specy_road/orchestration_pinned.py",
+        "tests/test_model_profile_aliases.py",
+        "docs/orchestration-roster.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
