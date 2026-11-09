@@ -35,7 +35,7 @@
 
 ## Verification
 
-- `pytest -n 4` on `tests/test_upgrade.py`, `tests/test_upgrade_preview.py`, `tests/test_upgrade_parity.py`, `tests/test_upgrade_plan_parity.py`, `tests/test_upgrade_work_templates.py`, `tests/test_agents_md_report.py`, `tests/test_setup_writers_refuse_links.py`, `tests/test_skill_mirrors.py`: 330 passed with `tests/test_sibling_repo_approvals.py` (round 3).
+- `pytest -n 4` on `tests/test_upgrade.py`, `tests/test_upgrade_preview.py`, `tests/test_upgrade_parity.py`, `tests/test_upgrade_plan_parity.py`, `tests/test_upgrade_work_templates.py`, `tests/test_agents_md_report.py`, `tests/test_setup_writers_refuse_links.py`, `tests/test_skill_mirrors.py`: 332 passed with `tests/test_sibling_repo_approvals.py` (round 5).
 - `ruff check specy_road tests scripts`: passed.
 - `specy-road file-limits`: OK. `tests/test_upgrade_preview.py` is 839 lines, over the soft alert and under the 1,000-line cap. The other warnings are pre-existing files.
 
@@ -63,6 +63,9 @@
 - Round 4, `_left_out` (link target): `AGENTS.md -> work/guide.md` under `work/*` then `!work/guide.md`. Before: `AGENTS.md (failed)` on both paths and no `work/guide.md` in the temp directory. After: no failure line, the guide is in both temp directories. Result: held (test red without the fix, green with it).
 - Round 4, `_walk` and `_appeared`: both call the same `_ignored`, so a re-included path is copied by the walk and reported as a new checkout path by `changed_since`, as any non-ignored path is. Result: same rule, no separate code.
 - Round 4, `ls-files --others --exclude-standard` (the file list) and `sibling_repos._untracked_by_root` (`check-ignore -q`): git applies negations itself and neither parses `-v` output. Result: not in this class, unchanged.
+- Round 5, class: a tracked read-only (0555) directory. `_walk` applied the directory's mode before copying its children, so the first child copy raised `PermissionError` on both paths. The mode is now applied after the recursive walk, as the base commit's `_copy_dir` did. Result: held (test red without the fix, green with it).
+- Round 5, other directory creations: `_copy_dir` (link targets) sets the mode after its children; `snapshot_outside` uses `copytree`, which also sets directory modes after the copy. Result: not in this class, unchanged.
+- Round 5, broader, not fixed (this round was limited to `_walk`): `_copy_selected` applies the checkout root's own mode to the mirror root before `_walk` (`upgrade_plan.py:301-303`). A checkout whose root directory is read-only would hit the same `PermissionError`; the base commit's `_copy_dir(checkout, repo)` set it afterwards. Left for the coordinator; same one-line move.
 - Round 4, grok-4.7-high's finding at `02be8c65` (unsearchable directory): already fixed in `758f6d4f` and `f8d9045d`; `test_an_unsearchable_directory_is_left_out_of_the_mirror` requires exit 0 on both paths. Result: no further change.
 
 ## Added
@@ -82,6 +85,7 @@ Helpers and branches:
 - `Mirror._left_out`: the omission rule for a link target. A checkout path git ignores, or a nested repository, is not created. A path outside the checkout is not omitted. Replaces the report line, which copied the secret and then said so.
 - `_skipped_dir`: one answer for a real directory the copy does not enter. It contains `.git`, or listing it raises. A symlink is not that directory. `_walk` uses it before `mkdir`, so an unsearchable directory is never in the tree `snapshot_outside` copies. `_appeared`, `_left_out`, `_under_nested` and `_without_skipped` use the same answer.
 - `try/except OSError` around the `.git` check in `sibling_repos.walk`: an unsearchable child is skipped, so `validate` in a real upgrade does not stop on it.
+- `shutil.copymode` in `_walk` moved after the recursive walk: a read-only directory is made read-only only once its children are in it.
 - `_copy_dir` skips a child `_left_out` rejects: a link to `work/` was the other way an ignored file entered.
 - `_without_skipped` keeps a symlink whose target contains `.git`: the link is not the nested repository.
 - `_ensure` makes the alias symlink only when the target was actually placed: otherwise it would create the omitted path as a self-link.
@@ -99,6 +103,7 @@ Tests:
 - `test_an_ignored_current_digest_is_not_predicted_as_a_rewrite`: an ignored `roadmap-context.md` that matches the roadmap is not a `would write` and not a `wrote`.
 - `test_an_unsearchable_directory_is_left_out_of_the_mirror`: a mode-000 directory and a link to it stay out of both temp directories, and both the real run and the dry run exit 0.
 - `test_large_ignored_content_does_not_change_the_plan`: the dry-run plan with a 1MB ignored tree and a secret equals the plan without them.
+- `test_a_tracked_read_only_directory_does_not_stop_either_run`: a tracked mode-0555 directory; both runs exit 0 (round 5).
 - `build_without_git` forwards `build`'s new keywords so the existing no-`.git` assertion still runs (decision 5).
 
 Mocks: none.
