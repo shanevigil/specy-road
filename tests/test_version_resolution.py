@@ -1,7 +1,6 @@
 """Tests for ``specy_road.__version__`` resolution policy.
 
-Resolution order (see ``specy_road/__init__.py`` and
-``.cursor/rules/026-release-version-tag-sync.mdc``):
+Resolution order (see ``specy_road/__init__.py``):
 
 1. Sibling ``pyproject.toml`` declaring ``[project] name = "specy-road"`` —
    used so editable checkouts match ``project.version`` even if installed

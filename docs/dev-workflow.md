@@ -199,7 +199,7 @@ The brief's header states its total size in bytes and its three largest numbered
 
 5. Implement, commit incrementally.
 
-The PM Gantt can still **merge registry rows from remote `feature/rm-*` refs** when remote overlay is enabled ([design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md)); the **primary** visibility path for new work is the **committed file on the integration branch** after you push.
+The PM Gantt can still **merge registry rows from remote `feature/rm-*` refs** when remote overlay is enabled; the **primary** visibility path for new work is the **committed file on the integration branch** after you push.
 
 ### Finish (both paths)
 

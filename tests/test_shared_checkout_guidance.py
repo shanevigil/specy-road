@@ -1,7 +1,6 @@
 """The shared-checkout rule reaches every agent entry point, in one wording.
 
-Design note: docs/design-notes/agent-guidance-and-shared-checkouts.md. The
-rules file ``.specyrd/AGENTS.md`` carries the full rule, the ``AGENTS.md`` stub
+The rules file ``.specyrd/AGENTS.md`` carries the full rule, the ``AGENTS.md`` stub
 its core (the only part a Codex session is sure to read), the CLAUDE.md managed
 block an import of the rules file, and the bootstrap prompt the same full rule,
 so an adopter who merges the prompt's bullets by hand gets the scaffold's text.

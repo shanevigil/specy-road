@@ -204,9 +204,7 @@ for the worker layer; fixtures in `tests/review_repo_helpers.py`), one
 CHANGELOG `[Unreleased]` bullet "**<Nth> independent review (<model>):**"
 listing the fixes, an edit to the design note wherever a claim changed, and
 a stated limit in the reference doc wherever a finding is accepted rather
-than fixed. A fix restarts the round at the new SHA. The rounds' origin and
-the evidence discipline behind them:
-[design-notes/sre-for-ai-triage.md](design-notes/sre-for-ai-triage.md).
+than fixed. A fix restarts the round at the new SHA.
 
 ---
 

@@ -19,7 +19,7 @@
 - grind-session hooks and step mode → "Unattended loops"
 - `session start|guard`, the harness hook adapters, several agents in one tree, migrating → "Presence: `specy-road session`", "Working in one shared checkout", "Upgrading from 0.2.x"
 
-**Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`orchestration-review.md`](orchestration-review.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-0-orchestration-slices.md`](design-notes/v0-3-0-orchestration-slices.md) (background).
+**Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`orchestration-review.md`](orchestration-review.md), [`grind-session.md`](grind-session.md).
 
 specy-road separates three roles around a roadmap leaf and prescribes how work passes
 between them — not **which** agent, IDE or vendor fills a role; a human, Claude Code, Cursor, Codex or a local model all fit. Other tools also drive those CLIs as workers; what is specy-road's is the governance around them, set out in [Where specy-road sits](philosophy-and-scope.md#where-specy-road-sits).
@@ -381,7 +381,7 @@ out; one that will not load counts as live to the guard until fixed or deleted. 
 ## Working in one shared checkout
 
 When several agents share one working tree, with or without a roadmap claim (the
-scaffold `AGENTS.md` repeats these rules; [design-notes/agent-guidance-and-shared-checkouts.md](design-notes/agent-guidance-and-shared-checkouts.md) records why):
+scaffold `AGENTS.md` repeats these rules):
 
 - Commit by explicit path (`git commit --only <paths>`); never `git add -A`,
   `git commit -a`, or a bare commit.

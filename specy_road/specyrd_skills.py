@@ -290,7 +290,7 @@ def managed_paths(rel_dest: Path, files_to_install: tuple[str, ...], *, agent: s
 
 #: Skill and command directories other harnesses scan besides ``.agents/skills``.
 #: specy-road writes none of them; a ``specyrd-*`` copy there loads the skill twice
-#: (docs/design-notes/harness-compatibility-triage.md, finding 6).
+#: (harness compatibility triage, finding 6).
 MIRROR_DIRS = (Path(".cursor/skills"), Path(".codex/skills"), Path(".cursor/commands"))
 
 

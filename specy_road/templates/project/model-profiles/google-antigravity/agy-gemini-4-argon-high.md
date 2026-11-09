@@ -74,5 +74,5 @@ role_fit:
 - S3: Google Antigravity changelog, Google Antigravity Docs, read 2026-11-03, https://antigravity.google/docs/changelog/, primary
 - S4: Rules, Google Antigravity Docs, read 2026-11-03, https://antigravity.google/docs/rules/, primary
 - S5: agy --print / -p silently drops stdout when run with a non-TTY, google-antigravity/antigravity-cli issue 76 (closed 2026-07-12, fix in 1.1.1), read 2026-11-03, https://github.com/google-antigravity/antigravity-cli/issues/76, secondary
-- S6: Harness compatibility triage (research of 2026-10-28), specy-road, docs/design-notes/harness-compatibility-triage.md, secondary
+- S6: Harness compatibility triage (research of 2026-10-28), specy-road, maintainers' triage notes (not published), secondary
 - S7: Gemini 4 Argon profile, specy-road, model-profiles/google-gemini/gemini-4-argon.md, secondary

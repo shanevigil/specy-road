@@ -2,7 +2,7 @@
 
 Cursor and Codex already read `.agents/skills`, so a copy under `.cursor/skills`,
 `.codex/skills` or `.cursor/commands` loads each skill twice
-(docs/design-notes/harness-compatibility-triage.md, finding 6). `init` writes
+(harness compatibility triage, finding 6). `init` writes
 none; `upgrade --prune` deletes the ones nothing is lost by deleting; `validate`
 warns while any remains.
 """

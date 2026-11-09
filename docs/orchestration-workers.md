@@ -23,7 +23,7 @@
 - stalled workers and `worker recover` → "Stalled workers"
 - the presence guard and finishing the leaf → "Working alongside sessions and the gate"
 
-**Related:** [`orchestration.md`](orchestration.md), [`agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-1-worker-orchestration.md`](design-notes/v0-3-1-worker-orchestration.md).
+**Related:** [`orchestration.md`](orchestration.md), [`agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md), [`grind-session.md`](grind-session.md).
 
 `specy-road worker` lets the coordinator — the model in whatever IDE chat you
 are already in — hand a roadmap leaf to a session on another harness, keep
@@ -32,7 +32,6 @@ next turn. It is the delegation layer under
 [orchestration.md](orchestration.md): the review gate, hand-off files, and
 roster are unchanged; this adds the launching, watching, and taking-back.
 
-Design: [design-notes/v0-3-1-worker-orchestration.md](design-notes/v0-3-1-worker-orchestration.md).
 Three decisions shape everything here: the surface is the CLI (every harness
 can run a shell; there is no MCP server); workers run on each vendor's
 documented one-shot CLI with resume; and there is no daemon — a detached

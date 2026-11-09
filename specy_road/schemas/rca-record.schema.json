@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specy-road.local/schemas/rca-record.schema.json",
   "title": "specy-road review-loop root-cause analysis record",
-  "description": "YAML front matter of work/reviews/<NODE_ID>/RCA-<round>.md: why a leaf's review loop stopped converging and the cheapest corrective action. Written by the analyst `specy-road prompt <NODE_ID> --role rca` addresses; see docs/design-notes/review-loop-rca.md.",
+  "description": "YAML front matter of work/reviews/<NODE_ID>/RCA-<round>.md: why a leaf's review loop stopped converging and the cheapest corrective action. Written by the analyst `specy-road prompt <NODE_ID> --role rca` addresses.",
   "type": "object",
   "required": ["node_id", "model", "date", "trigger", "classification", "evidence", "recommended_action"],
   "additionalProperties": false,

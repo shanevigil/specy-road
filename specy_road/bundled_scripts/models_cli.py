@@ -189,7 +189,7 @@ def cmd_stale(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline 2026-10
         for r in reasons:
             print(f"  - {r}")
     if stale and not ns.json:
-        print("\nRe-run the research prompt for that family (docs/design-notes/model-aware-orchestration-proposal.md §7).")
+        print("\nRe-run the research prompt for that family (orchestration proposal §7).")
     return 1 if any(p.path in rostered for p, _ in stale) else 0
 
 

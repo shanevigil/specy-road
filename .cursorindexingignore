@@ -11,3 +11,9 @@ sr/roadmap/archive/
 sr/work/brief-*.md
 sr/roadmap.md
 # >>> end specy-road managed block <<<
+
+# Development-process notes, tools and Cursor rules: untracked, kept on disk only
+docs/design-notes/
+scripts/census/
+scripts/review_effort_study.py
+.cursor/rules/

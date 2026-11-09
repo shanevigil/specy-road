@@ -37,7 +37,6 @@ cases:
     title: A commit takes only the agent's own paths
     source:
       - tests/test_review_round6_guard.py::test_broad_pathspecs_are_refused
-      - docs/design-notes/agent-guidance-and-shared-checkouts.md#what-happened
     app: todo
     harnesses: [claude-code, codex, cursor]
     setup: >-
@@ -81,7 +80,6 @@ cases:
   - id: CR4
     title: Validate warnings are not fixed by rewriting planned touch zones
     source:
-      - docs/design-notes/v0-3-1-rc1-adopter-feedback-triage.md#fixed-on-the-wip
       - tests/test_validate_touch_zones.py::test_the_hint_does_not_invite_removing_zones
     app: notes
     harnesses: [claude-code, codex, cursor]
@@ -156,7 +154,7 @@ cases:
   - id: CR8
     title: In a nested layout the summary lands under the project root
     source:
-      - docs/design-notes/v0-3-1-rc1-adopter-feedback-triage.md#pre-final-to-do-before-031
+      - tests/test_worker_cli_fixes.py::test_nested_prompt_and_brief_give_paths_from_the_git_root
     app: notes
     harnesses: [claude-code, codex, cursor]
     setup: >-

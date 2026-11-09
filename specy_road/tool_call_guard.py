@@ -1,8 +1,8 @@
 """Decide whether a shell command is safe to run in a checkout other agents share.
 
 The guard behind ``specy-road session guard`` and the harness hook adapters
-(proposal §3.4, §3.5; design note
-``docs/design-notes/agent-guidance-and-shared-checkouts.md``, decision 6).
+(proposal §3.4, §3.5; agent-guidance and shared-checkouts design note,
+decision 6).
 
 A command is **destructive in a shared tree** when it can move or discard
 work that is not the caller's: anything that stashes, resets, switches

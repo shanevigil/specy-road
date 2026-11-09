@@ -6,7 +6,7 @@ and ``work/``. Both are regenerated from the graph, and both belong in git — a
 fresh clone and CI read them before anything has been regenerated.
 
 Adopters have gitignored them anyway, because "generated" usually implies
-"untracked" (see ``docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md`` §4).
+"untracked" (v0.2.1-rc1 adopter feedback triage, §4).
 The local checkout then looks fine while CI sees the file missing. These helpers
 detect that and say so once, non-fatally.
 """

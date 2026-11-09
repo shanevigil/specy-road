@@ -1,5 +1,5 @@
 {
-  "_note": "Constructed from the documented field shapes, not captured: system/api_retry and result.permission_denials from code.claude.com/docs/en/headless (read 2026-11-03), the Claude limit text from tests/fixtures/claude_code_limits/timed_session_limit.txt, the Codex 'try again' failure from the harness-facts quota row. The M8.7 run could not trigger a live limit (docs/design-notes/M8.7-runtime-verification-harness-facts.md).",
+  "_note": "Constructed from the documented field shapes, not captured: system/api_retry and result.permission_denials from code.claude.com/docs/en/headless (read 2026-11-03), the Claude limit text from tests/fixtures/claude_code_limits/timed_session_limit.txt, the Codex 'try again' failure from the harness-facts quota row. The M8.7 run could not trigger a live limit.",
   "claude_denied": [
     {"type": "system", "subtype": "init", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50", "model": "claude-opus-5-5"},
     {"type": "system", "subtype": "permission_denied", "session_id": "3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50"},

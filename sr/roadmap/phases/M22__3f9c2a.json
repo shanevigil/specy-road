@@ -28,7 +28,8 @@
         ".pre-commit-config.yaml",
         "AGENTS.md",
         "docs/contributor-guide.md",
-        "specy_road/agent_rule_provenance.md"
+        "specy_road/agent_rule_provenance.md",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     },
@@ -46,7 +47,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.55_process-content-untracked_a6e04b9d-2c71-4f3a-8b5e-7d19c0f4a2e3.md",
       "sibling_order": 50,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored",
       "touch_zones": [
         ".gitignore",

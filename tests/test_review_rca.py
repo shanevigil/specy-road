@@ -208,18 +208,6 @@ def test_two_spellings_of_one_commit_are_one_round(tmp_path: Path, capsys) -> No
     assert st["escalation"]["acceptance_ids"] == ["A1"]
 
 
-def test_design_note_attributes_each_report() -> None:
-    text = (Path(__file__).resolve().parents[1] / "docs" / "design-notes" / "review-loop-rca.md").read_text()
-    agree, differ = text.split("## Where the two reports agree", 1)[1].split("Where they differ", 1)
-    assert "this note is wrong" not in text and "Both cite" not in agree
-    assert "three strikes" in agree and "2–3" in agree
-    assert "The Claude report cites" in agree and "Debugging Decay Index" in agree and "8.9%" in agree
-    assert "self-critique" not in agree
-    folded = " ".join(differ.split())
-    assert "self-reflection" in folded and "calls debate untried" in folded
-    assert "no debate and no self-critique" in folded
-
-
 def test_reviewer_prompt_says_the_loop_is_escalated_until_an_rca_exists(tmp_path: Path) -> None:
     repo = _escalated_repo(tmp_path)
     (reviews_dir(repo, "M1.1") / PACKET_NAME).write_text("# Review packet: `M1.1`\n")
