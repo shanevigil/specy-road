@@ -2,7 +2,7 @@
 """Verify a built specy-road wheel ships everything ``init project`` needs.
 
 Usage:
-    python scripts/verify_wheel_contents.py <wheel.whl>
+    python scripts/verify_wheel_contents.py <wheel.whl> [<sdist.tar.gz> ...]
 
 Two failure modes, both invisible from an editable checkout:
 
@@ -19,6 +19,7 @@ Exit 0 on success, 1 with a clear message on failure.
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 import zipfile
 from pathlib import Path
@@ -46,17 +47,23 @@ REQUIRED_GLOBS = (
 )
 
 
-def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print("usage: verify_wheel_contents.py <wheel.whl>", file=sys.stderr)
-        return 2
-    wheel = Path(argv[1])
-    if not wheel.is_file():
-        print(f"error: wheel not found at {wheel}", file=sys.stderr)
-        return 1
-    with zipfile.ZipFile(wheel) as zf:
-        names = set(zf.namelist())
+def _hygiene():
+    path = Path(__file__).resolve().parent / "check_public_hygiene.py"
+    spec = importlib.util.spec_from_file_location("check_public_hygiene_wheel", path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"cannot load {path}")
+    spec.loader.exec_module(module)
+    return module
 
+
+def _required(wheel: Path) -> int:
+    try:
+        with zipfile.ZipFile(wheel) as zf:
+            names = set(zf.namelist())
+    except (OSError, zipfile.BadZipFile) as exc:
+        print(f"error: {wheel}: {exc}", file=sys.stderr)
+        return 1
     missing = [p for p in REQUIRED_FILES if p not in names]
     for prefix in REQUIRED_GLOBS:
         if not any(n.startswith(prefix) for n in names):
@@ -79,6 +86,36 @@ def main(argv: list[str]) -> int:
         f"and the init-project scaffold dotfiles."
     )
     return 0
+
+
+def _denied(path: Path) -> int:
+    """Denied member paths and denied text. A read failure is a non-zero exit."""
+    module = _hygiene()
+    root = Path(__file__).resolve().parents[1]
+    hits = module.archive_promotion_hits(path, module.load_rules(root))
+    if not hits:
+        return 0
+    print("\n".join(hits), file=sys.stderr)
+    return 1
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) < 2:
+        print("usage: verify_wheel_contents.py <wheel.whl> [<sdist.tar.gz> ...]", file=sys.stderr)
+        return 2
+    failed = False
+    for raw in argv[1:]:
+        path = Path(raw)
+        if not path.is_file():
+            print(f"error: wheel not found at {path}", file=sys.stderr)
+            failed = True
+            continue
+        if path.suffix == ".whl" and _required(path) != 0:
+            failed = True
+            continue
+        if _denied(path) != 0:
+            failed = True
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

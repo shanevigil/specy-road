@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import io
 import subprocess
 import sys
+import tarfile
 import zipfile
 from pathlib import Path
+
+import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPT = REPO / "scripts" / "verify_wheel_contents.py"
@@ -92,3 +96,49 @@ def test_fails_when_wheel_missing(tmp_path: Path) -> None:
     r = _run(tmp_path / "absent.whl")
     assert r.returncode == 1
     assert "wheel not found" in r.stderr
+
+
+SHIPPED_TEMPLATES = [
+    "specy_road/templates/project/research/README.md",
+    "specy_road/templates/project/work/handoff-ready.template.md",
+    "specy_road/templates/specyrd/commands/specyrd-prompt.md",
+]
+
+
+def _pack(path: Path, fmt: str, files: dict[str, str]) -> None:
+    if fmt == "zip":
+        with zipfile.ZipFile(path, "w") as archive:
+            for name, content in files.items():
+                archive.writestr(name, content)
+        return
+    with tarfile.open(path, "w:gz") as archive:
+        for name, content in files.items():
+            data = content.encode()
+            info = tarfile.TarInfo(f"pkg-1.0/{name}")
+            info.size = len(data)
+            archive.addfile(info, io.BytesIO(data))
+
+
+@pytest.mark.parametrize("fmt", ["zip", "gztar"])
+@pytest.mark.parametrize("scenario", ["denied-member", "denied-text", "shipped"])
+def test_sdist_and_wheel_promotion_scan(tmp_path: Path, fmt: str, scenario: str) -> None:
+    if scenario == "denied-member":
+        files = {"docs/design-notes/x.md": "x\n"}
+    elif scenario == "denied-text":
+        files = {"README.md": "Claude-" + "Session: abc\n"}
+    else:
+        files = {name: "x\n" for name in SHIPPED_TEMPLATES}
+    archive = tmp_path / ("dist.zip" if fmt == "zip" else "dist.tar.gz")
+    _pack(archive, fmt, files)
+    result = _run(archive)
+    assert result.returncode == (0 if scenario == "shipped" else 1), result.stderr
+    if scenario == "denied-member":
+        assert "docs/design-notes/x.md" in result.stderr
+        assert "pkg-1.0/docs/design-notes/x.md" not in result.stderr
+
+
+@pytest.mark.parametrize("name", ["broken.zip", "broken.tar.gz"])
+def test_fails_when_the_archive_cannot_be_read(tmp_path: Path, name: str) -> None:
+    bad = tmp_path / name
+    bad.write_bytes(b"not an archive")
+    assert _run(bad).returncode != 0
