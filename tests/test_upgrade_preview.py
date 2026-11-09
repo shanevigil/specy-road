@@ -790,6 +790,23 @@ def test_an_unsearchable_directory_is_left_out_of_the_mirror(
         assert _has(names, "private-link") and _has(names, "keep-me.txt")
 
 
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_tracked_read_only_directory_does_not_stop_either_run(tmp_path: Path, dry_run: bool) -> None:
+    """A tracked mode-0555 directory is copied with its files, so neither run stops on it."""
+    root = old_repo(tmp_path / "repo")
+    locked = root / "locked"
+    locked.mkdir()
+    (locked / "note.txt").write_text("tracked\n", encoding="utf-8")
+    subprocess.run(["git", "add", "locked"], cwd=root, check=True)
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "locked"],
+                   cwd=root, check=True)
+    locked.chmod(0o555)
+    try:
+        assert run_upgrade(root, dry_run=dry_run) == 0
+    finally:
+        locked.chmod(0o755)
+
+
 def test_an_ignored_current_digest_is_not_predicted_as_a_rewrite(tmp_path: Path, capsys) -> None:
     """An ignored ``roadmap-context.md`` that matches the roadmap is current in the preview and the real run."""
     root = old_repo(tmp_path)

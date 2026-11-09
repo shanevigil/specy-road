@@ -373,9 +373,9 @@ class Mirror:
                     continue
                 dest.mkdir(parents=True, exist_ok=True)
                 self.states[str(source)] = ("dir",)
-                with contextlib.suppress(OSError):
-                    shutil.copymode(source, dest)
                 self._walk(source, dest, selected, ancestors)
+                with contextlib.suppress(OSError):
+                    shutil.copymode(source, dest)   # after the children, so a read-only directory stays so
                 continue
             if entry.is_file(follow_symlinks=False) and rel in selected:
                 self._copy_file(source, dest)
