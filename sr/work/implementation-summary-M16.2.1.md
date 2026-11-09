@@ -166,6 +166,31 @@ changes, and this summary update. No other part of the change depends on the mis
   checkout step.
 - `ruff check specy_road tests scripts`: passed. `specy-road file-limits`: exit 0.
 
+## Fix round 2 (review by gpt-6.1-sol at f97503ec)
+
+**Finding:** the same as round 1 (A4: `planned_test_changes` is absent), and the reviewer's
+text again names the coordinator as the one who must act.
+
+**Class:** unchanged. The approved-removal plan is missing from the integration branch's
+roadmap data, which is outside this leaf's zones and which executors may not edit. Further
+fix rounds on this branch cannot clear it.
+
+**Code changes this round:** none.
+
+**Blocked on the coordinator:** on `WIP/improvements-0-3-1`, set M16.2.1's
+`planned_test_changes` (in `sr/roadmap/phases/M16__511edd.json`) to the 16 lines under A4,
+then regenerate the packet. Until then, re-running review at a new commit will return the
+same block.
+
+## Probes (round 2)
+
+- `git fetch origin && git merge origin/WIP/improvements-0-3-1`: already up to date.
+- `planned_test_changes` on `origin/WIP/improvements-0-3-1`: still absent (`None`).
+- `specy-road integrity M16.2.1`: 16 lines. Sorted, they are identical to the A4 list in
+  this summary, so the set to declare is unchanged.
+- The advisory vulture step in `.github/workflows/validate.yml` is still present.
+- `ruff check specy_road tests scripts` and `specy-road file-limits`: see READY.
+
 ## Added
 
 - Helpers: `scripts/vulture_whitelist.py` with `_Names` and `USED`. It is the vulture
