@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Review one leaf: trial-merge with WIP, rebuild the packet, then Grok; Sol only after Grok approves.
+# Review one leaf: trial-merge with WIP, rebuild the packet, then R1 (Sol); R2 (Grok) only after R1 approves.
 # Usage: sr/tools/rv.sh <NODE_ID> <worktree-dir-name>
 set -u
 ID=$1; WT=$2
@@ -8,6 +8,10 @@ ID=$1; WT=$2
 if [ "${R1:-}" = gpt-5.6-sol-high ] && [ $(( $(printf %s "$ID" | cksum | cut -d' ' -f1) % 10 )) -lt 7 ]; then R1=gpt-6.1-sol; fi
 S=$ROOT/sr/tools/specy-road; LOG=$ROOT/work/grind-logs; mkdir -p "$LOG"
 cd "$ROOT" || exit 2
+# A plain leaf (tier from the integration line's sheet, raised by a path floor: sr/tools/tier.py) gets the
+# low-effort pair, cheapest first (maintainer 2026-11-09). Behavioural and trust leaves keep the configured pair.
+TIER=$("$PY" "$ROOT/sr/tools/tier.py" "$ID" "sr/work/.worktrees/$WT" 2>/dev/null || echo behavioural)
+if [ "$TIER" = plain ]; then R1=gpt-5.6-sol-low; R2=grok-4.7-low; fi
 # One reviewer turn; since M8.3 a refused one-shot record ("rerun requested") gets one automatic retry.
 # A landing rewrites the checkout the reviewer's tooling imports from; an ImportError mid-run is that race, not
 # the leaf: wait for the coordinator's git lock (held for the whole landing) and run the reviewer once more.
