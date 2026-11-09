@@ -28,15 +28,21 @@ managed files while sharing this install.
 
 Each step keeps its own narrow contract; the roadmap, planning sheets and
 anything outside a managed block are never touched. The refreshes run once, on
-a temporary mirror of the checkout that keeps its links; what they wrote there
+a temporary mirror of the checkout that keeps its links and leaves gitignored
+files out: tracked files, untracked files git does not ignore, and files the
+refreshes read. A symlink to an ignored file or directory does not copy that
+target. A directory that cannot be searched is left out, on a real run and a
+dry run. It prints a line before that copy. What they wrote there
 is the plan, which is then written into the checkout. ``--dry-run`` lists the
-same plan, writes it into a temporary copy instead and runs ``validate`` there;
+same plan, reuses that mirror for a temporary copy and runs ``validate`` there;
 the checkout is never written, and the generated files it would write are
 listed as ``would write``, the digest rendered from the checkout's history,
-read-only. Every git call runs with every ``GIT_`` variable of
-the caller's removed and a timeout; in the plan's mirror and the dry run's
-copy, git also reads no global or system config and runs no hook, and in the
-checkout the caller's own config files apply. The exit code is 2 when a git
+read-only. Choosing the files reads the caller's excludes file on a real run
+and a dry run, so a global ``core.excludesFile`` hides the same paths in both.
+Every git call runs with every ``GIT_`` variable of
+the caller's removed and a timeout; git commands inside the plan's mirror and
+the dry run's copy read no global or system config and run no hook. The exit
+code is 2 when a git
 call it depends on fails or times out, 1 when ``validate`` fails or a write
 is refused, and 0 otherwise. A generated file with a symlink on its path is
 refused, and ``digest`` stays a next step, as it does when ``validate`` fails
@@ -51,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import json
 import os
 import shlex
 import sys
@@ -61,19 +68,25 @@ from pathlib import Path
 import yaml
 
 from specy_road import __version__, git_subprocess
-from specy_road.agents_md_block import load_order_paths, print_migration, render_rules
+from specy_road.agent_guide_block import AGENT_GUIDE
+from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE
+from specy_road.agents_md_block import AGENTS_FILES, load_order_paths, print_migration, render_rules
 from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, selection_notice
-from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
+from specy_road.bundled_scripts.refresh_profiles import bundled_profiles_dir
+from specy_road.bundled_scripts.refresh_schemas import (
+    SCHEMAS_DIRNAME, bundled_schemas_dir, missing_schema_names, refresh_schemas,
+)
 from specy_road.bundled_scripts.refresh_stubs import _prefix, _report, _resolve_root, refresh_stubs
 from specy_road.bundled_scripts.upgrade_generated import (
     GitFailed, checked, regenerate, scratch_environ, use_live_history,
 )
 from specy_road.bundled_scripts.upgrade_plan import (
-    Entry, Mirror, Plan, apply_plan, check_changes, conflicts, make_plan,
+    Entry, Mirror, Plan, apply_plan, check_changes, conflicts, make_plan, snapshot_outside,
 )
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
+from specy_road.generated_files import GENERATED_COMMITTED
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
 from specy_road.git_subprocess import git_text
 from specy_road.ignore_report import GITIGNORE, attempt, observe, observed, print_matches, scratch_git_env
@@ -81,7 +94,10 @@ from specy_road.init_project import project_template_root
 from specy_road import safe_write
 from specy_road.managed_block import refused_link, rule_refusal
 from specy_road.safe_write import SafeWriteError
-from specy_road.runtime_paths import add_repo_root_arg, git_root, project_root, source_scan_root
+from specy_road.model_profiles import PROFILES_REL
+from specy_road.runtime_paths import add_repo_root_arg, git_root, prefix_within, project_root, source_scan_root
+from specy_road.specyrd_init import COMMAND_FILES
+from specy_road.specyrd_skills import LINK_DEST, MIRROR_DIRS, link_rel, skill_rel, stem
 from specy_road.upgrade_templates import (
     copy_missing_work_templates,
     work_template_ship_plan,
@@ -296,7 +312,61 @@ def _report_line_caps(before: dict[str, tuple[int, int]], after: dict[str, tuple
             print(line)
 
 
-def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool, defer_ignore: bool = False):
+def _present(checkout: Path, rels: set[str]) -> set[str]:
+    return {rel for rel in rels if (checkout / rel).exists() or (checkout / rel).is_symlink()}
+
+
+def _recorded_paths(checkout: Path) -> set[str]:
+    """Paths the manifest says a pack owns, which a refresh rewrites even when git ignores them."""
+    try:
+        data = json.loads((checkout / ".specyrd" / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return set()
+    agents = data.get("agents") if isinstance(data, dict) else None
+    if not isinstance(agents, dict):
+        return set()
+    return {p for paths in agents.values() if isinstance(paths, list) for p in paths if isinstance(p, str)}
+
+
+def _skill_paths() -> set[str]:
+    """Stub, skill and skill-link paths a refresh stats, whether or not this checkout has them."""
+    paths = {skill_rel(name).as_posix() for name in COMMAND_FILES}
+    for agent in LINK_DEST:
+        paths.update(link.as_posix() for name in COMMAND_FILES if (link := link_rel(agent, name)))
+    for mirror_dir in MIRROR_DIRS:
+        for name in COMMAND_FILES:
+            rel = mirror_dir / name if mirror_dir.name == "commands" else mirror_dir / stem(name)
+            paths.add(rel.as_posix())
+            if mirror_dir.name != "commands":
+                paths.add((rel / "SKILL.md").as_posix())
+    return paths
+
+
+def _mirror_extras(project: Path, checkout: Path) -> set[str]:
+    """Paths copied even when git ignores them: what the refreshes read, and a generated file the preview compares."""
+    prefix = prefix_within(checkout, project)
+
+    def under(rel: str) -> str:
+        return f"{prefix}{rel}"
+
+    rels = {
+        AGENT_GUIDE, GITIGNORE, CURSOR_INDEXING_IGNORE,
+        ".specyrd/manifest.json", ".specyrd/README.md",
+        under("roadmap/orchestration.yaml"), under("constraints/file-limits.yaml"),
+        *(under(name) for name in AGENTS_FILES),
+        *(under(name) for name in GENERATED_COMMITTED),
+    }
+    rels.update(under(rel) for rel in load_order_paths(render_rules().splitlines()) if rel.startswith("docs/"))
+    if bundled_schemas_dir().is_dir():
+        rels.update(under(f"{SCHEMAS_DIRNAME}/{src.name}") for src in bundled_schemas_dir().glob("*.json"))
+    if bundled_profiles_dir().is_dir():
+        rels.update(under(f"{PROFILES_REL.as_posix()}/{src.relative_to(bundled_profiles_dir()).as_posix()}")
+                    for src in bundled_profiles_dir().rglob("*") if src.is_file())
+    return _present(checkout, rels | _recorded_paths(checkout) | _skill_paths())
+
+
+def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool, defer_ignore: bool = False,
+          mirror: Mirror | None = None, git_env: dict[str, str] | None = None):
     real = project.resolve()
 
     def refresh(sandbox_project: Path, sandbox_checkout: Path) -> dict[str, str]:
@@ -308,7 +378,8 @@ def _plan(project: Path, checkout: Path, *, preview: bool, prune: bool, defer_ig
             existence_project=real,
         )
 
-    return make_plan(checkout, project, refresh, defer_ignore=defer_ignore)
+    return make_plan(checkout, project, refresh, defer_ignore=defer_ignore, mirror=mirror, git_env=git_env,
+                     extra=None if mirror is not None else _mirror_extras(project, checkout))
 
 
 def _gitignore_write(entry: Entry) -> bool:
@@ -390,11 +461,21 @@ def _commit_copy(copy: Mirror) -> None:
 
 
 def _dry_run(project: Path, checkout: Path, *, prune: bool) -> int:
-    """Make the same plan, write it into a temporary copy of the checkout, and validate the copy."""
+    """Make the same plan, write it into a temporary copy of the checkout, and validate the copy.
+
+    The checkout is copied once. The copy that is validated is that mirror reused, not a second walk.
+    """
     with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-") as tmp, scratch_environ(Path(tmp)) as caller_env:
-        plan = _plan(project, checkout, preview=True, prune=prune)
+        root = Path(tmp)
+        mirror = Mirror(checkout, root / "plan", project / "work").build(
+            git_env=caller_env, extra=_mirror_extras(project, checkout))
+        if not (mirror.repo / ".git").is_dir():
+            raise GitFailed("git init failed in the temporary copy (no .git was created)")
+        staging = root / "staging"
+        snapshot_outside(mirror.outside, staging)
+        plan = _plan(project, checkout, preview=True, prune=prune, mirror=mirror)
         _section("applying the refreshes to a temporary copy, then validating it")
-        copy = Mirror(checkout, Path(tmp), project / "work").build()
+        copy = Mirror(checkout, root / "copy", project / "work").reuse(staging, mirror)
         _commit_copy(copy)
         copy_project = copy.to_sandbox(project.resolve())
         before = _capped_lines(copy_project)

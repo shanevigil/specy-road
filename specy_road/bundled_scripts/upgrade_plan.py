@@ -8,6 +8,13 @@ It runs on a :class:`Mirror` of the checkout, which keeps every link, with each
 link's resolved target mapped into the sandbox (a target outside the checkout
 lands under the sandbox's ``outside/``, which is outside its repository too).
 The plan is the difference that run made, expressed as the real paths it lands on.
+The mirror holds tracked files, untracked files git does not ignore, and any
+extra paths the caller names (what the refreshes read, including a generated
+file the preview compares). Gitignored files are not copied. A symlink does
+not bring an ignored target in: that path stays out of the mirror. A directory
+that cannot be searched is left out too, so the copy does not stop on it. A
+target outside the checkout is still copied, so a link that leaves the checkout
+resolves as before.
 
 :func:`apply_plan` writes the plan into the checkout (``upgrade``) or into a
 second mirror (``upgrade --dry-run``, which then validates that copy). Neither
@@ -32,6 +39,9 @@ from specy_road.bundled_scripts.upgrade_generated import checked, scratch_enviro
 from specy_road.ignore_report import Match, print_matches, scratch_git_env
 
 State = tuple | None   # ("file", size, mtime_ns, mode) | ("link", text) | ("dir",) | ("other",) | None (absent)
+
+_COPY_LINE = ("copying tracked and untracked files into a temporary directory; "
+              "ignored files are not copied")
 
 
 def state(path: Path) -> State:
@@ -83,28 +93,127 @@ class Plan:
         return [e for e in self.entries if e.action in ("write", "link", "mkdir", "remove")]
 
     def changed_since(self) -> list[str]:
-        """Paths read into the mirror whose state differs now, and paths new in the checkout."""
-        now = {p: state(Path(p)) for p in self.states}
-        for dirpath, dirs, names in os.walk(self.checkout):
-            dirs[:] = [d for d in dirs if d != ".git" and Path(dirpath, d) != self.skip]
-            for name in (n for n in dirs + names if n != ".git"):
-                now.setdefault(str(Path(dirpath) / name), state(Path(dirpath) / name))
-        changed = [p for p, st in now.items() if st != self.states.get(p)]
+        """Paths read into the mirror whose state differs now, and new non-ignored paths in the checkout."""
+        changed = [p for p in self.states if state(Path(p)) != self.states[p]]
+        changed.extend(_appeared(self.checkout, self.skip, self.states))
         return sorted(Path(p).relative_to(self.checkout).as_posix() if Path(p).is_relative_to(self.checkout) else p
                       for p in changed)
+
+
+def _ancestors(rels: set[str]) -> set[str]:
+    """Every parent directory of ``rels``, as checkout-relative posix paths."""
+    found: set[str] = set()
+    for rel in rels:
+        parts = Path(rel).parts
+        for i in range(1, len(parts)):
+            found.add("/".join(parts[:i]))
+    return found
+
+
+def _skipped_dir(path: Path) -> bool:
+    """A real directory the copy does not enter: it contains a repository, or it cannot be searched.
+
+    A symlink is not this directory. ``path/.git`` raises ``OSError`` when ``path`` cannot be listed,
+    which is the same reason to leave it out: the copy would stop, and a later snapshot cannot list it either.
+    """
+    if path.is_symlink() or not path.is_dir():
+        return False
+    try:
+        return (path / ".git").exists()
+    except OSError:
+        return True
+
+
+def _ignored(checkout: Path, rels: list[str], env: dict[str, str] | None) -> set[str]:
+    """The members of ``rels`` that git ignores in ``checkout``. A git failure raises :class:`GitFailed`.
+
+    Plain ``check-ignore`` (not ``-v``) prints only paths whose last matching rule ignores them, so a path
+    a later ``!`` rule re-includes is not in the set.
+    """
+    found: set[str] = set()
+    for start in range(0, len(rels), 200):
+        chunk = rels[start:start + 200]
+        if not chunk:
+            continue
+        result = git_subprocess.run(
+            ["-c", "core.fsmonitor=", "-c", "core.quotepath=false", "check-ignore", "--", *chunk],
+            checkout, env=env)
+        if result.code not in (0, 1):
+            checked(result, "check-ignore", "the checkout")
+        found.update(result.out.splitlines())
+    return found
+
+
+def _copy_keeping_mode(src: str, dst: str) -> None:
+    """``copy2``, or an empty file of the same mode when ``src`` cannot be read."""
+    try:
+        shutil.copy2(src, dst)
+    except PermissionError:
+        Path(dst).touch()
+        Path(dst).chmod(Path(src).stat().st_mode & 0o777)
+
+
+def snapshot_outside(src: Path, dst: Path) -> None:
+    """Copy a built mirror's ``outside`` tree, without ``.git``, so a dry run can reuse it."""
+    shutil.copytree(src, dst, symlinks=True, copy_function=_copy_keeping_mode,
+                    ignore=lambda _dir, names: [n for n in names if n == ".git"])
+
+
+def _retarget(root: Path, old: Path, new: Path) -> None:
+    """Point absolute links that named ``old`` at ``new``; relative links stay."""
+    old_s, new_s = str(old), str(new)
+    for dirpath, dirs, names in os.walk(root, followlinks=False):
+        for name in dirs + names:
+            path = Path(dirpath) / name
+            if not path.is_symlink():
+                continue
+            text = os.readlink(path)
+            if text == old_s or text.startswith(old_s + os.sep):
+                path.unlink()
+                os.symlink(new_s + text[len(old_s):], path)
+
+
+def _appeared(checkout: Path, skip: Path, states: dict[str, State]) -> list[str]:
+    """Checkout paths absent from ``states`` that are not ignored, under ``skip``, or inside a nested repository."""
+    recorded = {Path(p).relative_to(checkout).as_posix() for p in states if Path(p).is_relative_to(checkout)}
+    ancestors = _ancestors(recorded)
+    found: list[str] = []
+    for dirpath, dirs, names in os.walk(checkout):
+        here = Path(dirpath)
+        children = [here / name for name in dirs + names if name != ".git" and here / name != skip]
+        rel_of = {path: path.relative_to(checkout).as_posix() for path in children}
+        ignored = _ignored(checkout, list(rel_of.values()), None)
+        descend: list[str] = []
+        for path in children:
+            rel = rel_of[path]
+            if _skipped_dir(path):
+                continue
+            pruned = (path.is_dir() and not path.is_symlink() and rel not in ancestors
+                      and rel not in recorded and rel in ignored)
+            if pruned:
+                continue
+            if path.is_dir() and not path.is_symlink():
+                descend.append(path.name)
+            if str(path) not in states and rel not in ignored:
+                found.append(str(path))
+        dirs[:] = descend
+    return found
 
 
 class Mirror:
     """The filesystem as the checkout sees it, under ``dest/outside``: the checkout at ``outside/<its absolute path>``.
 
-    The checkout is copied without ``.git`` or ``skip``, and every link keeps
-    its own text, one hop: a relative text verbatim, an absolute one with
-    ``outside`` put in front. So a chain, a target under a linked directory, or
-    a ``..`` that climbs out and back resolves in the mirror exactly as in the
-    checkout. Content the copy lacks (a target out of the checkout, or under
-    ``skip``) is copied to its real path's place, and a link whose text names
-    that place another way reaches it through one more link, which only a path
-    already outside the checkout can cross. A text whose ``..`` climbs past
+    The checkout is copied without ``.git`` or ``skip``: tracked files, untracked
+    files git does not ignore, and extra paths the caller names. A nested
+    repository is not copied. Every link keeps its own text, one hop: a relative
+    text verbatim, an absolute one with ``outside`` put in front. So a chain, a
+    target under a linked directory, or a ``..`` that climbs out and back resolves
+    in the mirror exactly as in the checkout. A target outside the checkout, or
+    under ``skip`` and not itself gitignored, is copied to its real path's
+    place, and a link whose text names that place another way reaches it
+    through one more link, which only a path already outside the checkout can
+    cross. A gitignored checkout path, a nested repository, and a directory that
+    cannot be searched are not copied for a link that points at them. A text whose ``..`` climbs past
     ``/`` (where the checkout stops) would climb out of the mirror here, so
     :meth:`build` gives that one link its target's place, absolutely; nothing
     is ever made outside ``dest``.
@@ -123,6 +232,7 @@ class Mirror:
         self.states: dict[str, State] = {}
         self._links: list[tuple[Path, Path]] = []
         self._hardlinks: dict[tuple[int, int], Path] = {}   # (dev, ino) -> first sandbox path for this inode
+        self._git_env: dict[str, str] | None = None
 
     def to_sandbox(self, real: Path) -> Path:
         return self.outside / real.relative_to(real.anchor)
@@ -134,11 +244,36 @@ class Mirror:
         """``text`` with the mirror's paths given as the real ones (``outside/x`` is ``/x``)."""
         return text.replace(str(self.outside), "")
 
-    def build(self) -> Mirror:
+    def build(self, *, git_env: dict[str, str] | None = None, extra: set[str] | None = None) -> Mirror:
         """Copy the checkout and ``git init`` the copy; :class:`GitFailed` if git could not, for every mirror alike."""
         self._hardlinks.clear()
+        self._git_env = git_env
         self.outside.mkdir(parents=True)
-        self._copy_dir(self.checkout, self.repo)
+        print(_COPY_LINE, flush=True)
+        self._copy_selected(extra or set())
+        self._resolve_links()
+        self._init_git()
+        return self
+
+    def reuse(self, staging: Path, source: Mirror) -> Mirror:
+        """A second mirror from ``staging`` (a snapshot of ``source``), not from another checkout walk."""
+        self._hardlinks.clear()
+        self._git_env = source._git_env
+        self.outside.mkdir(parents=True)
+        shutil.copytree(staging, self.outside, symlinks=True, dirs_exist_ok=True, copy_function=_copy_keeping_mode)
+        _retarget(self.outside, source.outside, self.outside)
+        self.unreadable = [self.outside / path.relative_to(source.outside) for path in source.unreadable]
+        self._init_git()
+        return self
+
+    def _init_git(self) -> None:
+        template = self.dest / "no-template"
+        template.mkdir()
+        self.hooks.mkdir()
+        checked(git_subprocess.run(["-c", f"core.hooksPath={self.hooks}", "init", "-q", f"--template={template}"],
+                                   self.repo, env=scratch_git_env(self.dest)), "init")
+
+    def _resolve_links(self) -> None:
         made: list[tuple[Path, Path]] = []
         while True:
             while self._links:   # every link of a round first, so content never lands where a link belongs
@@ -155,12 +290,95 @@ class Mirror:
                 break
             for src, dst in escaping:
                 self._contain(src, dst)
-        template = self.dest / "no-template"
-        template.mkdir()
-        self.hooks.mkdir()
-        checked(git_subprocess.run(["-c", f"core.hooksPath={self.hooks}", "init", "-q", f"--template={template}"],
-                                   self.repo, env=scratch_git_env(self.dest)), "init")
-        return self
+
+    def _copy_selected(self, extra: set[str]) -> None:
+        """Copy tracked files, untracked files git does not ignore, and ``extra`` paths that are present."""
+        listed = {rel.rstrip("/") for rel in self._listed()}
+        present = {rel for rel in extra if (self.checkout / rel).exists() or (self.checkout / rel).is_symlink()}
+        selected = self._without_skipped(listed | present | self._link_parents(listed | present))
+        self.repo.mkdir(parents=True, exist_ok=True)
+        self.states[str(self.checkout)] = ("dir",)
+        with contextlib.suppress(OSError):
+            shutil.copymode(self.checkout, self.repo)
+        self._walk(self.checkout, self.repo, selected, _ancestors(selected))
+
+    def _listed(self) -> set[str]:
+        result = git_subprocess.run(
+            ["-c", "core.fsmonitor=", "-c", "core.quotepath=false", "ls-files", "-z",
+             "--cached", "--others", "--exclude-standard"],
+            self.checkout, env=self._git_env)
+        checked(result, "ls-files", "the checkout")
+        return {rel for rel in result.out.split("\0") if rel}
+
+    def _without_skipped(self, rels: set[str]) -> set[str]:
+        skip = self._skip_rel()
+        kept: set[str] = set()
+        for rel in rels:
+            path = self.checkout / rel
+            if skip and (rel == skip or rel.startswith(skip + "/")):
+                continue
+            # A symlink to a nested repository is the link, not the repository: keep the link, leave the target out.
+            if self._under_nested(path) or _skipped_dir(path):
+                continue
+            kept.add(rel)
+        return kept
+
+    def _skip_rel(self) -> str:
+        try:
+            rel = self.skip.relative_to(self.checkout).as_posix()
+        except ValueError:
+            return ""
+        return "" if rel == "." else rel
+
+    def _under_nested(self, path: Path) -> bool:
+        for parent in path.parents:
+            if parent == self.checkout:
+                return False
+            if _skipped_dir(parent):
+                return True
+        return False
+
+    def _link_parents(self, rels: set[str]) -> set[str]:
+        found: set[str] = set()
+        for rel in rels:
+            parts = Path(rel).parts
+            for i in range(1, len(parts)):
+                parent = "/".join(parts[:i])
+                if (self.checkout / parent).is_symlink():
+                    found.add(parent)
+        return found
+
+    def _walk(self, src: Path, dst: Path, selected: set[str], ancestors: set[str]) -> None:
+        try:
+            entries = list(os.scandir(src))
+        except OSError:
+            return
+        rel_of = {e: Path(e.path).relative_to(self.checkout).as_posix() for e in entries if e.name != ".git"}
+        ignored = _ignored(self.checkout, list(rel_of.values()), self._git_env)
+        for entry in entries:
+            source, dest = Path(entry.path), dst / entry.name
+            if entry.name == ".git" or source == self.skip or (source == self.checkout and dst != self.repo):
+                continue
+            rel = rel_of[entry]
+            if entry.is_symlink():
+                if rel in selected:
+                    self.states[str(source)] = state(source)
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    self._links.append((source, dest))
+                continue
+            if entry.is_dir(follow_symlinks=False):
+                if _skipped_dir(source):
+                    continue
+                if rel not in selected and rel not in ancestors and rel in ignored:
+                    continue
+                dest.mkdir(parents=True, exist_ok=True)
+                self.states[str(source)] = ("dir",)
+                self._walk(source, dest, selected, ancestors)
+                with contextlib.suppress(OSError):
+                    shutil.copymode(source, dest)   # after the children, so a read-only directory stays so
+                continue
+            if entry.is_file(follow_symlinks=False) and rel in selected:
+                self._copy_file(source, dest)
 
     def _copy_dir(self, src: Path, dst: Path) -> None:
         dst.mkdir(parents=True, exist_ok=True)
@@ -171,7 +389,7 @@ class Mirror:
             entries = []
         for e in entries:
             s, d = Path(e.path), dst / e.name
-            if e.name == ".git" or s == self.skip or (s == self.checkout and dst != self.repo):
+            if e.name == ".git" or s == self.skip or (s == self.checkout and dst != self.repo) or self._left_out(s):
                 continue
             if e.is_symlink():
                 self.states[str(s)] = state(s)
@@ -214,7 +432,7 @@ class Mirror:
         if not where.is_relative_to(self.outside):
             return
         home = self._place(real)
-        if not os.path.lexists(where):   # the text names the place another way (a ``..``, an alias)
+        if os.path.lexists(home) and not os.path.lexists(where):   # the text names the place another way
             where.parent.mkdir(parents=True, exist_ok=True)
             os.symlink(home, where)
 
@@ -237,11 +455,24 @@ class Mirror:
             self._place(real)
 
     def _place(self, real: Path) -> Path:
-        """``real``'s place in the mirror, with its content copied there when missing."""
+        """``real``'s place in the mirror. A checkout path the copy omits is not created."""
         home = self.to_sandbox(real)
-        if not os.path.lexists(home):
+        if not os.path.lexists(home) and not self._left_out(real):
             (self._copy_dir if real.is_dir() else self._copy_file)(real, home)
         return home
+
+    def _left_out(self, real: Path) -> bool:
+        """An in-checkout path the selective copy omits: gitignored, a nested repository, or unsearchable.
+
+        A link that points at one does not bring it in. A path outside the checkout is not omitted here.
+        """
+        if not real.is_relative_to(self.checkout) or real == self.checkout:
+            return False
+        rel = real.relative_to(self.checkout)
+        if ".git" in rel.parts or _skipped_dir(real) or self._under_nested(real):
+            return True
+        text = rel.as_posix()
+        return text in _ignored(self.checkout, [text], self._git_env)
 
     def snapshot(self) -> dict[Path, State]:
         out: dict[Path, State] = {}
@@ -287,7 +518,8 @@ def _named_in_checkout(e: OSError, real: Callable[[str], str]) -> OSError:
 
 
 def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dict[str, str]],
-              *, defer_ignore: bool = False) -> Plan:
+              *, defer_ignore: bool = False, mirror: Mirror | None = None,
+              git_env: dict[str, str] | None = None, extra: set[str] | None = None) -> Plan:
     """Run ``refresh(project, checkout)`` once, on a mirror; the plan is what it wrote and what it declined.
 
     ``refresh`` returns ``{checkout-relative path: refuse | error | skip | fail}``.
@@ -299,44 +531,55 @@ def make_plan(checkout: Path, project: Path, refresh: Callable[[Path, Path], dic
     The mirror's git index is empty, so its ignore note does not describe the
     checkout. With ``defer_ignore`` that note is not printed (the caller reports
     from the checkout around the write). Otherwise it is labelled an estimate.
+    ``mirror`` is a copy already built; otherwise one is built here. ``extra``
+    paths are copied even when git ignores them.
     """
-    checkout = checkout.resolve()
-    with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-plan-") as tmp:
-        mirror = Mirror(checkout, Path(tmp), project / "work").build()
-        before = mirror.snapshot()
-        out, err = io.StringIO(), io.StringIO()
-        real = mirror.real_text
-        import specy_road.agent_ignores as agent_ignores
+    if mirror is None:
+        checkout = checkout.resolve()
+        with tempfile.TemporaryDirectory(prefix="specy-road-upgrade-plan-") as tmp:
+            built = Mirror(checkout, Path(tmp), project / "work").build(git_env=git_env, extra=extra)
+            return _refresh_on(built, project, refresh, defer_ignore=defer_ignore)
+    return _refresh_on(mirror, project, refresh, defer_ignore=defer_ignore)
 
-        def notice(matches: list[Match] | str, *, estimated: bool) -> None:
-            """Label the mirror's note as an estimate. Its index is empty, whatever ``estimated`` the mirror passed."""
-            if not defer_ignore:
-                print_matches(matches, estimated=True)
 
-        saved_notice = agent_ignores.print_matches
-        agent_ignores.print_matches = notice
-        try:
-            with (
-                contextlib.redirect_stdout(out),
-                contextlib.redirect_stderr(err),
-                scratch_environ(Path(tmp)),
-            ):
-                declined = refresh(mirror.to_sandbox(project.resolve()), mirror.repo)
-        except (OSError, RuntimeError) as e:   # a symlink loop in the mirror is the checkout's: refused, named there
-            refusal = safe_write.loop_refusal(e)
-            if refusal is None and not isinstance(e, OSError):
-                raise
-            raise _named_in_checkout(refusal or e, real) from e
-        finally:
-            agent_ignores.print_matches = saved_notice
-            for buf, stream in ((out, sys.stdout), (err, sys.stderr)):
-                stream.write(real(buf.getvalue()))
-                stream.flush()
-        entries = _diff(mirror, before, mirror.snapshot(), mirror.states)
-        for rel, action in sorted(declined.items()):
-            real = Path(os.path.realpath(checkout / rel))
-            entries.append(Entry(path=rel, target=real, action=action, before=mirror.states.get(str(real))))
-        return Plan(checkout, mirror.skip, entries, mirror.states)
+def _refresh_on(mirror: Mirror, project: Path, refresh: Callable[[Path, Path], dict[str, str]],
+                *, defer_ignore: bool) -> Plan:
+    """The plan from running ``refresh`` on ``mirror``."""
+    checkout = mirror.checkout
+    before = mirror.snapshot()
+    out, err = io.StringIO(), io.StringIO()
+    real = mirror.real_text
+    import specy_road.agent_ignores as agent_ignores
+
+    def notice(matches: list[Match] | str, *, estimated: bool) -> None:
+        """Label the mirror's note as an estimate. Its index is empty, whatever ``estimated`` the mirror passed."""
+        if not defer_ignore:
+            print_matches(matches, estimated=True)
+
+    saved_notice = agent_ignores.print_matches
+    agent_ignores.print_matches = notice
+    try:
+        with (
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+            scratch_environ(mirror.dest),
+        ):
+            declined = refresh(mirror.to_sandbox(project.resolve()), mirror.repo)
+    except (OSError, RuntimeError) as e:   # a symlink loop in the mirror is the checkout's: refused, named there
+        refusal = safe_write.loop_refusal(e)
+        if refusal is None and not isinstance(e, OSError):
+            raise
+        raise _named_in_checkout(refusal or e, real) from e
+    finally:
+        agent_ignores.print_matches = saved_notice
+        for buf, stream in ((out, sys.stdout), (err, sys.stderr)):
+            stream.write(real(buf.getvalue()))
+            stream.flush()
+    entries = _diff(mirror, before, mirror.snapshot(), mirror.states)
+    for rel, action in sorted(declined.items()):
+        landed = Path(os.path.realpath(checkout / rel))
+        entries.append(Entry(path=rel, target=landed, action=action, before=mirror.states.get(str(landed))))
+    return Plan(checkout, mirror.skip, entries, mirror.states)
 
 
 def conflicts(plan: Plan) -> list[str]:

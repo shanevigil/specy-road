@@ -156,7 +156,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Complete**
   - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
   - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Complete**
-  - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Not Started**
+  - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Complete**
   - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Complete**
   - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Complete**
   - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Complete**
@@ -317,7 +317,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
 
 ## Quality by area
 
@@ -326,13 +325,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `CHANGELOG.md` **flagged** | 38 | 0 | 2.61 | 66% | 19 | 2 |
+| `CHANGELOG.md` **flagged** | 38 | 0 | 2.74 | 66% | 18 | 3 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 33 | 0 | 2.70 | 67% | 15 | 2 |
+| `docs` **flagged** | 33 | 0 | 2.85 | 67% | 14 | 3 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `specy_road` **flagged** | 42 | 0 | 2.57 | 62% | 20 | 3 |
-| `tests` **flagged** | 42 | 0 | 2.55 | 64% | 21 | 3 |
+| `specy_road` **flagged** | 42 | 0 | 2.69 | 62% | 19 | 4 |
+| `tests` **flagged** | 42 | 0 | 2.67 | 64% | 20 | 4 |
 | `.github` | 2 | 0 | 1.50 | 50% | 13 | 0 |
 | `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
