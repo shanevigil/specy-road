@@ -114,4 +114,5 @@ entries:
       - specy_road/schemas/worker-event.schema.json
     started: '2026-11-09'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-09T21:29:42+00:00'
