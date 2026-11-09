@@ -75,6 +75,13 @@ body. Keep section bodies focused; link to PRs for detail.
   result's stderr. On agent 2026.11.05-86047df (2026-11-08) that default commits in a linked worktree, `system/init`
   reports the model, `--resume` with a new prompt continues the chat, and `--mode ask` stays read-only. See
   `docs/orchestration-workers.md` (Cursor CLI, checked 2026-11-08).
+- A headless turn that calls Cursor's question tool (`askQuestionToolCall` on a `tool_call` line) is a post-run
+  finding. The executor prompt says that in a headless turn (`worker delegate`, `worker message`, a grind) no
+  person can answer a question tool, that open questions go in the implementation summary under a heading marking
+  them unanswered, and that the summary never says a person was asked. Each such `tool_call` line persists an
+  `interactive_tool` event; the check records one finding per turn naming the tool and that no person saw it, and
+  flags the worker `post_run_findings`. Shell, read and edit calls do not. A Claude denial of that tool stays one
+  `permission_denied` finding and is not also `interactive_tool`. See `docs/orchestration-workers.md` (Post-run check).
 - `specy-road digest` writes the same `roadmap-context.md` when the history cache is missing and when it was
   written on a branch that later merged. A cache is appended only when its commit is on `HEAD`'s first-parent
   line; a merged side-branch tip, and any cache from before this change, is rebuilt. A dependency removed on a
