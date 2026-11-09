@@ -84,104 +84,23 @@ entries:
     started: '2026-11-07'
     owner: savigil
     implementation_review: pending
-  - codename: gui-orch-view-model
-    node_id: M17.2
-    branch: feature/rm-gui-orch-view-model
-    touch_zones:
-      - gui/pm-gantt/src/orchestrationSnapshot.ts
-      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
-      - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: gui-acceptance-editing
-    node_id: M17.11
-    branch: feature/rm-gui-acceptance-editing
-    touch_zones:
-      - gui/pm-gantt/src/components/EditModal.tsx
-      - gui/pm-gantt/src/editModalSaveQueue.ts
-      - gui/pm-gantt/src/editModalSaveQueue.test.ts
-      - gui/pm-gantt/src/acceptanceEdit.ts
-      - gui/pm-gantt/src/acceptanceEdit.test.ts
-      - gui/pm-gantt/src/types.ts
-      - gui/pm-gantt/src/api.ts
-      - gui/pm-gantt/src/App.css
-      - specy_road/pm_gantt_static/
-      - tests/test_gui_app_mutations.py
-      - docs/pm-gui.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: cursor-starts-under-the-sandbox
-    node_id: M22.47
-    branch: feature/rm-cursor-starts-under-the-sandbox
-    touch_zones:
-      - specy_road/worker_sandbox.py
-      - tests/test_worker_sandbox.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer
-    node_id: M16.1.5
-    branch: feature/rm-agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer
-    touch_zones:
-      - AGENTS.md
-      - CLAUDE.md
-      - docs/toolkit-development.md
-      - specy_road/templates/specyrd/agents-rules.md
-      - docs/context-regressions.yaml
-      - tests/test_agent_start_up_reading.py
-      - .cursor/rules/027-version-numbers-require-human.mdc
-      - .cursor/rules/030-git-workflow-management.mdc
-      - docs/contributor-guide.md
-      - docs/release-runbook.md
-      - docs/git-workflow.md
-      - .cursor/rules/026-release-version-tag-sync.mdc
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: steering-finish-refusal
-    node_id: M22.31
-    branch: feature/rm-steering-finish-refusal
-    touch_zones:
-      - specy_road/steering_gate.py
-      - specy_road/bundled_scripts/finish_task.py
-      - docs/orchestration-steering-files.md
-      - tests/test_steering_file_guard.py
-      - tests/test_finish_merge_failure_undo.py
-      - tests/test_finish_work_cleanup.py
-      - tests/test_finish_config_preflight.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
-  - codename: worker-stall-recovery
-    node_id: M22.39
-    branch: feature/rm-worker-stall-recovery
-    touch_zones:
-      - specy_road/worker_ops_slots.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - tests/test_worker_stall_recovery.py
-      - docs/orchestration-workers.md
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/bundled_scripts/grind_session.py
-      - specy_road/worker_state.py
-      - specy_road/schemas/worker-record.schema.json
-      - tests/parity/golden/inventory.json
-      - tests/parity/golden/help/
-      - tests/parity/command_map.yaml
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: pending
   - codename: review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome
     node_id: M16.1.6
     branch: feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome
     touch_zones:
       - scripts/review_effort_study.py
       - sr/planning/M16.1.6_review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome_68912bae-f046-43f9-8576-a97d7c2577c8.md
+    started: '2026-11-08'
+    owner: savigil
+    implementation_review: pending
+  - codename: finish-keeps-complete-when-the-chunk-conflicts
+    node_id: M22.50
+    branch: feature/rm-finish-keeps-complete-when-the-chunk-conflicts
+    touch_zones:
+      - specy_road/finish_land_roadmap_graph.py
+      - specy_road/finish_land_deterministic.py
+      - CHANGELOG.md
+      - tests/test_finish_land_roadmap_graph.py
     started: '2026-11-08'
     owner: savigil
     implementation_review: pending

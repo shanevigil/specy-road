@@ -166,6 +166,25 @@ def test_api_patch_node_title_roundtrip(api_client: TestClient) -> None:
     assert r2.status_code == 200
 
 
+def test_api_patch_acceptance_reads_back(api_client: TestClient) -> None:
+    def patch_and_read(value: str) -> list[str] | None:
+        r = api_client.patch(
+            "/api/nodes/M0.2",
+            headers={**_mutation_headers(api_client), "Content-Type": "application/json"},
+            json={"pairs": [{"key": "acceptance", "value": value}]},
+        )
+        assert r.status_code == 200, r.text
+        nodes = api_client.get("/api/roadmap").json()["nodes"]
+        return next(n for n in nodes if n["id"] == "M0.2").get("acceptance")
+
+    # acceptanceEdit.ts's value: criteria trimmed, empty ones dropped, joined by "\n".
+    assert patch_and_read("Second criterion\nFirst criterion") == [
+        "Second criterion",
+        "First criterion",
+    ]
+    assert patch_and_read("") is None  # an emptied list removes the field
+
+
 def test_api_patch_node_rejects_disallowed_key(api_client: TestClient) -> None:
     r = api_client.patch(
         "/api/nodes/M0.2",

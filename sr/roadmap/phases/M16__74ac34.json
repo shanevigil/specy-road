@@ -7,7 +7,7 @@
         "`checks:` in git-workflow.yaml names each command once with `when:` (baseline, ready, land, prompt); one reader replaces the three key readers; every table row gives the same commands, arguments, cwd, environment, evidence and prompt text from either form; with both forms present the new form wins and validate prints one notice",
         "`upgrade` rewrites the old keys and writes the policy equivalent of the review-before-finish switch, so every row's effective requirement is unchanged; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release with one notice for the old form",
         "No zone filter is added to migrated entries; ratchet_paths and ready's failed-command evidence (M15.24) mean what they meant at pickup; the M16.1.2 decision table is unchanged",
-        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the 0.3.1 final tag under option A); no version heading is written",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the release after 0.3.1 (maintainer, 2026-11-08)); no version heading is written",
         "Estimated net line change (informational, not a gate): package about -100 (three readers become one)"
       ],
       "codename": "one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points",
@@ -196,7 +196,7 @@
         "Each policy the maintainer marked deprecated in M16.1.6 keeps its behaviour and its decision-table rows; validate prints one notice when a deprecated policy is in use; no policy is removed in M16",
         "The M16.1.2 rows for `review record` filed from a reviewer's final message are unchanged",
         "Moved files are rewrapped and leave the width baseline; no function rises above its merge-base complexity; parity harness unchanged",
-        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: a module or command rename as old name -> new name, removed at the 0.3.1 final tag under option A; a policy deprecation as a notice whose removal needs a separately authorised leaf after M16; no version heading is written",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: a module or command rename as old name -> new name, removed at the release after 0.3.1 (maintainer, 2026-11-08); a policy deprecation as a notice whose removal needs a separately authorised leaf after M16; no version heading is written",
         "Estimated net line change (informational, not a gate): package about -250"
       ],
       "codename": "fold-the-review-gate-and-escalation-fragments-and-mark-the-policies-the-evidence-did-not-keep-as-deprecated",
@@ -398,7 +398,7 @@
       "parent_id": "M16.1",
       "planning_dir": "planning/M16.1.9_tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold_142b5d57-8272-439f-93a1-0aa3dc7cf88d.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold",
       "touch_zones": [
         "tests/scenarios/milestone/"

@@ -19,7 +19,7 @@
       "node_key": "855d9738-4b87-480b-8404-d6a1aa85c714",
       "parent_id": "M22",
       "planning_dir": "planning/M22.19_review-inputs-identity-and-unreadable_855d9738-4b87-480b-8404-d6a1aa85c714.md",
-      "sibling_order": 18,
+      "sibling_order": 17,
       "status": "Complete",
       "title": "Review inputs: READY identity normalized, unreadable acceptance and FIFO worker records refused cleanly, canonical marker names",
       "touch_zones": [
@@ -58,7 +58,7 @@
       "node_key": "17405142-e2fa-4516-83e2-e536820d1ec2",
       "parent_id": "M22",
       "planning_dir": "planning/M22.20_terminate-and-finish-rollback-robustness_17405142-e2fa-4516-83e2-e536820d1ec2.md",
-      "sibling_order": 19,
+      "sibling_order": 18,
       "status": "Complete",
       "title": "worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging",
       "touch_zones": [
@@ -96,7 +96,7 @@
       "node_key": "5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c",
       "parent_id": "M22",
       "planning_dir": "planning/M22.21_preview-rollback-fidelity_5ae2c4fa-afe6-49f8-812e-5b83e2a47c8c.md",
-      "sibling_order": 20,
+      "sibling_order": 19,
       "status": "Complete",
       "title": "Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback",
       "touch_zones": [
@@ -125,7 +125,7 @@
       "node_key": "7a0ccfaf-aa9e-45f5-8438-19693d6c622d",
       "parent_id": "M22",
       "planning_dir": "planning/M22.22_sandbox-rc4-final-polish_7a0ccfaf-aa9e-45f5-8438-19693d6c622d.md",
-      "sibling_order": 21,
+      "sibling_order": 20,
       "status": "Complete",
       "title": "Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal",
       "touch_zones": [
@@ -159,8 +159,8 @@
       "node_key": "dfb21e02-6eaa-4de1-9b48-25de90e7c191",
       "parent_id": "M22",
       "planning_dir": "planning/M22.23_guidance-bypass-retest-cursor-grok-sol-opus_dfb21e02-6eaa-4de1-9b48-25de90e7c191.md",
-      "sibling_order": 22,
-      "status": "Not Started",
+      "sibling_order": 21,
+      "status": "Complete",
       "title": "Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/spacexai-grok/grok-4.7.md",
@@ -191,7 +191,7 @@
       "node_key": "99ad0839-6c85-4631-b67b-80ef2d3b3c57",
       "parent_id": "M22",
       "planning_dir": "planning/M22.13_worker-cost-and-stale-presence_99ad0839-6c85-4631-b67b-80ef2d3b3c57.md",
-      "sibling_order": 12,
+      "sibling_order": 11,
       "status": "Complete",
       "title": "Worker lows: a shell channels.cli is priced from its -m, and presence sessions stop counting once their worktree, branch or worker is gone",
       "touch_zones": [
@@ -221,7 +221,7 @@
       "node_key": "4d9737c0-0d3a-44b3-869f-4b782a04f2ba",
       "parent_id": "M22",
       "planning_dir": "planning/M22.24_guidance-exclusion-closes-three-bypasses_4d9737c0-0d3a-44b3-869f-4b782a04f2ba.md",
-      "sibling_order": 23,
+      "sibling_order": 22,
       "status": "Complete",
       "title": "The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths",
       "touch_zones": [
@@ -249,7 +249,7 @@
       "node_key": "02c665e8-0e2a-44d5-b297-c82a5a288c41",
       "parent_id": "M22",
       "planning_dir": "planning/M22.25_upgrade-git-calls-share-one-environment_02c665e8-0e2a-44d5-b297-c82a5a288c41.md",
-      "sibling_order": 24,
+      "sibling_order": 23,
       "status": "Complete",
       "title": "Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment",
       "touch_zones": [
@@ -274,7 +274,7 @@
       "node_key": "148aa830-5bad-4086-8d27-9c6748b58ed5",
       "parent_id": "M22",
       "planning_dir": "planning/M22.26_post-run-zone-check-git-root-zones_148aa830-5bad-4086-8d27-9c6748b58ed5.md",
-      "sibling_order": 25,
+      "sibling_order": 24,
       "status": "Complete",
       "title": "The post-run zone check matches zones written from the git root",
       "touch_zones": [
@@ -294,7 +294,7 @@
       "node_key": "cbc35919-d31f-4840-bc69-c62c76e0693f",
       "parent_id": "M22",
       "planning_dir": "planning/M22.27_old-log-test-asserts-on-the-run_cbc35919-d31f-4840-bc69-c62c76e0693f.md",
-      "sibling_order": 26,
+      "sibling_order": 25,
       "status": "Complete",
       "title": "The old-log review usage test asserts on the run, not on a substring",
       "touch_zones": [
@@ -316,7 +316,7 @@
       "node_key": "02771e58-14a5-472d-8292-a1fb1dce7e3e",
       "parent_id": "M22",
       "planning_dir": "planning/M22.28_upgrade-no-self-warning-export-drift-hint_02771e58-14a5-472d-8292-a1fb1dce7e3e.md",
-      "sibling_order": 27,
+      "sibling_order": 26,
       "status": "Complete",
       "title": "upgrade does not warn about itself, and export's drift line says how to fix it",
       "touch_zones": [
@@ -341,7 +341,7 @@
       "node_key": "0bcbdc19-743c-4037-9bbb-089c6a3f0cb4",
       "parent_id": "M22",
       "planning_dir": "planning/M22.29_safe-write-directory-descriptors_0bcbdc19-743c-4037-9bbb-089c6a3f0cb4.md",
-      "sibling_order": 28,
+      "sibling_order": 27,
       "status": "Complete",
       "title": "safe_write and archive moves traverse by directory descriptor",
       "touch_zones": [
@@ -371,8 +371,8 @@
       "node_key": "7765e73d-c0a5-475b-89bf-819992cf6ba4",
       "parent_id": "M22",
       "planning_dir": "planning/M22.31_steering-finish-refusal_7765e73d-c0a5-475b-89bf-819992cf6ba4.md",
-      "sibling_order": 30,
-      "status": "Not Started",
+      "sibling_order": 28,
+      "status": "Complete",
       "title": "finish-this-task refuses a branch that changes a steering file no touch zone names",
       "touch_zones": [
         "specy_road/steering_gate.py",
@@ -396,7 +396,7 @@
       "node_key": "3202a820-d638-465d-926f-cd52834a85c1",
       "parent_id": "M22",
       "planning_dir": "planning/M22.33_reviewer-resume-keeps-the-model_3202a820-d638-465d-926f-cd52834a85c1.md",
-      "sibling_order": 32,
+      "sibling_order": 29,
       "status": "Complete",
       "title": "A resumed review runs on the model it was asked for",
       "touch_zones": [
@@ -422,7 +422,7 @@
       "node_key": "59ad86eb-3b77-478d-ac05-ba61dabf8394",
       "parent_id": "M22",
       "planning_dir": "planning/M22.34_accept-policy-for-all-open-claims_59ad86eb-3b77-478d-ac05-ba61dabf8394.md",
-      "sibling_order": 33,
+      "sibling_order": 30,
       "status": "Complete",
       "title": "One accept-policy prompt covers every open claim",
       "touch_zones": [

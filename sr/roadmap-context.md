@@ -12,16 +12,16 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.1` Freeze, rules, parity harness and baselines `freeze-rules-parity-harness-and-baselines` — milestone — **Not Started**
     - `M16.1.1` Parity harness: command inventory, golden --help transcripts, an end-to-end leaf loop and dogfood outputs `parity-harness-command-inventory-golden-help-transcripts-an-end-to-end-leaf-loop-and-dogfood-outputs` — task — **Complete**
     - `M16.1.2` Parity harness: a review-gate decision table covering every review policy `parity-harness-a-review-gate-decision-table-covering-every-review-policy` — task — **Complete**
-    - `M16.1.3` Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf `triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf` — task — **Not Started**
+    - `M16.1.3` Triage: the maintainer decides each held feature leaf not absorbed by an M16 leaf `triage-the-maintainer-decides-each-held-feature-leaf-not-absorbed-by-an-m16-leaf` — task — **Complete**
     - `M16.1.4` Constitution names orchestration as part of the product, bounds scope with a 'not' list, and drops contradictions `constitution-names-orchestration-as-part-of-the-product-bounds-scope-with-a-not-list-and-drops-contradictions` — task — **Complete**
-    - `M16.1.5` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Not Started**
+    - `M16.1.5` AGENTS.md is the one agent entry with a task-conditional load order; CLAUDE.md is a pointer `agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` — task — **Complete**
     - `M16.1.6` Review-policy evidence: how often each optional review policy changed a gate outcome `review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` — task — **Not Started**
-    - `M16.1.7` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Not Started**
+    - `M16.1.7` Baseline metrics, a coverage floor in CI, and the M16 working rules written down `baseline-metrics-a-coverage-floor-in-ci-and-the-m16-working-rules-written-down` — task — **Complete**
     - `M16.1.8` A 100-character line-width rule with a shrink-only baseline, and the consumer file-limit default decided `ruff-quality-baseline` — task — **Not Started**
-    - `M16.1.9` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Not Started**
-    - `M16.1.10` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Not Started**
+    - `M16.1.9` Tests: public scenarios for milestone sessions, rollup and reconcile, written before the milestone and nested-repo fold `tests-public-scenarios-for-milestone-sessions-rollup-and-reconcile-written-before-the-milestone-and-nested-repo-fold` — task — **Complete**
+    - `M16.1.10` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Complete**
     - `M16.1.11` Ruff quality rule families with per-file shrink-only baselines and per-release totals `ruff-quality-family-baseline` — task — **Not Started**
-    - `M16.1.12` Shipped agent templates carry no maintainer provenance comments `shipped-templates-carry-no-provenance-comments` — task — **Not Started**
+    - `M16.1.12` Shipped agent templates carry no maintainer provenance comments `shipped-templates-carry-no-provenance-comments` — task — **Complete**
   - `M16.2` Mechanical clean-up, layering and the in-process CLI `mechanical-clean-up-layering-and-the-in-process-cli` — milestone — **Not Started**
     - `M16.2.1` Delete dead and unwired code from a decided list, and add vulture as an advisory CI step `delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step` — task — **Not Started**
     - `M16.2.2` Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers `shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` — task — **Not Started**
@@ -45,7 +45,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.4` One command surface and one checks: config (aliases kept for rc5) `one-command-surface-and-one-checks-config-aliases-kept-for-rc5` — milestone — **Not Started**
     - `M16.4.1` doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases `doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases` — task — **Not Started**
     - `M16.4.2` upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update `upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update` — task — **Not Started**
-    - `M16.4.3` review status, review packet, decisions --kind lesson and presence replace handoff status, review list, review-packet, lessons and session `review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session` — task — **Not Started**
+    - `M16.4.3` review status, review packet, and decisions --kind lesson replace handoff status, review list, review-packet and lessons `review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session` — task — **Not Started**
     - `M16.4.4` milestone and planning command groups, and archive --hard-remove replaces archive-node `milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node` — task — **Not Started**
     - `M16.4.5` One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points `one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points` — task — **Not Started**
     - `M16.4.6` checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose) `checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose` — task — **Not Started**
@@ -82,8 +82,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.7.8` Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses `tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` — task — **Not Started**
   - `M16.8` rc5 close, alias window, end-to-end pass and the 0.3.1 tag `rc5-close-alias-window-end-to-end-pass-and-the-0-3-1-tag` — milestone — **Not Started**
     - `M16.8.1` rc5 close: lean metrics measured against the baseline `rc5-close-lean-metrics-measured-against-the-baseline` — task — **Not Started**
-    - `M16.8.2` Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window `gate-the-release-that-shipped-the-m16-aliases-is-out-and-the-maintainer-closes-the-alias-window` — gate — **Not Started**
-    - `M16.8.3` After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims `after-the-alias-window-delete-the-deprecated-command-aliases-config-form-fallbacks-and-re-export-shims` — task — **Not Started**
     - `M16.8.4` End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 `e2e-pass-and-fix-round` — task — **Not Started**
     - `M16.8.8` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
     - `M16.8.9` Gate: ready to tag 0.3.1 `ready-to-tag-0-3-1` — gate — **Not Started**
@@ -154,44 +152,45 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.20` worker terminate handles zombies, early forks and a failed ps; finish rollback keeps bytes, modes and other staging `terminate-and-finish-rollback-robustness` — task — **Complete**
   - `M22.21` Previews and rollbacks match the real thing: verify brackets, upgrade dry-run digest, apply link rollback `preview-rollback-fidelity` — task — **Complete**
   - `M22.22` Sandbox polish: planning-sheet save keeps untouched Markdown, and Escape closes only the front-most modal `sandbox-rc4-final-polish` — task — **Complete**
-  - `M22.23` Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus `guidance-bypass-retest-cursor-grok-sol-opus` — task — **Not Started**
+  - `M22.23` Re-run the guidance-bypass cases through the Cursor harness with Grok, Sol and Opus `guidance-bypass-retest-cursor-grok-sol-opus` — task — **Complete**
   - `M22.24` The guidance-bypass exclusion catches model-backed human entries, profile access.cli and quoted profile paths `guidance-exclusion-closes-three-bypasses` — task — **Complete**
   - `M22.25` Upgrade's git calls in the project and planning mirrors share one bounded, cleaned environment `upgrade-git-calls-share-one-environment` — task — **Complete**
   - `M22.26` The post-run zone check matches zones written from the git root `post-run-zone-check-git-root-zones` — task — **Complete**
   - `M22.27` The old-log review usage test asserts on the run, not on a substring `old-log-test-asserts-on-the-run` — task — **Complete**
   - `M22.28` upgrade does not warn about itself, and export's drift line says how to fix it `upgrade-no-self-warning-export-drift-hint` — task — **Complete**
   - `M22.29` safe_write and archive moves traverse by directory descriptor `safe-write-directory-descriptors` — task — **Complete**
-  - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Not Started**
+  - `M22.31` finish-this-task refuses a branch that changes a steering file no touch zone names `steering-finish-refusal` — task — **Complete**
   - `M22.33` A resumed review runs on the model it was asked for `reviewer-resume-keeps-the-model` — task — **Complete**
   - `M22.34` One accept-policy prompt covers every open claim `accept-policy-for-all-open-claims` — task — **Complete**
   - `M22.35` upgrade mirrors only what the refreshes need, never ignored files `upgrade-mirror-skips-ignored-files` — task — **Not Started**
   - `M22.36` Each RC publishes its wheel URL and install line, and the package links to the guide `rc-publishes-wheel-url-and-project-urls` — task — **Complete**
-  - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Not Started**
+  - `M22.37` Test the Cursor CLI harness on the documented default `cursor-cli-harness-test-pass` — task — **Complete**
   - `M22.38` doctor --fix never removes a claim that may belong to another clone `doctor-fix-keeps-other-clones-claims` — task — **Complete**
-  - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Not Started**
+  - `M22.39` Stalled workers are detected on every run and can be recovered in one command `worker-stall-recovery` — task — **Complete**
   - `M22.40` Cursor display names match the model they name `cursor-display-names-match-the-model` — task — **Complete**
-  - `M22.41` ready refuses a leaf with no commits, and handoff status stops offering it for review `ready-refuses-a-leaf-with-no-commits` — task — **Not Started**
-  - `M22.42` Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review `sibling-heads-come-from-the-reviewed-checkout` — task — **Not Started**
-  - `M22.43` digest gives the same result with a cold or warm history cache `digest-is-the-same-cold-or-warm` — task — **Not Started**
+  - `M22.41` ready refuses a leaf with no commits, and handoff status stops offering it for review `ready-refuses-a-leaf-with-no-commits` — task — **Complete**
+  - `M22.43` digest gives the same result with a cold or warm history cache `digest-is-the-same-cold-or-warm` — task — **Complete**
   - `M22.44` Unattended workers run in a read-only sandbox on Linux `workers-run-in-a-sandbox` — task — **Complete**
   - `M22.45` A worker turn that moves the integration ref is flagged `integration-refs-stay-put-during-a-turn` — task — **Complete**
   - `M22.46` Sandboxed workers can read their leaf's review records `sandboxed-workers-can-read-their-reviews` — task — **Complete**
-  - `M22.47` Cursor workers start and keep their config under the sandbox `cursor-starts-under-the-sandbox` — task — **Not Started**
+  - `M22.47` Cursor workers start and keep their config under the sandbox `cursor-starts-under-the-sandbox` — task — **Complete**
   - `M22.48` A shared reviewer name closes the gate only when it could be the leaf's writer `shared-names-close-only-when-they-could-be-the-writer` — task — **Complete**
+  - `M22.49` A sandboxed Claude worker resumes after the executor account changes `sandboxed-worker-resumes-after-an-account-switch` — task — **Complete**
+  - `M22.50` finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk `finish-keeps-complete-when-the-chunk-conflicts` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
-  - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Not Started**
-  - `M17.3` PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags `gui-orch-drawer` — task — **Not Started**
-  - `M17.4` PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state `gui-orch-leaf-detail` — task — **Not Started**
+  - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
+  - `M17.3` PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags `gui-orch-drawer` — task — **Complete**
+  - `M17.4` PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state `gui-orch-leaf-detail` — task — **Complete**
   - `M17.5` PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer `gui-orch-outline-badges` — task — **Not Started**
   - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Not Started**
   - `M17.7` PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together `gui-api-orchestration` — task — **Not Started**
   - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Not Started**
   - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Not Started**
-  - `M17.10` Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run `gui-orch-sandbox-use-approved` — gate — **Not Started**
-  - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Not Started**
-  - `M17.12` PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group `gui-group-siblings-action` — task — **Not Started**
-  - `M17.13` PM GUI: a row click selects at once, so a toolbar action right after it acts on that row `gui-outline-selection-lag` — task — **Not Started**
+  - `M17.10` Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run `gui-orch-sandbox-use-approved` — gate — **Complete**
+  - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Complete**
+  - `M17.12` PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group `gui-group-siblings-action` — task — **Complete**
+  - `M17.13` PM GUI: a row click selects at once, so a toolbar action right after it acts on that row `gui-outline-selection-lag` — task — **Complete**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
   - `M18.1` Reviewers check that code is well-formed and that fixes do not degrade it `review-code-quality` — task — **Not Started**
   - `M18.2` Harness-facts records for the Copilot CLI and Antigravity agy `harness-facts-copilot-agy` — task — **Not Started**
@@ -204,7 +203,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M18.9` The implementation-zone check runs before a review is spent, and knows about sibling repositories `the-implementation-zone-check-runs-before-a-review-is-spent-and-knows-about-sibling-repositories` — task — **Not Started**
   - `M18.10` review rca launches the root-cause analyst like review delegate, and says what to do when no analyst is available `review-rca-launches-the-root-cause-analyst-like-review-delegate-and-says-what-to-do-when-no-analyst-is-available` — task — **Not Started**
   - `M18.11` Host effects policy: workers and reviewers do not take over the screen or change shared services, the guard denies such commands, and a message can interrupt a turn `host-effects-policy-and-interruptible-worker-messages` — task — **Not Started**
-  - `M18.12` Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance `role-observed-acceptance-needs-that-role` — task — **Not Started**
   - `M18.13` Touch zones that miss what acceptance needs are flagged at plan time, and the brief's zone section stays short `zones-missing-what-acceptance-needs-flagged` — task — **Not Started**
   - `M18.14` A change to the shared stash is attributed to the worker whose branch made it, not to whichever worker's turn ended while the entry existed `stash-changes-attributed-to-the-owning-branch` — task — **Not Started**
   - `M18.15` --rework carries blocks at the branch tip as required changes, lists older blocks as possibly resolved, and takes a coordinator note placed above the reviews `rework-carries-current-blocks-and-a-coordinator-note` — task — **Not Started**
@@ -225,11 +223,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M19.2` Research reminders leave validate `research-due-in-doctor` — task — **Not Started**
   - `M19.3` The pickup prompt names its base commit `pickup-prompt-base` — task — **Not Started**
   - `M19.4` The managed block stops naming pickup's --local opt-out `no-local-in-block` — task — **Not Started**
-  - `M19.5` A tracked tech-debt ledger that planning can turn into leaves `a-tracked-tech-debt-ledger-that-planning-can-turn-into-leaves` — task — **Not Started**
   - `M19.6` The orchestrator cleans up landed leaves and stale worktrees automatically, saving hand-off files first `the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` — task — **Not Started**
   - `M19.7` Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice `notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` — task — **Not Started**
   - `M19.8` upgrade says what changed for this repo: behaviour changes, a pin below the new minimum, the new files and duplicated paragraphs `upgrade-says-what-changed-for-this-repo-behaviour-changes-a-pin-below-the-new-minimum-the-new-files-and-duplicated-paragraphs` — task — **Not Started**
-  - `M19.9` upgrade --prompt writes an agent upgrade prompt filled in from this repo `upgrade-prompt-writes-an-agent-upgrade-prompt-filled-in-from-this-repo` — task — **Not Started**
   - `M19.10` file-limits can write a baseline of today's exceptions, a failing run points at it, and upgrade reports the file-limits count `file-limits-baseline-and-upgrade-report` — task — **Not Started**
   - `M19.11` Chores at parity with leaves: worktree, branch and env_setup on start, widen zones, the review-record path, and work/chores ignored `chores-at-parity-with-leaves` — task — **Not Started**
   - `M19.12` List shipped nodes with no result after N days `list-shipped-nodes-with-no-result-after-n-days` — milestone — **Not Started**
@@ -244,20 +240,25 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M20.1` Posture advisor: plan the M20 leaves from the research `plan-m20-from-research` — task — **Not Started**
   - `M20.2` Probe each reviewer harness for instruction-file leakage into fresh sessions `fresh-reviewer-leak-probe` — task — **Not Started**
 - `M23` Post-0.3.1 field feedback `post-0-3-1-field-feedback` — phase — **Not Started**
+  - `M23.1` Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review `sibling-heads-come-from-the-reviewed-checkout` — task — **Not Started**
+  - `M23.2` Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window `gate-the-release-that-shipped-the-m16-aliases-is-out-and-the-maintainer-closes-the-alias-window` — gate — **Not Started**
+  - `M23.3` After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims `after-the-alias-window-delete-the-deprecated-command-aliases-config-form-fallbacks-and-re-export-shims` — task — **Not Started**
 
 ## Open gates
 
 Work behind these is deliberately held back until they clear.
 
-- `M16.8.2 Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window` — **Not Started**
 - `M16.8.9 Gate: ready to tag 0.3.1` — **Not Started**
 - `M16.8.10 Gate: 0.3.1 tagged` — **Not Started**
-- `M17.10 Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run` — **Not Started**
+- `M23.2 Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window` — **Not Started**
 
 ## Dependencies that were removed
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
+- 2026-11-08 `M16.8.4` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
+- 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
 - 2026-11-07 `M16.1.2` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
 - 2026-11-07 `M16.1.1` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
 - 2026-11-07 `M22.6` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
@@ -280,10 +281,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-05 `M20` stopped depending on `M16.8.9 Gate: ready to tag 0.3.1`
 - 2026-11-05 `M17.1` stopped depending on `M16.3.1 Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI`
 - 2026-11-05 `M17.1` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
-- 2026-11-05 `M16.60` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
-- 2026-11-05 `M15.30` stopped depending on `2535829e-6a0d-40e3-aa42-9b0506bb9fe9` (no longer live)
-- 2026-11-05 `M16.18` stopped depending on `M16.5.4 One check_assignment decides eligibility for every launch and for the gate`
-- _…and 57 earlier — `specy-road history --json`_
+- _…and 60 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -304,24 +302,22 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 - 2026-11-05 `M13` (11 nodes) — `specy-road show-archive M13-2fe2e067-20261105`
 - 2026-11-05 `M14` (10 nodes) — `specy-road show-archive M14-20b59415-20261105`
 - 2026-11-06 `M15` (31 nodes) — `specy-road show-archive M15-94bbba0e-20261106`
+- 2026-11-08 `M18.12` (1 node) — `specy-road show-archive M18.12-fc76ea81-20261108`
+- 2026-11-08 `M19.5` (1 node) — `specy-road show-archive M19.5-939470c3-20261108`
+- 2026-11-08 `M19.9` (1 node) — `specy-road show-archive M19.9-bd6783a8-20261108`
 
 ## Claimed and in flight
 
 Do not pick these up.
 
-- `M16.1.5` on `feature/rm-agents-md-is-the-one-agent-entry-with-a-task-conditional-load-order-claude-md-is-a-pointer` since 2026-11-07
 - `M16.1.6` on `feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome` since 2026-11-08
-- `M17.11` on `feature/rm-gui-acceptance-editing` since 2026-11-07
-- `M17.2` on `feature/rm-gui-orch-view-model` since 2026-11-07
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.31` on `feature/rm-steering-finish-refusal` since 2026-11-07
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
-- `M22.39` on `feature/rm-worker-stall-recovery` since 2026-11-07
-- `M22.47` on `feature/rm-cursor-starts-under-the-sandbox` since 2026-11-07
+- `M22.50` on `feature/rm-finish-keeps-complete-when-the-chunk-conflicts` since 2026-11-08
 
 ## Quality by area
 
@@ -329,19 +325,23 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `.github` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `CHANGELOG.md` **flagged** | 45 | 0 | 2.71 | 64% | 22 | 3 |
+| `.cursor` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
+| `CHANGELOG.md` **flagged** | 39 | 0 | 2.64 | 67% | 19 | 2 |
+| `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 36 | 0 | 2.83 | 67% | 18 | 2 |
-| `gui` **flagged** | 1 | 0 | 3.00 | 100% | 2 | 0 |
-| `model-profiles` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `pyproject.toml` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `schemas` **flagged** | 1 | 0 | 3.00 | 100% | 5 | 0 |
-| `specy_road` **flagged** | 44 | 0 | 2.73 | 64% | 22 | 3 |
-| `tests` **flagged** | 47 | 0 | 2.62 | 62% | 24 | 3 |
-| `AGENTS.md` | 1 | 0 | 1.00 | 0% | 0 | 0 |
+| `docs` **flagged** | 35 | 0 | 2.69 | 66% | 15 | 2 |
+| `gui` **flagged** | 7 | 0 | 1.71 | 57% | 4 | 0 |
+| `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
+| `specy_road` **flagged** | 42 | 0 | 2.64 | 64% | 20 | 3 |
+| `tests` **flagged** | 43 | 0 | 2.58 | 65% | 21 | 3 |
+| `.github` | 2 | 0 | 1.50 | 50% | 13 | 0 |
+| `AGENTS.md` | 2 | 0 | 3.50 | 50% | 0 | 1 |
 | `constitution` | 1 | 0 | 1.00 | 0% | 0 | 0 |
-| `suggested_prompts` | 1 | 0 | 1.00 | 0% | 3 | 0 |
+| `constraints` | 1 | 0 | 1.00 | 0% | 13 | 0 |
+| `pyproject.toml` | 2 | 0 | 1.50 | 50% | 13 | 0 |
+| `requirements-ci.in` | 1 | 0 | 1.00 | 0% | 13 | 0 |
+| `requirements-ci.txt` | 1 | 0 | 1.00 | 0% | 13 | 0 |
+| `scripts` | 1 | 0 | 1.00 | 0% | 13 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

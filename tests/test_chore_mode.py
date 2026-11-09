@@ -164,6 +164,7 @@ def test_review_delegate_takes_a_chore_started_with_review(tmp_path: Path) -> No
 
 from datetime import date, timedelta  # noqa: E402
 
+from specy_road.agent_guide_block import PROVENANCE  # noqa: E402
 from specy_road.agent_ignores import apply_agent_ignores  # noqa: E402
 from specy_road.bundled_scripts import chore_garden  # noqa: E402
 from specy_road.bundled_scripts.role_prompt_rca import dirty_check  # noqa: E402
@@ -335,6 +336,20 @@ def test_garden_line_numbers_count_only_newlines(tmp_path: Path, capsys) -> None
     lines = {(f["cls"], f["path"], f["line"]) for f in _garden_json(repo, capsys)["findings"]}
     assert ("stale-command", "docs/guide.md", 2) in lines
     assert ("advisory-rule", ".specyrd/AGENTS.md", 5) in lines
+
+
+def test_garden_reads_the_shipped_rules_provenance_from_its_maintainer_file() -> None:
+    """In the toolkit's checkout the templates' comments are read from their maintainer file."""
+    repo, rel = Path(__file__).resolve().parent.parent, "specy_road/agent_rule_provenance.md"
+    findings = chore_garden.advisory_rule_findings(repo)
+    reported = {f.line: f.detail for f in findings if f.path == rel}
+    lines = (repo / rel).read_text(encoding="utf-8").split("\n")
+    comments = [(n, line) for n, line in enumerate(lines, 1) if PROVENANCE.fullmatch(line)]
+    assert reported and len(comments) > len(reported)   # advisory and enforced comments both
+    for n, line in comments:
+        assert (n in reported) == ("| enforced: advisory" in line), line
+        assert n not in reported or (reported[n].startswith("prevents: ") and reported[n] in line)
+    assert not [f.path for f in findings if f.path.startswith("specy_road/templates/")]
 
 
 def test_garden_says_why_when_the_ratchet_policy_is_unreadable(tmp_path: Path, capsys) -> None:

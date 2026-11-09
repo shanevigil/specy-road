@@ -5,8 +5,8 @@ Each finding is one line, ``<class>: <path>:<line>: <detail>``, with git-root-re
 - ``stale-command``: ``docs/**/*.md`` or an agent file names a ``specy-road`` / ``specyrd``
   command this version does not register (the scanner ``validate`` runs on agent files).
 - ``advisory-rule``: a provenance comment marked ``enforced: advisory`` in a managed agent
-  file, or in the templates they are rendered from when those are in this checkout
-  (rendering strips the comments): a rule nothing checks.
+  file, or in ``specy_road/agent_rule_provenance.md`` (the maintainers' copy of the templates
+  they are rendered from, which no wheel ships) when it is in this checkout: a rule nothing checks.
 - ``ratchet-grew``: a ``policy.ratchet_paths`` baseline with lines added since the newest tag.
 
 :func:`open_chores` files each class as at most one leaf through the add-node write; nothing
@@ -55,8 +55,7 @@ _ACCEPTANCE = {
     "ratchet-grew": "`{path}` is back to its size at the last tag, or the summary says why it grew",
 }
 ACCEPTANCE_CAP = 10
-_TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "specyrd"
-_RULE_TEMPLATES = ("agents-md-block.md", "agents-rules.md", "claude-md-block.md")
+_PROVENANCE_FILE = Path(__file__).resolve().parents[1] / "agent_rule_provenance.md"
 
 
 @dataclass(frozen=True)
@@ -98,9 +97,9 @@ def stale_command_findings(root: Path) -> list[Finding]:
 
 def advisory_rule_findings(root: Path) -> list[Finding]:
     root, checkout = _roots(root)
-    templates = [t for t in (_TEMPLATES / n for n in _RULE_TEMPLATES) if t.is_relative_to(checkout)]
+    provenance = [_PROVENANCE_FILE] if _PROVENANCE_FILE.is_relative_to(checkout) else []
     out: list[Finding] = []
-    for path in dict.fromkeys([*agent_files(root), root / RULES_MD, *templates]):
+    for path in dict.fromkeys([*agent_files(root), root / RULES_MD, *provenance]):
         for lineno, line in _numbered_lines(path):
             line = line.strip()
             if PROVENANCE.fullmatch(line) and "| enforced: advisory" in line:

@@ -98,37 +98,6 @@
         "specy_road/review_target_chore.py"
       ],
       "type": "task"
-    },
-    {
-      "acceptance": [
-        "An acceptance item starting 'observed(<role>[, <tier>]):' (schema description and docs) can only be satisfied by a recorded observation on the planning sheet ('A#: observed by <name> as <role> on <tier>, <date>: <result>'), as human: items need a decision; finish-this-task refuses while one lacks it; reviewers mark it n/a with reason 'observed', and an executor's READY or summary cannot satisfy it",
-        "review-packet (through review_packet_observed.py; review_packet.py is at its 400-line cap) flags executor text (summary or READY) that claims a role, stage, server or walkthrough observation for an observed( item, quoting the line and saying it is executor-supplied; a test with the reported shape (timings measured inside pytest presented as a role-observed table) asserts the flag",
-        "The reviewer prompt separates coordinator-supplied probes (a 'Coordinator probes' section: run them and report; a failure is a finding, not an acceptance failure unless an acceptance item covers it) from acceptance items; a test asserts the section heading and wording. Out of scope: verifying who made an observation"
-      ],
-      "codename": "role-observed-acceptance-needs-that-role",
-      "dependencies": [
-        "2278f4ad-6118-44da-bca8-39d904afee8d"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M18.12",
-      "node_key": "fc76ea81-b466-431d-a899-b078e86c7503",
-      "parent_id": "M18",
-      "planning_dir": "planning/M18.12_role-observed-acceptance-needs-that-role_fc76ea81-b466-431d-a899-b078e86c7503.md",
-      "sibling_order": 11,
-      "status": "Not Started",
-      "title": "Role-observed acceptance needs evidence from that role, and coordinator probes are not acceptance",
-      "touch_zones": [
-        "specy_road/finish_task_gates.py",
-        "specy_road/observed_acceptance.py",
-        "specy_road/bundled_scripts/review_packet.py",
-        "specy_road/bundled_scripts/review_packet_observed.py",
-        "specy_road/review_record_rules.py",
-        "specy_road/templates/project/schemas/roadmap.schema.json",
-        "docs/acceptance-evidence.md",
-        "tests/",
-        "specy_road/bundled_scripts/role_prompt_rca.py"
-      ],
-      "type": "task"
     }
   ]
 }

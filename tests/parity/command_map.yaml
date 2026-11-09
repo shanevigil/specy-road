@@ -5,4 +5,10 @@
 #   old: the invocation before the change ("specy-road branches prune"); empty for an addition
 #   new: the invocation after it ("specy-road doctor --prune"); empty for a removal
 #   allowed: the difference this row allows, in one line
-rows: []
+rows:
+  - old: ""
+    new: specy-road worker recover
+    allowed: "M22.39: new `worker recover W` subcommand (end a stalled worker, keep its work, resume its session)"
+  - old: specy-road worker
+    new: specy-road worker
+    allowed: "M22.39: `worker --help` lists the new recover subcommand"
