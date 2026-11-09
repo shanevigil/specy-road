@@ -176,7 +176,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.47` Cursor workers start and keep their config under the sandbox `cursor-starts-under-the-sandbox` — task — **Complete**
   - `M22.48` A shared reviewer name closes the gate only when it could be the leaf's writer `shared-names-close-only-when-they-could-be-the-writer` — task — **Complete**
   - `M22.49` A sandboxed Claude worker resumes after the executor account changes `sandboxed-worker-resumes-after-an-account-switch` — task — **Complete**
-  - `M22.50` finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk `finish-keeps-complete-when-the-chunk-conflicts` — task — **Not Started**
+  - `M22.50` finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk `finish-keeps-complete-when-the-chunk-conflicts` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -317,7 +317,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.35` on `feature/rm-upgrade-mirror-skips-ignored-files` since 2026-11-07
-- `M22.50` on `feature/rm-finish-keeps-complete-when-the-chunk-conflicts` since 2026-11-08
 
 ## Quality by area
 

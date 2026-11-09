@@ -446,7 +446,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.50_finish-keeps-complete-when-the-chunk-conflicts_749e0a55-5f3f-4fa4-b093-1252f5cd1fd1.md",
       "sibling_order": 45,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk",
       "touch_zones": [
         "specy_road/finish_land_roadmap_graph.py",
