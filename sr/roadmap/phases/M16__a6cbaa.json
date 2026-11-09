@@ -19,11 +19,11 @@
         "d340dc53-ba74-45b4-a5c4-9f778862e8f0"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.5.5",
+      "id": "M23.6",
       "node_key": "a6cbaac4-954f-42dc-811b-81b9edb6922c",
-      "parent_id": "M16.5",
-      "planning_dir": "planning/M16.5.5_roster-core-and-run-block_a6cbaac4-954f-42dc-811b-81b9edb6922c.md",
-      "sibling_order": 4,
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.6_roster-core-and-run-block_a6cbaac4-954f-42dc-811b-81b9edb6922c.md",
+      "sibling_order": 5,
       "status": "Not Started",
       "title": "Roster entries split into core fields and a typed run: block, read in both forms",
       "touch_zones": [
@@ -64,11 +64,11 @@
         "a6cbaac4-954f-42dc-811b-81b9edb6922c"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.5.6",
+      "id": "M23.7",
       "node_key": "66711ba8-3d38-427a-bf76-fdc3989e0c75",
-      "parent_id": "M16.5",
-      "planning_dir": "planning/M16.5.6_roster-upgrade-to-run-block_66711ba8-3d38-427a-bf76-fdc3989e0c75.md",
-      "sibling_order": 5,
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.7_roster-upgrade-to-run-block_66711ba8-3d38-427a-bf76-fdc3989e0c75.md",
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "upgrade migrates rosters to core fields plus run:",
       "touch_zones": [

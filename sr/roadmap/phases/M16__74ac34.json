@@ -107,7 +107,7 @@
       "node_key": "a536eb60-74a5-4a71-9556-d9cb752c881b",
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.7_shared-checkout-guard-and-session-presence-move-into-orchestration_a536eb60-74a5-4a71-9556-d9cb752c881b.md",
-      "sibling_order": 6,
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "Shared-checkout guard and session presence move into orchestration",
       "touch_zones": [
@@ -145,7 +145,7 @@
       "node_key": "275b701c-4eb9-4214-ae77-7ab34a7d197a",
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.9_grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings_275b701c-4eb9-4214-ae77-7ab34a7d197a.md",
-      "sibling_order": 8,
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings",
       "touch_zones": [
@@ -212,7 +212,7 @@
       "node_key": "5fa51e45-9e09-4119-826d-43c6d304f243",
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.12_fold-the-review-gate-fragments-no-review-policy-is-deprecated_5fa51e45-9e09-4119-826d-43c6d304f243.md",
-      "sibling_order": 11,
+      "sibling_order": 7,
       "status": "Not Started",
       "title": "Fold the review gate fragments; no review policy is deprecated",
       "touch_zones": [
@@ -231,41 +231,6 @@
         "constraints/import-layers-baseline.json",
         "constraints/test-private-imports-baseline.txt",
         "constraints/clone-baseline.json"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "complexity_delta scores every Python function in the leaf's diff and its merge-base version with ruff C901 at max-complexity 0 (so every score is visible), waivers ignored; a function is matched by qualified name within its file, following git rename detection for moved files; a function with no such match whose name equals exactly one function removed from another file in the same diff is matched to that function; any other function is new",
-        "`ready` and the review packet list each matched function whose score rose (any increase, as the maintainer's rule states), each new function over the configured limit, and each added `noqa: C901`; a moved function whose score did not change is not listed",
-        "A `checks:` entry sets report or block; `ready` records the result in its evidence with the commit it scored; in block mode `ready` refuses with the list and the fix, and the gate refuses an approval when the result for the approved commit is failed, missing or for another commit; a missing ruff blocks with an install hint (report mode records skipped)",
-        "A table test covers growth below the limit, an unchanged moved function, a renamed file, a function extracted into another file, a new function under and over the limit, an added waiver, a stale and a missing result, and ruff missing in each mode; the M16.1.2 decision table gains the block rows",
-        "sr/roadmap/git-workflow.yaml enables it in block mode",
-        "Estimated net line change (informational, not a gate): package about +150 (requested by the maintainer)"
-      ],
-      "codename": "post-fix-refactor-gate-ready-and-the-review-packet-report-any-complexity-growth-and-policy-can-block-on-it",
-      "dependencies": [
-        "93190765-913e-4da9-b5c5-70c258e2c285"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.5.14",
-      "node_key": "7b52d543-e78c-4e74-bcd1-24d5a8b3034b",
-      "parent_id": "M16.5",
-      "planning_dir": "planning/M16.5.14_post-fix-refactor-gate-ready-and-the-review-packet-report-any-complexity-growth-and-policy-can-block-on-it_7b52d543-e78c-4e74-bcd1-24d5a8b3034b.md",
-      "sibling_order": 13,
-      "status": "Not Started",
-      "title": "Post-fix refactor gate: ready and the review packet report any complexity growth, and policy can block on it",
-      "touch_zones": [
-        "specy_road/complexity_delta.py",
-        "specy_road/review_gate_ready.py",
-        "specy_road/bundled_scripts/review_packet.py",
-        "specy_road/checks_config.py",
-        "specy_road/templates/project/schemas/git-workflow.schema.json",
-        "docs/orchestration-review.md",
-        "sr/roadmap/git-workflow.yaml",
-        "tests/parity/review_gate/",
-        "tests/",
-        "specy_road/review_gate.py"
       ],
       "type": "task"
     },

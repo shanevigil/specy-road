@@ -50,14 +50,15 @@
       ],
       "codename": "checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose",
       "dependencies": [
-        "74ac34a2-084a-4dd3-84ec-ac37b20dd983"
+        "74ac34a2-084a-4dd3-84ec-ac37b20dd983",
+        "1d9b9c91-dec8-4f55-bd57-c8eb6368612f"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.4.6",
+      "id": "M23.4",
       "node_key": "449eeb3e-1874-4b25-841c-2b1fed8e2363",
-      "parent_id": "M16.4",
-      "planning_dir": "planning/M16.4.6_checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose_449eeb3e-1874-4b25-841c-2b1fed8e2363.md",
-      "sibling_order": 5,
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.4_checks-entries-scoped-to-touch-zones-block-a-merge-when-they-fail-held-m15-23-s-purpose_449eeb3e-1874-4b25-841c-2b1fed8e2363.md",
+      "sibling_order": 3,
       "status": "Not Started",
       "title": "checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose)",
       "touch_zones": [
@@ -115,14 +116,15 @@
         "67af8a9a-a8ef-4724-9702-be691a497a55",
         "e129232c-a131-477e-bb91-12699f010034",
         "855d9738-4b87-480b-8404-d6a1aa85c714",
-        "4d9737c0-0d3a-44b3-869f-4b782a04f2ba"
+        "4d9737c0-0d3a-44b3-869f-4b782a04f2ba",
+        "1d9b9c91-dec8-4f55-bd57-c8eb6368612f"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.5.4",
+      "id": "M23.5",
       "node_key": "e8394512-cb8d-4a53-9206-936dbe2a67d2",
-      "parent_id": "M16.5",
-      "planning_dir": "planning/M16.5.4_one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate_e8394512-cb8d-4a53-9206-936dbe2a67d2.md",
-      "sibling_order": 3,
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.5_one-check-assignment-decides-eligibility-for-every-launch-and-for-the-gate_e8394512-cb8d-4a53-9206-936dbe2a67d2.md",
+      "sibling_order": 4,
       "status": "Not Started",
       "title": "One check_assignment decides eligibility for every launch and for the gate",
       "touch_zones": [
@@ -145,13 +147,14 @@
       ],
       "codename": "the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged",
       "dependencies": [
-        "a536eb60-74a5-4a71-9556-d9cb752c881b"
+        "a536eb60-74a5-4a71-9556-d9cb752c881b",
+        "1d9b9c91-dec8-4f55-bd57-c8eb6368612f"
       ],
       "execution_milestone": "Agentic-led",
-      "id": "M16.5.8",
+      "id": "M23.8",
       "node_key": "b198c24c-78e4-4336-8b94-1289d80826de",
-      "parent_id": "M16.5",
-      "planning_dir": "planning/M16.5.8_the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged_b198c24c-78e4-4336-8b94-1289d80826de.md",
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.8_the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged_b198c24c-78e4-4336-8b94-1289d80826de.md",
       "sibling_order": 7,
       "status": "Not Started",
       "title": "The guard classifier becomes three rule tables with every verdict unchanged",
@@ -179,7 +182,7 @@
       "node_key": "6434cf7b-842b-4532-96e3-1821655a5fb5",
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.11_grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade_6434cf7b-842b-4532-96e3-1821655a5fb5.md",
-      "sibling_order": 10,
+      "sibling_order": 6,
       "status": "Not Started",
       "title": "Grind settings move under grind: in git-workflow.yaml, migrated by upgrade",
       "touch_zones": [
@@ -212,7 +215,7 @@
       "node_key": "93190765-913e-4da9-b5c5-70c258e2c285",
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.13_the-review-packet-fragments-fold-into-review-packet_93190765-913e-4da9-b5c5-70c258e2c285.md",
-      "sibling_order": 12,
+      "sibling_order": 8,
       "status": "Not Started",
       "title": "The review packet fragments fold into review_packet",
       "touch_zones": [
