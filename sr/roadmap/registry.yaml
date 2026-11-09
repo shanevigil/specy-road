@@ -111,7 +111,8 @@ entries:
       - tests/parity/golden/help/specy-road__ready.txt
     started: '2026-11-09'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-09T20:08:00+00:00'
   - codename: review-wider-carry
     node_id: M22.53
     branch: feature/rm-review-wider-carry
