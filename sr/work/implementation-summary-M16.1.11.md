@@ -48,6 +48,20 @@ since pickup outweigh this leaf's additions. Those deletions are not this class;
 baseline. The new PL finding is the inline import in `print_quality_report`, left in place so the report
 shows it.
 
+## Fix round (review block on `6ef98d46`)
+
+**Class:** a git command in a test that requires a historical commit object and treats a missing object as
+failure (`check=True`). A depth-1 checkout, which is what `actions/checkout@v7` does when `fetch-depth` is
+unset, does not have `542aa46c`, so `git ls-tree` exits 128.
+
+The same class does not reach the other git calls in this leaf. `test_rewrite_counts_the_commit_tree_not_the_worktree`
+creates the commit it archives. `counts_at` archives the commit `main` passes, which is `HEAD` of the
+repository being rewritten; CI does not run that rewrite, and a depth-1 checkout does contain `HEAD`.
+`.github/workflows/validate.yml` is outside the zones and was not changed.
+
+One rule: the tree check runs only when `git cat-file -e <commit>^{commit}` succeeds. The recorded hash is
+always compared to the pickup commit, which does not need the object.
+
 ## Probes
 
 - Every pre-fix baseline path against `git ls-tree` of `542aa46c`: only `tests/test_ruff_quality_baseline.py`
@@ -59,6 +73,13 @@ shows it.
   cannot enter this baseline.
 - Scripts deleted by the merge with `origin/WIP/improvements-0-3-1` (`scripts/census/`, `scripts/review_effort_study.py`)
   exist at `542aa46c` and stay in the baseline. Not this class.
+- `.github/workflows/validate.yml` uses `actions/checkout@v7` with no `fetch-depth`, so CI's checkout is depth 1.
+  The workflow was not edited.
+- Other git calls in `tests/test_ruff_quality_baseline.py` (`init`, `add`, `commit`, `rev-parse`) run in a
+  repository the test just created, so their commits are local. `counts_at` is not called on `542aa46c` by any test.
+- `git cat-file -e 542aa46c^{commit}` in this checkout exits 0, so the tree check still runs here (13 passed).
+- A `--depth 1` clone of this branch, with the updated test copied in: `git cat-file -e 542aa46c^{commit}`
+  exits 128, and that test is skipped (pytest exit 0). The clone was removed afterwards.
 
 ## Final touch zones
 
@@ -68,7 +89,8 @@ The brief's list, unchanged: `scripts/ruff_quality_baseline.py`, `scripts/ruff_q
 
 ## Checks run
 
-- `pytest -n 4 tests/test_ruff_quality_baseline.py`: 13 passed.
+- `pytest -n 4 tests/test_ruff_quality_baseline.py`: 13 passed. In a depth-1 clone the pickup-commit test is skipped
+  and the run still exits 0.
 - `ruff check specy_road tests scripts`: clean.
 - `specy-road file-limits`: OK (three warnings; `docs/release-runbook.md` at 912 lines is one, under the 1,000 cap).
 - `python scripts/ruff_quality_baseline.py --shrink` on the first baseline: `no entry lowered`. Not run again
@@ -127,7 +149,9 @@ The brief's list, unchanged: `scripts/ruff_quality_baseline.py`, `scripts/ruff_q
 - `tests/test_ruff_quality_baseline.py::test_report_names_rises_new_files_and_family_totals`: the report lists a
   rise, a new family on a known file and a file outside the baseline, not a fall, then every family's total and delta.
 - `tests/test_ruff_quality_baseline.py::test_baseline_records_the_pickup_commit_and_only_its_files`: the
-  committed baseline's commit is `542aa46c` and every path in it exists at that commit. Uses git, not ruff.
+  committed baseline's commit is `542aa46c`. When that commit object is local, every path exists in its
+  tree. When `git cat-file -e <commit>^{commit}` fails, the tree check is skipped, so a depth-1 checkout
+  does not fail. Uses git, not ruff.
 - `tests/test_ruff_quality_baseline.py::test_rewrite_counts_the_commit_tree_not_the_worktree`: a full rewrite
   keeps the committed file's count and leaves out a worktree edit and an untracked file. Skipped when ruff
   is not installed.

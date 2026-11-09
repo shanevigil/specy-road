@@ -177,13 +177,18 @@ PICKUP = "542aa46c29cf4765c20b6879d322cc53422b1da3"
 
 def test_baseline_records_the_pickup_commit_and_only_its_files() -> None:
     data = json.loads((ROOT / "scripts" / "ruff_quality_baseline.json").read_text(encoding="utf-8"))
+    assert data["commit"] == PICKUP
+    # One rule: the tree check needs the commit object. A depth-1 checkout does not have it.
+    if subprocess.run(
+        ["git", "cat-file", "-e", f"{data['commit']}^{{commit}}"],
+        cwd=ROOT, capture_output=True,
+    ).returncode != 0:
+        pytest.skip("recorded commit is not in this checkout")
     listed = subprocess.run(
         ["git", "ls-tree", "-r", "--name-only", data["commit"]],
         cwd=ROOT, capture_output=True, text=True, check=True,
     ).stdout
     present = set(listed.splitlines())
-
-    assert data["commit"] == PICKUP
     assert sorted(path for path in data["files"] if path not in present) == []
 
 
