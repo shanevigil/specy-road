@@ -70,7 +70,7 @@
       "acceptance": [
         "`lean_metrics --check` prints package, test and docs lines and files, the C901 and long-line counts, and the command and alias counts against the M16.1.7 baseline, beside the sum of the leaves' informational estimates; none of the line numbers fails the check",
         "The canonical command count is at most 56 and the alias count is printed; coverage is at or above fail_under; each effectiveness measure recorded in M16.7.8's sheet is at or above the value or threshold recorded there; suite time is printed for information only and never fails this leaf",
-        "This sheet lists, for the 0.3.1 release notes and the post-0.3.1 removal leaf, every deprecated form still accepted at 0.3.1 with the notice it prints: the tests/parity/command_map.yaml rows, the old checks keys and the review-before-finish switch (M16.4.5), the four grind_session_* keys (M16.5.11), the version-1 roster form (M16.5.5), the `[gui-next]` extra (M16.6.1) and the re-exports kept by M16.2.5; each has its CHANGELOG [Unreleased] entry",
+        "This sheet lists, for the 0.3.1 release notes and the post-0.3.1 removal leaf, every deprecated form still accepted at 0.3.1 with the notice it prints: the tests/parity/command_map.yaml rows, the old checks keys and the review-before-finish switch (M16.4.5), the four grind_session_* keys (M16.5.11), the `[gui-next]` extra (M16.6.1) and the re-exports kept by M16.2.5; each has its CHANGELOG [Unreleased] entry",
         "The M16.1.7 baseline stays as committed; the rc5 measurements are committed as a separate end-state section of constraints/lean-baseline.json that names the baseline commit, and the summary states the source lines, command count, test count and effectiveness measures reached, with suite time as an informational figure",
         "Estimated net line change (informational, not a gate): package 0"
       ],
@@ -198,11 +198,11 @@
     {
       "acceptance": [
         "scripts/check_import_layers.py scans imports with the AST and writes constraints/import-layers-baseline.json: every strongly connected import component with its modules, and every import edge from package code into a bundled_scripts entry point",
-        "CI fails unless every current cyclic component is a subset of one baselined component after recorded module renames: a new member, a merge of two baselined components or a new package-to-entry-point edge fails; every reduction is written to the baseline in the same change",
+        "constraints/import-layers-baseline.json is a committed report, not a gate: no test or CI step fails on a new cycle member, a merge of two components or a new package-to-entry-point edge; running scripts/check_import_layers.py prints how the current imports differ from the committed report (members added and removed, components merged or split, entry-point edges added and removed) and exits 0; the report names the component containing both roadmap_load and finish_ancestor_rollup and the component containing a roadmap_crud* module and chore_cli, with their sizes",
         "No package code changes",
         "Estimated net line change (informational, not a gate): package 0; scripts about +120"
       ],
-      "codename": "a-shrink-only-layering-gate-records-the-import-cycles-and-package-to-entry-point-imports",
+      "codename": "a-committed-report-of-the-import-cycles-and-package-to-entry",
       "dependencies": [
         "8ae7a813-4e43-4590-9f7d-d20b1691dbce"
       ],
@@ -210,21 +210,20 @@
       "id": "M16.2.6",
       "node_key": "d0dc4b2c-781d-42f3-82a3-29b6468abebe",
       "parent_id": "M16.2",
-      "planning_dir": "planning/M16.2.6_a-shrink-only-layering-gate-records-the-import-cycles-and-package-to-entry-point-imports_d0dc4b2c-781d-42f3-82a3-29b6468abebe.md",
+      "planning_dir": "planning/M16.2.6_a-committed-report-of-the-import-cycles-and-package-to-entry_d0dc4b2c-781d-42f3-82a3-29b6468abebe.md",
       "sibling_order": 5,
       "status": "Not Started",
-      "title": "A shrink-only layering gate records the import cycles and package-to-entry-point imports",
+      "title": "A committed report of the import cycles and package-to-entry-point imports",
       "touch_zones": [
         "scripts/check_import_layers.py",
         "constraints/import-layers-baseline.json",
-        ".github/workflows/validate.yml",
         "tests/test_import_layers.py"
       ],
       "type": "task"
     },
     {
       "acceptance": [
-        "The 45-module component is gone from constraints/import-layers-baseline.json (the largest remaining component is recorded in the summary): roadmap_load no longer imports finish_ancestor_rollup or the review modules",
+        "The 45-module import cycle is gone: in constraints/import-layers-baseline.json regenerated at this leaf's head and committed, no component contains both roadmap_load and finish_ancestor_rollup (the largest remaining component is recorded in the summary); roadmap_load no longer imports finish_ancestor_rollup or the review modules",
         "Package modules no longer import the entry points generate_brief, validate_roadmap or refresh_stubs: the functions they used live in package modules",
         "The function-level import of finish_ancestor_rollup in roadmap_load and the function-level imports of the review modules in finish_ancestor_rollup are removed; the summary states how many function-level imports remain inside the modules that were in the old 45-module component",
         "Parity harness and full suite unchanged",
@@ -252,7 +251,7 @@
     },
     {
       "acceptance": [
-        "The 25-module component (roadmap CRUD, worker ops and chore CLI) is gone from constraints/import-layers-baseline.json",
+        "The 25-module import cycle (roadmap CRUD, worker ops and chore CLI) is gone: in constraints/import-layers-baseline.json regenerated at this leaf's head and committed, no component contains both a roadmap_crud* module and chore_cli",
         "Package modules no longer import the entry points chore_cli or grind_session_cleanup: `merged_into` and the chore helpers live in package modules, and doctor_worktrees, worktree_prune and finish_modes import them from there",
         "Function-level imports that existed only for this cycle are removed (count in the summary); parity harness and full suite unchanged",
         "Estimated net line change (informational, not a gate): package about -60"
@@ -284,7 +283,8 @@
         "`specy-road validate` imports at most half as many modules as the M16.1.7 baseline records (counted by a test); `validate --help` wall time is printed by lean_metrics, not gated",
         "The CLI imports without the gui and review extras (tests/test_cli_imports_without_gui_extra.py green)",
         "The stale-command scan in validate (and M12.3's garden scan through the same function) extends the existing extractor: it walks only the files `validate_stale_commands.agent_files` walks, plus docs/ for the garden scan; inside a backtick or fenced span it tokenises a `specy-road <cmd> [<sub>] --<long-flag>` invocation with shlex, stops at a shell operator or a bare --, skips an unparseable or placeholder invocation, and reports file:line, the command, the unknown flag and the closest valid flag when <cmd> and <sub> are in that command's build_parser() and the long flag is not; short options and flags on an argparse.REMAINDER parser are not reported; a fixture with one stale and one valid flag pins the output (absorbed from M12.6 by maintainer triage 2026-11-05)",
-        "Estimated net line change (informational, not a gate): package about -80"
+        "Estimated net line change (informational, not a gate): package about -80",
+        "`prompt`'s options and its `would run:` line are unchanged (a parity row pins them)"
       ],
       "codename": "every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers",
       "dependencies": [

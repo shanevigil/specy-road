@@ -357,7 +357,7 @@
     {
       "acceptance": [
         "Hypothesis is a test-only dev dependency (approved by the maintainer, 2026-11-05): added to the `dev` extra with an exact pin, requirements-ci.txt regenerated with pip-compile and `pip-audit -r requirements-ci.txt` clean, as docs/supply-chain-security.md requires; it is never in project.dependencies",
-        "One Hypothesis property per subject and no others: outline indent then outdent restores parent and sibling order; managed-block replace is idempotent and leaves text outside the block byte-identical; registry YAML load then dump round-trips; planning-sheet and READY front matter parse then render round-trips; each guard table row keeps its verdict when the command is wrapped in each wrapper the table already unwraps",
+        "One Hypothesis property per subject and no others: outline indent then outdent restores parent and sibling order; managed-block replace is idempotent and leaves text outside the block byte-identical; registry YAML load then dump round-trips; planning-sheet and READY front matter parse then render round-trips; each allow and deny case in the existing guard tests keeps its verdict when the command is wrapped in each wrapper the classifier already unwraps",
         "A single-input test that a property covers is removed only when it is in this leaf's planned_test_changes",
         "Estimated net line change (informational, not a gate): tests about -600"
       ],
@@ -398,7 +398,7 @@
     },
     {
       "acceptance": [
-        "Every row of tests/parity/command_map.yaml, the old config forms (baseline_cmd, land_check_cmd, verify_cmd, the review-before-finish switch, the four grind_session_* keys and the version-1 roster form with `pinned`) with their validate notices and dual-read paths (orchestration.schema.json then accepts only version 2), every re-export listed in M16.2.5's sheet, and the `[gui-next]` extra in pyproject.toml with its compatibility note (project.version untouched) are removed",
+        "Every row of tests/parity/command_map.yaml, the old config forms (baseline_cmd, land_check_cmd, verify_cmd, the review-before-finish switch and the four grind_session_* keys) with their validate notices and dual-read paths, every re-export listed in M16.2.5's sheet, and the `[gui-next]` extra in pyproject.toml with its compatibility note (project.version untouched) are removed",
         "Normal config readers accept only the current forms; upgrade keeps its legacy-input migration parsers, and after this leaf the rc3- and rc5-shaped fixtures still migrate with upgrade",
         "A removed command name exits with code 2 and one stderr line naming its replacement (REPLACED_COMMANDS)",
         "Deprecated review policies are not removed here",
