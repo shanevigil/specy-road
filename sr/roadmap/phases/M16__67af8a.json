@@ -81,7 +81,6 @@
     },
     {
       "acceptance": [
-        "Each file in docs/design-notes/ gets the disposition in this sheet's table (move to design-notes/ at the root, or archive to sr/design-notes-archive/); the design-notes file-limit overrides go",
         "orchestration-workers, orchestration-roster and orchestration-chores merge into one workers reference; architecture folds into roadmap-authoring and install-release-candidates into install-and-usage; pm-gui-brainstorm and pm-llm-review are appended to pm-gui.md as new sections (its existing sections belong to the PM GUI work in phase M17); optional-ai-tooling-patterns becomes a short pointer",
         "A test fails when README.md or a file under docs/ matches `\\d+\\.\\d+\\.\\d+rc\\d+`, except the install section of docs/install-and-usage.md and docs/release-runbook.md (worked release examples); CHANGELOG.md and pyproject.toml are not scanned; README's setup steps describe skills, not slash-command stubs; templates cite no doc an adopter cannot open",
         "The `[gui-next]` extra stays as an alias of `[gui]` for one release with a note (project.version untouched); every moved doc's inbound links resolve, checked by tests/test_docs_links.py; a test that opens a moved doc's path (test_review_rca, test_review_record_write, test_roster_generate, test_docs_install_extras, and any other the sheet's disposition table lists) changes only that path",
@@ -94,7 +93,8 @@
         "Golden rule, binding only if this leaf lands after M16.1.1 or M16.1.2 has captured: it never regenerates a whole golden file; a changed --help transcript needs a tests/parity/command_map.yaml row; any other changed transcript (upgrade --dry-run, validate, export, digest) needs an asserted before/after fragment named in this acceptance; a decision-table row changes only when this acceptance quotes its old and new passed, approval count and problem count, a fail-closed or block row stays one, and the leaf fails if regeneration changes anything else; each file it changes under tests/parity/ is first added to its touch zones by exact path with specy-road edit-node",
         "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies",
         "The workers reference documents worker status/list --json as a stable interface, that a claim locks development work and not a runtime resource, that a gitignored roadmap/ needs a force-added orchestration.yaml, and that a Codex workspace-write executor needs channels.cli to commit (folded from M16.1.3 batch H: H1.7, H1.8 and H2.14 docs halves, H2.22)",
-        "docs/orchestration-review.md describes the review tiers, the fix-check, operator decisions and accept-with-limits, as far as each has shipped at this leaf's merge base; it describes nothing that has not shipped; it also says that a root-cause analysis precedes every escalation and that the escalate_* keys are current, not deprecated"
+        "docs/orchestration-review.md describes the review tiers, the fix-check, operator decisions and accept-with-limits, as far as each has shipped at this leaf's merge base; it describes nothing that has not shipped; it also says that a root-cause analysis precedes every escalation and that the escalate_* keys are current, not deprecated",
+        "Design-notes disposition: superseded by M22.55, which untracks docs/design-notes/ and drops the design-notes file-limit overrides; this leaf moves no design note"
       ],
       "codename": "docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra",
       "dependencies": [
@@ -115,8 +115,6 @@
       "title": "Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra",
       "touch_zones": [
         "docs/",
-        "design-notes/",
-        "sr/design-notes-archive/",
         "README.md",
         "pyproject.toml",
         "constraints/file-limits.yaml",

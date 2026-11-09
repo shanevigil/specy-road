@@ -107,7 +107,6 @@
         "specy_road/availability_overlay.py",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_status_render.py",
-        "docs/design-notes/review-loop-rca.md",
         "tests/",
         "specy_road/rca_plan_check.py",
         "specy_road/orchestrate_plan.py",
