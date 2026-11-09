@@ -457,7 +457,7 @@
       ],
       "planning_dir": "planning/M16.2.1_delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step_bdf86710-8da3-4c1b-a1db-c11e0a5c1613.md",
       "sibling_order": 0,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Delete dead and unwired code from a decided list, and add vulture as an advisory CI step",
       "touch_zones": [
         "specy_road/bundled_scripts/migrate_stable_node_keys.py",
