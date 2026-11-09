@@ -2,12 +2,15 @@
   "nodes": [
     {
       "acceptance": [
-        "scripts/check_machine_paths.py becomes scripts/check_public_hygiene.py with three pattern categories: (a) personal data: email addresses not in scripts/public_hygiene_allow.txt, registry `owner:` values, presence session names built from the username, and the maintainer's name tokens and username, read at run time (git config, the environment, an untracked local list or a CI secret) and never from a tracked file; (b) machine setup: today's path patterns plus `~/` paths outside allowlisted tool config directories (such as ~/.specy-road, ~/.claude, ~/.cursor and ~/.ssh), account-directory names from the local list, `CLAUDE_CONFIG_DIR=` with a literal value, home-prefixed conda or venv paths, apparmor.d profile names, kernel.apparmor_restrict_unprivileged_userns values, `-MacBook` and `.local` hostnames, machine names from the local list, and `/tmp/claude-<uid>`; (c) process content: the path denylist (sr/, docs/design-notes/, scripts/census/, scripts/review_effort_study.py, any research/ directory, *-prompt.md, handoff-*) and the text denylist (`deep-research report`, `claude\\.ai/code/session_`, `Claude-Session:`, `\\bsr/(work|planning|roadmap|tools)` outside .gitignore, and private names and phrases from the local list)",
-        "scripts/public_hygiene_allow.txt holds only patterns: noreply@anthropic.com, *@users.noreply.github.com, noreply@github.com, cursoragent@cursor.com, the dependabot address, the placeholders x and <name>, test identities such as Alice and Test User, the repo-owner handle in github.com URLs, and one public author identity entry that ships as an explicit placeholder for the operator to fill in; while it holds the placeholder the gate treats the public identity as unset and fails closed for author and committer identities of commits in the checked range, and it checks no history before that range",
-        "Pre-commit runs the file check and a commit-msg hook runs the message check; validate.yml runs both, the message and identity check over `git log base..head`; until M22.60 lands the file check skips the tracked sr/ tree on the WIP line, and the path denylist applies to pull requests to main and to release-publish; tests/test_lean_gates.py has one failing row per pattern in a tracked file and in a commit message, one passing row per allowlist entry, and the unset-placeholder case"
+        "scripts/check_machine_paths.py becomes scripts/check_public_hygiene.py with bounded rules. (a) Personal data: an email not in scripts/public_hygiene_allow.txt; whole-word name tokens and the username, read at run time from an untracked local list or a CI secret and never from a tracked file (skipped when both are unset), in text, as `owner:` values and in presence names of the form <username>-s<digits>; a github.com URL owned by the repo-owner handle is not a hit. (b) Machine setup: today's patterns, including `-MacBook` hostnames and /private/tmp/claude-<uid> (a bare `.local` token such as AGENTS.local.md or settings.local.json is not a hit); a `~/` path whose first component is an account-directory name from the local list (`~/.<tool>` config paths pass); home-prefixed conda or venv paths; `CLAUDE_CONFIG_DIR=` with a value starting with / or ~; a literal number assigned to kernel.apparmor_restrict_unprivileged_userns; machine and apparmor profile names from the local list; variable references and placeholders are not literal values. (c) Process content: the text denylist (`deep-research report`, `claude.ai/code/session_`, `Claude-Session:`, local-list phrases) in tracked files outside sr/ and in commit messages, plus sr/work, sr/planning, sr/roadmap and sr/tools mentions in commit messages only; and, under `--promotion` only, the path denylist on tracked paths and archive member names: sr/, docs/design-notes/, scripts/census/, scripts/review_effort_study.py, a `research` directory component, a `*-prompt.md` or `handoff-*` basename, except under specy_road/templates/ and tests/parity/",
+        "scripts/public_hygiene_allow.txt holds only: noreply@anthropic.com, *@users.noreply.github.com, noreply@github.com, cursoragent@cursor.com, the dependabot address, git@github.com, *@specy-road.invalid, the reserved and synthetic test domains the suite uses (*@example.com, *@example.invalid, *@e.com, *@e.st), security@pypi.org, security@npmjs.com, and one public-author entry that ships as PUBLIC_IDENTITY_UNSET; an entry exempts only the matched span, never the line. While that entry is the placeholder the identity check is advisory (it reports and exits 0); once the operator sets it, `--promotion` fails an author or committer identity in the checked range that is neither the public identity nor an allowlisted bot, and no history before the range is checked. Rule definitions and test fixtures build denied literals by concatenation, so the scanner passes its own files with no allow entry",
+        "Pre-commit runs the file check and a pre-commit commit-msg stage runs `--commit-msg FILE`; the contributor guide gives both install commands (`pre-commit install` and `pre-commit install --hook-type commit-msg`). validate.yml checks out with fetch-depth 0 and runs default mode (tracked files, the sr/ tree skipped, no path denylist) and the message check over the event range, adding `--promotion` for a pull request or push to main; a missing range endpoint exits 1 naming it. tests/test_lean_gates.py keeps today's machine-path rows and adds the rows of the sheet test table through `main` on temporary git repos with explicit synthetic identities"
       ],
       "codename": "public-hygiene-gate",
-      "dependencies": [],
+      "dependencies": [
+        "a6e04b9d-2c71-4f3a-8b5e-7d19c0f4a2e3",
+        "5b81d7e2-9f04-4c6a-a3d7-02e6b9f1c845"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M22.54",
       "node_key": "3f9c2a71-5d8e-4b06-9a43-e1c7b5d20f68",
@@ -31,14 +34,12 @@
     },
     {
       "acceptance": [
-        "docs/design-notes/, scripts/census/, scripts/review_effort_study.py and .cursor/rules/ leave the index (`git rm --cached`) and are ignored in .gitignore and .cursorindexingignore; the files stay on disk for the coordinator to archive privately; `git ls-files` lists none of them; sr/ and scripts/lean_metrics.py stay tracked in this pass",
-        "No tracked file outside sr/ links to or cites a removed path, except CHANGELOG.md's released sections and the frozen captures under tests/parity/: the shipped model-profiles README, profiles and harness-facts.yaml under specy_road/templates/project/model-profiles/ cite no docs/design-notes path, docs/ and package docstrings drop or replace their citations (a diff line under specy_road/ outside templates changes only a citation), and constraints/file-limits.yaml drops the design-notes entries in both copies; tests/test_docs_links.py passes",
-        "A test that only reads a removed file goes in the same commit, and the commit names it (tests/test_review_effort_study.py; the design-notes reads in tests/test_review_rca.py, tests/test_roster_generate.py and tests/test_review_record_write.py; the .cursor/rules read in tests/test_release_harness.py); tests that write .cursor/rules into a temporary repository are unchanged; M22.54's gate passes on the tree outside sr/ and scripts/verify_wheel_contents.py passes on a built wheel"
+        "docs/design-notes/, scripts/census/, scripts/review_effort_study.py and .cursor/rules/ leave the index (`git rm --cached`) and are ignored in .gitignore and .cursorindexingignore; in the committing worktree the files stay on disk and `git ls-files` lists none of them, and the coordinator copies them to the private archive before this commit is merged into any other worktree; the leaf deletes nothing on disk and pushes nothing; sr/ and scripts/lean_metrics.py stay tracked (only the lean_metrics design-notes exclude line goes)",
+        "No live citation outside sr/ treats a removed path as available. A citation is a link or path to docs/design-notes/, scripts/census/, scripts/review_effort_study.py or a named .cursor/rules/<name>.mdc of this repository; mentions and fixtures of a consumer .cursor/rules directory, ignore entries, CHANGELOG.md released sections, tests/parity/, and docs/release-runbook.md and docs/toolkit-development.md (M22.57 edits those) are out of scope. The shipped model-profiles README, profiles and harness-facts.yaml describe their sources in words; a diff line under specy_road/ outside templates changes only a citation; both constraints/file-limits.yaml copies drop the design-notes entries; tests/test_doc_links.py passes unchanged",
+        "tests/test_review_effort_study.py is removed with the script; in mixed tests only the read of a removed path and the asserts that depend on it go, and every other assert stays (the Cursor and Codex argv asserts in test_review_record_write.py, the docs and starter-roster asserts in test_roster_generate.py, the runbook and AGENTS.md asserts in test_release_harness.py); tests that write .cursor/rules into a temporary repository are unchanged; the commit message names each removed test or assert and the path it read. The affected tests pass on a clean export of the candidate tracked tree, without the retained untracked files, and `grep -r design-notes` over a built wheel and specy_road/templates/ prints nothing"
       ],
       "codename": "process-content-untracked",
-      "dependencies": [
-        "3f9c2a71-5d8e-4b06-9a43-e1c7b5d20f68"
-      ],
+      "dependencies": [],
       "execution_milestone": "Agentic-led",
       "id": "M22.55",
       "node_key": "a6e04b9d-2c71-4f3a-8b5e-7d19c0f4a2e3",
@@ -50,15 +51,43 @@
       "touch_zones": [
         ".gitignore",
         ".cursorindexingignore",
-        "docs/",
+        "docs/design-notes/",
         "scripts/census/",
         "scripts/review_effort_study.py",
         ".cursor/rules/",
-        "specy_road/",
+        "scripts/lean_metrics.py",
         "constraints/file-limits.yaml",
-        "constraints/README.md",
         "sr/constraints/file-limits.yaml",
-        "sr/constraints/README.md",
+        "specy_road/templates/project/model-profiles/",
+        "specy_road/agent_rule_provenance.md",
+        "specy_road/agents_md_block.py",
+        "specy_road/bundled_scripts/brainstorm_lenses.py",
+        "specy_road/bundled_scripts/models_cli.py",
+        "specy_road/bundled_scripts/review_defer.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/generated_files.py",
+        "specy_road/harness_instruction_files.py",
+        "specy_road/review_deferral.py",
+        "specy_road/review_next_step.py",
+        "specy_road/review_rca.py",
+        "specy_road/review_trend.py",
+        "specy_road/schemas/rca-record.schema.json",
+        "specy_road/session_presence.py",
+        "specy_road/specyrd_skills.py",
+        "specy_road/tool_call_guard.py",
+        "specy_road/worker_adapter_base.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_state.py",
+        "docs/agentic-sandbox-runbook.md",
+        "docs/brainstorming.md",
+        "docs/context-regressions.yaml",
+        "docs/contributor-guide.md",
+        "docs/dev-workflow.md",
+        "docs/git-workflow.md",
+        "docs/orchestration-review.md",
+        "docs/orchestration-workers.md",
+        "docs/orchestration.md",
+        "docs/pm-workflow.md",
         "tests/test_review_effort_study.py",
         "tests/test_review_rca.py",
         "tests/test_roster_generate.py",
@@ -70,15 +99,15 @@
         "tests/test_shared_checkout_guidance.py",
         "tests/test_skill_mirrors.py",
         "tests/test_context_meter_harnesses.py",
-        "tests/fixtures/worker_turn_check/streams.json",
-        "suggested_prompts/bootstrap-agents-md.md"
+        "tests/test_version_resolution.py",
+        "tests/fixtures/worker_turn_check/streams.json"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "tests/test_claim_traps.py and tests/test_review_record_caller.py use neutral identities (for example Test User and alice) where they name the maintainer today; only the values change, every assertion keeps its meaning, and no other test changes",
-        "The maintainer's name tokens and username, read at run time as M22.54 reads them, match no tracked file under tests/ or specy_road/; the repo-owner handle in github.com URLs stays"
+        "A whole-word match of the maintainer's name tokens and username, read at run time as M22.54 reads them, hits no tracked file under tests/ or specy_road/; a github.com URL whose owner is the repo-owner handle is not a hit"
       ],
       "codename": "neutral-test-identities",
       "dependencies": [],
@@ -98,9 +127,9 @@
     },
     {
       "acceptance": [
-        "docs/release-runbook.md and docs/toolkit-development.md describe promotion as one commit whose only parent is main's tip, built from the WIP tree with M22.54's denied paths removed (`git checkout <WIP> -- .` then `git rm -r --cached` of each denied path); no runbook step merges the WIP line into chore/release-* or main",
-        "CI on a pull request to main fails when any commit in base..head touches a path in M22.54's path denylist or fails its message and identity check; tests build a temporary repository with a WIP-merge range and a range with an sr/ commit (each refused) and a squashed promotion (accepted)",
-        "release-publish.yml runs M22.54's gate over the unpacked sdist and wheel before the upload step, and scripts/verify_wheel_contents.py checks both for denied paths; a failure stops the publish"
+        "docs/release-runbook.md and docs/toolkit-development.md describe promotion as: in an isolated release worktree, build the candidate tree exactly from the selected WIP snapshot, so a file deleted on WIP is removed too, drop every path in M22.54's path denylist, and commit it with main's recorded tip as its sole parent; the release PR lands by squash or by GitHub's two-parent merge commit, either accepted when no WIP commit becomes reachable from main, and the page names which resulting main commit is tagged; no step merges the WIP line into chore/release-* or main; both pages drop their links to this repository's .cursor/rules/; the human-owned release steps are unchanged",
+        "On a pull request or push to main, validate.yml (fetch-depth 0) runs M22.54's `--promotion` range check over base..head with the script and allowlist read from the base commit when it has them, so a candidate-local widening does not apply: every newly reachable commit, side branches included (merges diffed with -m), is refused for an addition, modification or rename destination at a denied path, while deletion-only entries pass, and the message and identity checks apply; an unresolved endpoint or failed git query exits 1 saying the history is incomplete. Tests on temporary repos: a WIP-merge range whose tip tree has no sr/, add-then-delete history and a merge of it (each refused); deletion-only cleanup, the clean promotion commit and a two-parent landing merge with no WIP history (each accepted); a candidate allowlist widening (still refused); a missing base (exit 1)",
+        "release-publish.yml, in the existing build job before either publish job, unpacks the sdist and wheel into plain directories and runs M22.54's `--promotion` file and path checks over them without a git index (member paths relative to the distribution root, the sdist prefix removed), and scripts/verify_wheel_contents.py checks both archives for denied member paths; a scan or read failure exits non-zero and stops the publish; the trusted-publisher step is unchanged. tests/test_verify_wheel_contents.py adds a zip and a tar fixture: a denied member such as docs/design-notes/x.md fails naming it, denied text in an allowed member fails, the shipped template paths pass, and the existing required-file rows stay"
       ],
       "codename": "promotion-without-wip-history",
       "dependencies": [
