@@ -94,3 +94,62 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
+  - codename: process-content-untracked
+    node_id: M22.55
+    branch: feature/rm-process-content-untracked
+    touch_zones:
+      - .gitignore
+      - .cursorindexingignore
+      - docs/design-notes/
+      - scripts/census/
+      - scripts/review_effort_study.py
+      - .cursor/rules/
+      - scripts/lean_metrics.py
+      - constraints/file-limits.yaml
+      - sr/constraints/file-limits.yaml
+      - specy_road/templates/project/model-profiles/
+      - specy_road/agent_rule_provenance.md
+      - specy_road/agents_md_block.py
+      - specy_road/bundled_scripts/brainstorm_lenses.py
+      - specy_road/bundled_scripts/models_cli.py
+      - specy_road/bundled_scripts/review_defer.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/generated_files.py
+      - specy_road/harness_instruction_files.py
+      - specy_road/review_deferral.py
+      - specy_road/review_next_step.py
+      - specy_road/review_rca.py
+      - specy_road/review_trend.py
+      - specy_road/schemas/rca-record.schema.json
+      - specy_road/session_presence.py
+      - specy_road/specyrd_skills.py
+      - specy_road/tool_call_guard.py
+      - specy_road/worker_adapter_base.py
+      - specy_road/worker_adapters.py
+      - specy_road/worker_state.py
+      - docs/agentic-sandbox-runbook.md
+      - docs/brainstorming.md
+      - docs/context-regressions.yaml
+      - docs/contributor-guide.md
+      - docs/dev-workflow.md
+      - docs/git-workflow.md
+      - docs/orchestration-review.md
+      - docs/orchestration-workers.md
+      - docs/orchestration.md
+      - docs/pm-workflow.md
+      - tests/test_review_effort_study.py
+      - tests/test_review_rca.py
+      - tests/test_roster_generate.py
+      - tests/test_review_record_write.py
+      - tests/test_release_harness.py
+      - tests/test_review_evidence.py
+      - tests/test_project_layouts_outside.py
+      - tests/test_agents_md_block.py
+      - tests/test_shared_checkout_guidance.py
+      - tests/test_skill_mirrors.py
+      - tests/test_context_meter_harnesses.py
+      - tests/test_version_resolution.py
+      - tests/fixtures/worker_turn_check/streams.json
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
