@@ -32,6 +32,7 @@ The brief's eight, unchanged: `docs/release-runbook.md`, `docs/toolkit-developme
 - Candidates already published are not rescanned. The publish scan does not judge archives already on an index.
 - `scripts/lean_metrics.py` stays off the path denylist while M22.54 leaves it tracked.
 - Squash drops per-commit WIP history from `main` on purpose. The WIP line keeps it.
+- No CHANGELOG `[Unreleased]` line: `CHANGELOG.md` is outside the touch zones. `specy-road ready` warns and does not fail.
 
 ## Added
 
