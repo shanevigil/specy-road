@@ -102,7 +102,8 @@ entries:
       - requirements-ci.txt
     started: '2026-11-09'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-09T16:36:26+00:00'
   - codename: operator-decision-record
     node_id: M22.51
     branch: feature/rm-operator-decision-record
