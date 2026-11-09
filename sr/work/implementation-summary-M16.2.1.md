@@ -129,6 +129,43 @@ outside the zones was needed.
 - `pytest -n 4`: 7002 passed, 15 skipped.
 - `pip-audit -r requirements-ci.txt`: no known vulnerabilities.
 
+## Fix round 1 (review by gpt-6.1-sol at 0d672ccf)
+
+**Finding:** A4 fails because M16.2.1 has no `planned_test_changes`.
+
+**Class:** the leaf's approved-removal plan is missing. A4 compares this leaf's removed tests
+against that plan, so with no plan the equality cannot hold.
+
+**Where it lives:** in the roadmap node data on the integration branch
+(`sr/roadmap/phases/M16__511edd.json`, node M16.2.1). `docs/roadmap-authoring.md` says a
+declaration made on the leaf branch does not count. That file is outside this leaf's touch
+zones, and executors may not edit roadmap or registry files. **This leaf cannot fix the
+finding.**
+
+**Coordinator action:** on `WIP/improvements-0-3-1`, set M16.2.1's `planned_test_changes` to
+the 16 lines listed under A4 above. They are unchanged after the merge (see Probes). Then
+regenerate the review packet.
+
+**Code changes this round:** none. The reviewer passed A1-A3 and every removal line. The only
+commit this round is the merge of `origin/WIP/improvements-0-3-1`, which brought only upstream
+changes, and this summary update. No other part of the change depends on the missing field.
+
+## Probes
+
+- `planned_test_changes` on `origin/WIP/improvements-0-3-1` after `git fetch`: absent
+  (`None`). The finding stands upstream.
+- `specy-road integrity M16.2.1` after the merge: 16 lines (14 `removed-test`,
+  2 `assert-loss`). Sorted, they are identical to the A4 list in this summary.
+  - So the merge added no removal or weakening.
+  - So the list the coordinator sets is still exact.
+- Other removal sources: every test diff in this leaf is in the seven test files named under
+  A4. The merge's test changes (`tests/test_lean_gates.py`,
+  `tests/test_verify_wheel_contents.py`) come from upstream and produce no integrity line.
+- `.github/workflows/validate.yml` after the merge: the advisory vulture step is intact
+  (lines 149-154). The upstream edits there are only to comments on the hygiene step and the
+  checkout step.
+- `ruff check specy_road tests scripts`: passed. `specy-road file-limits`: exit 0.
+
 ## Added
 
 - Helpers: `scripts/vulture_whitelist.py` with `_Names` and `USED`. It is the vulture
