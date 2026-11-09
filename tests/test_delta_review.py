@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Callable
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+import pytest
+import yaml
 
-from specy_road.bundled_scripts import review_packet as rp
+from tests.review_repo_helpers import NODE, advance_dev, commit_file, git, make_review_repo, review_text
+
+from specy_road.bundled_scripts import review_cli, review_packet as rp
 from specy_road.bundled_scripts.role_prompt import reviewer_packet
 from specy_road.review_files import PACKET_NAME, archive_review, reviews_dir
 from specy_road.review_gate import delta_basis, evaluate_gate, is_doc_or_test
@@ -32,10 +37,12 @@ def _repo(tmp_path: Path, policy: str = "") -> tuple[Path, str]:
 
 
 def _file(repo: Path, model: str, commit: str, verdict: str = "approve", delta_from: str | None = None,
-          drop: str | None = None) -> None:
+          drop: str | None = None, findings: dict | None = None) -> None:
     """File a record as `review record` does: the live REVIEW-<model>.md plus a copy under history/.
     ``drop`` leaves out that acceptance id's result, so the record is incomplete for the brief."""
-    text = review_text(commit, model=model, verdict=verdict, a1="pass" if verdict == "approve" else "fail")
+    found = {"correctness": [], "regression": [], "boundary": [], "test_integrity": [], **(findings or {})}
+    text = review_text(commit, model=model, verdict=verdict, a1="pass" if verdict == "approve" else "fail",
+                       findings=found)
     text = text.replace("notes\n", f"{model} notes on {commit[:7]}\n")
     if drop:
         text = text.replace(f"  {drop}: pass\n", "")
@@ -222,3 +229,179 @@ def test_review_packet_full_stops_delta_packets(tmp_path: Path) -> None:
     assert rp.FULL_MARK in full
     assert reviewer_packet(repo, "M1.1", "opus", resolve_target(repo, "M1.1"))[0] == full
     assert not (reviews_dir(repo, "M1.1") / "PACKET-opus.md").exists()
+
+
+# --- fix check (M22.52): the blocker checks its findings, the other family's approval carries ----------------
+
+FINDING = "src/b.py divides by zero"
+SHEET = "# M1.1 Thing\n\n## Intent\n\nDo the thing.\n\n## Tier\n\n%s: a small change.\n"
+
+
+def _ready(repo: Path, fix_of: str | None) -> int:
+    """composer's READY at HEAD via `specy-road ready`, naming ``fix_of`` when given."""
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["ready", "M1.1", "--model", "composer", "--verify", "true=0",
+                         *(["--fix-of", fix_of] if fix_of else []), "--repo-root", str(repo)])
+    return e.value.code
+
+
+def fix_round(tmp_path: Path, *, fix: Callable[[Path], object] | None = None, fix_of: str | None = "sol",
+              tier: str | None = "plain", branch_tier: str | None = None, policy: str = "",
+              roster: str = ROSTER) -> tuple[Path, str, str]:
+    """``(repo, P, F)``: opus (anthropic) approves ``P``, sol (openai) blocks it with :data:`FINDING`, and ``fix``
+    (default: commit ``src/b.py``) makes the fix commit ``F``; composer's READY at ``F`` names ``<fix_of>@P``.
+    The integration branch's sheet names ``tier`` (``None``: today's sheet, which has no ``## Tier``);
+    ``branch_tier`` sets the branch's own copy before ``P``."""
+    repo = make_review_repo(tmp_path, orchestration=roster % policy)
+    if branch_tier:
+        commit_file(repo, NODE["planning_dir"], SHEET % branch_tier, "branch sheet")
+    approved = commit_file(repo, TEST_FILE, TEST_SRC, "first round")
+    _file(repo, "opus", approved)
+    _file(repo, "sol", approved, verdict="block", findings={"correctness": [FINDING]})
+    if tier:
+        advance_dev(repo, NODE["planning_dir"], SHEET % tier)
+    (fix or (lambda r: commit_file(r, "src/b.py", "x = 1\n", "fix")))(repo)
+    assert _ready(repo, fix_of and f"{fix_of}@{approved}") == 0
+    return repo, approved, git(repo, "rev-parse", "HEAD")
+
+
+def _carried(repo: Path) -> bool:
+    """Whether opus's approval of ``P`` counts at HEAD."""
+    return [a.model for a in _gate(repo).approvals if a.model == "opus"] == ["opus"]
+
+
+def _refused(repo: Path) -> str:
+    return " ".join(_gate(repo).carry_refused)
+
+
+def _status(repo: Path, capsys) -> dict:
+    capsys.readouterr()
+    with pytest.raises(SystemExit):
+        review_cli.main(["handoff", "status", "M1.1", "--json", "--repo-root", str(repo)])
+    return json.loads(capsys.readouterr().out)["nodes"][0]
+
+
+@pytest.mark.parametrize("roster", [ROSTER, ROSTER.replace("reviewers_required: 2, reviewers_distinct_families: true",
+                                                           "reviewers_required: 1, reviewers_distinct_families: false")])
+@pytest.mark.parametrize("then", [None, "approve", "block"])
+def test_a_fix_of_the_only_block_carries_the_other_familys_approval_until_the_blocker_decides(
+        tmp_path: Path, capsys, roster: str, then: str | None) -> None:
+    repo, approved, head = fix_round(tmp_path, roster=roster)
+    g = _gate(repo)
+    assert [a.model for a in g.approvals] == ["opus"] and not g.blocks   # the old block no longer counts
+    assert "sol" in [r.data["model"] for r in g.stale] and not g.passed   # carried alone: never met
+    st = _status(repo, capsys)
+    assert f"opus@{approved[:12]} carried from an older commit" in st["policy"] and not st["policy_met"]
+    if then:
+        _file(repo, "sol", head, verdict=then, findings={"correctness": [] if then == "approve" else ["still"]})
+        assert _gate(repo).passed is (then == "approve")
+
+
+def test_the_trust_tier_is_read_from_the_integration_branch_not_the_branch(tmp_path: Path) -> None:
+    repo, _, _ = fix_round(tmp_path, tier="trust boundary", branch_tier="plain")
+    assert not _carried(repo) and "names tier 'trust boundary'" in _refused(repo)
+
+
+def _no_sheet_on_dev(repo: Path) -> None:
+    git(repo, "checkout", "-q", "dev")
+    git(repo, "rm", "-q", NODE["planning_dir"])
+    git(repo, "commit", "-qm", "no sheet")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+
+
+@pytest.mark.parametrize(("tier", "after", "why"), [
+    (None, None, "has no ## Tier"),
+    ("medium", None, "names tier 'medium'"),
+    ("plain", _no_sheet_on_dev, "no planning sheet"),
+    ("plain", lambda r: git(r, "branch", "-m", "dev", "trunk"), "integration branch could not be resolved"),
+])
+def test_an_unknown_tier_leaves_the_approval_stale_and_says_why(tmp_path: Path, capsys, tier, after, why) -> None:
+    repo, _, _ = fix_round(tmp_path, tier=tier)
+    if after:
+        after(repo)
+    assert not _carried(repo) and why in _refused(repo)
+    if after is None:
+        assert why in _status(repo, capsys)["policy"]
+
+
+def _mv(src: str, dst: str) -> Callable[[Path], None]:
+    def fix(repo: Path) -> None:
+        git(repo, "mv", src, dst)
+        git(repo, "commit", "-qm", f"mv {src}")
+    return fix
+
+
+@pytest.mark.parametrize("fix", [
+    lambda r: commit_file(r, "docs/y.md", "# y\n", "outside"),
+    _mv("src/a.py", "docs/a.py"),   # the destination is outside
+    _mv("docs/x.md", "src/x.md"),   # the source is outside
+])
+def test_a_fix_touching_a_path_outside_the_zones_does_not_carry(tmp_path: Path, fix) -> None:
+    repo, _, _ = fix_round(tmp_path, fix=fix)
+    assert not _carried(repo) and "outside the touch zones" in _refused(repo)
+
+
+def test_zones_widened_after_the_blocked_commit_do_not_cover_the_fix(tmp_path: Path) -> None:
+    repo, _, _ = fix_round(tmp_path, fix=lambda r: commit_file(r, "lib/c.py", "y = 2\n", "new path"))
+    reg = repo / "roadmap" / "registry.yaml"
+    data = yaml.safe_load(reg.read_text())
+    data["entries"][0]["touch_zones"] = ["src", "lib"]   # the claim now covers lib/, but not at P
+    reg.write_text(yaml.safe_dump(data))
+    assert not _carried(repo) and "lib/c.py is outside the touch zones" in _refused(repo)
+
+
+def _malformed(repo: Path) -> None:
+    ready = reviews_dir(repo, "M1.1") / "READY-composer.md"
+    ready.write_text(ready.read_text().replace("fix_of: sol@", "fix_of: sol-"))
+
+
+@pytest.mark.parametrize(("fix_of", "after"), [
+    (None, None),                                                         # absent
+    ("sol", _malformed),                                                  # not <model>@<sha>
+    ("sol", lambda r: commit_file(r, "src/c.py", "z = 3\n", "later")),   # READY no longer at HEAD
+    ("opus", None),                                                       # names an approver
+])
+def test_a_missing_or_unusable_fix_of_gives_todays_result(tmp_path: Path, fix_of, after) -> None:
+    repo, approved, _ = fix_round(tmp_path, fix_of=fix_of)
+    if after:
+        after(repo)
+    g = _gate(repo)
+    assert not g.approvals and {"opus", "sol"} <= {r.data["model"] for r in g.stale}
+
+
+def test_ready_refuses_a_malformed_fix_of(tmp_path: Path) -> None:
+    repo, _, _ = fix_round(tmp_path)
+    assert _ready(repo, "sol") == 1
+
+
+def _two_commits(repo: Path) -> None:
+    commit_file(repo, "src/b.py", "x = 1\n", "fix 1")
+    commit_file(repo, "src/c.py", "z = 3\n", "fix 2")
+
+
+@pytest.mark.parametrize(("fix", "second_block", "why"), [
+    (None, True, "has 2 blocks"),
+    (_two_commits, False, "is not the sole parent"),
+])
+def test_two_blocks_or_two_fix_commits_do_not_carry(tmp_path: Path, fix, second_block: bool, why: str) -> None:
+    repo, approved, _ = fix_round(tmp_path, fix=fix)
+    if second_block:
+        _file(repo, "sonnet", approved, verdict="block")
+    assert not _carried(repo) and why in _refused(repo)
+
+
+def _sibling(repo: Path) -> None:
+    git(repo, "init", "-q", str(repo / "vendor"))
+
+
+@pytest.mark.parametrize(("policy", "fix", "after", "why"), [
+    (", delta_review: false", None, None, "policy.delta_review is off"),
+    ("", None, lambda r: rp.main(["M1.1", "--full", "--repo-root", str(r)]), "`review-packet --full` forces"),
+    ("", lambda r: commit_file(r, TEST_FILE, "def test_a():\n    pass\n", "no assert"), None, "integrity report"),
+    ("", None, _sibling, "sibling repositories"),
+])
+def test_policy_and_integrity_still_stop_the_carry(tmp_path: Path, policy, fix, after, why) -> None:
+    repo, _, _ = fix_round(tmp_path, policy=policy, fix=fix)
+    if after:
+        after(repo)
+    assert not _carried(repo) and why in _refused(repo)

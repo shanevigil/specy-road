@@ -2,7 +2,8 @@ $ specy-road ready --help
 exit: 0
 --- stdout ---
 usage: specy-road ready [-h] --model MODEL [--run CMD] [--run-argv JSON] [--verify CMD=EXIT]
-                        [--red-green CMD=EXIT] [--note NOTE] [--repo-root DIR]
+                        [--red-green CMD=EXIT] [--fix-of MODEL@SHA] [--note NOTE]
+                        [--repo-root DIR]
                         node_id
 
 positional arguments:
@@ -23,6 +24,9 @@ options:
                         a non-zero exit is refused
   --red-green CMD=EXIT  A check that fails without the fix, by design (repeatable); goes in the
                         notes, not verify
+  --fix-of MODEL@SHA    The one block this commit fixes: the blocking reviewer and the commit it
+                        blocked, which must be HEAD's sole parent; another family's approval of
+                        that commit may then count here, and the blocker checks the fix
   --note NOTE           Notes for the coordinator: anything you could not finish, and why
   --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
                         .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
