@@ -78,6 +78,8 @@ entries:
       - docs/orchestration-review.md
       - CHANGELOG.md
       - tests/test_sheet_edits_keep_approvals.py
+      - tests/test_sibling_repo_approvals.py
+      - tests/test_delta_review.py
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
