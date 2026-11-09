@@ -70,21 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: upgrade-mirror-skips-ignored-files
-    node_id: M22.35
-    branch: feature/rm-upgrade-mirror-skips-ignored-files
-    touch_zones:
-      - specy_road/bundled_scripts/upgrade_plan.py
-      - specy_road/bundled_scripts/upgrade.py
-      - tests/test_upgrade.py
-      - tests/test_upgrade_preview.py
-      - docs/upgrading.md
-      - CHANGELOG.md
-      - specy_road/sibling_repos.py
-    started: '2026-11-07'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-09T10:24:51+00:00'
   - codename: review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome
     node_id: M16.1.6
     branch: feature/rm-review-policy-evidence-how-often-each-optional-review-policy-changed-a-gate-outcome

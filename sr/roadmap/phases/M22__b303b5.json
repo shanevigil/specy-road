@@ -15,7 +15,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.35_upgrade-mirror-skips-ignored-files_b303b556-fa59-422a-a1c4-f1ce47d429ef.md",
       "sibling_order": 31,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "upgrade mirrors only what the refreshes need, never ignored files",
       "touch_zones": [
         "specy_road/bundled_scripts/upgrade_plan.py",
