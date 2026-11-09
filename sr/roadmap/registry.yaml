@@ -70,3 +70,26 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: ruff-quality-baseline
+    node_id: M16.1.8
+    branch: feature/rm-ruff-quality-baseline
+    touch_zones:
+      - pyproject.toml
+      - constraints/file-limits.yaml
+      - constraints/README.md
+      - scripts/line_width_baseline.json
+      - specy_road/templates/project/constraints/file-limits.yaml
+      - docs/file-limits.md
+      - tests/test_line_width_baseline.py
+      - CHANGELOG.md
+      - specy_road/bundled_scripts/upgrade.py
+      - docs/upgrading.md
+      - tests/parity/golden/
+      - tests/test_upgrade_file_limits_notice.py
+      - sr/constraints/file-limits.yaml
+      - sr/constraints/README.md
+      - scripts/line_width_baseline.py
+      - scripts/lean_metrics.py
+    started: '2026-11-09'
+    owner: savigil
+    implementation_review: pending
