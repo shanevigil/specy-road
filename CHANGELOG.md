@@ -66,6 +66,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- A roster entry without `profile:` whose `id` matches no model profile now matches one whose `api_id`, file name
+  or alias equals its `harness_model`, in the working tree and on the integration branch alike; an `id` match still
+  wins, and a drifted profile matched that way is refused as before. `validate` no longer warns for such an entry.
+
 - A landing merge that conflicts in a roadmap chunk keeps the integration side of that chunk and sets the finishing leaf back to Complete, found by `node_key`, including when the project root sits under a prefix such as `sr/`. Ancestor statuses are recomputed with the existing rollup and review-hold rules; every other field stays the integration side's. When the bookkeeping commit is known and that leaf is still in the chunk but not Complete, finish aborts the merge before the commit, so nothing is pushed, and the error names the chunk and the branch codename. The merge message says the Complete status was applied again only when the landed chunk has that leaf Complete. A leaf the integration side removed stays absent, and the message does not claim the status was applied.
 
 - `specy-road upgrade` copies tracked files, untracked files git does not ignore, and files the refreshes read into its temporary directory. Gitignored paths such as `.env` files, virtualenvs, `node_modules` and nested repositories are not copied, on a real run or `--dry-run`, including when a symlink points at them. A directory that cannot be searched is left out of that copy, and neither a real run nor `--dry-run` stops on it; `validate`'s sibling-repository search skips it too. A global excludes file applies to that copy on both paths. An ignored `roadmap-context.md` that is already current is not reported as a rewrite. `--dry-run` prints a line before that copy and builds it once, then reuses it for the preview.

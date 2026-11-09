@@ -28,6 +28,7 @@ from specy_road.model_profiles import (
     Profile,
     bundled_profiles_root,
     list_profiles,
+    match_entry,
     parse_profile,
     profiles_dir,
     profile_for_entry,
@@ -272,8 +273,7 @@ def _integration_profile_for_entry(repo_root: Path, entry: dict[str, Any], rel: 
         prof = _pinned_at(repo_root, sha, rel_posix, ref)
         return prof.for_id(entry.get("id")) or prof
     paths = _committed_profile_paths(str(repo_root), sha)
-    return next((m for path in paths
-                 if (m := _pinned_for_id(repo_root, sha, path, ref, entry.get("id")))), None)
+    return match_entry(entry, paths, lambda path, key: _pinned_for_id(repo_root, sha, path, ref, key))
 
 
 def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree: bool = False) -> Profile | None:
@@ -281,7 +281,8 @@ def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any], *, worktree
     with ``worktree=True``, the dry run :func:`pinned_config` describes).
 
     ``profile:`` names the path; without it a committed profile whose ``api_id``,
-    file name or ``aliases`` include the entry's ``id`` is used, as :func:`profile_for_entry` does.
+    file name or ``aliases`` include the entry's ``id``, else its ``harness_model``, is used in
+    :func:`~specy_road.model_profiles.match_entry`'s order, as :func:`profile_for_entry` does.
     """
     rel = entry.get("profile")
     if bad := _invalid_explicit_profile(repo_root, rel):
