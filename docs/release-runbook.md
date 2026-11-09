@@ -9,6 +9,7 @@
 - The user chooses the version (step 2.2): see [`AGENTS.md`](../AGENTS.md#version-numbers-human-owned) (Version numbers).
 - Two flows: RC `vX.Y.Z-rcN` → TestPyPI, final `vX.Y.Z` → PyPI; `pyproject.toml` must read `X.Y.ZrcN` / `X.Y.Z` (PEP 440, no dash) and match the tag — `python scripts/check_release_version.py vX.Y.Z[-rcN]` must print `ok:`.
 - Branch `chore/release-vX-Y-Z[-rcN]`, PR to `main` titled `release: vX.Y.Z[-rcN]` (leading `v` mandatory), CHANGELOG heading `## [vX.Y.Z[-rcN]] - YYYY-MM-DD`.
+- Promotion does not merge the WIP line. In an isolated worktree the candidate tree is the selected WIP snapshot (`git read-tree -u --reset`), denied paths removed, with `origin/main`'s recorded tip as its only parent. The PR lands by squash or by GitHub's merge commit; the tag is that landing commit on `main`. See A.2.
 - Every release also writes or updates the `## specy-road X.Y.Z` section of `docs/whats-new.md` and points the README's **What's new** line at it (step 2.5a, "A.2 Author the release commit").
 - The user owns the tag re-push when `RELEASE_TAG_TOKEN` is unset (footgun ④), the `pypi` environment approval on finals (footgun ⑨), and the live-on-index confirmation; the agent prints the commands and waits.
 - Back-merge `main → dev` is mandatory for finals.
@@ -26,8 +27,7 @@
 > **Audience:** maintainers and the autonomous coding agent. This is the
 > single source of truth for cutting any `specy-road` release. The
 > [contributor guide](contributor-guide.md) defers here for release
-> mechanics; the AI rules under [`.cursor/rules/`](../.cursor/rules/)
-> cite this doc.
+> mechanics.
 
 Both flows share the same step shape; the differences are pulled out
 explicitly in each section. The "what blew up last time" footguns are baked
@@ -105,10 +105,10 @@ not a mechanical gate.
 
 | # | Step | Owner | Why |
 |---|------|-------|-----|
-| 2.1 | `git fetch && git checkout dev && git pull --ff-only` | agent | sync. |
+| 2.1 | `git fetch origin` | agent | the release worktree is cut from `origin/main`; do not check out the release branch in a shared tree. |
 | 2.2 | Decide RC vs final, choose version number | **user** | The maintainer picks the exact tag. The agent must highlight published PyPI vs declared checkout vs latest git tag (and an optional proposal) and **wait** — see [`AGENTS.md`](../AGENTS.md) (Version numbers). |
 | 2.2a | Complete the mandatory pre-release checks branch (§3) | agent | prompt-driven cleanup/compliance + 3-app user testing must pass before any release branch is cut. |
-| 2.3 | Cut `chore/release-vX-Y-Z[-rcN]` branch | agent | naming is load-bearing. |
+| 2.3 | Cut `chore/release-vX-Y-Z[-rcN]` in an isolated worktree from `origin/main` | agent | naming is load-bearing. The tree is the selected WIP snapshot with denied paths removed; its only parent is main's recorded tip. Never merge the WIP line into this branch. |
 | 2.4 | Bump `pyproject.toml` `project.version` to PEP 440 form | agent | exact format matters. |
 | 2.5 | Add `## [vX.Y.Z[-rcN]] - YYYY-MM-DD` to `CHANGELOG.md` | agent | uses today's UTC date. |
 | 2.5a | Write or update `## specy-road X.Y.Z` in `docs/whats-new.md`; point the README's **What's new** line at it | agent drafts, **user** approves the wording | the curated, user-facing page; the CHANGELOG stays the full record. See "What's new" in A.2. |
@@ -116,7 +116,7 @@ not a mechanical gate.
 | 2.7 | Run gate suite (validate, export --check, file-limits, pytest, gui-pm-gantt build, pip-audit, npm audit) | agent | identical to CI. |
 | 2.8 | Commit, push branch, open PR to `main` titled `release: vX.Y.Z[-rcN]` | agent | uses `ManagePullRequest` or `gh`. |
 | 2.9 | Wait for CI; resolve any failures | agent | runbook §6 covers each footgun. |
-| 2.10 | Merge the PR (when CI is CLEAN/MERGEABLE) | agent | `gh pr merge --merge` is allowed for release PRs the agent opened. |
+| 2.10 | Land the PR (when CI is CLEAN/MERGEABLE) by squash or by merge | agent | `gh pr merge --squash` or `gh pr merge --merge`. Either is accepted when no WIP commit is reachable from `main`. The tag is the commit this landing creates on `main`. |
 | 2.11 | Wait for `main-release-tag-gate.yml` `tag-main-commit` job | agent | watch the workflow. |
 | 2.12 | **Re-push the tag** so `release-publish.yml` triggers | **user, only when `RELEASE_TAG_TOKEN` is unset** | GitHub anti-recursion: a tag created by `GITHUB_TOKEN` does **not** fire downstream workflows. With the secret configured the gate pushes the tag as a different identity and the publish starts on its own; the job's own notice says which path it took. **Do not** re-push if a publish run has already started. See §6, footgun ④. |
 | 2.12a | **Approve the deployment** if the target environment has required reviewers | **user, finals only (`pypi`)** | The `pypi` environment requires a reviewer; `testpypi` does not. The publish job sits in `waiting`, not `failed`, so nothing alerts you. See §6, footgun ⑨. |
@@ -350,10 +350,21 @@ proceed.
 
 ### A.2 Author the release commit
 
+Record `origin/main` and the selected WIP snapshot (the improvements-line tip, or an earlier commit the maintainer names). Build the release in a new worktree so the caller's checkout stays put. `git read-tree -u --reset` replaces the index and the worktree with that snapshot, which removes a file `main` still has and the snapshot deleted. Do not overlay with `git checkout <snapshot> -- .`: an overlay leaves that file in place and the release would put it back. No step merges the WIP line into `chore/release-*` or `main`.
+
 ```bash
-git checkout dev && git pull --ff-only
-git checkout -b chore/release-v0-2-0-rc1   # adjust version
+git fetch origin
+MAIN_TIP=$(git rev-parse origin/main)
+WIP=$(git rev-parse origin/WIP/improvements-x-y-z)   # the selected snapshot
+RELEASE=$(mktemp -d)
+git worktree add --detach "$RELEASE" "$MAIN_TIP"
+cd "$RELEASE"
+git checkout -B chore/release-v0-2-0-rc1
+git read-tree -u --reset "$WIP"
+python scripts/check_public_hygiene.py --drop-denied
 ```
+
+`--drop-denied` removes every tracked path the promotion denylist refuses: `sr/`, `docs/design-notes/`, `scripts/census/`, `scripts/review_effort_study.py`, a `research` directory, a `*-prompt.md` or `handoff-*` file. Paths under `specy_road/templates/` and `tests/parity/` stay; they ship in the package.
 
 Bump `pyproject.toml`:
 
@@ -421,8 +432,11 @@ All green → commit, push, open PR.
 ```bash
 git add -A
 git commit -m "release: v0.2.0-rc1"
+test "$(git rev-parse HEAD^)" = "$MAIN_TIP"    # one parent: main's recorded tip
 git push -u origin chore/release-v0-2-0-rc1
 ```
+
+The commit's only parent is `$MAIN_TIP`. A second parent, or any ancestor that is a WIP commit, means the WIP line was merged; stop and rebuild the worktree.
 
 PR (via `gh` or the agent tool):
 
@@ -444,16 +458,18 @@ The PR will run:
 - `branch-naming` + `issue-link` (from `pr-conventions.yml`): the
   `chore/...` prefix auto-exempts the issue-link gate.
 
-When all are green:
+When all are green, land by squash or by GitHub's merge commit. Both are accepted when no WIP commit is reachable from the resulting `main` (the release commit's only parent is already `main`'s previous tip, so neither landing brings the WIP line along):
 
 ```bash
-gh pr merge <N> --merge
+gh pr merge <N> --squash   # or: gh pr merge <N> --merge
 ```
 
-After the merge:
+After the landing:
 
 1. **`main-release-tag-gate.yml` `tag-main-commit`** creates tag
-   `v0.2.0-rc1` on the merge commit. Read the job notice:
+   `v0.2.0-rc1` on the commit the landing added to `main`: the squash
+   commit, or GitHub's two-parent merge commit. It does not tag the WIP
+   snapshot. Read the job notice:
    - *Tag pushed with RELEASE_TAG_TOKEN…* → `release-publish.yml`
      starts on its own. **Do not** delete and re-push the tag
      (that starts a second publish; the duplicate upload then
@@ -581,14 +597,7 @@ last RC and this final.
 What's new (A.2): set the status line to `*Released YYYY-MM-DD.*`, fold
 in post-RC changes, and point the CHANGELOG link at the final's heading.
 
-Branch + PR:
-
-```bash
-git checkout -b chore/release-v0-2-0
-git add -A
-git commit -m "release: v0.2.0"
-git push -u origin chore/release-v0-2-0
-```
+Branch + PR: the same isolated worktree as A.2, with branch `chore/release-v0-2-0` and commit message `release: v0.2.0`. The tree is the selected WIP snapshot with denied paths removed, and the commit's only parent is `origin/main`'s recorded tip. Do not merge the WIP line. Push that branch and open the PR to `main`.
 
 PR title: `release: v0.2.0`. Same base/body shape as A.2.
 
@@ -875,6 +884,8 @@ pip install pip-audit && pip-audit
 ( cd gui/pm-gantt && npm audit --omit=dev )
 ```
 
+The publish build unpacks the sdist and the wheel and runs `scripts/check_public_hygiene.py --promotion` on those directories before either publish job. `scripts/verify_wheel_contents.py` checks both archives for a denied member path or denied text. A failed scan stops the publish. The trusted-publisher steps are unchanged.
+
 All eight commands must exit 0. The PM Gantt build is reproducible
 byte-for-byte against `specy_road/pm_gantt_static/`; if `git status`
 shows changes after the build, **commit them** as part of the release
@@ -901,7 +912,6 @@ other deltas.
 | **`docs/release-runbook.md`** (this file) | the canonical release playbook for humans + agents |
 | [`docs/contributor-guide.md`](contributor-guide.md) | general contributor doc; the "Release process" section defers here |
 | [`AGENTS.md`](../AGENTS.md) | agent entry point; cites this runbook for any release task |
-| [`.cursor/rules/030-git-workflow-management.mdc`](../.cursor/rules/030-git-workflow-management.mdc) | repo-policy rule for PR discipline; says "see release-runbook" for release flow |
 | [`.github/workflows/main-release-tag-gate.yml`](../.github/workflows/main-release-tag-gate.yml) | enforces the marker; this runbook documents how to satisfy it |
 | [`.github/workflows/release-publish.yml`](../.github/workflows/release-publish.yml) | does the actual publish; this runbook documents its inputs |
 | [`scripts/check_release_version.py`](../scripts/check_release_version.py) | the version-vs-tag gate; this runbook documents what it checks |

@@ -367,7 +367,162 @@ def test_public_hygiene_range_checks_every_message_and_names_a_missing_endpoint(
     assert hygiene.main(["--root", str(repo), "--range", f"{base}..HEAD"]) == 1
     capsys.readouterr()
     assert hygiene.main(["--root", str(repo), "--range", f"{base}..no-such-ref"]) == 1
-    assert "no-such-ref" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "no-such-ref" in err and "history is incomplete" in err
+    assert hygiene.main(["--root", str(repo), "--promotion", "--range", "missing-base..HEAD"]) == 1
+    err = capsys.readouterr().err
+    assert "missing-base" in err and "history is incomplete" in err
+
+
+def _git(repo: Path, *args: str) -> str:
+    env = {**os.environ, "GIT_AUTHOR_NAME": PUBLIC[0], "GIT_AUTHOR_EMAIL": PUBLIC[1],
+           "GIT_COMMITTER_NAME": PUBLIC[0], "GIT_COMMITTER_EMAIL": PUBLIC[1]}
+    result = subprocess.run(["git", "-c", "commit.gpgsign=false", *args], cwd=repo, env=env,
+                            capture_output=True, text=True)
+    if result.returncode != 0:
+        raise AssertionError(result.stderr or result.stdout)
+    return result.stdout
+
+
+def _branch(repo: Path) -> str:
+    return _git(repo, "branch", "--show-current").strip()
+
+
+def _add(repo: Path, name: str, text: str) -> None:
+    (repo / name).parent.mkdir(parents=True, exist_ok=True)
+    (repo / name).write_text(text, encoding="utf-8")
+    _git(repo, "add", "--", name)
+
+
+def _repo_at(path: Path, files: dict[str, str]) -> tuple[Path, str]:
+    repo = _hygiene_repo(path, files)
+    return repo, _commit(repo, "base")
+
+
+def _promotion_case(path: Path, case: str) -> tuple[Path, str, bool, str | None]:
+    if case == "wip-merge":
+        repo, base = _repo_at(path, {"README.md": "r\n"})
+        trunk = _branch(repo)
+        _git(repo, "checkout", "-q", "-b", "wip")
+        _add(repo, "sr/n.md", "s\n")
+        _commit(repo, "touch sr")
+        _git(repo, "checkout", "-q", trunk)
+        _git(repo, "merge", "--no-ff", "--no-commit", "wip")
+        _git(repo, "rm", "-q", "-rf", "sr")
+        _commit(repo, "merge wip")
+        return repo, base, True, "sr/n.md"
+    if case == "add-then-delete":
+        repo, base = _repo_at(path, {"README.md": "r\n"})
+        _add(repo, "sr/n.md", "s\n")
+        _commit(repo, "add sr")
+        _git(repo, "rm", "-q", "-rf", "sr")
+        _commit(repo, "delete sr")
+        return repo, base, True, "sr/n.md"
+    if case == "merge-of-add-then-delete":
+        repo, base = _repo_at(path, {"README.md": "r\n"})
+        trunk = _branch(repo)
+        _git(repo, "checkout", "-q", "-b", "wip")
+        _add(repo, "sr/n.md", "s\n")
+        _commit(repo, "add sr")
+        _git(repo, "rm", "-q", "-rf", "sr")
+        _commit(repo, "delete sr")
+        _git(repo, "checkout", "-q", trunk)
+        _git(repo, "merge", "--no-ff", "--no-verify", "-m", "merge cleaned history", "wip")
+        return repo, base, True, "sr/n.md"
+    if case == "deletion-only":
+        repo, base = _repo_at(path, {"README.md": "r\n", "docs/design-notes/n.md": "n\n"})
+        _git(repo, "rm", "-q", "-r", "docs/design-notes/n.md")
+        _commit(repo, "remove design notes")
+        return repo, base, False, None
+    if case == "modify-then-delete":
+        repo, base = _repo_at(path, {"README.md": "r\n", "docs/design-notes/n.md": "n\n"})
+        _add(repo, "docs/design-notes/n.md", "edited\n")
+        _commit(repo, "edit design notes")
+        _git(repo, "rm", "-q", "-r", "docs/design-notes/n.md")
+        _commit(repo, "remove design notes")
+        return repo, base, True, "docs/design-notes/n.md"
+    if case == "rename-then-delete":
+        repo, base = _repo_at(path, {"README.md": "r\n"})
+        (path / "docs" / "design-notes").mkdir(parents=True)
+        _git(repo, "mv", "README.md", "docs/design-notes/x.md")
+        _commit(repo, "rename into design notes")
+        _git(repo, "rm", "-q", "-r", "docs/design-notes/x.md")
+        _commit(repo, "remove design notes")
+        return repo, base, True, "docs/design-notes/x.md"
+    repo, base = _repo_at(path, {"README.md": "r\n"})
+    _git(repo, "checkout", "-q", "-b", "release")
+    _add(repo, "feature.md", "f\n")
+    _commit(repo, "promote")
+    _git(repo, "checkout", "-q", "-B", "main", base)
+    _git(repo, "merge", "--no-ff", "--no-verify", "-m", "land", "release")
+    assert len(_git(repo, "rev-parse", "HEAD^@").split()) == 2
+    return repo, base, False, None
+
+
+@pytest.mark.parametrize("case", [
+    "wip-merge", "add-then-delete", "merge-of-add-then-delete", "deletion-only",
+    "modify-then-delete", "rename-then-delete", "landing-merge",
+])
+def test_public_hygiene_promotion_range_judges_reachable_commits(tmp_path, capsys, case):
+    repo, base, refused, needle = _promotion_case(tmp_path / case, case)
+    code = hygiene.main(["--root", str(repo), "--range", f"{base}..HEAD", "--promotion"])
+    assert code == int(refused)
+    if needle:
+        assert needle in capsys.readouterr().out
+
+
+def test_runbook_promotion_commit_drops_denied_paths_and_keeps_one_parent(tmp_path):
+    repo = _hygiene_repo(tmp_path / "repo", {
+        "README.md": "keep\n", "main-only.md": "gone\n", "docs/design-notes/n.md": "n\n",
+    })
+    main = _commit(repo, "main")
+    _git(repo, "checkout", "-q", "-b", "wip")
+    _git(repo, "rm", "-q", "main-only.md")
+    _add(repo, "sr/n.md", "s\n")
+    _add(repo, "research/note.md", "n\n")
+    _add(repo, "specy_road/templates/project/research/README.md", "x\n")
+    _add(repo, "feature.md", "f\n")
+    wip = _commit(repo, "wip snapshot")
+    _git(repo, "checkout", "-q", "--detach", main)
+    _git(repo, "read-tree", "-u", "--reset", wip)
+    assert hygiene.main(["--root", str(repo), "--drop-denied"]) == 0
+    _commit(repo, "release")
+    names = set(_git(repo, "ls-tree", "-r", "--name-only", "HEAD").split())
+    assert {"sr/n.md", "docs/design-notes/n.md", "research/note.md", "main-only.md"}.isdisjoint(names)
+    assert {"README.md", "feature.md", "specy_road/templates/project/research/README.md"} <= names
+    assert _git(repo, "rev-parse", "HEAD^@").split() == [main]
+    assert hygiene.main(["--root", str(repo), "--range", f"{main}..HEAD", "--promotion"]) == 0
+
+
+def test_public_hygiene_promotion_uses_the_base_allowlist(tmp_path, capsys):
+    repo = _hygiene_repo(tmp_path, {"README.md": "r\n"})
+    allow = repo / hygiene.ALLOW_FILE
+    allow.write_text(allow.read_text(encoding="utf-8").replace(hygiene.UNSET, PUBLIC[1]), encoding="utf-8")
+    shutil.copy(ROOT / "scripts" / "check_public_hygiene.py", repo / "scripts" / "check_public_hygiene.py")
+    _git(repo, "add", "scripts/check_public_hygiene.py", "scripts/public_hygiene_allow.txt")
+    base = _commit(repo, "policy")
+    allow.write_text(allow.read_text(encoding="utf-8") + f"bot: {STRANGER}\n", encoding="utf-8")
+    _git(repo, "add", "scripts/public_hygiene_allow.txt")
+    _commit(repo, "widen", author=("Rook", STRANGER), committer=("Rook", STRANGER))
+    assert hygiene.main(["--root", str(repo), "--range", f"{base}..HEAD", "--promotion"]) == 1
+    assert STRANGER in capsys.readouterr().out
+
+
+def test_public_hygiene_promotion_scans_an_unpacked_tree(tmp_path, capsys):
+    repo = _hygiene_repo(tmp_path / "repo", {"README.md": "r\n"})
+    _commit(repo, "base")
+    bad = tmp_path / "bad"
+    _add_loose = bad / "docs" / "design-notes"
+    _add_loose.mkdir(parents=True)
+    (_add_loose / "x.md").write_text("x\n", encoding="utf-8")
+    (bad / "README.md").write_text("Claude-" + "Session: abc\n", encoding="utf-8")
+    assert hygiene.main(["--root", str(repo), "--promotion", "--tree", str(bad)]) == 1
+    assert "docs/design-notes/x.md" in capsys.readouterr().out
+    good = tmp_path / "good"
+    for name in SHIPPED:
+        (good / name).parent.mkdir(parents=True, exist_ok=True)
+        (good / name).write_text("x\n", encoding="utf-8")
+    assert hygiene.main(["--root", str(repo), "--promotion", "--tree", str(good)]) == 0
 
 
 # --- mutation_report --------------------------------------------------------

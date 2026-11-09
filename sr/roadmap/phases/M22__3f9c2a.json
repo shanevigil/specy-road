@@ -142,7 +142,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.57_promotion-without-wip-history_c2d7f590-4e1b-4a8c-9f26-b3a5e8d07c14.md",
       "sibling_order": 52,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish",
       "touch_zones": [
         "docs/release-runbook.md",
