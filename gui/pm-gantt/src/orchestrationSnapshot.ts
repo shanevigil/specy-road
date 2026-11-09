@@ -196,6 +196,9 @@ export type OutlineNodeRef = Pick<RoadmapNode, "id" | "node_key" | "title">;
 
 const MISSING = "—";
 
+/** READY's displayed commit. Freshness is never derived from this or from a review's commit. */
+const SHORT_COMMIT_LEN = 12;
+
 /** `"unknown"` stays "unknown"; absent or null is "—", never false, 0 or clean. */
 function text(v: string | number | null | undefined): string {
   if (v === undefined || v === null) return MISSING;
@@ -212,6 +215,22 @@ function age(iso: string | null | undefined, now: Date): string {
   if (iso === undefined || iso === null) return MISSING;
   if (iso === "unknown") return iso;
   return formatRelativeAge(iso, now) || MISSING;
+}
+
+function shortCommit(commit: string): string {
+  if (commit === "unknown" || commit.length <= SHORT_COMMIT_LEN) return commit;
+  return commit.slice(0, SHORT_COMMIT_LEN);
+}
+
+/** `block` first; every other verdict keeps its snapshot order. */
+function reviewsBlockingFirst(reviews: SnapshotReview[]): SnapshotReview[] {
+  return reviews
+    .map((r, i) => ({ r, i }))
+    .sort(
+      (a, b) =>
+        Number(a.r.verdict !== "block") - Number(b.r.verdict !== "block") || a.i - b.i,
+    )
+    .map(({ r }) => r);
 }
 
 function workerRow(w: SnapshotWorker, now: Date): WorkerRowView {
@@ -273,19 +292,20 @@ function leafGroup(
     worktrees: leaf.worktrees.map((t) => ({
       path: t.path,
       branch: t.branch,
-      dirty: yesNo(t.dirty, "dirty", "clean"),
+      dirty: yesNo(t.dirty, "yes", "no"),
       ahead: text(t.ahead),
       behind: text(t.behind),
     })),
-    reviews: leaf.reviews.map((r) => ({
+    reviews: reviewsBlockingFirst(leaf.reviews).map((r) => ({
       model: r.model,
       verdict: r.verdict,
       commit: r.commit,
+      // fresh_for_head only: a commit that differs from READY.commit stays fresh when the snapshot says so.
       fresh: yesNo(r.fresh_for_head, "fresh", "stale"),
     })),
     ready: ready
       ? {
-          commit: ready.commit,
+          commit: shortCommit(ready.commit),
           model: ready.model,
           age: age(ready.at, now),
           blockedOn: (ready.blocked_on ?? []).map((b) => `${b.acceptance}: ${b.reason}`),

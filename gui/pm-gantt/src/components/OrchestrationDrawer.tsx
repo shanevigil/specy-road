@@ -7,9 +7,9 @@ import {
   type CopyKind,
   type OrchestrationGroupView,
   type OrchestrationLoad,
-  type OrchestrationSnapshot,
   type OutlineNodeRef,
 } from "../orchestrationSnapshot";
+import { LeafOrchestrationDetail, loadDisplayedOrchestration } from "./LeafOrchestrationDetail";
 import { ModalFrame } from "./ModalFrame";
 
 type Props = {
@@ -27,18 +27,7 @@ type Props = {
 
 /** A dev build with `?mock=orchestration` shows M17.2's mock instead of the server's snapshot. */
 function load(): Promise<OrchestrationLoad> {
-  if (
-    import.meta.env.DEV &&
-    new URLSearchParams(window.location.search).get("mock") === "orchestration"
-  ) {
-    return import("../fixtures/orchestration_snapshot_mock.json").then(
-      (m): OrchestrationLoad => ({
-        kind: "ok",
-        snapshot: m.default as unknown as OrchestrationSnapshot,
-      }),
-    );
-  }
-  return fetchOrchestration();
+  return loadDisplayedOrchestration(fetchOrchestration);
 }
 
 const WORKER_COLUMNS = [
@@ -74,12 +63,16 @@ function CopyButton({
 function GroupView({
   g,
   inOutline,
+  detailOpen,
+  onToggleDetail,
   onOpenNode,
   onOpenWorker,
   onCopy,
 }: {
   g: OrchestrationGroupView;
   inOutline: boolean;
+  detailOpen: boolean;
+  onToggleDetail: () => void;
   onOpenNode: (id: string) => void;
   onOpenWorker: (id: string) => void;
   onCopy: (kind: CopyKind, id: string) => void;
@@ -103,7 +96,10 @@ function GroupView({
         {g.key === null ? null : (
           <>
             {" "}
-            <CopyButton kind="handoff status" id={g.displayId} label="Copy handoff status" onCopy={onCopy} />
+            <CopyButton kind="handoff status" id={g.displayId} label="Copy handoff status" onCopy={onCopy} />{" "}
+            <button type="button" aria-expanded={detailOpen} onClick={onToggleDetail}>
+              {detailOpen ? "Hide detail" : "Detail"}
+            </button>
           </>
         )}
       </h4>
@@ -158,6 +154,9 @@ function GroupView({
           </tbody>
         </table>
       )}
+      {g.key !== null && detailOpen ? (
+        <LeafOrchestrationDetail group={g} onCopy={onCopy} />
+      ) : null}
     </div>
   );
 }
@@ -173,6 +172,12 @@ export function OrchestrationDrawer({
   const [loaded, setLoaded] = useState<{ result: OrchestrationLoad; at: Date } | null>(null);
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(filterLeafId);
+  const [selectionBound, setSelectionBound] = useState({ filterLeafId, open });
+  if (selectionBound.filterLeafId !== filterLeafId || selectionBound.open !== open) {
+    setSelectionBound({ filterLeafId, open });
+    setSelectedKey(filterLeafId);
+  }
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -240,6 +245,10 @@ export function OrchestrationDrawer({
           key={g.key ?? "(no leaf)"}
           g={g}
           inOutline={g.key !== null && outlineKeys.has(g.key)}
+          detailOpen={g.key !== null && g.key === selectedKey}
+          onToggleDetail={() =>
+            setSelectedKey((cur) => (g.key !== null && cur === g.key ? null : g.key))
+          }
           onOpenNode={onOpenNode}
           onOpenWorker={onOpenWorker}
           onCopy={(kind, id) => void copy(kind, id)}

@@ -29,6 +29,7 @@ import {
 import { ROADMAP_NODE_STATUS_ORDERED } from "../roadmapNodeStatuses";
 import { EditModalSaveQueue } from "../editModalSaveQueue";
 import { acceptanceEdit } from "../acceptanceEdit";
+import { LeafOrchestrationSection } from "./LeafOrchestrationDetail";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 import { PlanningSheetDiffPane } from "./PlanningSheetDiffPane";
@@ -622,6 +623,7 @@ export function EditModal({
   const pmStatusDiffersFromRoadmap = pmShownStatus !== persistedRoadmapStatus;
   const codename = titleToCodename(title) || "—";
   const titleBarText = `Edit ${node.id} - ${codename} - ${persistedRoadmapStatus}`;
+  const isLeaf = allNodes != null && !allNodes.some((n) => n.parent_id === node.id);
 
   const workLine = gitWorkSummary(
     node.id,
@@ -987,6 +989,9 @@ export function EditModal({
           </p>
         ) : null}
       </div>
+      {isLeaf ? (
+        <LeafOrchestrationSection nodeKey={node.node_key} nodes={allNodes ?? []} />
+      ) : null}
       {sheetPath != null ? (
         <section className="modal-edit-planning-section">
           <div className="modal-edit-planning-toolbar">

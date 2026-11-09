@@ -280,8 +280,8 @@ describe("buildOrchestrationView", () => {
       },
     ]);
     expect(g.worktrees.map((t) => [t.dirty, t.ahead, t.behind])).toEqual([
-      ["dirty", "3", "0"],
-      ["clean", "0", "2"],
+      ["yes", "3", "0"],
+      ["no", "0", "2"],
     ]);
     expect(g.reviews[0].fresh).toBe("stale");
     expect(g.gate).toEqual({ state: "blocked", approvals: "0", blocks: "1", fresh: "stale" });
@@ -330,8 +330,39 @@ describe("buildOrchestrationView", () => {
     expect(g.badge).toEqual({ kind: "running", text: "running" });
     expect(g.claim?.registered).toBe("now");
     expect(g.workers[0]).toMatchObject({ account: "", lastActivity: "—", flags: [], ended: "—" });
-    expect(g.worktrees[0]).toEqual({ path: "p", branch: "b", dirty: "clean", ahead: "—", behind: "—" });
+    expect(g.worktrees[0]).toEqual({ path: "p", branch: "b", dirty: "no", ahead: "—", behind: "—" });
+    expect(g.reviews).toEqual([{ model: "m", verdict: "approve", commit: "c", fresh: "fresh" }]);
     expect([g.ready, g.gate, g.holds]).toEqual([null, null, []]);
+  });
+
+  it("freshness follows fresh_for_head only: a carried approval stays fresh, a block lists first, unknown stays unknown", () => {
+    const readyCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const carried = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    const leaf = merge({
+      reviews: [
+        { model: "sol", verdict: "approve", commit: carried, fresh_for_head: true },
+        { model: "opus", verdict: "block", commit: readyCommit, fresh_for_head: false },
+        { model: "grok", verdict: "unknown", commit: "unknown", fresh_for_head: "unknown" },
+      ],
+      ready: { commit: readyCommit, model: "opus", at: "2026-11-08T11:00:00Z" },
+    });
+    const [g] = buildOrchestrationView(
+      { schema: 2, leaves: { k: leaf }, leafless_workers: [] },
+      [outlineNode("M1", "k")],
+      NOW,
+    );
+    expect(g.reviews).toEqual([
+      { model: "opus", verdict: "block", commit: readyCommit, fresh: "stale" },
+      { model: "sol", verdict: "approve", commit: carried, fresh: "fresh" },
+      { model: "grok", verdict: "unknown", commit: "unknown", fresh: "unknown" },
+    ]);
+    expect(g.ready).toEqual({
+      commit: readyCommit.slice(0, 12),
+      model: "opus",
+      age: "1h ago",
+      blockedOn: [],
+    });
+    expect(g.reviews[1].commit).not.toBe(g.ready?.commit);
   });
 
   it("an empty snapshot has no groups; leafless workers alone make one No leaf group", () => {
