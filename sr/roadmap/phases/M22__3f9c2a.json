@@ -424,6 +424,39 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "mark-implementation-reviewed on a leaf's feature branch, in an interactive terminal without --yes, when counted reviewer blocks are why the gate is not met: before anything is written it runs the trial merge, the clean-tree check (work/ excepted), the M22.51 role check (role_refusal), the git identity check, and checks that settling every counted block, and the shortfall unless signed_reviews is on, would pass the gate; only then it shows each blocking record's findings and offers [a] Approve over the block, asks for the reason in the person's own words (empty reason or q: exit 0, nothing recorded), records the M22.51 operator decision through one function shared with review operator-decision (closed kind: decision entry, decided_by: operator, answer naming the full commit, each block with its findings, any shortfall, the reason as the quote and the git user as recorder; OPERATOR-<commit>.yaml marker), and commits the registry approval, in one command",
+        "The decision entry is committed on the integration branch, never on the leaf branch, from a detached temporary worktree: with a remote, fetched then pushed as HEAD:refs/heads/<integration> (a rejected push records nothing and writes no marker); with no remote, the local branch moved by compare-and-swap, a worktree holding it refused before anything is written when it has uncommitted tracked changes and otherwise following the ref. The temporary-worktree step and the ref move are shared with nested_repos_land.py, whose behaviour and tests are unchanged. No checkout's branch changes; in the delegate layout the coordinator checkout's HEAD and status are unchanged. The marker is written only after the entry lands; the gate is then re-evaluated and passes, and finish-this-task lands the leaf",
+        "handoff status's human row prints the form that works: for a leaf 'run specy-road mark-implementation-reviewed on <feature branch>' with no id, for a milestone the id form as today; while a block stands on a leaf it reads 'can approve over <model>'s block' naming each blocker, with that command",
+        "When the gate is not met on a leaf with a counted block, non-interactive or --yes, the refusal names the interactive mark-implementation-reviewed path and specy-road review operator-decision <NODE_ID> --decision approve --quote '<the operator's words>' --session <id>; when the option was withheld in a terminal the refusal names why (role, git identity or the gate's remaining problems). --yes and a non-TTY never approve over a block; the milestone full review is unchanged; review operator-decision's behaviour and tests are unchanged",
+        "Tests extend tests/test_review_override.py and tests/test_review_eligible.py with the rows of the sheet test table (make_review_repo for no remote, delegate_layout for the linked worktree and bare origin, a rejecting pre-receive hook for the refused push); docs/orchestration-review.md (operator section and the human row) and CHANGELOG [Unreleased]. Out of scope: the clean-tree order of the plain human approval (part 2 finding 29, M23), handoff status's move to review status (M16.4.3), any change to review_gate.py or review_bookkeeping.py",
+        "Estimated net line change (informational, not a gate): package about +90, tests about +170, docs about +8"
+      ],
+      "codename": "human-approves-over-block",
+      "dependencies": [
+        "e484b004-5481-4608-831e-b357aba8ba9f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.67",
+      "node_key": "d4c206ce-2708-4dd7-9e33-6b5658f16759",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.67_human-approves-over-block_d4c206ce-2708-4dd7-9e33-6b5658f16759.md",
+      "sibling_order": 61,
+      "status": "Not Started",
+      "title": "A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works",
+      "touch_zones": [
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/review_override.py",
+        "specy_road/review_eligible.py",
+        "specy_road/nested_repos_land.py",
+        "tests/test_review_override.py",
+        "tests/test_review_eligible.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
