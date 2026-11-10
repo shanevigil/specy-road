@@ -438,7 +438,8 @@
         "specy_road/pm_gantt_static/",
         "docs/pm-gui.md",
         "CHANGELOG.md",
-        "specy_road/gui_app.py"
+        "specy_road/gui_app.py",
+        "docs/pm-workflow.md"
       ],
       "type": "task"
     },
