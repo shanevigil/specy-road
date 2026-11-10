@@ -165,8 +165,8 @@ def _reclaim_locked(repo_root: Path, rec: WorkerRecord, note: str) -> tuple[Work
 # --- the slot lease: one ref per live worker on the integration remote (M11.4) ---------------------------------
 #
 # ``refs/specy-road/leases/<checkout-id>/<worker-id>``, pushed when a turn launches or resumes and deleted when the
-# record goes ``failed`` or ``terminated`` (never on ``idle`` or ``completed``: those still hold their slot
-# until their leaf is over, when ``sync`` releases it, M11.57). A
+# record goes ``completed``, ``failed`` or ``terminated``. ``idle`` keeps it until its leaf is over, when ``sync``
+# releases it (M11.57). A ``message`` or ``resume`` of a ``completed`` or ``failed`` worker pushes a new lease. A
 # checkout counts its own ``work/.workers/`` records plus every lease ref whose checkout id is not its own, so a
 # clone's workers count wherever their branches happen to exist and whoever owns them. One id per repository:
 # it lives in git's common dir, which linked worktrees share with the main checkout, as they share the records.

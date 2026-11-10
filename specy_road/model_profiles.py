@@ -19,7 +19,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 import yaml
 
@@ -297,9 +297,19 @@ def unmatched_roster_ids(
     return out
 
 
+def match_entry(entry: dict[str, Any], candidates: Sequence[Any],
+                match: Callable[[Any, Any], Profile | None]) -> Profile | None:
+    """The first ``match(candidate, key)`` over all candidates for the entry's ``id``, then, only when none
+    matches, over all candidates for its ``harness_model`` (absent or blank is no key): an id match always wins."""
+    keys = [entry.get("id")]
+    if isinstance(entry.get("harness_model"), str) and entry["harness_model"].strip():
+        keys.append(entry["harness_model"])
+    return next((m for key in keys for c in candidates if (m := match(c, key))), None)
+
+
 def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
     """The roster entry's profile **from the working tree**: its ``profile`` path, else the first
-    profile whose :meth:`Profile.for_id` matches its ``id``.
+    profile whose :meth:`Profile.for_id` matches its ``id``, else its ``harness_model`` (:func:`match_entry`).
 
     Routing and dispatch use :func:`orchestration_pinned.pinned_profile_for_entry`,
     which reads the same path from the integration branch.
@@ -311,7 +321,7 @@ def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
             return Profile(repo_root / str(rel), {}, errors=[why])
         prof = load_profile((repo_root / str(rel)).resolve())
         return prof.for_id(entry.get("id")) or prof
-    return next((m for p in list_profiles(repo_root) if (m := p.for_id(entry.get("id")))), None)
+    return match_entry(entry, list_profiles(repo_root), Profile.for_id)
 
 
 def closest_profile(model_id: str, profiles: list[Profile]) -> Profile | None:
@@ -409,5 +419,5 @@ def roster_profile_gaps(repo_root: Path) -> list[tuple[bool, str]]:
         hint = _profile_hint(repo_root, str(mid), profiles) + _near_miss_fix(repo_root, str(mid), bundled)
         out.append((_launchable(by_id[mid]),
                     f"roster entry {mid!r} in roadmap/orchestration.yaml matches no model profile by api_id, "
-                    f"file name or alias, so its model notes never reach its prompts; {hint}"))
+                    f"file name or alias of its id or harness_model, so its model notes never reach its prompts; {hint}"))
     return out

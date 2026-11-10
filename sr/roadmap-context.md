@@ -180,12 +180,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.57` Promotion is one squashed commit on main without WIP history, and the built sdist and wheel pass the hygiene gate before publish `promotion-without-wip-history` — task — **Complete**
   - `M22.58` History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map `history-rewrite-rehearsal` — task — **Not Started**
   - `M22.59` Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced `history-rewritten-and-published` — gate — **Not Started**
-  - `M22.61` A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable `headless-question-tool-flagged` — task — **Not Started**
+  - `M22.61` A headless turn that calls a question tool is a post-run finding, and the executor prompt says no person is reachable `headless-question-tool-flagged` — task — **Complete**
   - `M22.62` review record refuses empty notes and a notes digest another model already filed at the same commit `shared-notes-digest-refused` — task — **Not Started**
-  - `M22.63` A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH `completed-worker-frees-lease` — task — **Not Started**
-  - `M22.64` The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run `reviewer-and-rca-launch-paths` — task — **Not Started**
+  - `M22.63` A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH `completed-worker-frees-lease` — task — **Complete**
+  - `M22.64` The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run `reviewer-and-rca-launch-paths` — task — **Complete**
   - `M22.65` The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work `work-dir-ignored` — task — **Not Started**
-  - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Not Started**
+  - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -272,6 +272,7 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-09 `M22.64` stopped depending on `M16.2.3 Git queries and registry I/O go through one helper each`
 - 2026-11-09 `M22.58` stopped depending on `M23.9 The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working`
 - 2026-11-09 `M22.55` stopped depending on `M22.54 Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages`
 - 2026-11-09 `M18.1` stopped depending on `7b52d543-e78c-4e74-bcd1-24d5a8b3034b` (no longer live)
@@ -296,8 +297,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-07 `M16.8.8` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
 - 2026-11-07 `M16.8.8` stopped depending on `1cfcf177-4014-4267-9000-d5b81d912f95` (no longer live)
 - 2026-11-06 `M22.22` stopped depending on `M21.40 upgrade's scratch git drops every GIT_ variable, runs no hook, and times out`
-- 2026-11-06 `M22.22` stopped depending on `M21.37 One safe-write rule: setup and upgrade writers refuse any symlink on the path, and upgrade never writes outside the checkout`
-- _…and 69 earlier — `specy-road history --json`_
+- _…and 70 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -333,9 +333,7 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
-- `M22.61` on `feature/rm-headless-question-tool-flagged` since 2026-11-09
 - `M22.62` on `feature/rm-shared-notes-digest-refused` since 2026-11-09
-- `M22.64` on `feature/rm-reviewer-and-rca-launch-paths` since 2026-11-09
 - `M22.65` on `feature/rm-work-dir-ignored` since 2026-11-09
 
 ## Quality by area
@@ -344,27 +342,26 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `.github` **flagged** | 5 | 0 | 2.00 | 60% | 31 | 0 |
-| `CHANGELOG.md` **flagged** | 30 | 0 | 2.63 | 63% | 18 | 3 |
+| `CHANGELOG.md` **flagged** | 30 | 0 | 2.17 | 53% | 18 | 1 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 33 | 0 | 2.58 | 64% | 52 | 3 |
+| `docs` **flagged** | 34 | 0 | 2.26 | 56% | 52 | 2 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 39 | 0 | 2.54 | 56% | 59 | 4 |
-| `tests` **flagged** | 43 | 0 | 2.49 | 60% | 75 | 4 |
+| `tests` **flagged** | 43 | 0 | 2.16 | 53% | 75 | 2 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
+| `.github` | 4 | 0 | 2.00 | 50% | 31 | 0 |
 | `.gitignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 3 | 0 | 2.67 | 33% | 2 | 1 |
 | `constitution` | 2 | 0 | 1.50 | 50% | 1 | 0 |
 | `constraints` | 3 | 0 | 1.00 | 0% | 36 | 0 |
 | `gui` | 7 | 0 | 1.43 | 43% | 2 | 0 |
-| `pyproject.toml` | 4 | 0 | 2.00 | 50% | 33 | 0 |
+| `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `scripts` | 7 | 0 | 1.86 | 43% | 67 | 0 |
+| `specy_road` | 40 | 0 | 2.17 | 50% | 59 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
