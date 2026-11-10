@@ -103,7 +103,7 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: approved
-    implementation_review_at: '2026-11-10T09:05:27+00:00'
+    implementation_review_at: '2026-11-10T09:17:24+00:00'
   - codename: a-committed-report-of-the-import-cycles-and-package-to-entry
     node_id: M16.2.6
     branch: feature/rm-a-committed-report-of-the-import-cycles-and-package-to-entry
