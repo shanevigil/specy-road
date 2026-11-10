@@ -194,8 +194,9 @@ def test_files_still_tracked_under_work_are_still_seen(tmp_path: Path) -> None:
     for rel in tracked:
         (repo / rel).write_text("changed\n", encoding="utf-8")
 
-    # dirty_check leaves every work/brief-*.md out as bookkeeping (unchanged), so only the chore record shows there.
-    assert " M work/chores/tidy.md" in _porcelain(repo, dirty_check("", "M1.1"))
+    # dirty_check reports the tracked chore record and, as before M22.65, leaves out briefs and summaries.
+    dirty = _porcelain(repo, dirty_check("", "M1.1"))
+    assert " M work/chores/tidy.md" in dirty and "work/brief-M1.md" not in dirty
     _rec, delta = ops.reconcile(repo, rec.worker_id)
     assert set(tracked) <= set(delta["outside_touch_zones"])
     with pytest.raises(ws.WorkerError, match=r"uncommitted changes .*work/brief-M1\.md.*work/chores/tidy\.md"):
