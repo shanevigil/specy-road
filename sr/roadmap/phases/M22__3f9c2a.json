@@ -447,7 +447,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.67_human-approves-over-block_d4c206ce-2708-4dd7-9e33-6b5658f16759.md",
       "sibling_order": 61,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works",
       "touch_zones": [
         "specy_road/bundled_scripts/mark_implementation_reviewed.py",
