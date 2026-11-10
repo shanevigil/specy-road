@@ -93,6 +93,8 @@ entries:
       - docs/orchestration-reviewer-output.md
       - CHANGELOG.md
       - tests/test_review_cli.py
+      - tests/test_review_concurrent_writers.py
+      - tests/test_review_defer.py
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
