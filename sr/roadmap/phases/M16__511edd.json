@@ -286,7 +286,8 @@
         "Applies exactly the rows of tests/support/dedupe/review-gate.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
         "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
         "Tables this leaf creates assert structured results, not message text",
-        "Estimated net line change (informational, not a gate): tests about -3,000"
+        "Estimated net line change (informational, not a gate): tests about -3,000",
+        "Review-record test fixtures give each model its own notes body by default: review_text and review_output (tests/review_repo_helpers.py) and the independent constant bodies in tests/parity/test_leaf_loop.py, tests/test_review_override.py and tests/parity/review_gate/test_review_gate_decision_table.py take a per-model default body; the per-site body rewrites added by M22.62 collapse to that default; tests that depend on the literal body (tests/test_review_round6_evidence.py, tests/test_review_friction_m15_17.py) are adjusted without losing an assertion (coordinator, 2026-11-09, from the M22.62 analyses)"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-review-gate",
       "dependencies": [
@@ -302,7 +303,8 @@
       "title": "Tests: apply the dedupe worklist for review gate",
       "touch_zones": [
         "tests/",
-        "tests/support/dedupe/"
+        "tests/support/dedupe/",
+        "tests/review_repo_helpers.py"
       ],
       "type": "task"
     },
