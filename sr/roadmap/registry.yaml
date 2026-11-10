@@ -102,7 +102,8 @@ entries:
       - sr/planning/M16.2.5_library-modules-imported-by-the-package-move-out-of-bundled_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md
     started: '2026-11-09'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-10T08:08:10+00:00'
   - codename: a-committed-report-of-the-import-cycles-and-package-to-entry
     node_id: M16.2.6
     branch: feature/rm-a-committed-report-of-the-import-cycles-and-package-to-entry
