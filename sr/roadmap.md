@@ -94,6 +94,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M17.11` | PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics | task | Agentic-led | Complete |
 | `M17.12` | PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group | task | Agentic-led | Complete |
 | `M17.13` | PM GUI: a row click selects at once, so a toolbar action right after it acts on that row | task | Agentic-led | Complete |
+| `M17.14` | PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon | task | Agentic-led | Not Started |
+| `M17.15` | PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it | task | Agentic-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
 | `M18.1` | Reviewers check that code is well-formed and that fixes do not degrade it | task | — | Not Started |
 | `M18.2` | Harness-facts records for the Copilot CLI and Antigravity agy | task | Agentic-led | Not Started |
@@ -249,6 +251,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.65` | The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work | task | Agentic-led | Complete |
 | `M22.66` | A roster entry matches a model profile by its harness_model when its id matches none | task | Agentic-led | Complete |
 | `M22.67` | A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works | task | Agentic-led | Complete |
+| `M22.68` | grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |

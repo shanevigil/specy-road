@@ -1,0 +1,49 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "specy-road grind-session --status is a read-only mode: scope is --until NODE (the node's own leaves, then transitively the leaves of every effective dependency, the walk stopping at a Complete dependency, whose leaves count as done), --under NODE (the subtree), both (the intersection, as the loop), or with neither the parent in work/.milestone-session.yaml as --under; with no scope, or an unknown node, it exits 2 naming --until, --under and start-milestone-session. --status with --plan or --step, and --watch without --status, are argparse errors; no new top-level command and no persistent state",
+        "Each leaf in scope is in exactly one bucket, taken from the plan grind-session --plan computes (gather_session_plan(root, None) filtered to the scope), in this order: done (Complete), cancelled, held (an open gate among its unmet dependencies; or claimed with review state escalated, fix_round_budget_spent or executor_blocked, a review policy change since the claim, or a live worker leased to human or flagged needs_person), active (claimed or In Progress, with its handoff-status review state and live worker id, harness and state), ready, waiting (with waiting_on), not pickable (unauthored, needs codename, with reason); totals include remaining = total - done - cancelled. Review state comes from one public review_state(root, node_id) extracted from handoff status's _node_status, run only for claimed leaves in scope; handoff status's output, JSON and exit codes are unchanged",
+        "The estimate uses the first status event to Complete of each done leaf in scope, from history_index (the git-derived cache specy-road history uses): below 5 completions or under 24 hours from first to last it says not enough data, naming the count and the minimum; otherwise the overall rate (n-1)/(last-first) and the recent rate (completions in the 7 days before now / 7 days) give earliest = remaining / faster rate and latest = remaining / slower rate, or none at the recent pace when the recent rate is zero; the output states the method, its inputs (n, first, last, recent count, window, minimum) and that held and waiting leaves are assumed to clear at the past pace; now is a parameter tests pin",
+        "Decisions: open decision and human-action entries of the merged ledger (shared and local), in scope first with node, summary, why_now, options with effects, recommendation and reason, default if unanswered, needed_by and ledger, printed as recorded; open entries outside the scope one line each; pros and cons printed as not recorded, the decisions schema has no field for them; then each held leaf with its reason and the next step its record names (RCA prompt, fix-round budget next, executor blocked_on lines, review accept-policy <ID>, set-gate-status <GATE>, worker reclaim or status) and no options recorded (not a ledger entry). The command writes no option, pro, con or recommendation of its own; a missing recorded field is named under missing",
+        "Sessions, independent of the goal scope: open brainstorm sessions (work/brainstorm-*.yaml not moved to work/brainstorm-closed/, via brainstorm_session list_slugs and read_session) with slug, mode and idea count, an unreadable file named under missing without hiding the rest; and every live presence session (session_presence list_sessions live_only) with agent, branch, note word for word, expiry and stale reason. Presence records have no role field, so no session is classified as a planner; docs/grind-session.md names the convention session start --note 'planner: <topic>', and a role field is deferred to M23",
+        "Human-readable text by default, its header ending with last updated <local time>; --status --json prints one JSON object with keys generated_at (ISO 8601 with offset), goal, scope, totals, held, active, ready, waiting, not_pickable, estimate (method, inputs, earliest, latest, reason), decisions (ledger, ledger_outside_scope, held), sessions (brainstorm, presence) and missing. No network and no harness call: with the remote's path removed it exits 0, and git status, HEAD, the registry and the ledger are unchanged (the history cache under .specyrd/cache/ is the only write, as specy-road history). Reads only product paths an adopter has (roadmap/, work/, .specyrd/), no toolkit-only path",
+        "--status --watch [MINUTES] prints the report, then again after each interval, each after a separator with its last updated line, until Ctrl+C (exit 0); with --json one JSON object per line. The interval is MINUTES, else the new optional git-workflow.yaml key grind_session_status_interval_minutes (integer >= 1, in git-workflow.schema.json and as a commented line in the template git-workflow.yaml, read with load_git_workflow_config), else 30; a non-positive or non-integer value exits 2 naming the flag or key. Sleep and clock are parameters; tests never wait",
+        "The bundled skills specyrd-orchestrate.md and specyrd-grind-session.md tell the coordinator to run specy-road grind-session --status with the grind's scope at the start of a grind and every grind_session_status_interval_minutes (default 30), and to post its text output to the chat unchanged, using the harness's scheduler or wake-up where it has one and otherwise the first turn after the interval; they say --watch is for a person's terminal and name no single harness's scheduler. A skill-text assertion in tests/test_decisions.py pins the paragraph",
+        "Tests in tests/test_grind_status.py cover the rows of the sheet test table on temporary repos with dated commits and a pinned now; the grind-session and top-level help goldens; docs/grind-session.md gains a section on --status (watch, the interval key, sessions, the planner note convention); docs/git-workflow.md lists the key; cli_usage.py's grind-session line names --status; CHANGELOG [Unreleased]. READY reports the wall time of grind-session --status --until M16.8.4 on sr/ (informational). Out of scope: the GUI status modal (M17.14) and PM decisions from it (M17.15), a session role field and a pros/cons schema field (M23), the handoff status rename (M16.4.3)",
+        "Estimated net line change (informational, not a gate): package about +250, tests about +340, docs and skills about +55"
+      ],
+      "codename": "grind-status",
+      "dependencies": [
+        "8ae7a813-4e43-4590-9f7d-d20b1691dbce"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.68",
+      "node_key": "05b23f6c-3e4d-4ac9-b0a0-022b4fe7f7f1",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.68_grind-status_05b23f6c-3e4d-4ac9-b0a0-022b4fe7f7f1.md",
+      "sibling_order": 62,
+      "status": "Not Started",
+      "title": "grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only",
+      "touch_zones": [
+        "specy_road/grind_status.py",
+        "specy_road/bundled_scripts/grind_session_args.py",
+        "specy_road/bundled_scripts/grind_session.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/cli_usage.py",
+        "tests/test_grind_status.py",
+        "tests/parity/golden/help/specy-road__grind-session.txt",
+        "tests/parity/golden/help/specy-road.txt",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "specy_road/templates/project/roadmap/git-workflow.yaml",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "specy_road/templates/specyrd/commands/specyrd-grind-session.md",
+        "tests/test_decisions.py",
+        "docs/grind-session.md",
+        "docs/git-workflow.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    }
+  ]
+}
