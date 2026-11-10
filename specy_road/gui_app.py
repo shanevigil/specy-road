@@ -6,7 +6,9 @@ Includes roadmap CRUD, planning files, and settings endpoints.
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +16,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 
+from specy_road.grind_status import StatusError, build_report
 from specy_road.gui_app_api import make_api_router  # noqa: E402
+from specy_road.gui_app_helpers import get_repo_root
 from specy_road.gui_app_routes_workers import register_worker_routes
 
 _PKG_DIR = Path(__file__).resolve().parent
@@ -36,7 +40,18 @@ def _register_read_only_guard(app: FastAPI) -> None:
         return await call_next(request)
 
 
-def create_app(read_only: bool | None = None) -> FastAPI:
+def _register_grind_status_route(app: FastAPI, clock: Callable[[], datetime] | None) -> None:
+    @app.get("/api/grind-status")
+    def grind_status(until: str | None = None, under: str | None = None) -> JSONResponse:
+        """``grind-session --status --json``'s object, unchanged; 400 where the CLI exits 2 (M17.14)."""
+        now = clock() if clock else datetime.now().astimezone()
+        try:
+            return JSONResponse(build_report(get_repo_root(), until, under, now))
+        except StatusError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+def create_app(read_only: bool | None = None, clock: Callable[[], datetime] | None = None) -> FastAPI:
     if read_only is None:
         read_only = os.environ.get(READ_ONLY_ENV) == "1"
     app = FastAPI(title="specy-road PM Gantt API", version="1.0.0")
@@ -58,6 +73,7 @@ def create_app(read_only: bool | None = None) -> FastAPI:
     workers = APIRouter(prefix="/api")
     register_worker_routes(workers)
     app.include_router(workers)
+    _register_grind_status_route(app, clock)
 
     # Registered before the SPA fallback so scripts get JSON, not the HTML shell.
     @app.api_route("/api/{rest:path}", methods=_ALL_METHODS, include_in_schema=False)

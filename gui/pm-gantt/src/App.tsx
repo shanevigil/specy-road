@@ -135,6 +135,9 @@ const WorkersDrawer = lazy(() =>
 const OrchestrationDrawer = lazy(() =>
   import("./components/OrchestrationDrawer").then((m) => ({ default: m.OrchestrationDrawer })),
 );
+const StatusModal = lazy(() =>
+  import("./components/StatusModal").then((m) => ({ default: m.StatusModal })),
+);
 const BrainstormDrawer = lazy(() =>
   import("./components/BrainstormDrawer").then((m) => ({
     default: m.BrainstormDrawer,
@@ -244,6 +247,7 @@ export default function App() {
   const [orchestrationOpen, setOrchestrationOpen] = useState(false);
   const [orch, setOrch] = useState<OrchestrationNotice | null>(null);
   const [orchLeaf, setOrchLeaf] = useState<string | null>(null);
+  const [statusOpen, setStatusOpen] = useState(false);
   /** When set, Vision / Constitution need human content beyond blank or starter templates. */
   const [govCompletion, setGovCompletion] = useState<{
     vision: boolean;
@@ -1685,6 +1689,16 @@ export default function App() {
                 <button
                   type="button"
                   className="app-header-doc-btn"
+                  title="Grind status: leaves by state, the estimate and what waits on a person"
+                  onClick={() => setStatusOpen(true)}
+                >
+                  Status
+                </button>
+              </div>
+              <div className="app-header-doc-slot">
+                <button
+                  type="button"
+                  className="app-header-doc-btn"
                   // Re-pressing raises and un-minimizes rather than doing
                   // nothing, which is what the button appears to promise once
                   // the window can be sent to the dock.
@@ -1892,6 +1906,7 @@ export default function App() {
           }}
           filterLeafId={orchLeaf}
         />
+        {statusOpen ? <StatusModal repoId={repoId} onClose={() => setStatusOpen(false)} /> : null}
         <WorkersDrawer
           open={workersOpen}
           initialWorkerId={workersInitialId}

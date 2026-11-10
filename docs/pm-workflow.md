@@ -206,6 +206,20 @@ Configure credentials in **Settings** (gear area in the sidebar) under the **LLM
 
 For a **PM-oriented walkthrough** of what is sent to the model, how the diff and merge buttons work, and token-related notes, see **[pm-llm-review.md](pm-llm-review.md)**.
 
+## Which checkout to run the GUI from
+
+The dashboard shows the clone its server runs in, and nothing else: it reads that checkout's files, plus remote-tracking refs for the registry overlay.
+
+- **A PM** runs the GUI from a dedicated clean clone on the integration branch, with **Merge registry from remote feature branches** on (Settings), and does no development in it. Claims made on other machines then show through the overlay after each fetch, and a stray local branch or edit never colours what the PM sees.
+- **An operator** runs it from the main checkout on the integration branch, not from a feature worktree: workers, reviews and presence records live under that checkout's `work/`. For a look from a feature worktree, use `specy-road gui --read-only`.
+
+| Such a checkout shows | It cannot show |
+| --- | --- |
+| The roadmap graph at its HEAD | Workers started from another clone (`work/.workers/` is per clone) |
+| Claims: `roadmap/registry.yaml` at HEAD, plus remote rows through the overlay | Reviews in progress elsewhere (`work/reviews/` is per clone) |
+| The decisions ledger, `roadmap/decisions.yaml` (and this clone's `decisions.local.yaml`) | Other clones' presence sessions (`work/.sessions/`) |
+| The grind status (**Status**), computed for this checkout | Operator markers (`OPERATOR-<commit>.yaml` under another clone's `work/reviews/`) |
+
 ## Optional dashboard settings (sidebar → Settings)
 
 Settings are stored on **your** computer only, not in the repo:

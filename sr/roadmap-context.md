@@ -202,7 +202,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Complete**
   - `M17.12` PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group `gui-group-siblings-action` — task — **Complete**
   - `M17.13` PM GUI: a row click selects at once, so a toolbar action right after it acts on that row `gui-outline-selection-lag` — task — **Complete**
-  - `M17.14` PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon `gui-grind-status-modal` — task — **Not Started**
+  - `M17.14` PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon `gui-grind-status-modal` — task — **Complete**
   - `M17.15` PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it `gui-pm-decisions` — task — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
   - `M18.1` Reviewers check that code is well-formed and that fixes do not degrade it `review-code-quality` — task — **Not Started**
@@ -332,7 +332,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.2.8` on `feature/rm-break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli` since 2026-11-10
-- `M17.14` on `feature/rm-gui-grind-status-modal` since 2026-11-10
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -345,23 +344,23 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 28 | 0 | 2.18 | 57% | 21 | 2 |
+| `CHANGELOG.md` **flagged** | 29 | 0 | 2.17 | 59% | 21 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `docs` **flagged** | 33 | 0 | 2.24 | 58% | 55 | 3 |
+| `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
+| `docs` **flagged** | 33 | 0 | 2.27 | 61% | 55 | 3 |
 | `planning` **flagged** | 2 | 0 | 3.50 | 100% | 18 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 41 | 0 | 2.22 | 54% | 82 | 3 |
-| `tests` **flagged** | 43 | 0 | 2.21 | 56% | 94 | 3 |
+| `specy_road` **flagged** | 42 | 0 | 2.21 | 55% | 82 | 3 |
+| `tests` **flagged** | 44 | 0 | 2.20 | 57% | 94 | 3 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.github` | 4 | 0 | 2.00 | 50% | 31 | 0 |
 | `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
-| `AGENTS.md` | 3 | 0 | 2.67 | 33% | 2 | 1 |
-| `constitution` | 2 | 0 | 1.50 | 50% | 1 | 0 |
+| `AGENTS.md` | 2 | 0 | 3.50 | 50% | 2 | 1 |
 | `constraints` | 6 | 0 | 1.83 | 33% | 56 | 0 |
-| `gui` | 7 | 0 | 1.43 | 43% | 2 | 0 |
+| `gui` | 8 | 0 | 1.50 | 50% | 2 | 0 |
 | `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |

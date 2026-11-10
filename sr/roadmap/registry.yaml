@@ -81,24 +81,3 @@ entries:
     started: '2026-11-10'
     owner: savigil
     implementation_review: pending
-  - codename: gui-grind-status-modal
-    node_id: M17.14
-    branch: feature/rm-gui-grind-status-modal
-    touch_zones:
-      - tests/test_gui_app_grind_status.py
-      - gui/pm-gantt/src/grindStatus.ts
-      - gui/pm-gantt/src/grindStatus.test.ts
-      - gui/pm-gantt/src/fixtures/grind_status_mock.json
-      - gui/pm-gantt/src/components/StatusModal.tsx
-      - gui/pm-gantt/src/App.tsx
-      - gui/pm-gantt/src/App.css
-      - gui/pm-gantt/src/toolbarIcons.tsx
-      - gui/pm-gantt/src/repoBrowserPrefs.ts
-      - specy_road/pm_gantt_static/
-      - docs/pm-gui.md
-      - CHANGELOG.md
-      - specy_road/gui_app.py
-      - docs/pm-workflow.md
-    started: '2026-11-10'
-    owner: savigil
-    implementation_review: pending

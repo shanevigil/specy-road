@@ -1,0 +1,191 @@
+{
+  "generated_at": "2026-11-10T12:00:00+00:00",
+  "source": {
+    "branch": "WIP/integration",
+    "head": "0123456789abcdef0123456789abcdef01234567",
+    "fetched": false
+  },
+  "goal": "M1",
+  "scope": {
+    "rule": "until M1: M1's leaves and everything they need",
+    "until": "M1",
+    "under": null,
+    "leaves": [
+      "M1.1",
+      "M1.2",
+      "M1.3",
+      "M1.4",
+      "M1.5",
+      "M1.6",
+      "M1.7"
+    ]
+  },
+  "totals": {
+    "done": 1,
+    "cancelled": 0,
+    "held": 1,
+    "active": 1,
+    "ready": 1,
+    "waiting": 1,
+    "awaiting_merge": 1,
+    "not_pickable": 1,
+    "total": 7,
+    "remaining": 6
+  },
+  "held": [
+    {
+      "id": "M1.2",
+      "title": "Leaf M1.2",
+      "claimed": false,
+      "reasons": [
+        {
+          "kind": "gate",
+          "reason": "open gate M1.20 among its unmet dependencies",
+          "next": [
+            "specy-road set-gate-status M1.20 --status Complete"
+          ]
+        }
+      ]
+    }
+  ],
+  "active": [
+    {
+      "id": "M1.3",
+      "title": "Leaf M1.3",
+      "worker": {
+        "id": "w-0001",
+        "harness": "claude-code",
+        "state": "starting",
+        "lease": "broker",
+        "flags": []
+      },
+      "claimed": true,
+      "status": "Not Started",
+      "review": "waiting"
+    }
+  ],
+  "ready": [
+    {
+      "id": "M1.4",
+      "title": "Leaf M1.4"
+    }
+  ],
+  "waiting": [
+    {
+      "id": "M1.5",
+      "title": "Leaf M1.5",
+      "waiting_on": [
+        "M1.4"
+      ]
+    }
+  ],
+  "awaiting_merge": [
+    {
+      "id": "M1.6",
+      "title": "Leaf M1.6",
+      "reason": "Complete on its feature branch; the integration branch has not merged it"
+    }
+  ],
+  "not_pickable": [
+    {
+      "id": "M1.7",
+      "title": "Leaf M1.7",
+      "reason": "planning/M1.7.md still has brainstorm promote's placeholder under ## Approach; `specy-road author-approach M1.7` prints the prompt to write it"
+    }
+  ],
+  "estimate": {
+    "method": "overall rate (n-1)/(last-first) and recent rate (completions in the last 7 days)/7 days; earliest is now + remaining / the faster rate, latest now + remaining / the slower; held and waiting leaves are assumed to clear at the past pace",
+    "inputs": {
+      "n": 1,
+      "first": "2026-11-09T15:00:00+00:00",
+      "last": "2026-11-09T15:00:00+00:00",
+      "recent": 1,
+      "window_days": 7,
+      "minimum": 5,
+      "minimum_span_hours": 24,
+      "remaining": 6,
+      "completions": [
+        {
+          "id": "M1.1",
+          "at": "2026-11-09T15:00:00+00:00"
+        }
+      ]
+    },
+    "earliest": null,
+    "latest": null,
+    "reason": "not enough data: 1 completion(s) in scope, minimum 5"
+  },
+  "decisions": {
+    "ledger": [
+      {
+        "id": "D1",
+        "kind": "decision",
+        "node": "M1.4",
+        "summary": "Pick the parser",
+        "why_now": "M1.1 cannot start without it",
+        "options": [
+          {
+            "label": "yaml",
+            "effect": "one more dependency"
+          },
+          {
+            "label": "json",
+            "effect": "no comments"
+          }
+        ],
+        "recommendation": "yaml",
+        "recommendation_reason": "people edit these files by hand",
+        "default_if_unanswered": "json after the deadline",
+        "needed_by": null,
+        "pros_cons": "not recorded: the decisions schema has no field for them",
+        "ledger": "shared"
+      }
+    ],
+    "ledger_outside_scope": [
+      {
+        "id": "D2",
+        "node": "M2.1",
+        "summary": "Somewhere else"
+      }
+    ],
+    "held": [
+      {
+        "node": "M1.2",
+        "kind": "gate",
+        "reason": "open gate M1.20 among its unmet dependencies",
+        "next": [
+          "specy-road set-gate-status M1.20 --status Complete"
+        ],
+        "options": "no options recorded (not a ledger entry)"
+      }
+    ]
+  },
+  "sessions": {
+    "brainstorm": [
+      {
+        "slug": "open-one",
+        "mode": "roadmap",
+        "ideas": 0
+      }
+    ],
+    "presence": [
+      {
+        "agent": "planner-a",
+        "branch": "dev",
+        "note": "planner: status",
+        "expires": "2026-11-10T20:00:00+00:00",
+        "stale_reason": null
+      }
+    ]
+  },
+  "missing": [
+    {
+      "record": "D1",
+      "field": "needed_by"
+    },
+    {
+      "record": "work/brainstorm-broken.yaml",
+      "field": "unreadable: cannot read work/brainstorm-broken.yaml: while parsing a flow node"
+    }
+  ]
+}

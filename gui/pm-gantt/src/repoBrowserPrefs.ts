@@ -10,6 +10,9 @@ export const BROWSER_PREF_KEYS = {
   showInheritedDeps: "pmGanttShowInheritedDeps",
   highlightDepChain: "pmGanttHighlightDepChain",
   themeMode: "pmGanttThemeMode",
+  grindStatusUntil: "pmGanttGrindStatusUntil",
+  grindStatusUnder: "pmGanttGrindStatusUnder",
+  grindStatusIntervalSec: "pmGanttGrindStatusIntervalSec",
 } as const;
 
 function namespacedKey(baseKey: string, repoId: string | null): string {
