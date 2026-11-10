@@ -22,6 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import records_or_empty
 from specy_road.node_kinds import is_gate
@@ -51,12 +52,6 @@ def _status_of(node: dict[str, Any]) -> str:
     if isinstance(rollup, str) and rollup:
         return rollup
     return str(node.get("status") or "")
-
-
-def _key_to_node(nodes: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    return {
-        n["node_key"]: n for n in nodes if isinstance(n.get("node_key"), str)
-    }
 
 
 def _label(node: dict[str, Any]) -> str:
@@ -150,7 +145,7 @@ def _section_dropped_dependencies(
     a decision someone already made, and it is invisible in the current graph
     precisely because it was removed.
     """
-    by_key = _key_to_node(nodes)
+    by_key = RoadmapIndex(nodes).by_key
     # An edge re-added since its removal is live again, not dropped.
     events = [
         e for e in _history_events(root, kinds={"dep_removed"})

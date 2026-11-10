@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
+
 
 def _digit_run_to_int(run: str) -> int:
     """Parse an ASCII digit run for natural id ordering (hook for tests / rare bases)."""
@@ -63,26 +65,11 @@ def effective_dependency_keys(nodes: list[dict]) -> dict[str, set[str]]:
     """
     For each ``node_key``, union of explicit ``dependencies`` on the node and on
     every ancestor (inheritance at group level).
+
+    Answered by :attr:`roadmap_index.RoadmapIndex.effective_dependencies`; this
+    name stays for the many callers that only need the map.
     """
-    by_key = {n["node_key"]: n for n in nodes if n.get("node_key")}
-    by_id = {n["id"]: n for n in nodes}
-    eff: dict[str, set[str]] = {}
-    for n in nodes:
-        nk = n.get("node_key")
-        if not nk:
-            continue
-        acc: set[str] = set()
-        cur: dict | None = n
-        while cur:
-            for d in cur.get("dependencies") or []:
-                if d in by_key:
-                    acc.add(d)
-            pid = cur.get("parent_id")
-            if not pid:
-                break
-            cur = by_id.get(pid)
-        eff[nk] = acc
-    return eff
+    return RoadmapIndex(nodes).effective_dependencies
 
 
 _MAX_DEP_STEP_ITERS = 1000
@@ -132,9 +119,9 @@ def compute_dependency_steps(
       post-order so children are finalized first.
     * Values converge by fixed-point iteration (valid roadmaps are DAGs; cap for safety).
     """
-    eff = effective_dependency_keys(nodes)
-    key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
-    by_id = {n["id"]: n for n in nodes}
+    index = RoadmapIndex(nodes)
+    eff = index.effective_dependencies
+    by_id = index.by_id
     ids_with_key = {n["id"] for n in nodes if n.get("node_key")}
     children = _outline_children_map(nodes)
     post_order = [nid for nid in _outline_post_order_ids(nodes) if nid in ids_with_key]
@@ -150,7 +137,7 @@ def compute_dependency_steps(
             nk = n.get("node_key")
             if not nk:
                 continue
-            dep_ids = [key_to_id[d] for d in eff.get(nk, set()) if d in key_to_id]
+            dep_ids = [index.by_key[d]["id"] for d in eff.get(nk, set())]
             if not dep_ids:
                 start[nid] = 0
             else:
@@ -223,18 +210,15 @@ def dependency_edges_detailed(
 
     Each item is ``{"from": dep_display_id, "to": dependent_display_id, "kind": "explicit"|"inherited"}``.
     """
-    eff = effective_dependency_keys(nodes)
-    key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
+    index = RoadmapIndex(nodes)
     out: list[dict[str, str]] = []
     for n in nodes:
         nk = n.get("node_key")
         if not nk:
             continue
         explicit_keys = set(n.get("dependencies") or [])
-        for dk in eff.get(nk, set()):
-            dep_id = key_to_id.get(dk)
-            if not dep_id:
-                continue
+        for dk in index.effective_dependencies.get(nk, set()):
+            dep_id = index.by_key[dk]["id"]
             kind = "inherited" if dk not in explicit_keys else "explicit"
             out.append(
                 {
@@ -253,23 +237,22 @@ def dependency_inheritance_display(
     Per display ``id``: dependency display ids that are explicit on the node vs
     inherited from ancestors (effective minus explicit).
     """
-    eff = effective_dependency_keys(nodes)
-    key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
+    index = RoadmapIndex(nodes)
     out: dict[str, dict[str, list[str]]] = {}
     for n in nodes:
         nk = n.get("node_key")
         if not nk:
             continue
         explicit_keys = set(n.get("dependencies") or [])
-        inherited_keys = eff.get(nk, set()) - explicit_keys
+        inherited_keys = index.effective_dependencies.get(nk, set()) - explicit_keys
         nid = n["id"]
         out[nid] = {
             "explicit": sorted(
-                (key_to_id[k] for k in explicit_keys if k in key_to_id),
+                (index.by_key[k]["id"] for k in explicit_keys if k in index.by_key),
                 key=natural_id_sort_key,
             ),
             "inherited": sorted(
-                (key_to_id[k] for k in inherited_keys if k in key_to_id),
+                (index.by_key[k]["id"] for k in inherited_keys),
                 key=natural_id_sort_key,
             ),
         }
