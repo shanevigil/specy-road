@@ -14,7 +14,7 @@ from specy_road.agents_md_block import (
     warn_if_context_over_limits,
     warn_missing_load_order_paths,
 )
-from specy_road.bundled_scripts.chore_garden import warn_garden_due
+from specy_road.chore_garden_due import warn_garden_due
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
 from specy_road.bundled_scripts.validate_notices import (
     notice_milestone_review_holds,

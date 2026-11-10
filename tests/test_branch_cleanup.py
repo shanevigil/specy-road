@@ -16,7 +16,7 @@ import pytest
 
 from specy_road import cli
 from specy_road.bundled_scripts import branches_cli, finish_task
-from specy_road.grind_session_cleanup import delete_remote_branch
+from specy_road.merged_branch import delete_remote_branch
 from tests.helpers import REPO
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 

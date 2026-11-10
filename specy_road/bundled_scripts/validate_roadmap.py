@@ -32,7 +32,7 @@ from specy_road.agents_md_block import (
 )
 from specy_road.validate_stale_commands import unregistered_commands, warn_unregistered_commands
 from specy_road.version_pin import pinned_version, warn_if_pin_differs
-from specy_road.bundled_scripts.chore_garden import warn_garden_due
+from specy_road.chore_garden_due import warn_garden_due
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.init_project import project_template_root

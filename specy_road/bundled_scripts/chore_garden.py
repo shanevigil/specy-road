@@ -20,7 +20,6 @@ import contextlib
 import io
 import json
 import re
-import sys
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
@@ -28,7 +27,9 @@ from pathlib import Path
 from specy_road import __version__
 from specy_road.fs_atomic import atomic_write_text
 from specy_road.agent_guide_block import PROVENANCE
-from specy_road.bundled_scripts.chore_cli import chores_dir
+from specy_road.bundled_scripts.roadmap_crud import main
+from specy_road.chore_garden_due import garden_due, record_path, warn_garden_due
+from specy_road.chore_records import chores_dir
 from specy_road.validate_stale_commands import (
     agent_files,
     line_unregistered_commands,
@@ -37,7 +38,6 @@ from specy_road.validate_stale_commands import (
 from specy_road.git_subprocess import git_root, git_text
 from specy_road.harness_instruction_files import RULES_MD
 from specy_road.integrity import _ratchet_findings, integration_ratchet_paths
-from specy_road.orchestration_config import effective_config
 from specy_road.review_policy_ref import policy_source
 from specy_road.worker_state import WorkerError
 
@@ -153,8 +153,6 @@ def _generation(cls: str, codename: object, title: object) -> int | None:
 
 def _add_node(root: Path, argv: list[str]) -> str | None:
     """Run the ``add-node`` command itself (every check it makes); its refusal, or ``None`` once written."""
-    from specy_road.bundled_scripts.roadmap_crud import main  # noqa: PLC0415 — via validate_roadmap, it imports this
-
     err = io.StringIO()
     try:
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):   # its write report
@@ -202,11 +200,6 @@ def open_chores(root: Path, findings: list[Finding], under: str) -> list[str]:
     return done
 
 
-def record_path(root: Path) -> Path:
-    """A dot-file: a chore slug starts with a letter or digit, so no chore record can be this file."""
-    return chores_dir(root) / ".garden.json"
-
-
 def garden(root: Path, under: str | None = None) -> dict:
     """Scan, file chore leaves under ``under`` when given, and record the run; the report."""
     findings, notes = scan(root)
@@ -218,28 +211,3 @@ def garden(root: Path, under: str | None = None) -> dict:
 
 def as_json(report: dict) -> str:
     return json.dumps({**report, "findings": [asdict(f) for f in report["findings"]]}, indent=2)
-
-
-def garden_due(root: Path, today: date) -> str | None:
-    """Why gardening is due under ``policy.garden_cadence_days``; ``None`` when it is not or the key is unset.
-
-    The arithmetic of a research register entry: due when more than the cadence's days have passed.
-    """
-    cadence = effective_config(root)[0]["policy"].get("garden_cadence_days")
-    if not cadence:
-        return None
-    try:
-        last = date.fromisoformat(json.loads(record_path(root).read_text(encoding="utf-8"))["last_run"])
-    except (OSError, ValueError, KeyError, TypeError):
-        last = None
-    if last is not None and (today - last).days <= cadence:
-        return None
-    when = "never run" if last is None else f"last run {last}"
-    return f"gardening due: {when}, every {cadence} days; run `specy-road chore garden`"
-
-
-def warn_garden_due(root: Path, today: date | None = None) -> None:
-    """One non-fatal ``validate`` line when gardening is due."""
-    why = garden_due(root, today or date.today())
-    if why:
-        print(f"garden: warning — {why} (see docs/orchestration-chores.md)", file=sys.stderr)

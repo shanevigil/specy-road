@@ -47,7 +47,7 @@ from typing import Any
 
 from specy_road import safe_write
 from specy_road.clock import utc_now_iso
-from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
+from specy_road.chore_records import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_root
 from specy_road.orchestrate_assign import guidance_bypass_refusal, guidance_bypass_warning

@@ -186,35 +186,38 @@ def test_difference_lists_every_change_and_main_exits_zero(tmp_path, capsys):
 
 
 def test_report_names_the_cycles_and_running_it_exits_zero(monkeypatch):
-    """The scan and the committed report name both cycles, and the script exits 0."""
+    """The scan and the committed report name the two broken cycles, and the script exits 0."""
     monkeypatch.chdir(ROOT)
     report = layers.build_report(ROOT / "specy_road")
     loader = _loader_component(report)
     crud = _crud_component(report)
     assert loader is None
-    assert crud is not None and crud["size"] == len(crud["modules"])
+    assert crud is None
     package_targets = {
         edge["to"].rsplit(".", 1)[-1]
         for edge in report["entry_point_edges"]
         if not edge["from"].startswith("specy_road.bundled_scripts.")
     }
-    assert package_targets.isdisjoint({"generate_brief", "validate_roadmap", "refresh_stubs"})
+    assert package_targets.isdisjoint(
+        {"generate_brief", "validate_roadmap", "refresh_stubs", "chore_cli"}
+    )
 
     same = layers.render_difference(report, report)
     assert "no component contains roadmap_load and finish_ancestor_rollup" in same
-    assert "roadmap_crud" in same and "chore_cli" in same
+    assert "no component contains a roadmap_crud module and chore_cli" in same
     assert "no difference from the committed report" in same
 
     committed = json.loads((ROOT / "constraints" / "import-layers-baseline.json").read_text())
     committed_loader = _loader_component(committed)
     committed_crud = _crud_component(committed)
     assert committed_loader is None
-    assert committed_crud is not None
-    assert committed_crud["size"] == len(committed_crud["modules"])
+    assert committed_crud is None
     committed_package_targets = {
         edge["to"].rsplit(".", 1)[-1]
         for edge in committed["entry_point_edges"]
         if not edge["from"].startswith("specy_road.bundled_scripts.")
     }
-    assert committed_package_targets.isdisjoint({"generate_brief", "validate_roadmap", "refresh_stubs"})
+    assert committed_package_targets.isdisjoint(
+        {"generate_brief", "validate_roadmap", "refresh_stubs", "chore_cli"}
+    )
     assert layers.main([]) == 0

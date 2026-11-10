@@ -15,6 +15,7 @@ import pytest
 
 from specy_road.bundled_scripts import grind_session as gs
 from specy_road import grind_session_cleanup as gsc
+from specy_road import merged_branch
 from specy_road.bundled_scripts.grind_session_events import (
     EXIT_NO_LEAVES,
     EXIT_OK,
@@ -283,6 +284,7 @@ def test_the_remote_branch_must_also_be_contained_in_the_integration_branch(
         return 0, ""
 
     monkeypatch.setattr(gsc, "git_code", fake_git)
+    monkeypatch.setattr(merged_branch, "git_code", fake_git)
 
     _run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
 

@@ -19,7 +19,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from specy_road.grind_session_cleanup import (
+from specy_road.merged_branch import (
     delete_local_branch,
     delete_remote_branch,
     merged_into,
