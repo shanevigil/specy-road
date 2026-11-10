@@ -80,6 +80,7 @@ entries:
       - tests/test_sheet_edits_keep_approvals.py
       - tests/test_sibling_repo_approvals.py
       - tests/test_delta_review.py
+      - tests/parity/review_gate/
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
@@ -107,6 +108,7 @@ entries:
       - tests/test_review_record_write.py
       - docs/orchestration-reviewer-output.md
       - CHANGELOG.md
+      - tests/test_review_cli.py
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
@@ -128,6 +130,14 @@ entries:
       - tests/test_init_project_reports.py
       - tests/test_worker_state.py
       - sr/work/done/
+      - tests/parity/golden/upgrade/rc3-dry-run.txt
+      - tests/parity/golden/leaf_loop/
+      - tests/parity/test_leaf_loop.py
+      - tests/test_m13_12_quieter_notices.py
+      - tests/test_m13_7_notices.py
+      - tests/test_m13_7_gitignore_symlinks.py
+      - tests/test_finish_work_cleanup.py
+      - docs/install-and-usage.md
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
