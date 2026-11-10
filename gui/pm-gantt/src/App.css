@@ -182,3 +182,24 @@
     border-right-color: var(--border);
   }
 }
+
+/* Grind status modal (M17.14) */
+.grind-status-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.grind-status-field input {
+  width: 8rem;
+}
+.grind-status-error {
+  color: var(--bar-blocked);
+}
+.grind-status-section {
+  margin-top: 0.75rem;
+}
+.grind-status-lines {
+  white-space: pre-wrap;
+  font-size: 0.9em;
+}

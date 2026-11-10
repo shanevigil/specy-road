@@ -14,6 +14,8 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- PM GUI: a **Status** button opens a read-only modal with the grind status, served unchanged by the new `GET /api/grind-status?until=&under=` (`400` with the CLI's message where `grind-session --status` exits 2). It shows **Last updated** with the report's age, refreshes on an interval (Off, 30 s, 60 s by default, 2 min, 5 min) only while open, and has a **Refresh now** icon; the scope fields and the interval are per-repo browser preferences. `docs/pm-workflow.md` gains "Which checkout to run the GUI from". See `docs/pm-gui.md` (Status modal).
+
 - `specy-road grind-session --status` reports a goal's leaves by state (held, active, ready, waiting, finished awaiting merge, not pickable), a completion range from roadmap history, the open decisions and held leaves waiting on a person with the next step each record names, and open brainstorm and presence sessions. The scope is `--until`, `--under`, both, or the milestone session's parent; `--json` prints one object. It fetches nothing and writes nothing but the history cache. `--watch [MINUTES]` repeats it until Ctrl+C, every `grind_session_status_interval_minutes` (new optional `git-workflow.yaml` key, default 30). The orchestrate and grind-session skills tell the coordinator to post the status at the start of a grind and on that interval. See `docs/grind-session.md` (Status: `--status`).
 
 - `specy-road ready --fix-of <model>@<sha>` names the one block a fix commit answers, as a new optional READY
