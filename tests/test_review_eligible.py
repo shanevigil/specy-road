@@ -47,7 +47,8 @@ def test_human_is_listed_as_able_to_supply_the_missing_approval(tmp_path: Path, 
     _review(repo, "opus")
     rows = _rows(repo, capsys)
     assert list(rows) == ["human", "opus", "sonnet", "sol", "composer", "astra"]
-    assert rows["human"]["eligible"] and "mark-implementation-reviewed M1.1" in rows["human"]["reason"]
+    assert rows["human"]["eligible"] and rows["human"]["reason"] == (
+        "can approve, interactively: run `specy-road mark-implementation-reviewed` on feature/rm-thing")
     assert rows["opus"]["eligible"] and rows["opus"]["reason"] == "its approval counts"
     assert rows["sol"]["eligible"]
     assert not rows["composer"]["eligible"] and "not a reviewer role" in rows["composer"]["reason"]
@@ -115,3 +116,26 @@ def test_text_lists_reviewers_below_the_policy_line_until_the_gate_is_met(tmp_pa
     assert "    sonnet (anthropic): excluded — same family (anthropic) as opus's approval, which already counts" in lines
     _review(repo, "sol")
     assert _rows(repo, capsys) == {}
+
+
+RUN = "run `specy-road mark-implementation-reviewed` on feature/rm-thing"
+
+
+@pytest.mark.parametrize(("strong", "blockers", "text"), [
+    (False, ("opus", "sol"), f"can approve over opus's and sol's block(s), interactively: {RUN}"),
+    (True, ("opus",), f"to request interactive approval over opus's block(s), {RUN}; other gate requirements "
+                      "still apply"),
+], ids=["settling_passes", "strong_review_unmet"])
+def test_the_human_row_says_whether_it_approves_over_the_blocks(tmp_path: Path, capsys, strong, blockers,
+                                                                text) -> None:
+    from tests.test_review_override import ROSTER, STRONG
+
+    repo = make_review_repo(tmp_path, orchestration=STRONG if strong else ROSTER)
+    for model in blockers:
+        notes = repo.parent / f"notes-{model}.md"
+        notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict="block", a1="fail"))
+        assert _run("review", "record", "M1.1", "--model", model, "--verdict", "block",
+                    "--file", str(notes), "--repo-root", str(repo)) == 0
+    human = _rows(repo, capsys)["human"]
+    assert human["eligible"] and human["reason"].startswith(text)
+    assert strong is ("can approve over" not in human["reason"])

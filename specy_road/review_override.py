@@ -24,6 +24,7 @@ blocks and the shortfall the answer names; every other gate condition applies un
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import hashlib
 import json
 import os
@@ -191,7 +192,8 @@ def _form_problem(ns: argparse.Namespace) -> str | None:
     return None
 
 
-def _recorder(root: Path) -> str | None:
+def recorder(root: Path) -> str | None:
+    """``<user.name> <<user.email>>`` from git config, or ``None`` when either is unset."""
     name, email = (git_text(["config", f"user.{k}"], root) for k in ("name", "email"))
     return f"{name} <{email}>" if name and email else None
 
@@ -275,7 +277,7 @@ def _fail(msg: str) -> int:
     return 1
 
 
-def _blocks_to_settle(root: Path, gate: GateResult, sha: str) -> list[tuple[str, ReviewFile]]:
+def blocks_to_settle(root: Path, gate: GateResult, sha: str) -> list[tuple[str, ReviewFile]]:
     """The counted blocks, and those the decision already recorded for ``sha`` settles: a new decision replaces
     its marker, so it names them again."""
     prior = next((m["decision"] for m in _markers(root, gate.node_id) if m["commit"] == sha), None)
@@ -333,13 +335,47 @@ def _entry(root: Path, ns: argparse.Namespace, sha: str, answer: str) -> dict[st
     }
 
 
+def append_decision(root: Path, ns: argparse.Namespace, gate: GateResult, blocks: list[tuple[str, ReviewFile]],
+                    who: str, cited: list[dict[str, str]] | None = None) -> tuple[dict[str, Any], list[str]]:
+    """Append the closed decision entry settling ``blocks`` and any shortfall of ``gate`` to the ledger under
+    ``root`` (its id from that ledger); ``(entry, what it settles)``. No marker is written: the caller writes it
+    (:func:`write_operator_marker`). Raises ``ValueError`` when ``root``'s copied schema refuses the entry."""
+    sha = str(gate.commit)
+    settles = [block_item(m, review_commit(gate, root, r) or str(r.data["commit"]), r.data.get("findings"))
+               for m, r in blocks]
+    if gate.approval_count < gate.required:
+        settles.append(shortfall_text(gate.required, gate.approval_count))
+    entry = _entry(root, ns, sha, _answer(ns, sha, who, settles, cited or []))
+    path = decisions_path(root)
+    doc = read_decisions(path)
+    doc.setdefault("entries", []).append(entry)
+    write_decisions(path, doc)
+    return entry, settles
+
+
+def write_operator_marker(repo_root: Path, entry: dict[str, Any], sha: str, session: str) -> Path:
+    """Write ``OPERATOR-<sha>.yaml`` naming ``entry`` in ``repo_root``'s hand-off directory; its path."""
+    marker = marker_path(repo_root, entry["node"], sha)
+    write_marker(marker, {"node_id": entry["node"], "decision": entry["id"], "commit": sha,
+                          "decided_by": entry["decided_by"], "session": session.strip()})
+    return marker
+
+
+def as_if_decided(gate: GateResult) -> GateResult:
+    """A copy of ``gate`` with every counted block settled, and the shortfall unless ``policy.signed_reviews`` is
+    on: what an operator decision now would leave. Its ``passed`` says whether the decision would pass the gate,
+    and its ``problems()`` name what would still fail (a policy pin, an unmet ``strong_review`` item, ...)."""
+    signed = bool((gate.config.get("policy") or {}).get("signed_reviews"))
+    return dataclasses.replace(gate, blocks=[], shortfall_settled=gate.shortfall_settled or not signed)
+
+
 def cmd_operator_decision(ns: argparse.Namespace) -> int:
     if why := role_refusal():   # before anything is read or written
         return _fail(why)
     root = resolve_repo_root(ns)
     if why := _form_problem(ns):
         return _fail(why)
-    who = _recorder(root)
+    who = recorder(root)
     if not who:
         return _fail("set git user.name and user.email: the decision entry names who recorded it")
     from specy_road.bundled_scripts.roadmap_load import load_roadmap
@@ -355,27 +391,17 @@ def cmd_operator_decision(ns: argparse.Namespace) -> int:
         return _fail(f"the commit under review does not resolve: {e}")
     gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
     sha = gate.commit
-    blocks = _blocks_to_settle(root, gate, sha)
+    blocks = blocks_to_settle(root, gate, sha)
     cited: list[dict[str, str]] = []
     if ns.rule:
         why, cited = _coordinator_problem(root, ns, gate, t.node, blocks)
         if why:
             return _fail(why)
-    settles = [block_item(m, review_commit(gate, root, r) or str(r.data["commit"]), r.data.get("findings"))
-               for m, r in blocks]
-    if gate.approval_count < gate.required:
-        settles.append(shortfall_text(gate.required, gate.approval_count))
-    entry = _entry(root, ns, sha, _answer(ns, sha, who, settles, cited))
-    path = decisions_path(root)
-    doc = read_decisions(path)
-    doc.setdefault("entries", []).append(entry)
     try:
-        write_decisions(path, doc)
+        entry, settles = append_decision(root, ns, gate, blocks, who, cited)
     except ValueError as e:   # a copied schema from before decided_by
         return _fail(f"{e}; nothing was written. Run `specy-road refresh-schemas` and try again")
-    marker = marker_path(root, ns.node_id, sha)
-    write_marker(marker, {"node_id": ns.node_id, "decision": entry["id"], "commit": sha,
-                          "decided_by": entry["decided_by"], "session": ns.session.strip()})
+    marker = write_operator_marker(root, entry, sha, ns.session)
     print(f"[ok] decision {entry['id']} closed (decided_by: {entry['decided_by']}) for {ns.node_id} at {sha[:12]}: "
           f"{'; '.join(settles) or 'nothing to settle'}; wrote {marker}")
     print(f"  Commit {DECISIONS_REL.as_posix()} on the integration branch, then `specy-road handoff status "

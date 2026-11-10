@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 # nested_repos re-exports this module's public names, so its own are imported inside the functions that use them.
 
 
-def _checked_out_in(repo: Path, branch: str) -> Path | None:
+def checked_out_in(repo: Path, branch: str) -> Path | None:
     """The worktree of ``repo`` that has ``branch`` checked out, if any."""
     current = None
     for line in (git_text(["worktree", "list", "--porcelain"], repo) or "").splitlines():
@@ -35,25 +35,44 @@ def _checked_out_in(repo: Path, branch: str) -> Path | None:
     return None
 
 
-def _merge_in_temp_tree(repo: Path, tip: str, feature_branch: str, onto: str, finish) -> str | None:
-    """Merge ``feature_branch`` onto ``tip`` in a detached temporary worktree, then ``finish(tree)``; why not, or ``None``.
-
-    No checkout of the repository is touched by the merge itself.
-    """
+def in_temp_worktree(repo: Path, tip: str, callback) -> str | None:
+    """Add a detached temporary worktree of ``repo`` at ``tip``, run ``callback(tree)`` and remove it; why not, or
+    the callback's result. No checkout of the repository is touched."""
     holder = Path(tempfile.mkdtemp(prefix="specy-road-nested-land-"))
     tree = holder / "tree"
     try:
         code, out = git_code(["worktree", "add", "--detach", str(tree), tip], repo)
         if code != 0:
             return f"could not create a worktree of {tip[:12]}: {out}"
+        return callback(tree)
+    finally:
+        git_code(["worktree", "remove", "--force", str(tree)], repo)
+        shutil.rmtree(holder, ignore_errors=True)
+
+
+def move_ref(repo: Path, ref: str, tip: str, new: str, holder: Path | None, what: str) -> str | None:
+    """Move ``ref`` from ``tip`` to ``new`` by compare-and-swap, then have ``holder`` (the worktree with ``ref``
+    checked out, if any) follow it; why not, or ``None``. ``what`` names ``new`` in the refusal."""
+    ib = ref.removeprefix("refs/heads/")
+    code, out = git_code(["update-ref", ref, new, tip], repo)   # compare-and-swap on the named ref
+    if code != 0:
+        return f"could not move {ib} to {what} {new[:12]} ({ib} moved meanwhile?): {out}; re-run"
+    return _follow_in_checkout(repo, holder, ref, tip, new) if holder is not None else None
+
+
+def _merge_in_temp_tree(repo: Path, tip: str, feature_branch: str, onto: str, finish) -> str | None:
+    """Merge ``feature_branch`` onto ``tip`` in a detached temporary worktree, then ``finish(tree)``; why not, or ``None``.
+
+    No checkout of the repository is touched by the merge itself.
+    """
+    def merge(tree: Path) -> str | None:
         code, out = git_code(["merge", "--no-ff", "--no-edit", feature_branch], tree)
         if code != 0:
             git_code(["merge", "--abort"], tree)
             return f"merging {feature_branch} into {onto} failed: {out}"
         return finish(tree)
-    finally:
-        git_code(["worktree", "remove", "--force", str(tree)], repo)
-        shutil.rmtree(holder, ignore_errors=True)
+
+    return in_temp_worktree(repo, tip, merge)
 
 
 def _land_one(repo: Path, nr: NestedRepo, feature_branch: str) -> str | None:
@@ -117,7 +136,7 @@ def _land_one_locally(repo: Path, nr: NestedRepo, feature_branch: str) -> str | 
         return f"no local {ib} to merge into (land: local)"
     if git_ok(["merge-base", "--is-ancestor", feature_branch, tip], repo)[0]:
         return None
-    holder = _checked_out_in(repo, ib)
+    holder = checked_out_in(repo, ib)
     if holder is not None:
         status = git_text(["status", "--porcelain", "--untracked-files=no"], holder)
         if status is None or status:
@@ -126,15 +145,12 @@ def _land_one_locally(repo: Path, nr: NestedRepo, feature_branch: str) -> str | 
 
     ref = f"refs/heads/{ib}"
 
-    def move_ref(tree: Path) -> str | None:
+    def land(tree: Path) -> str | None:
         merge = git_text(["rev-parse", "HEAD"], tree) or ""
         if holder is not None and git_text(["symbolic-ref", "-q", "HEAD"], holder) != ref:
             return (f"{holder} no longer has {ib} checked out (switched branch or detached during the merge); "
                     f"{ib} was not moved; re-run")
-        code, out = git_code(["update-ref", ref, merge, tip], repo)   # compare-and-swap on the named ref
-        if code != 0:
-            return f"could not move {ib} to the merge {merge[:12]} ({ib} moved meanwhile?): {out}; re-run"
-        err = _follow_in_checkout(repo, holder, ref, tip, merge) if holder is not None else None
+        err = move_ref(repo, ref, tip, merge, holder, "the merge")
         if err:
             return err
         if not git_ok(["merge-base", "--is-ancestor", merge, ref], repo)[0]:
@@ -142,7 +158,7 @@ def _land_one_locally(repo: Path, nr: NestedRepo, feature_branch: str) -> str | 
         print(f"[ok] nested repo {nr.path}: merged {feature_branch} into local {ib} (land: local; nothing pushed)")
         return None
 
-    return _merge_in_temp_tree(repo, tip, feature_branch, f"local {ib}", move_ref)
+    return _merge_in_temp_tree(repo, tip, feature_branch, f"local {ib}", land)
 
 
 def _merged_somewhere(repo: Path, nr: NestedRepo, feature_branch: str) -> bool:
