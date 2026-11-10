@@ -189,6 +189,11 @@
       "minimum": 0,
       "description": "grind-session: how many times to re-run a Claude implement command that died on a signal without printing anything (default 2). Not a retry for failed implementations - those still stop the run. CLI --max-empty-retries wins."
     },
+    "grind_session_status_interval_minutes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "grind-session --status --watch: minutes between reports (default 30), and how often the bundled coordinator skills post grind-session --status during a grind. CLI --watch MINUTES wins."
+    },
     "grind": {
       "type": "object",
       "additionalProperties": false,

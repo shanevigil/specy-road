@@ -172,6 +172,19 @@ def test_coordinator_prompt_and_skill_name_kind_and_shape(tmp_path: Path) -> Non
         assert "needed-by" in blob or "deadline" in blob.lower()
 
 
+@pytest.mark.parametrize("name", ["specyrd-orchestrate.md", "specyrd-grind-session.md"])
+def test_skills_post_the_grind_status_on_the_interval(name: str) -> None:
+    """M22.68 A8: the coordinator posts `grind-session --status` at the start and every interval, not `--watch`."""
+    text = (SKILL.parent / name).read_text(encoding="utf-8")
+    para = next(p for p in text.split("\n\n") if p.startswith("**Status reports during a grind.**"))
+    for phrase in ("specy-road grind-session --status", "grind_session_status_interval_minutes", "default 30",
+                   "At the start of a grind", "post its text output to the chat unchanged",
+                   "scheduler or wake-up", "the first turn after the interval", "Do not use `--watch` here",
+                   "a person's terminal"):
+        assert phrase in para, phrase
+    assert "/loop" not in para and "Claude Code" not in para
+
+
 def test_documented_search_kind_planning(tmp_path: Path) -> None:
     from specy_road.bundled_scripts.search_cli import main as search_main
 

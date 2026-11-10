@@ -14,6 +14,8 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road grind-session --status` reports a goal's leaves by state (held, active, ready, waiting, finished awaiting merge, not pickable), a completion range from roadmap history, the open decisions and held leaves waiting on a person with the next step each record names, and open brainstorm and presence sessions. The scope is `--until`, `--under`, both, or the milestone session's parent; `--json` prints one object. It fetches nothing and writes nothing but the history cache. `--watch [MINUTES]` repeats it until Ctrl+C, every `grind_session_status_interval_minutes` (new optional `git-workflow.yaml` key, default 30). The orchestrate and grind-session skills tell the coordinator to post the status at the start of a grind and on that interval. See `docs/grind-session.md` (Status: `--status`).
+
 - `specy-road ready --fix-of <model>@<sha>` names the one block a fix commit answers, as a new optional READY
   field `fix_of` (`handoff.schema.json`). While that READY is current, another family's
   approval of the blocked commit counts at the fix commit when the named record is that commit's only block, the

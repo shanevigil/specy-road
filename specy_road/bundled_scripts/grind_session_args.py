@@ -20,6 +20,24 @@ def _add_mode_and_stop_args(p: argparse.ArgumentParser) -> None:
         ),
     )
     p.add_argument(
+        "--status", action="store_true",
+        help=(
+            "Read-only: the scope's leaves by state (held, active, ready, waiting,\n"
+            "finished awaiting merge, not pickable), a completion range from\n"
+            "history, the decisions and held leaves waiting on a person, and open\n"
+            "sessions. Scope: --until, --under, both, or the parent in\n"
+            "work/.milestone-session.yaml. No fetch, no git writes."
+        ),
+    )
+    p.add_argument(
+        "--watch", nargs="?", const=True, default=None, type=int, metavar="MINUTES",
+        help=(
+            "With --status: print the report again every MINUTES (default:\n"
+            "grind_session_status_interval_minutes in roadmap/git-workflow.yaml,\n"
+            "else 30) until Ctrl+C."
+        ),
+    )
+    p.add_argument(
         "--step", choices=("pickup", "finish"), default=None,
         help=(
             "Run one phase and exit, for an agent that drives the loop and\n"
@@ -178,6 +196,16 @@ def _reject_step_conflicts(p: argparse.ArgumentParser, ns) -> None:
             p.error(f"--step cannot be combined with {flag}")
 
 
+def _reject_status_conflicts(p: argparse.ArgumentParser, ns) -> None:
+    """``--status`` is its own read-only mode; ``--watch`` only repeats it."""
+    if ns.status and (ns.plan or ns.step):
+        p.error(f"--status cannot be combined with {'--plan' if ns.plan else '--step'}")
+    if ns.watch is not None and not ns.status:
+        p.error("--watch requires --status")
+    if ns.watch is not True and ns.watch is not None and ns.watch < 1:
+        p.error("--watch MINUTES must be a positive integer")
+
+
 def _plan_fields(p: argparse.ArgumentParser, ns) -> list[str] | None:
     """``--fields`` as a list of valid plan keys; an unknown key is an error naming the valid ones."""
     if ns.fields is None:
@@ -198,7 +226,8 @@ def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
         description=(
             "Orchestrate the task loop: do-next-available-task -> implement -> "
             "(optional pre-finish hook) -> finish-this-task, repeated until a stop "
-            "condition. Use --plan for a read-only dependency/wave report (no git)."
+            "condition. Use --plan for a read-only dependency/wave report (no git), or "
+            "--status for a goal's leaves by state, a completion range and what waits on a person."
         ),
     )
     _add_mode_and_stop_args(p)
@@ -207,9 +236,10 @@ def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
     _add_passthrough_args(p)
     ns = p.parse_args(argv if argv is not None else sys.argv[1:])
     ns.fields = _plan_fields(p, ns)
+    _reject_status_conflicts(p, ns)
     if ns.step:
         _reject_step_conflicts(p, ns)
-    elif ns.implement_mode == "hook" and not ns.implement_cmd and not ns.plan:
+    elif ns.implement_mode == "hook" and not ns.implement_cmd and not (ns.plan or ns.status):
         p.error("--implement-mode hook requires --implement-cmd")
     for name in (
         "max_limit_waits",

@@ -15,6 +15,7 @@
 **Read further for:**
 - which mode fits your situation → "When to use it"
 - `ready`/`blocked`/`waves`, plan versus pickup, the JSON shape → "Planner first: `--plan`"
+- a goal's leaves by state, a completion range, what waits on a person, `--watch` → "Status: `--status`"
 - the cycle, in-flight claims, `why-blocked`, implement modes, step mode, Claude usage limits, the baseline and pre-finish hooks, cleanup, hook-run requirements → "The loop"
 - flags, codes and JSONL events → "Stop conditions", "Exit codes", "JSON events (`--json`)"
 - yamllint and milestone rollup branches → "Registry / pre-commit (yamllint) compatibility", "Relationship to milestone sessions"
@@ -32,6 +33,7 @@ independent work safely and skip waves whose dependencies are not met yet.
 | Goal | Use |
 | --- | --- |
 | Plan sub-agent batches / see what is ready vs blocked | `grind-session --plan [--json]` |
+| How far a goal is, when it may finish, what waits on a person | `grind-session --status --until NODE [--json]` |
 | One agent grinds many leaves autonomously | `grind-session --implement-mode hook --implement-cmd …` |
 | An IDE agent session (Claude Code, Cursor) drives the loop itself | `grind-session --step pickup`, implement, `grind-session --step finish` |
 | A human drives the loop, implementing between cycles | `grind-session` (manual mode, default) |
@@ -161,6 +163,61 @@ dispatched until `M10.5` completes.
 }
 ```
 
+
+## Status: `--status`
+
+```bash
+specy-road grind-session --status --until M16.8.4        # a goal and everything it needs
+specy-road grind-session --status --under M7 --json      # a subtree, one JSON object
+specy-road grind-session --status --watch                # again every interval, until Ctrl+C
+```
+
+`--status` answers the questions a maintainer asks during a grind: how many leaves are left, done and active,
+when the goal may finish, and what waits on a person. It is read-only: no fetch, no git writes, no harness call
+(the history cache under `.specyrd/cache/` is the only file it may write, as `specy-road history` does). It
+cannot be combined with `--plan` or `--step`.
+
+**Scope.** `--until NODE` takes the node's leaves, then, for every node added that is not Complete, its effective
+dependencies (a group dependency adds its leaves, each expanded the same way); a Complete dependency adds its
+leaves as done and is not followed further. `--under NODE` takes the subtree; both flags take the intersection.
+With neither, the parent in `work/.milestone-session.yaml` is used as `--under`; with no session file the command
+exits 2. The loop plans `--under` only and stops after it picks `--until`, so it can run ready leaves under
+`--under` that `--until` does not need; status does not count those.
+
+**Buckets.** Gate nodes are not counted. Each other leaf is in one bucket, first match wins: done, cancelled,
+**held** (an open gate among its unmet dependencies; a claimed leaf whose review is `escalated`,
+`fix_round_budget_spent` or `executor_blocked`, or whose review policy changed since the claim; or a live worker
+leased to `human` or flagged `needs_person`), **active** (claimed or In Progress, with its review state and live
+worker), **ready**, **waiting** (with `waiting_on`), **finished, awaiting merge** (Complete on its feature branch,
+not merged; counted in remaining) and **not pickable** (unauthored, needs a codename). Remaining is total minus
+done and cancelled. Review state is evaluated only for claimed leaves in scope, without the trial merge.
+
+**Estimate.** From the earliest status-to-Complete event of each done leaf (matched by `node_key`, timed by its
+author date): with fewer than 5 completions or under 24 hours between the first and the last it says not enough
+data. Otherwise earliest and latest are now plus remaining divided by the faster and the slower of the overall
+rate, (n-1)/(last-first), and the rate over the last 7 days. The output prints the method and its inputs, and
+assumes held and waiting leaves clear at the past pace.
+
+**Decisions.** Open `decision` and `human-action` entries of the merged ledger, those in scope with every
+recorded field (pros and cons are printed as not recorded: the schema has no field for them), the rest one line
+each; then each held leaf with the next step its record names (`set-gate-status`, the RCA prompt, the budget's
+next command, the executor's `blocked_on` lines, `review accept-policy`, `worker reclaim` or `worker status`).
+Nothing is invented: a field a record lacks is listed under `missing`.
+
+**Sessions.** Open brainstorm sessions (slug, mode, idea count) and every live presence session (agent, branch,
+note, expiry), whatever the scope. A presence record has no role, so no session is classed as a planner: a planner
+starts with `specy-road session start --note 'planner: <topic>'` so its note says what it is.
+
+**JSON.** `--status --json` prints one object with `generated_at`, `source` (`branch`, `head`, `fetched`: false),
+`goal`, `scope`, `totals`, `held`, `active`, `ready`, `waiting`, `awaiting_merge`, `not_pickable`, `estimate`
+(`method`, `inputs`, `earliest`, `latest`, `reason`), `decisions` (`ledger`, `ledger_outside_scope`, `held`),
+`sessions` (`brainstorm`, `presence`) and `missing`.
+
+**Watch.** `--status --watch [MINUTES]` prints the report again after each interval, each after a separator line
+with its `last updated` time, until Ctrl+C (exit 0); with `--json` each report is one line. The interval is
+MINUTES, else `grind_session_status_interval_minutes` in `roadmap/git-workflow.yaml`, else 30; a value below 1
+exits 2. `--watch` is for a person's terminal: a coordinator in a chat runs `--status` once per interval instead
+(the bundled orchestrate and grind-session skills say how).
 
 ## The loop
 
