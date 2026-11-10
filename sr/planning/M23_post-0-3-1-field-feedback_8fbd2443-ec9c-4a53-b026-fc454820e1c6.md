@@ -52,3 +52,5 @@ From the sanitized field report and its triage; items 7, 13â€“15, 17, 19 and 21â
 - The human eligibility hint prints the leaf form of `mark-implementation-reviewed`, with no id and run from the feature branch, for a leaf (finding 37). Superseded by M22.67 (2026-11-09).
 - The milestone full-review menu lists the leaves it covers, with their landing commits and a diffstat, or points at `review-packet`; `[w]` shows only when there is a walkthrough (finding 38).
 - The milestone full review prints the push hint pickup prints after its integration-branch commit (finding 39).
+- The reviewer precondition (`dirty_check`) excludes every leaf's brief and implementation summary, so a modified tracked brief of another leaf stays invisible to it; narrow the exclusion to the leaf's own brief and summary, the rule `worker reconcile` already uses (found by M22.65, maintainer 2026-11-09).
+- The post-run check counts commits a worker merged in from the integration branch, and files already dirty when a worker was resumed, as the worker's own (three false holds on 2026-11-09); attribute only the worker's own commits and the paths that changed during the turn.
