@@ -46,6 +46,7 @@ from specy_road.version_pin import warn_if_pin_differs
 
 
 def _register_entry_problems(root: Path, data: dict, today: date) -> list[str]:
+    """Why one register entry's front matter ``data`` needs attention; empty when it does not."""
     problems = []
     prompt = data.get("prompt")
     if not isinstance(prompt, str) or not prompt.strip():
@@ -70,6 +71,12 @@ def _register_entry_problems(root: Path, data: dict, today: date) -> list[str]:
 
 
 def warn_research_register(root: Path, today: date | None = None) -> None:
+    """One non-fatal line per ``research/<topic>.md`` register entry that needs attention.
+
+    An entry is due when more than ``cadence_days`` have passed since ``last_run``
+    (or it has never run). Its ``prompt`` must be a file under ``research/``:
+    a prompt in ``work/`` is scratch that ``finish-this-task`` may clean up.
+    """
     research = root / "research"
     if not research.is_dir():
         return

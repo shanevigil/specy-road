@@ -18,7 +18,16 @@ UNRESOLVABLE_HOLD = "its full review cannot be evaluated"
 
 
 def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> str | None:
-    """Why ``node_id`` keeps its status while its full review is pending, else ``None``."""
+    """Why ``node_id`` keeps its status while its full review is pending, else ``None``.
+
+    Only a milestone under the review gate is held, and only while the policy
+    is on. The gate is evaluated at the milestone's review target (the
+    integration tip), and only once every leaf is Complete there: an approval
+    recorded before the last leaf landed never releases the hold. A target
+    that cannot be resolved holds too, since the review cannot have happened.
+    A milestone whose authored status is already Complete has been closed;
+    later integration commits (including the closure commit) do not reopen it.
+    """
     if not is_milestone(nodes, node_id) or not review_required(repo_root):
         return None
     ref, _err = policy_source(repo_root)
@@ -32,7 +41,7 @@ def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> s
         target = resolve_target(repo_root, node_id, nodes=nodes)
     except ReviewTargetError as e:
         return f"{UNRESOLVABLE_HOLD} ({e})"
-    if target.unfinished_leaves:
+    if target.unfinished_leaves:   # a review of the tip before the last leaf landed covers less than the milestone
         return f"its leaves {', '.join(target.unfinished_leaves)} have not landed on {target.ref}"
     gate = evaluate_gate(repo_root, node, target.commit)
     if gate.passed:
@@ -41,7 +50,14 @@ def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> s
 
 
 def demote_pending_milestone_rollups(repo_root: Path, nodes: list[dict]) -> None:
-    """Keep a held milestone's computed rollup non-Complete on the public loader."""
+    """Keep a held milestone's computed rollup non-Complete on the public loader.
+
+    ``compute_rollup_status`` is still leaf-based (dependency satisfaction).
+    A recorded closure (authored ``status`` Complete) is left Complete: the
+    status commit and later integration work must not reopen it. When the
+    target cannot be resolved the leaf rollup is left unchanged: a graph
+    without git must not look held.
+    """
     for n in nodes:
         nid = n.get("id")
         if n.get("rollup_status") != "Complete" or not isinstance(nid, str):
@@ -79,7 +95,11 @@ def held_milestones(repo_root: Path, nodes: list[dict]) -> dict[str, str]:
 
 
 def milestone_review_hold_notice(node_id: str, why: str) -> str:
-    """The notice validate and why-blocked print for a held milestone."""
+    """The notice validate and why-blocked print for a held milestone: the reason and the three ways out.
+
+    A hold whose review target cannot be resolved does not demote the rollup
+    (see :func:`demote_pending_milestone_rollups`), so it gets one line only.
+    """
     if why.startswith(UNRESOLVABLE_HOLD):
         return (
             f"milestone review: notice — {node_id}: {why} (policy.milestone_full_review); "

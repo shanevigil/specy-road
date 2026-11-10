@@ -13,17 +13,25 @@ MANIFEST_REL = Path(".specyrd") / "manifest.json"
 
 
 def stubs_are_stale(start: Path) -> str | None:
+    """The recorded specyrd version when it lags the installed one, else None.
+
+    ``start`` may be the project root; ``.specyrd/`` lives at the git root, which
+    is a different directory under the nested layout.
+    """
     checkout = git_root(start) or start
     if not (checkout / MANIFEST_REL).is_file():
         return None
     manifest = _load_manifest(checkout)
     if not manifest.get("agents"):
+        # `init project` records project_root (and the version) with no pack:
+        # no stubs, so no skew, and refresh-stubs has no version to bump.
         return None
     recorded = str(manifest.get("specyrd_version") or "")
     return recorded if recorded and recorded != __version__ else None
 
 
 def warn_if_stubs_stale(start: Path) -> None:
+    """One non-fatal line when the installed stubs predate this version."""
     recorded = stubs_are_stale(start)
     if recorded is None:
         return
