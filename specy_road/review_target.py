@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.roadmap_chunk_utils import find_chunk_path
-from specy_road.roadmap_load import load_roadmap
+from specy_road.roadmap_graph import load_roadmap
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_stdout, git_text, local_branch_exists
 from specy_road.git_workflow_config import resolve_integration_defaults

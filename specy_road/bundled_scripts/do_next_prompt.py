@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_available import blocked_pick_notice
-from specy_road.bundled_scripts.generate_brief import index as make_index
+from specy_road.brief_generation import index as make_index
 from specy_road.git_workflow_config import (
     require_implementation_review_before_finish,
 )

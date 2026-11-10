@@ -62,7 +62,8 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
-from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
+from specy_road.brief_generation import index, render_brief
+from specy_road.verify_cmd_config import verify_cmd_lines
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.review_packet import _fence, build_packet
 from specy_road.role_prompt_cli import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,

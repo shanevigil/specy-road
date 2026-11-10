@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, open_chore
-from specy_road.bundled_scripts.generate_brief import index, render_brief
+from specy_road.brief_generation import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import current_branch_name, git_root, is_worktree_root, run
 from specy_road.nested_repos import (
