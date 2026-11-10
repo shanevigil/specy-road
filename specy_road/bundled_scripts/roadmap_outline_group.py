@@ -15,20 +15,20 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+from specy_road.planning_sheet_bootstrap import (
     plan_planning_sheet_for_new_node,
 )
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
-from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
+from specy_road.roadmap_chunk_router_pick import (
     default_chunk_for_parent,
     insert_include_in_manifest,
     pick_target_chunk,
 )
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.roadmap_chunk_utils import (
     PHASE_ROOT_REASON,
     load_manifest_mapping,
 )
-from specy_road.bundled_scripts.roadmap_crud_ops import (
+from specy_road.roadmap_crud_ops import (
     _refuse_if_milestone_locked,
     repo_root,
     unknown_node_msg,
@@ -36,8 +36,8 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
 from specy_road.bundled_scripts.roadmap_crud_prepare import (
     ensure_codename_for_new_node,
 )
-from specy_road.bundled_scripts.roadmap_gui_tree import indent_parent_id
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_gui_tree import indent_parent_id
+from specy_road.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.planning_rename import (
     add_rewrite_refs_arg,
     print_rewrite_refs_note,
@@ -46,14 +46,14 @@ from specy_road.bundled_scripts.roadmap_move_node import (
     NodeMove,
     move_nodes,
 )
-from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
-from specy_road.bundled_scripts.roadmap_outline_ops import (
+from specy_road.roadmap_node_keys import new_node_key
+from specy_road.roadmap_outline_ops import (
     apply_indent,
     apply_outdent,
     ordered_sibling_ids,
     print_id_map,
 )
-from specy_road.bundled_scripts.roadmap_outline_renumber import (
+from specy_road.roadmap_outline_renumber import (
     assign_subtree_ids_inplace,
     check_chosen_child_id,
 )

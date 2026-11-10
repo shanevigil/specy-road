@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.planning_artifacts import (
+from specy_road.planning_artifacts import (
     collect_planning_artifact_errors,
     normalize_planning_dir,
     split_frontmatter,

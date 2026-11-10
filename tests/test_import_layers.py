@@ -7,12 +7,12 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# grind_session_cleanup now lives in specy_road, so it is not a bundled entry point.
 ENTRY_POINT_STEMS = (
     "generate_brief",
     "validate_roadmap",
     "refresh_stubs",
     "chore_cli",
-    "grind_session_cleanup",
 )
 
 

@@ -15,7 +15,7 @@ from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, 
 from tests.test_review_cli import _ready
 from tests.test_review_rca import ROSTER, _block_round, _run, _status
 
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.review_deferral import answer_item
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate

@@ -12,11 +12,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.roadmap_chunk_utils import (
     load_json_chunk,
     write_json_chunk,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 NK_A = "20000000-0000-4000-8000-00000000aa01"

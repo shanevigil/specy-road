@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
+from specy_road.roadmap_index import RoadmapIndex
 
 
 def _digit_run_to_int(run: str) -> int:

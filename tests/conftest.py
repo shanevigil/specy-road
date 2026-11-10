@@ -75,7 +75,7 @@ def gui_settings_never_touch_the_real_home(
     was thousands of dead entries and megabytes long. It is a credential store,
     so the default has to be the safe one.
     """
-    import specy_road.bundled_scripts.roadmap_gui_settings as settings
+    import specy_road.roadmap_gui_settings as settings
 
     home = tmp_path_factory.mktemp("gui-settings-home")
     monkeypatch.setattr(settings, "SETTINGS_DIR", home)

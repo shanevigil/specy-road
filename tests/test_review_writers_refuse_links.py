@@ -20,7 +20,7 @@ from tests.test_review_gate import TWO_FAMILIES
 from specy_road import safe_write
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import role_prompt
-from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
+from specy_road.registration_pickup_commit import registration_commit_message
 from specy_road.review_delegate import delegate, run_states
 from specy_road.review_delegate_packet import ensure_packet
 from specy_road.review_files import (

@@ -25,9 +25,9 @@ _CLI_MODULES = [
     "specy_road.cli",
     "specy_road.bundled_scripts.brainstorm_cli",
     "specy_road.bundled_scripts.brainstorm_cli_args",
-    "specy_road.bundled_scripts.brainstorm_promote",
-    "specy_road.bundled_scripts.brainstorm_session",
-    "specy_road.bundled_scripts.brainstorm_prompt",
+    "specy_road.brainstorm_promote",
+    "specy_road.brainstorm_session",
+    "specy_road.brainstorm_prompt",
     "specy_road.bundled_scripts.roadmap_crud",
     "specy_road.bundled_scripts.roadmap_move_node",
 ]

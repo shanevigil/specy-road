@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-from specy_road.bundled_scripts.grind_session_cleanup import delete_merged_branch
+from specy_road.grind_session_cleanup import delete_merged_branch
 from specy_road.finish_bookkeeping_undo import (
     BookkeepingSnapshot, UndoOutcome, one_line, undo_bookkeeping, undo_report,
 )
@@ -21,7 +21,7 @@ from specy_road.finish_land_integration import (
 )
 from specy_road.finish_land_local import land_on_integration
 from specy_road.finish_on_complete_override import OVERRIDE_FLAG, needs_override
-from specy_road.bundled_scripts.repo_ops import current_branch
+from specy_road.repo_ops import current_branch
 from specy_road.finish_work_artifacts import remove_main_checkout_pickup_files
 from specy_road.git_subprocess import git_ok
 from specy_road.git_workflow_config import should_cleanup_work_artifacts_on_finish

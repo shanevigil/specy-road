@@ -21,7 +21,7 @@ from specy_road.on_complete_session import (
 )
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.abort_task_pickup_own_commit import only_own_registration_ahead
-from specy_road.bundled_scripts.repo_ops import current_branch
+from specy_road.repo_ops import current_branch
 from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder

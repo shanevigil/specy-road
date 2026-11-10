@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.roadmap_chunk_utils import (
     OVERFLOW_REASON,
     PHASE_PRIMARY_DIR,
     PHASE_ROOT_REASON,
@@ -23,7 +23,7 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
     roadmap_dir,
 )
 from specy_road.file_limits_engine import roadmap_line_limit
-from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
+from specy_road.roadmap_chunk_utils import manifest_includes
 
 
 _DEFAULT_MAX_CHUNK_LINES = 500

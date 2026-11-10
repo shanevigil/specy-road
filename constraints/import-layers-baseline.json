@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-09",
+  "generated": "2026-11-10",
   "tool": "ast import scan (nested imports included)",
   "components": [
     {
@@ -22,7 +22,6 @@
         "specy_road.bundled_scripts.refresh_schemas",
         "specy_road.bundled_scripts.refresh_stubs",
         "specy_road.bundled_scripts.review_cli",
-        "specy_road.bundled_scripts.review_defer",
         "specy_road.bundled_scripts.review_node",
         "specy_road.bundled_scripts.review_packet",
         "specy_road.bundled_scripts.review_packet_nested",
@@ -35,33 +34,19 @@
         "specy_road.bundled_scripts.roadmap_crud_chunk_report",
         "specy_road.bundled_scripts.roadmap_crud_delete",
         "specy_road.bundled_scripts.roadmap_crud_dependency_ops",
-        "specy_road.bundled_scripts.roadmap_crud_ops",
         "specy_road.bundled_scripts.roadmap_crud_prepare",
-        "specy_road.bundled_scripts.roadmap_gui_remote",
-        "specy_road.bundled_scripts.roadmap_gui_tree",
         "specy_road.bundled_scripts.roadmap_id_rewrite_staging",
-        "specy_road.bundled_scripts.roadmap_index",
-        "specy_road.bundled_scripts.roadmap_layout",
-        "specy_road.bundled_scripts.roadmap_load",
         "specy_road.bundled_scripts.roadmap_move_id_forms",
         "specy_road.bundled_scripts.roadmap_move_node",
         "specy_road.bundled_scripts.roadmap_outline_group",
-        "specy_road.bundled_scripts.roadmap_outline_ops",
-        "specy_road.bundled_scripts.roadmap_outline_renumber",
         "specy_road.bundled_scripts.role_prompt",
-        "specy_road.bundled_scripts.role_prompt_cli",
         "specy_road.bundled_scripts.role_prompt_rca",
-        "specy_road.bundled_scripts.role_prompt_rework",
         "specy_road.bundled_scripts.session_plan",
-        "specy_road.bundled_scripts.session_plan_git",
         "specy_road.bundled_scripts.session_plan_render",
         "specy_road.bundled_scripts.validate_notices",
         "specy_road.bundled_scripts.validate_roadmap",
         "specy_road.bundled_scripts.validate_roadmap_checks",
         "specy_road.bundled_scripts.validate_self_heal",
-        "specy_road.bundled_scripts.validate_stale_commands",
-        "specy_road.bundled_scripts.worker_cli_render",
-        "specy_road.bundled_scripts.worker_cli_sync",
         "specy_road.changelog_check",
         "specy_road.cli",
         "specy_road.decisions",
@@ -86,6 +71,7 @@
         "specy_road.review_answer",
         "specy_road.review_bookkeeping",
         "specy_road.review_caller",
+        "specy_road.review_defer",
         "specy_road.review_deferral",
         "specy_road.review_delegate",
         "specy_road.review_delegate_harness",
@@ -118,11 +104,23 @@
         "specy_road.review_write_check",
         "specy_road.reviewer_run_failure",
         "specy_road.rework_rca",
+        "specy_road.roadmap_crud_ops",
+        "specy_road.roadmap_gui_remote",
+        "specy_road.roadmap_gui_tree",
+        "specy_road.roadmap_index",
+        "specy_road.roadmap_layout",
+        "specy_road.roadmap_load",
+        "specy_road.roadmap_outline_ops",
+        "specy_road.roadmap_outline_renumber",
+        "specy_road.role_prompt_cli",
+        "specy_road.role_prompt_rework",
         "specy_road.roster_local",
         "specy_road.roster_profile_check",
+        "specy_road.session_plan_git",
         "specy_road.session_presence",
         "specy_road.specyrd_cli",
         "specy_road.specyrd_init",
+        "specy_road.validate_stale_commands",
         "specy_road.version_pin",
         "specy_road.version_skew",
         "specy_road.worker_adapter_base",
@@ -131,6 +129,8 @@
         "specy_road.worker_adapter_cursor",
         "specy_road.worker_adapter_parsers",
         "specy_road.worker_adapters",
+        "specy_road.worker_cli_render",
+        "specy_road.worker_cli_sync",
         "specy_road.worker_exit",
         "specy_road.worker_lease",
         "specy_road.worker_lock",
@@ -167,9 +167,9 @@
     {
       "size": 3,
       "modules": [
-        "specy_road.bundled_scripts.pm_gui_git_remote_verify",
-        "specy_road.bundled_scripts.roadmap_gui_settings",
-        "specy_road.bundled_scripts.roadmap_gui_settings_scope"
+        "specy_road.bundled_scripts.roadmap_gui_settings_scope",
+        "specy_road.pm_gui_git_remote_verify",
+        "specy_road.roadmap_gui_settings"
       ]
     },
     {
@@ -199,22 +199,22 @@
     {
       "size": 2,
       "modules": [
+        "specy_road.brainstorm_promote",
+        "specy_road.brainstorm_prompt"
+      ]
+    },
+    {
+      "size": 2,
+      "modules": [
+        "specy_road.brainstorm_session",
+        "specy_road.bundled_scripts.brainstorm_fields"
+      ]
+    },
+    {
+      "size": 2,
+      "modules": [
         "specy_road.bundled_scripts.brainstorm_cli_revise",
         "specy_road.bundled_scripts.brainstorm_cli_v2"
-      ]
-    },
-    {
-      "size": 2,
-      "modules": [
-        "specy_road.bundled_scripts.brainstorm_fields",
-        "specy_road.bundled_scripts.brainstorm_session"
-      ]
-    },
-    {
-      "size": 2,
-      "modules": [
-        "specy_road.bundled_scripts.brainstorm_promote",
-        "specy_road.bundled_scripts.brainstorm_prompt"
       ]
     },
     {
@@ -234,12 +234,8 @@
   ],
   "entry_point_edges": [
     {
-      "from": "specy_road.bundled_scripts.brainstorm_chat",
+      "from": "specy_road.brainstorm_chat",
       "to": "specy_road.bundled_scripts.review_node"
-    },
-    {
-      "from": "specy_road.bundled_scripts.branches_cli",
-      "to": "specy_road.bundled_scripts.grind_session_cleanup"
     },
     {
       "from": "specy_road.bundled_scripts.chore_garden",
@@ -268,10 +264,6 @@
     {
       "from": "specy_road.bundled_scripts.doctor",
       "to": "specy_road.bundled_scripts.branches_cli"
-    },
-    {
-      "from": "specy_road.bundled_scripts.grind_session",
-      "to": "specy_road.bundled_scripts.grind_session_cleanup"
     },
     {
       "from": "specy_road.bundled_scripts.grind_session_step",
@@ -306,14 +298,6 @@
       "to": "specy_road.bundled_scripts.roadmap_outline_group"
     },
     {
-      "from": "specy_road.bundled_scripts.roadmap_crud_ops",
-      "to": "specy_road.bundled_scripts.validate_roadmap"
-    },
-    {
-      "from": "specy_road.bundled_scripts.roadmap_gui_remote",
-      "to": "specy_road.bundled_scripts.review_node"
-    },
-    {
       "from": "specy_road.bundled_scripts.roadmap_id_rewrite_staging",
       "to": "specy_road.bundled_scripts.planning_rename"
     },
@@ -331,10 +315,6 @@
     },
     {
       "from": "specy_road.bundled_scripts.roadmap_outline_group",
-      "to": "specy_road.bundled_scripts.roadmap_move_node"
-    },
-    {
-      "from": "specy_road.bundled_scripts.roadmap_outline_ops",
       "to": "specy_road.bundled_scripts.roadmap_move_node"
     },
     {
@@ -382,16 +362,8 @@
       "to": "specy_road.bundled_scripts.planning_rename"
     },
     {
-      "from": "specy_road.doctor_worktrees",
-      "to": "specy_road.bundled_scripts.grind_session_cleanup"
-    },
-    {
       "from": "specy_road.finish_land_deterministic",
       "to": "specy_road.bundled_scripts.export_roadmap_md"
-    },
-    {
-      "from": "specy_road.finish_modes",
-      "to": "specy_road.bundled_scripts.grind_session_cleanup"
     },
     {
       "from": "specy_road.generated_files",
@@ -434,6 +406,18 @@
       "to": "specy_road.bundled_scripts.review_cli"
     },
     {
+      "from": "specy_road.roadmap_crud_ops",
+      "to": "specy_road.bundled_scripts.validate_roadmap"
+    },
+    {
+      "from": "specy_road.roadmap_gui_remote",
+      "to": "specy_road.bundled_scripts.review_node"
+    },
+    {
+      "from": "specy_road.roadmap_outline_ops",
+      "to": "specy_road.bundled_scripts.roadmap_move_node"
+    },
+    {
       "from": "specy_road.version_pin",
       "to": "specy_road.bundled_scripts.refresh_stubs"
     },
@@ -468,10 +452,6 @@
     {
       "from": "specy_road.worker_reconcile",
       "to": "specy_road.bundled_scripts.role_prompt"
-    },
-    {
-      "from": "specy_road.worktree_prune",
-      "to": "specy_road.bundled_scripts.grind_session_cleanup"
     }
   ]
 }

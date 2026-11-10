@@ -37,8 +37,8 @@ from specy_road.bundled_scripts.do_next_task_leaf_guards import (
     exit_no_actionable_leaves as _exit_no_actionable_leaves,
 )
 from specy_road.bundled_scripts.do_next_task_register import register_claim
-from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.registration_pickup_commit import registration_commit_message
+from specy_road.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
 )
@@ -64,7 +64,7 @@ from specy_road.nested_repos import announce_nested_worktrees
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.planning_scaffold_check import warn_scaffold_at_pickup
 from specy_road.runtime_paths import resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, sync_integration_branch
+from specy_road.repo_ops import assert_working_tree_clean, current_branch, sync_integration_branch
 from specy_road.repo_lock import pickup_finish_lock
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder

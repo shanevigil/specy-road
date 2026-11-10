@@ -141,7 +141,7 @@ def _available(repo_root: Path, config: dict[str, Any], role: str, exclude: set[
 
 def facts(repo_root: Path, config: dict[str, Any], loop: LoopState, node_id: str, blocked: bool) -> Facts:
     """What the step depends on; the costlier reads happen only once the budget is set."""
-    from specy_road.bundled_scripts.review_defer import applicable_record   # it imports review_deferral
+    from specy_road.review_defer import applicable_record   # it imports review_deferral
     from specy_road.review_rca import rca_parties
 
     budget = (config.get("policy") or {}).get("max_fix_rounds")

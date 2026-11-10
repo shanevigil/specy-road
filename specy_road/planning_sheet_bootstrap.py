@@ -5,8 +5,8 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
-from specy_road.bundled_scripts.planning_artifacts import (
+from specy_road.brief_acceptance import acceptance_ids
+from specy_road.planning_artifacts import (
     expected_planning_rel,
     normalize_planning_dir,
     resolve_planning_path,

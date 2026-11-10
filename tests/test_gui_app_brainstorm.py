@@ -251,14 +251,14 @@ def test_research_settings_round_trip_and_obfuscate_the_key(
 ) -> None:
     import json
 
-    from specy_road.bundled_scripts import roadmap_gui_settings as m
+    from specy_road import roadmap_gui_settings as m
 
     monkeypatch.setattr(m, "SETTINGS_DIR", tmp_path / "cfg")
     monkeypatch.setattr(m, "SETTINGS_PATH", tmp_path / "cfg" / "gui-settings.json")
 
     import os
 
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     r = api_client.put(
         "/api/settings",
@@ -322,7 +322,7 @@ def test_chatting_puts_the_models_ideas_on_the_board(
     api_client: TestClient, monkeypatch
 ) -> None:
     """The panel's whole point: without this, triage and promote stay empty."""
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: REPLY_WITH_IDEAS)
     slug = _session(api_client)["slug"]
@@ -348,7 +348,7 @@ def test_chatting_puts_the_models_ideas_on_the_board(
 def test_converging_does_not_quietly_add_ideas(
     api_client: TestClient, monkeypatch
 ) -> None:
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: REPLY_WITH_IDEAS)
     slug = _session(api_client, mode="roadmap")["slug"]
@@ -372,7 +372,7 @@ def test_a_chat_turn_keeps_ideas_written_while_the_model_was_thinking(
     api_client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Pre-release review: the chat route saved the session it loaded before the LLM call, dropping a shard's idea."""
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     slug = _session(api_client)["slug"]
 

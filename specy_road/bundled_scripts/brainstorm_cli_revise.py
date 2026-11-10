@@ -6,7 +6,7 @@ import argparse
 
 from specy_road.bundled_scripts.brainstorm_cli_v2 import next_step, stage
 from specy_road.bundled_scripts.brainstorm_fields import parse_overlap
-from specy_road.bundled_scripts.brainstorm_session import read_session, resolve_slug, write_session
+from specy_road.brainstorm_session import read_session, resolve_slug, write_session
 from specy_road.runtime_paths import resolve_repo_root
 
 

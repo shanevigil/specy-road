@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     PROMPT_SUFFIX,
     SESSION_PREFIX,
     BrainstormError,

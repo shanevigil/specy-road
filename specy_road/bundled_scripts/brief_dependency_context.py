@@ -35,13 +35,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
-from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
+from specy_road.planning_sheet_bootstrap import (
     feature_sheet_level2_titles,
     gate_sheet_level2_titles,
     sheet_placeholder,
 )
-from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
+from specy_road.roadmap_index import RoadmapIndex
 
 from specy_road.text_sections import LEVEL2_RE, find_section, normalize_heading, read_text_safely
 from specy_road.archive_index import iter_archived_summaries

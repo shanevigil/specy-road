@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import sys
 
-from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, ordered_tree_rows
+from specy_road.roadmap_layout import effective_dependency_keys, ordered_tree_rows
 from specy_road.milestone_subtree import leaf_ids_under_parent
 from specy_road.node_kinds import is_gate
 

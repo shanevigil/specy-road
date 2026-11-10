@@ -17,9 +17,9 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.brief_dependency_context import extract_intent_block
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
-from specy_road.bundled_scripts.planning_sheet_bootstrap import _section_bodies, approach_is_placeholder
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.planning_sheet_bootstrap import _section_bodies, approach_is_placeholder
+from specy_road.roadmap_load import load_roadmap
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 

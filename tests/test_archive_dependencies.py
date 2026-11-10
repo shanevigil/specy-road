@@ -35,7 +35,7 @@ def repo(tmp_path: Path) -> Path:
 
 
 def _live_nodes(repo: Path) -> list[dict]:
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     return load_roadmap(repo)["nodes"]
 
@@ -134,7 +134,7 @@ def test_no_index_means_no_archived_keys(repo: Path) -> None:
 
 
 def _leaf_is_dep_blocked(repo: Path, node_id: str) -> bool:
-    from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
+    from specy_road.roadmap_index import RoadmapIndex
 
     index = RoadmapIndex(_live_nodes(repo))
     return bool(index.unmet(index.by_id[node_id]))
@@ -178,8 +178,8 @@ def test_grind_session_waves_still_schedule_it(repo: Path) -> None:
 
 def test_an_unmet_live_dependency_still_blocks(repo: Path) -> None:
     """Guards the guard: the archived case must not blanket-unblock everything."""
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+    from specy_road.roadmap_load import load_roadmap
+    from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 
     chunk = repo / "roadmap" / "phases" / "M0.json"
     nodes = load_json_chunk(chunk)

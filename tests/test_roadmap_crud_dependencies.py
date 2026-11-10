@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.cli_usage import USAGE_TEXT
 from tests.test_roadmap_crud import crud_fixture_repo, run_crud
 

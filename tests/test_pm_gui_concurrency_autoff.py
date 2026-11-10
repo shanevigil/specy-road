@@ -28,7 +28,7 @@ import pytest
 from tests.helpers import DOGFOOD
 
 _ROOT = Path(__file__).resolve().parent.parent
-from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+from specy_road.roadmap_layout import natural_id_sort_key
 
 
 def _git(args: list[str], cwd: Path) -> str:

@@ -25,7 +25,7 @@ from __future__ import annotations
 from functools import cached_property
 from typing import Iterable, Mapping
 
-from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+from specy_road.roadmap_load import compute_rollup_status
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_pickable
 
@@ -108,7 +108,7 @@ class RoadmapIndex:
     def outline_position(self) -> dict[str, int]:
         """Display id -> pre-order outline index (siblings by ``sibling_order``, then id)."""
         # Imported here: roadmap_layout answers its dependency maps from this index.
-        from specy_road.bundled_scripts.roadmap_layout import ordered_tree_rows
+        from specy_road.roadmap_layout import ordered_tree_rows
 
         return {node["id"]: i for i, (node, _depth) in enumerate(ordered_tree_rows(self.nodes))}
 

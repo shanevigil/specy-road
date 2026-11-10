@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,

@@ -85,6 +85,25 @@
     "specy_road/archive_restore.py": {
       "PL": 6
     },
+    "specy_road/brainstorm_chat.py": {
+      "PL": 4
+    },
+    "specy_road/brainstorm_promote.py": {
+      "PL": 5
+    },
+    "specy_road/brainstorm_prompt.py": {
+      "PL": 3
+    },
+    "specy_road/brainstorm_research.py": {
+      "PL": 3
+    },
+    "specy_road/brainstorm_session.py": {
+      "D102/D103": 7
+    },
+    "specy_road/brief_acceptance.py": {
+      "B": 2,
+      "D102/D103": 1
+    },
     "specy_road/bundled_scripts/abort_task_pickup.py": {
       "PL": 3,
       "D102/D103": 1
@@ -98,9 +117,6 @@
     },
     "specy_road/bundled_scripts/author_approach.py": {
       "D102/D103": 2
-    },
-    "specy_road/bundled_scripts/brainstorm_chat.py": {
-      "PL": 4
     },
     "specy_road/bundled_scripts/brainstorm_cli.py": {
       "PL": 1,
@@ -131,15 +147,9 @@
     "specy_road/bundled_scripts/brainstorm_lenses.py": {
       "D102/D103": 2
     },
-    "specy_road/bundled_scripts/brainstorm_promote.py": {
-      "PL": 5
-    },
     "specy_road/bundled_scripts/brainstorm_promote_plan.py": {
       "PL": 1,
       "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/brainstorm_prompt.py": {
-      "PL": 3
     },
     "specy_road/bundled_scripts/brainstorm_prompt_diverge.py": {
       "D102/D103": 7
@@ -147,24 +157,14 @@
     "specy_road/bundled_scripts/brainstorm_prompt_evidence.py": {
       "D102/D103": 1
     },
-    "specy_road/bundled_scripts/brainstorm_research.py": {
-      "PL": 3
-    },
     "specy_road/bundled_scripts/brainstorm_search_providers.py": {
       "D102/D103": 3
-    },
-    "specy_road/bundled_scripts/brainstorm_session.py": {
-      "D102/D103": 7
     },
     "specy_road/bundled_scripts/brainstorm_verify.py": {
       "PL": 2
     },
     "specy_road/bundled_scripts/branches_cli.py": {
       "D102/D103": 4
-    },
-    "specy_road/bundled_scripts/brief_acceptance.py": {
-      "B": 2,
-      "D102/D103": 1
     },
     "specy_road/bundled_scripts/brief_dependency_context.py": {
       "PL": 1
@@ -306,16 +306,9 @@
       "PL": 1,
       "D102/D103": 3
     },
-    "specy_road/bundled_scripts/planning_artifacts.py": {
-      "PL": 4
-    },
     "specy_road/bundled_scripts/planning_rename.py": {
       "PL": 7,
       "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/pm_gui_git_remote_verify.py": {
-      "PL": 3,
-      "D102/D103": 3
     },
     "specy_road/bundled_scripts/pm_sync.py": {
       "PL": 1,
@@ -344,24 +337,14 @@
       "PL": 1,
       "D102/D103": 1
     },
-    "specy_road/bundled_scripts/registration_pickup_commit.py": {
-      "D102/D103": 1
-    },
     "specy_road/bundled_scripts/registry_claim_status.py": {
       "D102/D103": 3
     },
     "specy_road/bundled_scripts/registry_prune.py": {
       "D102/D103": 1
     },
-    "specy_road/bundled_scripts/repo_ops.py": {
-      "PL": 1
-    },
     "specy_road/bundled_scripts/review_cli.py": {
       "D102/D103": 4
-    },
-    "specy_road/bundled_scripts/review_defer.py": {
-      "PL": 1,
-      "D102/D103": 2
     },
     "specy_road/bundled_scripts/review_node.py": {
       "PL": 7,
@@ -391,15 +374,6 @@
     "specy_road/bundled_scripts/roadmap_chunk_router.py": {
       "PL": 8
     },
-    "specy_road/bundled_scripts/roadmap_chunk_router_pick.py": {
-      "N": 1,
-      "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/roadmap_chunk_utils.py": {
-      "PL": 1,
-      "RET": 1,
-      "D102/D103": 1
-    },
     "specy_road/bundled_scripts/roadmap_codename_cap.py": {
       "PL": 1
     },
@@ -421,11 +395,6 @@
       "PL": 6,
       "D102/D103": 6
     },
-    "specy_road/bundled_scripts/roadmap_crud_ops.py": {
-      "PL": 8,
-      "SIM": 1,
-      "D102/D103": 7
-    },
     "specy_road/bundled_scripts/roadmap_crud_prepare.py": {
       "PL": 3
     },
@@ -434,43 +403,15 @@
       "PL": 4,
       "D102/D103": 1
     },
-    "specy_road/bundled_scripts/roadmap_gui_lib.py": {
-      "C901": 1,
-      "PL": 1,
-      "SIM": 1,
-      "D102/D103": 2
-    },
     "specy_road/bundled_scripts/roadmap_gui_pr_pickers.py": {
       "D102/D103": 2
-    },
-    "specy_road/bundled_scripts/roadmap_gui_remote.py": {
-      "PL": 9,
-      "SIM": 1,
-      "D102/D103": 2
-    },
-    "specy_road/bundled_scripts/roadmap_gui_settings.py": {
-      "PL": 3,
-      "SIM": 2,
-      "D102/D103": 5
     },
     "specy_road/bundled_scripts/roadmap_gui_settings_scope.py": {
       "PL": 3,
       "D102/D103": 2
     },
-    "specy_road/bundled_scripts/roadmap_gui_tree.py": {
-      "D102/D103": 2
-    },
     "specy_road/bundled_scripts/roadmap_id_rewrite_staging.py": {
       "B": 1
-    },
-    "specy_road/bundled_scripts/roadmap_layout.py": {
-      "PL": 1
-    },
-    "specy_road/bundled_scripts/roadmap_load.py": {
-      "PL": 1
-    },
-    "specy_road/bundled_scripts/roadmap_load_at_ref.py": {
-      "PL": 1
     },
     "specy_road/bundled_scripts/roadmap_move_id_forms.py": {
       "PL": 2
@@ -479,16 +420,9 @@
       "PL": 2,
       "D102/D103": 3
     },
-    "specy_road/bundled_scripts/roadmap_node_keys.py": {
-      "D102/D103": 2
-    },
     "specy_road/bundled_scripts/roadmap_outline_group.py": {
       "PL": 1,
       "D102/D103": 5
-    },
-    "specy_road/bundled_scripts/roadmap_outline_ops.py": {
-      "PL": 5,
-      "D102/D103": 1
     },
     "specy_road/bundled_scripts/roadmap_query_cli.py": {
       "D102/D103": 3
@@ -503,9 +437,6 @@
     "specy_road/bundled_scripts/role_prompt.py": {
       "PL": 6,
       "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/role_prompt_cli.py": {
-      "PL": 16
     },
     "specy_road/bundled_scripts/role_prompt_rca.py": {
       "PL": 4,
@@ -572,13 +503,6 @@
       "C901": 1,
       "PL": 1
     },
-    "specy_road/bundled_scripts/validate_stale_commands.py": {
-      "PL": 2,
-      "B": 1,
-      "SIM": 1,
-      "RET": 1,
-      "D102/D103": 1
-    },
     "specy_road/bundled_scripts/validate_touch_zones.py": {
       "SIM": 1
     },
@@ -588,12 +512,6 @@
     },
     "specy_road/bundled_scripts/worker_cli_args.py": {
       "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/worker_cli_render.py": {
-      "D102/D103": 2
-    },
-    "specy_road/bundled_scripts/worker_cli_sync.py": {
-      "D102/D103": 2
     },
     "specy_road/bundled_scripts/worktree_cli.py": {
       "D102/D103": 3
@@ -818,6 +736,13 @@
     "specy_road/orphaned_claims.py": {
       "PL": 1
     },
+    "specy_road/planning_artifacts.py": {
+      "PL": 4
+    },
+    "specy_road/pm_gui_git_remote_verify.py": {
+      "PL": 3,
+      "D102/D103": 3
+    },
     "specy_road/pm_integration_registry.py": {
       "PL": 3
     },
@@ -830,6 +755,9 @@
     "specy_road/red_green.py": {
       "PL": 1
     },
+    "specy_road/registration_pickup_commit.py": {
+      "D102/D103": 1
+    },
     "specy_road/registry_remote_overlay.py": {
       "PL": 3
     },
@@ -840,12 +768,19 @@
       "PL": 1,
       "D102/D103": 2
     },
+    "specy_road/repo_ops.py": {
+      "PL": 1
+    },
     "specy_road/review_answer.py": {
       "PL": 1,
       "B": 1
     },
     "specy_road/review_bookkeeping.py": {
       "PL": 1
+    },
+    "specy_road/review_defer.py": {
+      "PL": 1,
+      "D102/D103": 2
     },
     "specy_road/review_deferral.py": {
       "PL": 1,
@@ -947,6 +882,58 @@
       "N": 1,
       "D102/D103": 1
     },
+    "specy_road/roadmap_chunk_router_pick.py": {
+      "N": 1,
+      "D102/D103": 1
+    },
+    "specy_road/roadmap_chunk_utils.py": {
+      "PL": 1,
+      "RET": 1,
+      "D102/D103": 1
+    },
+    "specy_road/roadmap_crud_ops.py": {
+      "PL": 8,
+      "SIM": 1,
+      "D102/D103": 7
+    },
+    "specy_road/roadmap_gui_lib.py": {
+      "C901": 1,
+      "PL": 1,
+      "SIM": 1,
+      "D102/D103": 2
+    },
+    "specy_road/roadmap_gui_remote.py": {
+      "PL": 9,
+      "SIM": 1,
+      "D102/D103": 2
+    },
+    "specy_road/roadmap_gui_settings.py": {
+      "PL": 3,
+      "SIM": 2,
+      "D102/D103": 5
+    },
+    "specy_road/roadmap_gui_tree.py": {
+      "D102/D103": 2
+    },
+    "specy_road/roadmap_layout.py": {
+      "PL": 1
+    },
+    "specy_road/roadmap_load.py": {
+      "PL": 1
+    },
+    "specy_road/roadmap_load_at_ref.py": {
+      "PL": 1
+    },
+    "specy_road/roadmap_node_keys.py": {
+      "D102/D103": 2
+    },
+    "specy_road/roadmap_outline_ops.py": {
+      "PL": 5,
+      "D102/D103": 1
+    },
+    "specy_road/role_prompt_cli.py": {
+      "PL": 16
+    },
     "specy_road/roster_generate.py": {
       "PL": 1,
       "D102/D103": 4
@@ -1010,6 +997,13 @@
     "specy_road/tool_call_guard_shapes.py": {
       "B": 1
     },
+    "specy_road/validate_stale_commands.py": {
+      "PL": 2,
+      "B": 1,
+      "SIM": 1,
+      "RET": 1,
+      "D102/D103": 1
+    },
     "specy_road/version_skew.py": {
       "PL": 1,
       "D102/D103": 2
@@ -1034,6 +1028,12 @@
     },
     "specy_road/worker_adapters.py": {
       "D102/D103": 1
+    },
+    "specy_road/worker_cli_render.py": {
+      "D102/D103": 2
+    },
+    "specy_road/worker_cli_sync.py": {
+      "D102/D103": 2
     },
     "specy_road/worker_exit.py": {
       "PL": 1

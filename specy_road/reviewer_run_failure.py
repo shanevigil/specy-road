@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.brief_acceptance import acceptance_ids
 from specy_road.clock import utc_now_iso
 from specy_road.review_bookkeeping import policy_line
 from specy_road.review_files import list_reviews, reviews_dir

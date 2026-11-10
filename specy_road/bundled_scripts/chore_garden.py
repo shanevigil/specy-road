@@ -29,7 +29,7 @@ from specy_road import __version__
 from specy_road.fs_atomic import atomic_write_text
 from specy_road.agent_guide_block import PROVENANCE
 from specy_road.bundled_scripts.chore_cli import chores_dir
-from specy_road.bundled_scripts.validate_stale_commands import (
+from specy_road.validate_stale_commands import (
     agent_files,
     line_unregistered_commands,
     stale_command_advice,
@@ -174,8 +174,8 @@ def open_chores(root: Path, findings: list[Finding], under: str) -> list[str]:
     than the highest any live or archived node of the class carries, so a number is never reused.
     """
     from specy_road.archive_index import iter_archived_summaries  # noqa: PLC0415
-    from specy_road.bundled_scripts.roadmap_layout import next_child_id  # noqa: PLC0415
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap  # noqa: PLC0415
+    from specy_road.roadmap_layout import next_child_id  # noqa: PLC0415
+    from specy_road.roadmap_load import load_roadmap  # noqa: PLC0415
 
     done: list[str] = []
     for cls, title in CLASSES.items():

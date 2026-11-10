@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from specy_road.bundled_scripts.roadmap_outline_renumber import (
+from specy_road.roadmap_outline_renumber import (
     lowest_free_child_id,
     next_free_child_id,
     renumber_display_ids_inplace,
 )
-from specy_road.bundled_scripts.roadmap_layout import (
+from specy_road.roadmap_layout import (
     dependency_inheritance_display,
     effective_dependency_keys,
 )

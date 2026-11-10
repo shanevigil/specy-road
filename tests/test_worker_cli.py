@@ -15,7 +15,8 @@ from tests.review_repo_helpers import git
 
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import review_cli, worker_cli, worker_cli_render as wcr
+from specy_road.bundled_scripts import review_cli, worker_cli
+from specy_road import worker_cli_render as wcr
 
 from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import FAKE, make_worker_repo, run_fake_harness_turn, worker_roster  # noqa: F401

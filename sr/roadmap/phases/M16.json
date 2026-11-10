@@ -197,7 +197,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.5_library-modules-imported-by-the-package-move-out-of-bundled_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Library modules imported by the package move out of bundled_scripts",
       "touch_zones": [
         "specy_road/bundled_scripts/",

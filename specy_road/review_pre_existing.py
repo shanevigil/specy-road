@@ -34,7 +34,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_code, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults

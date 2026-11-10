@@ -299,7 +299,7 @@ def wait_for_event(repo_root: Path, timeout: float, since: tuple[int, int] | Non
     When ``event_types`` is set, only an unacknowledged event whose ``type`` is in the set counts; the typed loop
     lives in :mod:`specy_road.bundled_scripts.worker_cli_sync`."""
     if event_types is not None:
-        from specy_road.bundled_scripts.worker_cli_sync import wait_for_typed_event  # noqa: PLC0415
+        from specy_road.worker_cli_sync import wait_for_typed_event  # noqa: PLC0415
 
         return wait_for_typed_event(repo_root, timeout, since, interval, event_types)
     deadline = time.monotonic() + timeout

@@ -18,7 +18,8 @@ from tests.test_models_and_prompt import run_main
 from specy_road import harness_binary as hb
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli
+from specy_road.bundled_scripts import review_cli, role_prompt
+from specy_road import role_prompt_cli
 from specy_road.init_project import project_template_root
 from specy_road.model_profiles import load_profile
 from specy_road import review_delegate

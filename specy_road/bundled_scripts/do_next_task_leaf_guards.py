@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.do_next_available import _leaf_diagnostics
-from specy_road.bundled_scripts.planning_sheet_bootstrap import placeholder_sheet
+from specy_road.planning_sheet_bootstrap import placeholder_sheet
 from specy_road.do_next_milestone_pickup import print_integration_branch_hint
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.planning_scaffold_check import scaffold_sheet

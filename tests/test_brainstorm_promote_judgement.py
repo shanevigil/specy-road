@@ -7,17 +7,17 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts import brainstorm_promote
+from specy_road import brainstorm_promote
 from specy_road.bundled_scripts.brainstorm_close import close_session, closed_dir
-from specy_road.bundled_scripts.brainstorm_promote import promote_session
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_promote import promote_session
+from specy_road.brainstorm_session import (
     BrainstormSession,
     add_idea,
     prompt_path,
     write_session,
 )
-from specy_road.bundled_scripts.planning_sheet_bootstrap import placeholder_sheet, promote_placeholder
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.planning_sheet_bootstrap import placeholder_sheet, promote_placeholder
+from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
 
 

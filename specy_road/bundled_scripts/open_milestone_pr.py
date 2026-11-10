@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
     resolve_integration_defaults,

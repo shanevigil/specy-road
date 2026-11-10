@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.validate_touch_zones import (
     notice_stale_sheet_zones,
     warn_touch_zones_match_nothing,

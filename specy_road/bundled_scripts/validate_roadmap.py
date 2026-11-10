@@ -14,12 +14,12 @@ import yaml
 
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
 from specy_road.bundled_scripts.refresh_stubs import warn_if_stubs_stale
-from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.planning_artifacts import split_frontmatter
+from specy_road.roadmap_chunk_utils import (
     discover_manifest_path,
     load_manifest_mapping,
 )
-from specy_road.bundled_scripts.roadmap_load import (
+from specy_road.roadmap_load import (
     load_roadmap,
     validate_roadmap_line_limits,
 )
@@ -30,7 +30,7 @@ from specy_road.agents_md_block import (
     warn_if_context_over_limits,
     warn_missing_load_order_paths,
 )
-from specy_road.bundled_scripts.validate_stale_commands import unregistered_commands, warn_unregistered_commands
+from specy_road.validate_stale_commands import unregistered_commands, warn_unregistered_commands
 from specy_road.version_pin import pinned_version, warn_if_pin_differs
 from specy_road.bundled_scripts.chore_garden import warn_garden_due
 from specy_road.generated_files import warn_if_generated_files_ignored

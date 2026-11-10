@@ -58,8 +58,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.session_plan_git import gather_session_plan
+from specy_road.roadmap_load import load_roadmap
+from specy_road.session_plan_git import gather_session_plan
 from specy_road.decisions import plan_preferences
 from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: callers import them from here
     ANY,

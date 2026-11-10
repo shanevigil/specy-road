@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.brainstorm_session import resolve_slug
+from specy_road.brainstorm_session import resolve_slug
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 
 

@@ -45,7 +45,7 @@ def leaf_root(repo_root: Path, node_id: str) -> Path:
     A leaf whose branch is checked out nowhere (or that has no codename) reads
     ``repo_root``.
     """
-    from specy_road.bundled_scripts.roadmap_load import discover_manifest_path, load_roadmap   # noqa: PLC0415
+    from specy_road.roadmap_load import discover_manifest_path, load_roadmap   # noqa: PLC0415
 
     try:
         discover_manifest_path(repo_root)

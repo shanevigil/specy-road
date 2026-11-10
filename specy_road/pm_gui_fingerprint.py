@@ -26,8 +26,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import iter_roadmap_fingerprint_files  # noqa: E402
-from specy_road.bundled_scripts.roadmap_gui_lib import (  # noqa: E402
+from specy_road.roadmap_chunk_utils import iter_roadmap_fingerprint_files  # noqa: E402
+from specy_road.roadmap_gui_lib import (  # noqa: E402
     pm_gui_mutation_fingerprint_base,
     roadmap_files_fingerprint,
 )

@@ -130,7 +130,7 @@ def test_the_reference_file_stands_alone(repo: Path, deep: str) -> None:
 
 def test_archived_dependencies_survive_deepening(repo: Path, deep: str) -> None:
     """The ledger has to keep working when the nodes are inside a capsule."""
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
     from specy_road.bundled_scripts.validate_roadmap_checks import validate_dependency_ids
 
     assert M01_KEY in archived_node_keys(repo)

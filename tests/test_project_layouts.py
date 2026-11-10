@@ -290,7 +290,7 @@ def test_committed_copies_are_read_relative_to_the_project_root(layout: tuple[Pa
     assert [e["id"] for e in config["roster"]] == ["human", "reviewer-x"]
     assert config["policy"]["reviewers_required"] == 2
 
-    from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+    from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 
     nodes = load_roadmap_nodes_at_ref(project, "HEAD")
     assert nodes and any(n.get("id") == "M1" for n in nodes)

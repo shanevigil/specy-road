@@ -14,33 +14,33 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road.bundled_scripts.brainstorm_prompt import (
+from specy_road.brainstorm_prompt import (
     constraint_lines, reference_lines, render_authoring_prompt, write_prompt,
 )
 from specy_road.bundled_scripts.brainstorm_promote_plan import (  # pending_ideas: re-exported
     Landing, cluster_siblings, pending_ideas, select_landings,
 )
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     Idea,
     session_path,
     write_session,
 )
-from specy_road.bundled_scripts.planning_artifacts import (
+from specy_road.planning_artifacts import (
     normalize_planning_dir, planning_artifact_paths,
 )
-from specy_road.bundled_scripts.planning_sheet_bootstrap import promote_placeholder
+from specy_road.planning_sheet_bootstrap import promote_placeholder
 from specy_road.bundled_scripts.roadmap_chunk_atomic import TreeSnapshot
-from specy_road.bundled_scripts.roadmap_crud_ops import (
+from specy_road.roadmap_crud_ops import (
     append_node_to_chunk, run_validate_raise,
 )
 from specy_road.bundled_scripts.roadmap_crud_prepare import (
     derive_codename_with_collision_suffix, next_sibling_order,
 )
-from specy_road.bundled_scripts.roadmap_layout import next_child_id
+from specy_road.roadmap_layout import next_child_id
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, EXEC_MILESTONES
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 
 #: Gates are human holds, not work, so an idea never becomes one.
 PROMOTABLE_TYPES = ("vision", "phase", "milestone", "task")

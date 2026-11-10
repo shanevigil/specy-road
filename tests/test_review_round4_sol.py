@@ -45,7 +45,7 @@ from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import session_cli
 from specy_road.gui_app_models import BrainstormTriageBody
 from specy_road.gui_app_routes_brainstorm import _apply_triage, _payload
-from specy_road.bundled_scripts.brainstorm_session import BrainstormSession, add_idea
+from specy_road.brainstorm_session import BrainstormSession, add_idea
 from specy_road.review_files import reviews_root
 from specy_road.specyrd_init import run_init
 

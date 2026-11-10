@@ -7,9 +7,9 @@ import re
 from pathlib import Path
 from types import SimpleNamespace
 
-from specy_road.bundled_scripts.roadmap_chunk_router_pick import simulate_chunk_lines
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
-from specy_road.bundled_scripts.roadmap_crud_ops import cmd_edit
+from specy_road.roadmap_chunk_router_pick import simulate_chunk_lines
+from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.roadmap_crud_ops import cmd_edit
 from tests.review_repo_helpers import make_review_repo
 from tests.test_roadmap_crud import _edit, crud_fixture_repo, run_crud
 from tests.test_roadmap_chunk_router import _milestone, _phase_M0, _seed_repo

@@ -24,7 +24,7 @@ import sys
 from datetime import date
 
 from specy_road.decisions import format_preference
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.orchestrate_plan import OrchestrationPlan, build_orchestration_plan
 from specy_road.orchestration_pinned import WORKTREE_REF
 from specy_road.planning_scaffold_check import needs_approach_line

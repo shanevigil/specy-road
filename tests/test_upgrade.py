@@ -22,7 +22,7 @@ from specy_road.agent_guide_block import render_guide_lines
 from specy_road.agents_md_block import LOCAL_MD, RULES_MD, TEAM_MD, agents_md_block_state, render_rules
 from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.export_roadmap_md import export_markdown
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.upgrade import copy_missing_docs, run_upgrade
 from specy_road.digest import render_digest
 from specy_road.init_project import run_init_project

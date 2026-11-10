@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
-from specy_road.bundled_scripts.roadmap_outline_ops import (
+from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.roadmap_outline_ops import (
     apply_indent,
     apply_outdent,
     move_node_outline,

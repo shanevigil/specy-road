@@ -12,7 +12,7 @@ from pathlib import Path
 
 from tests.review_repo_helpers import make_review_repo
 
-from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_missing
+from specy_road.brief_acceptance import warn_acceptance_missing
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 
 
@@ -71,7 +71,7 @@ def test_validate_prints_one_warning_and_passes(tmp_path: Path, capsys) -> None:
 
 def test_a_pipe_joined_criterion_warns_on_an_open_node(capsys) -> None:
     """rc1 adopters set `acceptance=a|b` believing it made two criteria."""
-    from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged
+    from specy_road.brief_acceptance import warn_acceptance_merged
 
     capsys.readouterr()
     warn_acceptance_merged([_node("M1.1", acceptance=["Saves | Syncs"]),

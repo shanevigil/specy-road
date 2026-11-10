@@ -220,7 +220,7 @@ def test_dry_run_prints_the_composed_id_map_before_the_waves(repo: Path) -> None
 def test_a_regroup_applies_in_one_run_with_one_validation(
     repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from specy_road.bundled_scripts import roadmap_crud_ops
+    from specy_road import roadmap_crud_ops
     from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
 
     validations: list[Path] = []
@@ -247,7 +247,7 @@ def test_a_regroup_applies_in_one_run_with_one_validation(
 
 
 def _complete_m99_1(repo: Path) -> None:
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+    from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
     from specy_road.generated_files import regenerate_generated_files
 
     chunk = repo / "roadmap" / "phases" / "T.json"

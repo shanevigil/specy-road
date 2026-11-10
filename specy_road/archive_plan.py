@@ -80,7 +80,7 @@ def assert_archivable(
     nodes: list[dict[str, Any]], node_id: str, *, force: bool = False
 ) -> dict[str, Any]:
     """Return the root node, or raise ``ValueError`` explaining why it can't archive."""
-    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+    from specy_road.roadmap_load import compute_rollup_status
 
     from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 
@@ -134,12 +134,12 @@ def plan_archive(
     way — pull the subtree's nodes into one archive chunk and rewrite whatever
     remains back to each source.
     """
-    from specy_road.bundled_scripts.roadmap_chunk_utils import (
+    from specy_road.roadmap_chunk_utils import (
         build_node_chunk_map,
         load_json_chunk,
         roadmap_dir,
     )
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     from specy_road.archive_git import capture_provenance
 
@@ -232,7 +232,7 @@ def _refuse_if_manifest_would_empty(root: Path, edits: list[ChunkEdit]) -> None:
     that empty means no chunks, so the guard stands on its own terms -- a
     roadmap with nothing live in it is not a state to archive a repo into.
     """
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_manifest_mapping
+    from specy_road.roadmap_chunk_utils import load_manifest_mapping
 
     includes = [
         rel for rel in (load_manifest_mapping(root).get("includes") or [])

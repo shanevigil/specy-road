@@ -32,7 +32,7 @@ from specy_road.bundled_scripts.grind_session_args import (
     parse_grind_session_args,
     pickup_args as _pickup_args,
 )
-from specy_road.bundled_scripts.grind_session_cleanup import run_session_cleanup
+from specy_road.grind_session_cleanup import run_session_cleanup
 from specy_road.bundled_scripts.grind_session_implement import run_implement_hook
 from specy_road.bundled_scripts.grind_session_limits import (
     resolve_implement_limits,
@@ -50,12 +50,12 @@ from specy_road.bundled_scripts.grind_session_in_flight import (
     prepare_resume,
 )
 from specy_road.bundled_scripts.session_plan import SessionPlan, session_plan_to_dict
-from specy_road.bundled_scripts.session_plan_git import gather_session_plan as gather_plan
+from specy_road.session_plan_git import gather_session_plan as gather_plan
 from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
-from specy_road.bundled_scripts.repo_ops import current_branch
+from specy_road.repo_ops import current_branch
 from specy_road.worker_ops_slots import recover_stalled
 
 

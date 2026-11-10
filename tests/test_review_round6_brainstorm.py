@@ -23,12 +23,12 @@ from tests.helpers import DOGFOOD
 
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts.brainstorm_fields import parse_overlap, source_record
-from specy_road.bundled_scripts.brainstorm_prompt import (
+from specy_road.brainstorm_prompt import (
     render_brainstorm_prompt,
     render_recommend_prompt,
     render_shard_prompt,
 )
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,
@@ -128,7 +128,7 @@ def test_gui_converge_is_advisory_and_persists_nothing_structured(
     api_client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The decision: no structured converge protocol in the GUI; docs say advisory."""
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     monkeypatch.setattr(
         mod, "complete_chat",
@@ -167,7 +167,7 @@ def test_gui_docs_say_converge_is_advisory_and_route_to_revise() -> None:
 def test_revise_rejects_an_overlap_without_a_node_id(repo: Path) -> None:
     session = _started(repo)
     add_idea(session, title="Stored vault")
-    from specy_road.bundled_scripts.brainstorm_session import write_session
+    from specy_road.brainstorm_session import write_session
 
     write_session(repo, session)
 
@@ -187,7 +187,7 @@ def test_parse_overlap_needs_a_node_id(text: str) -> None:
 def test_add_evidence_with_an_empty_url_is_a_brainstorm_error(repo: Path) -> None:
     session = _started(repo)
     add_idea(session, title="Stored vault")
-    from specy_road.bundled_scripts.brainstorm_session import write_session
+    from specy_road.brainstorm_session import write_session
 
     write_session(repo, session)
 

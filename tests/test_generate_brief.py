@@ -273,7 +273,7 @@ def test_render_brief_says_when_goal_and_acceptance_are_missing() -> None:
 
 
 def test_acceptance_ids_skip_blank_entries() -> None:
-    from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+    from specy_road.brief_acceptance import acceptance_ids
 
     assert acceptance_ids({"acceptance": ["x", "  ", "y"]}) == ["A1", "A2"]
     assert acceptance_ids({}) == []
@@ -292,7 +292,7 @@ def test_render_brief_header_states_its_size_and_largest_sections() -> None:
 
 
 def test_size_warning_names_the_largest_sections_past_the_threshold(capsys) -> None:
-    from specy_road.bundled_scripts.brief_acceptance import SIZE_WARN_BYTES, size_warning
+    from specy_road.brief_acceptance import SIZE_WARN_BYTES, size_warning
 
     small = gb.render_brief("M0.2", gb.index(gb.load_nodes(DOGFOOD)), repo_root=DOGFOOD)
     assert size_warning(small) is None

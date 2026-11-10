@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.chore_cli import chore_node, open_chore
-from specy_road.bundled_scripts.role_prompt_rework import CLASS_AUDIT_LINES, _review_lines, blocking_reviews
+from specy_road.role_prompt_rework import CLASS_AUDIT_LINES, _review_lines, blocking_reviews
 from specy_road.git_subprocess import head_sha
 from specy_road.review_files import reviews_dir
 from specy_road.worker_adapters import Unsupported, adapter_for

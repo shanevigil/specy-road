@@ -8,7 +8,7 @@ import time
 from typing import Any
 
 from specy_road import worker_ops as ops
-from specy_road.bundled_scripts.worker_cli_render import sync_event_lines, sync_worker_header
+from specy_road.worker_cli_render import sync_event_lines, sync_worker_header
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.worker_orphans import with_orphans
 from specy_road.worker_state import (

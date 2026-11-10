@@ -12,7 +12,7 @@ from pathlib import Path
 from tests.helpers import DOGFOOD
 from tests.review_repo_helpers import commit_file, git
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
+from specy_road.roadmap_chunk_utils import load_json_chunk
 
 KEYS = {"M2": "50000000-0000-4000-8000-000000000001", "M2.1": "50000000-0000-4000-8000-000000000002",
         "M2.2": "50000000-0000-4000-8000-000000000003"}

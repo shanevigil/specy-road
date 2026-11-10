@@ -15,10 +15,10 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_finished_unmerged import finished_unmerged_ids
 from specy_road.bundled_scripts.do_next_available import unauthored_leaves
-from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+from specy_road.planning_sheet_bootstrap import (
     unauthored_leaves as placeholder_unauthored_leaves,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan import SessionPlan, compute_session_plan, _parallel_batches
 from specy_road.git_workflow_config import resolve_integration_defaults, resolve_prefer_agentic
 from specy_road.nested_repos import unpushed_branches

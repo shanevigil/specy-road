@@ -173,6 +173,52 @@ def test_shrink_lowers_entries_and_never_raises(
 
 
 PICKUP = "542aa46c29cf4765c20b6879d322cc53422b1da3"
+# Same filename, from bundled_scripts into the package. This is the move list the
+# pickup-tree check reads: promotion removes the planning tree, and this file stays.
+_MOVED_FROM = {
+    f"specy_road/{name}": f"specy_road/bundled_scripts/{name}"
+    for name in (
+        "brainstorm_chat.py",
+        "brainstorm_promote.py",
+        "brainstorm_prompt.py",
+        "brainstorm_research.py",
+        "brainstorm_session.py",
+        "brief_acceptance.py",
+        "grind_session_cleanup.py",
+        "planning_artifacts.py",
+        "planning_sheet_bootstrap.py",
+        "pm_gui_git_remote_verify.py",
+        "registration_pickup_commit.py",
+        "repo_ops.py",
+        "review_defer.py",
+        "roadmap_chunk_router_pick.py",
+        "roadmap_chunk_utils.py",
+        "roadmap_crud_ops.py",
+        "roadmap_gui_lib.py",
+        "roadmap_gui_remote.py",
+        "roadmap_gui_settings.py",
+        "roadmap_gui_tree.py",
+        "roadmap_index.py",
+        "roadmap_layout.py",
+        "roadmap_load.py",
+        "roadmap_load_at_ref.py",
+        "roadmap_node_keys.py",
+        "roadmap_outline_ops.py",
+        "roadmap_outline_renumber.py",
+        "role_prompt_cli.py",
+        "role_prompt_rework.py",
+        "session_plan_git.py",
+        "validate_stale_commands.py",
+        "worker_cli_render.py",
+        "worker_cli_sync.py",
+    )
+}
+
+
+def _in_pickup_tree(path: str, present: set[str], moved_from: dict[str, str]) -> bool:
+    """In the pickup tree, or moved_from maps it to a path that is."""
+    old = moved_from.get(path)
+    return path in present or (old is not None and old in present)
 
 
 def test_baseline_records_the_pickup_commit_and_only_its_files() -> None:
@@ -189,7 +235,11 @@ def test_baseline_records_the_pickup_commit_and_only_its_files() -> None:
         cwd=ROOT, capture_output=True, text=True, check=True,
     ).stdout
     present = set(listed.splitlines())
-    assert sorted(path for path in data["files"] if path not in present) == []
+    outside = sorted(
+        path for path in data["files"] if not _in_pickup_tree(path, present, _MOVED_FROM)
+    )
+    assert outside == []
+    assert _in_pickup_tree("specy_road/not_a_pickup_file.py", present, _MOVED_FROM) is False
 
 
 @pytest.mark.skipif(shutil.which("ruff") is None, reason="ruff is not installed")

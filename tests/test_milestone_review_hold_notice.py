@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import roadmap_query_cli as rq
-from specy_road.bundled_scripts.roadmap_crud_ops import cmd_list
+from specy_road.roadmap_crud_ops import cmd_list
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.finish_ancestor_rollup import milestone_review_hold_notice
 from tests.milestone_repo_helpers import make_milestone_repo, set_status

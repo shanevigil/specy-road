@@ -49,8 +49,8 @@ from jsonschema import Draft202012Validator
 
 from specy_road import review_lock, safe_write
 from specy_road.clock import utc_now_iso
-from specy_road.bundled_scripts.registration_pickup_commit import with_policy_trailer
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.registration_pickup_commit import with_policy_trailer
+from specy_road.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_text, run
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_files import check_handoff_read, project_of, reviews_dir

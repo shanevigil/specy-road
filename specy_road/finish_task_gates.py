@@ -15,8 +15,8 @@ import re
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.brief_acceptance import acceptance_ids
+from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path
 
 HUMAN_PREFIX = "human:"
 _DECISION = re.compile(r"^\s*(?:[-*+]\s*(?:\[[ xX]\]\s*)?)?(A[1-9][0-9]*)\s*:\s*(\S.*)$")

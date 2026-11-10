@@ -21,8 +21,8 @@ from tests.review_repo_helpers import commit_file, git
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_chunk_utils import load_json_chunk
+from specy_road.roadmap_load import load_roadmap
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
@@ -137,7 +137,7 @@ def test_load_roadmap_holds_rollup_when_repo_root_is_not_resolved() -> None:
     """Grok R1: demote_pending_milestone_rollups must not crash when repo_root and chunk paths disagree on /var vs /private/var."""
     from tempfile import TemporaryDirectory
 
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     with TemporaryDirectory() as d:
         root = make_milestone_repo(Path(d))

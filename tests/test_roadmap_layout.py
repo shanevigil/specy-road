@@ -6,7 +6,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 
-from specy_road.bundled_scripts.roadmap_layout import (
+from specy_road.roadmap_layout import (
     compute_dependency_steps,
     dependency_edges_detailed,
     ordered_tree_rows,
@@ -74,7 +74,7 @@ def test_natural_id_sort_key_fallback_lexical(
             raise ValueError("forced")
         return int(run, 10)
 
-    from specy_road.bundled_scripts import roadmap_layout as rl
+    from specy_road import roadmap_layout as rl
 
     monkeypatch.setattr(rl, "_digit_run_to_int", boom)
     nid = "M99"

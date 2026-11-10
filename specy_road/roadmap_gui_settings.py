@@ -232,7 +232,7 @@ def with_stored_secrets(repo_root: Path, name: str, block: dict[str, Any] | None
 
 def settings_api_payload(repo_root: Path) -> dict[str, Any]:
     """The Settings page's view: every credential masked (``SECRET_MASK``), never sent in clear."""
-    from specy_road.bundled_scripts.pm_gui_git_remote_verify import get_git_remote_tested_ok
+    from specy_road.pm_gui_git_remote_verify import get_git_remote_tested_ok
 
     struct = _read_settings_file_struct_with_git_migration(repo_root)
     rid = repo_settings_id(repo_root)
@@ -318,7 +318,7 @@ def save_settings_for_repo(
         entry["pm_gui"] = _overlay_diff(pm_in, g_base_pm)
 
     struct["projects"][rid] = entry
-    from specy_road.bundled_scripts.pm_gui_git_remote_verify import clear_git_remote_tested_ok_if_identity_changed
+    from specy_road.pm_gui_git_remote_verify import clear_git_remote_tested_ok_if_identity_changed
 
     clear_git_remote_tested_ok_if_identity_changed(
         repo_root,

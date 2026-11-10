@@ -22,7 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
+from specy_road.roadmap_index import RoadmapIndex
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import records_or_empty
 from specy_road.node_kinds import is_gate
@@ -42,7 +42,7 @@ _MAX_AREAS = 30
 
 def _load_nodes(root: Path) -> list[dict[str, Any]]:
 
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     return load_roadmap(root)["nodes"]
 
@@ -60,7 +60,7 @@ def _label(node: dict[str, Any]) -> str:
 
 def _section_outline(nodes: list[dict[str, Any]]) -> list[str]:
     """The live graph as an indented outline with rolled-up status."""
-    from specy_road.bundled_scripts.roadmap_layout import ordered_tree_rows
+    from specy_road.roadmap_layout import ordered_tree_rows
 
     out = [
         "## Live roadmap",
@@ -85,7 +85,7 @@ def _section_outline(nodes: list[dict[str, Any]]) -> list[str]:
 
 def _section_decisions(nodes: list[dict[str, Any]]) -> list[str]:
     """Decisions already taken — the thing an agent must not silently redo."""
-    from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+    from specy_road.roadmap_layout import natural_id_sort_key
 
     decided = [
         n
@@ -116,7 +116,7 @@ def _section_decisions(nodes: list[dict[str, Any]]) -> list[str]:
 
 def _section_open_gates(nodes: list[dict[str, Any]]) -> list[str]:
     """Gates still holding work back."""
-    from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+    from specy_road.roadmap_layout import natural_id_sort_key
 
     gates = [
         n

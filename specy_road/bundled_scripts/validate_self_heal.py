@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.roadmap_chunk_utils import (
     build_node_chunk_map,
     load_json_chunk,
     write_json_chunk,

@@ -10,8 +10,8 @@ from specy_road.git_subprocess import git_text
 
 from specy_road.registry_yaml import registry_path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import iter_roadmap_fingerprint_files
-from specy_road.bundled_scripts.roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui routes)
+from specy_road.roadmap_chunk_utils import iter_roadmap_fingerprint_files
+from specy_road.roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui routes)
     SETTINGS_DIR,
     SETTINGS_FILE_VERSION,
     SETTINGS_PATH,

@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts.worker_cli_render import sync_event_lines
+from specy_road.worker_cli_render import sync_event_lines
 from specy_road.worker_runner_ready import READY_ONLY_PROMPT
 from tests.review_repo_helpers import git
 from tests.test_rework_findings_in_prompt import file_review

@@ -33,8 +33,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.brief_acceptance import acceptance_ids
+from specy_road.roadmap_load import load_roadmap
 from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
     REVIEW_LAUNCH_MODES, executor_blocked_display_lines, list_ready,
@@ -52,7 +52,7 @@ from specy_road.review_ready_merge import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
-from specy_road.bundled_scripts.review_defer import add_parser as add_defer_parser
+from specy_road.review_defer import add_parser as add_defer_parser
 from specy_road.review_policy_pin import add_parser as add_accept_policy_parser
 from specy_road.review_override import add_parser as add_operator_decision_parser
 from specy_road.orphaned_claims import orphaned_claims, report_lines

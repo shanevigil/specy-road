@@ -11,7 +11,7 @@ import pytest
 from tests.helpers import DOGFOOD
 
 from specy_road.bundled_scripts import brainstorm_cli
-from specy_road.bundled_scripts.brainstorm_session import read_session
+from specy_road.brainstorm_session import read_session
 
 SLUG = "how-do-we-expand-payments"
 

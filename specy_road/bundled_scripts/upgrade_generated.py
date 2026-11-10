@@ -12,7 +12,7 @@ from pathlib import Path
 
 from specy_road import git_subprocess
 from specy_road.bundled_scripts.export_roadmap_md import export_markdown
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.ignore_report import isolate_git, scratch_git_env
 from specy_road import safe_write

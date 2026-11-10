@@ -18,7 +18,7 @@ from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.model_profiles import load_profile
 from specy_road.review_eligible import reviewer_eligibility
 from specy_road.review_gate import evaluate_gate
-from specy_road.bundled_scripts.role_prompt_cli import bypass_problem
+from specy_road.role_prompt_cli import bypass_problem
 from specy_road.review_model_check import MISMATCH_REASON, check, check_run, normalise, reported_models
 
 

@@ -55,7 +55,7 @@ from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
 from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch
+from specy_road.repo_ops import assert_working_tree_clean, current_branch
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -466,7 +466,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def _close_milestone(args: argparse.Namespace, node_id: str) -> None:
     """Pass the milestone's gate at the integration tip, then commit its Complete status."""
-    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status, load_roadmap
+    from specy_road.roadmap_load import compute_rollup_status, load_roadmap
 
     nodes = load_roadmap(ROOT)["nodes"]
     node = next((n for n in nodes if n.get("id") == node_id), None)

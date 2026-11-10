@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts.session_plan import compute_session_plan
-from specy_road.bundled_scripts.session_plan_git import enrich_session_plan_with_git
+from specy_road.session_plan_git import enrich_session_plan_with_git
 from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
 
 

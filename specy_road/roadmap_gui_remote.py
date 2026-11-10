@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 import requests
 
-from specy_road.bundled_scripts.roadmap_gui_lib import apply_llm_env_from_settings  # noqa: E402
+from specy_road.roadmap_gui_lib import apply_llm_env_from_settings  # noqa: E402
 from specy_road.bundled_scripts.roadmap_gui_pr_pickers import github_pulls_for_branch, gitlab_mrs_for_branch, pick_latest_github_pr, pick_latest_gitlab_mr  # noqa: E402
 
 

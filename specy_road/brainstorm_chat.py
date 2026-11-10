@@ -17,13 +17,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from specy_road.bundled_scripts.brainstorm_research import (
+from specy_road.brainstorm_research import (
     ResearchError,
     SearchResult,
     is_configured,
     search,
 )
-from specy_road.bundled_scripts.brainstorm_session import IDEA_KINDS
+from specy_road.brainstorm_session import IDEA_KINDS
 from specy_road.bundled_scripts.review_node import (
     ReviewError,
     _anthropic_max_completion_tokens,

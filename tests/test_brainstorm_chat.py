@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from specy_road.bundled_scripts.brainstorm_chat import (
+from specy_road.brainstorm_chat import (
     NO_RESEARCH_NOTICE,
     RESEARCH_INSTRUCTIONS,
     chat_turn,
@@ -17,7 +17,7 @@ from specy_road.bundled_scripts.brainstorm_chat import (
     extract_queries,
     system_prompt_for,
 )
-from specy_road.bundled_scripts.brainstorm_research import (
+from specy_road.brainstorm_research import (
     DEFAULT_ENDPOINT,
     ResearchError,
     is_configured,
@@ -117,7 +117,7 @@ def test_an_unknown_kind_falls_back_rather_than_failing() -> None:
 
 def test_ideas_are_only_captured_when_asked_for(monkeypatch) -> None:
     """The CLI's agent records ideas by running the command, so it opts out."""
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: "IDEA: One")
 
@@ -138,7 +138,7 @@ def test_search_requests_are_parsed_and_capped() -> None:
 
 def test_a_reply_with_prose_is_not_a_search_request(monkeypatch) -> None:
     """Only a turn that is *only* SEARCH lines triggers the loop."""
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     monkeypatch.setattr(
         mod, "complete_chat", lambda *_a, **_k: "Here is an idea.\nSEARCH: unused"
@@ -152,7 +152,7 @@ def test_a_reply_with_prose_is_not_a_search_request(monkeypatch) -> None:
 
 
 def test_the_search_loop_feeds_results_back(monkeypatch) -> None:
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     replies = iter(["SEARCH: payments trends", "Two ideas, sourced."])
     monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: next(replies))
@@ -173,7 +173,7 @@ def test_the_search_loop_feeds_results_back(monkeypatch) -> None:
 
 def test_a_failing_search_becomes_text_the_model_can_read(monkeypatch) -> None:
     """A dead endpoint should not abort the brainstorm."""
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     replies = iter(["SEARCH: anything", "Answered from memory."])
     monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: next(replies))
@@ -191,7 +191,7 @@ def test_a_failing_search_becomes_text_the_model_can_read(monkeypatch) -> None:
 
 
 def test_the_search_loop_is_bounded(monkeypatch) -> None:
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     calls = {"n": 0}
 
@@ -209,7 +209,7 @@ def test_the_search_loop_is_bounded(monkeypatch) -> None:
 
 
 def test_search_lines_are_ignored_when_research_is_off(monkeypatch) -> None:
-    import specy_road.bundled_scripts.brainstorm_chat as mod
+    import specy_road.brainstorm_chat as mod
 
     monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: "SEARCH: nope")
 

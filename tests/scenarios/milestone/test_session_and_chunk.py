@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.bundled_scripts import start_milestone_session
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.milestone_chunk_io import (
     maybe_promote_milestone_to_pending_mr,
     write_milestone_execution,

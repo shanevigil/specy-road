@@ -16,8 +16,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from specy_road.bundled_scripts.do_next_available import _claimed_node_ids
-from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
-from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+from specy_road.roadmap_index import RoadmapIndex
+from specy_road.roadmap_layout import natural_id_sort_key
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.node_kinds import is_gate
 

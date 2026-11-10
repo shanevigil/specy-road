@@ -33,7 +33,7 @@ from specy_road.bundled_scripts.brainstorm_prompt_diverge import (
     shard_lines,
 )
 from specy_road.bundled_scripts.brainstorm_prompt_evidence import render_evidence_prompt
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormSession,
     Idea,
     prompt_path,
@@ -41,7 +41,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
 )
 
 if TYPE_CHECKING:  # brainstorm_promote imports this module
-    from specy_road.bundled_scripts.brainstorm_promote import Promotion
+    from specy_road.brainstorm_promote import Promotion
 
 __all__ = [
     "render_brainstorm_prompt", "render_recommend_prompt", "render_evidence_prompt",
@@ -128,7 +128,7 @@ def _existing_roadmap_lines(root: Path, session: BrainstormSession) -> list[str]
     """
     lines = ["## What already exists", ""]
     try:
-        from specy_road.bundled_scripts.roadmap_load import load_roadmap
+        from specy_road.roadmap_load import load_roadmap
 
         nodes = load_roadmap(root)["nodes"]
     except Exception as e:  # noqa: BLE001 — prompt must still render
@@ -328,7 +328,7 @@ def constraint_lines(idea: Idea) -> list[str]:
 
 def _authoring_node_lines(root: Path, session: BrainstormSession,
                           promotions: list["Promotion"]) -> list[str]:
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     sheets = {n.get("id"): n.get("planning_dir") for n in load_roadmap(root)["nodes"]}
     lines = ["## The nodes to author", ""]

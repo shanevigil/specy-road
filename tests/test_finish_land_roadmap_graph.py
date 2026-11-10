@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from tests.helpers import REPO, script_subprocess_env
 from tests.review_repo_helpers import (
     NODE, commit_file, git, git_root_relative, make_layout_finish_repo,
