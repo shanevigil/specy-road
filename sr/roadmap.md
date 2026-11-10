@@ -251,7 +251,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.65` | The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work | task | Agentic-led | Complete |
 | `M22.66` | A roster entry matches a model profile by its harness_model when its id matches none | task | Agentic-led | Complete |
 | `M22.67` | A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works | task | Agentic-led | Complete |
-| `M22.68` | grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only | task | Agentic-led | Not Started |
+| `M22.68` | grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only | task | Agentic-led | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |

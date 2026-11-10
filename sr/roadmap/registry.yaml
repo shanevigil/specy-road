@@ -70,31 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: grind-status
-    node_id: M22.68
-    branch: feature/rm-grind-status
-    touch_zones:
-      - specy_road/grind_status.py
-      - specy_road/bundled_scripts/grind_session_args.py
-      - specy_road/bundled_scripts/grind_session.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/cli_usage.py
-      - tests/test_grind_status.py
-      - tests/parity/golden/help/specy-road__grind-session.txt
-      - tests/parity/golden/help/specy-road.txt
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - specy_road/templates/project/roadmap/git-workflow.yaml
-      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
-      - specy_road/templates/specyrd/commands/specyrd-grind-session.md
-      - tests/test_decisions.py
-      - docs/grind-session.md
-      - docs/git-workflow.md
-      - CHANGELOG.md
-      - tests/parity/command_map.yaml
-    started: '2026-11-10'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-10T20:59:46+00:00'
   - codename: break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli
     node_id: M16.2.8
     branch: feature/rm-break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli

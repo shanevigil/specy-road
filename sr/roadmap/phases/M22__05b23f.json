@@ -23,7 +23,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.68_grind-status_05b23f6c-3e4d-4ac9-b0a0-022b4fe7f7f1.md",
       "sibling_order": 62,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only",
       "touch_zones": [
         "specy_road/grind_status.py",
