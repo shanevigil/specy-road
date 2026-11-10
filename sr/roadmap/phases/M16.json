@@ -207,7 +207,8 @@
         "scripts/ruff_quality_baseline.json",
         "constraints/test-private-imports-baseline.txt",
         "constraints/clone-baseline.json",
-        "sr/planning/M16.2.5_library-modules-imported-by-the-package-move-out-of-bundled_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md"
+        "sr/planning/M16.2.5_library-modules-imported-by-the-package-move-out-of-bundled_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md",
+        "constraints/import-layers-baseline.json"
       ],
       "type": "task"
     },
