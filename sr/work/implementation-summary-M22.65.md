@@ -67,3 +67,22 @@ Each scenario built on the old per-path lines gets its new equivalent. No assert
 - Test helper `_opt_in_after_the_block` in `tests/test_finish_work_cleanup.py`: the re-include row's setup, kept out of the test body to stay under the 80-line function cap.
 - Package helpers, branches or guards: none. `_prefixed` gained one conditional for a leading `!`, which the nested re-includes need.
 - Mocks: none.
+
+## Fix round 1 (review by gpt-6.1-sol at 0d0c8fca): stopped, needs the coordinator
+
+The blocking finding cannot be fixed inside this leaf. A2 asks that `dirty_check` report a modified tracked `work/brief-M1.md`. A2 also asks that `RUNTIME_WORK_DIRS` and `dirty_check` stay source-identical. `dirty_check` (`specy_road/bundled_scripts/role_prompt_rca.py:63`, outside the touch zones) excludes `work/brief-*.md` for every leaf by pathspec. A pathspec exclusion cannot tell a tracked file from an untracked one, so a modified tracked brief is hidden unless that line changes. Both halves of A2 cannot hold at once, so I made no code change. The test `test_files_still_tracked_under_work_are_still_seen` still asserts only the chore record through `dirty_check`. A test asserting the brief would fail against the unchanged source.
+
+**Class:** a tracked, modified file under a path that `dirty_check` excludes by pathspec, which hides tracked changes as well as untracked ones. It is wider than the brief named in the review (see Probes).
+
+**Options for the coordinator (one decision, then a zone for `specy_road/bundled_scripts/role_prompt_rca.py` and its tests):**
+1. **Removes the class.** Narrow `dirty_check`'s bookkeeping exclusions to this leaf's own `work/brief-<ID>.md` and `work/implementation-summary-<ID>.md`. This is the per-leaf rule `worker_reconcile._bookkeeping` already applies. Under `work/*`, git hides untracked bookkeeping anyway. The runtime-dir exclusions would still hide tracked files there, which A2's table does not cover. This drops A2's "source-identical" clause.
+2. Keep `dirty_check` source-identical and amend A2's tracked-still-seen row to say `dirty_check` reports tracked changes outside its excluded bookkeeping paths. That matches the current test.
+
+## Probes
+
+- **Merged `origin/WIP/improvements-0-3-1` (95c77cdd):** clean merge, no conflicts.
+- **Temp repo, `dirty_check("", "M1.1")`, tracked-then-modified files:** `work/chores/tidy.md` is reported. `work/brief-M1.md`, `work/brief-M1.1.md`, `work/implementation-summary-M1.md`, `work/reviews/M1/x.md` and `work/.workers/w.json` are all hidden. The same holds for `work/.sessions/`, `work/.worktrees/` and the leaf's `work/worker-logs/<ID>/`, which use the same pathspec form.
+- **`delegate` uncommitted-work check** (`worker_ops_launch.py:365`): exempts only `??` entries that are bookkeeping, so a modified tracked file anywhere under `work/` blocks delegate. This is covered by `test_files_still_tracked_under_work_are_still_seen`, which uses the brief and the chore record.
+- **`worker reconcile`:** reports both tracked paths as changed outside the zones. Same test.
+- **`ignore_report` / `upgrade`:** lists tracked files under `work/` and prints `git rm --cached`. Covered by `test_upgrade_prints_the_untrack_command_for_a_file_already_tracked_under_work`.
+- No code or test changed in this round, so no tests were re-run after the merge, and no READY was written for this round.
