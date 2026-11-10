@@ -34,6 +34,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.9` Commands run in the CLI's process: no python -m re-launch, no cwd globals `commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals` — task — **Not Started**
     - `M16.2.10` Every command exposes build_parser(), imports lazily and shares the common argument helpers `every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers` — task — **Not Started**
     - `M16.2.11` One SpecyError base for the 15 error classes, printed and turned into an exit code once `one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once` — task — **Not Started**
+    - `M16.2.12` Review packets and prompts show a held milestone's rollup as the public loader does `held-rollup-in-review-packets` — task — **Not Started**
   - `M16.3` Orchestration state model and the cap-driven folds `orchestration-state-model-and-the-cap-driven-folds` — milestone — **Not Started**
     - `M16.3.1` Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI `orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` — task — **Not Started**
     - `M16.3.2` Fold the cap-driven splits in pickup and finish into their parents `fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents` — task — **Not Started**

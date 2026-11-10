@@ -34,6 +34,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.9` | Commands run in the CLI's process: no python -m re-launch, no cwd globals | task | Agentic-led | Not Started |
 | `M16.2.10` | Every command exposes build_parser(), imports lazily and shares the common argument helpers | task | Agentic-led | Not Started |
 | `M16.2.11` | One SpecyError base for the 15 error classes, printed and turned into an exit code once | task | Agentic-led | Not Started |
+| `M16.2.12` | Review packets and prompts show a held milestone's rollup as the public loader does | task | Agentic-led | Not Started |
 | `M16.3` | Orchestration state model and the cap-driven folds | milestone | — | Not Started |
 | `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Not Started |
 | `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Not Started |
