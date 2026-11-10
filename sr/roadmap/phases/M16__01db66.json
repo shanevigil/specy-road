@@ -210,7 +210,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.6_a-committed-report-of-the-import-cycles-and-package-to-entry_d0dc4b2c-781d-42f3-82a3-29b6468abebe.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A committed report of the import cycles and package-to-entry-point imports",
       "touch_zones": [
         "scripts/check_import_layers.py",
