@@ -13,11 +13,11 @@ from typing import Any
 
 from specy_road import worker_ops as ops
 from specy_road import worker_ops_slots as slots
-from specy_road.bundled_scripts.role_prompt_rework import rework_check
+from specy_road.role_prompt_rework import rework_check
 from specy_road.bundled_scripts.worker_cli_args import FixRound
-from specy_road.bundled_scripts.worker_cli_render import (_line, _row, timeline, timeline_lines, usage,
+from specy_road.worker_cli_render import (_line, _row, timeline, timeline_lines, usage,
                                                        usage_json_payload, usage_lines)
-from specy_road.bundled_scripts.worker_cli_sync import add_sync_parser, cmd_sync as _cmd_sync
+from specy_road.worker_cli_sync import add_sync_parser, cmd_sync as _cmd_sync
 from specy_road.orphaned_claims import append_claim_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload

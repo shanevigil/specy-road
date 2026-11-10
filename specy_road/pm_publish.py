@@ -257,7 +257,7 @@ def _regenerate_for_publish(repo_root: Path) -> None:
     (M21.39: finish's ``irregular_destination`` sentence).
     """
     # Imported here: roadmap_crud_ops pulls in the whole roadmap toolchain.
-    from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
+    from specy_road.roadmap_crud_ops import run_validate_raise
 
     run_validate_raise(repo_root)
     refused = refused_generated_files(repo_root)

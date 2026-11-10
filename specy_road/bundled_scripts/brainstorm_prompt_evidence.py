@@ -9,7 +9,7 @@ the quote against the page, with the user's consent for the fetch.
 from __future__ import annotations
 
 from specy_road.bundled_scripts.brainstorm_fields import STANCES
-from specy_road.bundled_scripts.brainstorm_session import BrainstormSession, Idea
+from specy_road.brainstorm_session import BrainstormSession, Idea
 
 RESEARCH_TOOL_NOTE = (
     "Use the strongest web-research capability exposed in this session, and "

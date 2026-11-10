@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_code, git_stdout, git_text
 from specy_road.review_files import REVIEWS_REL, ReviewFile

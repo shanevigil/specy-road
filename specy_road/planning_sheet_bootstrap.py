@@ -1,0 +1,294 @@
+"""Create a feature sheet on disk and set ``planning_dir`` for new roadmap nodes."""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+
+from specy_road.brief_acceptance import acceptance_ids
+from specy_road.planning_artifacts import (
+    expected_planning_rel,
+    normalize_planning_dir,
+    resolve_planning_path,
+)
+from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.runtime_paths import specy_road_package_dir
+from specy_road.node_kinds import is_gate, is_pickable
+
+_TYPES_WITH_PLANNING = frozenset({"vision", "phase", "milestone", "task", "gate"})
+_TEMPLATES = specy_road_package_dir() / "templates" / "planning-node"
+_FEATURE_TEMPLATE = "feature-sheet.md.template"
+_GATE_TEMPLATE = "gate-sheet.md.template"
+
+# If ``feature-sheet.md.template`` is missing (broken install), LLM + validators still have a fallback.
+_FALLBACK_LEVEL2_TITLES = (
+    "Intent",
+    "Approach",
+    "Tasks / checklist",
+    "References",
+)
+
+_FALLBACK_GATE_LEVEL2_TITLES = (
+    "Why this gate exists",
+    "Criteria to clear",
+    "Decisions and notes",
+    "Resolution",
+    "References",
+)
+
+
+def _level2_titles_from_template(filename: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
+    path = _TEMPLATES / filename
+    if not path.is_file():
+        return fallback
+    titles: list[str] = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line.startswith("## ") and not line.startswith("###"):
+            titles.append(line[3:].strip())
+    return tuple(titles) if titles else fallback
+
+
+def feature_sheet_level2_titles() -> tuple[str, ...]:
+    """Ordered ``##`` section titles from ``feature-sheet.md.template`` (source of truth)."""
+    return _level2_titles_from_template(_FEATURE_TEMPLATE, _FALLBACK_LEVEL2_TITLES)
+
+
+def gate_sheet_level2_titles() -> tuple[str, ...]:
+    """Ordered ``##`` section titles from ``gate-sheet.md.template`` (source of truth)."""
+    return _level2_titles_from_template(_GATE_TEMPLATE, _FALLBACK_GATE_LEVEL2_TITLES)
+
+
+def feature_sheet_structure_instruction_for_llm() -> str:
+    """One instruction line for ``review_node`` SYSTEM_PROMPT (kept in sync with the template)."""
+    titles = feature_sheet_level2_titles()
+    ordered = ", ".join(f"## {t}" for t in titles)
+    return (
+        "Structure: use exactly these level-2 sections in this order: "
+        f"{ordered}. "
+        "Use markdown task items (`- [ ]` / `- [x]`) under Tasks / checklist. "
+        "If the sheet uses legacy headings, merge content into this shape "
+        "(e.g. fold Sources/Contracts into References and Intent)."
+    )
+
+
+def gate_sheet_structure_instruction_for_llm() -> str:
+    """One instruction line for gate planning LLM review (kept in sync with ``gate-sheet.md.template``)."""
+    titles = gate_sheet_level2_titles()
+    ordered = ", ".join(f"## {t}" for t in titles)
+    return (
+        "Structure: use exactly these level-2 sections in this order: "
+        f"{ordered}. "
+        "This is a PM hold document, not an implementation checklist—avoid "
+        "task-style build steps unless they are explicitly part of clearing the gate."
+    )
+
+
+def feature_sheet_expected_shape_block() -> str:
+    """User-message block for LLM review (matches scaffold template)."""
+    lines = "\n".join(f"- ## {t}" for t in feature_sheet_level2_titles())
+    return (
+        "Canonical feature sheet outline (same as `specy-road scaffold-planning`):\n"
+        + lines
+    )
+
+
+def gate_sheet_expected_shape_block() -> str:
+    """User-message block for LLM review of a gate planning sheet."""
+    lines = "\n".join(f"- ## {t}" for t in gate_sheet_level2_titles())
+    return (
+        "Canonical gate planning sheet outline (same as `specy-road scaffold-planning` "
+        "for `type: gate` nodes):\n"
+        + lines
+    )
+
+
+def planning_review_expected_shape_block(node_type: str | None = None) -> str:
+    """Expected-shape block for LLM planning review: gate vs feature sheet."""
+    if is_gate(node_type):
+        return gate_sheet_expected_shape_block()
+    return feature_sheet_expected_shape_block()
+
+
+def _substitute_node_id(text: str, node_id: str) -> str:
+    return text.replace("{{NODE_ID}}", node_id)
+
+
+def render_planning_sheet_template(node_id: str, *, node_type: str | None = None) -> str:
+    """
+    Render the planning markdown scaffold for ``node_id``.
+
+    ``type: gate`` uses ``gate-sheet.md.template`` when present; all other types
+    use ``feature-sheet.md.template``. Missing gate template falls back to the
+    feature sheet template.
+    """
+    gate = is_gate(node_type)
+    name = _GATE_TEMPLATE if gate else _FEATURE_TEMPLATE
+    path = _TEMPLATES / name
+    if gate and not path.is_file():
+        path = _TEMPLATES / _FEATURE_TEMPLATE
+    if not path.is_file():
+        raise FileNotFoundError(f"missing template {path}")
+    return _substitute_node_id(path.read_text(encoding="utf-8"), node_id)
+
+
+def render_feature_sheet_template(node_id: str) -> str:
+    """Render the milestone/task-style feature sheet template only."""
+    path = _TEMPLATES / _FEATURE_TEMPLATE
+    if not path.is_file():
+        raise FileNotFoundError(f"missing template {path}")
+    return _substitute_node_id(path.read_text(encoding="utf-8"), node_id)
+
+
+def plan_planning_sheet_for_new_node(
+    repo_root: Path, node: dict
+) -> tuple[Path, str] | None:
+    """
+    Set ``planning_dir`` on ``node`` and return the ``(path, content)`` its sheet needs.
+
+    No disk IO: callers stage the write in the same transaction as the chunk, so
+    a rejected node never leaves an orphan sheet behind. Returns ``None`` when
+    the node type has no sheet, the id/key are missing, or the sheet already
+    exists (in which case ``planning_dir`` is still set).
+    """
+    t = node.get("type")
+    if t not in _TYPES_WITH_PLANNING:
+        return None
+    nid = node.get("id")
+    nk = node.get("node_key")
+    if not isinstance(nid, str) or not nid.strip():
+        return None
+    if not isinstance(nk, str) or not nk.strip():
+        return None
+    norm = normalize_planning_dir(expected_planning_rel(node))
+    root = repo_root.resolve()
+    dest = resolve_planning_path(root, norm)
+    if dest.exists() and dest.is_dir():
+        raise ValueError(f"{norm} exists and is a directory (expected a single .md file)")
+    node["planning_dir"] = norm
+    if dest.is_file():
+        return None
+    return dest, render_planning_sheet_template(nid.strip(), node_type=t)
+
+
+#: The line ``brainstorm promote`` writes under ``## Approach``. ``<ID>`` stays
+#: a token: the display id is not written into the sheet, so a later rename
+#: cannot leave one behind. While the line is still there, nobody has written
+#: how the slice is built, and pickup skips the leaf (M3.1). The skip reason
+#: names the id on its own.
+PROMOTE_PLACEHOLDER = (
+    "Not written yet: pickup skips this leaf until this section is written. "
+    "`specy-road author-approach <ID>` prints the prompt to write it."
+)
+
+#: The part of :data:`PROMOTE_PLACEHOLDER` that does not depend on the node id.
+_PROMOTE_MARK = PROMOTE_PLACEHOLDER.split("`", 1)[0].strip()
+
+#: The line promote appended to ``## Intent`` before M15.8; older sheets still carry it.
+LEGACY_PROMOTE_PLACEHOLDER = "Rewrite this section once the slice is properly scoped."
+
+
+def promote_placeholder(node_id: str) -> str:
+    """:data:`PROMOTE_PLACEHOLDER` for a sheet. ``node_id`` is not written into it.
+
+    Toolkit sheet text does not repeat the node's display id: the id is already
+    in the file name, and substituting it left a stale id after ``move-node --id``.
+    Pickup's skip reason names ``node_id`` separately.
+    """
+    return PROMOTE_PLACEHOLDER
+
+#: Scaffold sections whose template body means nobody wrote one. Authored
+#: sheets keep generic lines under Tasks and References too, so those say
+#: nothing about whether the sheet was written.
+_PLACEHOLDER_SECTIONS = ("Intent", "Approach")
+
+
+def _section_bodies(text: str) -> dict[str, str]:
+    """``## title`` -> body with whitespace collapsed (``###`` stays in the body)."""
+    out: dict[str, str] = {}
+    title: str | None = None
+    body: list[str] = []
+    for line in [*text.splitlines(), "## "]:
+        if line.startswith("## "):
+            if title is not None:
+                out[title] = " ".join(" ".join(body).split())
+            title, body = line[3:].strip(), []
+        elif title is not None:
+            body.append(line)
+    return out
+
+
+@lru_cache(maxsize=1)
+def _scaffold_bodies() -> dict[str, str]:
+    try:
+        bodies = _section_bodies(render_feature_sheet_template(""))
+    except FileNotFoundError:
+        return {}
+    return {t: bodies[t] for t in _PLACEHOLDER_SECTIONS if bodies.get(t)}
+
+
+def approach_is_placeholder(bodies: dict[str, str]) -> bool:
+    """Whether ``## Approach`` still holds promote's or scaffold-planning's placeholder."""
+    body, scaffold = bodies.get("Approach", ""), _scaffold_bodies().get("Approach")
+    return _PROMOTE_MARK in body or bool(scaffold and scaffold in body)
+
+
+def sheet_placeholder(bodies: dict[str, str]) -> tuple[str, str] | None:
+    """``(writer, section)`` of the first toolkit placeholder in a sheet's bodies, or ``None``."""
+    intent = bodies.get("Intent", "")
+    if LEGACY_PROMOTE_PLACEHOLDER in intent or _PROMOTE_MARK in intent:
+        return "brainstorm promote's", "Intent"
+    if _PROMOTE_MARK in bodies.get("Approach", ""):
+        return "brainstorm promote's", "Approach"
+    for title, scaffold in _scaffold_bodies().items():
+        if scaffold in bodies.get(title, ""):
+            return "scaffold-planning's", title
+    return None
+
+
+def placeholder_reason(rel: str, node_id: str, found: tuple[str, str], tail: str = "") -> str:
+    """``<rel> still has <writer> placeholder under ## <section>``; an Approach names ``author-approach``."""
+    writer, title = found
+    hint = f"; `specy-road author-approach {node_id}` prints the prompt to write it" if title == "Approach" else ""
+    return f"{rel} still has {writer} placeholder under ## {title}{tail}{hint}"
+
+
+def placeholder_sheet(root: Path, node: dict) -> str | None:
+    """Why ``node`` is unauthored, or ``None`` when an agent has something to build from.
+
+    Unauthored: no ``acceptance`` on the node, and its planning sheet still
+    carries text the toolkit wrote itself — brainstorm promote's line under
+    ``## Approach`` (``## Intent`` on sheets promoted before M15.8), or
+    scaffold-planning's body under ``## Intent`` or ``## Approach``. Pickup skips such a leaf and ``validate`` lists it.
+    """
+    if acceptance_ids(node):
+        return None
+    pd = node.get("planning_dir")
+    if not isinstance(pd, str) or not pd.strip():
+        return None
+    try:
+        rel = normalize_planning_dir(pd.strip())
+        bodies = _section_bodies(resolve_planning_path(root, rel).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    found = sheet_placeholder(bodies)
+    return placeholder_reason(rel, node.get("id", ""), found, " and the node has no acceptance criteria") if found else None
+
+
+def open_pickable_leaves(nodes: list[dict]) -> list[dict]:
+    """Pickable structural leaves that are neither ``Complete`` nor ``Cancelled``."""
+    leaves = structural_leaf_ids(nodes)
+    return [
+        n for n in nodes
+        if n.get("id") in leaves and is_pickable(n) and n.get("status") not in ("Complete", "Cancelled")
+    ]
+
+
+def unauthored_leaves(root: Path, nodes: list[dict]) -> dict[str, str]:
+    """Open pickable leaves for which :func:`placeholder_sheet` gives a reason, id -> reason."""
+    out: dict[str, str] = {}
+    for n in open_pickable_leaves(nodes):
+        reason = placeholder_sheet(root, n)
+        if reason is not None:
+            out[n["id"]] = reason
+    return out

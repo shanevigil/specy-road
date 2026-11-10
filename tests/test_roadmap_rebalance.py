@@ -10,7 +10,7 @@ from pathlib import Path
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, script_subprocess_env
 
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.roadmap_chunk_utils import (
     load_json_chunk,
     load_manifest_mapping,
     render_json_chunk,

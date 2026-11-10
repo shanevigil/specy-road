@@ -38,7 +38,7 @@ import argparse
 from pathlib import Path
 
 from specy_road.bundled_scripts.brief_call_sites import call_site_lines
-from specy_road.bundled_scripts.brief_acceptance import print_size_warning, render_goal_and_acceptance, with_size_line
+from specy_road.brief_acceptance import print_size_warning, render_goal_and_acceptance, with_size_line
 from specy_road.bundled_scripts.brief_dependency_context import (
     render_dependency_context_section,
     without_placeholder_intent,
@@ -46,15 +46,15 @@ from specy_road.bundled_scripts.brief_dependency_context import (
 
 from specy_road import contract_citations
 from specy_road.text_sections import read_text_safely as _read_text_safely
-from specy_road.bundled_scripts.planning_artifacts import (
+from specy_road.planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
     planning_artifact_paths,
 )
 from specy_road.bundled_scripts.registry_claim_status import brief_status_own_line, leaf_claim_entry
-from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
+from specy_road.roadmap_gui_lib import registry_by_node_id
+from specy_road.roadmap_load import load_roadmap
+from specy_road.roadmap_node_keys import build_key_to_node
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix

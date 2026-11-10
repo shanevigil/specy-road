@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.role_prompt_cli import reviewer_command
+from specy_road.role_prompt_cli import reviewer_command
 from specy_road.orchestration_config import harness_model
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_files import reviews_dir

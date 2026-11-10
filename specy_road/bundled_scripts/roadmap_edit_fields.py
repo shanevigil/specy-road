@@ -7,10 +7,10 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, planning_filename_for_node
+from specy_road.planning_artifacts import normalize_planning_dir, planning_filename_for_node
 
 from specy_road.bundled_scripts.roadmap_edit_list_fields import PLANNED_TEST_CHANGES, set_planned_test_changes
-from specy_road.bundled_scripts.roadmap_node_keys import NODE_KEY_PATTERN
+from specy_road.roadmap_node_keys import NODE_KEY_PATTERN
 
 ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
 CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")

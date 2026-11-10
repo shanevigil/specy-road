@@ -16,7 +16,7 @@ from pathlib import Path
 from tests.helpers import SCHEMAS, script_subprocess_env
 from tests.review_repo_helpers import git
 
-from specy_road.bundled_scripts.planning_artifacts import expected_planning_rel
+from specy_road.planning_artifacts import expected_planning_rel
 
 SHEET = (
     "## Intent\n\nThe export writes one row per node.\n\n"

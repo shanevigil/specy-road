@@ -18,7 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import git_text
 from specy_road.integrity import compare_integrity
 from specy_road.red_green import red_green_problems

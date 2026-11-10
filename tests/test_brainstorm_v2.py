@@ -22,8 +22,8 @@ from tests.helpers import DOGFOOD
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import brainstorm_verify as bv
 from specy_road.bundled_scripts.brainstorm_fields import parse_origin, parse_overlap, source_record
-from specy_road.bundled_scripts.brainstorm_prompt import render_shard_prompt
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_prompt import render_shard_prompt
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,

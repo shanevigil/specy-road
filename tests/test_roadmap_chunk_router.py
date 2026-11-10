@@ -18,14 +18,14 @@ from specy_road.bundled_scripts.roadmap_chunk_router import (
     write_node_update,
     write_with_routing,
 )
-from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
+from specy_road.roadmap_chunk_router_pick import (
     chunk_max_lines,
     derive_new_chunk_path,
     insert_include_in_manifest,
     pick_target_chunk,
     simulate_chunk_lines,
 )
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.roadmap_chunk_utils import (
     load_json_chunk,
     load_manifest_mapping,
     render_json_chunk,
@@ -257,7 +257,7 @@ def test_write_with_routing_rolls_back_on_validation_failure(
     # Force the router into the auto-create branch by simulating overflow on
     # any chunk. Easiest: monkeypatch chunk_max_lines low.
     monkeypatch.setattr(
-        "specy_road.bundled_scripts.roadmap_chunk_router_pick.chunk_max_lines", lambda _root: 1
+        "specy_road.roadmap_chunk_router_pick.chunk_max_lines", lambda _root: 1
     )
     # Force validation to always fail.
     from specy_road.bundled_scripts import roadmap_chunk_router as router_mod

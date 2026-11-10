@@ -228,7 +228,7 @@ class AreaQuality:
 
 def _window(root: Path, nodes: list[dict[str, Any]], size: int) -> list[tuple[list[str], dict[str, int] | str | None]]:
     """The last ``size`` completed leaves with touch zones, newest first: ``(zones, tally or None)``."""
-    from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+    from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 
     parents = {n.get("parent_id") for n in nodes}
     live = {n["codename"]: n for n in nodes if n.get("codename") and n.get("id") not in parents}
@@ -275,7 +275,7 @@ def flagged_areas(root: Path, policy: dict[str, Any]) -> set[str]:
     """The flagged areas when ``policy.quality_routing`` is on; empty when it is off."""
     if not policy.get("quality_routing"):
         return set()
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     return {a.area for a in area_quality(root, load_roadmap(root)["nodes"]) if a.flagged}
 

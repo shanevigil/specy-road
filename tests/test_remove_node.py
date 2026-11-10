@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 from starlette.testclient import TestClient
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.roadmap_load import load_roadmap
 from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
 from tests.test_roadmap_crud import (
     crud_fixture_repo,

@@ -116,7 +116,7 @@ def retry_milestone_rollup_landing(
     then stops. A failed landing raises before that removal. The cleanup flag
     is read before the landing, which ends on the integration branch.
     """
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     if no_milestone_rollup:
         return False
@@ -175,7 +175,7 @@ def try_milestone_rollup_finish(
     land_milestone_rollup(repo, branch=branch, ms=ms, ib=ib, remote=gw_remote)
     remove_on_complete_session(sess_path)
     try:
-        from specy_road.bundled_scripts.roadmap_load import load_roadmap
+        from specy_road.roadmap_load import load_roadmap
 
         nodes2 = load_roadmap(repo)["nodes"]
         if maybe_promote_milestone_to_pending_mr(repo, ms.parent_node_id, nodes2):

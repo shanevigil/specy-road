@@ -19,7 +19,7 @@ from tests.test_worker_m310_reconcile_status import worker_repo
 
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts.roadmap_crud_ops import cmd_edit
+from specy_road.roadmap_crud_ops import cmd_edit
 
 
 def _edit(repo: Path, *sets: str) -> None:

@@ -20,11 +20,11 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
-from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, manifest_includes
-from specy_road.bundled_scripts.roadmap_gui_lib import registry_by_node_id
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, manifest_includes
+from specy_road.roadmap_gui_lib import registry_by_node_id
+from specy_road.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
 
 
@@ -159,7 +159,7 @@ def rehearsal_root(root: Path) -> Iterator[Path]:
 def _commit_remove(root: Path, node_id: str) -> Path | None:
     """Apply one removal on ``root``; return the planning sheet path if any."""
     from specy_road.bundled_scripts.roadmap_chunk_router import validate_callback
-    from specy_road.bundled_scripts.roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
+    from specy_road.roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
 
     chunk = find_chunk_path(root, node_id)
     if not chunk:
@@ -225,7 +225,7 @@ def _exit_on_value_error(fn: object, *args: object, **kwargs: object) -> None:
 
 
 def cmd_remove_node(args: object) -> None:
-    from specy_road.bundled_scripts.roadmap_crud_ops import repo_root
+    from specy_road.roadmap_crud_ops import repo_root
 
     root = repo_root(args)
     nid = args.node_id
@@ -236,7 +236,7 @@ def cmd_remove_node(args: object) -> None:
 
 
 def cmd_archive(args: object) -> None:
-    from specy_road.bundled_scripts.roadmap_crud_ops import repo_root
+    from specy_road.roadmap_crud_ops import repo_root
 
     root = repo_root(args)
     nid = args.node_id

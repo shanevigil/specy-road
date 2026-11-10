@@ -14,8 +14,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from specy_road.bundled_scripts import roadmap_crud_ops, roadmap_outline_group
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.bundled_scripts import roadmap_outline_group
+from specy_road import roadmap_crud_ops
+from specy_road.roadmap_chunk_utils import (
     load_json_chunk,
     write_json_chunk,
 )

@@ -34,7 +34,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 def _codename(root, node_id: str | None) -> str | None:
     if node_id is None:
         return None
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     node = next((n for n in load_roadmap(root)["nodes"] if n.get("id") == node_id), None)
     if node is None or not node.get("codename"):

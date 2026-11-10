@@ -133,7 +133,7 @@ def milestone_review_next_steps(node_id: str) -> str:
 
 def held_milestones(repo_root: Path, nodes: list[dict]) -> dict[str, str]:
     """``{milestone id: hold reason}`` for each milestone whose leaves are all Complete but which is held."""
-    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+    from specy_road.roadmap_load import compute_rollup_status
 
     leaf = compute_rollup_status(nodes)
     out: dict[str, str] = {}
@@ -186,7 +186,7 @@ def _set_complete(root: Path, node_id: str) -> list[str]:
     nested ``edit-node`` validate, so finish's later validate prints each
     warning once.
     """
-    from specy_road.bundled_scripts.roadmap_chunk_utils import (
+    from specy_road.roadmap_chunk_utils import (
         find_chunk_path,
         load_json_chunk,
         write_json_chunk,
@@ -228,7 +228,7 @@ def _set_complete(root: Path, node_id: str) -> list[str]:
 
 def _leaf_annotated(root: Path) -> list[dict]:
     """``load_roadmap`` then restore leaf-based rollup for the authored-status walk."""
-    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status, load_roadmap
+    from specy_road.roadmap_load import compute_rollup_status, load_roadmap
 
     nodes = load_roadmap(root)["nodes"]
     leaf = compute_rollup_status(nodes)
@@ -275,7 +275,7 @@ def complete_reviewed_milestone(repo_root: Path, node_id: str) -> list[str]:
     it is still open: the review covered a change that is not finished.
     Returns the repo-relative chunk paths that changed.
     """
-    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+    from specy_road.roadmap_load import compute_rollup_status
 
     root = repo_root.resolve()
     nodes = _leaf_annotated(root)

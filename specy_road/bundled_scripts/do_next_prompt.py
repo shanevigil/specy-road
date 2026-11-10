@@ -13,7 +13,7 @@ from specy_road.git_workflow_config import (
 from specy_road.git_subprocess import head_sha
 from specy_road.impact import impact_for_zones, section_lines
 from specy_road.workflow_prefs import implementation_summary_rule, summary_handling
-from specy_road.bundled_scripts.planning_artifacts import (
+from specy_road.planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
     planning_artifact_paths,

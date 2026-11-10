@@ -15,7 +15,7 @@ from tests.review_repo_helpers import git
 from tests.test_chore_mode import _roadmap_bytes, garden_repo, run_chore_cli
 
 from specy_road.bundled_scripts import archive_cli, roadmap_crud
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 
 TITLE = "Garden: stale command mentions"
 

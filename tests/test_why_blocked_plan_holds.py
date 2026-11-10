@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import roadmap_query_cli as rq
-from specy_road.bundled_scripts.session_plan_git import gather_session_plan
+from specy_road.session_plan_git import gather_session_plan
 from specy_road.bundled_scripts.session_plan_render import zone_overlaps
 from tests.review_repo_helpers import git
 from tests.test_orchestrate_plan import plan_repo

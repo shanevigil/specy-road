@@ -17,11 +17,11 @@ import pytest
 from tests.unauthored_repo_helpers import FILLED, git, leaf_node, pick_leaf, plan_json, unauthored_repo
 
 from specy_road.bundled_scripts import do_next_task as dnt
-from specy_road.bundled_scripts.brainstorm_promote import seed_planning_sheet
-from specy_road.bundled_scripts.brainstorm_session import Idea
+from specy_road.brainstorm_promote import seed_planning_sheet
+from specy_road.brainstorm_session import Idea
 from specy_road.bundled_scripts.grind_session import run_session
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
-from specy_road.bundled_scripts.planning_sheet_bootstrap import placeholder_sheet
+from specy_road.planning_sheet_bootstrap import placeholder_sheet
 from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
 from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
 from specy_road.bundled_scripts.validate_roadmap import main as validate_main, validate_at

@@ -240,7 +240,7 @@ def test_landed_leaves_count_newest_finish_merge_first(repo: Path) -> None:
 
 def test_an_unreadable_tally_is_counted_apart_from_no_tally(repo: Path) -> None:
     """A trailer that says unreadable is not a leaf that landed before tallies were recorded."""
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
     from specy_road.review_tally import area_quality
 
     land(repo, "api-contract-outline")

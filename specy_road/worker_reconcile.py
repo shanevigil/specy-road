@@ -23,7 +23,7 @@ from specy_road.git_changed_paths import branch_commit_paths, diff_paths
 from specy_road.git_subprocess import git_root, git_text, head_sha
 from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.nested_repos import in_nested, nested_changes, nested_prefixes
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.review_target import ReviewTarget, ReviewTargetError, _registry_entry, resolve_target
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 from specy_road.worker_lease import sync_leases

@@ -30,18 +30,18 @@ from specy_road.bundled_scripts.brainstorm_cli_v2 import (
     write_round_prompts,
 )
 from specy_road.bundled_scripts.brainstorm_close import close_session
-from specy_road.bundled_scripts.brainstorm_prompt import (
+from specy_road.brainstorm_prompt import (
     render_recommend_prompt,
     write_prompt,
 )
-from specy_road.bundled_scripts.brainstorm_promote import (
+from specy_road.brainstorm_promote import (
     decided_policies,
     pending_ideas,
     promote_session,
     unverified_strong,
 )
 from specy_road.bundled_scripts.brainstorm_promote_plan import below_recommendation
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,
@@ -54,7 +54,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     slugify,
     write_session,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.cli_entry import run_forwarded_cli
 from specy_road.runtime_paths import resolve_repo_root
 

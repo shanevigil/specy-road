@@ -17,7 +17,8 @@ import pytest
 from tests.review_repo_helpers import git, make_review_repo, review_output
 
 from specy_road import review_record_write
-from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli, role_prompt_stream
+from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_stream
+from specy_road import role_prompt_cli
 from specy_road.review_files import reviews_dir
 
 # Each call takes the next step of the spec (one answer per turn); the call's argv is appended to `calls`, and the

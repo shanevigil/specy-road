@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.brief_acceptance import acceptance_ids
 from specy_road.integrity_removals import REQUIRED_HEADING, missing_removal_entries, target_unplanned_removals
 from specy_road.review_files import HUMAN, load_review
 from specy_road.review_target import ReviewTarget, milestone_open_problem, same_commit

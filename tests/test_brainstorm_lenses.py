@@ -28,12 +28,12 @@ from specy_road.bundled_scripts.brainstorm_lenses import (
     operators_for,
     served_answer,
 )
-from specy_road.bundled_scripts.brainstorm_prompt import (
+from specy_road.brainstorm_prompt import (
     render_brainstorm_prompt,
     render_recommend_prompt,
     render_shard_prompt,
 )
-from specy_road.bundled_scripts.brainstorm_session import BrainstormSession, add_idea, read_session
+from specy_road.brainstorm_session import BrainstormSession, add_idea, read_session
 
 SLUG = "how-do-we-expand-payments"
 

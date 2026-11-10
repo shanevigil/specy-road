@@ -6,7 +6,7 @@ Moved out of ``roadmap_move_node`` unchanged (file-limits cap) when M21.3 added
 
 from __future__ import annotations
 
-from specy_road.bundled_scripts.roadmap_outline_renumber import (
+from specy_road.roadmap_outline_renumber import (
     check_chosen_child_id,
     lowest_free_child_id,
     next_free_child_id,

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from starlette.testclient import TestClient
 
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
 
 

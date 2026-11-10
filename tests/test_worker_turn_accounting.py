@@ -12,7 +12,7 @@ from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import worker_cli_render as wcr
+from specy_road import worker_cli_render as wcr
 from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.worker_adapter_parsers import estimate_usage_cost, mtok_rates

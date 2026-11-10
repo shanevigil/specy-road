@@ -14,12 +14,12 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from specy_road.bundled_scripts.generate_brief import index as make_index, render_brief
-from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+from specy_road.planning_sheet_bootstrap import (
     feature_sheet_structure_instruction_for_llm,
     gate_sheet_structure_instruction_for_llm,
     planning_review_expected_shape_block,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_ok
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 from specy_road.node_kinds import is_gate

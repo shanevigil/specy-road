@@ -46,7 +46,7 @@ from typing import TYPE_CHECKING
 
 from specy_road.bundled_scripts import planning_rename
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
-from specy_road.bundled_scripts.roadmap_crud_ops import (
+from specy_road.roadmap_crud_ops import (
     _refuse_if_milestone_locked,
     repo_root,
     run_validate_raise,
@@ -60,8 +60,8 @@ from specy_road.bundled_scripts.roadmap_id_rewrite_staging import (
     _stage_registry_ids,
     sheet_path_map,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.roadmap_outline_ops import (
+from specy_road.roadmap_load import load_roadmap
+from specy_road.roadmap_outline_ops import (
     _attach_at_index,
     _detach_reindex_old_parent,
     _validate_reparent_target,
@@ -72,7 +72,7 @@ from specy_road.bundled_scripts.roadmap_move_id_forms import (
     _moved_node_id,
     _refuse_id_form_combinations,
 )
-from specy_road.bundled_scripts.roadmap_outline_renumber import (
+from specy_road.roadmap_outline_renumber import (
     assign_subtree_ids_inplace,
     renumber_display_ids_inplace,
 )

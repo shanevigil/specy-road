@@ -12,7 +12,7 @@ import pytest
 import yaml
 
 from specy_road.bundled_scripts import brainstorm_cli
-from specy_road.bundled_scripts.brainstorm_session import BrainstormError, read_session, session_path
+from specy_road.brainstorm_session import BrainstormError, read_session, session_path
 from tests.helpers import DOGFOOD
 
 SLUG = "how-do-we-expand-payments"

@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.planning_artifacts import resolve_planning_path
+from specy_road.planning_artifacts import resolve_planning_path
 from specy_road.changelog_check import missing_entry_warning
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import run

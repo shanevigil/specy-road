@@ -37,8 +37,8 @@ from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import refresh_stubs as rs
-from specy_road.bundled_scripts.brainstorm_prompt import render_brainstorm_prompt
-from specy_road.bundled_scripts.brainstorm_session import BrainstormSession, read_session, write_session
+from specy_road.brainstorm_prompt import render_brainstorm_prompt
+from specy_road.brainstorm_session import BrainstormSession, read_session, write_session
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.orchestrate_plan import Candidate, assign_leaf
 from specy_road.orchestration_config import effective_config
@@ -311,7 +311,7 @@ def test_an_invalid_configured_profile_is_a_staffing_error(tmp_path: Path) -> No
                             "policy: {reviewers_required: 1}\n")
     (repo / "model-profiles").mkdir()
     (repo / "model-profiles" / "bad.md").write_text("not a profile\n")
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
     from specy_road.model_profiles import profile_for_entry
 
     config, _e = effective_config(repo)

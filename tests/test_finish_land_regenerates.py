@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts.export_roadmap_md import export_markdown
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.registry_yaml import registry_path, write_registry

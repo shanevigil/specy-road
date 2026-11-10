@@ -232,7 +232,7 @@ def test_registered_subcommand_in_a_span_does_not_abort_validate(tmp_path: Path,
 def test_validate_and_garden_share_the_scanner_and_only_garden_reads_docs(tmp_path: Path, capsys) -> None:
     """M12.3: ``chore garden`` runs validate's scanner over ``docs/**/*.md`` too; validate's file set is unchanged."""
     from specy_road.bundled_scripts.chore_garden import stale_command_findings  # noqa: PLC0415
-    from specy_road.bundled_scripts.validate_stale_commands import agent_files, file_unregistered_commands  # noqa: PLC0415
+    from specy_road.validate_stale_commands import agent_files, file_unregistered_commands  # noqa: PLC0415
 
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     root = tmp_path / "sr"

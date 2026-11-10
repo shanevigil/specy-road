@@ -21,7 +21,7 @@ from specy_road.bundled_scripts.brainstorm_lenses import (
     operators_for,
     served_answer,
 )
-from specy_road.bundled_scripts.brainstorm_session import IDEA_KINDS, BrainstormSession
+from specy_road.brainstorm_session import IDEA_KINDS, BrainstormSession
 
 NO_API_NOTE = (
     "Use whatever your IDE gives you: its brainstorming or ideation slash "

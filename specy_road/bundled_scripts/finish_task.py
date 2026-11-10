@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.finish_task_args import parse_finish_args
 from specy_road.git_subprocess import git_run
 from specy_road.git_workflow_config import (
@@ -57,7 +57,7 @@ from specy_road.on_complete_session import (
     read_on_complete_session,
 )
 from specy_road.runtime_paths import resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import current_branch
+from specy_road.repo_ops import current_branch
 from specy_road.repo_lock import pickup_finish_lock
 from specy_road.worker_orphans import end_finished_workers
 from specy_road.worker_state import WorkerError

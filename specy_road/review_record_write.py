@@ -49,7 +49,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from specy_road.clock import utc_now_iso
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.generate_brief import index, load_nodes
 from specy_road.review_answer import (FILLED_BY_SPECY_ROAD, UNREADABLE_ANSWER, Rerun, drop_nulls, events,
                                       final_answer, output_schema, stream_lines)

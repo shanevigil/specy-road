@@ -17,7 +17,7 @@ from tests.review_repo_helpers import git, make_review_repo
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts import roadmap_chunk_router
-from specy_road.bundled_scripts.roadmap_crud_ops import cmd_edit, edit_node_set_pairs
+from specy_road.roadmap_crud_ops import cmd_edit, edit_node_set_pairs
 from specy_road.finish_implementation_check import implementation_gate_error
 from specy_road.registry_yaml import read_registry, registry_path
 

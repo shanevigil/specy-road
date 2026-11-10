@@ -17,11 +17,11 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable
 
-from specy_road.bundled_scripts.roadmap_gui_lib import load_settings, registry_by_node_id
+from specy_road.roadmap_gui_lib import load_settings, registry_by_node_id
 from specy_road.registry_yaml import read_registry, registry_path
-from specy_road.bundled_scripts.roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
-from specy_road.bundled_scripts.repo_ops import working_tree_clean
-from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
+from specy_road.roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
+from specy_road.repo_ops import working_tree_clean
+from specy_road.roadmap_index import RoadmapIndex
 from specy_road.git_subprocess import git_ok
 from specy_road.git_workflow_config import resolve_baseline_cmd
 from specy_road.node_kinds import is_pickable

@@ -12,7 +12,7 @@ import re
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 
 
@@ -206,9 +206,9 @@ def _load_id_map(path: Path) -> dict[str, str]:
 
 def rename_refs(root: Path, id_map: dict[str, str], *, dry_run: bool = False) -> dict[str, int]:
     """Rewrite prose id references across live nodes in one validated transaction."""
-    from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
+    from specy_road.roadmap_crud_ops import run_validate_raise
     from specy_road.bundled_scripts.roadmap_id_rewrite_staging import _stage_merged_nodes
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     nodes = list(load_roadmap(root)["nodes"])
     plan = AtomicWritePlan(root)
@@ -255,7 +255,7 @@ def print_rewrite_refs_note(rewrite_refs: bool) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    from specy_road.bundled_scripts.roadmap_crud_ops import repo_root
+    from specy_road.roadmap_crud_ops import repo_root
     from specy_road.runtime_paths import add_repo_root_arg
 
     p = argparse.ArgumentParser(

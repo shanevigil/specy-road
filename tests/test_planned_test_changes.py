@@ -19,7 +19,7 @@ from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
 from specy_road.bundled_scripts.roadmap_edit_list_fields import planned_test_change_items
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.integrity_removals import REQUIRED_HEADING, unplanned_removals
 from specy_road.registry_yaml import read_registry, registry_path
 

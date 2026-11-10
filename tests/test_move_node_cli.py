@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts.roadmap_move_node import move_node
-from specy_road.bundled_scripts.roadmap_outline_ops import reorder_siblings
+from specy_road.roadmap_outline_ops import reorder_siblings
 from tests.move_node_helpers import (
     NK_A1,
     NK_B,

@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 
-from specy_road.bundled_scripts import roadmap_gui_settings as _rgs
+from specy_road import roadmap_gui_settings as _rgs
 
 from specy_road.pm_integration_registry import describe_integration_branch_auto_ff
 from specy_road.registry_remote_overlay import merge_registry_with_remote_overlay

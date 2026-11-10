@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
+from specy_road.roadmap_crud_ops import edit_node_set_pairs
 from specy_road.bundled_scripts.roadmap_edit_fields import apply_set, title_to_codename
 
 from tests.test_roadmap_crud import crud_fixture_repo

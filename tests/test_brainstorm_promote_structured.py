@@ -10,15 +10,15 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import brainstorm_cli
-from specy_road.bundled_scripts.brainstorm_promote import pending_ideas, promote_session
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_promote import pending_ideas, promote_session
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,
     read_session,
     write_session,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
 
 

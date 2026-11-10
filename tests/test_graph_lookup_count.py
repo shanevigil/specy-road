@@ -25,7 +25,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 PACKAGE = REPO / "specy_road"
-INDEX_MODULE = PACKAGE / "bundled_scripts" / "roadmap_index.py"
+INDEX_MODULE = PACKAGE / "roadmap_index.py"
 
 #: Lower this when the count falls; never raise it.
 BASELINE = 68

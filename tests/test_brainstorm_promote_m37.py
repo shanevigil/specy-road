@@ -11,20 +11,20 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import brainstorm_cli
-from specy_road.bundled_scripts.brainstorm_promote import (
+from specy_road.brainstorm_promote import (
     PROMOTE_CODENAME_MAX_WORDS,
     pending_ideas,
     promote_session,
 )
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormSession,
     add_idea,
     read_session,
     write_session,
 )
 from specy_road.bundled_scripts.roadmap_crud_prepare import next_sibling_order
-from specy_road.bundled_scripts.roadmap_layout import ordered_tree_rows
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_layout import ordered_tree_rows
+from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
 
 

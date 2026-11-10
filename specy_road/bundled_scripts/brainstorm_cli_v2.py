@@ -11,15 +11,15 @@ from specy_road.clock import utc_now
 from specy_road.bundled_scripts.brainstorm_cli_args import file_namespaces
 from specy_road.bundled_scripts.brainstorm_cli_args_v2 import evidence_record, frame_answers, quoted_sources
 from specy_road.bundled_scripts.brainstorm_fields import parse_origin
-from specy_road.bundled_scripts.brainstorm_prompt import (
+from specy_road.brainstorm_prompt import (
     render_brainstorm_prompt,
     render_evidence_prompt,
     render_shard_prompt,
     write_prompt,
 )
 from specy_road.bundled_scripts.brainstorm_prompt_evidence import MAX_EVIDENCE_IDEAS, shortlist
-from specy_road.bundled_scripts.brainstorm_promote import pending_ideas
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_promote import pending_ideas
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,
@@ -29,7 +29,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     set_status,
     write_session,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.brainstorm_verify import confirm, is_local, pending, verify_session
 from specy_road.git_subprocess import current_branch_name
 from specy_road.git_workflow_config import resolve_integration_defaults
@@ -39,7 +39,7 @@ DEFAULT_COUNT = 20
 
 
 def print_idea_summary(session: BrainstormSession) -> None:
-    from specy_road.bundled_scripts.brainstorm_session import IDEA_STATUSES, RECOMMENDATIONS
+    from specy_road.brainstorm_session import IDEA_STATUSES, RECOMMENDATIONS
 
     by_status = {s: 0 for s in IDEA_STATUSES}
     for idea in session.ideas:

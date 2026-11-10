@@ -13,17 +13,17 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.brainstorm_promote import (
+from specy_road.brainstorm_promote import (
     pending_ideas,
     promote_session,
 )
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,
     read_session,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
 
 
@@ -110,7 +110,7 @@ def test_a_failure_mid_batch_does_not_duplicate_on_the_next_run(
     succeeded, a failure part-way would leave nodes on the graph that no idea
     claimed — and re-running would promote them a second time.
     """
-    import specy_road.bundled_scripts.brainstorm_promote as mod
+    import specy_road.brainstorm_promote as mod
 
     s = _accepted_session(under="M1")
     add_idea(s, title="Second idea").status = "accepted"

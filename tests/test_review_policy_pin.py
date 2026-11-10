@@ -18,8 +18,8 @@ from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
 from tests.test_review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed, review_cli
-from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.registration_pickup_commit import registration_commit_message
+from specy_road.roadmap_load import load_roadmap
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_policy_pin import ACCEPTANCE_NAME, pin_of, pin_problem, pinned_message, policy_digest

@@ -101,7 +101,7 @@ def test_possible_undercount_flags_the_adopter_shape_and_not_a_short_rich_turn()
 
 
 def test_worker_usage_json_and_text_mark_possible_undercount() -> None:
-    from specy_road.bundled_scripts import worker_cli_render as wcr
+    from specy_road import worker_cli_render as wcr
 
     start = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
     events = [
@@ -141,7 +141,7 @@ def _worker_rec() -> object:
 
 
 def test_combined_usage_json_and_text_keep_possible_undercount_when_executor_is_flagged(monkeypatch) -> None:
-    from specy_road.bundled_scripts import worker_cli_render as wcr
+    from specy_road import worker_cli_render as wcr
 
     monkeypatch.setattr(wcr, "reviewer_total", lambda data, repo_root=None: _reviewer_subtotal())
     data = wcr.usage([(_worker_rec(), _usage_events(10136, duration_sec=6092))])
@@ -153,7 +153,7 @@ def test_combined_usage_json_and_text_keep_possible_undercount_when_executor_is_
 
 
 def test_combined_usage_omits_possible_undercount_when_executor_and_reviewer_are_unmarked(monkeypatch) -> None:
-    from specy_road.bundled_scripts import worker_cli_render as wcr
+    from specy_road import worker_cli_render as wcr
 
     monkeypatch.setattr(wcr, "reviewer_total", lambda data, repo_root=None: _reviewer_subtotal())
     data = wcr.usage([(_worker_rec(), _usage_events(17000, duration_sec=300))])
@@ -164,7 +164,7 @@ def test_combined_usage_omits_possible_undercount_when_executor_and_reviewer_are
 
 
 def test_reviewer_only_subtotal_does_not_imply_possible_undercount(monkeypatch) -> None:
-    from specy_road.bundled_scripts import worker_cli_render as wcr
+    from specy_road import worker_cli_render as wcr
 
     monkeypatch.setattr(wcr, "reviewer_total", lambda data, repo_root=None: _reviewer_subtotal())
     data = wcr.usage([(_worker_rec(), [])])

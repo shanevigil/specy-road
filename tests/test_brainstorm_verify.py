@@ -22,7 +22,7 @@ from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import brainstorm_verify as bv
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormSession,
     Idea,
     read_session,

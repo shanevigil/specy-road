@@ -22,7 +22,7 @@ from specy_road.bundled_scripts.brainstorm_fields import (
     source_record,
 )
 from specy_road.bundled_scripts.brainstorm_lenses import PROFILES
-from specy_road.bundled_scripts.brainstorm_session import BrainstormError
+from specy_road.brainstorm_session import BrainstormError
 from specy_road.bundled_scripts.brainstorm_verify import repo_commit
 from specy_road.runtime_paths import add_repo_root_arg
 

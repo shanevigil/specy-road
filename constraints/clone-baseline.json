@@ -12,7 +12,7 @@
     },
     {
       "modules": [
-        "specy_road.bundled_scripts.brainstorm_chat",
+        "specy_road.brainstorm_chat",
         "specy_road.bundled_scripts.review_node"
       ],
       "lines": 9
@@ -40,8 +40,8 @@
     },
     {
       "modules": [
-        "specy_road.bundled_scripts.roadmap_chunk_router_pick",
-        "specy_road.bundled_scripts.roadmap_chunk_utils"
+        "specy_road.roadmap_chunk_router_pick",
+        "specy_road.roadmap_chunk_utils"
       ],
       "lines": 7
     },

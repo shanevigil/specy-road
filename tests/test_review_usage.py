@@ -19,7 +19,7 @@ from tests.review_repo_helpers import commit_file, git
 
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
-from specy_road.bundled_scripts.worker_cli_render import usage, usage_lines
+from specy_road.worker_cli_render import usage, usage_lines
 from specy_road.review_files import reviews_dir
 from specy_road.review_usage import archive_round, review_usage
 from specy_road.reviewer_run_failure import run_path, save_run

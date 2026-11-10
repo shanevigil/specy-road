@@ -168,7 +168,7 @@ from specy_road.agent_guide_block import PROVENANCE  # noqa: E402
 from specy_road.agent_ignores import apply_agent_ignores  # noqa: E402
 from specy_road.bundled_scripts import chore_garden  # noqa: E402
 from specy_road.bundled_scripts.role_prompt_rca import dirty_check  # noqa: E402
-from specy_road.bundled_scripts.roadmap_load import load_roadmap  # noqa: E402
+from specy_road.roadmap_load import load_roadmap  # noqa: E402
 
 _RULES = ("# Rules\n\nRead the docs.\n<!-- prevents: drift | enforced: advisory | ref: x -->\n"
           "Run validate.\n<!-- prevents: bad graphs | enforced: specy-road validate | ref: y -->\n")
@@ -293,7 +293,7 @@ def test_a_chore_named_garden_survives_a_garden_run(tmp_path: Path, capsys) -> N
 
 def test_garden_reports_stale_commands_in_the_managed_rules_file(tmp_path: Path, capsys) -> None:
     """R1: ``.specyrd/AGENTS.md`` is in garden's stale-command set; validate's own set is unchanged."""
-    from specy_road.bundled_scripts.validate_stale_commands import agent_files  # noqa: PLC0415
+    from specy_road.validate_stale_commands import agent_files  # noqa: PLC0415
 
     repo = garden_repo(tmp_path)
     commit_file(repo, ".specyrd/AGENTS.md", _RULES + "Run `specy-road nonexistent-garden-probe`.\n", "probe")
@@ -314,7 +314,7 @@ def _garden_json(repo: Path, capsys) -> dict:
 
 def test_garden_reports_mentions_inside_managed_blocks_and_validate_still_skips_them(tmp_path: Path, capsys) -> None:
     """R4: garden reads whole files (managed blocks too) at their original line numbers; validate is unchanged."""
-    from specy_road.bundled_scripts.validate_stale_commands import warn_unregistered_commands  # noqa: PLC0415
+    from specy_road.validate_stale_commands import warn_unregistered_commands  # noqa: PLC0415
     from specy_road.managed_block import HTML_COMMENT, render_block  # noqa: PLC0415
 
     repo = garden_repo(tmp_path)

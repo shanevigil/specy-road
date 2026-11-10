@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+from specy_road.planning_sheet_bootstrap import (
     feature_sheet_level2_titles,
     gate_sheet_level2_titles,
     planning_review_expected_shape_block,

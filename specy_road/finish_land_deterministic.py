@@ -35,7 +35,7 @@ from pathlib import Path
 
 from specy_road import safe_write
 from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
-from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
+from specy_road.roadmap_chunk_utils import discover_manifest_path
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.finish_land_roadmap_graph import (
     GraphResolveError,

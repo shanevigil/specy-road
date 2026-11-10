@@ -22,7 +22,8 @@ from tests.review_repo_helpers import git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
 
 from specy_road import review_files as rf
-from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli
+from specy_road.bundled_scripts import review_cli, role_prompt
+from specy_road import role_prompt_cli
 from specy_road.review_delegate import delegate, load_run
 from specy_road.reviewer_run_failure import run_path, save_run
 

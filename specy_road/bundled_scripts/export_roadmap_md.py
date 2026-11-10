@@ -12,9 +12,9 @@ import sys
 from pathlib import Path
 
 from specy_road import safe_write
-from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
-from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_chunk_utils import discover_manifest_path
+from specy_road.roadmap_layout import natural_id_sort_key
+from specy_road.roadmap_load import load_roadmap
 from specy_road.generated_files import gitignore_resolution_hint
 
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
@@ -85,7 +85,7 @@ def reexport_roadmap_md(root: Path) -> None:
     owns the file -- and the --check comparison -- owns the regeneration too.
     Written by the safe-write rule: a symlink at it raises ``SafeWriteError``.
     """
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
 
     safe_write.write(root, root / "roadmap.md", export_markdown(load_roadmap(root)["nodes"]))
 

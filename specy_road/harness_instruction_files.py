@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 
 from specy_road.agent_guide_block import AGENT_GUIDE
-from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
+from specy_road.planning_artifacts import split_frontmatter
 from specy_road.claude_config import claude_config_dir, claude_projects_dir
 from specy_road.git_subprocess import git_stdout, git_text
 

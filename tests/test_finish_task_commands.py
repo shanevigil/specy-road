@@ -165,7 +165,7 @@ def test_finish_blocks_when_implementation_review_pending(
 def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None:
     import json
 
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
+    from specy_road.roadmap_chunk_utils import load_json_chunk
 
     (tmp_path / "roadmap" / "phases").mkdir(parents=True)
     (tmp_path / "roadmap" / "manifest.json").write_text(

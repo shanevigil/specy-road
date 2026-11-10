@@ -17,7 +17,7 @@ from tests.test_baseline_gate_cli import FEATURE, SHEET, _branches, _git, _picku
 
 from specy_road.agents_md_block import render_rules
 from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
-from specy_road.bundled_scripts.planning_artifacts import expected_planning_rel
+from specy_road.planning_artifacts import expected_planning_rel
 
 SECOND = "feature/rm-leaf-two"
 

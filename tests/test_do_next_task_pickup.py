@@ -13,7 +13,7 @@ from specy_road.bundled_scripts import do_next_task as dnt
 
 def _git_init(root: Path) -> None:
     subprocess.run(["git", "init", "-q"], cwd=root, check=True)
-from specy_road.bundled_scripts.registration_pickup_commit import (
+from specy_road.registration_pickup_commit import (
     REGISTRATION_COMMIT_CI_SKIP_SUFFIX,
     registration_commit_message,
 )

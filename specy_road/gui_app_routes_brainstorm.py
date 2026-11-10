@@ -13,17 +13,17 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from specy_road.bundled_scripts.brainstorm_chat import chat_turn
-from specy_road.bundled_scripts.brainstorm_prompt import (
+from specy_road.brainstorm_chat import chat_turn
+from specy_road.brainstorm_prompt import (
     render_brainstorm_prompt,
     render_recommend_prompt,
 )
-from specy_road.bundled_scripts.brainstorm_promote import (
+from specy_road.brainstorm_promote import (
     pending_ideas,
     promote_session,
 )
-from specy_road.bundled_scripts.brainstorm_research import test_connection
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_research import test_connection
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,
@@ -36,8 +36,8 @@ from specy_road.bundled_scripts.brainstorm_session import (
     write_session,
 )
 from specy_road.bundled_scripts.review_node import ReviewError
-from specy_road.bundled_scripts.roadmap_gui_lib import apply_llm_env_from_settings
-from specy_road.bundled_scripts.roadmap_gui_settings import with_stored_secrets
+from specy_road.roadmap_gui_lib import apply_llm_env_from_settings
+from specy_road.roadmap_gui_settings import with_stored_secrets
 from specy_road.gui_app_helpers import get_repo_root
 from specy_road.gui_app_models import (
     BrainstormChatBody,

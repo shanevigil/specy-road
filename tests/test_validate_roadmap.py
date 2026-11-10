@@ -14,7 +14,7 @@ from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
 from specy_road import __version__
 from specy_road.bundled_scripts import validate_roadmap as vr
-from specy_road.bundled_scripts.roadmap_load import annotate_rollup_status, load_roadmap
+from specy_road.roadmap_load import annotate_rollup_status, load_roadmap
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     run_validation,
     validate_dependency_ids,

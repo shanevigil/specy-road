@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import review_node
-from specy_road.bundled_scripts.roadmap_chunk_utils import write_json_chunk
+from specy_road.roadmap_chunk_utils import write_json_chunk
 from tests.helpers import REPO, SCHEMAS
 
 

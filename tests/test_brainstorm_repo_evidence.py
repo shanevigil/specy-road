@@ -20,7 +20,7 @@ from tests.helpers import DOGFOOD
 
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import brainstorm_verify as bv
-from specy_road.bundled_scripts.brainstorm_session import BrainstormError, read_session, session_path
+from specy_road.brainstorm_session import BrainstormError, read_session, session_path
 
 SLUG = "how-do-we-expand-payments"
 PAY = "def charge(amount):\n    # Links expire after 24 hours.\n    return link(amount)\n\n\ndef refund():\n    pass\n"

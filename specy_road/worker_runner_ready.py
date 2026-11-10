@@ -23,8 +23,8 @@ def all_ready_fingerprints(repo_root: Path, node_id: str) -> list[str]:
 
 def fresh_invalid_ready_reason(repo_root: Path, rec: WorkerRecord, before_all: list[str]) -> str | None:
     """Why a new or changed READY this turn is unusable; same text handoff status shows."""
-    from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.brief_acceptance import acceptance_ids
+    from specy_road.roadmap_load import load_roadmap
     from specy_road.review_files import list_ready
 
     try:

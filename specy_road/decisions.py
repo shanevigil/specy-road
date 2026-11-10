@@ -232,7 +232,7 @@ def _unfenced_lines(text: str) -> list[str]:
     Reuses the fence opener/closer in ``validate_stale_commands`` (backtick and
     tilde runs, matching lengths).
     """
-    from specy_road.bundled_scripts.validate_stale_commands import (
+    from specy_road.validate_stale_commands import (
         _fence_closes,
         _fence_marker,
         _opening_is_code_span,

@@ -7,23 +7,23 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, roadmap_dir
-from specy_road.bundled_scripts.roadmap_crud_ops import (
+from specy_road.roadmap_chunk_utils import find_chunk_path, roadmap_dir
+from specy_road.roadmap_crud_ops import (
     append_node_to_chunk,
     delete_roadmap_node_hard,
     edit_node_set_pairs,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
-from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
+from specy_road.roadmap_load import load_roadmap
+from specy_road.roadmap_node_keys import new_node_key
+from specy_road.roadmap_layout import sibling_sort_key
 from specy_road.bundled_scripts.roadmap_outline_group import group_nodes
-from specy_road.bundled_scripts.roadmap_outline_ops import (
+from specy_road.roadmap_outline_ops import (
     apply_indent,
     apply_outdent,
     move_node_outline,
     reorder_siblings,
 )
-from specy_road.bundled_scripts.roadmap_outline_renumber import check_chosen_child_id
+from specy_road.roadmap_outline_renumber import check_chosen_child_id
 
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import (

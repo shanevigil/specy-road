@@ -30,7 +30,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.brief_acceptance import acceptance_ids
 from specy_road.orchestrate_plan import (
     entry_may_process,
     guidance_problem,

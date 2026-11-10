@@ -12,7 +12,7 @@ from tests.rework_rca_helpers import ROSTER, file_after, rca_record, run_review_
 from tests.test_worker_cli import run_worker_cli
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road.bundled_scripts.role_prompt_rework import CLASS_AUDIT_LINES, rework_check, rework_lines
+from specy_road.role_prompt_rework import CLASS_AUDIT_LINES, rework_check, rework_lines
 from specy_road.review_files import reviews_dir
 from specy_road.worker_state import WorkerError
 

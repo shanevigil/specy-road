@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import grind_session as gs
-from specy_road.bundled_scripts import grind_session_cleanup as gsc
+from specy_road import grind_session_cleanup as gsc
 from specy_road.bundled_scripts import grind_session_events as gse
 
 REPO = Path(__file__).resolve().parent.parent

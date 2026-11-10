@@ -63,9 +63,9 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief, verify_cmd_lines
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.review_packet import _fence, build_packet
-from specy_road.bundled_scripts.role_prompt_cli import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,
+from specy_road.role_prompt_cli import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,
                                                         reviewer_launch_block, reviewer_turn, run_plain_cli)
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
@@ -77,7 +77,7 @@ from specy_road.bundled_scripts.role_prompt_rca import (
     reviewer_preamble,
 )
 from specy_road import safe_write
-from specy_road.bundled_scripts.role_prompt_rework import rework_lines
+from specy_road.role_prompt_rework import rework_lines
 from specy_road.decisions import coordinator_decision_lines
 from specy_road.model_profiles import ROLES, Profile
 from specy_road.orchestrate_plan import (
@@ -93,7 +93,7 @@ from specy_road.orchestrate_plan import (
 )
 from specy_road.orchestration_config import substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_stdout
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_record_write import Outcome, ReviewRunBusy, review_run_lock, schema_lines

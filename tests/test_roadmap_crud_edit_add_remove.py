@@ -13,7 +13,7 @@ import pytest
 from tests.review_repo_helpers import make_review_repo
 
 from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
 
 NK = "11111111-1111-5111-8111-111111111111"

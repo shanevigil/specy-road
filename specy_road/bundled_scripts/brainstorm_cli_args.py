@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from specy_road.bundled_scripts.brainstorm_promote import (
+from specy_road.brainstorm_promote import (
     DEFAULT_PROMOTE_TYPE,
     INHERIT_EXECUTION_MILESTONE,
     PROMOTABLE_TYPES,
@@ -25,7 +25,7 @@ from specy_road.bundled_scripts.brainstorm_cli_args_v2 import (
     add_start_v2_options,
     add_v2_subcommands,
 )
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     IDEA_KINDS,
     BrainstormError,
     IDEA_STATUSES,

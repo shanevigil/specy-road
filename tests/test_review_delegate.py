@@ -19,7 +19,8 @@ from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_ros
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_output
 from tests.test_models_and_prompt import run_main
 
-from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli
+from specy_road.bundled_scripts import review_cli, role_prompt
+from specy_road import role_prompt_cli
 from specy_road.review_delegate import DelegateError, capacity_error, delegate, load_run
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_model_check import MISMATCH_REASON

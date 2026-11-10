@@ -14,7 +14,7 @@ from tests.unauthored_repo_helpers import FILLED, unauthored_repo
 
 from specy_road.bundled_scripts.brief_dependency_context import unwritten_sheet_line, without_placeholder_intent
 from specy_road.bundled_scripts.generate_brief import index, load_nodes, render_brief
-from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+from specy_road.planning_sheet_bootstrap import (
     LEGACY_PROMOTE_PLACEHOLDER,
     PROMOTE_PLACEHOLDER,
     render_feature_sheet_template,

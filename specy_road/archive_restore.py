@@ -75,7 +75,7 @@ _ARCHIVE = Path("roadmap", ARCHIVE_DIRNAME)
 
 def _shallow_view(root: Path, archive_id: str, record: dict[str, Any]) -> tuple[dict, list[dict], list]:
     """``(record, its nodes, paths it removes)`` for a shallow record; the chunk is checked before it is read."""
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
+    from specy_road.roadmap_chunk_utils import load_json_chunk
 
     chunk_rel = record.get("chunk")
     path = _checked(root, chunk_rel) if isinstance(chunk_rel, str) else None
@@ -169,7 +169,7 @@ def _restore_planning_sheets(root: Path, record: dict[str, Any]) -> None:
 
 def _write_back(root: Path, grouped: dict[str, list[tuple[int, dict]]]) -> list[str]:
     """Write each target chunk and return the ones needing a manifest include."""
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+    from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 
     need_include: list[str] = []
     for rel, placements in sorted(grouped.items()):
@@ -184,8 +184,8 @@ def _write_back(root: Path, grouped: dict[str, list[tuple[int, dict]]]) -> list[
 
 def _sync_includes(root: Path, rels: list[str]) -> None:
     """Add any chunk the restore recreated back into ``manifest.json``."""
-    from specy_road.bundled_scripts.roadmap_chunk_router_pick import insert_include_in_manifest
-    from specy_road.bundled_scripts.roadmap_chunk_utils import (
+    from specy_road.roadmap_chunk_router_pick import insert_include_in_manifest
+    from specy_road.roadmap_chunk_utils import (
         load_manifest_mapping,
         manifest_path,
         write_manifest,
@@ -230,7 +230,7 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
     A deep archive must be unpacked to shallow first; this refuses rather than
     guessing, so the caller can surface the two-step nature of the operation.
     """
-    from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
+    from specy_road.roadmap_crud_ops import run_validate_raise
 
     doc = load_archive_index(root)
     record = find_record(doc, archive_id)

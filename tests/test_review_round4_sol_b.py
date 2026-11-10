@@ -22,7 +22,7 @@ from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import brainstorm_chat as bc
+from specy_road import brainstorm_chat as bc
 from specy_road.bundled_scripts import brainstorm_verify as bv
 from specy_road.model_profiles import profile_for_entry
 from specy_road.review_files import reviews_root
@@ -64,7 +64,7 @@ def test_harness_override_cannot_move_a_rostered_model(tmp_path: Path) -> None:
 
 
 def test_a_plan_without_a_coordinator_says_so(tmp_path: Path) -> None:
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
     from specy_road.orchestrate_plan import Candidate, assign_leaf
     from specy_road.orchestration_config import effective_config
 

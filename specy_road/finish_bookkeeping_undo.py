@@ -42,7 +42,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from specy_road import safe_write
-from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
+from specy_road.roadmap_chunk_utils import manifest_includes
 from specy_road.finish_work_artifacts import archived_implementation_summary_rel, cleanup_paths
 from specy_road.generated_files import GENERATED_COMMITTED
 from specy_road.git_subprocess import git_code, git_ok

@@ -21,7 +21,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from specy_road.bundled_scripts.worker_cli_render import _sum_usage
+from specy_road.worker_cli_render import _sum_usage
 from specy_road.review_files import HISTORY_DIRNAME, reviews_dir
 from specy_road.review_answer import events as safe_events
 from specy_road.reviewer_run_failure import _read_json

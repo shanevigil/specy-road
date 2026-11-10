@@ -11,10 +11,10 @@ from pathlib import Path
 
 import yaml
 
-from specy_road.bundled_scripts.planning_artifacts import resolve_planning_path
+from specy_road.planning_artifacts import resolve_planning_path
 from specy_road.bundled_scripts.planning_rename import stage_prose_refs
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.roadmap_chunk_utils import (
     load_json_chunk,
     manifest_includes,
     roadmap_dir,

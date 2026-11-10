@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import git_ok
 
 FEATURE_PREFIX = "feature/rm-"

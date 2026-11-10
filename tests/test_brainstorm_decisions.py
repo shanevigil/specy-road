@@ -12,8 +12,8 @@ import pytest
 import yaml
 
 from specy_road.bundled_scripts import brainstorm_cli
-from specy_road.bundled_scripts.brainstorm_promote import promote_session
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_promote import promote_session
+from specy_road.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,
@@ -21,7 +21,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     read_session,
     session_path,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
 
 SLUG = "how-do-we-expand-payments"

@@ -120,7 +120,7 @@ def test_r5_an_empty_second_title_fails_before_any_node_is_written(tmp_path: Pat
 
 
 def test_r5_a_failed_roadmap_write_is_rolled_back(tmp_path: Path, capsys, human, monkeypatch) -> None:
-    from specy_road.bundled_scripts import review_defer
+    from specy_road import review_defer
 
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
     _block_round(repo, 1)

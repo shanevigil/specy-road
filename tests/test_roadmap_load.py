@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from specy_road.bundled_scripts import roadmap_load as rl
+from specy_road import roadmap_load as rl
 
 
 def _write_manifest_json(r: object, includes: list[str]) -> None:

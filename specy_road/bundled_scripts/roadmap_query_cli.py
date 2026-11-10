@@ -18,8 +18,8 @@ import sys
 from dataclasses import asdict
 
 from specy_road.bundled_scripts.roadmap_explain import DependencyNode, Explanation, explain, open_gates
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.session_plan_git import gather_session_plan
+from specy_road.roadmap_load import load_roadmap
+from specy_road.session_plan_git import gather_session_plan
 from specy_road.bundled_scripts.session_plan_render import zone_overlaps
 from specy_road.finish_ancestor_rollup import held_milestones, milestone_review_hold_notice
 from specy_road.registry_yaml import read_registry, registry_path

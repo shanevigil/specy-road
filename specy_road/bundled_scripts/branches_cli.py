@@ -19,12 +19,12 @@ import argparse
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.grind_session_cleanup import (
+from specy_road.grind_session_cleanup import (
     delete_local_branch,
     delete_remote_branch,
     merged_into,
 )
-from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.cli_entry import run_cli
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_code, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults

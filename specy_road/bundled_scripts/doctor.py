@@ -51,7 +51,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.branches_cli import feature_branches, fetch_integration, live_branches
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
 from specy_road.bundled_scripts.doctor_env_setup import report_checkout
-from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WORKTREES re-exported for callers
     NO_EVIDENCE, SAME_PATCH, TEMP_WORKTREES, Finding, classify, containment, evidence_kind, live_holders,
     merged_how, worktree_findings,

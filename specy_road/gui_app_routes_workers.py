@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from specy_road.bundled_scripts.worker_cli_render import timeline, usage
+from specy_road.worker_cli_render import timeline, usage
 from specy_road.gui_app_helpers import get_repo_root
 from specy_road.worker_reconcile import sync_marks
 from specy_road.worker_state import WorkerError, events_since, list_records, load_record

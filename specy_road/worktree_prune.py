@@ -41,8 +41,8 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from specy_road.bundled_scripts.grind_session_cleanup import merged_into
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.grind_session_cleanup import merged_into
+from specy_road.roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     load_git_workflow_config,
     resolve_integration_defaults,

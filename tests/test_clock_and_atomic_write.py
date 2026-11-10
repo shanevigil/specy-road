@@ -35,7 +35,7 @@ from specy_road import (
 )
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import chore_cli, chore_garden
-from specy_road.bundled_scripts.brainstorm_session import (
+from specy_road.brainstorm_session import (
     BrainstormSession,
     session_path,
     write_session,
@@ -238,7 +238,7 @@ WRITERS: dict[str, Callable[[Path], Writer]] = {
     "bundled_scripts/chore_cli.py:_save": lambda tmp_path: _chore(tmp_path, "json"),
     "bundled_scripts/chore_cli.py:close": lambda tmp_path: _chore(tmp_path, "md"),
     "bundled_scripts/chore_garden.py:garden": _garden,
-    "bundled_scripts/brainstorm_session.py:write_session": _brainstorm,
+    "brainstorm_session.py:write_session": _brainstorm,
 }
 TESTED_APART = {"bundled_scripts/roadmap_chunk_atomic.py:write"}
 

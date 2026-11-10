@@ -14,7 +14,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from specy_road.bundled_scripts.planning_rename import rewrite_id_refs
-from specy_road.bundled_scripts.roadmap_chunk_utils import (
+from specy_road.roadmap_chunk_utils import (
     load_json_chunk,
     write_json_chunk,
 )

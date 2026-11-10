@@ -17,8 +17,8 @@ import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
-from specy_road.bundled_scripts.roadmap_crud_ops import (
+from specy_road.roadmap_chunk_utils import find_chunk_path
+from specy_road.roadmap_crud_ops import (
     deferred_validation,
     edit_node_set_pairs,
     repo_root,
@@ -26,9 +26,9 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     unknown_node_msg,
 )
 from specy_road.bundled_scripts.roadmap_apply_entries import id_map_lines, parse_change_file
-from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir
+from specy_road.planning_artifacts import normalize_planning_dir
 from specy_road.bundled_scripts.effective_dependency_checks import newly_waiting_suffix
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 
 
 def merged_node_by_id(root: Path, node_id: str) -> dict | None:
@@ -360,7 +360,7 @@ def _scratch_root(root: Path) -> Iterator[Path]:
 
 def wave_preview(root: Path) -> list[str]:
     """Ready / waves / blocked for the graph under ``root``, as ``grind-session --plan`` computes them."""
-    from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
+    from specy_road.planning_sheet_bootstrap import unauthored_leaves
     from specy_road.bundled_scripts.session_plan import compute_session_plan
     from specy_road.registry_yaml import read_registry, registry_path
 

@@ -48,7 +48,7 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import in_zones
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_code, git_stdout, git_text

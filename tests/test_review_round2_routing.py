@@ -19,9 +19,9 @@ from tests.test_models_and_prompt import OPUS
 
 from specy_road.bundled_scripts import brainstorm_cli, models_cli, refresh_stubs as rs
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
-from specy_road.bundled_scripts.brainstorm_session import read_session
+from specy_road.brainstorm_session import read_session
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.roadmap_load import load_roadmap
 from specy_road.model_profiles import profile_for_entry
 from specy_road.orchestrate_plan import Candidate, assign_leaf
 from specy_road.orchestration_config import effective_config

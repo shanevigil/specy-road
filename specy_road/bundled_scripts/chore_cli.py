@@ -130,7 +130,7 @@ def _verdicts(repo_root: Path, chore: dict[str, Any]) -> list[str]:
 
 def close(repo_root: Path, slug: str, summary: str) -> tuple[Path, dict[str, Any]]:
     """End the chore's idle workers and write its record; a worker still running refuses the close."""
-    from specy_road.bundled_scripts.worker_cli_render import usage, usage_lines  # noqa: PLC0415
+    from specy_road.worker_cli_render import usage, usage_lines  # noqa: PLC0415
     from specy_road.worker_orphans import HELD_STATES, end_finished_workers  # noqa: PLC0415 — it imports this module
 
     chore = open_chore(repo_root, slug)

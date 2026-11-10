@@ -10,7 +10,7 @@ from tests.test_rework_findings_in_prompt import executor_prompt, file_review, s
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road.bundled_scripts.role_prompt_rework import CLASS_AUDIT_LINES
+from specy_road.role_prompt_rework import CLASS_AUDIT_LINES
 
 AUDIT = CLASS_AUDIT_LINES[0]
 

@@ -12,9 +12,9 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import finish_task
-from specy_road.bundled_scripts.brainstorm_promote import seed_planning_sheet
-from specy_road.bundled_scripts.brainstorm_session import Idea
-from specy_road.bundled_scripts.planning_sheet_bootstrap import render_feature_sheet_template
+from specy_road.brainstorm_promote import seed_planning_sheet
+from specy_road.brainstorm_session import Idea
+from specy_road.planning_sheet_bootstrap import render_feature_sheet_template
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
 
 SHEET = NODE["planning_dir"]

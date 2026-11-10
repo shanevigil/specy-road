@@ -342,7 +342,7 @@ def cmd_operator_decision(ns: argparse.Namespace) -> int:
     who = _recorder(root)
     if not who:
         return _fail("set git user.name and user.email: the decision entry names who recorded it")
-    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.roadmap_load import load_roadmap
     from specy_road.review_gate import evaluate_gate
     from specy_road.review_target import ReviewTargetError, resolve_target
 

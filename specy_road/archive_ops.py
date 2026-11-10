@@ -37,7 +37,7 @@ def _remove_include(doc: dict[str, Any], rel: str) -> bool:
 
 def _apply_chunk_edits(root: Path, plan: ArchivePlan) -> bool:
     """Rewrite or delete each source chunk. Returns True if the manifest changed."""
-    from specy_road.bundled_scripts.roadmap_chunk_utils import (
+    from specy_road.roadmap_chunk_utils import (
         load_manifest_mapping,
         manifest_path,
         write_json_chunk,
@@ -98,8 +98,8 @@ def apply_archive(root: Path, plan: ArchivePlan) -> dict[str, Any]:
     rewritten, so an interruption leaves a duplicate rather than a hole. The
     index is written last, and validation runs after everything is on disk.
     """
-    from specy_road.bundled_scripts.roadmap_chunk_utils import write_json_chunk
-    from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
+    from specy_road.roadmap_chunk_utils import write_json_chunk
+    from specy_road.roadmap_crud_ops import run_validate_raise
 
     _refuse_links_out(root, plan)
     with contextlib.ExitStack() as stack:
@@ -164,7 +164,7 @@ def auto_archive_candidates(
     """
     from datetime import datetime, timedelta, timezone
 
-    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status, load_roadmap
+    from specy_road.roadmap_load import compute_rollup_status, load_roadmap
 
     from specy_road.node_activity import node_activity
     from specy_road.clock import utc_now_iso

@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from specy_road.bundled_scripts.brainstorm_research import (
+from specy_road.brainstorm_research import (
     ResearchError,
     is_configured,
     search,
@@ -213,7 +213,7 @@ def test_searching_a_self_hosted_endpoint_without_the_opt_in_is_refused(
     with pytest.raises(ResearchError):
         search("anything", settings)
 
-    import specy_road.bundled_scripts.brainstorm_research as mod
+    import specy_road.brainstorm_research as mod
 
     class _Resp:
         status_code = 200

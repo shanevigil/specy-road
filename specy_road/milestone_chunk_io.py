@@ -30,8 +30,8 @@ def write_milestone_execution(
     doc: dict[str, Any] | None,
 ) -> Path:
     """Set or remove ``milestone_execution`` on ``parent_node_id``; validate and save chunk."""
-    from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-    from specy_road.bundled_scripts.roadmap_crud_ops import node_index_in_chunk, run_validate_raise
+    from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+    from specy_road.roadmap_crud_ops import node_index_in_chunk, run_validate_raise
 
     chunk = find_chunk_path(root, parent_node_id)
     if not chunk:
@@ -60,8 +60,8 @@ def patch_milestone_execution_state(
     extra: dict[str, Any] | None = None,
 ) -> Path:
     """Load node, merge ``state`` (and optional keys) into ``milestone_execution``, save."""
-    from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-    from specy_road.bundled_scripts.roadmap_crud_ops import node_index_in_chunk, run_validate_raise
+    from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+    from specy_road.roadmap_crud_ops import node_index_in_chunk, run_validate_raise
 
     chunk = find_chunk_path(root, parent_node_id)
     if not chunk:
