@@ -60,14 +60,15 @@ def _head(repo: Path) -> str:
     return git(repo, "rev-parse", "HEAD")
 
 
-def _block(repo: Path, model: str = "opus", findings: dict | None = None) -> None:
+def _block(repo: Path, model: str = "opus", findings: dict | None = None, extra: tuple[str, ...] = ()) -> None:
     """``model`` files a block of HEAD on A1 with ``findings`` (default: one correctness finding)."""
     data = yaml.safe_load(review_text(_head(repo), model=model, verdict="block", a1="fail").split("---\n")[1])
     data["findings"].update(findings or {"correctness": ["A1 regressed"]})
     notes = repo.parent / f"notes-{model}.md"
     notes.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n")
     assert _cli(review_cli, "review", "record", "M1.1", "--model", model, "--verdict", "block",
-                "--file", str(notes), "--repo-root", str(repo)) == 0
+                "--file", str(notes), *extra, "--repo-root", str(repo)) == 0
+    notes.unlink()   # inside the git checkout for an sr/ project
 
 
 def _ready(repo: Path) -> None:
@@ -417,3 +418,331 @@ def test_mark_implementation_reviewed_stamps_the_registry(tmp_path: Path) -> Non
     mark_implementation_reviewed.main(["--yes", "--allow-missing-summary", "--repo-root", str(repo)])
     entry = yaml.safe_load((repo / "roadmap" / "registry.yaml").read_text())["entries"][0]
     assert entry["implementation_review"] == "approved"
+
+
+# --- M22.67: a person at a terminal approves over the block in one mark-implementation-reviewed run ---
+
+class Layout:
+    """``top``: the coordinator's checkout; ``run``: the project root the command runs in; ``prefix``: the project's
+    place under the git root; ``bare``: the origin, or ``None``."""
+
+    def __init__(self, top: Path, run: Path, prefix: str, bare: Path | None) -> None:
+        self.top, self.run, self.prefix, self.bare = top, run, prefix, bare
+
+    def tip(self) -> str:
+        return git(self.top, "rev-parse", "dev")
+
+    def snapshot(self) -> tuple:
+        """What "nothing recorded" keeps unchanged: the integration tips, the marker directory, the leaf registry."""
+        d = reviews_dir(self.run, "M1.1")
+        return (self.tip(), self.bare and git(self.bare, "rev-parse", "dev"),
+                sorted(p.name for p in d.glob("OPERATOR-*")), (self.run / "roadmap" / "registry.yaml").read_bytes(),
+                (self.run / LEDGER).read_bytes() if (self.run / LEDGER).exists() else None)
+
+
+def _layout(tmp_path: Path, monkeypatch, shape: str, remote: bool, roster: str = ROSTER) -> Layout:
+    """The review gate stays on in every layout (``delegate_layout`` turns it off)."""
+    if shape == "root":
+        top = make_review_repo(tmp_path, orchestration=roster)
+        prefix = ""
+    else:
+        from tests.review_repo_helpers import make_layout_finish_repo
+        top, _project = make_layout_finish_repo(tmp_path, "nested")
+        prefix = "sr/"
+        _on_dev(top, f"{prefix}roadmap/orchestration.yaml", roster)
+        git(top, "merge", "-q", "--no-edit", "dev")
+    if not remote:
+        return Layout(top, top / prefix, prefix, None)
+    from tests.helpers import REPO
+    monkeypatch.setenv("PYTHONPATH", str(REPO))   # finish runs validate/export/digest as subprocesses
+    git(top, "checkout", "-q", "dev")
+    commit_file(top, f"{prefix}roadmap/git-workflow.yaml", "version: 1\nintegration_branch: dev\nremote: origin\n"
+                "on_complete: merge\nrequire_implementation_review_before_finish: true\n", "merge mode")
+    commit_file(top, f"{prefix}.gitignore", "work/reviews/\n.specyrd/cache/\n", "as init project scaffolds")
+    git(top, "checkout", "-q", "feature/rm-thing")
+    git(top, "merge", "-q", "--no-edit", "dev")
+    git(top, "checkout", "-q", "dev")
+    bare = tmp_path / "remote.git"
+    git(tmp_path, "clone", "-q", "--bare", str(top), str(bare))
+    git(top, "remote", "add", "origin", str(bare))
+    git(top, "fetch", "-q", "origin")
+    git(top, "remote", "set-head", "origin", "dev")
+    leaf = tmp_path / "leaf"
+    git(top, "worktree", "add", "-q", str(leaf), "feature/rm-thing")
+    return Layout(top, leaf / prefix, prefix, bare)
+
+
+def _terminal(monkeypatch, capsys, *answers: str) -> list[str]:
+    """A TTY answering ``answers`` in turn; returns the stdout printed before each prompt was read."""
+    seen: list[str] = []
+    it = iter(answers)
+
+    def answer(_prompt: str = "") -> str:
+        seen.append(capsys.readouterr().out)
+        capsys.readouterr()
+        return next(it)
+
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", answer)
+    return seen
+
+
+def _mark(run: Path, *args: str) -> int:
+    with pytest.raises(SystemExit) as e:
+        mark_implementation_reviewed.main([*args, "--allow-missing-summary", "--repo-root", str(run)])
+        raise SystemExit(0)
+    return e.value.code or 0
+
+
+def _blocked(lay: Layout, *extra: str) -> None:
+    _block(lay.run, extra=extra)
+    assert _blockers(lay.run) == ["opus"]   # the named block counts
+
+
+def _assert_decision_landed(lay: Layout, before: str, out: str) -> dict:
+    """``dev`` has one new commit changing only the project's ledger, naming the decision; the marker names it."""
+    tip = lay.tip()
+    assert git(lay.top, "rev-list", "--count", f"{before}..{tip}") == "1"
+    assert git(lay.top, "show", "--name-only", "--format=", tip).splitlines() == [f"{lay.prefix}roadmap/decisions.yaml"]
+    assert tip in out
+    (entry,) = yaml.safe_load(git(lay.top, "show", f"{tip}:{lay.prefix}roadmap/decisions.yaml"))["entries"]
+    head = git(lay.run, "rev-parse", "feature/rm-thing^")   # the registry commit follows the commit under review
+    for part in (f"for commit {head},", block_item("opus", head, {"correctness": ["A1 regressed"]}),
+                 '"false alarm, ship it"', "T <t@e.com>"):
+        assert part in entry["answer"]
+    assert (entry["status"], entry["decided_by"]) == ("closed", "operator")
+    marker = yaml.safe_load((reviews_dir(lay.run, "M1.1") / f"OPERATOR-{head}.yaml").read_text())
+    assert marker["decision"] == entry["id"]
+    reg = yaml.safe_load((lay.run / "roadmap" / "registry.yaml").read_text())["entries"][0]
+    assert reg["implementation_review"] == "approved"
+    assert git(lay.run, "log", "--format=%H", f"{before}..feature/rm-thing", "--",
+               f":(top){lay.prefix}roadmap/decisions.yaml") == ""   # no ledger commit on the leaf branch
+    return entry
+
+
+@pytest.mark.parametrize("role", [None, "coordinator"])
+@pytest.mark.parametrize("shape", ["root", "sr"])
+def test_a_person_approves_over_the_block_with_no_remote(tmp_path: Path, monkeypatch, capsys, shape, role) -> None:
+    lay = _layout(tmp_path, monkeypatch, shape, remote=False)
+    if role:
+        monkeypatch.setenv(ROLE_ENV, role)
+    _blocked(lay)
+    before = lay.tip()
+    seen = _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(lay.run) == 0
+    assert "A1 regressed" in seen[0] and "[a] Approve over the block" in seen[0]
+    entry = _assert_decision_landed(lay, before, "".join(seen) + capsys.readouterr().out)
+    assert not (lay.top / LEDGER).exists() or not lay.prefix   # no stray ledger at the git root of an sr/ project
+    code, st, text = _status(lay.run, capsys)
+    assert (code, st["state"]) == (0, "approved") and f"accepted by operator decision {entry['id']}" in text
+
+
+@pytest.mark.parametrize("shape", ["root", "sr"])
+def test_a_person_approves_over_the_block_and_the_decision_is_pushed(tmp_path: Path, monkeypatch, capsys,
+                                                                    shape) -> None:
+    from specy_road.bundled_scripts import finish_task
+
+    lay = _layout(tmp_path, monkeypatch, shape, remote=True)
+    _blocked(lay)
+    before, coordinator = lay.tip(), (git(lay.top, "rev-parse", "HEAD"), git(lay.top, "status", "--porcelain"))
+    seen = _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(lay.run) == 0
+    out = "".join(seen) + capsys.readouterr().out
+    pushed = git(lay.bare, "rev-parse", "dev")
+    assert git(lay.top, "rev-parse", "refs/remotes/origin/dev") == pushed and pushed in out
+    assert git(lay.bare, "show", "--name-only", "--format=", pushed).splitlines() == [
+        f"{lay.prefix}roadmap/decisions.yaml"]
+    assert (git(lay.top, "rev-parse", "HEAD"), git(lay.top, "status", "--porcelain")) == coordinator
+    assert git(lay.top, "rev-parse", "dev") == before   # the coordinator's dev is behind and pulls it later
+    code, st, text = _status(lay.run, capsys)
+    assert (code, st["state"]) == (0, "approved") and "accepted by operator decision" in st["policy"]
+    reg = yaml.safe_load((lay.run / "roadmap" / "registry.yaml").read_text())["entries"][0]
+    assert reg["implementation_review"] == "approved"
+    with pytest.raises(SystemExit) as e:
+        finish_task.main(["--repo-root", str(lay.run)])
+        raise SystemExit(0)
+    captured = capsys.readouterr()
+    assert (e.value.code or 0) == 0, captured.err
+    assert "[ok] this checkout is still on feature/rm-thing (landed into dev)" in captured.out
+
+
+def test_a_clean_holder_of_the_integration_branch_follows_the_decision(tmp_path: Path, monkeypatch, capsys) -> None:
+    lay = _layout(tmp_path, monkeypatch, "root", remote=False)
+    holder = tmp_path / "holder"
+    git(lay.top, "worktree", "add", "-q", str(holder), "dev")
+    _blocked(lay)
+    before = lay.tip()
+    _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(lay.run) == 0
+    assert git(lay.top, "rev-list", "--count", f"{before}..dev") == "1"
+    assert "decided_by: operator" in (holder / LEDGER).read_text()
+    assert git(holder, "status", "--porcelain") == ""
+
+
+def _dirty_holder(lay: Layout, tmp_path: Path, _mp) -> str:
+    holder = tmp_path / "holder"
+    git(lay.top, "worktree", "add", "-q", str(holder), "dev")
+    (holder / "roadmap" / "git-workflow.yaml").write_text("dirty\n")
+    return "holder"
+
+
+def _unclean_leaf(lay: Layout, _tmp: Path, _mp) -> str:
+    (lay.run / "src" / "a.py").write_text("changed\n")
+    return "working tree is not clean"
+
+
+def _no_email(lay: Layout, _tmp: Path, mp) -> str:
+    _git_identity_unset("email")(lay.run, mp)
+    return "git identity"
+
+
+def _pin(lay: Layout, _tmp: Path, _mp) -> str:
+    OTHER_FAILURES["policy_pin"][2](lay.run)
+    return "review policy changed on"
+
+
+STRONG = ROSTER.replace("policy: {reviewers_required: 1}", "policy:\n  reviewers_required: 1\n"
+                        "  strong_review:\n    - {zones: [src], require_one_of: [sonnet]}")
+WITHHELD = {   # setup before the block (returns the text the refusal names), roster, layout before the block
+    "holder_dirty": (_dirty_holder, ROSTER, None),
+    "unclean_tree": (_unclean_leaf, ROSTER, None),
+    "identity": (_no_email, ROSTER, None),
+    "policy_pin": (_pin, ROSTER, lambda lay: _pin_then_change_policy(lay.run)),
+    "strong_review": (lambda *_a: "strong_review[0]", STRONG, None),
+}
+
+
+@pytest.mark.parametrize("case", sorted(WITHHELD))
+def test_the_approval_over_the_block_is_withheld_and_nothing_recorded(tmp_path: Path, monkeypatch, capsys,
+                                                                      case: str) -> None:
+    setup, roster, early = WITHHELD[case]
+    lay = _layout(tmp_path, monkeypatch, "root", remote=False, roster=roster)
+    if early:
+        early(lay)
+    _blocked(lay)
+    named = setup(lay, tmp_path, monkeypatch)
+    before = lay.snapshot()
+    seen = _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(lay.run) == 1
+    captured = capsys.readouterr()
+    assert seen == [] and "[a] Approve over the block" not in captured.out
+    assert named in captured.err and lay.snapshot() == before
+
+
+def test_a_signed_review_shortfall_withholds_the_approval(tmp_path: Path, monkeypatch, capsys) -> None:
+    if shutil.which("ssh-keygen") is None:
+        pytest.skip("needs OpenSSH ssh-keygen")
+    import subprocess
+    key = tmp_path / "opus_key"
+    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "opus", "-f", str(key)], check=True)
+    pub = (tmp_path / "opus_key.pub").read_text().strip()
+    roster = ROSTER.replace("{id: opus, family: anthropic, roles: [reviewer]}",
+                            f'{{id: opus, family: anthropic, roles: [reviewer], public_key: "{pub}"}}').replace(
+        "{reviewers_required: 1}", "{reviewers_required: 1, signed_reviews: true}")
+    lay = _layout(tmp_path, monkeypatch, "root", remote=False, roster=roster)
+    _blocked(lay, "--sign-key", str(key))
+    before = lay.snapshot()
+    seen = _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(lay.run) == 1
+    assert seen == [] and "need 1 approvals at this commit, have 0" in capsys.readouterr().err
+    assert lay.snapshot() == before
+
+
+@pytest.mark.parametrize("value", ["executor", "reviewer", "rca", "", " coordinator", "Coordinator"])
+def test_an_agent_role_never_approves_over_the_block(tmp_path: Path, monkeypatch, capsys, value: str) -> None:
+    lay = _layout(tmp_path, monkeypatch, "root", remote=False)
+    _blocked(lay)
+    monkeypatch.setenv(ROLE_ENV, value)
+    before = lay.snapshot()
+    seen = _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(lay.run) == 1
+    assert seen == [] and f"{ROLE_ENV} is {value!r}" in capsys.readouterr().err and lay.snapshot() == before
+
+
+@pytest.mark.parametrize("answers", [("a", ""), ("q",)], ids=["empty_reason", "quit"])
+def test_no_reason_records_nothing(tmp_path: Path, monkeypatch, capsys, answers) -> None:
+    lay = _layout(tmp_path, monkeypatch, "root", remote=False)
+    _blocked(lay)
+    before = lay.snapshot()
+    _terminal(monkeypatch, capsys, *answers)
+    assert _mark(lay.run) == 0 and lay.snapshot() == before
+
+
+@pytest.mark.parametrize("yes", [True, False], ids=["yes", "not_a_tty"])
+def test_not_interactive_never_approves_over_the_block(tmp_path: Path, monkeypatch, capsys, yes: bool) -> None:
+    lay = _layout(tmp_path, monkeypatch, "root", remote=False)
+    _blocked(lay)
+    before = lay.snapshot()
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    assert _mark(lay.run, *(["--yes"] if yes else [])) == 1
+    err = capsys.readouterr().err
+    assert "the review gate is not met" in err and "run `specy-road mark-implementation-reviewed` on " in err
+    assert "specy-road review operator-decision M1.1 --decision approve --quote" in err
+    assert lay.snapshot() == before
+
+
+def test_a_policy_change_pushed_meanwhile_withholds_the_approval(tmp_path: Path, monkeypatch, capsys) -> None:
+    lay = _layout(tmp_path, monkeypatch, "root", remote=True)
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", "-b", "dev", str(lay.bare), str(other))
+    git(other, "config", "user.email", "o@e.com")
+    git(other, "config", "user.name", "O")
+    commit_file(other, "roadmap/orchestration.yaml", STRONG, "strong review")
+    git(other, "push", "-q", "origin", "dev")
+    _blocked(lay)   # the caller has not fetched: its gate still reads the old policy
+    before = lay.snapshot()
+    pushed = git(lay.bare, "rev-parse", "dev")
+    seen = _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(lay.run) == 1
+    assert seen == [] and "strong_review[0]" in capsys.readouterr().err
+    assert git(lay.bare, "rev-parse", "dev") == pushed and lay.snapshot()[2:] == before[2:]
+
+
+def test_a_refused_push_records_nothing(tmp_path: Path, monkeypatch, capsys) -> None:
+    lay = _layout(tmp_path, monkeypatch, "root", remote=True)
+    hook = lay.bare / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\necho protected >&2\nexit 1\n")
+    hook.chmod(0o755)
+    _blocked(lay)
+    before = lay.snapshot()
+    _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(lay.run) == 1
+    err = capsys.readouterr().err
+    assert "git push origin" in err and "review operator-decision M1.1" in err and lay.snapshot() == before
+
+
+def test_a_refused_registry_commit_keeps_the_decision_and_says_how_to_finish(tmp_path: Path, monkeypatch,
+                                                                            capsys) -> None:
+    lay = _layout(tmp_path, monkeypatch, "root", remote=False)
+    hook = Path(git(lay.top, "rev-parse", "--git-common-dir"))
+    hook = (hook if hook.is_absolute() else lay.top / hook) / "hooks" / "pre-commit"
+    hook.write_text("#!/bin/sh\ngit diff --cached --name-only | grep -q registry.yaml && exit 1\nexit 0\n")
+    hook.chmod(0o755)
+    _blocked(lay)
+    before, head = lay.tip(), git(lay.run, "rev-parse", "HEAD")
+    _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(lay.run) == 1
+    err = capsys.readouterr().err
+    assert git(lay.top, "rev-list", "--count", f"{before}..dev") == "1"
+    assert list(reviews_dir(lay.run, "M1.1").glob(f"OPERATOR-{head}.yaml"))
+    assert git(lay.run, "rev-parse", "HEAD") == head
+    reg = yaml.safe_load((lay.run / "roadmap" / "registry.yaml").read_text())["entries"][0]
+    assert reg["implementation_review"] == "approved"
+    assert "operator decision is recorded" in err and "registry commit failed" in err
+    assert "restore roadmap/registry.yaml" in err and "mark-implementation-reviewed --yes" in err
+
+
+def test_a_milestone_full_review_block_is_unchanged(tmp_path: Path, monkeypatch, capsys) -> None:
+    from tests.milestone_repo_helpers import make_milestone_repo
+
+    root = make_milestone_repo(tmp_path, orchestration=ROSTER)
+    d = reviews_dir(root, "M2")
+    d.mkdir(parents=True, exist_ok=True)
+    data = yaml.safe_load(review_text(git(root, "rev-parse", "dev"), model="opus", verdict="block").split("---\n")[1])
+    data.update(node_id="M2", acceptance={}, findings={**data["findings"], "correctness": ["A1 regressed"]})
+    (d / "REVIEW-opus.md").write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n")
+    seen = _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
+    assert _mark(root, "M2") == 1
+    captured = capsys.readouterr()
+    assert seen == [] and "opus blocks this commit" in captured.out
+    assert "review operator-decision" not in captured.err and "[a] Approve over the block" not in captured.out

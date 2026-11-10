@@ -32,6 +32,14 @@ body. Keep section bodies focused; link to PRs for detail.
   every other gate condition still applies. Both decisions schemas gain `decided_by` and the `standing-rule` kind
   (run `refresh-schemas`). See `docs/orchestration-review.md` (Operator decision).
 
+- A person at a terminal approves a leaf over a reviewer's block in one `specy-road mark-implementation-reviewed`
+  run on the feature branch, without `--yes`: when settling the counted blocks would pass the gate, it shows their
+  findings, offers `[a] Approve over the block`, reads the reason, commits the operator decision on the integration
+  branch from a temporary worktree (pushed fast-forward only, or the local branch moved), writes the marker and
+  stamps the registry. Every refusal comes before anything is written. `handoff status`'s human row now names the
+  command that works for a leaf (no id) and says whether it approves over the blocks; a refusal with a block names
+  the interactive path and `review operator-decision`. See `docs/orchestration-review.md` (Operator decision).
+
 - `specy-road worker recover W` ends a stalled worker, keeps its worktree and commits, and resumes its native
   session with the continue prompt, or says why it cannot. It runs once and exits. Recoveries are counted on the
   worker record up to `policy.max_fix_rounds` (default 3); past that the worker is flagged `needs_person` with its

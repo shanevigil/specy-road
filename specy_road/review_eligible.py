@@ -42,6 +42,7 @@ from specy_road.orchestrate_plan import (
 from specy_road.orchestration_config import is_rostered_reviewer, substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import HUMAN, ReviewFile, list_ready, list_review_history, list_reviews
+from specy_road.review_override import as_if_decided
 from specy_road.review_strong import item_label
 from specy_road.review_target import same_commit
 
@@ -180,12 +181,26 @@ def _same_family(gate: Any, model: str, family: str | None) -> str | None:
     return f"same family ({family}) as {other.model}'s approval, which already counts" if other else None
 
 
-def _eligible_text(gate: Any, node_id: str, model: str) -> str:
+def _human_text(gate: Any, node_id: str, branch: str | None, key: str) -> str:
+    """The human row: a milestone's id form; for a leaf (``branch``), the id-less command run on its branch, and
+    whether it approves over the counted blocks (:func:`~specy_road.review_override.as_if_decided`)."""
+    if branch is None:
+        return f"can approve, interactively with `specy-road mark-implementation-reviewed {node_id}{key}`"
+    run = f"`specy-road mark-implementation-reviewed{key}` on {branch}"
+    if not gate.blocks:
+        return f"can approve, interactively: run {run}"
+    names = " and ".join(f"{b.model}'s" for b in gate.blocks)
+    if as_if_decided(gate).passed:
+        return f"can approve over {names} block(s), interactively: run {run}"
+    return f"to request interactive approval over {names} block(s), run {run}; other gate requirements still apply"
+
+
+def _eligible_text(gate: Any, node_id: str, model: str, branch: str | None) -> str:
     if any(b.model == model for b in gate.blocks):
         return "can approve on re-review (its record blocks this commit)"
     key = " --sign-key <your private key>" if (gate.config.get("policy") or {}).get("signed_reviews") else ""
     if model == HUMAN:
-        return f"can approve, interactively with `specy-road mark-implementation-reviewed {node_id}{key}`"
+        return _human_text(gate, node_id, branch, key)
     return (f"can approve (file a signed record: `specy-road review record{key}`)" if key
             else "can approve (file with `specy-road review record`)")
 
@@ -203,7 +218,7 @@ def reviewer_eligibility(repo_root: Path, node: dict[str, Any], gate: Any, branc
         # Every exclusion first: an author or a second same-family approval never reads as counting.
         why = (_roster_reason(repo_root, config, node, model, counting=counting) or authors.get(model, ("", None))[1] or rejected.get(model)
                or (None if _meets_strong(gate, model) else _same_family(gate, model, family)))
-        ok = "its approval counts" if model in counting else _eligible_text(gate, node["id"], model)
+        ok = "its approval counts" if model in counting else _eligible_text(gate, node["id"], model, branch)
         if why is None and model in counting and not is_available(entry):
             ok = "its approval counts; unavailable for new reviews"
         elif why is None and model not in counting:

@@ -116,21 +116,6 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: human-approves-over-block
-    node_id: M22.67
-    branch: feature/rm-human-approves-over-block
-    touch_zones:
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/review_override.py
-      - specy_road/review_eligible.py
-      - specy_road/nested_repos_land.py
-      - tests/test_review_override.py
-      - tests/test_review_eligible.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: pending
   - codename: library-modules-imported-by-the-package-move-out-of-bundled
     node_id: M16.2.5
     branch: feature/rm-library-modules-imported-by-the-package-move-out-of-bundled
