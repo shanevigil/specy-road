@@ -423,7 +423,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.14_gui-grind-status-modal_db9cb5a1-b899-411e-a825-0d68894f273e.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon",
       "touch_zones": [
         "tests/test_gui_app_grind_status.py",
