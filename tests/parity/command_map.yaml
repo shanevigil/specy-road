@@ -27,3 +27,6 @@ rows:
   - old: specy-road ready
     new: specy-road ready --fix-of
     allowed: "M22.52: `ready --fix-of MODEL@SHA` names the one block a fix commit answers"
+  - old: specy-road grind-session
+    new: specy-road grind-session --status --watch
+    allowed: "M22.68: `grind-session --status [--watch [MINUTES]]` read-only status report (scope, buckets, estimate, decisions, sessions)"
