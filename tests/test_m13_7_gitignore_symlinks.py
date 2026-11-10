@@ -34,7 +34,8 @@ def _case_dangling_top(repo: Path) -> None:
 
 #: name -> (setup, expected now-hidden): ``.gitignore`` symlinks the estimate must keep as symlinks.
 SYMLINK_CASES = {
-    "nested symlink": (_case_symlinked_nested, {"work/prompt-hide.md", "work/prompt-keep.md"}),
+    # The link itself sits under work/*, so it is hidden too.
+    "nested symlink": (_case_symlinked_nested, {"work/prompt-hide.md", "work/prompt-keep.md", "work/.gitignore"}),
     "top-level symlink": (_case_symlinked_top, set()),
     "dangling top-level symlink": (_case_dangling_top, set()),
 }

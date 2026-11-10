@@ -234,12 +234,16 @@ every scaffold file, including `roadmap/manifest.json` and your phase chunks
 but `refresh-stubs` is narrower and needs no flag. Neither one will touch
 anything outside a `>>> specy-road managed block <<<` in a file you own.
 
-The bundled `.gitignore` ignores **only** the session-scoped files
-(`work/.on-complete-*.yaml`, `work/prompt-*.md`, `work/pr-body-*.md`,
-`work/.milestone-session.yaml`); briefs and implementation summaries are
-intentionally tracked because they document the work and belong on the
-feature branch. The PR-body snapshot is ignored because it is a regenerated
-copy of those two.
+The managed `.gitignore` block ignores everything under `work/` (`work/*`):
+briefs, implementation summaries, prompts, PR-body snapshots, chore records,
+review hand-offs and run state. `work/README.md`, `work/.gitkeep` and the
+top-level `work/*.template.md` files stay tracked as scaffold. Implementation
+summaries are therefore local by default (`implementation_summary: local` in
+the scaffold's `roadmap/git-workflow.yaml`), and a reviewer in another clone
+does not see the summary. Re-include any other `work/` path you want in git
+after the block (for example `!work/worker-logs/`). Files already tracked under
+`work/` stay tracked until you run the `git rm --cached` command that
+`upgrade` prints.
 
 ---
 

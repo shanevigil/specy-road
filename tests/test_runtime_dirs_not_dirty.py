@@ -23,6 +23,7 @@ from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
 from specy_road.agent_ignores import RUNTIME_WORK_DIRS, apply_agent_ignores
 from specy_road.bundled_scripts.role_prompt import build_prompt
+from specy_road.bundled_scripts import chore_cli
 from specy_road.bundled_scripts.role_prompt_rca import dirty_check
 from specy_road.init_project import run_init_project
 
@@ -140,3 +141,62 @@ def test_refreshing_an_old_scaffold_makes_git_ignore_the_runtime_dirs(tmp_path: 
     for rel in RUNTIME_FILES:
         _touch(repo, rel)
         assert subprocess.run(["git", "-C", str(repo), "check-ignore", "-q", rel], check=False).returncode == 0, rel
+
+
+# --- M22.65: the managed block ignores all of work/ ---------------------------
+
+
+def _new_block_repo(tmp_path: Path) -> Path:
+    repo, _script = _old_scaffold(tmp_path)
+    apply_agent_ignores(repo, "")
+    git(repo, "add", ".gitignore", ".cursorindexingignore")
+    git(repo, "commit", "-qm", "the work/* block")
+    return repo
+
+
+def _chore(repo: Path, *args: str) -> None:
+    with pytest.raises(SystemExit) as e:
+        chore_cli.main(["chore", *args, "--repo-root", str(repo)])
+    assert not e.value.code
+
+
+def test_chore_records_beside_a_claimed_leaf_trip_no_clean_tree_check(tmp_path: Path) -> None:
+    repo = _new_block_repo(tmp_path)
+    rec, created = ops.delegate(repo, "M1.1", "opus")
+    assert created
+    wait_for_worker(repo, rec.worker_id)
+
+    _chore(repo, "start", "tidy", "--task", "Tidy up", "--zone", "src")
+    _chore(repo, "close", "tidy", "--summary", "Tidied")
+    assert (repo / "work" / "chores" / "tidy.json").is_file() and (repo / "work" / "chores" / "tidy.md").is_file()
+
+    assert _porcelain(repo, dirty_check("", "M1.1")) == ""
+    _rec, delta = ops.reconcile(repo, rec.worker_id)
+    assert not any("work/chores/" in p for p in delta["untracked"] + delta["untracked_outside_touch_zones"])
+    assert not any("work/chores/" in p for p in delta["outside_touch_zones"])   # no breach from the records
+    ops.terminate(repo, rec.worker_id)
+    again, created = ops.delegate(repo, "M1.1", "opus")   # the uncommitted-work check passes
+    assert created
+    wait_for_worker(repo, again.worker_id)
+
+
+def test_files_still_tracked_under_work_are_still_seen(tmp_path: Path) -> None:
+    repo = _new_block_repo(tmp_path)
+    tracked = ("work/brief-M1.md", "work/chores/tidy.md")
+    for rel in tracked:
+        _touch(repo, rel)
+    git(repo, "add", "-f", *tracked)   # tracked before the block, as an existing project's files are
+    git(repo, "commit", "-qm", "files tracked under work/")
+    rec, created = ops.delegate(repo, "M1.1", "opus")
+    assert created
+    wait_for_worker(repo, rec.worker_id)
+    ops.terminate(repo, rec.worker_id)
+    for rel in tracked:
+        (repo / rel).write_text("changed\n", encoding="utf-8")
+
+    # dirty_check leaves every work/brief-*.md out as bookkeeping (unchanged), so only the chore record shows there.
+    assert " M work/chores/tidy.md" in _porcelain(repo, dirty_check("", "M1.1"))
+    _rec, delta = ops.reconcile(repo, rec.worker_id)
+    assert set(tracked) <= set(delta["outside_touch_zones"])
+    with pytest.raises(ws.WorkerError, match=r"uncommitted changes .*work/brief-M1\.md.*work/chores/tidy\.md"):
+        ops.delegate(repo, "M1.1", "opus")

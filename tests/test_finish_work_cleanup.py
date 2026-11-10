@@ -266,6 +266,16 @@ def _config_on_dev(repo: Path, text: str) -> None:
     subprocess.run(["git", "-C", str(repo), "merge", "-q", "--no-edit", "dev"], check=True)
 
 
+def _opt_in_after_the_block(repo: Path) -> None:
+    """The managed block ignores ``work/*`` (M22.65): a project that commits worker logs and summaries
+    re-includes them after it, so finish commits the logs and its ignored-logs warning does not fire."""
+    from specy_road.agent_ignores import apply_agent_ignores
+
+    apply_agent_ignores(repo)
+    with (repo / ".gitignore").open("a", encoding="utf-8") as fh:
+        fh.write("!work/worker-logs/\n!work/implementation-summary-*.md\n!work/done/\n")
+
+
 def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, monkeypatch, capsys) -> None:
     """R1: the logs the wrapper mirrors after READY pass both clean-tree checks, and finish commits them."""
     import re
@@ -280,7 +290,6 @@ def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, mo
     from specy_road import worker_adapters as wa
     from specy_road import worker_runner as wr
     from specy_road import worker_state as ws
-    from specy_road.agent_ignores import apply_agent_ignores
     from specy_road.bundled_scripts import finish_task
     from specy_road.bundled_scripts import mark_implementation_reviewed as mir
     from specy_road.bundled_scripts.role_prompt import build_prompt
@@ -292,7 +301,7 @@ def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, mo
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     _config_on_dev(repo, "version: 1\nintegration_branch: dev\nremote: origin\n"
                          "require_implementation_review_before_finish: true\ntrack_worker_logs: \"events\"\n")
-    apply_agent_ignores(repo)
+    _opt_in_after_the_block(repo)
     (repo / "work").mkdir()
     (repo / "work" / "implementation-summary-M1.1.md").write_text("## Added\n\nnone\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
@@ -335,7 +344,7 @@ def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, mo
     with pytest.raises(SystemExit) as e:
         finish_task.main(["--repo-root", str(repo)])
         raise SystemExit(0)
-    assert (e.value.code or 0) == 0, capsys.readouterr().err
+    assert (e.value.code or 0) == 0 and "!work/worker-logs/" not in (err := capsys.readouterr().err), err
     committed = subprocess.run(["git", "-C", str(repo), "show", "--name-only", "--format=%s", "HEAD"],
                                check=True, capture_output=True, text=True).stdout
     assert committed.startswith("chore(rm-thing): complete, deregister") and logs in committed
