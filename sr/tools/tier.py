@@ -17,15 +17,32 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RANK = {"plain": 0, "behavioural": 1, "trust": 2}
-TRUST = re.compile(r"^specy_road/(review_|finish|worker_(sandbox|runner|launch|resume)|harness_launch|"
-                   r"secret|net|.*signing|.*policy_pin|bundled_scripts/review_cli)")
+# Trust paths: a file or directory name anywhere under specy_road/ that starts with one of these stems, so code keeps
+# matching after the M16.5 moves into specy_road/orchestration/... (tier review in spirit, maintainer 2026-11-09).
+# The list prompts a judgement at planning time; a sheet line "Path floor reviewed: <reason>" records it.
+TRUST = re.compile(r"^specy_road/(?:[^/]+/)*(review|finish|worker_(sandbox|runner|launch|resume)|runner|sandbox|launch|"
+                   r"resume|harness_launch|secret|net|[^/]*signing|[^/]*policy_pin|mark_implementation_reviewed|"
+                   r"orchestration_pinned|[^/]*tool_call_guard|[^/]*role_guard|guard|nested_repos_land|"
+                   r"[^/]*gui_settings_tokens|gui_app_routes_publish|llm_client)")
+REVIEWED = re.compile(r"^Path floor reviewed:", re.M)
+
+
+def tier_section(node: str) -> str | None:
+    sheets = glob.glob(str(ROOT / "sr" / "planning" / f"{node}_*.md"))
+    if not sheets:
+        return None
+    m = re.search(r"^## Tier\s*\n(.*?)(?=^## |\Z)", Path(sheets[0]).read_text(), re.M | re.S)
+    return m.group(1) if m else None
+
+
+def floor_reviewed(node: str) -> bool:
+    """The planner or coordinator judged the trust-path files in this leaf's zones and recorded why it stays below trust."""
+    return bool(REVIEWED.search(tier_section(node) or ""))
 
 
 def sheet_tier(node: str) -> str:
-    sheets = glob.glob(str(ROOT / "sr" / "planning" / f"{node}_*.md"))
-    if not sheets:
-        return "behavioural"
-    m = re.search(r"^## Tier\s*\n+\s*([A-Za-z]+(?: boundary)?)", Path(sheets[0]).read_text(), re.M)
+    sec = tier_section(node)
+    m = re.match(r"\s*([A-Za-z]+(?: boundary)?)", sec) if sec is not None else None
     if not m:
         return "behavioural"
     word = m.group(1).strip().lower()
@@ -47,7 +64,7 @@ def tier(node: str, worktree: str) -> str:
     paths = changed_paths(worktree)
     if paths is None:
         return max(t, "behavioural", key=RANK.get)
-    if any(TRUST.match(p) for p in paths):
+    if any(TRUST.match(p) for p in paths) and not floor_reviewed(node):
         return "trust"
     if any(p.startswith("specy_road/") and p.endswith(".py") for p in paths):
         return max(t, "behavioural", key=RANK.get)

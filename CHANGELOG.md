@@ -67,6 +67,17 @@ body. Keep section bodies focused; link to PRs for detail.
 ### Fixed
 
 - `specy-road review record` refuses a record whose notes body is empty or whitespace only after normalisation, and a record whose body matches another model's REVIEW record for the same leaf at the same commit. The refusal says the notes go in the body below the front matter and that `notes_sha256` covers only that body, not `findings` or `commands_rerun`. The same model re-filing at that commit, and the same body at another commit, are filed as before. The gate is unchanged, so a record already filed still counts. See `docs/orchestration-reviewer-output.md`.
+- A worker whose turn ends `completed` releases its slot lease on the integration remote, as a `failed` one does, so another checkout at `max_workers` is not held by it. `worker message` or `resume` of a `completed` or `failed` worker pushes a new lease, and a resume the limit refuses leaves no lease behind. An `idle` worker keeps its lease. A turn started by a queued message gets the delegating caller's `PYTHONPATH`, or none, without the wrapper's package-path prefix. See `docs/orchestration-workers.md` (What `max_workers` counts).
+- The bundled OpenAI GPT profiles' `access.cli` now reads the prompt on standard input (`codex exec ... - < {prompt}`),
+  so `prompt --role rca --channel cli --run` with one of them is no longer refused once the prompt passes 128 KiB.
+  Run `specy-road refresh-profiles --render` (or `upgrade`) to re-render your copies.
+- The reviewer prompt's first probe rule says what to do when the sandbox prevents a test from running: name the
+  command and its error as not run in the notes (on an approve, with a `not a defect because` reason), and leave it
+  out of `commands_rerun`. `review record` and the gate are unchanged: under `policy.reviewer_reruns_required` an
+  approve with no `commands_rerun` is still refused.
+- A roster entry without `profile:` whose `id` matches no model profile now matches one whose `api_id`, file name
+  or alias equals its `harness_model`, in the working tree and on the integration branch alike; an `id` match still
+  wins, and a drifted profile matched that way is refused as before. `validate` no longer warns for such an entry.
 
 - A landing merge that conflicts in a roadmap chunk keeps the integration side of that chunk and sets the finishing leaf back to Complete, found by `node_key`, including when the project root sits under a prefix such as `sr/`. Ancestor statuses are recomputed with the existing rollup and review-hold rules; every other field stays the integration side's. When the bookkeeping commit is known and that leaf is still in the chunk but not Complete, finish aborts the merge before the commit, so nothing is pushed, and the error names the chunk and the branch codename. The merge message says the Complete status was applied again only when the landed chunk has that leaf Complete. A leaf the integration side removed stays absent, and the message does not claim the status was applied.
 
@@ -77,6 +88,13 @@ body. Keep section bodies focused; link to PRs for detail.
   result's stderr. On agent 2026.11.05-86047df (2026-11-08) that default commits in a linked worktree, `system/init`
   reports the model, `--resume` with a new prompt continues the chat, and `--mode ask` stays read-only. See
   `docs/orchestration-workers.md` (Cursor CLI, checked 2026-11-08).
+- A headless turn that calls Cursor's question tool (`askQuestionToolCall` on a `tool_call` line) is a post-run
+  finding. The executor prompt says that in a headless turn (`worker delegate`, `worker message`, a grind) no
+  person can answer a question tool, that open questions go in the implementation summary under a heading marking
+  them unanswered, and that the summary never says a person was asked. Each such `tool_call` line persists an
+  `interactive_tool` event; the check records one finding per turn naming the tool and that no person saw it, and
+  flags the worker `post_run_findings`. Shell, read and edit calls do not. A Claude denial of that tool stays one
+  `permission_denied` finding and is not also `interactive_tool`. See `docs/orchestration-workers.md` (Post-run check).
 - `specy-road digest` writes the same `roadmap-context.md` when the history cache is missing and when it was
   written on a branch that later merged. A cache is appended only when its commit is on `HEAD`'s first-parent
   line; a merged side-branch tip, and any cache from before this change, is rebuilt. A dependency removed on a

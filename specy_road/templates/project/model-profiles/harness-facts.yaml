@@ -154,10 +154,10 @@ harnesses:
       label: runtime
       source: specy_road/worker_adapters.py (codex-cli 0.165, run 2026-10-28)
     executor_template:
-      value: codex exec --model {api_id} --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+      value: codex exec --model {api_id} --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
       renders_cli_for: [OpenAI GPT]
       label: runtime
-      source: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28)
+      source: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28); prompt on stdin as the codex adapter launches it (specy_road/worker_adapter_codex.py)
     session_flags:
       value: thread id from the thread.started event; codex exec resume <id> - to continue; --last is cwd-scoped. A resume carries only the conversation, so sandbox, approval, model and memory settings are passed again; 0.166.0 keeps acknowledged approval and permission settings on resume and fork; resume by id from a sibling worktree is undocumented
       label: documented

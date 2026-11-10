@@ -127,7 +127,7 @@ Notes:
 | Model | Command in the profile | Vendor-verified |
 |---|---|---|
 | Claude (Opus, Fable) | `claude -p "<prompt>"` | yes |
-| GPT Sol | `codex exec --model <id> -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"` | run on codex-cli 0.165.0 (2026-10-28) |
+| GPT Sol | `codex exec --model <id> -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}` (prompt on stdin) | run on codex-cli 0.165.0 (2026-10-28) |
 | Gemini | `gemini -m <id> -p "<prompt>" --output-format json` | **no: verify before use** |
 | Grok | `grok -p "<prompt>"` (no model flag in the verified form) | yes |
 | Muse Spark 1.3 | `muse exec --model muse-spark-1.3 '<prompt>'` | **no: verify before use** |
@@ -188,7 +188,7 @@ every profile whose `family` a harness's executor template names is rendered fro
 
 - **Version:** `codex-cli 0.166.0` _[runtime: harness-captures/codex/version.txt (captured 2026-11-02 from codex-cli 0.166.0 with a fresh CODEX_HOME; triage F10)]_
 - **Headless command:** `codex exec --json -m <id> -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> - (prompt on stdin)` _[runtime: specy_road/worker_adapters.py (codex-cli 0.165, run 2026-10-28)]_
-- **Executor template:** `codex exec --model {api_id} --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"` _[runtime: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28)]_
+- **Executor template:** `codex exec --model {api_id} --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}` _[runtime: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28); prompt on stdin as the codex adapter launches it (specy_road/worker_adapter_codex.py)]_
 - **Session:** thread id from the thread.started event; codex exec resume &lt;id&gt; - to continue; --last is cwd-scoped. A resume carries only the conversation, so sandbox, approval, model and memory settings are passed again; 0.166.0 keeps acknowledged approval and permission settings on resume and fork; resume by id from a sibling worktree is undocumented _[documented: https://github.com/openai/codex/pull/4583; https://learn.chatgpt.com/docs/changelog (Codex CLI 0.166.0); harness compatibility triage (2026-10-28); 2026-11-02 triage F11]_
 - **Permissions:** -c sandbox_mode=workspace-write -c approval_policy=never (exec has no --ask-for-approval; its default sandbox is read-only); --full-auto is no longer supported (use --sandbox workspace-write) _[runtime: specy_road/worker_adapters.py (codex-cli 0.165); https://learn.chatgpt.com/docs/non-interactive-mode; 2026-11-02 triage F16]_
 - **Instruction files:** `AGENTS.override.md`, `AGENTS.md` _[documented: docs/install-and-usage.md (validate context lines); https://github.com/openai/codex/issues/7138; 2026-11-02 triage F16]_; size: first non-empty of the two per directory from the git root down, truncated at project_doc_max_bytes (32 KiB) silently, with no warning; ~/.codex/AGENTS.override.md replaces the global file

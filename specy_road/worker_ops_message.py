@@ -111,7 +111,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
                                        harness_bin=entry.get("harness_bin"),   # as delegate: the adapter resolves it
                                        **launch_options(entry, rec.harness)),
                         Path(rec.worktree) / project_prefix(repo_root))   # as delegate set it
-    acquire_lease(repo_root, rec, new=rec.state == "failed", offline=offline)   # a failed worker's was released
+    acquire_lease(repo_root, rec, new=rec.state in ("failed", "completed"), offline=offline)   # both released theirs
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
                  summary=f"{kind}: {' '.join(text.split())[:300]}")
     spawn(repo_root, rec, launch, resumed=True)

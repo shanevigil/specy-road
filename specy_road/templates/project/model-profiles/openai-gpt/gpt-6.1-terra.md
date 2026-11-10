@@ -14,7 +14,7 @@ supersedes: none
 access:
   context_tokens: 500000
   output_tokens: unknown
-  cli: codex exec --model gpt-6.1-terra --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+  cli: codex exec --model gpt-6.1-terra --disable memories --disable multi_agent --disable goals -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}
   cli_verified_from: codex-cli 0.165.0, run 2026-11-03 (pilot ran codex exec -m gpt-6.1-terra --json; workspace-write could not commit in a linked worktree)
   subagents: 'yes Codex catalog lists multi_agent_version v2 and an ultra effort described as maximum reasoning with automatic task delegation [S2]'
   effort_controls: 'low, medium, high, xhigh, max, ultra (catalog default low; the pilot ran medium) [S2]'
