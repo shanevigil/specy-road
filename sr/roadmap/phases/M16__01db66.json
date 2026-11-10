@@ -203,9 +203,7 @@
         "Estimated net line change (informational, not a gate): package 0; scripts about +120"
       ],
       "codename": "a-committed-report-of-the-import-cycles-and-package-to-entry",
-      "dependencies": [
-        "8ae7a813-4e43-4590-9f7d-d20b1691dbce"
-      ],
+      "dependencies": [],
       "execution_milestone": "Agentic-led",
       "id": "M16.2.6",
       "node_key": "d0dc4b2c-781d-42f3-82a3-29b6468abebe",
@@ -231,7 +229,8 @@
       ],
       "codename": "break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate",
       "dependencies": [
-        "d0dc4b2c-781d-42f3-82a3-29b6468abebe"
+        "d0dc4b2c-781d-42f3-82a3-29b6468abebe",
+        "8ae7a813-4e43-4590-9f7d-d20b1691dbce"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.2.7",

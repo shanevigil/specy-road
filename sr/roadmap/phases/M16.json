@@ -475,7 +475,7 @@
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-pickup-and-finish",
       "dependencies": [
-        "21cc96e6-1e15-425e-a4b0-9c821fe30c55"
+        "3c8001e2-d1c2-4365-a0f2-be80807504ee"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.7.4",
@@ -487,7 +487,7 @@
       "title": "Tests: apply the dedupe worklist for pickup and finish",
       "touch_zones": [
         "tests/",
-        "tests/support/dedupe/"
+        "tests/support/dedupe/pickup-finish.csv"
       ],
       "type": "task"
     }

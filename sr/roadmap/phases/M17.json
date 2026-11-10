@@ -201,7 +201,6 @@
       ],
       "codename": "gui-api-orchestration",
       "dependencies": [
-        "af6d3c1a-cccf-481d-ab9f-503e834b47d7",
         "4c5fb003-1a29-4442-820e-f700f4e2d71f"
       ],
       "execution_milestone": "Agentic-led",
@@ -416,8 +415,7 @@
       ],
       "codename": "gui-grind-status-modal",
       "dependencies": [
-        "05b23f6c-3e4d-4ac9-b0a0-022b4fe7f7f1",
-        "af6d3c1a-cccf-481d-ab9f-503e834b47d7"
+        "05b23f6c-3e4d-4ac9-b0a0-022b4fe7f7f1"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M17.14",
@@ -428,7 +426,6 @@
       "status": "Not Started",
       "title": "PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon",
       "touch_zones": [
-        "specy_road/gui_app*.py",
         "tests/test_gui_app_grind_status.py",
         "gui/pm-gantt/src/grindStatus.ts",
         "gui/pm-gantt/src/grindStatus.test.ts",
@@ -440,7 +437,8 @@
         "gui/pm-gantt/src/repoBrowserPrefs.ts",
         "specy_road/pm_gantt_static/",
         "docs/pm-gui.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/gui_app.py"
       ],
       "type": "task"
     },
@@ -468,7 +466,6 @@
       "status": "Not Started",
       "title": "PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it",
       "touch_zones": [
-        "specy_road/gui_app*.py",
         "specy_road/review_override.py",
         "specy_road/bundled_scripts/mark_implementation_reviewed.py",
         "specy_road/decisions.py",
@@ -487,7 +484,8 @@
         "specy_road/pm_gantt_static/",
         "docs/pm-gui.md",
         "docs/orchestration-review.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "specy_road/gui_app.py"
       ],
       "type": "task"
     }
