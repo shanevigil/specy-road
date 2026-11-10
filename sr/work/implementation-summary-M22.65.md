@@ -68,15 +68,15 @@ Each scenario built on the old per-path lines gets its new equivalent. No assert
 - Package helpers, branches or guards: none. `_prefixed` gained one conditional for a leading `!`, which the nested re-includes need.
 - Mocks: none.
 
-## Fix round 1 (review by gpt-6.1-sol at 0d0c8fca): stopped, needs the coordinator
+## Fix round 1 (review by gpt-6.1-sol at 0d0c8fca)
 
-The blocking finding cannot be fixed inside this leaf. A2 asks that `dirty_check` report a modified tracked `work/brief-M1.md`. A2 also asks that `RUNTIME_WORK_DIRS` and `dirty_check` stay source-identical. `dirty_check` (`specy_road/bundled_scripts/role_prompt_rca.py:63`, outside the touch zones) excludes `work/brief-*.md` for every leaf by pathspec. A pathspec exclusion cannot tell a tracked file from an untracked one, so a modified tracked brief is hidden unless that line changes. Both halves of A2 cannot hold at once, so I made no code change. The test `test_files_still_tracked_under_work_are_still_seen` still asserts only the chore record through `dirty_check`. A test asserting the brief would fail against the unchanged source.
+Sol found that A2 contradicted itself. It asked `dirty_check` to report a modified tracked `work/brief-M1.md`, and also asked that `dirty_check` stay source-identical. Its `work/brief-*.md` pathspec exclusion hides tracked and untracked files alike, so both could not hold. I stopped and asked the coordinator.
 
-**Class:** a tracked, modified file under a path that `dirty_check` excludes by pathspec, which hides tracked changes as well as untracked ones. It is wider than the brief named in the review (see Probes).
+The operator chose to amend A2 (0cc7f99b). `dirty_check` stays source-identical and keeps leaving out briefs, summaries and the runtime directories. `worker reconcile` and `delegate` must catch a modified tracked `work/brief-M1.md` and `work/chores/<slug>.md`, and `dirty_check` must report the tracked chore record. Narrowing `dirty_check` moves to M23.
 
-**Options for the coordinator (one decision, then a zone for `specy_road/bundled_scripts/role_prompt_rca.py` and its tests):**
-1. **Removes the class.** Narrow `dirty_check`'s bookkeeping exclusions to this leaf's own `work/brief-<ID>.md` and `work/implementation-summary-<ID>.md`. This is the per-leaf rule `worker_reconcile._bookkeeping` already applies. Under `work/*`, git hides untracked bookkeeping anyway. The runtime-dir exclusions would still hide tracked files there, which A2's table does not cover. This drops A2's "source-identical" clause.
-2. Keep `dirty_check` source-identical and amend A2's tracked-still-seen row to say `dirty_check` reports tracked changes outside its excluded bookkeeping paths. That matches the current test.
+- **`tests/test_runtime_dirs_not_dirty.py::test_files_still_tracked_under_work_are_still_seen`** now asserts the amended row through `dirty_check` in both directions: ` M work/chores/tidy.md` is reported and `work/brief-M1.md` is not. The reconcile and delegate assertions are unchanged; both paths are seen there.
+- Sol's other findings: none. The other acceptance items and the assert-loss and removed-test rows were marked pass.
+- The merges of `origin/WIP/improvements-0-3-1` (95c77cdd, 675dc5d6) each brought in newly tracked `sr/work/done/` summaries: M16.2.4, M22.53 and M22.67. I untracked them in their own commit, which keeps A4 whole. All 228 files are on disk and none is tracked.
 
 ## Probes
 
@@ -85,4 +85,5 @@ The blocking finding cannot be fixed inside this leaf. A2 asks that `dirty_check
 - **`delegate` uncommitted-work check** (`worker_ops_launch.py:365`): exempts only `??` entries that are bookkeeping, so a modified tracked file anywhere under `work/` blocks delegate. This is covered by `test_files_still_tracked_under_work_are_still_seen`, which uses the brief and the chore record.
 - **`worker reconcile`:** reports both tracked paths as changed outside the zones. Same test.
 - **`ignore_report` / `upgrade`:** lists tracked files under `work/` and prints `git rm --cached`. Covered by `test_upgrade_prints_the_untrack_command_for_a_file_already_tracked_under_work`.
-- No code or test changed in this round, so no tests were re-run after the merge, and no READY was written for this round.
+- After the second merge: the targeted tests plus `tests/parity` gave 469 passed and 5 skipped. `ruff check specy_road tests scripts` and `specy-road file-limits` are OK.
+- `git ls-files sr/work/done` lists 0 files after the merges; 228 files remain on disk.
