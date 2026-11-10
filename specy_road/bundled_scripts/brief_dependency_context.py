@@ -41,8 +41,7 @@ from specy_road.bundled_scripts.planning_sheet_bootstrap import (
     gate_sheet_level2_titles,
     sheet_placeholder,
 )
-from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys
-from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
+from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
 
 from specy_road.text_sections import LEVEL2_RE, find_section, normalize_heading, read_text_safely
 from specy_road.archive_index import iter_archived_summaries
@@ -137,26 +136,16 @@ def effective_dep_nodes(
     """Return the list of nodes this ``node`` effectively depends on.
 
     Effective = explicit ``dependencies`` on this node plus every dependency
-    inherited from any ancestor. Mirrors
-    :func:`roadmap_layout.effective_dependency_keys`. Sorted deterministically
-    by display id.
+    inherited from any ancestor, as
+    :attr:`roadmap_index.RoadmapIndex.effective_dependencies` answers it for
+    pickup. Sorted deterministically by display id.
     """
     nk = node.get("node_key")
     if not isinstance(nk, str) or not nk:
         return []
-    nodes_list = list(by_id.values())
-    eff_map = effective_dependency_keys(nodes_list)
-    keys = eff_map.get(nk) or set()
-    if not keys:
-        return []
-    by_key = build_key_to_node(nodes_list)
-    out: list[dict] = []
-    for k in keys:
-        dep = by_key.get(k)
-        if dep is not None:
-            out.append(dep)
-    out.sort(key=lambda d: str(d.get("id") or ""))
-    return out
+    index = RoadmapIndex(list(by_id.values()))
+    deps = [index.by_key[k] for k in index.effective_dependencies.get(nk, set())]
+    return sorted(deps, key=lambda d: str(d.get("id") or ""))
 
 
 # ---------------------------------------------------------------------------

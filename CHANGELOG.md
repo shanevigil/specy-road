@@ -32,6 +32,14 @@ body. Keep section bodies focused; link to PRs for detail.
   every other gate condition still applies. Both decisions schemas gain `decided_by` and the `standing-rule` kind
   (run `refresh-schemas`). See `docs/orchestration-review.md` (Operator decision).
 
+- A person at a terminal approves a leaf over a reviewer's block in one `specy-road mark-implementation-reviewed`
+  run on the feature branch, without `--yes`: when settling the counted blocks would pass the gate, it shows their
+  findings, offers `[a] Approve over the block`, reads the reason, commits the operator decision on the integration
+  branch from a temporary worktree (pushed fast-forward only, or the local branch moved), writes the marker and
+  stamps the registry. Every refusal comes before anything is written. `handoff status`'s human row now names the
+  command that works for a leaf (no id) and says whether it approves over the blocks; a refusal with a block names
+  the interactive path and `review operator-decision`. See `docs/orchestration-review.md` (Operator decision).
+
 - `specy-road worker recover W` ends a stalled worker, keeps its worktree and commits, and resumes its native
   session with the continue prompt, or says why it cannot. It runs once and exits. Recoveries are counted on the
   worker record up to `policy.max_fix_rounds` (default 3); past that the worker is flagged `needs_person` with its
@@ -67,6 +75,7 @@ body. Keep section bodies focused; link to PRs for detail.
 ### Fixed
 
 - `specy-road review record` refuses a record whose notes body is empty or whitespace only after normalisation, and a record whose body matches another model's REVIEW record for the same leaf at the same commit. The refusal says the notes go in the body below the front matter and that `notes_sha256` covers only that body, not `findings` or `commands_rerun`. The same model re-filing at that commit, and the same body at another commit, are filed as before. The gate is unchanged, so a record already filed still counts. See `docs/orchestration-reviewer-output.md`.
+- An approval still counts across later commits that change only roadmap or planning files, other than `roadmap/orchestration.yaml` and `roadmap/git-workflow.yaml`, or this leaf's implementation summary and review files, and across a two-parent merge from the integration branch whose non-bookkeeping diff is unchanged. It is refused, and `handoff status` gives the reason, when this leaf's acceptance, touch zones or `## Tier` value changed, when the sheet has no tier value, or when the graph or sheet cannot be read. An operator decision still ends on a policy commit. See `docs/orchestration-review.md`.
 - A worker whose turn ends `completed` releases its slot lease on the integration remote, as a `failed` one does, so another checkout at `max_workers` is not held by it. `worker message` or `resume` of a `completed` or `failed` worker pushes a new lease, and a resume the limit refuses leaves no lease behind. An `idle` worker keeps its lease. A turn started by a queued message gets the delegating caller's `PYTHONPATH`, or none, without the wrapper's package-path prefix. See `docs/orchestration-workers.md` (What `max_workers` counts).
 - The bundled OpenAI GPT profiles' `access.cli` now reads the prompt on standard input (`codex exec ... - < {prompt}`),
   so `prompt --role rca --channel cli --run` with one of them is no longer refused once the prompt passes 128 KiB.
