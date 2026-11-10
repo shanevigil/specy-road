@@ -40,3 +40,15 @@ From the sanitized field report and its triage; items 7, 13â€“15, 17, 19 and 21â
 - A writable temp root for Codex reviewers, with the write check after the run (item 21 remainder); `review record` reads notes from stdin (item 23b).
 - The chore reviewer prompt (`chore_cli.chore_prompt`) says `A1` is the task as a whole, given pass or fail, with no other `A#` key; a chore record with only `A1` is still read by the chore verdicts (item 23a, moved out of M22.64).
 - A schema-valid verdict from a reviewer attempt that exited non-zero or logged an error is filed today; decide how such a verdict is treated on both filing paths (`review delegate` and `prompt --run`). Mitigation first and bounded (maintainer, 2026-11-09): flag or refuse the observable failed-attempt shapes and document the residual limit; it is not meant to close every stop or denial shape, so it does not chase a non-converging target.
+
+## Intake: adopter feedback part 2 on rc4 (maintainer approved, 2026-11-09)
+
+- `mark-implementation-reviewed` checks for a clean tree before the menu or any record, on both the leaf and milestone paths; `handoff status` says "review recorded; approval not committed" when the gate is met but the registry is not; the `finish-this-task` refusal names the missing half; the clean-tree refusal stops advising stash or discard (finding 29).
+- The release runbook's CHANGELOG template says "sha256: see the GitHub release" instead of a placeholder that is never filled in (finding 31).
+- `upgrade` and `refresh-stubs` report `added` separately from `replaced` for a managed block, and `--dry-run` shows the block text; the upgrade notes say a `CLAUDE.md` without a block gets one (finding 32).
+- The full-review notice names the node's type, or the docs say any node with leaf children is reviewed as a milestone; `upgrade --dry-run` skips or rewords the integration-branch remote-refs line in its scratch copy (finding 33).
+- `doctor` and `handoff status` offer `abort-task-pickup` for an unattended claim only "if nobody is working on it", and note that a person working by hand leaves no session record (finding 35).
+- The dotted-model-id roster warning is skipped when the entry's `channels.cli` does not use `{model}` (finding 36).
+- The human eligibility hint prints the leaf form of `mark-implementation-reviewed`, with no id and run from the feature branch, for a leaf (finding 37).
+- The milestone full-review menu lists the leaves it covers, with their landing commits and a diffstat, or points at `review-packet`; `[w]` shows only when there is a walkthrough (finding 38).
+- The milestone full review prints the push hint pickup prints after its integration-branch commit (finding 39).
