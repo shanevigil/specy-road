@@ -93,7 +93,8 @@ entries:
       - tests/parity/command_map.yaml
     started: '2026-11-10'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-10T20:59:46+00:00'
   - codename: break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli
     node_id: M16.2.8
     branch: feature/rm-break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli
