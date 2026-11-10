@@ -178,6 +178,26 @@ def _shell_bodies(d: dict[str, Any]) -> list[dict[str, Any]]:
     return [body for key in ("failure", "success") if isinstance(body := result.get(key), dict)]
 
 
+#: Cursor's question tool: the ``tool_call`` key in ``tests/fixtures/cursor_question_tool.jsonl``, one real
+#: ``agent -p --output-format stream-json`` capture. Assistant text and every other tool key are not this.
+QUESTION_TOOL = "askQuestionToolCall"
+
+
+def _interactive_tool(d: dict[str, Any] | None) -> Parsed | None:
+    """One ``interactive_tool`` when a ``tool_call`` line's tool key is :data:`QUESTION_TOOL`.
+
+    A call is at least two lines (``started`` and ``completed``). Each line is its own event; the post-run
+    check collapses them to one finding per turn.
+    """
+    if not d or d.get("type") != "tool_call":
+        return None
+    call = d.get("tool_call")
+    if not isinstance(call, dict) or QUESTION_TOOL not in call:
+        return None
+    return Parsed("interactive_tool", f"question tool {QUESTION_TOOL}: no person saw it", d.get("session_id"),
+                  {"tool_name": QUESTION_TOOL})
+
+
 def _sandbox_denial(d: dict[str, Any] | None) -> Parsed | None:
     """One ``permission_denied`` when a shell result's stderr is a sandbox refusal, else ``None``.
 
@@ -295,8 +315,9 @@ class Cursor(Adapter):
         return None
 
     def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
-        denied = _sandbox_denial(_json(line))
-        return [*super().parse_events(line, launch), *([denied] if denied else [])]
+        raw = _json(line)
+        extra = [event for event in (_sandbox_denial(raw), _interactive_tool(raw)) if event]
+        return [*super().parse_events(line, launch), *extra]
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         return ["agent", "--resume", session_id]

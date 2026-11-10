@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -11,12 +12,15 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo
+from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.test_models_and_prompt import run_main
 
 from specy_road import harness_binary as hb
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import role_prompt_cli
+from specy_road.bundled_scripts import review_cli, role_prompt, role_prompt_cli
+from specy_road.init_project import project_template_root
+from specy_road.model_profiles import load_profile
 from specy_road import review_delegate
 from specy_road.review_files import reviews_dir
 from specy_road.review_record_write import strict_schema
@@ -293,3 +297,52 @@ def test_worker_message_resumes_with_a_binary_only_harness_bin_reaches(tmp_path:
     fallback = ADAPTERS["claude-code"].resume("s-1", tmp_path / "p.md", tmp_path, "m", "wrapper {prompt}",
                                               harness_bin=str(agent))
     assert fallback.argv[:2] == [str(agent), "-p"]
+
+
+# --- M22.64: the bundled Codex profiles read an rca prompt on stdin --------------------------------------------------
+
+#: A `codex` that records its argv and the bytes it read on stdin.
+FAKE_CODEX = '''#!{python}
+import json, os, sys
+json.dump({{"argv": sys.argv[1:], "stdin": len(sys.stdin.read().encode("utf-8"))}}, open(os.environ["FAKE_OUT"], "w"))
+'''
+SOL_ROSTER = """version: 1
+roster:
+  - {id: human, family: human, roles: [coordinator, reviewer]}
+  - {id: rev, family: other, roles: [reviewer]}
+  - {id: sol, family: openai, profile: model-profiles/openai-gpt/gpt-6.1-sol.md, roles: [reviewer], harness: codex}
+"""
+
+
+def test_an_rca_prompt_over_the_limit_reaches_the_bundled_codex_profile_on_stdin(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path / "repo", orchestration=SOL_ROSTER)
+    profile = Path("model-profiles/openai-gpt/gpt-6.1-sol.md")
+    (repo / profile).parent.mkdir(parents=True)
+    shutil.copy(project_template_root() / profile, repo / profile)
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "profile")
+    git(repo, "update-ref", "refs/heads/dev", "HEAD")
+    notes = tmp_path / "notes.md"   # a filed round whose fenced output makes the rca prompt larger than 128 KiB
+    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="rev", verdict="block", a1="fail")
+                     + "```\n" + ("x" * 99 + "\n") * (BIG // 100) + "```\n")
+    assert run_main(review_cli, "review", "record", "M1.1", "--model", "rev", "--verdict", "block",
+                    "--file", str(notes), "--repo-root", str(repo)) == 0
+    bin_dir, out = tmp_path / "bin", tmp_path / "codex.json"
+    _exe(bin_dir / "codex").write_text(FAKE_CODEX.format(python=sys.executable))
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    monkeypatch.setenv("FAKE_OUT", str(out))
+    argvs: list[list[str]] = []
+    real_run = role_prompt_cli.subprocess.run
+    monkeypatch.setattr(role_prompt_cli.subprocess, "run",   # what the shell is given, then run for real
+                        lambda cmd, **k: (k.get("shell") and argvs.append(["sh", "-c", cmd])) or real_run(cmd, **k))
+    assert run_main(role_prompt, "M1.1", "--model", "sol", "--role", "rca", "--channel", "cli", "--force",
+                    "--reason", "x", "--run", "--repo-root", str(repo)) == 0
+    sent = (repo / "work" / "prompt-M1.1-rca-sol.md").read_bytes()
+    assert len(sent) > ARG_LIMIT
+    got = json.loads(out.read_text())
+    assert got["stdin"] == len(sent) and got["argv"][-1] == "-"
+    assert argvs   # the shell command run_plain_cli launched, however many shell calls precede it
+    assert max(len(a.encode("utf-8")) for argv in argvs + [got["argv"]] for a in argv) <= CAP
+    shipped = sorted((project_template_root() / "model-profiles" / "openai-gpt").glob("*.md"))
+    assert shipped   # every bundled OpenAI profile, however many, is rendered with the stdin form
+    assert all(load_profile(p).cli().endswith(" - < {prompt}") for p in shipped)

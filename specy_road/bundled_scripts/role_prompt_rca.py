@@ -155,6 +155,10 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
         "",
         f"You implement roadmap leaf `{node_id}` and nothing else. Touch zones: {z}.",
         "",
+        "In a headless turn (`worker delegate`, `worker message`, a grind) no person can answer a question tool: "
+        "open questions go in the implementation summary under a heading marking them unanswered, and the summary "
+        "never says a person was asked.",
+        "",
         "1. Read the brief and every file it names before editing.",
         "2. Change only files inside the touch zones; preserve behaviour unless an acceptance item changes it.",
         "3. Run the verifier and tests the brief names in the foreground, with a long timeout if your harness has one, "

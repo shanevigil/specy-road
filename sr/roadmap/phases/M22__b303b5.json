@@ -481,7 +481,8 @@
         "CHANGELOG.md",
         "tests/test_sheet_edits_keep_approvals.py",
         "tests/test_sibling_repo_approvals.py",
-        "tests/test_delta_review.py"
+        "tests/test_delta_review.py",
+        "tests/parity/review_gate/"
       ],
       "type": "task"
     }
