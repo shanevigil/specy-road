@@ -11,6 +11,30 @@
       "title": "Post-0.3.1 field feedback",
       "touch_zones": [],
       "type": "phase"
+    },
+    {
+      "acceptance": [
+        "A planner runs the open brainstorm session multi-operator-0-3-2 (technical lens) through both rounds with its seed notes, records the ideas with specy-road brainstorm add-idea, and recommends a ranked set with specy-road brainstorm recommend",
+        "The maintainer accepts or rejects the recommended ideas; accepted ones are promoted to roadmap nodes for 0.3.2 with specy-road brainstorm promote, and the session is closed",
+        "Nothing is built in this leaf: its output is the brainstorm record and the promoted nodes"
+      ],
+      "codename": "multi-operator-brainstorm",
+      "dependencies": [
+        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M23.10",
+      "node_key": "f7d4bb84-3c19-4dd8-abe2-9604fbd3e487",
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.10_multi-operator-brainstorm_f7d4bb84-3c19-4dd8-abe2-9604fbd3e487.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "Run the multi-operator brainstorm for 0.3.2 (two or more operators on several machines, plus a PM in the PM GUI)",
+      "touch_zones": [
+        "sr/work/",
+        "sr/planning/"
+      ],
+      "type": "task"
     }
   ]
 }

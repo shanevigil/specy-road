@@ -264,7 +264,9 @@
       "codename": "gui-orch-sandbox-acceptance",
       "dependencies": [
         "c6f05a10-ac3d-4297-b8ca-e9e82076ad1d",
-        "860efe04-3d36-451d-9f69-1f0657634bc1"
+        "860efe04-3d36-451d-9f69-1f0657634bc1",
+        "db9cb5a1-b899-411e-a825-0d68894f273e",
+        "d4d16cb9-49c7-49ef-a254-3223e0b3a80c"
       ],
       "execution_milestone": "Human-led",
       "id": "M17.9",
@@ -400,6 +402,91 @@
         "gui/pm-gantt/src/App.tsx",
         "gui/pm-gantt/src/usePmGuiHandlers.ts",
         "specy_road/pm_gantt_static/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "GET /api/grind-status, with optional until and under query parameters, calls M22.68's status builder in-process with get_repo_root() and returns its JSON object unchanged (no envelope, no added field); the CLI's exit-2 cases (no scope, unknown node) answer 400 with the CLI's message as detail; the route writes nothing but the history cache, has no write twin, and is served under --read-only, where a POST to it gets the existing guard's 403. It lives in the gui_app module M16.3.7 folds the route modules into",
+        "A Status toolbar button opens StatusModal, built on the existing ModalFrame (storageKey grind-status) and loaded lazily like the Orchestration drawer; it shows Until and Under node-id fields (both empty: the server's milestone-session default; kept as per-repo browser preferences via readBrowserPref/writeBrowserPref), the totals line, Last updated with the time of generated_at and its age, then held, active, ready, waiting, not pickable, the estimate, decisions and sessions in the CLI's order, every text field as the server sent it (no reworded option or recommendation; not recorded shown as given). A 400 shows the server's detail; a 404 says the server does not provide the status; after a failed load the last good report stays with its growing age and the error beside it",
+        "A refresh icon button (IconRefresh, labelled Refresh now) loads at once and restarts the interval; an interval select offers Off, 30 s, 60 s (default), 2 min and 5 min, kept as a per-repo browser preference; polling runs only while the modal is open, and a tick during a running load is skipped. grindStatus.ts holds the types, a loadGrindStatus that never throws (ok, unavailable, refused with detail, error) and the poll helper, in the shape of loadOrchestration and pollOrchestration",
+        "Tests: tests/test_gui_app_grind_status.py (route body equals the builder's output, default scope, 400 refusals, read-only with git status, HEAD, registry and ledger unchanged, and a contract row comparing the route's key paths with gui/pm-gantt/src/fixtures/grind_status_mock.json both ways, failing when a field is dropped); vitest in grindStatus.test.ts with fake timers (poll, Off, skip while loading, refresh now restarts the interval, last-updated text and the failed-load case, verbatim section text). cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build passes; specy_road/pm_gantt_static/ rebuilt; docs/pm-gui.md What ships item and API table row; CHANGELOG [Unreleased]. No new npm dependency. Out of scope: decisions from the modal (M17.15)",
+        "Estimated net line change (informational, not a gate): server about +25, frontend about +330, tests about +200, docs about +10"
+      ],
+      "codename": "gui-grind-status-modal",
+      "dependencies": [
+        "05b23f6c-3e4d-4ac9-b0a0-022b4fe7f7f1",
+        "af6d3c1a-cccf-481d-ab9f-503e834b47d7"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.14",
+      "node_key": "db9cb5a1-b899-411e-a825-0d68894f273e",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.14_gui-grind-status-modal_db9cb5a1-b899-411e-a825-0d68894f273e.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon",
+      "touch_zones": [
+        "specy_road/gui_app*.py",
+        "tests/test_gui_app_grind_status.py",
+        "gui/pm-gantt/src/grindStatus.ts",
+        "gui/pm-gantt/src/grindStatus.test.ts",
+        "gui/pm-gantt/src/fixtures/grind_status_mock.json",
+        "gui/pm-gantt/src/components/StatusModal.tsx",
+        "gui/pm-gantt/src/App.tsx",
+        "gui/pm-gantt/src/App.css",
+        "gui/pm-gantt/src/toolbarIcons.tsx",
+        "gui/pm-gantt/src/repoBrowserPrefs.ts",
+        "specy_road/pm_gantt_static/",
+        "docs/pm-gui.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "From M17.14's status modal the PM can (1) answer an open decision or human-action entry with one of its recorded option labels or Other plus typed words, and (2) approve a claimed leaf over counted reviewer blocks when settling them would pass the gate (as_if_decided), the status JSON giving commit and can_approve_over_block per claimed leaf it evaluates. No other held item gets a GUI action",
+        "Records use the existing ledger path and no new kind: an answer closes the entry with close_entry ledger_only, decided_by operator, channel pm-gui and answer '<label>: <words>' (or the words for Other); an approval over a block writes M22.67's record (append_decision's closed kind decision entry, OPERATOR-<commit>.yaml marker) with channel pm-gui and marker session 'pm-gui <UTC>'. Shared entries are committed alone on the integration branch from a temporary worktree and pushed fast-forward only (or moved by compare-and-swap with no remote), as M22.67; a decisions.local.yaml entry is closed in place. The registry is not stamped: that is the coordinator's step. decisions.schema.json gains optional channel (enum pm-gui), allowed only on closed decision and human-action entries; an old copied schema refuses with refresh-schemas named",
+        "M22.67's preflight and record steps move from mark_implementation_reviewed.py to public functions in review_override.py taking the root, the session and the channel; the GUI path skips only the leaf-checkout clean-tree check and the registry commit; mark-implementation-reviewed's output, exit codes and existing tests are unchanged",
+        "POST /api/pm-decisions refuses before any write: 403 under --read-only (existing guard) or without the right X-PM-Decision-Code header (secrets.compare_digest); 400 for empty words, an option that is not a label, an entry that is not an open decision or human-action, or the shared preflight's reason (role, git identity, fetch, dirty holder, settling would not pass); 409 when the leaf's commit under review is not the commit the modal showed or the entry closed meanwhile. Success returns the entry id, the integration commit and where it went",
+        "Forgery mitigation, best effort: at server startup (not import) gui_app draws secrets.token_urlsafe(16), keeps it on app.state only and prints it once to stderr for the person who started specy-road gui; never in a file, environment variable, log line or API response, and none under --read-only; create_app takes decision_code for tests. The modal asks for it once per page load, keeps it in React state only (no localStorage or sessionStorage) and sends it as a header, which forces a CORS preflight the existing loopback rule refuses for other origins. The form needs typed words and a Review decision step showing the exact record before Record decision sends anything. docs/pm-gui.md states the limits: a same-user agent that can read the GUI's terminal or memory, drive the browser or start its own GUI can still forge a decision, as it can already run review operator-decision",
+        "grind-session --status gains decisions.gui_pending, printed as Decided in the GUI, not yet processed and shown in the modal: an approval (entry named by an OPERATOR marker) while the leaf's registry implementation_review is not approved, next step mark-implementation-reviewed --yes on its branch then finish; an answer while the node's planning sheet has no '<ID>: <answer>' line in its decision block (recorded_on_sheet), next step record and commit that line then act on it. No acknowledgement field or new state. specyrd-orchestrate.md tells the coordinator to pull the integration branch fast-forward only before each status check, process every such item as an operator decision with the PM's words, and post 'Processing PM GUI decision <id> on <node>: <words>' to the chat",
+        "Tests: tests/test_gui_app_pm_decisions.py covers the sheet's rows (answer, answer local, over block at the root and under sr/, code, read-only, code secrecy, cross origin, refusals, withheld, push refused) with M22.67's fixtures and the review gate on; tests/test_grind_status.py the pending and availability rows; tests/test_decisions.py the schema rows and the skill text; M22.67's rows in tests/test_mark_implementation_reviewed_gate.py and tests/test_review_override.py unchanged and green; vitest pmDecision.test.ts for the confirm flow. cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build passes; specy_road/pm_gantt_static/ rebuilt; docs/pm-gui.md and docs/orchestration-review.md (operator section) updated; CHANGELOG [Unreleased]. No new npm or Python dependency",
+        "Estimated net line change (informational, not a gate): package about +200, frontend about +220, tests about +380, docs and skill about +40"
+      ],
+      "codename": "gui-pm-decisions",
+      "dependencies": [
+        "db9cb5a1-b899-411e-a825-0d68894f273e"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.15",
+      "node_key": "d4d16cb9-49c7-49ef-a254-3223e0b3a80c",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.15_gui-pm-decisions_d4d16cb9-49c7-49ef-a254-3223e0b3a80c.md",
+      "sibling_order": 15,
+      "status": "Not Started",
+      "title": "PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it",
+      "touch_zones": [
+        "specy_road/gui_app*.py",
+        "specy_road/review_override.py",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/decisions.py",
+        "specy_road/templates/project/schemas/decisions.schema.json",
+        "specy_road/grind_status.py",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "tests/test_gui_app_pm_decisions.py",
+        "tests/test_grind_status.py",
+        "tests/test_decisions.py",
+        "gui/pm-gantt/src/pmDecision.ts",
+        "gui/pm-gantt/src/pmDecision.test.ts",
+        "gui/pm-gantt/src/grindStatus.ts",
+        "gui/pm-gantt/src/fixtures/grind_status_mock.json",
+        "gui/pm-gantt/src/components/StatusModal.tsx",
+        "gui/pm-gantt/src/App.css",
+        "specy_road/pm_gantt_static/",
+        "docs/pm-gui.md",
+        "docs/orchestration-review.md",
         "CHANGELOG.md"
       ],
       "type": "task"

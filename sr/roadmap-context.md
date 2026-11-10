@@ -187,6 +187,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.65` The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work `work-dir-ignored` — task — **Complete**
   - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Complete**
   - `M22.67` A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works `human-approves-over-block` — task — **Complete**
+  - `M22.68` grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only `grind-status` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -201,6 +202,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Complete**
   - `M17.12` PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group `gui-group-siblings-action` — task — **Complete**
   - `M17.13` PM GUI: a row click selects at once, so a toolbar action right after it acts on that row `gui-outline-selection-lag` — task — **Complete**
+  - `M17.14` PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon `gui-grind-status-modal` — task — **Not Started**
+  - `M17.15` PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it `gui-pm-decisions` — task — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
   - `M18.1` Reviewers check that code is well-formed and that fixes do not degrade it `review-code-quality` — task — **Not Started**
   - `M18.2` Harness-facts records for the Copilot CLI and Antigravity agy `harness-facts-copilot-agy` — task — **Not Started**
@@ -259,6 +262,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M23.7` upgrade migrates rosters to core fields plus run: `roster-upgrade-to-run-block` — task — **Not Started**
   - `M23.8` The guard classifier becomes three rule tables with every verdict unchanged `the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged` — task — **Not Started**
   - `M23.9` The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working `sr-private-mount` — task — **Not Started**
+  - `M23.10` Run the multi-operator brainstorm for 0.3.2 (two or more operators on several machines, plus a PM in the PM GUI) `multi-operator-brainstorm` — task — **Not Started**
 
 ## Open gates
 
