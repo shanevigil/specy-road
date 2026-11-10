@@ -15,7 +15,7 @@ import yaml
 from specy_road.clock import utc_now_iso
 from specy_road.fs_atomic import atomic_write_text
 from specy_road.agent_ignores import RUNTIME_WORK_DIRS
-from specy_road.bundled_scripts.chore_cli import chore_prompt, chore_target, load_chore
+from specy_road.chore_records import chore_prompt, chore_target, load_chore
 from specy_road.brief_generation import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.finish_implementation_check import _clean, zone_matches

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-from specy_road.grind_session_cleanup import delete_merged_branch
+from specy_road.merged_branch import delete_merged_branch
 from specy_road.finish_bookkeeping_undo import (
     BookkeepingSnapshot, UndoOutcome, one_line, undo_bookkeeping, undo_report,
 )

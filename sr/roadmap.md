@@ -30,7 +30,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.5` | Library modules imported by the package move out of bundled_scripts | task | Agentic-led | Complete |
 | `M16.2.6` | A committed report of the import cycles and package-to-entry-point imports | task | Agentic-led | Complete |
 | `M16.2.7` | Break the 45-module import cycle through the graph loader, the brief and validate | task | Agentic-led | Complete |
-| `M16.2.8` | Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI | task | Agentic-led | Not Started |
+| `M16.2.8` | Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI | task | Agentic-led | Complete |
 | `M16.2.9` | Commands run in the CLI's process: no python -m re-launch, no cwd globals | task | Agentic-led | Not Started |
 | `M16.2.10` | Every command exposes build_parser(), imports lazily and shares the common argument helpers | task | Agentic-led | Not Started |
 | `M16.2.11` | One SpecyError base for the 15 error classes, printed and turned into an exit code once | task | Agentic-led | Not Started |

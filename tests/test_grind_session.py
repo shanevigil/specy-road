@@ -12,6 +12,7 @@ import pytest
 
 from specy_road.bundled_scripts import grind_session as gs
 from specy_road import grind_session_cleanup as gsc
+from specy_road import merged_branch
 from specy_road.bundled_scripts import grind_session_events as gse
 
 REPO = Path(__file__).resolve().parent.parent
@@ -104,6 +105,7 @@ class _Harness:
             return self.implement_rc == 0
 
         monkeypatch.setattr(gsc, "git_code", self._fake_git)
+        monkeypatch.setattr(merged_branch, "git_code", self._fake_git)
         monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
         monkeypatch.setattr(gs, "CHILD_STDOUT_TO_STDERR", False)
         monkeypatch.setattr(gs, "gather_plan", fake_gather)

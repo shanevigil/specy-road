@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from specy_road import session_presence, worker_state
-from specy_road.grind_session_cleanup import merged_into
+from specy_road.merged_branch import merged_into
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_root, git_text
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import read_registry, registry_path

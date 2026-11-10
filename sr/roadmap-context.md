@@ -30,7 +30,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.5` Library modules imported by the package move out of bundled_scripts `library-modules-imported-by-the-package-move-out-of-bundled` — task — **Complete**
     - `M16.2.6` A committed report of the import cycles and package-to-entry-point imports `a-committed-report-of-the-import-cycles-and-package-to-entry` — task — **Complete**
     - `M16.2.7` Break the 45-module import cycle through the graph loader, the brief and validate `break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate` — task — **Complete**
-    - `M16.2.8` Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI `break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli` — task — **Not Started**
+    - `M16.2.8` Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI `break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli` — task — **Complete**
     - `M16.2.9` Commands run in the CLI's process: no python -m re-launch, no cwd globals `commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals` — task — **Not Started**
     - `M16.2.10` Every command exposes build_parser(), imports lazily and shares the common argument helpers `every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers` — task — **Not Started**
     - `M16.2.11` One SpecyError base for the 15 error classes, printed and turned into an exit code once `one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once` — task — **Not Started**
@@ -332,7 +332,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.2.8` on `feature/rm-break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli` since 2026-11-10
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -345,14 +344,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 29 | 0 | 2.17 | 59% | 21 | 2 |
+| `CHANGELOG.md` **flagged** | 28 | 0 | 2.18 | 57% | 21 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 33 | 0 | 2.27 | 61% | 55 | 3 |
+| `docs` **flagged** | 32 | 0 | 2.28 | 59% | 55 | 3 |
 | `planning` **flagged** | 2 | 0 | 3.50 | 100% | 18 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 42 | 0 | 2.21 | 55% | 82 | 3 |
-| `tests` **flagged** | 44 | 0 | 2.20 | 57% | 94 | 3 |
+| `specy_road` **flagged** | 42 | 0 | 2.19 | 52% | 83 | 3 |
+| `tests` **flagged** | 44 | 0 | 2.18 | 55% | 95 | 3 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
@@ -360,7 +359,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 2 | 0 | 3.50 | 50% | 2 | 1 |
-| `constraints` | 6 | 0 | 1.83 | 33% | 56 | 0 |
+| `constraints` | 7 | 0 | 1.71 | 29% | 57 | 0 |
 | `gui` | 8 | 0 | 1.50 | 50% | 2 | 0 |
 | `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |

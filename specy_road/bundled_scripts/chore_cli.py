@@ -16,88 +16,34 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any
 
+from specy_road.bundled_scripts.chore_garden import as_json, garden
+from specy_road.chore_records import (
+    _SLUG,
+    chore_node,
+    chore_prompt,
+    chore_target,
+    chores_dir,
+    load_chore,
+    open_chore,
+)
 from specy_road.clock import utc_now_iso
 from specy_road.fs_atomic import atomic_write_text
 from specy_road.finish_implementation_check import _clean
 from specy_road.git_subprocess import current_branch_name, git_root, head_sha, is_worktree_root
-from specy_road.review_files import list_reviews, reviews_dir, reviews_root
-from specy_road.review_target import ReviewTarget
+from specy_road.review_files import list_reviews
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.worker_cli_render import usage, usage_lines
+from specy_road.worker_orphans import HELD_STATES, end_finished_workers
 from specy_road.worker_state import HARNESSES, WorkerError, events_since, list_records
-
-# Lower case, so never a node id (``M1.2``); not ``w-``, which names a worker id where a target is either.
-_SLUG = re.compile(r"^(?!w-)[a-z0-9][a-z0-9-]*$")
-
-
-def chores_dir(repo_root: Path) -> Path:
-    return reviews_root(repo_root).parent / "chores"   # the main checkout's work/, as work/.workers is
-
-
-def load_chore(repo_root: Path, slug: str) -> dict[str, Any] | None:
-    """The chore ``slug``, open or closed; ``None`` when ``slug`` is not one (a node id)."""
-    path = chores_dir(repo_root) / f"{slug}.json"
-    if not _SLUG.match(slug) or not path.is_file():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def open_chore(repo_root: Path, slug: str) -> dict[str, Any] | None:
-    """As :func:`load_chore`, refusing a closed chore: no worker turn may start on it."""
-    chore = load_chore(repo_root, slug)
-    if chore and chore.get("closed_at"):
-        raise WorkerError(f"chore {slug} was closed at {chore['closed_at']}; start a new chore instead")
-    return chore
 
 
 def _save(repo_root: Path, chore: dict[str, Any]) -> None:
     chores_dir(repo_root).mkdir(parents=True, exist_ok=True)
     atomic_write_text(chores_dir(repo_root) / f"{chore['slug']}.json", json.dumps(chore, indent=2) + "\n")
-
-
-def chore_node(chore: dict[str, Any]) -> dict[str, Any]:
-    """The node-shaped view of a chore that eligibility checks and review records read: its task is A1."""
-    return {"id": chore["slug"], "codename": chore["slug"], "title": chore["task"], "acceptance": [chore["task"]],
-            "touch_zones": list(chore["touch_zones"]), "chore": chore}
-
-
-def chore_target(repo_root: Path, chore: dict[str, Any]) -> ReviewTarget:
-    """What reconcile and review judge: the chore's worktree head against the head it was started at."""
-    node = chore_node(chore)
-    entry = {"node_id": chore["slug"], "branch": chore["branch"], "touch_zones": list(chore["touch_zones"])}
-    return ReviewTarget(node, [node], entry, chore["branch"], head_sha(Path(chore["worktree"])), None, chore["base"])
-
-
-def chore_prompt(chore: dict[str, Any], role: str, model: str, repo_root: Path, commit: str | None = None) -> str:
-    """The executor's or reviewer's prompt. The executor's names nothing that moves, so its hash is its contract."""
-    zones = "\n".join(f"- `{z}`" for z in chore["touch_zones"])
-    head = [f"# Chore `{chore['slug']}` ({role}) for `{model}`", "", f"base: {chore['base']}", "",
-            "A chore is work outside the roadmap: there is no roadmap node, brief, claim or registry row.", "",
-            "## Task", "", chore["task"], "", "## Touch zones", "", zones, ""]
-    if role == "executor":
-        return "\n".join(head + [
-            "## Rules", "",
-            f"1. Work in `{chore['worktree']}` on branch `{chore['branch']}`. Change only paths inside the touch "
-            "zones; `specy-road worker reconcile` flags anything outside them.",
-            "2. Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a` or a bare `git commit`.",
-            "3. Do not edit the roadmap or the registry, claim a leaf, push or merge.",
-            "4. End with a short summary of what you changed and how you checked it, then stop.", ""])
-    dest = reviews_dir(repo_root, chore["slug"]) / f"REVIEW-{model}.md"
-    return "\n".join(head + [
-        "## Review", "",
-        f"In `{chore['worktree']}`, read `git diff {chore['base']}..{commit}` and judge it against the task and the "
-        "touch zones. Edit nothing in the worktree. Write your verdict to", "", f"`{dest}`", "",
-        "in exactly this form (`block` with `required_changes` when the task is not done or a path is outside "
-        "the zones), then stop:", "",
-        "```", "---", f"node_id: {chore['slug']}", f"model: {model}", "date: 'YYYY-MM-DD'", "verdict: approve",
-        f"commit: '{commit}'", "acceptance: {A1: pass}",
-        "findings: {correctness: [], regression: [], boundary: [], test_integrity: []}",
-        "fresh_session: true", "authored_fix: false", "is_coordinator: false", "---", "",
-        "Your notes.", "```", ""])
 
 
 def start(repo_root: Path, slug: str, *, task: str, zones: list[str], review: bool = False,
@@ -130,9 +76,6 @@ def _verdicts(repo_root: Path, chore: dict[str, Any]) -> list[str]:
 
 def close(repo_root: Path, slug: str, summary: str) -> tuple[Path, dict[str, Any]]:
     """End the chore's idle workers and write its record; a worker still running refuses the close."""
-    from specy_road.worker_cli_render import usage, usage_lines  # noqa: PLC0415
-    from specy_road.worker_orphans import HELD_STATES, end_finished_workers  # noqa: PLC0415 — it imports this module
-
     chore = open_chore(repo_root, slug)
     if chore is None:
         raise WorkerError(f"no chore {slug} under {chores_dir(repo_root)}")
@@ -173,8 +116,6 @@ def cmd_close(ns: argparse.Namespace) -> int:
 
 
 def cmd_garden(ns: argparse.Namespace) -> int:
-    from specy_road.bundled_scripts.chore_garden import as_json, garden  # noqa: PLC0415 — it imports this module
-
     if ns.open_chores and not ns.under:
         raise WorkerError("--open-chores needs --under <PARENT>: the node the chore leaves are added under")
     report = garden(resolve_repo_root(ns), ns.under if ns.open_chores else None)

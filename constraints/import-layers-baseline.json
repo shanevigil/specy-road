@@ -3,7 +3,7 @@
   "tool": "ast import scan (nested imports included)",
   "components": [
     {
-      "size": 147,
+      "size": 146,
       "modules": [
         "specy_road.agents_md_block",
         "specy_road.archive_ops",
@@ -12,8 +12,6 @@
         "specy_road.brief_generation",
         "specy_road.bundled_scripts.archive_cli",
         "specy_road.bundled_scripts.brief_dependency_context",
-        "specy_road.bundled_scripts.chore_cli",
-        "specy_road.bundled_scripts.chore_garden",
         "specy_road.bundled_scripts.do_next_available",
         "specy_road.bundled_scripts.do_next_prompt",
         "specy_road.bundled_scripts.effective_dependency_checks",
@@ -28,7 +26,6 @@
         "specy_road.bundled_scripts.review_packet_uncommitted_refs",
         "specy_road.bundled_scripts.roadmap_apply_entries",
         "specy_road.bundled_scripts.roadmap_chunk_router",
-        "specy_road.bundled_scripts.roadmap_crud",
         "specy_road.bundled_scripts.roadmap_crud_argparse",
         "specy_road.bundled_scripts.roadmap_crud_chunk_report",
         "specy_road.bundled_scripts.roadmap_crud_delete",
@@ -46,6 +43,8 @@
         "specy_road.bundled_scripts.validate_roadmap_checks",
         "specy_road.bundled_scripts.validate_self_heal",
         "specy_road.changelog_check",
+        "specy_road.chore_garden_due",
+        "specy_road.chore_records",
         "specy_road.cli",
         "specy_road.decisions",
         "specy_road.decisions_local",
@@ -237,10 +236,6 @@
     },
     {
       "from": "specy_road.bundled_scripts.chore_garden",
-      "to": "specy_road.bundled_scripts.chore_cli"
-    },
-    {
-      "from": "specy_road.bundled_scripts.chore_garden",
       "to": "specy_road.bundled_scripts.roadmap_crud"
     },
     {
@@ -349,10 +344,6 @@
     },
     {
       "from": "specy_road.review_delegate",
-      "to": "specy_road.bundled_scripts.chore_cli"
-    },
-    {
-      "from": "specy_road.review_delegate",
       "to": "specy_road.bundled_scripts.role_prompt"
     },
     {
@@ -377,23 +368,7 @@
     },
     {
       "from": "specy_road.worker_ops_launch",
-      "to": "specy_road.bundled_scripts.chore_cli"
-    },
-    {
-      "from": "specy_road.worker_ops_launch",
       "to": "specy_road.bundled_scripts.role_prompt"
-    },
-    {
-      "from": "specy_road.worker_ops_message",
-      "to": "specy_road.bundled_scripts.chore_cli"
-    },
-    {
-      "from": "specy_road.worker_orphans",
-      "to": "specy_road.bundled_scripts.chore_cli"
-    },
-    {
-      "from": "specy_road.worker_reconcile",
-      "to": "specy_road.bundled_scripts.chore_cli"
     },
     {
       "from": "specy_road.worker_reconcile",
