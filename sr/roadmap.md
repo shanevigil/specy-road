@@ -246,7 +246,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.62` | review record refuses empty notes and a notes digest another model already filed at the same commit | task | Agentic-led | Not Started |
 | `M22.63` | A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH | task | Agentic-led | Complete |
 | `M22.64` | The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run | task | Agentic-led | Complete |
-| `M22.65` | The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work | task | Agentic-led | Not Started |
+| `M22.65` | The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work | task | Agentic-led | Complete |
 | `M22.66` | A roster entry matches a model profile by its harness_model when its id matches none | task | Agentic-led | Complete |
 | `M22.67` | A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works | task | Agentic-led | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |

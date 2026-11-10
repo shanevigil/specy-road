@@ -87,36 +87,6 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: work-dir-ignored
-    node_id: M22.65
-    branch: feature/rm-work-dir-ignored
-    touch_zones:
-      - specy_road/agent_ignores.py
-      - specy_road/templates/project/.gitignore
-      - specy_road/templates/project/work/README.md
-      - specy_road/templates/project/roadmap/git-workflow.yaml
-      - .gitignore
-      - tests/test_agent_ignores.py
-      - tests/test_runtime_dirs_not_dirty.py
-      - tests/test_init_project_gitignore.py
-      - docs/git-workflow.md
-      - docs/git-workflow-preferences.md
-      - CHANGELOG.md
-      - tests/test_init_project_reports.py
-      - tests/test_worker_state.py
-      - sr/work/done/
-      - tests/parity/golden/upgrade/rc3-dry-run.txt
-      - tests/parity/golden/leaf_loop/
-      - tests/parity/test_leaf_loop.py
-      - tests/test_m13_12_quieter_notices.py
-      - tests/test_m13_7_notices.py
-      - tests/test_m13_7_gitignore_symlinks.py
-      - tests/test_finish_work_cleanup.py
-      - docs/install-and-usage.md
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-10T05:29:28+00:00'
   - codename: library-modules-imported-by-the-package-move-out-of-bundled
     node_id: M16.2.5
     branch: feature/rm-library-modules-imported-by-the-package-move-out-of-bundled
