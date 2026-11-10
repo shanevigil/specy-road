@@ -386,7 +386,8 @@
       ],
       "codename": "tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the",
       "dependencies": [
-        "e99367d9-1efa-4aec-850b-bd88121d9757"
+        "e99367d9-1efa-4aec-850b-bd88121d9757",
+        "2f89d103-fb28-4584-a17e-3364cc5b1a99"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.7.8",

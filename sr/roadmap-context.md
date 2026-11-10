@@ -302,7 +302,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-07 `M16.8.8` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
 - 2026-11-07 `M16.8.8` stopped depending on `1cfcf177-4014-4267-9000-d5b81d912f95` (no longer live)
 - 2026-11-06 `M22.22` stopped depending on `M21.40 upgrade's scratch git drops every GIT_ variable, runs no hook, and times out`
-- _…and 70 earlier — `specy-road history --json`_
+- _…and 69 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
