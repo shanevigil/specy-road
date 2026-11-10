@@ -368,7 +368,10 @@
       ],
       "codename": "tests-five-named-properties-replace-the-single-input-tests-they-cover",
       "dependencies": [
-        "2f89d103-fb28-4584-a17e-3364cc5b1a99"
+        "e4706b28-6e79-40f8-9042-cb4e6cfff1e9",
+        "21cc96e6-1e15-425e-a4b0-9c821fe30c55",
+        "086cd41a-9d4b-4377-8ebd-ee563a0d20df",
+        "25cffd57-e38b-4ebf-a4c0-d2edea799baa"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.7.7",

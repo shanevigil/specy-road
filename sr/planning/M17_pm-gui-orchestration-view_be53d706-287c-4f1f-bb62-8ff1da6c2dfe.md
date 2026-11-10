@@ -66,3 +66,9 @@ Open product questions (1-8) are listed in M17.1's sheet with the default each l
 - M18.22 (supervision rows the GUI may show after 0.3.1)
 - `sr/docs/research/slimming-2026-11-05/RECOMMENDATION.md` section 3.1 (D1)
 - No `shared/` contract applies.
+
+## Amendment (maintainer, 2026-11-10): the status modal and PM decisions
+
+Two leaves added on 2026-11-09 change the "one read path" and "read-only first" points above, by the maintainer's request:
+- **M17.14, the status modal,** reads a second source: the grind status that M22.68 builds (counts, estimate, sessions, decisions waiting on a person), served by its own read-only route. The orchestration snapshot stays the read path for the orchestration view.
+- **M17.15, PM decisions in the modal,** is the one mutating action in 0.3.1, named by the maintainer: a PM records a decision (an answer to an open ledger entry, or an approval over a reviewer block) through the existing ledger and M22.67 paths. It is guarded by a startup code shown only to the person who started the GUI, plus a typed reason, and the channel is recorded. It is a trust-boundary leaf.

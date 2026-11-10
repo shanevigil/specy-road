@@ -104,13 +104,3 @@ entries:
     owner: savigil
     implementation_review: approved
     implementation_review_at: '2026-11-10T09:56:56+00:00'
-  - codename: a-committed-report-of-the-import-cycles-and-package-to-entry
-    node_id: M16.2.6
-    branch: feature/rm-a-committed-report-of-the-import-cycles-and-package-to-entry
-    touch_zones:
-      - scripts/check_import_layers.py
-      - constraints/import-layers-baseline.json
-      - tests/test_import_layers.py
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: pending
