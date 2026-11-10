@@ -223,7 +223,8 @@
       ],
       "codename": "commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals",
       "dependencies": [
-        "cf05fbd9-5071-4aca-a730-53a36d888301"
+        "cf05fbd9-5071-4aca-a730-53a36d888301",
+        "39346268-fb55-424c-a152-e0423d19e461"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.2.9",

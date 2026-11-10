@@ -436,6 +436,36 @@
         "sr/constitution/principles.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "On the held-M2 fixture (tests/milestone_repo_helpers.make_milestone_repo, every leaf landed, full review not approved), build_packet for M2 prints '- **Status (rollup):** In Progress', as specy-road brief M2 does; after the review is approved it prints Complete. The packet test in tests/test_milestone_full_review.py asserts both and fails on the head before the fix",
+        "The reviewer prompt for M2 on the same fixture (role_prompt.build_prompt, role reviewer, a roster with one reviewer) prints the same In Progress rollup line",
+        "The four readers of ReviewTarget.nodes (build_packet, role_prompt._target_node, worker_ops_launch delegate, worker_reconcile) resolve their target with nodes= from specy_road.roadmap_load.load_roadmap; resolve_target_or_exit takes a nodes= keyword that it passes through; review_target.py does not import roadmap_load, and its resolve_target docstring says the fallback graph carries no hold, so a caller that renders rollups passes nodes=",
+        "scripts/check_import_layers.py at the leaf head reports no component change against the committed constraints/import-layers-baseline.json (the new roadmap_load imports are one-way edges); parity harness and full suite unchanged",
+        "Estimated net line change (informational, not a gate): package about +6, tests about +12"
+      ],
+      "codename": "held-rollup-in-review-packets",
+      "dependencies": [
+        "cf05fbd9-5071-4aca-a730-53a36d888301"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.2.12",
+      "node_key": "39346268-fb55-424c-a152-e0423d19e461",
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.12_held-rollup-in-review-packets_39346268-fb55-424c-a152-e0423d19e461.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "Review packets and prompts show a held milestone's rollup as the public loader does",
+      "touch_zones": [
+        "specy_road/review_target.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/worker_ops_launch.py",
+        "specy_road/worker_reconcile.py",
+        "tests/test_milestone_full_review.py"
+      ],
+      "type": "task"
     }
   ]
 }
