@@ -70,20 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: review-wider-carry
-    node_id: M22.53
-    branch: feature/rm-review-wider-carry
-    touch_zones:
-      - specy_road/review_bookkeeping.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - tests/test_sheet_edits_keep_approvals.py
-      - tests/test_sibling_repo_approvals.py
-      - tests/test_delta_review.py
-      - tests/parity/review_gate/
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: pending
   - codename: shared-notes-digest-refused
     node_id: M22.62
     branch: feature/rm-shared-notes-digest-refused

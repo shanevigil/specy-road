@@ -66,6 +66,7 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- An approval still counts across later commits that change only roadmap or planning files, other than `roadmap/orchestration.yaml` and `roadmap/git-workflow.yaml`, or this leaf's implementation summary and review files, and across a two-parent merge from the integration branch whose non-bookkeeping diff is unchanged. It is refused, and `handoff status` gives the reason, when this leaf's acceptance, touch zones or `## Tier` value changed, when the sheet has no tier value, or when the graph or sheet cannot be read. An operator decision still ends on a policy commit. See `docs/orchestration-review.md`.
 - A worker whose turn ends `completed` releases its slot lease on the integration remote, as a `failed` one does, so another checkout at `max_workers` is not held by it. `worker message` or `resume` of a `completed` or `failed` worker pushes a new lease, and a resume the limit refuses leaves no lease behind. An `idle` worker keeps its lease. A turn started by a queued message gets the delegating caller's `PYTHONPATH`, or none, without the wrapper's package-path prefix. See `docs/orchestration-workers.md` (What `max_workers` counts).
 - The bundled OpenAI GPT profiles' `access.cli` now reads the prompt on standard input (`codex exec ... - < {prompt}`),
   so `prompt --role rca --channel cli --run` with one of them is no longer refused once the prompt passes 128 KiB.

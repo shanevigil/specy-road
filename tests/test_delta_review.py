@@ -378,7 +378,8 @@ def _summary_only(repo: Path) -> None:
     ("sonnet", _summary_only, lambda r: _file(r, "sol", git(r, "rev-parse", "HEAD")), True),   # bookkeeping carry
 ])
 def test_a_missing_or_unusable_fix_of_gives_todays_result(tmp_path: Path, fix_of, fix, after, carried) -> None:
-    repo, approved, _ = fix_round(tmp_path, fix_of=fix_of, fix=fix)
+    repo, approved, _ = fix_round(
+        tmp_path, fix_of=fix_of, fix=fix, branch_tier="plain" if fix is _summary_only else None)
     if after:
         after(repo)
     with_fix_of = _outcome(repo)
