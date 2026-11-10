@@ -15,9 +15,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from specy_road.bundled_scripts.do_next_available import _claimed_node_ids, _statuses_by_node_key
-from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, natural_id_sort_key
-from specy_road.milestone_subtree import structural_leaf_ids, subtree_node_ids
+from specy_road.bundled_scripts.do_next_available import _claimed_node_ids
+from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
+from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.node_kinds import is_gate
 
 #: Cap on how deep the transitive walk reports. Chains longer than this are
@@ -55,10 +56,6 @@ class OpenGate:
     blocks: list[str]
 
 
-def _by_id(nodes: list[dict]) -> dict[str, dict]:
-    return {n["id"]: n for n in nodes if n.get("id")}
-
-
 def _claim_branches(reg: dict) -> dict[str, str]:
     out: dict[str, str] = {}
     for entry in reg.get("entries") or []:
@@ -68,20 +65,14 @@ def _claim_branches(reg: dict) -> dict[str, str]:
     return out
 
 
-def _unmet(node_key: str, eff: dict[str, set[str]], statuses: dict[str, str]) -> list[str]:
-    return sorted(
-        (d for d in eff.get(node_key, set()) if statuses.get(d, "") != "complete"),
-        key=str,
-    )
-
-
 def _walk(
-    node_key: str,
-    ctx: dict,
+    node: dict,
+    index: RoadmapIndex,
+    claims: dict[str, str],
     depth: int,
     seen: set[str],
 ) -> list[DependencyNode]:
-    """Unmet dependencies of ``node_key``, each with its own unmet chain.
+    """Unmet dependencies of ``node``, each with its own unmet chain.
 
     ``seen`` guards against a dependency cycle. ``validate`` rejects cycles, but
     this command is most often run *because* the graph is in a strange state.
@@ -89,33 +80,24 @@ def _walk(
     if depth > MAX_DEPTH:
         return []
     out: list[DependencyNode] = []
-    for key in _unmet(node_key, ctx["eff"], ctx["statuses"]):
-        node = ctx["by_key"].get(key)
-        if node is None or key in seen:
+    for key in index.unmet(node):
+        if key in seen:
             continue
-        nested = _walk(key, ctx, depth + 1, seen | {key})
+        dep = index.by_key[key]
+        nested = _walk(dep, index, claims, depth + 1, seen | {key})
         out.append(
             DependencyNode(
-                node_id=node["id"],
+                node_id=dep["id"],
                 node_key=key,
-                title=str(node.get("title") or ""),
-                status=str(node.get("status") or "Not Started"),
-                is_gate=is_gate(node.get("type")),
-                claimed_by=ctx["claims"].get(node["id"]),
+                title=str(dep.get("title") or ""),
+                status=str(dep.get("status") or "Not Started"),
+                is_gate=is_gate(dep.get("type")),
+                claimed_by=claims.get(dep["id"]),
                 waiting_on=nested,
             )
         )
     out.sort(key=lambda d: natural_id_sort_key(d.node_id))
     return out
-
-
-def _context(nodes: list[dict], reg: dict) -> dict:
-    return {
-        "by_key": {n["node_key"]: n for n in nodes if n.get("node_key")},
-        "eff": effective_dependency_keys(nodes),
-        "statuses": _statuses_by_node_key(nodes),
-        "claims": _claim_branches(reg),
-    }
 
 
 def _state_without_dependencies(
@@ -152,21 +134,20 @@ def _state_without_dependencies(
 
 def explain(nodes: list[dict], reg: dict, node_id: str) -> Explanation:
     """Why ``node_id`` is not pickable — or that it is."""
-    node = _by_id(nodes).get(node_id)
+    index = RoadmapIndex(nodes)
+    node = index.by_id.get(node_id)
     if node is None:
         return Explanation(node_id, "", "unknown", f"no node with id {node_id}.")
     title = str(node.get("title") or "")
-    ctx = _context(nodes, reg)
-    early = _state_without_dependencies(
-        node, _claimed_node_ids(reg), structural_leaf_ids(nodes)
-    )
+    claims = _claim_branches(reg)
+    early = _state_without_dependencies(node, _claimed_node_ids(reg), index.leaf_ids)
     if early is not None:
         state, summary = early
-        if state == "active" and ctx["claims"].get(node_id):
-            summary += f" Claimed on {ctx['claims'][node_id]}."
+        if state == "active" and claims.get(node_id):
+            summary += f" Claimed on {claims[node_id]}."
         return Explanation(node_id, title, state, summary)
 
-    chain = _walk(node.get("node_key") or "", ctx, 0, {node.get("node_key") or ""})
+    chain = _walk(node, index, claims, 0, {node.get("node_key") or ""})
     if not chain:
         return Explanation(
             node_id, title, "ready",
@@ -189,16 +170,16 @@ def open_gates(nodes: list[dict], under: str | None = None) -> list[OpenGate]:
     is "what is stopping work in this phase", and a phase is routinely held by a
     gate that lives somewhere else in the graph.
     """
-    ctx = _context(nodes, {})
+    index = RoadmapIndex(nodes)
     scope = subtree_node_ids(under, nodes) if under else None
     blocks: dict[str, list[str]] = {}
     for n in nodes:
-        node_id, node_key = n.get("id"), n.get("node_key")
-        if not node_key or (scope is not None and node_id not in scope):
+        node_id = n.get("id")
+        if scope is not None and node_id not in scope:
             continue
-        for key in _unmet(node_key, ctx["eff"], ctx["statuses"]):
-            dep = ctx["by_key"].get(key)
-            if dep is not None and is_gate(dep.get("type")):
+        for key in index.unmet(n):
+            dep = index.by_key[key]
+            if is_gate(dep.get("type")):
                 blocks.setdefault(dep["id"], []).append(node_id)
     gates = [
         OpenGate(

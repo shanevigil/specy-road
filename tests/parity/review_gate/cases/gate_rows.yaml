@@ -297,8 +297,9 @@ rows:
     branch: stale
     roster: null
     steps:
+      - commit: {path: planning/M1.1_thing_11111111-1111-5111-8111-111111111111.md, text: "# M1.1 Thing\n\n## Tier\n\ntrust boundary: the gate\n\n## Intent\n\nDo the thing.\n\n## References\n"}
       - review: {model: human}
-      - commit: {path: planning/M1.1_thing_11111111-1111-5111-8111-111111111111.md, text: "# M1.1 Thing\n\n## Intent\n\nDo the thing, said better.\n"}
+      - commit: {path: planning/M1.1_thing_11111111-1111-5111-8111-111111111111.md, text: "# M1.1 Thing\n\n## Tier\n\ntrust boundary: the gate\n\n## Intent\n\nDo the thing, said better.\n\n## References\n"}
     expect: {passed: true, approvals: 1, problems: 0, carry: true}
 
   # --- delta review, with red-green, and resumed sessions ---

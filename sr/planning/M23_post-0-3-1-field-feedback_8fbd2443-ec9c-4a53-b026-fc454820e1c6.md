@@ -49,6 +49,6 @@ From the sanitized field report and its triage; items 7, 13â€“15, 17, 19 and 21â
 - The full-review notice names the node's type, or the docs say any node with leaf children is reviewed as a milestone; `upgrade --dry-run` skips or rewords the integration-branch remote-refs line in its scratch copy (finding 33).
 - `doctor` and `handoff status` offer `abort-task-pickup` for an unattended claim only "if nobody is working on it", and note that a person working by hand leaves no session record (finding 35).
 - The dotted-model-id roster warning is skipped when the entry's `channels.cli` does not use `{model}` (finding 36).
-- The human eligibility hint prints the leaf form of `mark-implementation-reviewed`, with no id and run from the feature branch, for a leaf (finding 37).
+- The human eligibility hint prints the leaf form of `mark-implementation-reviewed`, with no id and run from the feature branch, for a leaf (finding 37). Superseded by M22.67 (2026-11-09).
 - The milestone full-review menu lists the leaves it covers, with their landing commits and a diffstat, or points at `review-packet`; `[w]` shows only when there is a walkthrough (finding 38).
 - The milestone full review prints the push hint pickup prints after its integration-branch commit (finding 39).

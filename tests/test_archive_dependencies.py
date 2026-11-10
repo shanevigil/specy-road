@@ -125,7 +125,7 @@ def test_no_index_means_no_archived_keys(repo: Path) -> None:
 
 # --- the dev loop, not just `validate` --------------------------------------
 # `validate` was taught that archived node_keys are satisfied. The task loop
-# computes readiness separately, via roadmap_layout.effective_dependency_keys,
+# computes readiness separately, via RoadmapIndex.effective_dependencies,
 # which drops keys absent from the live graph. That yields the right answer for
 # archived work — archived implies Complete implies satisfied — but only
 # incidentally. These tests make it a contract: if that filter ever changes to
@@ -134,18 +134,10 @@ def test_no_index_means_no_archived_keys(repo: Path) -> None:
 
 
 def _leaf_is_dep_blocked(repo: Path, node_id: str) -> bool:
-    from specy_road.bundled_scripts import do_next_available as dna
-    from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys
+    from specy_road.bundled_scripts.roadmap_index import RoadmapIndex
 
-    nodes = _live_nodes(repo)
-    node = next(n for n in nodes if n["id"] == node_id)
-    return bool(
-        dna._unmet_effective_dependency_keys(
-            node,
-            dna._statuses_by_node_key(nodes),
-            effective_dependency_keys(nodes),
-        )
-    )
+    index = RoadmapIndex(_live_nodes(repo))
+    return bool(index.unmet(index.by_id[node_id]))
 
 
 def test_archiving_a_dependency_does_not_block_the_leaf_that_needs_it(

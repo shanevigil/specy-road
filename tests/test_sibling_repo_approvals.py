@@ -76,6 +76,9 @@ def test_lists_siblings_with_head_and_dirty_and_skips_tracked_configured_and_dee
 def test_reported_case_sibling_code_and_root_summary_only_does_not_carry(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     sib = _sibling(repo)
+    commit_file(repo, NODE["planning_dir"],
+                "# M1.1 Thing\n\n## Tier\n\ntrust boundary: the gate\n\n## Intent\n\nDo the thing.\n\n## References\n",
+                "tier")
     approved = _approve(repo)
     assert _gate(repo).passed
     commit_file(sib, "code.py", "x = 'unreviewed'\n", "rework in sibling only")
@@ -145,6 +148,9 @@ def test_a_record_without_sibling_heads_carries_when_no_sibling_remains(tmp_path
     """The legacy rule: no recorded map is not checked, and with no siblings left the summary-only carry applies."""
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _sibling(repo)
+    commit_file(repo, NODE["planning_dir"],
+                "# M1.1 Thing\n\n## Tier\n\ntrust boundary: the gate\n\n## Intent\n\nDo the thing.\n\n## References\n",
+                "tier")
     _approve(repo)
     shutil.rmtree(repo / "app")
     commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
@@ -188,6 +194,9 @@ roster:
 
 def test_policy_line_lists_each_approval_and_marks_a_carried_one(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_AI)
+    commit_file(repo, NODE["planning_dir"],
+                "# M1.1 Thing\n\n## Tier\n\ntrust boundary: the gate\n\n## Intent\n\nDo the thing.\n\n## References\n",
+                "tier")
     old = _approve(repo, "opus")
     commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
     new = _approve(repo, "gpt")

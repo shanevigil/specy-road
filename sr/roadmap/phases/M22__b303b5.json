@@ -473,7 +473,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.53_review-wider-carry_16565222-4b33-487d-8d34-419a6384ad6a.md",
       "sibling_order": 48,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones",
       "touch_zones": [
         "specy_road/review_bookkeeping.py",

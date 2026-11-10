@@ -287,7 +287,12 @@
         "tests/test_review_record_write.py",
         "docs/orchestration-reviewer-output.md",
         "CHANGELOG.md",
-        "tests/test_review_cli.py"
+        "tests/test_review_cli.py",
+        "tests/test_review_concurrent_writers.py",
+        "tests/test_review_defer.py",
+        "tests/parity/test_leaf_loop.py",
+        "tests/test_review_override.py",
+        "tests/test_rework_rca.py"
       ],
       "type": "task"
     },
@@ -421,6 +426,40 @@
         "specy_road/orchestration_pinned.py",
         "tests/test_model_profile_aliases.py",
         "docs/orchestration-roster.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "mark-implementation-reviewed on a leaf's feature branch, in an interactive terminal without --yes, when counted reviewer blocks are why the gate is not met: before anything is written, and before the menu, it runs the trial merge, the clean-tree check (work/ excepted), the M22.51 role check (role_refusal), the git identity check, then with a remote a fetch of the integration branch and a fresh gate evaluation at the fetched tip (a failed fetch refuses), or with no remote the check that a worktree holding the integration branch has no uncommitted tracked changes, then checks on that gate that settling every counted block, and the shortfall unless signed_reviews is on, would pass it (so a policy pin, an unmet strong_review item or a signed-review shortfall withholds the option). Only then it prints each blocking record's findings, offers [a] Approve over the block and reads the reason in the person's own words (empty reason or q: exit 0, nothing recorded). It records the M22.51 operator decision (closed kind: decision entry, decided_by: operator, answer naming the full commit, each block with its findings, any shortfall, the reason as the quote and the git user as recorder) through one function shared with review operator-decision that only appends the entry to the ledger in the root it is given; the caller writes the OPERATOR-<commit>.yaml marker in the checkout running the command, only after the push or ref move succeeds. It then commits the registry approval, in one command",
+        "The decision commit is made in a detached temporary worktree of the integration tip the gate read and changes only the project-relative roadmap/decisions.yaml (<prefix>roadmap/decisions.yaml for a project under the git root, such as sr/); never on the leaf branch. With a remote it is pushed as HEAD:refs/heads/<integration>; a refused push leaves no marker and no ledger change. With no remote the local branch moves by compare-and-swap from that tip and a holding worktree follows it. nested_repos_land.py gains two public steps, a temporary worktree that runs a callback and the compare-and-swap ref move with _follow_in_checkout; _merge_in_temp_tree is not shared, the feature-branch merge stays in _land_one and _land_one_locally, and nested landing's behaviour and tests are unchanged. No checkout's branch changes; with a remote the coordinator checkout's HEAD and status are unchanged. Stdout names the pushed or moved integration commit. The gate is then re-evaluated and passes, the registry is stamped, and finish-this-task lands the leaf",
+        "handoff status's human row, when the human is eligible: a leaf with no counted block reads 'can approve, interactively: run `specy-road mark-implementation-reviewed` on <feature branch>' (no id); a leaf with counted blocks whose settling would pass the gate reads 'can approve over <names>'s block(s), interactively: run `specy-road mark-implementation-reviewed` on <feature branch>', names joined with ' and '; a leaf with counted blocks whose settling would not pass the gate reads 'to request interactive approval over <names>'s block(s), run `specy-road mark-implementation-reviewed` on <feature branch>; other gate requirements still apply'; with signed_reviews on, ' --sign-key <your private key>' stays inside the command; a milestone keeps today's id form, and tests/test_milestone_full_review.py stays unchanged",
+        "When the gate is not met on a leaf with a counted block, non-interactive or --yes, the refusal names the interactive mark-implementation-reviewed path and specy-road review operator-decision <NODE_ID> --decision approve --quote '<the operator's words>' --session <id>; when the option was withheld in a terminal the refusal names why (the role value, git identity, a failed fetch, a dirty holder or the gate's remaining problems); the existing 'review gate is not met' sentence stays. --yes and a non-TTY never approve over a block; the milestone full review is unchanged; review operator-decision's behaviour and tests are unchanged",
+        "After the decision lands, failures exit 1 and say what is recorded: if the re-evaluated gate does not pass, the registry is not stamped, the integration commit stays and the gate's remaining problems are named; if the registry commit fails, the decision stays recorded and the message says how to finish (restore roadmap/registry.yaml, re-run mark-implementation-reviewed --yes)",
+        "Tests extend tests/test_review_override.py and tests/test_review_eligible.py with the rows of the sheet test table, with the review gate on in every fixture: make_review_repo (project at the git root) and make_layout_finish_repo 'nested' (project under sr/), parametrized on the local and remote rows; a bare origin added as delegate_layout does but keeping require_implementation_review_before_finish (delegate_layout itself is not used, since it turns the gate off); a rejecting pre-receive hook for the refused push; one parametrized role-refusal row over executor, reviewer, rca, '', ' coordinator' and 'Coordinator'; docs/orchestration-review.md (operator section and the human row) and CHANGELOG [Unreleased]. Out of scope: the clean-tree order of the plain human approval (part 2 finding 29, M23), handoff status's move to review status (M16.4.3), any change to review_gate.py or review_bookkeeping.py",
+        "Estimated net line change (informational, not a gate): package about +120, tests about +240, docs about +10"
+      ],
+      "codename": "human-approves-over-block",
+      "dependencies": [
+        "e484b004-5481-4608-831e-b357aba8ba9f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.67",
+      "node_key": "d4c206ce-2708-4dd7-9e33-6b5658f16759",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.67_human-approves-over-block_d4c206ce-2708-4dd7-9e33-6b5658f16759.md",
+      "sibling_order": 61,
+      "status": "Not Started",
+      "title": "A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works",
+      "touch_zones": [
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/review_override.py",
+        "specy_road/review_eligible.py",
+        "specy_road/nested_repos_land.py",
+        "tests/test_review_override.py",
+        "tests/test_review_eligible.py",
+        "docs/orchestration-review.md",
         "CHANGELOG.md"
       ],
       "type": "task"

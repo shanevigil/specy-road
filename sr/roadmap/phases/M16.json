@@ -165,7 +165,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.4_one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready_34598a66-ab29-4a34-aea5-919d3970cbce.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_index.py",
@@ -433,7 +433,8 @@
       "codename": "review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session",
       "dependencies": [
         "fcb9f89a-2bad-423c-8d52-eb748967a367",
-        "99ad0839-6c85-4631-b67b-80ef2d3b3c57"
+        "99ad0839-6c85-4631-b67b-80ef2d3b3c57",
+        "d4c206ce-2708-4dd7-9e33-6b5658f16759"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.4.3",

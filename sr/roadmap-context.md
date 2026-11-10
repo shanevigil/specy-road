@@ -26,7 +26,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.1` Delete dead and unwired code from a decided list, and add vulture as an advisory CI step `delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step` — task — **Complete**
     - `M16.2.2` Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers `shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` — task — **Complete**
     - `M16.2.3` Git queries and registry I/O go through one helper each `git-queries-and-registry-i-o-go-through-one-helper-each` — task — **Complete**
-    - `M16.2.4` One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready `one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` — task — **Not Started**
+    - `M16.2.4` One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready `one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` — task — **Complete**
     - `M16.2.5` Library modules imported by the package move out of bundled_scripts `library-modules-imported-by-the-package-move-out-of-bundled` — task — **Not Started**
     - `M16.2.6` A committed report of the import cycles and package-to-entry-point imports `a-committed-report-of-the-import-cycles-and-package-to-entry` — task — **Not Started**
     - `M16.2.7` Break the 45-module import cycle through the graph loader, the brief and validate `break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate` — task — **Not Started**
@@ -173,7 +173,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.50` finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk `finish-keeps-complete-when-the-chunk-conflicts` — task — **Complete**
   - `M22.51` An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both `operator-decision-record` — task — **Complete**
   - `M22.52` After a block, the blocking reviewer checks only its named findings; the other family's approval carries `review-fix-check` — task — **Complete**
-  - `M22.53` Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones `review-wider-carry` — task — **Not Started**
+  - `M22.53` Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones `review-wider-carry` — task — **Complete**
   - `M22.54` Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages `public-hygiene-gate` — task — **Complete**
   - `M22.55` Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored `process-content-untracked` — task — **Complete**
   - `M22.56` Neutral identities in tests: no real name or username `neutral-test-identities` — task — **Complete**
@@ -186,6 +186,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.64` The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run `reviewer-and-rca-launch-paths` — task — **Complete**
   - `M22.65` The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work `work-dir-ignored` — task — **Not Started**
   - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Complete**
+  - `M22.67` A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works `human-approves-over-block` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -326,15 +327,14 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.2.4` on `feature/rm-one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` since 2026-11-09
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
 - `M22.62` on `feature/rm-shared-notes-digest-refused` since 2026-11-09
 - `M22.65` on `feature/rm-work-dir-ignored` since 2026-11-09
+- `M22.67` on `feature/rm-human-approves-over-block` since 2026-11-09
 
 ## Quality by area
 
@@ -342,12 +342,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 30 | 0 | 2.17 | 53% | 18 | 1 |
+| `CHANGELOG.md` **flagged** | 29 | 0 | 2.10 | 55% | 18 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `docs` **flagged** | 34 | 0 | 2.26 | 56% | 52 | 2 |
+| `docs` **flagged** | 33 | 0 | 2.21 | 58% | 52 | 3 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `tests` **flagged** | 43 | 0 | 2.16 | 53% | 75 | 2 |
+| `tests` **flagged** | 43 | 0 | 2.09 | 53% | 75 | 3 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.github` | 4 | 0 | 2.00 | 50% | 31 | 0 |
@@ -361,7 +361,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `scripts` | 7 | 0 | 1.86 | 43% | 67 | 0 |
-| `specy_road` | 40 | 0 | 2.17 | 50% | 59 | 2 |
+| `specy_road` | 40 | 0 | 2.10 | 50% | 59 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

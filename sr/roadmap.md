@@ -26,7 +26,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.1` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Complete |
 | `M16.2.2` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Complete |
 | `M16.2.3` | Git queries and registry I/O go through one helper each | task | Agentic-led | Complete |
-| `M16.2.4` | One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready | task | Agentic-led | Not Started |
+| `M16.2.4` | One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready | task | Agentic-led | Complete |
 | `M16.2.5` | Library modules imported by the package move out of bundled_scripts | task | Agentic-led | Not Started |
 | `M16.2.6` | A committed report of the import cycles and package-to-entry-point imports | task | Agentic-led | Not Started |
 | `M16.2.7` | Break the 45-module import cycle through the graph loader, the brief and validate | task | Agentic-led | Not Started |
@@ -235,7 +235,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.50` | finish keeps the leaf's Complete status when the integration side changed the same roadmap chunk | task | Agentic-led | Complete |
 | `M22.51` | An operator decides a leaf's review outcome by word, or the coordinator accepts with limits under a standing operator rule; the coordinator records both | task | Agentic-led | Complete |
 | `M22.52` | After a block, the blocking reviewer checks only its named findings; the other family's approval carries | task | Agentic-led | Complete |
-| `M22.53` | Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones | task | Agentic-led | Not Started |
+| `M22.53` | Approvals carry across roadmap, planning and registry changes and code-neutral integration merges, never across the leaf's acceptance or zones | task | Agentic-led | Complete |
 | `M22.54` | Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages | task | Agentic-led | Complete |
 | `M22.55` | Process content outside sr/ leaves the tracked tree: design notes, census and effort-study scripts and Cursor rules become untracked and ignored | task | Agentic-led | Complete |
 | `M22.56` | Neutral identities in tests: no real name or username | task | Agentic-led | Complete |
@@ -248,6 +248,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.64` | The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run | task | Agentic-led | Complete |
 | `M22.65` | The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work | task | Agentic-led | Not Started |
 | `M22.66` | A roster entry matches a model profile by its harness_model when its id matches none | task | Agentic-led | Complete |
+| `M22.67` | A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |
