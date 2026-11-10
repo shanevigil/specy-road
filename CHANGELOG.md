@@ -72,6 +72,20 @@ body. Keep section bodies focused; link to PRs for detail.
   sandbox does not start, is refused and recorded. `auto` on a host without bwrap warns on each launch and runs
   unsandboxed. See `docs/orchestration-workers.md` (Worker sandbox).
 
+### Changed
+
+- The managed `.gitignore` block now ignores all of `work/` (`work/*`, child directories included) in place of
+  its per-path `work/` lines, and re-includes the scaffold: `work/README.md`, `work/.gitkeep` and the top-level
+  `work/*.template.md` files. Chore records (`work/chores/<slug>.json`, `.md`) and other run files no longer show
+  as untracked work, so a reviewer of another leaf in the same clone no longer fails its clean-tree precondition.
+  Files a project already tracks under `work/` stay tracked: `upgrade` (through `refresh-stubs`) lists them and
+  prints `git rm --cached -- <paths>`, which it never runs. Re-include anything you want kept in git after the
+  block (`!work/worker-logs/` for `track_worker_logs`, `!work/done/`, `!work/brainstorm-*.yaml`).
+- Implementation summaries are no longer committed by default: the project template's `roadmap/git-workflow.yaml`
+  sets `implementation_summary: local`. A reviewer in another clone does not see the summary; the review packet
+  reads it from the leaf's worktree. An existing project on the `commit` default gets `validate`'s notice, which
+  names the fix.
+
 ### Fixed
 
 - `specy-road review record` refuses a record whose notes body is empty or whitespace only after normalisation, and a record whose body matches another model's REVIEW record for the same leaf at the same commit. The refusal says the notes go in the body below the front matter and that `notes_sha256` covers only that body, not `findings` or `commands_rerun`. The same model re-filing at that commit, and the same body at another commit, are filed as before. The gate is unchanged, so a record already filed still counts. See `docs/orchestration-reviewer-output.md`.

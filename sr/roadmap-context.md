@@ -184,7 +184,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.62` review record refuses empty notes and a notes digest another model already filed at the same commit `shared-notes-digest-refused` — task — **Not Started**
   - `M22.63` A completed worker releases its slot lease, and a turn started by a queued message gets the caller's PYTHONPATH `completed-worker-frees-lease` — task — **Complete**
   - `M22.64` The bundled Codex command reads its prompt on stdin, and a reviewer lists a test its sandbox cannot run `reviewer-and-rca-launch-paths` — task — **Complete**
-  - `M22.65` The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work `work-dir-ignored` — task — **Not Started**
+  - `M22.65` The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work `work-dir-ignored` — task — **Complete**
   - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Complete**
   - `M22.67` A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works `human-approves-over-block` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
@@ -334,7 +334,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.62` on `feature/rm-shared-notes-digest-refused` since 2026-11-09
-- `M22.65` on `feature/rm-work-dir-ignored` since 2026-11-09
 
 ## Quality by area
 
@@ -342,16 +341,17 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 29 | 0 | 2.03 | 52% | 18 | 2 |
+| `CHANGELOG.md` **flagged** | 29 | 0 | 2.07 | 55% | 21 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `docs` **flagged** | 33 | 0 | 2.15 | 55% | 52 | 3 |
+| `docs` **flagged** | 34 | 0 | 2.15 | 56% | 55 | 3 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `tests` **flagged** | 43 | 0 | 2.05 | 51% | 75 | 3 |
+| `tests` **flagged** | 43 | 0 | 2.07 | 53% | 78 | 3 |
+| `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.github` | 4 | 0 | 2.00 | 50% | 31 | 0 |
-| `.gitignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
+| `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 3 | 0 | 2.67 | 33% | 2 | 1 |
 | `constitution` | 2 | 0 | 1.50 | 50% | 1 | 0 |
@@ -361,7 +361,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `scripts` | 7 | 0 | 1.86 | 43% | 67 | 0 |
-| `specy_road` | 40 | 0 | 2.05 | 48% | 59 | 3 |
+| `specy_road` | 40 | 0 | 2.08 | 50% | 62 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

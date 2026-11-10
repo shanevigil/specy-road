@@ -29,6 +29,7 @@ constraints/file-limits.yaml caps files at 400 lines with no warning; the templa
 == applying the refreshes to a temporary copy, then validating it
 
 == validate
+notice: roadmap/git-workflow.yaml implementation_summary is commit (set or default), but .gitignore ignores 1 leaf summary: work/implementation-summary-M1.1.md (.gitignore:57:work/*); the ignore rule wins for those leaves: their executor prompts say to leave the summary uncommitted for the review packet, never to force-add it. Set implementation_summary: local to say so, or drop the ignore rule to commit summaries.
 OK: roadmap and registry validate.
 
 == generated files

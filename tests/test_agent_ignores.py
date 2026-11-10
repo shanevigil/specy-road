@@ -170,8 +170,8 @@ def test_a_prefixed_block_actually_matches_in_git(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("prefix", ["", "sr/"])
-def test_worker_state_stays_ignored_and_worker_logs_never_are(tmp_path: Path, prefix: str) -> None:
-    """track_worker_logs changes no ignore rule: its mode is read at run time, never written here."""
+def test_all_of_work_is_ignored_but_the_scaffold_and_re_includes(tmp_path: Path, prefix: str) -> None:
+    """``work/*``: run files and child directories are ignored; the scaffold and a user re-include are not."""
     subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True, capture_output=True)
     apply_agent_ignores(tmp_path, prefix)
 
@@ -184,5 +184,13 @@ def test_worker_state_stays_ignored_and_worker_logs_never_are(tmp_path: Path, pr
 
     assert ignored("work/.workers/w-0001.events.jsonl")
     assert ignored("work/.worktrees/thing/README.md")
+    assert ignored("work/chores/tidy.json") and ignored("work/chores/tidy.md")
+    assert ignored("work/brief-M1.1.md") and ignored("work/implementation-summary-M1.1.md")
+    assert ignored("work/done/implementation-summary-M1.1.md")
+    assert ignored("work/worker-logs/M1.1/w-0001.events.jsonl")
+    for scaffold in ("work/README.md", "work/.gitkeep", "work/review-record.template.md",
+                     "work/handoff-ready.template.md", "work/implementation-summary.template.md"):
+        assert not ignored(scaffold), scaffold
+    with (tmp_path / GITIGNORE).open("a", encoding="utf-8") as fh:
+        fh.write(f"!{prefix}work/worker-logs/\n")   # a project's re-include after the block
     assert not ignored("work/worker-logs/M1.1/w-0001.events.jsonl")
-    assert not ignored("work/worker-logs/M1.1/w-0001.log")

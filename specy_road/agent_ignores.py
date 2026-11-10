@@ -64,24 +64,17 @@ _INDEXING_NOTE = (
 #: reconcile's breach list) leave them out, as git does once they are ignored.
 RUNTIME_WORK_DIRS = ("work/reviews/", "work/.sessions/", "work/.workers/", "work/.worktrees/")
 
-#: Session files the pickup and finish commands regenerate each cycle. These
-#: lived only in the template ``.gitignore``, so a repo with its own
-#: ``.gitignore`` (or a nested project, whose template copy sat where git
-#: never looked for the git root's paths) never received them.
-SESSION_WORK_FILES = (
-    "work/.on-complete-*.yaml",
-    "work/prompt-*.md",
-    "work/pr-body-*.md",
-    "work/.milestone-session.yaml",
-)
-
+#: ``work/*`` rather than ``work/`` so the lines after it can re-include:
+#: git cannot re-include a path under an excluded directory, and ``*`` does
+#: not cross ``/``, so child directories (``work/chores/``, ``work/done/``) are
+#: ignored through their parent's match. The re-includes are specy-road's
+#: scaffold, which prompts cite by project path and a fresh clone must hold.
 GITIGNORE_LINES = [
     ".specyrd/cache/",
-    *SESSION_WORK_FILES,
-    *RUNTIME_WORK_DIRS,
-    "work/chores/.garden.json",   # `chore garden`'s run record; chore records beside it are left to the project
-    "work/brainstorm-*-prompt.md",
-    "work/brainstorm-closed/*-prompt.md",
+    "work/*",
+    "!work/README.md",
+    "!work/.gitkeep",
+    "!work/*.template.md",
     "roadmap/orchestration.local.yaml",
     "roadmap/decisions.local.yaml",   # `decisions add --local`: this clone's decisions overlay (M15.22)
     LOCAL_MD,
@@ -89,11 +82,11 @@ GITIGNORE_LINES = [
 
 _GITIGNORE_NOTE = (
     "Written by specy-road at run time, never committed: derived caches for\n"
-    "`history`, `search` and `brainstorm`; pickup and finish session files (a\n"
-    "PR body re-inlines the brief and summary); review records (a commit would\n"
-    "move the branch past the reviewed commit); session, worker and worktree\n"
-    "state; the `chore garden` run record; brainstorm prompts; per-checkout\n"
-    "orchestration availability overlay; per-clone decisions overlay.\n"
+    "`history`, `search` and `brainstorm`; everything under work/ (briefs,\n"
+    "summaries, session files, review records, chore records, session, worker\n"
+    "and worktree state) except its README.md, .gitkeep and *.template.md\n"
+    "scaffold; per-checkout orchestration availability overlay; per-clone\n"
+    "decisions overlay. Re-include other work/ paths below the block.\n"
     "Also never committed: .specyrd/AGENTS.local.md, your personal addendum to\n"
     "specy-road's agent rules. `.specyrd/manifest.json`, when present, stays tracked."
 )
@@ -106,11 +99,12 @@ def _prefixed(lines: list[str], prefix: str) -> list[str]:
     path inside the **project** root. Those coincide only in the embedded
     layout. Under a nested one — the project at ``sr/`` — an unprefixed
     ``roadmap/archive/`` matches nothing, and archived material silently stays
-    in the IDE index: the bug this function exists to close.
+    in the IDE index: the bug this function exists to close. A re-include
+    keeps its leading ``!`` in front of the prefix (``!sr/work/README.md``).
     """
     if not prefix:
         return list(lines)
-    return [prefix + line for line in lines]
+    return ["!" + prefix + line[1:] if line.startswith("!") else prefix + line for line in lines]
 
 
 def _seed(path: Path, text: str, dry_run: bool) -> bool:
