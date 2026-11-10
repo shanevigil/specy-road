@@ -222,7 +222,8 @@ def _implement_and_review(loop: Loop, reviewers: tuple[str, ...]) -> None:
             "is_coordinator": False,
         }
         notes.write_text(
-            "---\n" + yaml.safe_dump(record, sort_keys=False) + "---\nnotes\n", encoding="utf-8"
+            "---\n" + yaml.safe_dump(record, sort_keys=False) + f"---\n# {model} notes\n",
+            encoding="utf-8",
         )
         loop.cli(
             f"review record {model}",
