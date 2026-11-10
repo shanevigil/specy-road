@@ -191,23 +191,30 @@ def test_report_names_the_cycles_and_running_it_exits_zero(monkeypatch):
     report = layers.build_report(ROOT / "specy_road")
     loader = _loader_component(report)
     crud = _crud_component(report)
-    assert loader is not None and loader["size"] == len(loader["modules"])
+    assert loader is None
     assert crud is not None and crud["size"] == len(crud["modules"])
-    targets = {edge["to"].rsplit(".", 1)[-1] for edge in report["entry_point_edges"]}
-    assert set(ENTRY_POINT_STEMS) <= targets
+    package_targets = {
+        edge["to"].rsplit(".", 1)[-1]
+        for edge in report["entry_point_edges"]
+        if not edge["from"].startswith("specy_road.bundled_scripts.")
+    }
+    assert package_targets.isdisjoint({"generate_brief", "validate_roadmap", "refresh_stubs"})
 
     same = layers.render_difference(report, report)
-    assert "contains roadmap_load and finish_ancestor_rollup" in same
+    assert "no component contains roadmap_load and finish_ancestor_rollup" in same
     assert "roadmap_crud" in same and "chore_cli" in same
     assert "no difference from the committed report" in same
 
     committed = json.loads((ROOT / "constraints" / "import-layers-baseline.json").read_text())
     committed_loader = _loader_component(committed)
     committed_crud = _crud_component(committed)
-    assert committed_loader is not None
-    assert committed_loader["size"] == len(committed_loader["modules"])
+    assert committed_loader is None
     assert committed_crud is not None
     assert committed_crud["size"] == len(committed_crud["modules"])
-    committed_targets = {edge["to"].rsplit(".", 1)[-1] for edge in committed["entry_point_edges"]}
-    assert set(ENTRY_POINT_STEMS) <= committed_targets
+    committed_package_targets = {
+        edge["to"].rsplit(".", 1)[-1]
+        for edge in committed["entry_point_edges"]
+        if not edge["from"].startswith("specy_road.bundled_scripts.")
+    }
+    assert committed_package_targets.isdisjoint({"generate_brief", "validate_roadmap", "refresh_stubs"})
     assert layers.main([]) == 0

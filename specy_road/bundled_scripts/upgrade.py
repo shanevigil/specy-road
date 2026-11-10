@@ -84,7 +84,7 @@ from specy_road.bundled_scripts.upgrade_generated import (
 from specy_road.bundled_scripts.upgrade_plan import (
     Entry, Mirror, Plan, apply_plan, check_changes, conflicts, make_plan, snapshot_outside,
 )
-from specy_road.bundled_scripts.validate_roadmap import validate_at
+from specy_road.validate_roadmap_runner import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
 from specy_road.generated_files import GENERATED_COMMITTED
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits

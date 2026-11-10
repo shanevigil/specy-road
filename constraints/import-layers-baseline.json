@@ -3,12 +3,13 @@
   "tool": "ast import scan (nested imports included)",
   "components": [
     {
-      "size": 149,
+      "size": 147,
       "modules": [
         "specy_road.agents_md_block",
         "specy_road.archive_ops",
         "specy_road.archive_plan",
         "specy_road.archive_restore",
+        "specy_road.brief_generation",
         "specy_road.bundled_scripts.archive_cli",
         "specy_road.bundled_scripts.brief_dependency_context",
         "specy_road.bundled_scripts.chore_cli",
@@ -17,10 +18,8 @@
         "specy_road.bundled_scripts.do_next_prompt",
         "specy_road.bundled_scripts.effective_dependency_checks",
         "specy_road.bundled_scripts.export_roadmap_md",
-        "specy_road.bundled_scripts.generate_brief",
         "specy_road.bundled_scripts.planning_rename",
         "specy_road.bundled_scripts.refresh_schemas",
-        "specy_road.bundled_scripts.refresh_stubs",
         "specy_road.bundled_scripts.review_cli",
         "specy_road.bundled_scripts.review_node",
         "specy_road.bundled_scripts.review_packet",
@@ -44,7 +43,6 @@
         "specy_road.bundled_scripts.session_plan",
         "specy_road.bundled_scripts.session_plan_render",
         "specy_road.bundled_scripts.validate_notices",
-        "specy_road.bundled_scripts.validate_roadmap",
         "specy_road.bundled_scripts.validate_roadmap_checks",
         "specy_road.bundled_scripts.validate_self_heal",
         "specy_road.changelog_check",
@@ -52,13 +50,13 @@
         "specy_road.decisions",
         "specy_road.decisions_local",
         "specy_road.digest",
-        "specy_road.finish_ancestor_rollup",
         "specy_road.generated_files",
         "specy_road.harness_binary",
         "specy_road.init_project",
         "specy_road.integrity",
         "specy_road.integrity_gate",
         "specy_road.integrity_removals",
+        "specy_road.milestone_review_hold",
         "specy_road.model_names",
         "specy_road.model_profiles",
         "specy_road.orchestrate_assign",
@@ -68,6 +66,7 @@
         "specy_road.orchestration_routing",
         "specy_road.orphaned_claims",
         "specy_road.red_green",
+        "specy_road.refresh_stubs_staleness",
         "specy_road.review_answer",
         "specy_road.review_bookkeeping",
         "specy_road.review_caller",
@@ -87,7 +86,6 @@
         "specy_road.review_next_step",
         "specy_road.review_override",
         "specy_road.review_policy_pin",
-        "specy_road.review_policy_ref",
         "specy_road.review_pre_existing",
         "specy_road.review_rca",
         "specy_road.review_ready_merge",
@@ -98,7 +96,6 @@
         "specy_road.review_run_status",
         "specy_road.review_strong",
         "specy_road.review_tally",
-        "specy_road.review_target",
         "specy_road.review_trend",
         "specy_road.review_usage",
         "specy_road.review_write_check",
@@ -120,6 +117,7 @@
         "specy_road.session_presence",
         "specy_road.specyrd_cli",
         "specy_road.specyrd_init",
+        "specy_road.validate_roadmap_runner",
         "specy_road.validate_stale_commands",
         "specy_road.version_pin",
         "specy_road.version_skew",
@@ -246,18 +244,6 @@
       "to": "specy_road.bundled_scripts.roadmap_crud"
     },
     {
-      "from": "specy_road.bundled_scripts.do_next_prompt",
-      "to": "specy_road.bundled_scripts.generate_brief"
-    },
-    {
-      "from": "specy_road.bundled_scripts.do_next_task_held_claim",
-      "to": "specy_road.bundled_scripts.validate_roadmap"
-    },
-    {
-      "from": "specy_road.bundled_scripts.do_next_task_pickup_helpers",
-      "to": "specy_road.bundled_scripts.generate_brief"
-    },
-    {
       "from": "specy_road.bundled_scripts.do_next_task_register",
       "to": "specy_road.bundled_scripts.export_roadmap_md"
     },
@@ -270,20 +256,8 @@
       "to": "specy_road.bundled_scripts.grind_session"
     },
     {
-      "from": "specy_road.bundled_scripts.review_node",
-      "to": "specy_road.bundled_scripts.generate_brief"
-    },
-    {
-      "from": "specy_road.bundled_scripts.review_packet",
-      "to": "specy_road.bundled_scripts.generate_brief"
-    },
-    {
       "from": "specy_road.bundled_scripts.review_packet_nested",
       "to": "specy_road.bundled_scripts.review_packet"
-    },
-    {
-      "from": "specy_road.bundled_scripts.review_packet_uncommitted_refs",
-      "to": "specy_road.bundled_scripts.generate_brief"
     },
     {
       "from": "specy_road.bundled_scripts.roadmap_apply_entries",
@@ -319,10 +293,6 @@
     },
     {
       "from": "specy_road.bundled_scripts.role_prompt",
-      "to": "specy_road.bundled_scripts.generate_brief"
-    },
-    {
-      "from": "specy_road.bundled_scripts.role_prompt",
       "to": "specy_road.bundled_scripts.review_packet"
     },
     {
@@ -342,20 +312,12 @@
       "to": "specy_road.bundled_scripts.refresh_stubs"
     },
     {
-      "from": "specy_road.bundled_scripts.upgrade",
-      "to": "specy_road.bundled_scripts.validate_roadmap"
-    },
-    {
       "from": "specy_road.bundled_scripts.upgrade_generated",
       "to": "specy_road.bundled_scripts.export_roadmap_md"
     },
     {
       "from": "specy_road.bundled_scripts.validate_roadmap",
       "to": "specy_road.bundled_scripts.refresh_schemas"
-    },
-    {
-      "from": "specy_road.bundled_scripts.validate_roadmap",
-      "to": "specy_road.bundled_scripts.refresh_stubs"
     },
     {
       "from": "specy_road.bundled_scripts.validate_self_heal",
@@ -399,15 +361,7 @@
     },
     {
       "from": "specy_road.review_record_write",
-      "to": "specy_road.bundled_scripts.generate_brief"
-    },
-    {
-      "from": "specy_road.review_record_write",
       "to": "specy_road.bundled_scripts.review_cli"
-    },
-    {
-      "from": "specy_road.roadmap_crud_ops",
-      "to": "specy_road.bundled_scripts.validate_roadmap"
     },
     {
       "from": "specy_road.roadmap_gui_remote",
@@ -418,16 +372,12 @@
       "to": "specy_road.bundled_scripts.roadmap_move_node"
     },
     {
-      "from": "specy_road.version_pin",
-      "to": "specy_road.bundled_scripts.refresh_stubs"
+      "from": "specy_road.validate_roadmap_runner",
+      "to": "specy_road.bundled_scripts.refresh_schemas"
     },
     {
       "from": "specy_road.worker_ops_launch",
       "to": "specy_road.bundled_scripts.chore_cli"
-    },
-    {
-      "from": "specy_road.worker_ops_launch",
-      "to": "specy_road.bundled_scripts.generate_brief"
     },
     {
       "from": "specy_road.worker_ops_launch",
@@ -444,10 +394,6 @@
     {
       "from": "specy_road.worker_reconcile",
       "to": "specy_road.bundled_scripts.chore_cli"
-    },
-    {
-      "from": "specy_road.worker_reconcile",
-      "to": "specy_road.bundled_scripts.generate_brief"
     },
     {
       "from": "specy_road.worker_reconcile",

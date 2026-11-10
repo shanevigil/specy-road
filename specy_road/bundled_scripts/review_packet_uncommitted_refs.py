@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.generate_brief import _chain_sheet_paths
+from specy_road.brief_generation import _chain_sheet_paths
 from specy_road.git_subprocess import git_ok, git_root, git_stdout
 from specy_road.review_target import ReviewTarget
 
