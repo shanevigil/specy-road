@@ -277,6 +277,13 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-10 `M16.7.7` stopped depending on `M16.7.6 Tests: public seams replace private-name patches, and no test sleeps on the wall clock`
+- 2026-11-09 `M17.14` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
+- 2026-11-09 `M16.2.6` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
+- 2026-11-09 `M16.7.5` stopped depending on `M16.7.4 Tests: apply the dedupe worklist for pickup and finish`
+- 2026-11-09 `M17.7` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
+- 2026-11-09 `M16.7.3` stopped depending on `M16.7.2 Tests: apply the dedupe worklist for review gate`
+- 2026-11-09 `M16.7.4` stopped depending on `M16.7.3 Tests: apply the dedupe worklist for worker`
 - 2026-11-09 `M22.64` stopped depending on `M16.2.3 Git queries and registry I/O go through one helper each`
 - 2026-11-09 `M22.58` stopped depending on `M23.9 The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working`
 - 2026-11-09 `M22.55` stopped depending on `M22.54 Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages`
@@ -295,14 +302,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-07 `M22.6` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
 - 2026-11-07 `M16.2.2` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
 - 2026-11-07 `M22.31` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
-- 2026-11-07 `M16.5.1` stopped depending on `1cfcf177-4014-4267-9000-d5b81d912f95` (no longer live)
-- 2026-11-07 `M16.1.4` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
-- 2026-11-07 `M16.8.9` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
-- 2026-11-07 `M16.8.8` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
-- 2026-11-07 `M16.8.8` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
-- 2026-11-07 `M16.8.8` stopped depending on `1cfcf177-4014-4267-9000-d5b81d912f95` (no longer live)
-- 2026-11-06 `M22.22` stopped depending on `M21.40 upgrade's scratch git drops every GIT_ variable, runs no hook, and times out`
-- _…and 69 earlier — `specy-road history --json`_
+- _…and 76 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
