@@ -115,7 +115,8 @@ entries:
       - docs/install-and-usage.md
     started: '2026-11-09'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-10T05:29:28+00:00'
   - codename: library-modules-imported-by-the-package-move-out-of-bundled
     node_id: M16.2.5
     branch: feature/rm-library-modules-imported-by-the-package-move-out-of-bundled
