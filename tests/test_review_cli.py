@@ -92,8 +92,11 @@ def test_status_with_no_handoffs(tmp_path: Path, capsys) -> None:
 def test_record_fills_family_and_labels_independence(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
     for model in ("opus", "sonnet"):
+        notes = _notes(repo, model)
+        front, _body = notes.read_text(encoding="utf-8").rsplit("---\n", 1)
+        notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
         assert _run("review", "record", "M1.1", "--model", model, "--verdict", "approve",
-                    "--file", str(_notes(repo, model)), "--repo-root", str(repo)) == 0
+                    "--file", str(notes), "--repo-root", str(repo)) == 0
     sonnet = load_review(review_path(repo, "M1.1", "sonnet"))
     assert sonnet.data["family"] == "anthropic"
     assert sonnet.data["independence"] == "same-family"

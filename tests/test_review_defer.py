@@ -60,8 +60,10 @@ def _write_rca(repo: Path, data: dict) -> Path:
 
 def _review(repo: Path, model: str, verdict: str = "block") -> None:
     notes = repo.parent / f"notes-{model}.md"
-    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
-                                 a1="fail" if verdict == "block" else "pass"))
+    text = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
+                       a1="fail" if verdict == "block" else "pass")
+    front, _body = text.rsplit("---\n", 1)
+    notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
     assert _run("review", "record", "M1.1", "--model", model, "--verdict", verdict,
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 
@@ -269,8 +271,10 @@ def _forge_closed_deferral(repo: Path, items: list[dict], round_: int = 2) -> No
 def _crlf_review(repo: Path, model: str) -> None:
     """``model`` blocks HEAD on A1 with the boundary finding 'CRLF input still warns'."""
     notes = repo.parent / f"notes-{model}.md"
-    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict="block", a1="fail")
-                     .replace("boundary: []", "boundary:\n  - CRLF input still warns"))
+    text = (review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict="block", a1="fail")
+            .replace("boundary: []", "boundary:\n  - CRLF input still warns"))
+    front, _body = text.rsplit("---\n", 1)
+    notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
     assert _run("review", "record", "M1.1", "--model", model, "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 
