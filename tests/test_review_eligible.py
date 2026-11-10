@@ -133,7 +133,9 @@ def test_the_human_row_says_whether_it_approves_over_the_blocks(tmp_path: Path, 
     repo = make_review_repo(tmp_path, orchestration=STRONG if strong else ROSTER)
     for model in blockers:
         notes = repo.parent / f"notes-{model}.md"
-        notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict="block", a1="fail"))
+        record = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict="block", a1="fail")
+        front, _body = record.rsplit("---\n", 1)
+        notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
         assert _run("review", "record", "M1.1", "--model", model, "--verdict", "block",
                     "--file", str(notes), "--repo-root", str(repo)) == 0
     human = _rows(repo, capsys)["human"]

@@ -24,8 +24,10 @@ OVERRULE = "A review's suggested fix below that contradicts it is overruled"
 def _record_block(repo: Path, model: str, tip: str, change: str) -> Path:
     """``review record``: ``model`` blocks ``tip`` asking for ``change``; returns its ``REVIEW-<model>.md``."""
     notes = repo.parent / f"notes-{model}.md"
-    notes.write_text(review_text(tip, model=model, verdict="block", a1="fail")
-                     .replace("required_changes:\n- fix\n", f"required_changes:\n- {change}\n"))
+    text = (review_text(tip, model=model, verdict="block", a1="fail")
+            .replace("required_changes:\n- fix\n", f"required_changes:\n- {change}\n"))
+    front, _body = text.rsplit("---\n", 1)
+    notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
     assert run_review_cli("review", "record", "M1.1", "--model", model, "--verdict", "block",
                           "--file", str(notes), "--repo-root", str(repo)) == 0
     return reviews_dir(repo, "M1.1") / f"REVIEW-{model}.md"

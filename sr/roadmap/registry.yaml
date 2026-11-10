@@ -70,24 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: shared-notes-digest-refused
-    node_id: M22.62
-    branch: feature/rm-shared-notes-digest-refused
-    touch_zones:
-      - specy_road/review_rejected.py
-      - tests/test_review_record_write.py
-      - docs/orchestration-reviewer-output.md
-      - CHANGELOG.md
-      - tests/test_review_cli.py
-      - tests/test_review_concurrent_writers.py
-      - tests/test_review_defer.py
-      - tests/parity/test_leaf_loop.py
-      - tests/test_review_override.py
-      - tests/test_rework_rca.py
-      - tests/test_review_eligible.py
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: pending
   - codename: library-modules-imported-by-the-package-move-out-of-bundled
     node_id: M16.2.5
     branch: feature/rm-library-modules-imported-by-the-package-move-out-of-bundled

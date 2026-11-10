@@ -5,6 +5,10 @@ How a launched reviewer answers and what specy-road checks before it files the r
 The reviewer prompt ends with the review output schema: the review-record
 schema without the fields specy-road fills (`family`, `independence`,
 `notes_sha256`, `signature`, `launch_mode`, `harness_model`, `model_mismatch`), plus `notes`, the Markdown notes.
+`notes_sha256` is the SHA-256 of the Markdown body below the front matter, line endings
+normalised and trailing whitespace dropped. It does not cover the front matter, `findings`,
+`commands_rerun`, or the file as a whole. `review record` refuses two models' identical
+bodies at one commit.
 The reviewer's final message is exactly one JSON object matching it. Before
 that object, the prompt tells the reviewer to list every required change
 it can find in this one review, re-scan the diff for further instances of each

@@ -280,7 +280,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.62_shared-notes-digest-refused_9c3e6e09-f3d1-4da1-a719-af19db35fe12.md",
       "sibling_order": 56,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review record refuses empty notes and a notes digest another model already filed at the same commit",
       "touch_zones": [
         "specy_road/review_rejected.py",

@@ -65,7 +65,7 @@ def _block(repo: Path, model: str = "opus", findings: dict | None = None, extra:
     data = yaml.safe_load(review_text(_head(repo), model=model, verdict="block", a1="fail").split("---\n")[1])
     data["findings"].update(findings or {"correctness": ["A1 regressed"]})
     notes = repo.parent / f"notes-{model}.md"
-    notes.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n")
+    notes.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + f"---\n# {model} notes\n")
     assert _cli(review_cli, "review", "record", "M1.1", "--model", model, "--verdict", "block",
                 "--file", str(notes), *extra, "--repo-root", str(repo)) == 0
     notes.unlink()   # inside the git checkout for an sr/ project
