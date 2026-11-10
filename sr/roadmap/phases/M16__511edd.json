@@ -303,8 +303,8 @@
       "title": "Tests: apply the dedupe worklist for review gate",
       "touch_zones": [
         "tests/",
-        "tests/support/dedupe/",
-        "tests/review_repo_helpers.py"
+        "tests/review_repo_helpers.py",
+        "tests/support/dedupe/review-gate.csv"
       ],
       "type": "task"
     },
@@ -317,7 +317,7 @@
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-worker",
       "dependencies": [
-        "e4706b28-6e79-40f8-9042-cb4e6cfff1e9"
+        "3c8001e2-d1c2-4365-a0f2-be80807504ee"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.7.3",
@@ -329,7 +329,7 @@
       "title": "Tests: apply the dedupe worklist for worker",
       "touch_zones": [
         "tests/",
-        "tests/support/dedupe/"
+        "tests/support/dedupe/worker.csv"
       ],
       "type": "task"
     },
@@ -343,7 +343,7 @@
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-the-rest",
       "dependencies": [
-        "086cd41a-9d4b-4377-8ebd-ee563a0d20df"
+        "3c8001e2-d1c2-4365-a0f2-be80807504ee"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.7.5",
@@ -355,7 +355,7 @@
       "title": "Tests: apply the dedupe worklist for the rest",
       "touch_zones": [
         "tests/",
-        "tests/support/dedupe/"
+        "tests/support/dedupe/rest.csv"
       ],
       "type": "task"
     },
