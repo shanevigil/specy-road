@@ -41,7 +41,8 @@
         "tests/test_decisions.py",
         "docs/grind-session.md",
         "docs/git-workflow.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/parity/command_map.yaml"
       ],
       "type": "task"
     }

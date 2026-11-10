@@ -101,6 +101,7 @@ entries:
       - docs/grind-session.md
       - docs/git-workflow.md
       - CHANGELOG.md
+      - tests/parity/command_map.yaml
     started: '2026-11-10'
     owner: savigil
     implementation_review: pending
