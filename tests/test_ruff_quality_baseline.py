@@ -173,6 +173,27 @@ def test_shrink_lowers_entries_and_never_raises(
 
 
 PICKUP = "542aa46c29cf4765c20b6879d322cc53422b1da3"
+_MOVE_SHEET = (
+    ROOT / "sr" / "planning"
+    / "M16.2.5_library-modules-imported-by-the-package-move-out-of-bundled_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md"
+)
+
+
+def _committed_new_to_old() -> dict[str, str]:
+    """New path to old path, from this leaf's committed move table."""
+    moves: dict[str, str] = {}
+    for line in _MOVE_SHEET.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("| `specy_road/"):
+            continue
+        old, new = (cell.strip().strip("`") for cell in line.strip().strip("|").split("|"))
+        moves[new] = old
+    return moves
+
+
+def _in_pickup_tree(path: str, present: set[str], new_to_old: dict[str, str]) -> bool:
+    """In the pickup tree, or the new path of a move whose old path is."""
+    old = new_to_old.get(path)
+    return path in present or (old is not None and old in present)
 
 
 def test_baseline_records_the_pickup_commit_and_only_its_files() -> None:
@@ -189,7 +210,12 @@ def test_baseline_records_the_pickup_commit_and_only_its_files() -> None:
         cwd=ROOT, capture_output=True, text=True, check=True,
     ).stdout
     present = set(listed.splitlines())
-    assert sorted(path for path in data["files"] if path not in present) == []
+    new_to_old = _committed_new_to_old()
+    outside = sorted(
+        path for path in data["files"] if not _in_pickup_tree(path, present, new_to_old)
+    )
+    assert outside == []
+    assert _in_pickup_tree("specy_road/not_a_pickup_file.py", present, new_to_old) is False
 
 
 @pytest.mark.skipif(shutil.which("ruff") is None, reason="ruff is not installed")

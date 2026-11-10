@@ -39,13 +39,26 @@ The move is two commits because `git commit --only` recorded the new files and t
 
 The zones the coordinator recorded, including this leaf's planning sheet.
 
+## Fix round 1
+
+Finding class: `--transfer` stores the new path and leaves `commit` at the pickup commit, then a test requires every listed path to be in that commit's tree. The ruff baseline still records `542aa46c`. `--transfer` does not change `commit` (`test_transfer_sums_old_families_onto_new` asserts the written commit stays), and changing `PICKUP` would drop the "still the pickup commit" check. The tree check now has one rule: a listed path is in the pickup tree, or the committed move table maps it from an old path that is in that tree. A path that is neither still fails.
+
+The same class reaches `scripts/line_width_baseline.json` (commit `361a5c73`, 24 new paths absent from that tree, all of them new sides of the same move). The review records that as not a defect, because no test or gate checks that file against its commit tree. That file was not rewritten and no line-width test was added.
+
+## Probes
+
+- Ruff quality baseline against `542aa46c`: 27 `specy_road/<module>.py` paths were absent; each old path is in that tree. After the move-table rule the pickup test passes, and a path that is not in the tree and not on the table still fails.
+- Line-width baseline against `361a5c73`: 24 paths absent, all new sides of the same move. No test reads that commit tree. Left as the review recorded.
+- Private-import baseline and clone baseline: neither file has a `commit` field, so this class does not apply.
+- `--transfer` contract: `test_transfer_sums_old_families_onto_new` still requires the recorded commit to stay put. The ruff baseline commit was not rewritten.
+
 ## Unanswered
 
 none
 
 ## Added
 
-- Helpers: none
+- Helpers: `_committed_new_to_old` reads the committed move table; `_in_pickup_tree` is the one rule the pickup-tree check uses
 - Branches or guards: none
 - Mocks: none
-- Tests: none
+- Tests: none added. `test_baseline_records_the_pickup_commit_and_only_its_files` still requires the pickup commit, and a transferred path passes only when its old path is in that tree
