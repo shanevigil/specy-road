@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   GRIND_STATUS_INTERVALS,
   applyGrindStatus,
   grindStatusSections,
-  grindStatusUrl,
   lastUpdatedText,
   loadGrindStatus,
   parseIntervalSec,
+  grindStatusUrl,
   pollGrindStatus,
+  requestScope,
   sourceLine,
   totalsLine,
   type GrindScope,
@@ -24,6 +25,15 @@ type Props = {
   repoId: string | null;
 };
 
+/*
+ * Inline styles: `main.tsx` loads only `index.css`, so a class added for this
+ * modal alone would not reach the build. `pre-wrap` keeps each line the
+ * server's text makes, and every line break inside that text, as sent.
+ */
+const LINES: CSSProperties = { whiteSpace: "pre-wrap", fontSize: "0.9em" };
+const ERROR: CSSProperties = { color: "var(--bar-blocked)" };
+const CONTROLS: CSSProperties = { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" };
+
 const fetchImpl: typeof fetch = (input, init) => fetch(input, init);
 
 /**
@@ -35,15 +45,12 @@ export function StatusModal({ onClose, repoId }: Props) {
     until: readBrowserPref(BROWSER_PREF_KEYS.grindStatusUntil, repoId) ?? "",
     under: readBrowserPref(BROWSER_PREF_KEYS.grindStatusUnder, repoId) ?? "",
   }));
-  const [draft, setDraft] = useState<GrindScope>(scope);
   const [intervalSec, setIntervalSec] = useState(() =>
     parseIntervalSec(readBrowserPref(BROWSER_PREF_KEYS.grindStatusIntervalSec, repoId)),
   );
-  const [status, setStatus] = useState<GrindStatusState>(() => ({
-    requested: grindStatusUrl(scope),
-    report: null,
-    error: null,
-  }));
+  const [status, setStatus] = useState<GrindStatusState>(() =>
+    requestScope({ requested: "", report: null, error: null }, scope),
+  );
   const [now, setNow] = useState(() => new Date());
   const scopeRef = useRef(scope);
   const pollRef = useRef<GrindStatusPoll | null>(null);
@@ -66,14 +73,14 @@ export function StatusModal({ onClose, repoId }: Props) {
     return () => clearInterval(t);
   }, []);
 
-  const commitScope = () => {
-    const next = { until: draft.until.trim(), under: draft.under.trim() };
-    if (next.until === scope.until && next.under === scope.under) return;
+  /** Every edit of Until or Under requests its scope at once; a late answer for an earlier one is dropped. */
+  const changeScope = (key: keyof GrindScope, value: string) => {
+    const next = { ...scopeRef.current, [key]: value };
     writeBrowserPref(BROWSER_PREF_KEYS.grindStatusUntil, repoId, next.until);
     writeBrowserPref(BROWSER_PREF_KEYS.grindStatusUnder, repoId, next.under);
     scopeRef.current = next;
     setScope(next);
-    setStatus((s) => ({ ...s, requested: grindStatusUrl(next) }));
+    setStatus((s) => requestScope(s, next));
     pollRef.current?.refreshNow();
   };
 
@@ -84,17 +91,14 @@ export function StatusModal({ onClose, repoId }: Props) {
 
   const { report, error } = status;
   const field = (key: keyof GrindScope, label: string) => (
-    <label className="grind-status-field">
+    <label>
       {label}{" "}
       <input
         type="text"
-        value={draft[key]}
+        size={10}
+        value={scope[key]}
         placeholder="node id"
-        onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
-        onBlur={commitScope}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commitScope();
-        }}
+        onChange={(e) => changeScope(key, e.target.value)}
       />
     </label>
   );
@@ -105,10 +109,10 @@ export function StatusModal({ onClose, repoId }: Props) {
         `specy-road grind-session --status` for this server&apos;s checkout. Read-only. Both fields empty: the
         milestone session&apos;s parent.
       </p>
-      <div className="workspace-notes-actions grind-status-controls">
+      <div className="workspace-notes-actions" style={CONTROLS}>
         {field("until", "Until")}
         {field("under", "Under")}
-        <label className="grind-status-field">
+        <label>
           Refresh every{" "}
           <select value={intervalSec} onChange={(e) => onIntervalChange(Number(e.target.value))}>
             {GRIND_STATUS_INTERVALS.map((i) => (
@@ -137,16 +141,16 @@ export function StatusModal({ onClose, repoId }: Props) {
           <p className="outline-meta">{totalsLine(report)}</p>
           <p className="outline-meta">
             {lastUpdatedText(report, now)} · {sourceLine(report)}
-            {error ? <span className="grind-status-error"> · {error}</span> : null}
+            {error ? <span style={ERROR}> · {error}</span> : null}
           </p>
         </>
       ) : null}
-      {!report && error ? <p className="grind-status-error">{error}</p> : null}
+      {!report && error ? <p style={ERROR}>{error}</p> : null}
       {report
         ? grindStatusSections(report).map((s) => (
-            <section key={s.title} className="grind-status-section">
+            <section key={s.title}>
               <h4 className="worker-section-title">{s.title}</h4>
-              <div className="grind-status-lines">{s.lines.join("\n")}</div>
+              <div style={LINES}>{s.lines.join("\n")}</div>
             </section>
           ))
         : null}

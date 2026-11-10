@@ -142,6 +142,11 @@ export type GrindStatusState = {
   error: string | null;
 };
 
+/** Request `scope`: from now on only its results replace the report; the report on screen stays until then. */
+export function requestScope(state: GrindStatusState, scope: GrindScope): GrindStatusState {
+  return { ...state, requested: grindStatusUrl(scope) };
+}
+
 /**
  * Apply one load's result. A result for a scope other than the one now
  * requested is dropped; a failure keeps the last good report.

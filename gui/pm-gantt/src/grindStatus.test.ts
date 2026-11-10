@@ -1,4 +1,7 @@
+/// <reference types="node" />
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import modalSource from "./components/StatusModal.tsx?raw";
 import mockJson from "./fixtures/grind_status_mock.json";
 import {
   applyGrindStatus,
@@ -8,6 +11,7 @@ import {
   loadFailureText,
   loadGrindStatus,
   pollGrindStatus,
+  requestScope,
   type GrindScope,
   type GrindStatusLoad,
   type GrindStatusReport,
@@ -15,6 +19,8 @@ import {
 } from "./grindStatus";
 
 const mock = mockJson as unknown as GrindStatusReport;
+/** The one stylesheet `main.tsx` loads; read from disk because vitest turns CSS imports into "". */
+const shippedCss = readFileSync(new URL("./index.css", import.meta.url), "utf8");
 const json = (body: unknown, status: number) => new Response(JSON.stringify(body), { status });
 
 function recordingFetch(reply: (url: string) => Promise<Response>) {
@@ -134,7 +140,7 @@ describe("scope change and a failed load", () => {
       pending.set(url, d);
       return d.promise;
     });
-    let state: GrindStatusState = { requested: grindStatusUrl(A), report: null, error: null };
+    let state: GrindStatusState = requestScope({ requested: "", report: null, error: null }, A);
     let scope = A;
     const poll = pollGrindStatus(async () => {
       const requested = scope;
@@ -142,7 +148,7 @@ describe("scope change and a failed load", () => {
       state = applyGrindStatus(state, grindStatusUrl(requested), r);
     }, 60);
     scope = B;
-    state = { ...state, requested: grindStatusUrl(B) };
+    state = requestScope(state, B);
     poll.refreshNow();
     pending.get(grindStatusUrl(B))!.resolve(json(reportB, 200));
     await vi.advanceTimersByTimeAsync(0);
@@ -209,5 +215,20 @@ describe("grindStatusSections", () => {
       "work/brainstorm-broken.yaml: unreadable: cannot read work/brainstorm-broken.yaml: while parsing a flow node",
     ]);
     expect(byTitle["Active (1)"]).toEqual(["M1.3 Leaf M1.3: review waiting; worker w-0001 (claude-code, starting)"]);
+  });
+});
+
+describe("StatusModal source", () => {
+  it("styles only with classes the loaded stylesheet defines, and shows section text with its line breaks", () => {
+    const classes = [...modalSource.matchAll(/className="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/));
+    expect(classes.length).toBeGreaterThan(0);
+    for (const c of classes) expect(shippedCss, c).toContain(`.${c}`);
+    expect(modalSource).toContain('whiteSpace: "pre-wrap"');
+    expect(modalSource).toContain('s.lines.join("\\n")');
+  });
+
+  it("applies an Until or Under edit from the change handler, not on blur or Enter", () => {
+    expect(modalSource).toMatch(/onChange=\{\(e\) => changeScope\(key, e\.target\.value\)\}/);
+    expect(modalSource).not.toMatch(/onBlur|onKeyDown/);
   });
 });
