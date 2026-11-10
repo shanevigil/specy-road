@@ -29,7 +29,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.4` One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready `one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` — task — **Complete**
     - `M16.2.5` Library modules imported by the package move out of bundled_scripts `library-modules-imported-by-the-package-move-out-of-bundled` — task — **Complete**
     - `M16.2.6` A committed report of the import cycles and package-to-entry-point imports `a-committed-report-of-the-import-cycles-and-package-to-entry` — task — **Complete**
-    - `M16.2.7` Break the 45-module import cycle through the graph loader, the brief and validate `break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate` — task — **Not Started**
+    - `M16.2.7` Break the 45-module import cycle through the graph loader, the brief and validate `break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate` — task — **Complete**
     - `M16.2.8` Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI `break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli` — task — **Not Started**
     - `M16.2.9` Commands run in the CLI's process: no python -m re-launch, no cwd globals `commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals` — task — **Not Started**
     - `M16.2.10` Every command exposes build_parser(), imports lazily and shares the common argument helpers `every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers` — task — **Not Started**
@@ -331,7 +331,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.2.7` on `feature/rm-break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate` since 2026-11-10
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
