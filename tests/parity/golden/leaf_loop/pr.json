@@ -129,9 +129,7 @@
    "merged_into_main": true,
    "merged_into_origin_main": true,
    "head_subject": "chore(rm-write-the-hello-module): register as in-progress [skip ci] [ci skip] ***NO_CI***",
-   "worktree": [
-    "?? work/brief-M1.2.md"
-   ]
+   "worktree": []
   }
  },
  {

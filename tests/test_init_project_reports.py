@@ -8,11 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.agent_ignores import SESSION_WORK_FILES
 from specy_road.init_project import run_init_project
 
 _ENTRY = re.compile(r"^(?:would write|wrote) (.+)$")
 _COUNT = re.compile(r"^dry-run: (\d+) path\(s\) would be written")
+_WORK_RULES = ("work/*", "!work/README.md", "!work/.gitkeep", "!work/*.template.md")
 
 
 def _git_init(root: Path) -> None:
@@ -135,7 +135,7 @@ def test_existing_gitignore_reported_as_updated_with_the_runtime_rules(tmp_path:
     text = gi.read_text(encoding="utf-8")
     assert text.startswith("node_modules/\n")
     block = text[text.index(">>> specy-road managed block"):]
-    for rule in SESSION_WORK_FILES:
+    for rule in _WORK_RULES:
         assert f"\n{rule}\n" in block
 
 
@@ -148,7 +148,7 @@ def test_fresh_gitignore_keeps_the_template_header_and_one_copy_of_each_rule(tmp
     assert lines[0].startswith("# ")
     rules = [ln for ln in lines if ln and not ln.startswith("#")]
     assert len(rules) == len(set(rules))
-    assert set(SESSION_WORK_FILES) <= set(rules)
+    assert set(_WORK_RULES) <= set(rules)
 
 
 def test_nested_layout_writes_no_project_gitignore(tmp_path: Path, capsys) -> None:
@@ -170,8 +170,8 @@ def test_nested_layout_writes_no_project_gitignore(tmp_path: Path, capsys) -> No
     assert not any(entry.startswith("sr/.gitignore") for entry in real)
     assert ".gitignore (created)" in real and "sr/AGENTS.md (created)" in real
     rules = (tmp_path / ".gitignore").read_text(encoding="utf-8").splitlines()
-    for rule in SESSION_WORK_FILES:
-        assert f"sr/{rule}" in rules
+    for rule in _WORK_RULES:
+        assert (f"!sr/{rule[1:]}" if rule.startswith("!") else f"sr/{rule}") in rules
     # The block alone, no template header: its comments name unprefixed paths.
     assert rules[0].startswith("# >>> specy-road managed block")
 

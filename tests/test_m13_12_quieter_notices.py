@@ -108,12 +108,12 @@ def _gitignore(root: Path, above: str) -> None:
 
 
 def test_two_repeated_patterns_get_one_notice(tmp_path: Path, capsys) -> None:
-    _gitignore(tmp_path, "node_modules/\n.specyrd/cache/\n# work/prompt-*.md\nwork/reviews/\n.specyrd/cache/\n")
+    _gitignore(tmp_path, "node_modules/\n.specyrd/cache/\n# work/prompt-*.md\nwork/*\n.specyrd/cache/\n")
     before = (tmp_path / GITIGNORE).read_text(encoding="utf-8")
     notice_repeated_ignore_patterns(tmp_path)
     assert capsys.readouterr().out == (
         "gitignore: notice — .gitignore lists 2 pattern(s) above the specy-road managed block that the "
-        "block repeats: .specyrd/cache/, work/reviews/. They can be removed from above the markers "
+        "block repeats: .specyrd/cache/, work/*. They can be removed from above the markers "
         "(validate never edits the file).\n"
     )
     assert (tmp_path / GITIGNORE).read_text(encoding="utf-8") == before
@@ -122,7 +122,7 @@ def test_two_repeated_patterns_get_one_notice(tmp_path: Path, capsys) -> None:
 def test_no_repeats_print_nothing(tmp_path: Path, capsys) -> None:
     _gitignore(tmp_path, "node_modules/\n")
     (tmp_path / GITIGNORE).write_text(
-        (tmp_path / GITIGNORE).read_text(encoding="utf-8") + "work/reviews/\n", encoding="utf-8")   # below: fine
+        (tmp_path / GITIGNORE).read_text(encoding="utf-8") + "work/*\n", encoding="utf-8")   # below: fine
     notice_repeated_ignore_patterns(tmp_path)
     assert MARKER_START in (tmp_path / GITIGNORE).read_text(encoding="utf-8")
     assert MARKER_END in (tmp_path / GITIGNORE).read_text(encoding="utf-8")
@@ -173,7 +173,7 @@ def test_no_context_warnings_print_nothing(tmp_path: Path, capsys) -> None:
 
 def test_patterns_git_reads_differently_are_not_repeats(tmp_path: Path, capsys) -> None:
     """A leading space, an escaped trailing space, ``\\!`` and ``\\#`` are part of the pattern to git."""
-    _gitignore(tmp_path, " .specyrd/cache/\nwork/reviews/\\ \n\\!work/prompt-*.md\n\\#work/.sessions/\n")
+    _gitignore(tmp_path, " .specyrd/cache/\nwork/*\\ \n\\!work/prompt-*.md\n\\#work/.sessions/\n")
     (tmp_path / GITIGNORE).write_text(
         (tmp_path / GITIGNORE).read_text(encoding="utf-8").replace(
             MARKER_END, "!work/prompt-*.md\n#work/.sessions/\n" + MARKER_END), encoding="utf-8")
@@ -182,24 +182,24 @@ def test_patterns_git_reads_differently_are_not_repeats(tmp_path: Path, capsys) 
 
 
 def test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops(tmp_path: Path, capsys) -> None:
-    _gitignore(tmp_path, "work/reviews/   \r\n")
+    _gitignore(tmp_path, "work/*   \r\n")
     notice_repeated_ignore_patterns(tmp_path)
-    assert "block repeats: work/reviews/. They can be removed" in capsys.readouterr().out
+    assert "block repeats: work/*. They can be removed" in capsys.readouterr().out
 
 
 # The complete rule for reading a .gitignore (validate_notices._patterns), one row per item:
 # (bytes above the block, extra lines inside the block, patterns the notice must name).
 GIT_READS = {
-    "utf8-bom-dropped": (b"\xef\xbb\xbfwork/reviews/\n", "", ["work/reviews/"]),
-    "lf": (b"work/reviews/\n", "", ["work/reviews/"]),
-    "crlf": (b"work/reviews/\r\n", "", ["work/reviews/"]),
-    "lone-cr-does-not-split": (b"x\rwork/reviews/\n", "", []),
+    "utf8-bom-dropped": (b"\xef\xbb\xbfwork/*\n", "", ["work/*"]),
+    "lf": (b"work/*\n", "", ["work/*"]),
+    "crlf": (b"work/*\r\n", "", ["work/*"]),
+    "lone-cr-does-not-split": (b"x\rwork/*\n", "", []),
     "blank-and-space-only-lines-skipped": (b"\n   \n\r\n", "", []),
     "hash-comment-skipped": (b"#x\n", "#x\n", []),
     "escaped-hash-is-a-pattern": (b"\\#x\n", "\\#x\n", ["\\#x"]),
-    "trailing-unescaped-spaces-trimmed": (b"work/reviews/   \n", "", ["work/reviews/"]),
-    "escaped-trailing-space-kept": (b"work/reviews/\\ \n", "", []),
-    "leading-space-kept": (b" work/reviews/\n", "", []),
+    "trailing-unescaped-spaces-trimmed": (b"work/*   \n", "", ["work/*"]),
+    "escaped-trailing-space-kept": (b"work/*\\ \n", "", []),
+    "leading-space-kept": (b" work/*\n", "", []),
     "bang-and-escaped-bang-differ": (b"\\!x\n", "!x\n", []),
     "bang-repeated": (b"!x\n", "!x\n", ["!x"]),
 }

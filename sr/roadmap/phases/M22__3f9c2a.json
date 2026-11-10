@@ -374,7 +374,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.65_work-dir-ignored_4193dccc-c9b5-46a4-a5dc-3a9705587c14.md",
       "sibling_order": 59,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The managed .gitignore block ignores all of work/, so chore records and other run files never show as untracked work",
       "touch_zones": [
         "specy_road/agent_ignores.py",

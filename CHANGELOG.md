@@ -72,6 +72,20 @@ body. Keep section bodies focused; link to PRs for detail.
   sandbox does not start, is refused and recorded. `auto` on a host without bwrap warns on each launch and runs
   unsandboxed. See `docs/orchestration-workers.md` (Worker sandbox).
 
+### Changed
+
+- The managed `.gitignore` block now ignores all of `work/` (`work/*`, child directories included) in place of
+  its per-path `work/` lines, and re-includes the scaffold: `work/README.md`, `work/.gitkeep` and the top-level
+  `work/*.template.md` files. Chore records (`work/chores/<slug>.json`, `.md`) and other run files no longer show
+  as untracked work, so a reviewer of another leaf in the same clone no longer fails its clean-tree precondition.
+  Files a project already tracks under `work/` stay tracked: `upgrade` (through `refresh-stubs`) lists them and
+  prints `git rm --cached -- <paths>`, which it never runs. Re-include anything you want kept in git after the
+  block (`!work/worker-logs/` for `track_worker_logs`, `!work/done/`, `!work/brainstorm-*.yaml`).
+- Implementation summaries are no longer committed by default: the project template's `roadmap/git-workflow.yaml`
+  sets `implementation_summary: local`. A reviewer in another clone does not see the summary; the review packet
+  reads it from the leaf's worktree. An existing project on the `commit` default gets `validate`'s notice, which
+  names the fix.
+
 ### Fixed
 
 - An approval still counts across later commits that change only roadmap or planning files, other than `roadmap/orchestration.yaml` and `roadmap/git-workflow.yaml`, or this leaf's implementation summary and review files, and across a two-parent merge from the integration branch whose non-bookkeeping diff is unchanged. It is refused, and `handoff status` gives the reason, when this leaf's acceptance, touch zones or `## Tier` value changed, when the sheet has no tier value, or when the graph or sheet cannot be read. An operator decision still ends on a policy commit. See `docs/orchestration-review.md`.

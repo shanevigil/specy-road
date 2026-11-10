@@ -52,6 +52,12 @@ schema, so `validate` reports it; it is never read as "no footer". Likewise an
 - `local`: the prompts say to leave the summary uncommitted. `review-packet`
   reads it from the worktree and labels it as working-tree text.
 
+New projects set `local`: the managed `.gitignore` block ignores `work/*`,
+so implementation summaries are not committed by default. **A reviewer in
+another clone does not see the summary**: the review packet reads it from the
+leaf's worktree. A project that wants summaries in git re-includes
+`!work/implementation-summary-*.md` after the block and sets `commit`.
+
 The prompts never tell a worker to force-add (`git add -f`) an ignored path.
 Git is asked about each leaf's own summary path
 (`work/implementation-summary-<ID>.md`), so a rule naming some ids and not
