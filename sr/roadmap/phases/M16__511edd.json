@@ -437,6 +437,36 @@
         "pyproject.toml"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "In constraints/import-layers-baseline.json regenerated at this leaf's head and committed, no component contains both roadmap_load and review_gate (the largest remaining component and the components holding each of the two are recorded in the summary); roadmap_load.load_roadmap still applies the milestone full-review hold on every load, and roadmap_load still imports milestone_review_hold",
+        "Moves only: each import edge that joined review_gate's import closure to roadmap_load is removed by moving the importing function into a module review_gate does not reach (normally its command module), or by its caller passing in the graph it already loaded from roadmap_load; no function changes from roadmap_load.load_roadmap to roadmap_graph.load_roadmap or another loader without the hold; no moved name is re-exported from its old module; the summary lists each removed edge, the function moved and where it went",
+        "tests/test_import_layers.py keys the cycle check on the module pair: it fails when roadmap_load and review_gate share a component in the report built from the package at test time and in the committed baseline, and it fails on the head before this leaf's moves; the entry-point check asserts the report has entry-point edges before its isdisjoint check, so an empty edge list fails it; ENTRY_POINT_STEMS is used by the check or removed",
+        "held_milestones in milestone_review_hold imports compute_rollup_status at module level, not inside the function (F3 of M16.2.7's post-landing review)",
+        "Parity harness, the review-gate decision table and the full suite unchanged; tests/test_milestone_full_review.py, including the held-rollup lines M16.2.12 adds, unchanged and green",
+        "Estimated net line change (informational, not a gate): package about +0 (moves), tests about +10"
+      ],
+      "codename": "loader-out-of-review-cycle",
+      "dependencies": [
+        "3ae67e69-01ea-46bc-a70c-2642964c6e0c"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.2.13",
+      "node_key": "7b31d59d-4047-444e-ab6c-2d778e07e451",
+      "parent_id": "M16.2",
+      "planning_dir": "planning/M16.2.13_loader-out-of-review-cycle_7b31d59d-4047-444e-ab6c-2d778e07e451.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle",
+      "touch_zones": [
+        "specy_road/",
+        "specy_road/bundled_scripts/",
+        "constraints/import-layers-baseline.json",
+        "tests/test_import_layers.py",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }

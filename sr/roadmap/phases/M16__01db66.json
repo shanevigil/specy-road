@@ -221,7 +221,7 @@
     },
     {
       "acceptance": [
-        "The 45-module import cycle is gone: in constraints/import-layers-baseline.json regenerated at this leaf's head and committed, no component contains both roadmap_load and finish_ancestor_rollup (the largest remaining component is recorded in the summary); roadmap_load no longer imports finish_ancestor_rollup or the review modules",
+        "The 45-module import cycle is gone: in constraints/import-layers-baseline.json regenerated at this leaf's head and committed, roadmap_load shares no component with review_gate (the largest remaining component is recorded in the summary); roadmap_load no longer imports finish_ancestor_rollup or the review modules directly (maintainer amendment, 2026-11-10: was keyed on roadmap_load and finish_ancestor_rollup, which passed while the cycle stayed; post-landing review F2; M16.2.13 carries the work)",
         "Package modules no longer import the entry points generate_brief, validate_roadmap or refresh_stubs: the functions they used live in package modules",
         "The function-level import of finish_ancestor_rollup in roadmap_load and the function-level imports of the review modules in finish_ancestor_rollup are removed; the summary states how many function-level imports remain inside the modules that were in the old 45-module component",
         "Parity harness and full suite unchanged",
