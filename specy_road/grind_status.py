@@ -163,6 +163,30 @@ def _review_reasons(nid: str, rs) -> list[dict[str, Any]]:
     return out
 
 
+def _open_bucket(plan, node: dict, item: dict, own: str, claimed: bool, reasons: list, review: dict,
+                 waiting: dict, unauthored: dict) -> tuple[str | None, dict]:
+    """The bucket of one open leaf and its entry, first match wins (A2); ``(None, item)`` when none matches."""
+    nid = item["id"]
+    if reasons:
+        return "held", {**item, "claimed": claimed, "reasons": reasons, **review}
+    if claimed or own == "in progress":
+        note = {"note": f"feature tip is {UNMERGED}"} if nid in plan.finished_claimed else {}
+        error = {"review_error": review["error"]} if "error" in review else {}
+        return "active", {**item, "claimed": claimed, "status": node.get("status"),
+                          "review": review.get("state"), **error, **note}
+    if nid in plan.ready:
+        return "ready", item
+    if nid in waiting:
+        return "waiting", {**item, "waiting_on": list(waiting[nid].waiting_on)}
+    if nid in plan.finished_unmerged:
+        return "awaiting_merge", {**item, "reason": UNMERGED}
+    if nid in unauthored:
+        return "not_pickable", {**item, "reason": unauthored[nid]}
+    if nid in plan.needs_codename:
+        return "not_pickable", {**item, "reason": "needs a codename"}
+    return None, item
+
+
 def classify(root: Path, index: RoadmapIndex, plan, reg: dict, leaves: list[str]) -> dict[str, list]:
     """Each scoped non-gate leaf in one bucket, first match wins (A2)."""
     claimed = {e.get("node_id") for e in reg.get("entries") or [] if e.get("node_id")}
@@ -182,23 +206,9 @@ def classify(root: Path, index: RoadmapIndex, plan, reg: dict, leaves: list[str]
         reasons, review = _held_reasons(root, index, node, nid in claimed, worker)
         if worker is not None:
             item["worker"] = _worker_dict(worker)
-        if reasons:
-            out["held"].append({**item, "claimed": nid in claimed, "reasons": reasons, **review})
-        elif nid in claimed or own == "in progress":
-            note = {"note": f"feature tip is {UNMERGED}"} if nid in plan.finished_claimed else {}
-            out["active"].append({**item, "claimed": nid in claimed, "status": node.get("status"),
-                                  "review": review.get("state"), **({"review_error": review["error"]}
-                                                                    if "error" in review else {}), **note})
-        elif nid in plan.ready:
-            out["ready"].append(item)
-        elif nid in waiting:
-            out["waiting"].append({**item, "waiting_on": list(waiting[nid].waiting_on)})
-        elif nid in plan.finished_unmerged:
-            out["awaiting_merge"].append({**item, "reason": UNMERGED})
-        elif nid in unauthored:
-            out["not_pickable"].append({**item, "reason": unauthored[nid]})
-        elif nid in plan.needs_codename:
-            out["not_pickable"].append({**item, "reason": "needs a codename"})
+        bucket, entry = _open_bucket(plan, node, item, own, nid in claimed, reasons, review, waiting, unauthored)
+        if bucket:
+            out[bucket].append(entry)
     return out
 
 
