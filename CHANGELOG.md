@@ -64,6 +64,20 @@ body. Keep section bodies focused; link to PRs for detail.
   sandbox does not start, is refused and recorded. `auto` on a host without bwrap warns on each launch and runs
   unsandboxed. See `docs/orchestration-workers.md` (Worker sandbox).
 
+### Changed
+
+- The managed `.gitignore` block now ignores all of `work/` (`work/*`, child directories included) in place of
+  its per-path `work/` lines, and re-includes the scaffold: `work/README.md`, `work/.gitkeep` and the top-level
+  `work/*.template.md` files. Chore records (`work/chores/<slug>.json`, `.md`) and other run files no longer show
+  as untracked work, so a reviewer of another leaf in the same clone no longer fails its clean-tree precondition.
+  Files a project already tracks under `work/` stay tracked: `upgrade` (through `refresh-stubs`) lists them and
+  prints `git rm --cached -- <paths>`, which it never runs. Re-include anything you want kept in git after the
+  block (`!work/worker-logs/` for `track_worker_logs`, `!work/done/`, `!work/brainstorm-*.yaml`).
+- Implementation summaries are no longer committed by default: the project template's `roadmap/git-workflow.yaml`
+  sets `implementation_summary: local`. A reviewer in another clone does not see the summary; the review packet
+  reads it from the leaf's worktree. An existing project on the `commit` default gets `validate`'s notice, which
+  names the fix.
+
 ### Fixed
 
 - A landing merge that conflicts in a roadmap chunk keeps the integration side of that chunk and sets the finishing leaf back to Complete, found by `node_key`, including when the project root sits under a prefix such as `sr/`. Ancestor statuses are recomputed with the existing rollup and review-hold rules; every other field stays the integration side's. When the bookkeeping commit is known and that leaf is still in the chunk but not Complete, finish aborts the merge before the commit, so nothing is pushed, and the error names the chunk and the branch codename. The merge message says the Complete status was applied again only when the landed chunk has that leaf Complete. A leaf the integration side removed stays absent, and the message does not claim the status was applied.
