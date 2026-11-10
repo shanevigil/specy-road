@@ -52,13 +52,24 @@ The same class reaches `scripts/line_width_baseline.json` (commit `361a5c73`, 24
 - Private-import baseline and clone baseline: neither file has a `commit` field, so this class does not apply.
 - `--transfer` contract: `test_transfer_sums_old_families_onto_new` still requires the recorded commit to stay put. The ruff baseline commit was not rewritten.
 
+## Fix round 2
+
+Finding class: the pickup-tree check read the move list from a file under the planning tree. Promotion removes that tree, so the check raises `FileNotFoundError` in a release worktree that still has the pickup commit. The move list now lives in the test, which promotion keeps. One rule: a listed path is in the pickup tree, or `_MOVED_FROM` maps it to a path that is. The 33 names are the same filename move, and they match the planning sheet. The baseline JSON was not given a new key: its entries stay path rewrites only.
+
+## Probes
+
+- `tests/test_ruff_quality_baseline.py` no longer names the planning sheet or reads it. The 33 in-test pairs equal the sheet's table. All 27 baseline paths that are absent from `542aa46c` resolve through that table, and their old paths are in that tree.
+- Other `sr/planning` mentions in `tests/`, `scripts/` and `specy_road/` are existing examples and docstrings. None of them open this leaf's move sheet. This class does not reach them.
+- Line-width baseline: no test reads the planning tree for it. The ungated path mismatch from fix round 1 is unchanged.
+- A path that is not in the pickup tree and not in `_MOVED_FROM` still fails. The recorded commit is still `542aa46c`.
+
 ## Unanswered
 
 none
 
 ## Added
 
-- Helpers: `_committed_new_to_old` reads the committed move table; `_in_pickup_tree` is the one rule the pickup-tree check uses
+- Helpers: `_MOVED_FROM` is the move table the suite keeps after promotion; `_in_pickup_tree` is the one rule the pickup-tree check uses
 - Branches or guards: none
 - Mocks: none
 - Tests: none added. `test_baseline_records_the_pickup_commit_and_only_its_files` still requires the pickup commit, and a transferred path passes only when its old path is in that tree
