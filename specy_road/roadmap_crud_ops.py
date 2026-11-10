@@ -41,8 +41,8 @@ from specy_road.roadmap_gui_lib import registry_by_node_id
 from specy_road.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.bundled_scripts.touch_zone_tracked import warn_written_zones
 from specy_road.bundled_scripts.validate_registry_overlap import authoring_overlap_for_node
-from specy_road.bundled_scripts.validate_roadmap import validate_at
-from specy_road.finish_ancestor_rollup import UNRESOLVABLE_HOLD, held_milestones
+from specy_road.milestone_review_hold import UNRESOLVABLE_HOLD, held_milestones
+from specy_road.validate_roadmap_runner import validate_at
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import default_user_repo_root

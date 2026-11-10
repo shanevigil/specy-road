@@ -29,7 +29,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.do_next_finished_unmerged import node_complete_on_ref
 from specy_road.bundled_scripts.grind_session_events import EXIT_IN_FLIGHT
 from specy_road.bundled_scripts.grind_session_in_flight import InFlightClaim, own_in_flight_claims
-from specy_road.bundled_scripts.validate_roadmap import validate_at
+from specy_road.validate_roadmap_runner import validate_at
 from specy_road.git_subprocess import git_ok, git_root, local_branch_exists
 from specy_road.registry_yaml import read_registry, registry_path
 

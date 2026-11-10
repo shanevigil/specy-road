@@ -9,7 +9,7 @@ import argparse
 from pathlib import Path
 
 from specy_road.context_notice_cache import fold_next_report, report_context_warnings
-from specy_road.finish_ancestor_rollup import held_milestones, milestone_review_hold_notice
+from specy_road.milestone_review_hold import held_milestones, milestone_review_hold_notice
 from specy_road.git_subprocess import git_root
 from specy_road.managed_block import MARKER_END, MARKER_START
 

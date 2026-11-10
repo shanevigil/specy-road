@@ -39,7 +39,7 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
-from specy_road.bundled_scripts.generate_brief import index, render_brief
+from specy_road.brief_generation import index, render_brief
 from specy_road.bundled_scripts.review_packet_nested import nested_diff_section
 from specy_road.bundled_scripts.review_packet_observed import (
     computed_note as _computed, integrity_sections,

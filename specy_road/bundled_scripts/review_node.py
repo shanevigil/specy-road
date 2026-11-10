@@ -13,7 +13,7 @@ from collections import OrderedDict
 from pathlib import Path
 from urllib.parse import urlparse
 
-from specy_road.bundled_scripts.generate_brief import index as make_index, render_brief
+from specy_road.brief_generation import index as make_index, render_brief
 from specy_road.planning_sheet_bootstrap import (
     feature_sheet_structure_instruction_for_llm,
     gate_sheet_structure_instruction_for_llm,

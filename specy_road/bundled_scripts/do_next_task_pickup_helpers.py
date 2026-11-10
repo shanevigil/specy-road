@@ -16,7 +16,7 @@ from specy_road.bundled_scripts.do_next_task_self_heal import (
     attempt_self_cleanup,
     warn_unresolved_rollback,
 )
-from specy_road.bundled_scripts.generate_brief import index as make_index, render_brief
+from specy_road.brief_generation import index as make_index, render_brief
 from specy_road.git_subprocess import commits_behind, local_branch_exists
 from specy_road.on_complete_session import (
     on_complete_session_path,
