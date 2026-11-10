@@ -27,7 +27,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.2` Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers `shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` — task — **Complete**
     - `M16.2.3` Git queries and registry I/O go through one helper each `git-queries-and-registry-i-o-go-through-one-helper-each` — task — **Complete**
     - `M16.2.4` One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready `one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready` — task — **Complete**
-    - `M16.2.5` Library modules imported by the package move out of bundled_scripts `library-modules-imported-by-the-package-move-out-of-bundled` — task — **Not Started**
+    - `M16.2.5` Library modules imported by the package move out of bundled_scripts `library-modules-imported-by-the-package-move-out-of-bundled` — task — **Complete**
     - `M16.2.6` A committed report of the import cycles and package-to-entry-point imports `a-committed-report-of-the-import-cycles-and-package-to-entry` — task — **Complete**
     - `M16.2.7` Break the 45-module import cycle through the graph loader, the brief and validate `break-the-45-module-import-cycle-through-the-graph-loader-the-brief-and-validate` — task — **Not Started**
     - `M16.2.8` Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI `break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli` — task — **Not Started**
@@ -277,13 +277,8 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
-- 2026-11-10 `M16.7.7` stopped depending on `M16.7.6 Tests: public seams replace private-name patches, and no test sleeps on the wall clock`
-- 2026-11-09 `M17.14` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
-- 2026-11-09 `M16.2.6` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
-- 2026-11-09 `M16.7.5` stopped depending on `M16.7.4 Tests: apply the dedupe worklist for pickup and finish`
-- 2026-11-09 `M17.7` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
-- 2026-11-09 `M16.7.3` stopped depending on `M16.7.2 Tests: apply the dedupe worklist for review gate`
-- 2026-11-09 `M16.7.4` stopped depending on `M16.7.3 Tests: apply the dedupe worklist for worker`
+- 2026-11-10 `M17.14` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
+- 2026-11-10 `M17.7` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-09 `M22.64` stopped depending on `M16.2.3 Git queries and registry I/O go through one helper each`
 - 2026-11-09 `M22.58` stopped depending on `M23.9 The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working`
 - 2026-11-09 `M22.55` stopped depending on `M22.54 Public-hygiene gate: personal data, machine setup and process content refused in tracked files and commit messages`
@@ -302,7 +297,12 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-07 `M22.6` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
 - 2026-11-07 `M16.2.2` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
 - 2026-11-07 `M22.31` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
-- _…and 76 earlier — `specy-road history --json`_
+- 2026-11-07 `M16.5.1` stopped depending on `1cfcf177-4014-4267-9000-d5b81d912f95` (no longer live)
+- 2026-11-07 `M16.1.4` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.8.9` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.8.8` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.8.8` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
+- _…and 71 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -331,7 +331,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.2.5` on `feature/rm-library-modules-imported-by-the-package-move-out-of-bundled` since 2026-11-09
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -344,27 +343,26 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 28 | 0 | 2.18 | 57% | 21 | 2 |
+| `CHANGELOG.md` **flagged** | 29 | 0 | 2.10 | 55% | 18 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
-| `docs` **flagged** | 33 | 0 | 2.24 | 58% | 55 | 3 |
+| `docs` **flagged** | 33 | 0 | 2.21 | 58% | 52 | 3 |
 | `planning` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 39 | 0 | 2.15 | 51% | 62 | 3 |
-| `tests` **flagged** | 43 | 0 | 2.12 | 53% | 78 | 3 |
-| `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
+| `tests` **flagged** | 43 | 0 | 2.09 | 53% | 75 | 3 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.github` | 4 | 0 | 2.00 | 50% | 31 | 0 |
-| `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
+| `.gitignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 3 | 0 | 2.67 | 33% | 2 | 1 |
 | `constitution` | 2 | 0 | 1.50 | 50% | 1 | 0 |
-| `constraints` | 4 | 0 | 1.00 | 0% | 36 | 0 |
+| `constraints` | 3 | 0 | 1.00 | 0% | 36 | 0 |
 | `gui` | 7 | 0 | 1.43 | 43% | 2 | 0 |
 | `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
-| `scripts` | 8 | 0 | 1.75 | 38% | 67 | 0 |
+| `scripts` | 7 | 0 | 1.86 | 43% | 67 | 0 |
+| `specy_road` | 40 | 0 | 2.10 | 50% | 59 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

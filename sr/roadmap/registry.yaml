@@ -70,19 +70,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: library-modules-imported-by-the-package-move-out-of-bundled
-    node_id: M16.2.5
-    branch: feature/rm-library-modules-imported-by-the-package-move-out-of-bundled
-    touch_zones:
-      - specy_road/bundled_scripts/
-      - specy_road/
-      - tests/
-      - scripts/line_width_baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/test-private-imports-baseline.txt
-      - constraints/clone-baseline.json
-      - sr/planning/M16.2.5_library-modules-imported-by-the-package-move-out-of-bundled_8ae7a813-4e43-4590-9f7d-d20b1691dbce.md
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-10T17:13:54+00:00'
