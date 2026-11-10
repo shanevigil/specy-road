@@ -26,7 +26,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.1` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Complete |
 | `M16.2.2` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Complete |
 | `M16.2.3` | Git queries and registry I/O go through one helper each | task | Agentic-led | Complete |
-| `M16.2.4` | One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready | task | Agentic-led | Not Started |
+| `M16.2.4` | One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready | task | Agentic-led | Complete |
 | `M16.2.5` | Library modules imported by the package move out of bundled_scripts | task | Agentic-led | Not Started |
 | `M16.2.6` | A committed report of the import cycles and package-to-entry-point imports | task | Agentic-led | Not Started |
 | `M16.2.7` | Break the 45-module import cycle through the graph loader, the brief and validate | task | Agentic-led | Not Started |

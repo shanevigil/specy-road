@@ -165,7 +165,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.4_one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready_34598a66-ab29-4a34-aea5-919d3970cbce.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "One roadmap index answers every graph query: by id, by key, effective dependencies, unmet, ready",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_index.py",

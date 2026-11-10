@@ -81,20 +81,3 @@ entries:
     started: '2026-11-09'
     owner: savigil
     implementation_review: pending
-  - codename: one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready
-    node_id: M16.2.4
-    branch: feature/rm-one-roadmap-index-answers-every-graph-query-by-id-by-key-effective-dependencies-unmet-ready
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_index.py
-      - specy_road/bundled_scripts/roadmap_load.py
-      - specy_road/bundled_scripts/do_next_available.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/bundled_scripts/roadmap_explain.py
-      - specy_road/bundled_scripts/roadmap_layout.py
-      - specy_road/bundled_scripts/brief_dependency_context.py
-      - specy_road/digest.py
-      - tests/
-    started: '2026-11-09'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-10T02:49:50+00:00'
