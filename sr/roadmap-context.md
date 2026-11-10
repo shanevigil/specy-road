@@ -335,6 +335,7 @@ Do not pick these up.
 - `M22.53` on `feature/rm-review-wider-carry` since 2026-11-09
 - `M22.62` on `feature/rm-shared-notes-digest-refused` since 2026-11-09
 - `M22.65` on `feature/rm-work-dir-ignored` since 2026-11-09
+- `M22.67` on `feature/rm-human-approves-over-block` since 2026-11-09
 
 ## Quality by area
 
