@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
-from specy_road.brainstorm_session import BrainstormError, list_slugs, read_session, session_path
+from specy_road.brainstorm_session import SESSION_PREFIX, SESSION_SUFFIX, list_slugs, read_session
 from specy_road.bundled_scripts.review_cli import rca_command, review_state
 from specy_road.decisions import open_questions
 from specy_road.decisions_local import LOCAL, SHARED, load_merged
@@ -289,13 +289,18 @@ def ledger(root: Path, scope_nodes: set[str], missing: list[dict]) -> tuple[list
 
 
 def sessions(root: Path, now: datetime, missing: list[dict]) -> dict[str, list]:
-    """Open brainstorm sessions and live presence sessions, whatever the goal scope."""
+    """Open brainstorm sessions and live presence sessions, whatever the goal scope.
+
+    One rule for a brainstorm file ``read_session`` cannot turn into a session: any ``ValueError`` it raises
+    (its own :class:`BrainstormError`, which covers a file name ``validate_slug`` rejects, and a
+    ``UnicodeDecodeError`` from a file not saved as UTF-8) names that file under ``missing`` by the name
+    ``list_slugs`` found it under, and the other sessions are still listed."""
     brainstorm = []
     for slug in list_slugs(root):
         try:
             s = read_session(root, slug)
-        except BrainstormError as e:   # one bad file is named and hides nothing else
-            missing.append({"record": f"work/{session_path(root, slug).name}", "field": f"unreadable: {e}"})
+        except ValueError as e:   # BrainstormError and UnicodeDecodeError are both ValueErrors
+            missing.append({"record": f"work/{SESSION_PREFIX}{slug}{SESSION_SUFFIX}", "field": f"unreadable: {e}"})
             continue
         brainstorm.append({"slug": slug, "mode": s.mode, "ideas": len(s.ideas)})
     presence = []

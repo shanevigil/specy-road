@@ -485,7 +485,11 @@ def test_sessions_list_open_brainstorms_and_live_presence_word_for_word(tmp_path
     now = datetime.now(timezone.utc)
     without = status(repo, capsys, "--until", "M1.1", now=now)["scope"]
     write_session(repo, BrainstormSession(slug="open-one", mode="roadmap"))
-    (repo / "work" / "brainstorm-broken.yaml").write_text("version: [\n")
+    unreadable = {"brainstorm-broken.yaml": b"version: [\n",                  # YAML that does not parse
+                  "brainstorm-Open-two.yaml": b"version: 2\nslug: Open-two\n",  # a name validate_slug rejects
+                  "brainstorm-utf16.yaml": "version: 2\n".encode("utf-16")}     # not UTF-8
+    for name, data in unreadable.items():
+        (repo / "work" / name).write_bytes(data)
     closed = repo / "work" / "brainstorm-closed" / "brainstorm-old.yaml"
     closed.parent.mkdir()
     closed.write_text("version: 2\nslug: old\n")
@@ -493,7 +497,7 @@ def test_sessions_list_open_brainstorms_and_live_presence_word_for_word(tmp_path
     start_session(repo, "gone", paths=[], ttl_hours=-1)
     r = status(repo, capsys, "--until", "M1.1", now=now)
     assert r["sessions"]["brainstorm"] == [{"slug": "open-one", "mode": "roadmap", "ideas": 0}]
-    assert any(m["record"] == "work/brainstorm-broken.yaml" for m in r["missing"])
+    assert {m["record"] for m in r["missing"] if "unreadable" in m["field"]} == {f"work/{n}" for n in unreadable}
     [live] = r["sessions"]["presence"]
     assert (live["agent"], live["branch"], live["note"]) == ("planner-a", "dev", "planner: status")
     assert r["scope"] == without
