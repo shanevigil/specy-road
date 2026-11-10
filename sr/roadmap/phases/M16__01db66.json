@@ -265,7 +265,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.8_break-the-25-module-import-cycle-between-roadmap-crud-worker-ops-and-the-chore-cli_cf05fbd9-5071-4aca-a730-53a36d888301.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI",
       "touch_zones": [
         "specy_road/",
