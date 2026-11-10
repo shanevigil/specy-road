@@ -10,16 +10,19 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from tests.review_delegate_helpers import (FAKE_AGY, FAKE_CODEX, delegate_repo, fake_reviewer_run, set_steps,
-                                          strict_problems, verdict_step, wrote_paths)
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
+from tests.review_delegate_helpers import (FAKE_AGY, FAKE_CODEX, delegate_repo, fake_reviewer_run, run_review_cli,
+                                          set_steps, strict_problems, verdict_step, wrote_paths)
+from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_output, review_text
 from tests.test_models_and_prompt import run_main
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.model_profiles import load_profile
 from specy_road.review_delegate import DelegateError, delegate
-from specy_road.review_record_write import output_schema, review_run_lock, reviewer_env, snapshot, written
+from specy_road.review_gate import evaluate_gate
+from specy_road.review_record_write import file_review, output_schema, review_run_lock, reviewer_env, snapshot, written
+from specy_road.review_rejected import rejected_path
+from specy_road.review_signing import notes_digest
 from specy_road.worker_adapter_base import file_instruction
 from specy_road.worker_adapter_codex import profile_home
 from specy_road.worker_adapters import Codex, Cursor, Unsupported, reviewer_cli
@@ -369,3 +372,168 @@ def test_an_antigravity_review_delegate_passes_json_schema_and_files_structured_
     assert argv[:7] == ["--json-schema", str(reviews / "review-output.schema.json"), "--output-format", "json",
                         "--sandbox", "--print-timeout", "30m"]
     assert json.loads((reviews / "review-output.schema.json").read_text())["title"] == "specy-road reviewer output"
+
+
+# --- M22.62: empty notes, and a notes body another model already filed at this commit -------------------------------
+
+_TWO = (
+    "version: 1\nroster:\n"
+    "  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+    "  - {id: opus, family: anthropic, roles: [reviewer]}\n"
+    "  - {id: sol, family: openai, roles: [reviewer]}\n"
+)
+_BODY = "Reviewed the diff.\n"
+_FIND_A = {"correctness": ["the empty case"], "regression": [], "boundary": [], "test_integrity": []}
+_FIND_B = {"correctness": ["the shared case"], "regression": [], "boundary": [], "test_integrity": []}
+
+
+def _submit(repo: Path, model: str, body: str, **extra) -> int:
+    """``review record`` for ``model`` at HEAD; ``body`` is the notes below the front matter, with no notes key."""
+    verdict = str(extra.pop("verdict", "approve"))
+    text = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict, **extra)
+    front, _old = text.rsplit("---\n", 1)
+    path = repo.parent / f"{model}-notes.md"
+    path.write_text(front + "---\n" + body, encoding="utf-8")
+    return run_review_cli("review", "record", "M1.1", "--model", model, "--verdict", verdict, "--file", str(path),
+                          "--repo-root", str(repo))
+
+
+def _says_empty(text: str) -> None:
+    assert "body below the front matter" in text and "notes_sha256 covers only" in text
+
+
+def _says_shared(text: str) -> None:
+    assert "opus" in text and "sol" in text
+    assert "same notes body after normalisation" in text
+    assert "findings and commands_rerun are not in the digest" in text
+    assert "notes template" in text and "own notes" in text
+    assert "copied" not in text.lower()
+
+
+@pytest.mark.parametrize("body", ["", "\n\n", "   \n", " \n\t \n"])
+def test_review_record_refuses_an_empty_or_whitespace_notes_body(tmp_path: Path, body: str, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    assert _submit(repo, "opus", body) == 1
+    err = capsys.readouterr().err
+    _says_empty(err)
+    _says_empty(rejected_path(rf.reviews_dir(repo, "M1.1"), "opus").read_text(encoding="utf-8"))
+    assert not rf.review_path(repo, "M1.1", "opus").exists()
+
+
+def test_file_review_refuses_whitespace_only_notes_as_a_rerun(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    reviews = rf.reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True)
+    answer = review_output(git(repo, "rev-parse", "HEAD"), model="opus")
+    answer["notes"] = " \n\t "
+    before = snapshot(repo, reviews, "opus")
+    outcome = file_review(repo, "M1.1", "opus", reviews, answer=answer, before=before,
+                          after=snapshot(repo, reviews, "opus", like=before))
+    assert outcome.state == "rerun", outcome.reason
+    _says_empty(outcome.refusal)
+    assert not rf.review_path(repo, "M1.1", "opus").exists()
+    assert rejected_path(reviews, "opus").is_file()
+
+
+@pytest.mark.parametrize("body", [_BODY, _BODY.replace("\n", "\r\n"), _BODY + " \n\n  \n"])
+def test_review_record_refuses_another_models_matching_notes_body(tmp_path: Path, body: str, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    assert _submit(repo, "opus", _BODY, verdict="block", findings=_FIND_A, commands_rerun=["pytest -q"]) == 0
+    capsys.readouterr()
+    assert _submit(repo, "sol", body, verdict="block", findings=_FIND_B, commands_rerun=["pytest -n 4"]) == 1
+    err = capsys.readouterr().err
+    marker = rejected_path(rf.reviews_dir(repo, "M1.1"), "sol").read_text(encoding="utf-8")
+    _says_shared(err)
+    _says_shared(marker)
+    assert rf.review_path(repo, "M1.1", "opus").is_file()
+    assert not rf.review_path(repo, "M1.1", "sol").exists()
+
+
+def test_a_matching_body_is_refused_when_the_stored_notes_sha256_differs(tmp_path: Path, capsys) -> None:
+    """The digest is taken again from the stored body; a stale notes_sha256 field is not the candidate."""
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    assert _submit(repo, "opus", _BODY, verdict="block", findings=_FIND_A, commands_rerun=["pytest -q"]) == 0
+    path = rf.review_path(repo, "M1.1", "opus")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    index = next(i for i, line in enumerate(lines) if line.startswith("notes_sha256: "))
+    lines[index] = "notes_sha256: " + "ab" * 32
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    capsys.readouterr()
+    assert _submit(repo, "sol", _BODY, verdict="block", findings=_FIND_B, commands_rerun=["pytest -n 4"]) == 1
+    _says_shared(capsys.readouterr().err)
+
+
+def test_one_changed_word_in_the_notes_body_is_filed(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    assert _submit(repo, "opus", _BODY, verdict="block", findings=_FIND_A, commands_rerun=["pytest -q"]) == 0
+    assert _submit(repo, "sol", "Reviewed the patch.\n", verdict="block", findings=_FIND_B,
+                   commands_rerun=["pytest -n 4"]) == 0
+    assert rf.load_review(rf.review_path(repo, "M1.1", "sol")).ok
+
+
+def test_the_same_model_refiles_its_own_notes_body(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    assert _submit(repo, "opus", _BODY, verdict="block", findings=_FIND_A, commands_rerun=["pytest -q"]) == 0
+    assert _submit(repo, "opus", _BODY, verdict="block", findings=_FIND_A, commands_rerun=["pytest -q"]) == 0
+    assert rf.review_path(repo, "M1.1", "opus").is_file()
+    assert not rejected_path(rf.reviews_dir(repo, "M1.1"), "opus").exists()
+
+
+def test_the_same_notes_body_at_another_commit_is_filed(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    assert _submit(repo, "opus", _BODY, verdict="block", findings=_FIND_A, commands_rerun=["pytest -q"]) == 0
+    commit_file(repo, "src/a.py", "print('b')\n", "next")
+    assert _submit(repo, "sol", _BODY, verdict="block", findings=_FIND_B, commands_rerun=["pytest -n 4"]) == 0
+    assert rf.load_review(rf.review_path(repo, "M1.1", "sol")).ok
+
+
+def test_a_schema_invalid_record_is_not_a_notes_body_candidate(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", findings=_FIND_A,
+                       commands_rerun=["pytest -q"])
+    front, _old = text.rsplit("---\n", 1)
+    reviews = rf.reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True)
+    (reviews / "REVIEW-opus.md").write_text(front.replace("model: opus\n", "model: opus\nnotes: []\n", 1) + "---\n"
+                                            + _BODY, encoding="utf-8")
+    listed = rf.list_reviews(repo, "M1.1")
+    assert len(listed) == 1 and not listed[0].ok
+    assert _submit(repo, "sol", _BODY, verdict="block", findings=_FIND_B, commands_rerun=["pytest -n 4"]) == 0
+
+
+def test_a_notes_body_only_in_history_is_filed(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    assert _submit(repo, "opus", _BODY, verdict="block", findings=_FIND_A, commands_rerun=["pytest -q"]) == 0
+    assert _submit(repo, "opus", "Reviewed the patch.\n", verdict="block", findings=_FIND_A,
+                   commands_rerun=["pytest -q"]) == 0
+    assert notes_digest(rf.load_review(rf.review_path(repo, "M1.1", "opus")).body) != notes_digest(_BODY)
+    assert any(notes_digest(r.body) == notes_digest(_BODY) for r in rf.list_review_history(repo, "M1.1"))
+    assert _submit(repo, "sol", _BODY, verdict="block", findings=_FIND_B, commands_rerun=["pytest -n 4"]) == 0
+
+
+def test_two_file_review_calls_with_different_bodies_differ_in_notes_sha256(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    reviews = rf.reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True)
+    head = git(repo, "rev-parse", "HEAD")
+    digests = []
+    for model, notes in (("opus", "alpha"), ("sol", "beta")):
+        answer = review_output(head, model=model)
+        answer["notes"] = notes
+        before = snapshot(repo, reviews, model)
+        outcome = file_review(repo, "M1.1", model, reviews, answer=answer, before=before,
+                              after=snapshot(repo, reviews, model, like=before))
+        assert outcome.state == "recorded", outcome.reason
+        digests.append(rf.load_review(rf.review_path(repo, "M1.1", model)).data["notes_sha256"])
+    assert len(set(digests)) == 2
+
+
+def test_an_empty_body_already_on_file_still_counts_in_the_gate(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_TWO)
+    head = git(repo, "rev-parse", "HEAD")
+    front, _old = review_text(head, model="opus").rsplit("---\n", 1)
+    reviews = rf.reviews_dir(repo, "M1.1")
+    reviews.mkdir(parents=True)
+    (reviews / "REVIEW-opus.md").write_text(front + f"notes_sha256: {notes_digest('')}\n---\n", encoding="utf-8")
+    gate = evaluate_gate(repo, NODE, head)
+    assert [a.model for a in gate.approvals] == ["opus"] and gate.passed and not gate.ineligible

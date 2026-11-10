@@ -175,6 +175,32 @@ def _review_record_setup(ns: Any, root: Path, trace: ReviewRecordTrace, fail: An
     return t, gate, entry
 
 
+def _notes_normalised(body: str) -> str:
+    """The notes body as :func:`notes_digest` hashes it, before the hash."""
+    return "\n".join(body.splitlines()).rstrip()
+
+
+def _notes_body_problem(root: Path, node_id: str, model: str, commit: str | None, body: str) -> str | None:
+    """Why ``body`` cannot be filed for ``model`` at ``commit``, else ``None``.
+
+    Empty or whitespace after :func:`notes_digest`'s normalisation says nothing. A non-empty digest that matches
+    another model's stored REVIEW body at this commit is the same notes; ``list_reviews`` rows with ``ok`` are
+    the candidates, and signature, roster and policy are not checked.
+    """
+    if not _notes_normalised(body).strip():
+        return "the notes go in the body below the front matter; notes_sha256 covers only that body"
+    digest = notes_digest(body)
+    for other in list_reviews(root, node_id):
+        if not other.ok or other.data.get("model") in (None, model):
+            continue
+        if not same_commit(root, other.data.get("commit"), commit) or notes_digest(other.body) != digest:
+            continue
+        return (f"{model} and {other.data.get('model')} have the same notes body after normalisation; "
+                "findings and commands_rerun are not in the digest, and a body left as the notes template "
+                "matches too. Put this review's own notes in the body below the front matter.")
+    return None
+
+
 def _review_record_validate(ns: Any, root: Path, t: Any, gate: Any, entry: dict, trace: ReviewRecordTrace,
                             fail: Any) -> dict | int:
     rec, err = check_record(ns, root, t)
@@ -185,6 +211,8 @@ def _review_record_validate(ns: Any, root: Path, t: Any, gate: Any, entry: dict,
         return trace.refuse(f"{ns.model!r} has no reviewer role and no active substitution covers {ns.node_id}", fail)
     if why := rerun_problem(config["policy"], rec["data"]):
         return trace.refuse(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun", fail)
+    if why := _notes_body_problem(root, ns.node_id, ns.model, gate.commit, rec["body"]):
+        return trace.refuse(why, fail)
     return rec
 
 
