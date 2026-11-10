@@ -259,6 +259,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M23.7` upgrade migrates rosters to core fields plus run: `roster-upgrade-to-run-block` — task — **Not Started**
   - `M23.8` The guard classifier becomes three rule tables with every verdict unchanged `the-guard-classifier-becomes-three-rule-tables-with-every-verdict-unchanged` — task — **Not Started**
   - `M23.9` The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working `sr-private-mount` — task — **Not Started**
+  - `M23.10` Run the multi-operator brainstorm for 0.3.2 (two or more operators on several machines, plus a PM in the PM GUI) `multi-operator-brainstorm` — task — **Not Started**
 
 ## Open gates
 
