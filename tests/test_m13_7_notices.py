@@ -178,7 +178,7 @@ def test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout(
     monkeypatch.setenv("GIT_DIR", str(repo / ".git"))
     monkeypatch.setenv("GIT_WORK_TREE", str(repo))
     apply_and_report(repo, "", [], dry_run=True)
-    assert "  work/prompt-u00.md (work/prompt-*.md): untracked; now hidden from git status" in (
+    assert "  work/prompt-u00.md (work/*): untracked; now hidden from git status" in (
         capsys.readouterr().out.splitlines())
     assert (repo / ".git" / "config").read_bytes() == config
 
@@ -220,8 +220,8 @@ def _case_tracked_already_ignored(repo: Path) -> None:
 
 
 def _case_tracked_by_an_older_rule_only(repo: Path) -> None:
-    _commit(repo, "work/old.md")
-    write(repo, GITIGNORE, "work/old.md\n")
+    _commit(repo, "notes/old.md")                               # outside work/: no block rule reaches it
+    write(repo, GITIGNORE, "notes/old.md\n")
 
 
 def _case_older_rule_after_the_block(repo: Path) -> None:
@@ -245,7 +245,9 @@ def _case_tracked_negated_in_a_nested_file(repo: Path) -> None:
 #: name -> (setup, prefix, expected now-hidden, expected still-tracked). Every repo also tracks work/prompt-a.md.
 CASES = {
     "plain": (lambda r: write(r, "work/prompt-u.md"), "", {"work/prompt-u.md"}, {"work/prompt-a.md"}),
-    "r1 pathspec-only match": (lambda r: write(r, "work/prompt-dir/sub.md"), "", set(), {"work/prompt-a.md"}),
+    # A pathspec `work/*.template.md` matches across `/`; the block's re-include does not, so this stays hidden.
+    "r1 pathspec-only match": (lambda r: write(r, "work/sub/x.template.md"), "", {"work/sub/x.template.md"},
+                               {"work/prompt-a.md"}),
     "r1 negation after block": (lambda r: (write(r, GITIGNORE, _block(after="!work/prompt-keep.md\n")),
                                            write(r, "work/prompt-keep.md")), "", set(), {"work/prompt-a.md"}),
     "r2 negation before block": (lambda r: (write(r, GITIGNORE, _block(before="!work/prompt-keep.md\n")),
@@ -268,9 +270,10 @@ CASES = {
                                    {"work/prompt-a.md", "work/prompt-tracked.md"}),
     "r5 tracked by an older rule only": (_case_tracked_by_an_older_rule_only, "", set(), {"work/prompt-a.md"}),
     "r5 older rule after the block decides": (_case_older_rule_after_the_block, "", set(), {"work/prompt-a.md"}),
-    "r7 nested rule decides": (_case_nested_rule_decides, "", set(), {"work/prompt-a.md"}),
+    # The committed nested file is itself under work/*, so it is now a tracked match too.
+    "r7 nested rule decides": (_case_nested_rule_decides, "", set(), {"work/prompt-a.md", "work/.gitignore"}),
     "r7 tracked negated after the block": (_case_tracked_negated_after_the_block, "", set(), set()),
-    "r7 tracked negated in a nested file": (_case_tracked_negated_in_a_nested_file, "", set(), set()),
+    "r7 tracked negated in a nested file": (_case_tracked_negated_in_a_nested_file, "", {"work/.gitignore"}, set()),
     "r4 self-ignored nested .gitignore": (_case_self_ignored_nested, "", {"work/prompt-hide.md"}, {"work/prompt-a.md"}),
 }
 

@@ -197,12 +197,9 @@ def _implement_and_review(loop: Loop, reviewers: tuple[str, ...]) -> None:
         f"# {LEAF}\n\nAdded src/hello.py.\n\n## Added\n\n- src/hello.py: the module\n",
         encoding="utf-8",
     )
-    loop.commit(
-        "feat: hello module",
-        "src/hello.py",
-        f"work/brief-{LEAF}.md",
-        f"work/implementation-summary-{LEAF}.md",
-    )
+    # work/* is ignored and the scaffold sets implementation_summary: local, so the brief and the
+    # summary stay in the working tree for the packet to read (M22.65).
+    loop.commit("feat: hello module", "src/hello.py")
     loop.cli("ready", "ready", LEAF, "--model", "exec-a", "--run", "test -f src/hello.py")
     head = _git(root, "rev-parse", "HEAD")
     for model in reviewers:

@@ -255,7 +255,11 @@ def test_off_writes_nothing_outside_work_workers(tmp_path: Path) -> None:
 
 
 def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp_path: Path) -> None:
-    """R2: through `delegate`, `reconcile` and `terminate`, as the coordinator drives them."""
+    """R2: through `delegate`, `reconcile` and `terminate`, as the coordinator drives them.
+
+    Under the managed block's ``work/*`` every leaf's ``work/worker-logs/`` is ignored, so another
+    leaf's logs no longer show as untracked or block delegation either (M22.65).
+    """
     from specy_road import worker_ops as ops
     from specy_road.agent_ignores import apply_agent_ignores
     from tests.test_worker_cli import FAKE, wait_for_worker, worker_roster
@@ -263,7 +267,7 @@ def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp
     script = tmp_path / "fake.py"
     script.write_text(FAKE)
     repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
-    apply_agent_ignores(repo)   # work/.workers/ ignored, work/worker-logs/ not: the opted-in layout
+    apply_agent_ignores(repo)   # work/* ignored, work/worker-logs/ included: no re-include line
     _track(repo, 'track_worker_logs: "events"\n')
     git(repo, "add", "-A")
     git(repo, "commit", "-qm", "track worker logs")
@@ -273,16 +277,13 @@ def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp
     own = f"work/worker-logs/M1.1/{rec.worker_id}.events.jsonl"
     assert (repo / own).is_file()
     _rec, delta = ops.reconcile(repo, rec.worker_id)
-    assert own in delta["untracked"] and own not in delta["untracked_outside_touch_zones"]
-    other = repo / "work" / "worker-logs" / "M1.2" / "w-0009.events.jsonl"   # another leaf's: not bookkeeping
+    assert own not in delta["untracked"] and own not in delta["untracked_outside_touch_zones"]
+    other = repo / "work" / "worker-logs" / "M1.2" / "w-0009.events.jsonl"   # another leaf's: ignored too
     other.parent.mkdir(parents=True)
     other.write_text("{}\n")
     _rec, delta = ops.reconcile(repo, rec.worker_id)
-    assert "work/worker-logs/M1.2/w-0009.events.jsonl" in delta["untracked_outside_touch_zones"]
+    assert not any("worker-logs" in p for p in delta["untracked"] + delta["untracked_outside_touch_zones"])
     ops.terminate(repo, rec.worker_id)
-    with pytest.raises(ws.WorkerError, match=r"uncommitted changes .*worker-logs/M1\.2/"):
-        ops.delegate(repo, "M1.1", "opus")
-    other.unlink()
-    again, created = ops.delegate(repo, "M1.1", "opus")   # this leaf's own logs do not block it
+    again, created = ops.delegate(repo, "M1.1", "opus")   # neither leaf's logs block it
     assert created and again.worker_id != rec.worker_id
     wait_for_worker(repo, again.worker_id)

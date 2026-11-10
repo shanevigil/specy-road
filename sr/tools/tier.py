@@ -40,6 +40,16 @@ def floor_reviewed(node: str) -> bool:
     return bool(REVIEWED.search(tier_section(node) or ""))
 
 
+def reviewed_covers(node: str, path: str) -> bool:
+    """A "Path floor reviewed:" line exempts only the trust files it names, by path or module name (maintainer,
+    2026-11-09): any other trust path in the diff still raises the leaf to trust."""
+    sec = tier_section(node) or ""
+    if not REVIEWED.search(sec):
+        return False
+    stem = Path(path).stem
+    return path in sec or re.search(rf"(?<![\w]){re.escape(stem)}(?![\w])", sec) is not None
+
+
 def sheet_tier(node: str) -> str:
     sec = tier_section(node)
     m = re.match(r"\s*([A-Za-z]+(?: boundary)?)", sec) if sec is not None else None
@@ -64,7 +74,7 @@ def tier(node: str, worktree: str) -> str:
     paths = changed_paths(worktree)
     if paths is None:
         return max(t, "behavioural", key=RANK.get)
-    if any(TRUST.match(p) for p in paths) and not floor_reviewed(node):
+    if any(TRUST.match(p) and not reviewed_covers(node, p) for p in paths):
         return "trust"
     if any(p.startswith("specy_road/") and p.endswith(".py") for p in paths):
         return max(t, "behavioural", key=RANK.get)
