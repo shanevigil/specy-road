@@ -26,6 +26,8 @@ let these commands manage it.
 This prevents dispatching a sub-agent for work whose dependencies are unmet (e.g.
 `M11.1` while `M10.5` is still in flight).
 
+**Status reports during a grind.** At the start of a grind, and then every `grind_session_status_interval_minutes` (in `roadmap/git-workflow.yaml`, default 30), run `specy-road grind-session --status` with the grind's own scope (`--until`, `--under`) and post its text output to the chat unchanged. Use the harness's scheduler or wake-up for the interval where it has one; where it has none, run it at the first turn after the interval has passed. Do not use `--watch` here: it never ends, and it is for a person's terminal.
+
 ### Drive the loop from this session (step mode)
 
 Step mode is the in-pane path: this session is the coordinator, and each

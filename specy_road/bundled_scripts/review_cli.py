@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -78,7 +79,27 @@ def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | No
     return "in-review"
 
 
-def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, Any]:
+@dataclass
+class ReviewState:
+    """One claimed node's review state without the trial merge: what ``handoff status`` and
+    ``grind-session --status`` (M22.68) share, so the state names keep one definition."""
+
+    target: ReviewTarget
+    gate: GateResult
+    files: list[Any]
+    ready: Any
+    loop: LoopState
+    escalated: bool
+    budget: dict[str, Any] | None
+    executor_blocked: list[str]
+    state: str
+    hints: list[str]
+
+
+def review_state(root: Path, node_id: str, ref: str | None = None) -> ReviewState:
+    """The gate, READY, loop escalation, fix-round budget and policy pin of ``node_id``; no trial merge.
+
+    Raises :class:`ReviewTargetError` when no claim or ``ref`` names a commit to review."""
     t = resolve_target(root, node_id, ref)
     branch = (t.entry or {}).get("branch")
     aids = acceptance_ids(t.node)
@@ -99,6 +120,14 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     state = ("executor_blocked" if blocked_lines else "fix_round_budget_spent" if spent
              else "escalated" if escalated else _state(root, t, gate, ready_commit))
     state, hints = milestone_status(t, state)
+    return ReviewState(t, gate, files, ready, loop, escalated, budget, blocked_lines, state, hints)
+
+
+def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, Any]:
+    rs = review_state(root, node_id, ref)
+    t, gate, files, ready, loop, budget = rs.target, rs.gate, rs.files, rs.ready, rs.loop, rs.budget
+    state, hints, escalated, blocked_lines = rs.state, rs.hints, rs.escalated, rs.executor_blocked
+    branch = (t.entry or {}).get("branch")
     tm = trial_merge(root, t.ref, t.base_ref)
     merge_problem = ([tm.problem()] if tm and tm.problem() else []) + hints
     return {
@@ -166,9 +195,13 @@ def _render(st: dict[str, Any]) -> list[str]:
     return lines
 
 
+def rca_command(node_id: str) -> str:
+    """The root-cause analysis an escalated leaf needs next (``handoff status``, ``grind-session --status``)."""
+    return f"specy-road prompt {node_id} --role rca --model <reviewer that has not reviewed it>"
+
+
 def _escalation_line(node_id: str, describe: str) -> str:
-    return (f"  escalated: {describe}; next, a root-cause analysis: "
-            f"`specy-road prompt {node_id} --role rca --model <reviewer that has not reviewed it>`")
+    return f"  escalated: {describe}; next, a root-cause analysis: `{rca_command(node_id)}`"
 
 
 def _print_rcas(loop: LoopState) -> None:

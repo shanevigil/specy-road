@@ -10,7 +10,8 @@ Each cycle reuses the existing primitives (never edits the registry directly):
 Pickup runs the optional --baseline-cmd on the integration branch first.
 
 Repeats until a stop condition (--until / --under / --max-leaves / no actionable
-work). ``--plan`` prints a read-only dependency/wave report instead of running.
+work). ``--plan`` prints a read-only dependency/wave report instead of running;
+``--status`` a goal's leaves by state, a completion range and what waits on a person (``grind_status``).
 ``--step pickup|finish`` runs one phase and exits (``grind_session_step``).
 
 See exit-code and event contract in ``grind_session_events`` and the guide in
@@ -33,6 +34,7 @@ from specy_road.bundled_scripts.grind_session_args import (
     pickup_args as _pickup_args,
 )
 from specy_road.grind_session_cleanup import run_session_cleanup
+from specy_road.grind_status import run_status
 from specy_road.bundled_scripts.grind_session_implement import run_implement_hook
 from specy_road.bundled_scripts.grind_session_limits import (
     resolve_implement_limits,
@@ -372,6 +374,8 @@ def run_session(args) -> int:
     repo_root = (args.repo_root or default_user_repo_root()).resolve()
     CHILD_STDOUT_TO_STDERR = bool(args.json)
     emitter = EventEmitter(as_json=args.json)
+    if args.status:   # read-only: no loop-mode pin, no git writes (M22.68)
+        return run_status(repo_root, args)
     if args.plan:
         _nodes, _reg, plan = gather_plan(
             repo_root, args.under, allow_unauthored=args.allow_unauthored,

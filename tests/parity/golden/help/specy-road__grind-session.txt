@@ -1,15 +1,15 @@
 $ specy-road grind-session --help
 exit: 0
 --- stdout ---
-usage: specy-road grind-session [-h] [--plan] [--step {pickup,finish}] [--until NODE_ID]
-                                [--under NODE_ID] [--resume-in-flight] [--max-leaves N]
-                                [--max-cycles N] [--implement-mode {manual,hook}]
-                                [--implement-cmd CMD] [--ready-signal PATH]
-                                [--signal-timeout SECONDS] [--pre-finish-cmd CMD]
-                                [--max-limit-waits N] [--max-limit-wait-hours H]
-                                [--limit-wait-grace-seconds S] [--max-empty-retries N]
-                                [--repo-root DIR] [--base BRANCH] [--remote NAME]
-                                [--on-complete MODE] [--no-ci-skip-in-message]
+usage: specy-road grind-session [-h] [--plan] [--status] [--watch [MINUTES]]
+                                [--step {pickup,finish}] [--until NODE_ID] [--under NODE_ID]
+                                [--resume-in-flight] [--max-leaves N] [--max-cycles N]
+                                [--implement-mode {manual,hook}] [--implement-cmd CMD]
+                                [--ready-signal PATH] [--signal-timeout SECONDS]
+                                [--pre-finish-cmd CMD] [--max-limit-waits N]
+                                [--max-limit-wait-hours H] [--limit-wait-grace-seconds S]
+                                [--max-empty-retries N] [--repo-root DIR] [--base BRANCH]
+                                [--remote NAME] [--on-complete MODE] [--no-ci-skip-in-message]
                                 [--milestone-subtree] [--allow-unauthored]
                                 [--prefer-agentic | --no-prefer-agentic] [--baseline-cmd CMD]
                                 [--baseline-warn] [--push] [--delete-merged-branches] [--json]
@@ -17,12 +17,21 @@ usage: specy-road grind-session [-h] [--plan] [--step {pickup,finish}] [--until 
 
 Orchestrate the task loop: do-next-available-task -> implement -> (optional pre-finish hook) ->
 finish-this-task, repeated until a stop condition. Use --plan for a read-only dependency/wave
-report (no git).
+report (no git), or --status for a goal's leaves by state, a completion range and what waits on a
+person.
 
 options:
   -h, --help            show this help message and exit
   --plan, --dry-run     Read-only: print the session plan (ready/blocked/active + dependency waves
                         + parallel batches) and exit 0. No git, no pickup.
+  --status              Read-only: the scope's leaves by state (held, active, ready, waiting,
+                        finished awaiting merge, not pickable), a completion range from history,
+                        the decisions and held leaves waiting on a person, and open sessions.
+                        Scope: --until, --under, both, or the parent in work/.milestone-
+                        session.yaml. No fetch, no git writes.
+  --watch [MINUTES]     With --status: print the report again every MINUTES (default:
+                        grind_session_status_interval_minutes in roadmap/git-workflow.yaml, else
+                        30) until Ctrl+C.
   --step {pickup,finish}
                         Run one phase and exit, for an agent that drives the loop and implements
                         between phases itself. pickup: resume this clone's open claim, else pick

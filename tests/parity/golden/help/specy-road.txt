@@ -210,7 +210,8 @@ Dev task loop:
     reconcile-milestone-status closes once the rollup branch is proven merged.
   grind-session           — orchestrate pickup->implement->finish over many leaves
     (--plan for read-only ready/blocked/waves, --plan --json --fields KEY,... for only
-    those plan keys; --until NODE | --under PARENT | --max-leaves N | --implement-mode {manual,hook} --implement-cmd CMD | --pre-finish-cmd CMD | --on-complete {pr,merge,auto} | --json | --resume-in-flight | --delete-merged-branches | --step {pickup,finish})
+    those plan keys; --status [--watch [MINUTES]] for a goal's leaves by state, a
+    completion range and what waits on a person; --until NODE | --under PARENT | --max-leaves N | --implement-mode {manual,hook} --implement-cmd CMD | --pre-finish-cmd CMD | --on-complete {pr,merge,auto} | --json | --resume-in-flight | --delete-merged-branches | --step {pickup,finish})
     Stopping with exit 6 means this worktree already holds a claim: finish it,
     abort-task-pickup, or re-run with --resume-in-flight. Exit 3 is a real
     dependency/gate block needing human action elsewhere.

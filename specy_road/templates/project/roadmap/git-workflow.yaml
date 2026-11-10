@@ -37,3 +37,5 @@ on_complete: pr
 # grind_session_max_limit_wait_hours: 6        # ceiling on any one wait
 # grind_session_limit_wait_grace_seconds: 120  # slack after the stated reset
 # grind_session_max_empty_retries: 2           # re-runs when it dies silently
+# Optional: minutes between grind-session --status --watch reports and coordinator check-ins.
+# grind_session_status_interval_minutes: 30
