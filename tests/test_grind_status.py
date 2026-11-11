@@ -415,6 +415,7 @@ def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_pat
     git(lay.leaf, "merge", "-q", "--no-edit", "dev")
     gui.block(lay)
     c = gui.client()
+    assert gui.answer(c, "D1", "A", "ship A\nnow").status_code == 400   # one line, so the sheet line can match
     assert gui.answer(c, "D1", "A", "ship A").status_code == 200
     assert gui.approve(c, gui.leaf_offer(c)).status_code == 200
     git(lay.top, "merge", "-q", "--ff-only", "origin/dev")   # the coordinator pulls

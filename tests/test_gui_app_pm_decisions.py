@@ -314,15 +314,24 @@ def test_another_origin_is_refused_the_preflight(tmp_path: Path, monkeypatch) ->
 # --- refusals --------------------------------------------------------------------
 
 
-def _close_on_origin(lay: Layout, tmp_path: Path) -> None:
+def _on_origin(lay: Layout, tmp_path: Path, **change) -> None:
+    """Another clone changes D1 on the integration branch after the GUI read it."""
     other = tmp_path / "other"
     git(tmp_path, "clone", "-q", "-b", "dev", str(lay.bare), str(other))
     path = other / LEDGER
     doc = yaml.safe_load(path.read_text())
-    doc["entries"][0].update(status="closed", answer="B", closed="2026-11-10")
+    doc["entries"][0].update(change)
     path.write_text(yaml.safe_dump(doc))
-    git(other, "-c", "user.email=o@e.com", "-c", "user.name=O", "commit", "-qam", "closed elsewhere")
+    git(other, "-c", "user.email=o@e.com", "-c", "user.name=O", "commit", "-qam", "D1 changed elsewhere")
     git(other, "push", "-q", "origin", "dev")
+
+
+def _close_on_origin(lay: Layout, tmp_path: Path) -> None:
+    _on_origin(lay, tmp_path, status="closed", answer="B", closed="2026-11-10")
+
+
+def _options_changed_on_origin(lay: Layout, tmp_path: Path) -> None:
+    _on_origin(lay, tmp_path, options=[{"label": "C", "effect": "c"}], recommendation="C", default_if_unanswered="C")
 
 
 def _close_here(lay: Layout, _tmp: Path) -> None:
@@ -334,6 +343,8 @@ def _close_here(lay: Layout, _tmp: Path) -> None:
 
 ANSWER_REFUSALS = {   # (option, words, id, setup after the report) -> status
     "empty_words": (("A", "  ", "D1", None), 400),
+    "multiline_words": (("A", "ship A\nnow", "D1", None), 400),   # no one-line sheet record could match it
+    "options_changed_on_origin": (("A", "ship A", "D1", _options_changed_on_origin), 400),
     "not_a_label": (("C", "ship C", "D1", None), 400),
     "unknown_id": (("A", "ship A", "D9", None), 400),
     "preference": ((None, "drop it", "P1", None), 400),
@@ -363,7 +374,7 @@ def _second_block(lay: Layout, _tmp: Path) -> None:
     block(lay, "sol")
 
 
-@pytest.mark.parametrize("case", ["empty_words", "stale_commit", "stale_settles"])
+@pytest.mark.parametrize("case", ["empty_words", "multiline_words", "stale_commit", "stale_settles"])
 def test_an_approval_refusal_records_nothing(tmp_path: Path, monkeypatch, case: str) -> None:
     lay = layout(tmp_path, monkeypatch)
     block(lay)
@@ -371,8 +382,9 @@ def test_an_approval_refusal_records_nothing(tmp_path: Path, monkeypatch, case: 
     offer = leaf_offer(c)
     {"stale_commit": _moved, "stale_settles": _second_block}.get(case, lambda *_a: None)(lay, tmp_path)
     before = lay.snapshot()
-    r = approve(c, offer, words="" if case == "empty_words" else "false alarm")
-    assert r.status_code == (400 if case == "empty_words" else 409), r.text
+    words = {"empty_words": "", "multiline_words": "false\r\nalarm"}.get(case, "false alarm")
+    r = approve(c, offer, words=words)
+    assert r.status_code == (400 if case.endswith("_words") else 409), r.text
     assert lay.snapshot() == before
 
 

@@ -80,6 +80,10 @@ describe("the confirm flow", () => {
     ["nothing chosen", { ...EMPTY_FORM, words: "w", code: "c" }, "Choose what to decide."],
     ["no option", { ...EMPTY_FORM, target: answerTarget, words: "w", code: "c" }, "Choose one of the options, or Other."],
     ["empty reason", { ...EMPTY_FORM, target: approveTarget, words: "  ", code: "c" }, "Say why, in your own words."],
+    ["two lines", { ...EMPTY_FORM, target: answerTarget, choice: { label: "yaml" }, words: "ship\nit", code: "c" },
+      "Keep your words on one line."],
+    ["a carriage return", { ...EMPTY_FORM, target: approveTarget, words: "false\r alarm", code: "c" },
+      "Keep your words on one line."],
     ["no code", { ...EMPTY_FORM, target: approveTarget, words: "w", code: " " },
       "Enter the code `specy-road gui` printed in its terminal."],
   ])("%s: a form error and no request", (_name, form, error) => {

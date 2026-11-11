@@ -73,6 +73,8 @@ export function formError(form: DecisionForm): string | null {
   if (!form.target) return "Choose what to decide.";
   if (form.target.kind === "answer" && !form.choice) return "Choose one of the options, or Other.";
   if (!form.words.trim()) return "Say why, in your own words.";
+  // One line: the server refuses a line break, and an answer's planning-sheet record is one line.
+  if (/[\r\n]/.test(form.words.trim())) return "Keep your words on one line.";
   if (!form.code.trim()) return "Enter the code `specy-road gui` printed in its terminal.";
   return null;
 }

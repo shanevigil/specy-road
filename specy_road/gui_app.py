@@ -25,7 +25,7 @@ from specy_road.gui_app_api import make_api_router  # noqa: E402
 from specy_road.gui_app_helpers import get_repo_root
 from specy_road.gui_app_routes_workers import register_worker_routes
 from specy_road.clock import utc_now_iso
-from specy_road.decisions import close_entry
+from specy_road.decisions import close_entry, decisions_path, read_decisions
 from specy_road.decisions_local import load_merged
 from specy_road.review_override import (OPERATOR, PM_GUI, blocks_to_settle, commit_ledger_entry, integration_preflight,
                                         over_block_preflight, record_over_block, settle_lines)
@@ -65,10 +65,32 @@ _ANSWERABLE = ("decision", "human-action")
 NOT_STAMPED = "the registry was not stamped"
 
 
+class _OptionRefused(Exception):
+    """The integration branch's entry does not offer the chosen option: nothing is committed."""
+
+
+def _option_problem(eid: str, option: Any, entry: dict[str, Any] | None) -> str | None:
+    """Why ``option`` (a label, or ``None`` for Other) is not one of ``entry``'s recorded options."""
+    labels = [o.get("label") for o in (entry or {}).get("options") or [] if isinstance(o, dict)]
+    if option is not None and option not in labels:
+        return f"option {option!r} is not one of {eid}'s options ({', '.join(labels)}) nor Other"
+    return None
+
+
+def _refuse_option_at(project: Path, eid: str, option: Any) -> None:
+    """:class:`_OptionRefused` when ``project``'s open ledger entry ``eid`` does not offer ``option``; an entry
+    missing or closed there is left to :func:`close_entry` (409)."""
+    entries = read_decisions(decisions_path(project)).get("entries") or []
+    entry = next((e for e in entries if isinstance(e, dict) and e.get("id") == eid), None)
+    if entry and entry.get("status") == "open" and (why := _option_problem(eid, option, entry)):
+        raise _OptionRefused(why)
+
+
 def _answer(root: Path, payload: dict[str, Any], words: str) -> tuple[int, dict[str, Any]]:
     """Close an open decision or human-action entry with ``<option>: <words>`` (or the words for Other, ``option``
     null) as the operator, channel pm-gui, sheet line left to the coordinator. A shared entry is closed in a
-    temporary worktree of the integration branch and committed there; a ``decisions.local.yaml`` one in place."""
+    temporary worktree of the integration branch and committed there, its option checked again against that
+    branch's entry; a ``decisions.local.yaml`` one in place."""
     eid, option = payload.get("id"), payload.get("option")
     doc, local_ids, _problems = load_merged(root)   # an unreadable ledger is empty here: the id is unknown
     entry = next((e for e in doc.get("entries") or [] if isinstance(e, dict) and e.get("id") == eid), None)
@@ -76,12 +98,13 @@ def _answer(root: Path, payload: dict[str, Any], words: str) -> tuple[int, dict[
         return 400, {"detail": f"{eid!r} is not a decision or human-action entry in the ledger"}
     if entry.get("status") != "open":
         return 409, {"detail": f"{eid} is no longer open (closed since the status was loaded); nothing was recorded"}
-    labels = [o.get("label") for o in entry.get("options") or [] if isinstance(o, dict)]
-    if option is not None and option not in labels:
-        return 400, {"detail": f"option {option!r} is not one of {eid}'s options ({', '.join(labels)}) nor Other"}
+    if why := _option_problem(eid, option, entry):
+        return 400, {"detail": why}
     answer = words if option is None else f"{option}: {words}"
 
     def close(project: Path, local: bool = False) -> dict[str, Any]:
+        if not local:   # the integration branch's entry, which the coordinator may have changed since the GUI read
+            _refuse_option_at(project, eid, option)
         return close_entry(project, eid, answer, sheet_text=None, ledger_only=True, local=local,
                            decided_by=OPERATOR, channel=PM_GUI)
 
@@ -89,14 +112,21 @@ def _answer(root: Path, payload: dict[str, Any], words: str) -> tuple[int, dict[
         if eid in local_ids:
             close(root, local=True)
             return 200, {"id": eid, "integration_commit": None, "destination": "local ledger"}
-        ref, why = integration_preflight(root)
-        if why or ref is None:
-            return 400, {"detail": why}
-        landed = commit_ledger_entry(root, ref, close, lambda _e: f"roadmap: PM GUI answer closes {eid}")
+        return _commit_answer(root, eid, close)
+    except _OptionRefused as e:
+        return 400, {"detail": f"{e} on the integration branch; nothing was recorded"}
     except ValueError as e:   # the local ledger's copied schema refuses channel
         return 400, {"detail": f"{e}; run `specy-road refresh-schemas`; nothing was recorded"}
     except SystemExit:   # close_entry: not open on the integration branch (closed there, or never committed there)
         return 409, {"detail": f"{eid} is not open on the integration branch; nothing was recorded"}
+
+
+def _commit_answer(root: Path, eid: str, close: Callable[[Path], dict[str, Any]]) -> tuple[int, dict[str, Any]]:
+    """The shared answer: preflight, then ``close`` in a temporary worktree of the integration branch, committed."""
+    ref, why = integration_preflight(root)
+    if why or ref is None:
+        return 400, {"detail": why}
+    landed = commit_ledger_entry(root, ref, close, lambda _e: f"roadmap: PM GUI answer closes {eid}")
     if landed.error:
         return 400, {"detail": f"{landed.error}; nothing was recorded"}
     return 200, {"id": eid, "integration_commit": landed.commit, "destination": landed.where}
@@ -141,8 +171,9 @@ def _approve_over_block(root: Path, payload: dict[str, Any], words: str) -> tupl
 def record_pm_decision(root: Path, payload: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     """``(HTTP status, body)`` for one decision; every refusal comes before anything is written."""
     words = payload.get("words")
-    if not isinstance(words, str) or not words.strip():
-        return 400, {"detail": "words: say why, in your own words"}
+    if not isinstance(words, str) or not words.strip() or "\n" in words.strip() or "\r" in words.strip():
+        # one line: an answer's `<ID>: <answer>` planning-sheet line is how the coordinator marks it processed
+        return 400, {"detail": "words: say why, in your own words, on one line"}
     if payload.get("kind") == "answer":
         return _answer(root, payload, words.strip())
     if payload.get("kind") == "approve-over-block":
