@@ -49,10 +49,10 @@ def _target(repo_root: Path, rec: WorkerRecord) -> ReviewTarget:
     checkpoint or start head is where its changes are judged from. A chore's is its own (chore_cli)."""
     if (chore := load_chore(repo_root, rec.node_id)) is not None:
         return chore_target(repo_root, chore)
+    nodes = load_roadmap(repo_root)["nodes"]
     try:
-        return resolve_target(repo_root, rec.node_id)
+        return resolve_target(repo_root, rec.node_id, nodes=nodes)
     except ReviewTargetError as e:
-        nodes = load_roadmap(repo_root)["nodes"]
         node = next((n for n in nodes if n.get("id") == rec.node_id), None)
         if node is None or (_registry_entry(repo_root, rec.node_id) or {}).get("branch"):
             raise WorkerError(str(e)) from None   # an unknown node, or a claim whose branch is gone

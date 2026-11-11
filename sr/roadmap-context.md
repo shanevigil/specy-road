@@ -34,7 +34,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.9` Commands run in the CLI's process: no python -m re-launch, no cwd globals `commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals` — task — **Not Started**
     - `M16.2.10` Every command exposes build_parser(), imports lazily and shares the common argument helpers `every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers` — task — **Not Started**
     - `M16.2.11` One SpecyError base for the 15 error classes, printed and turned into an exit code once `one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once` — task — **Not Started**
-    - `M16.2.12` Review packets and prompts show a held milestone's rollup as the public loader does `held-rollup-in-review-packets` — task — **Not Started**
+    - `M16.2.12` Review packets and prompts show a held milestone's rollup as the public loader does `held-rollup-in-review-packets` — task — **Complete**
     - `M16.2.13` The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle `loader-out-of-review-cycle` — task — **Not Started**
   - `M16.3` Orchestration state model and the cap-driven folds `orchestration-state-model-and-the-cap-driven-folds` — milestone — **Not Started**
     - `M16.3.1` Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI `orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` — task — **Not Started**
@@ -333,7 +333,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.2.12` on `feature/rm-held-rollup-in-review-packets` since 2026-11-10
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -346,14 +345,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 28 | 0 | 2.18 | 57% | 21 | 2 |
+| `CHANGELOG.md` **flagged** | 27 | 0 | 2.15 | 56% | 21 | 2 |
 | `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 32 | 0 | 2.28 | 59% | 55 | 3 |
+| `docs` **flagged** | 31 | 0 | 2.26 | 58% | 55 | 3 |
 | `planning` **flagged** | 2 | 0 | 3.50 | 100% | 18 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 42 | 0 | 2.19 | 52% | 83 | 3 |
-| `tests` **flagged** | 44 | 0 | 2.18 | 55% | 95 | 3 |
+| `tests` **flagged** | 44 | 0 | 2.14 | 52% | 95 | 3 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
@@ -367,6 +365,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `scripts` | 9 | 0 | 2.11 | 44% | 85 | 0 |
+| `specy_road` | 42 | 0 | 2.14 | 50% | 83 | 3 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

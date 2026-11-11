@@ -248,9 +248,8 @@ def resolve_target(
 ) -> ReviewTarget:
     """Build the target for ``node_id``; raises :class:`ReviewTargetError`.
 
-    ``nodes`` is the already-loaded graph when the caller has one: the public
-    loader applies the milestone-review hold, so a nested ``load_roadmap``
-    here would recurse.
+    The fallback graph carries no hold, so a caller that renders or compares
+    rollups passes ``nodes=``.
     """
     nodes = list(nodes) if nodes is not None else load_roadmap(repo_root)["nodes"]
     node = next((n for n in nodes if n.get("id") == node_id), None)
@@ -284,9 +283,12 @@ def resolve_target(
                         committed_zones=_zones_at(repo_root, node_id, commit))
 
 
-def resolve_target_or_exit(repo_root: Path, node_id: str, ref: str | None = None) -> ReviewTarget:
+def resolve_target_or_exit(
+    repo_root: Path, node_id: str, ref: str | None = None, *,
+    nodes: list[dict[str, Any]] | None = None,
+) -> ReviewTarget:
     try:
-        return resolve_target(repo_root, node_id, ref)
+        return resolve_target(repo_root, node_id, ref, nodes=nodes)
     except ReviewTargetError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
