@@ -89,10 +89,46 @@ exit: 0
 --- stderr ---
 
 $ specy-road orchestrate plan --json
-exit: 1
+exit: 0
 --- stdout ---
+{
+  "under": null,
+  "policy": {
+    "reviewers_required": 1,
+    "reviewers_distinct_families": false,
+    "reviewer_fresh_session": true,
+    "signed_reviews": false,
+    "count_human_filed_reviews": false,
+    "reviewer_reruns_required": false,
+    "max_workers": 2,
+    "escalate_same_acceptance_blocks": 3,
+    "escalate_review_rounds": 5,
+    "escalate_when_converging": false,
+    "stall_after_seconds": 600,
+    "milestone_full_review": true,
+    "delta_review": true,
+    "reviewer_resumed_delta": false,
+    "quality_window": 50,
+    "quality_area_depth": 1,
+    "quality_threshold": 0.5,
+    "quality_routing": false
+  },
+  "ok": true,
+  "roster_ref": "origin/dev",
+  "roster_drift": null,
+  "batches": [],
+  "blocked": [],
+  "active": [
+    "M1.1"
+  ],
+  "unauthored": [],
+  "preferences_not_applied": [],
+  "preferences_error": null,
+  "local_roster": [],
+  "reviewer_auth_notices": [],
+  "cursor_force_warnings": []
+}
 --- stderr ---
-error: orchestration config: refs/remotes/origin/HEAD (the remote's default branch) is missing, and with a remote configured the integration branch is named only there; run `git remote set-head origin <name>` with the remote's real default branch (`git remote set-head origin --auto` fails when the remote's HEAD is unborn)
 
 $ specy-road doctor
 exit: 0

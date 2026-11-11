@@ -184,6 +184,8 @@ def build(row: Row, tmp: Path) -> tuple[Path, dict[str, Path]]:
     git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "push", "-q", "origin", "dev", BRANCH)
+    git(repo, "fetch", "-q", "origin")
+    git(repo, "remote", "set-head", "origin", "dev")   # as clone does: plan reads the branch there
     dirs = {
         "repo": repo.resolve(),
         "tmp": tmp.resolve(),
