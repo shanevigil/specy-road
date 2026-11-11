@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_run
 from specy_road.milestone_chunk_io import (
@@ -106,18 +107,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Roadmap id of the milestone parent (e.g. M7).",
     )
     add_repo_root_arg(p)
-    p.add_argument(
-        "--base",
-        default=None,
-        metavar="BRANCH",
-        help="Integration branch (default: roadmap/git-workflow.yaml).",
-    )
-    p.add_argument(
-        "--remote",
-        default=None,
-        metavar="NAME",
-        help="Git remote (default: roadmap/git-workflow.yaml).",
-    )
+    add_base_arg(p, help="Integration branch (default: roadmap/git-workflow.yaml).")
+    add_remote_arg(p, help="Git remote (default: roadmap/git-workflow.yaml).")
     return p
 
 

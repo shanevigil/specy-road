@@ -18,7 +18,7 @@ options:
   --harness {claude-code,codex,cursor,generic}
                         Where an off-roster model runs
   --worktree WORKTREE   Run in this checkout (default: this one)
-  --json
+  --json                Machine-readable output.
   --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
                         .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
                         root, else the current directory).

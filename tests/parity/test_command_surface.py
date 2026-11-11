@@ -14,7 +14,14 @@ import pytest
 
 from tests.parity.command_map import apply_rows, command_map_rows, inventory_differences
 from tests.parity.help_surface import crawl, parser_inventory
-from tests.parity.support import GOLDEN, REGEN, check_golden, help_text, normalise
+from tests.parity.support import (
+    GOLDEN,
+    REGEN,
+    SHARED_OPTIONS,
+    check_golden,
+    help_text,
+    normalise,
+)
 
 pytestmark = pytest.mark.parity
 
@@ -76,14 +83,19 @@ def test_help_transcript_matches_golden(key: str) -> None:
     if REGEN and entry is None:
         return  # regeneration already dropped its golden
     assert entry is not None, f"{key} has a golden transcript but is gone from the CLI"
-    check_golden(_help_file(key), entry["transcript"], help_text)
+    check_golden(_help_file(key), entry["transcript"], _transcript_form)
+
+
+def _transcript_form(text: str) -> str:
+    """Help compared byte for byte, except the help strings of the options cli_args declares."""
+    return help_text(text, SHARED_OPTIONS)
 
 
 def test_every_current_name_has_a_golden_transcript() -> None:
     """A name a row adds still needs its transcript (``SPECY_ROAD_PARITY_REGEN=missing``)."""
     for key, entry in crawl().items():
         if key not in _golden_inventory():
-            check_golden(_help_file(key), entry["transcript"], help_text)
+            check_golden(_help_file(key), entry["transcript"], _transcript_form)
     missing = [key for key in crawl() if not _help_file(key).is_file()]
     assert not missing, f"no golden transcript for {missing}; run SPECY_ROAD_PARITY_REGEN=missing"
 
@@ -180,6 +192,7 @@ def test_command_map_rows_apply_as_declared_deltas(rows, current, problem) -> No
 
 
 _DOCS = "  --x X  See https://github.com/o/r/blob/<DOCS_REF>/docs/a.md for\n        more.\n"
+_FREE = frozenset({"--json", "--ref"})
 
 
 @pytest.mark.parametrize(
@@ -194,12 +207,18 @@ _DOCS = "  --x X  See https://github.com/o/r/blob/<DOCS_REF>/docs/a.md for\n    
         ),
         (_DOCS, _DOCS.replace("more", "less"), False),  # a changed word in a docs paragraph
         ("  --a  one\n" + _DOCS, "  --a  one \n" + _DOCS, False),  # its neighbour stays exact
+        # a shared option's help may change; its name and metavar, and other options, may not
+        ("  --json  Machine output.\n", "  --json\n", True),
+        ("  --ref REF  one\n           two\n  --a  x\n", "  --ref REF  three\n  --a  x\n", True),
+        ("  --ref REF  one\n", "  --ref R  one\n", False),
+        ("  --ref REF  one\n  --a  x\n", "  --ref REF  one\n  --a  y\n", False),
+        ("  --a  one\n", "  --a  two\n", False),
     ],
 )
-def test_help_text_is_exact_outside_docs_url_paragraphs(
+def test_help_text_is_exact_outside_docs_url_paragraphs_and_shared_option_help(
     golden: str, actual: str, same: bool
 ) -> None:
-    assert (help_text(golden) == help_text(actual)) is same
+    assert (help_text(golden, _FREE) == help_text(actual, _FREE)) is same
 
 
 def _version_cases() -> list[tuple[str, str]]:

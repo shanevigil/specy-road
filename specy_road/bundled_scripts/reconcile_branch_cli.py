@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.reconcile_branch import reconcile_branch
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -25,10 +26,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_repo_root_arg(p)
     p.add_argument("node_id", nargs="?", default=None, metavar="NODE_ID",
                    help="Refuse unless HEAD is this leaf's feature branch.")
-    p.add_argument("--base", default=None, metavar="BRANCH",
-                   help="Integration branch (default: roadmap/git-workflow.yaml, else main).")
-    p.add_argument("--remote", default=None, metavar="NAME",
-                   help="Git remote (default: roadmap/git-workflow.yaml, else origin).")
+    add_base_arg(p)
+    add_remote_arg(p)
     return p
 
 

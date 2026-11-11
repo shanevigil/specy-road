@@ -13,7 +13,7 @@ options:
   --today TODAY         YYYY-MM-DD, for availability and substitution checks
   --spread              Assign executors round-robin among the capable, available entries by leaf
                         order, instead of always the cheapest
-  --json
+  --json                Machine-readable output.
   --roster-from-worktree
                         Dry run: plan with the working tree's roadmap/orchestration.yaml
                         (uncommitted); nothing may launch from this plan, and delegation never

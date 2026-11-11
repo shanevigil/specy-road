@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_integration import integration_worktree
 from specy_road.finish_work_artifacts import remove_main_checkout_pickup_files
@@ -164,18 +165,8 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     add_repo_root_arg(p)
-    p.add_argument(
-        "--base",
-        default=None,
-        metavar="BRANCH",
-        help="Integration branch (default: roadmap/git-workflow.yaml, else main).",
-    )
-    p.add_argument(
-        "--remote",
-        default=None,
-        metavar="NAME",
-        help="Git remote (default: roadmap/git-workflow.yaml, else origin).",
-    )
+    add_base_arg(p)
+    add_remote_arg(p)
     p.add_argument(
         "--force",
         action="store_true",

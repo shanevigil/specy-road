@@ -20,6 +20,7 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_json_arg
 from specy_road.git_subprocess import git_stdout
 from specy_road.session_presence import (
     DEFAULT_TTL_HOURS,
@@ -208,7 +209,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = ssub.add_parser("list", help="Live sessions (--all includes expired)")
     sp.add_argument("--all", action="store_true")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_list)
 

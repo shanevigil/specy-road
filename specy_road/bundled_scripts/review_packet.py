@@ -39,6 +39,7 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
+from specy_road.cli_args import add_base_arg, add_ref_arg
 from specy_road.brief_generation import index, render_brief
 from specy_road.bundled_scripts.review_packet_nested import nested_diff_section
 from specy_road.bundled_scripts.review_packet_observed import (
@@ -364,10 +365,11 @@ def build_parser() -> argparse.ArgumentParser:
     """The ``specy-road review-packet`` parser."""
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("node_id", help="Roadmap node id, e.g. M1.2")
-    p.add_argument("--ref", help="Branch or commit to review (default: the node's registered branch, local or remote-tracking)")
-    p.add_argument("--base", metavar="REF",
-                   help="Diff from the merge base with REF instead of the integration branch's "
-                        "(e.g. the commit before the leaf, when its branch is already merged)")
+    add_ref_arg(p, help="Branch or commit to review (default: the node's registered branch, "
+                        "local or remote-tracking)")
+    add_base_arg(p, metavar="REF",
+                 help="Diff from the merge base with REF instead of the integration branch's "
+                      "(e.g. the commit before the leaf, when its branch is already merged)")
     p.add_argument("--verify-cmd", action="append", default=[], metavar="CMD",
                    help="Run CMD now and include its exit code and output tail (repeatable)")
     p.add_argument("--max-diff-lines", type=int, default=MAX_DIFF_LINES, metavar="N",

@@ -48,6 +48,7 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.bundled_scripts.branches_cli import feature_branches, fetch_integration, live_branches
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
 from specy_road.bundled_scripts.doctor_env_setup import report_checkout
@@ -385,10 +386,8 @@ def build_parser() -> argparse.ArgumentParser:
              "unless its leaf is Complete.",
     )
     p.add_argument("--yes", action="store_true", help="With --fix, do not ask.")
-    p.add_argument("--base", default=None, metavar="BRANCH",
-                   help="Integration branch (default: roadmap/git-workflow.yaml, else main).")
-    p.add_argument("--remote", default=None, metavar="NAME",
-                   help="Git remote (default: roadmap/git-workflow.yaml, else origin).")
+    add_base_arg(p)
+    add_remote_arg(p)
     add_repo_root_arg(p)
     return p
 

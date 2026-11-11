@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 
+from specy_road.cli_args import add_remote_arg
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
 from specy_road.runtime_paths import add_repo_root_arg
 
@@ -37,12 +38,7 @@ def _add_landing_args(p: argparse.ArgumentParser) -> None:
             "Does not open the PR — the gh/glab line is printed for you."
         ),
     )
-    p.add_argument(
-        "--remote",
-        default="origin",
-        metavar="NAME",
-        help="Remote for --push (default: origin).",
-    )
+    add_remote_arg(p, help="Remote for --push (default: origin).", default="origin")
     p.add_argument(
         "--on-complete",
         choices=sorted(ON_COMPLETE_MODES),

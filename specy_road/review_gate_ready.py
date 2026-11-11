@@ -11,6 +11,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from specy_road.cli_args import add_model_arg
 from specy_road import review_lock
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import base_ref, in_zones
@@ -445,7 +446,7 @@ def _refuse(msg: str) -> int:
 def add_ready_parser(sub: argparse._SubParsersAction) -> None:
     r = sub.add_parser("ready", help="Write the executor's READY hand-off for HEAD into work/reviews/<NODE_ID>/")
     r.add_argument("node_id")
-    r.add_argument("--model", required=True, help="Your roster id; the file is READY-<model>.md")
+    add_model_arg(r, help="Your roster id; the file is READY-<model>.md", required=True)
     r.add_argument("--run", action="append", default=[], metavar="CMD",
                    help="Run this verifier or test now from the current directory and record its exit and the "
                         "last lines of its output, which the review packet shows (repeatable); a non-zero exit "

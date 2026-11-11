@@ -17,6 +17,7 @@ import json
 import sys
 from dataclasses import asdict
 
+from specy_road.cli_args import add_json_arg
 from specy_road.bundled_scripts.roadmap_explain import DependencyNode, Explanation, explain, open_gates
 from specy_road.roadmap_load import load_roadmap
 from specy_road.session_plan_git import gather_session_plan
@@ -167,7 +168,7 @@ def _add_why_blocked(sub: argparse._SubParsersAction) -> None:
         ),
     )
     p.add_argument("node_id", metavar="NODE_ID")
-    p.add_argument("--json", action="store_true", help="Machine-readable output.")
+    add_json_arg(p)
     add_repo_root_arg(p)
     p.set_defaults(func=cmd_why_blocked)
 
@@ -187,7 +188,7 @@ def _add_list_gates(sub: argparse._SubParsersAction) -> None:
         "--under", default=None, metavar="NODE_ID",
         help="Only gates blocking work in this node's subtree.",
     )
-    p.add_argument("--json", action="store_true", help="Machine-readable output.")
+    add_json_arg(p)
     add_repo_root_arg(p)
     p.set_defaults(func=cmd_list_gates)
 

@@ -35,6 +35,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
+from specy_road.cli_args import add_json_arg
 from specy_road.chore_records import load_chore
 from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import git_text
@@ -201,7 +202,7 @@ def add_terminate(ws: Any, one: Callable[[argparse.Namespace], int],
     sp = ws.add_parser("terminate", help="SIGTERM the worker and close its record (--orphaned: every orphaned one)")
     sp.add_argument("worker_id", metavar="W", nargs="?")
     sp.add_argument("--orphaned", action="store_true", help="Every idle/completed worker whose leaf is over")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     sp.add_argument("--op-id", metavar="ID", help="Idempotency key; a retry returns the first result (one W only)")
     add_repo_root_arg(sp)
 

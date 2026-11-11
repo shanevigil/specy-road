@@ -5,7 +5,7 @@ usage: specy-road decisions list [-h] [--json] [--repo-root DIR]
 
 options:
   -h, --help       show this help message and exit
-  --json
+  --json           Machine-readable output.
   --repo-root DIR  Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
                    .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git root,
                    else the current directory).

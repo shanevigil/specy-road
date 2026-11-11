@@ -18,6 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_remote_arg
 from specy_road.git_subprocess import git_checked, git_root, git_run, git_text
 
 # Canonical upstream (SSH/HTTPS variants accepted via normalization).
@@ -245,12 +246,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="DIR",
         help="Root of the specy-road git clone (default: auto-discover).",
     )
-    p.add_argument(
-        "--remote",
-        default="origin",
-        metavar="NAME",
-        help="Remote to fetch and merge from (default: origin).",
-    )
+    add_remote_arg(p, help="Remote to fetch and merge from (default: origin).", default="origin")
     p.add_argument(
         "--branch",
         default="main",

@@ -34,6 +34,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.roadmap_load import load_roadmap
 from specy_road.red_green import cmd_red_green
@@ -390,8 +391,8 @@ def build_parser() -> argparse.ArgumentParser:
     hsub = handoff.add_subparsers(dest="handoff_cmd", required=True)
     st = hsub.add_parser("status", help="Report hand-offs, reviews, and whether review policy is met")
     st.add_argument("node_id", nargs="?", help="One node (default: every node under work/reviews/)")
-    st.add_argument("--json", action="store_true", help="Machine-readable output for polling")
-    st.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_json_arg(st, help="Machine-readable output for polling")
+    add_ref_arg(st)
     add_repo_root_arg(st)
     st.set_defaults(func=cmd_handoff_status)
 
@@ -399,10 +400,10 @@ def build_parser() -> argparse.ArgumentParser:
     rsub = review.add_subparsers(dest="review_cmd", required=True)
     rec = rsub.add_parser("record", help="Validate a reviewer's notes and file them as a review record")
     rec.add_argument("node_id")
-    rec.add_argument("--model", required=True, help="Reviewer model id from the roster (not human)")
+    add_model_arg(rec, help="Reviewer model id from the roster (not human)", required=True)
     rec.add_argument("--verdict", required=True, choices=["approve", "block"])
     rec.add_argument("--file", required=True, help="Markdown with review-record front matter")
-    rec.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_ref_arg(rec)
     rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
     rec.add_argument("--launch-mode", choices=REVIEW_LAUNCH_MODES, help="How your harness was started; stored on the record")
     rec.add_argument("--human-filed", metavar="WHO_AND_WHY",
@@ -417,9 +418,9 @@ def build_parser() -> argparse.ArgumentParser:
                             ("red-green", "Run the tests a leaf adds or changes at its merge base and at head", cmd_red_green)):
         sp = rsub.add_parser(name, help=about)
         sp.add_argument("node_id")
-        sp.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+        add_ref_arg(sp)
         if name == "list":
-            sp.add_argument("--json", action="store_true", help="Machine-readable output including refused markers")
+            add_json_arg(sp, help="Machine-readable output including refused markers")
         add_repo_root_arg(sp)
         sp.set_defaults(func=fn)
     add_delegate_parser(rsub)

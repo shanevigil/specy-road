@@ -13,6 +13,7 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_json_arg
 from specy_road.archive_deep import deepen_archive
 from specy_road.archive_index import index_records, load_archive_index
 from specy_road.archive_ops import archive_node, auto_archive_candidates
@@ -209,13 +210,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_deepen)
 
     sp = sub.add_parser("list-archives", help="List archive records.")
-    sp.add_argument("--json", action="store_true", help="Emit the raw index JSON.")
+    add_json_arg(sp, help="Emit the raw index JSON.")
     _add_repo_root(sp)
     sp.set_defaults(func=cmd_list)
 
     sp = sub.add_parser("show-archive", help="Show one archive record in detail.")
     sp.add_argument("archive_id", metavar="ARCHIVE_ID")
-    sp.add_argument("--json", action="store_true", help="Emit the raw record JSON.")
+    add_json_arg(sp, help="Emit the raw record JSON.")
     _add_repo_root(sp)
     sp.set_defaults(func=cmd_show)
 

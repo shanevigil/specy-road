@@ -7,6 +7,7 @@ import sys
 import time
 from typing import Any
 
+from specy_road.cli_args import add_json_arg
 from specy_road import worker_ops as ops
 from specy_road.worker_cli_render import sync_event_lines, sync_worker_header
 from specy_road.runtime_paths import resolve_repo_root
@@ -101,6 +102,6 @@ def add_sync_parser(ws, cmd_sync_fn, add_repo_root_arg) -> None:
                     help="With --wait: return only on these event types (comma list: completion, error, intervention)")
     sp.add_argument("--timeout", type=float, default=600, metavar="SECONDS", help="With --wait (default 600)")
     sp.add_argument("--verbose", action="store_true", help="Show each tool-use output line instead of collapsing runs")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_sync_fn)

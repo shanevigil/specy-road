@@ -21,6 +21,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from specy_road.cli_args import add_json_arg
 from specy_road.worker_cli_render import _sum_usage
 from specy_road.review_files import HISTORY_DIRNAME, reviews_dir
 from specy_road.review_answer import events as safe_events
@@ -155,6 +156,6 @@ def add_parser(rsub: Any) -> None:
     """``review usage`` under ``review_cli``'s ``review`` subcommands."""
     sp = rsub.add_parser("usage", help="Tokens and cost per delegated reviewer run, and their total")
     sp.add_argument("node_id")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_review_usage)

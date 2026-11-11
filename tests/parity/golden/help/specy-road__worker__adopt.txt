@@ -10,9 +10,9 @@ options:
   --node NODE
   --harness {claude-code,codex,cursor,generic}
   --session SESSION     The harness's session/thread/chat id
-  --model MODEL
+  --model MODEL         Roster id
   --worktree WORKTREE
-  --json
+  --json                Machine-readable output.
   --op-id ID
   --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
                         .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git

@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from specy_road.cli_args import add_json_arg, add_model_arg
 from specy_road.bundled_scripts.chore_garden import as_json, garden
 from specy_road.chore_records import (
     _SLUG,
@@ -142,23 +143,23 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--zone", action="append", required=True, metavar="PATH",
                     help="A touch zone (repeatable); worker reconcile flags changes outside them")
     sp.add_argument("--review", action="store_true", help="Allow `review delegate <slug>`; without it close records unreviewed")
-    sp.add_argument("--model", help="Default executor model for `worker delegate <slug>`; may be off the roster")
+    add_model_arg(sp, help="Default executor model for `worker delegate <slug>`; may be off the roster")
     sp.add_argument("--harness", choices=HARNESSES, help="Where an off-roster model runs")
     sp.add_argument("--worktree", help="Run in this checkout (default: this one)")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_start)
     sp = cs.add_parser("close", help="End idle workers and write work/chores/<slug>.md (summary, usage, verdict)")
     sp.add_argument("slug")
     sp.add_argument("--summary", required=True, help="What was done")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_close)
     sp = cs.add_parser("garden", help="Read-only drift scans, one finding per line; --open-chores files them as leaves")
     sp.add_argument("--open-chores", action="store_true",
                     help="Add one leaf per finding class through the add-node write; none while one is still open")
     sp.add_argument("--under", metavar="PARENT", help="The node --open-chores adds its leaves under (required with it)")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_garden)
     return p

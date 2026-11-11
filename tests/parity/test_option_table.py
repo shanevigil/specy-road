@@ -8,17 +8,19 @@ metavar. Help strings are left out; the transcript test allows those options' he
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 
 import pytest
 
+from tests.helpers import REPO
 from tests.parity.help_surface import command_tree
-from tests.parity.support import GOLDEN, REGEN
+from tests.parity.support import GOLDEN, REGEN, SHARED_OPTIONS
 
 pytestmark = pytest.mark.parity
 
 TABLE = GOLDEN / "option_table.json"
-SHARED_OPTIONS = ("--json", "--ref", "--model", "--base", "--remote")
+CLI_ARGS = REPO / "specy_road" / "cli_args.py"
 
 
 def _row(action: argparse.Action) -> dict:
@@ -39,7 +41,7 @@ def option_table() -> dict[str, dict]:
     table = {}
     for path, parser in command_tree():
         for action in [] if parser is None else parser._actions:
-            for option in set(action.option_strings) & set(SHARED_OPTIONS):
+            for option in set(action.option_strings) & SHARED_OPTIONS:
                 table[" ".join((*path, option))] = _row(action)
     return dict(sorted(table.items()))
 
@@ -50,3 +52,17 @@ def test_shared_options_parse_as_the_table_records() -> None:
         TABLE.write_text(json.dumps(table, indent=1) + "\n", encoding="utf-8")
         return
     assert table == json.loads(TABLE.read_text(encoding="utf-8"))
+
+
+def test_only_cli_args_declares_the_shared_options() -> None:
+    declared = []
+    for path in sorted((REPO / "specy_road").rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if (
+                path != CLI_ARGS
+                and isinstance(node, ast.Call)
+                and getattr(node.func, "attr", None) == "add_argument"
+                and {getattr(a, "value", None) for a in node.args} & SHARED_OPTIONS
+            ):
+                declared.append(f"{path.relative_to(REPO)}:{node.lineno}")
+    assert not declared, f"declare these through specy_road.cli_args: {declared}"

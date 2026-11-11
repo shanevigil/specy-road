@@ -20,7 +20,7 @@ options:
                        slug, else this checkout's git root)
   --sign-key PATH      Sign the filed record with this OpenSSH private key (needed under
                        policy.signed_reviews)
-  --json
+  --json               Machine-readable output.
   --repo-root DIR      Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
                        .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
                        root, else the current directory).
