@@ -30,10 +30,10 @@ import sys
 from pathlib import Path
 
 from specy_road import harness_facts as hf
-from specy_road.init_project import index_bundled_profile_names, project_template_root
+from specy_road.init_project import index_bundled_profile_names
 from specy_road.model_profiles import PROFILES_REL, load_profile
 from specy_road.orchestration_config import load_orchestration_config
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_template_root
 from specy_road.worker_adapter_codex import CODEX_MEMORY_OFF
 
 

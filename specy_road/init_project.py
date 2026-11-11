@@ -18,7 +18,7 @@ from specy_road.model_profiles import PROFILES_REL, load_profile
 from specy_road.runtime_paths import (
     prefix_within,
     project_root,
-    specy_road_package_dir,
+    project_template_root,
 )
 
 
@@ -113,10 +113,6 @@ def include_template_profiles_file(rel: Path, selection: InitProfilesSelection) 
     if selection.mode == "none":
         return False
     return rel_in.as_posix() in selection.profile_rels
-
-
-def project_template_root() -> Path:
-    return specy_road_package_dir() / "templates" / "project"
 
 
 def _record_layout(top: Path, prefix: str, written: list[str], *, dry_run: bool) -> None:

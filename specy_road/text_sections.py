@@ -9,6 +9,11 @@ and cutting a document into indexable chunks (the search corpus).
 The parser was previously inlined in ``brief_dependency_context`` and is lifted
 here unchanged, so brief output is byte-identical across the move.
 
+The CommonMark code-span and fence readers at the end are shared by the stale
+command scan (``validate_stale_commands``) and the decisions ledger's sheet
+check (``decisions``); they live here, with no imports of the package, so the
+ledger does not load the CLI to find a fence.
+
 Heading matching is deliberately forgiving: case-insensitive, tolerant of
 internal whitespace and of a trailing colon (``## Intent:``). Sheets are
 hand-written, and a stricter parser would silently drop real content.
@@ -21,6 +26,8 @@ from pathlib import Path
 
 # A level-2 ATX heading. The trailing ``:?`` lets "## Intent:" match "Intent".
 LEVEL2_RE = re.compile(r"^\s*##\s+(?P<title>.+?)\s*:?\s*$")
+# A fenced code block's opener or closer: a run of 3+ backticks or tildes, at any indent.
+_FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 
 
 def normalize_heading(raw: str) -> str:
@@ -104,3 +111,68 @@ def read_text_safely(path: Path) -> tuple[str, bool]:
         return path.read_text(encoding="utf-8"), True
     except (OSError, UnicodeDecodeError):
         return "", False
+
+
+def _backtick_run(line: str, index: int) -> int:
+    end = index
+    while end < len(line) and line[end] == "`":
+        end += 1
+    return end
+
+
+def _code_spans(line: str) -> list[tuple[int, int, str]]:
+    spans: list[tuple[int, int, str]] = []
+    index = 0
+    length = len(line)
+    while index < length:
+        if line[index] != "`":
+            index += 1
+            continue
+        opener_end = _backtick_run(line, index)
+        width = opener_end - index
+        cursor = opener_end
+        closer: tuple[int, int] | None = None
+        while cursor < length:
+            if line[cursor] != "`":
+                cursor += 1
+                continue
+            run_end = _backtick_run(line, cursor)
+            if run_end - cursor == width:
+                closer = (cursor, run_end)
+                break
+            cursor = run_end
+        if closer is None:
+            index = opener_end
+            continue
+        close_at, close_end = closer
+        spans.append((index, close_end, line[opener_end:close_at]))
+        index = close_end
+    return spans
+
+
+def _fence_marker(line: str) -> tuple[str, int, int] | None:
+    match = _FENCE.match(line)
+    if match is None:
+        return None
+    run = match.group(1)
+    return run[0], len(run), match.end()
+
+
+def _opening_is_code_span(line: str) -> bool:
+    lead = len(line) - len(line.lstrip(" \t"))
+    if lead >= len(line) or line[lead] != "`":
+        return False
+    for start, end, _content in _code_spans(line):
+        if start == lead:
+            return True
+    return False
+
+
+def _fence_closes(line: str, open_fence: tuple[str, int]) -> bool:
+    marker = _fence_marker(line)
+    if marker is None:
+        return False
+    char, width, end = marker
+    if char != open_fence[0] or width < open_fence[1]:
+        return False
+    return not line[end:].strip()

@@ -16,8 +16,8 @@ from specy_road.cli_args import subcommand_parsers
 from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import TEAM_MD
 from specy_road.managed_block import agent_file_lines_outside_block
+from specy_road.text_sections import _code_spans, _fence_closes, _fence_marker, _opening_is_code_span
 
-_FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 # Emphasis directly attached to the product name is markup, so "_" is not a word
 # boundary there. A "_" inside an identifier (foo_specy-road) still blocks.
 _MENTION = re.compile(
@@ -176,71 +176,6 @@ def _reports(line: str, start: int) -> bool:
         or _run_verb(line, start)
         or _mandatory_follower(line, start)
     )
-
-
-def _backtick_run(line: str, index: int) -> int:
-    end = index
-    while end < len(line) and line[end] == "`":
-        end += 1
-    return end
-
-
-def _code_spans(line: str) -> list[tuple[int, int, str]]:
-    spans: list[tuple[int, int, str]] = []
-    index = 0
-    length = len(line)
-    while index < length:
-        if line[index] != "`":
-            index += 1
-            continue
-        opener_end = _backtick_run(line, index)
-        width = opener_end - index
-        cursor = opener_end
-        closer: tuple[int, int] | None = None
-        while cursor < length:
-            if line[cursor] != "`":
-                cursor += 1
-                continue
-            run_end = _backtick_run(line, cursor)
-            if run_end - cursor == width:
-                closer = (cursor, run_end)
-                break
-            cursor = run_end
-        if closer is None:
-            index = opener_end
-            continue
-        close_at, close_end = closer
-        spans.append((index, close_end, line[opener_end:close_at]))
-        index = close_end
-    return spans
-
-
-def _fence_marker(line: str) -> tuple[str, int, int] | None:
-    match = _FENCE.match(line)
-    if match is None:
-        return None
-    run = match.group(1)
-    return run[0], len(run), match.end()
-
-
-def _opening_is_code_span(line: str) -> bool:
-    lead = len(line) - len(line.lstrip(" \t"))
-    if lead >= len(line) or line[lead] != "`":
-        return False
-    for start, end, _content in _code_spans(line):
-        if start == lead:
-            return True
-    return False
-
-
-def _fence_closes(line: str, open_fence: tuple[str, int]) -> bool:
-    marker = _fence_marker(line)
-    if marker is None:
-        return False
-    char, width, end = marker
-    if char != open_fence[0] or width < open_fence[1]:
-        return False
-    return not line[end:].strip()
 
 
 def _inside_span(index: int, spans: list[tuple[int, int, str]]) -> bool:

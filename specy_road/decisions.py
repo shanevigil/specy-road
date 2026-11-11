@@ -23,7 +23,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road.init_project import project_template_root
+from specy_road.runtime_paths import project_template_root
 from specy_road.orchestration_config import _paused_until_error
 from specy_road.registry_yaml import dump_registry_text
 
@@ -116,7 +116,7 @@ def open_questions(doc: dict[str, Any]) -> list[dict[str, Any]]:
 def _open_unexpired(e: dict[str, Any], now: datetime | date | None) -> bool:
     """Open, and its ``expires`` (a date, inclusive, or a datetime) has not passed."""
     # Same boundary rule as a roster pause, so `expires` and `paused_until` read alike.
-    from specy_road.orchestrate_plan import _pause_active
+    from specy_road.orchestrate_assign import _pause_active
 
     if e.get("status") != "open":
         return False
@@ -227,10 +227,10 @@ def next_decision_id(doc: dict[str, Any], prefix: str = "D") -> str:
 def _unfenced_lines(text: str) -> list[str]:
     """Lines outside CommonMark fenced code blocks, so examples cannot close an entry.
 
-    Reuses the fence opener/closer in ``validate_stale_commands`` (backtick and
-    tilde runs, matching lengths).
+    Reuses the fence opener/closer that ``validate_stale_commands`` also reads
+    (:mod:`specy_road.text_sections`: backtick and tilde runs, matching lengths).
     """
-    from specy_road.validate_stale_commands import (
+    from specy_road.text_sections import (
         _fence_closes,
         _fence_marker,
         _opening_is_code_span,

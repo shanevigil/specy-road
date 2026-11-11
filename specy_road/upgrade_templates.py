@@ -7,9 +7,8 @@ from pathlib import Path
 
 import shutil
 
-from specy_road.init_project import project_template_root
 from specy_road.managed_block import resolves_outside
-from specy_road.runtime_paths import specy_road_package_dir
+from specy_road.runtime_paths import project_template_root, specy_road_package_dir
 
 _WORK = Path("work")
 _TEMPLATE_SUFFIX = ".template.md"

@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from specy_road.init_project import project_template_root
+from specy_road.runtime_paths import project_template_root
 from specy_road.text_sections import LEVEL2_RE, find_section, normalize_heading
 
 LESSONS_REL = Path("constraints") / "review-lessons.md"

@@ -18,7 +18,7 @@ import yaml
 from starlette.testclient import TestClient
 
 from specy_road.gui_app import DECISION_CODE_HEADER, NOT_STAMPED, create_app
-from specy_road.init_project import project_template_root
+from specy_road.runtime_paths import project_template_root
 from specy_road.orchestration_role_env import ROLE_ENV
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate

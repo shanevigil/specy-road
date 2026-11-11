@@ -19,6 +19,9 @@ entry is a closed decision of this node with ``decided_by`` whose answer names t
 is the one under review or only this leaf's sheet or review bookkeeping changed since
 (:func:`~specy_road.review_bookkeeping.only_planning_or_review_bookkeeping_since`). It then settles only the
 blocks and the shortfall the answer names; every other gate condition applies unchanged.
+
+The command handler (``cmd_operator_decision``) lives in :mod:`specy_road.bundled_scripts.review_cli`: it loads the
+roadmap through the public loader, and the gate imports this module, so the gate's imports never reach the loader.
 """
 
 from __future__ import annotations
@@ -46,7 +49,7 @@ from specy_road.review_bookkeeping import only_planning_or_review_bookkeeping_si
 from specy_road.review_deferral import write_marker
 from specy_road.review_files import ReviewFile, project_of, reviews_dir
 from specy_road.review_policy_ref import committed_yaml, policy_source
-from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
+from specy_road.runtime_paths import project_prefix
 from specy_road.text_sections import find_section
 
 if TYPE_CHECKING:   # review_gate imports this module
@@ -174,22 +177,6 @@ def role_refusal() -> str | None:
     if raw is not None and raw != COORDINATOR:
         return (f"{ROLE_ENV} is {raw!r}: only the coordinator records an operator decision (unset is the manual "
                 "coordinator); an executor, reviewer or root-cause analyst may not")
-    return None
-
-
-def _form_problem(ns: argparse.Namespace) -> str | None:
-    """Why the flags are neither the operator form (``--quote``) nor the coordinator form (``--rule``)."""
-    if ns.rule is None:
-        if ns.rca or ns.alignment or ns.limit:
-            return "--rca, --alignment and --limit belong to the coordinator form (--rule)"
-        if not (ns.quote or "").strip():
-            return "--quote is empty: give the operator's words as they said them, or the coordinator form --rule"
-    elif ns.quote is not None:
-        return "--quote and --rule are two forms; give one"
-    elif ns.decision != ACCEPT_WITH_LIMITS:
-        return f"the coordinator form (--rule) records only --decision {ACCEPT_WITH_LIMITS}"
-    if not (ns.session or "").strip():
-        return "--session is empty: name the session the operator decided in"
     return None
 
 
@@ -525,62 +512,3 @@ def record_over_block(root: Path, node: dict[str, Any], gate: GateResult, ref: s
         return OverBlockRecord(landed)
     marker = write_operator_marker(root, landed.entry, sha, session)
     return OverBlockRecord(landed, marker, evaluate_gate(root, node, sha, branch=branch))
-
-
-def cmd_operator_decision(ns: argparse.Namespace) -> int:
-    if why := role_refusal():   # before anything is read or written
-        return _fail(why)
-    root = resolve_repo_root(ns)
-    if why := _form_problem(ns):
-        return _fail(why)
-    who = recorder(root)
-    if not who:
-        return _fail("set git user.name and user.email: the decision entry names who recorded it")
-    from specy_road.roadmap_load import load_roadmap
-    from specy_road.review_gate import evaluate_gate
-    from specy_road.review_target import ReviewTargetError, resolve_target
-
-    nodes = load_roadmap(root)["nodes"]
-    if any(n.get("parent_id") == ns.node_id for n in nodes):
-        return _fail(f"{ns.node_id} has children: an operator decision is for one leaf and one commit")
-    try:
-        t = resolve_target(root, ns.node_id, nodes=nodes)
-    except ReviewTargetError as e:
-        return _fail(f"the commit under review does not resolve: {e}")
-    gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
-    sha = gate.commit
-    blocks = blocks_to_settle(root, gate, sha)
-    cited: list[dict[str, str]] = []
-    if ns.rule:
-        why, cited = _coordinator_problem(root, ns, gate, t.node, blocks)
-        if why:
-            return _fail(why)
-    try:
-        entry, settles = append_decision(root, ns, gate, blocks, who, cited)
-    except ValueError as e:   # a copied schema from before decided_by
-        return _fail(f"{e}; nothing was written. Run `specy-road refresh-schemas` and try again")
-    marker = write_operator_marker(root, entry, sha, ns.session)
-    print(f"[ok] decision {entry['id']} closed (decided_by: {entry['decided_by']}) for {ns.node_id} at {sha[:12]}: "
-          f"{'; '.join(settles) or 'nothing to settle'}; wrote {marker}")
-    print(f"  Commit {DECISIONS_REL.as_posix()} on the integration branch, then `specy-road handoff status "
-          f"{ns.node_id}`. A later commit on the leaf beyond its sheet or review bookkeeping ends the decision.")
-    return 0
-
-
-def add_parser(rsub: Any) -> None:
-    sp = rsub.add_parser("operator-decision", help="Coordinator: record the operator's review decision for the "
-                                                   "commit under review, or accept with limits under a standing rule")
-    sp.add_argument("node_id")
-    sp.add_argument("--decision", required=True, choices=[APPROVE, ACCEPT_WITH_LIMITS])
-    sp.add_argument("--quote", help="The operator's words, as they said them (operator form)")
-    sp.add_argument("--session", required=True, help="The session the operator decided in; kept in the marker")
-    sp.add_argument("--rule", metavar="ID", help="Coordinator form: an open standing-rule entry in "
-                                                 "roadmap/decisions.yaml; only --decision accept-with-limits")
-    sp.add_argument("--rca", action="append", default=[], metavar="MODEL=PATH",
-                    help="Coordinator form: a root-cause analysis; give two, of two roster families")
-    sp.add_argument("--alignment", action="append", default=[], metavar="MODEL=PATH",
-                    help="Coordinator form: an alignment review; give two, of two roster families")
-    sp.add_argument("--limit", action="append", default=[], metavar="TEXT",
-                    help="Coordinator form: an accepted limit; each counted finding is named in exactly one")
-    add_repo_root_arg(sp)
-    sp.set_defaults(func=cmd_operator_decision)
