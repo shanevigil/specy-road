@@ -119,6 +119,31 @@ def test_entry_point_edges_are_command_mains_and_grind_cleanup(tmp_path):
     assert all(target != "specy_road.bundled_scripts.helper" for _source, target in edges)
 
 
+def test_gate_cli_and_gui_imports_of_orchestration_members_are_listed(tmp_path):
+    """The gate, CLI entry points and gui_app importing past the package interface are listed."""
+    package = tmp_path / "specy_road"
+    bundled = package / "bundled_scripts"
+    for init in (package, bundled, package / "orchestration"):
+        _write_module(init / "__init__.py", "")
+    _write_module(package / "orchestration" / "state.py", "def snapshot():\n    return {}\n")
+    deep = "from specy_road.orchestration.state import snapshot\n"
+    _write_module(bundled / "worker_cli.py", deep + "def main():\n    return 0\n")
+    _write_module(package / "gui_app_routes_workers.py", deep)
+    _write_module(package / "review_gate.py", "from specy_road.orchestration import snapshot\n")
+    _write_module(package / "worker_ops.py", deep)
+
+    report = layers.build_report(package)
+    listed = [(edge["from"], edge["to"]) for edge in report["orchestration_internal_imports"]]
+    assert listed == [
+        ("specy_road.bundled_scripts.worker_cli", "specy_road.orchestration.state"),
+        ("specy_road.gui_app_routes_workers", "specy_road.orchestration.state"),
+    ]
+    text = layers.render_difference(report, report)
+    assert _section(text, "orchestration internals imported by the gate, CLI or GUI") == [
+        f"{source} -> {target}" for source, target in listed
+    ]
+
+
 def test_difference_lists_every_change_and_main_exits_zero(tmp_path, capsys):
     """The difference lists every change kind, and a stale report still exits 0."""
     current = {
@@ -201,6 +226,8 @@ def test_report_names_the_cycles_and_running_it_exits_zero(monkeypatch):
     assert package_targets.isdisjoint(
         {"generate_brief", "validate_roadmap", "refresh_stubs", "chore_cli"}
     )
+
+    assert report["orchestration_internal_imports"] == []
 
     same = layers.render_difference(report, report)
     assert "no component contains roadmap_load and finish_ancestor_rollup" in same

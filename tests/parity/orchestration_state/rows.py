@@ -8,7 +8,8 @@ each row, ``worker list --all`` (text and ``--json``), ``orchestrate plan --json
 then the cleanup eligibility: :func:`specy_road.worker_orphans.orphans` (what
 ``worker terminate --orphaned`` ends), :func:`specy_road.worker_orphans.holding_slots` (what
 ``policy.max_workers`` counts) and :func:`specy_road.orphaned_claims.orphaned_claims` (the claims
-doctor reports, M15.26). The goldens were recorded before any reader switched to the snapshot.
+doctor reports, M15.26). Those goldens were recorded before any reader switched to the snapshot;
+``golden/<row>.snapshot.txt`` is what :func:`specy_road.orchestration.snapshot` returns for the row.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from pathlib import Path
 
 from specy_road import worker_state as ws
 from specy_road.chore_records import chores_dir
+from specy_road.orchestration import snapshot
 from specy_road.orphaned_claims import orphaned_claims
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
@@ -46,14 +48,20 @@ _AGE = re.compile(r"(, )(under 1m|\d+[dhm])\)")
 
 @dataclass(frozen=True)
 class Row:
-    """``build(repo, tmp)`` adds the row's state to a fresh repo; it returns extra labelled paths."""
+    """``build(repo, tmp)`` adds the row's state to a fresh repo and returns its labelled paths."""
 
     name: str
     build: Callable[[Path, Path], dict[str, Path]]
 
 
-def _worker(repo: Path, state: str, *, node: str = NODE, worktree: Path | None = None,
-            branch: str | None = BRANCH) -> ws.WorkerRecord:
+def _worker(
+    repo: Path,
+    state: str,
+    *,
+    node: str = NODE,
+    worktree: Path | None = None,
+    branch: str | None = BRANCH,
+) -> ws.WorkerRecord:
     rec = ws.create_record(repo, node, "generic", "x", worktree or repo, branch=branch)
     return ws.set_state(repo, rec, state, pid=None)
 
@@ -64,7 +72,9 @@ def _ready_at_tip(repo: Path) -> None:
     d.mkdir(parents=True, exist_ok=True)
     (d / "READY-x.md").write_text(
         f"---\nnode_id: {NODE}\nagent: x\nbranch: {BRANCH}\ncommit: '{tip}'\n"
-        f"base: '{target.base}'\nchanged_paths: [src/a.py]\n---\n", encoding="utf-8")
+        f"base: '{target.base}'\nchanged_paths: [src/a.py]\n---\n",
+        encoding="utf-8",
+    )
 
 
 def _fresh_claim(repo: Path, tmp: Path) -> dict[str, Path]:
@@ -96,16 +106,26 @@ def _abandoned(repo: Path, tmp: Path) -> dict[str, Path]:
 def _review_no_worker(repo: Path, tmp: Path) -> dict[str, Path]:
     d = reviews_dir(repo, NODE)
     d.mkdir(parents=True, exist_ok=True)
-    (d / "REVIEW-human.md").write_text(review_text(git(repo, "rev-parse", BRANCH)), encoding="utf-8")
+    (d / "REVIEW-human.md").write_text(
+        review_text(git(repo, "rev-parse", BRANCH)), encoding="utf-8"
+    )
     return {}
 
 
 def _chore_worker(repo: Path, tmp: Path) -> dict[str, Path]:
     """An idle worker on chore ``tidy-docs``: it has no leaf, claim or graph node."""
     chores_dir(repo).mkdir(parents=True, exist_ok=True)
-    (chores_dir(repo) / "tidy-docs.json").write_text(json.dumps(
-        {"slug": "tidy-docs", "branch": "chore/tidy-docs", "worktree": str(repo), "touch_zones": ["docs"]}),
-        encoding="utf-8")
+    (chores_dir(repo) / "tidy-docs.json").write_text(
+        json.dumps(
+            {
+                "slug": "tidy-docs",
+                "branch": "chore/tidy-docs",
+                "worktree": str(repo),
+                "touch_zones": ["docs"],
+            }
+        ),
+        encoding="utf-8",
+    )
     _worker(repo, "idle", node="tidy-docs", branch=None)
     return {}
 
@@ -153,25 +173,36 @@ ROWS: tuple[Row, ...] = (
 def build(row: Row, tmp: Path) -> tuple[Path, dict[str, Path]]:
     """The row's repo, and every path its output may print, labelled for normalisation."""
     repo, script = make_worker_repo(tmp)
-    commit_file(repo, "src/b.py", "print('b')\n", "more")   # the tip moves past the first impl commit
+    commit_file(
+        repo, "src/b.py", "print('b')\n", "more"
+    )  # the tip moves past the first impl commit
     extra = row.build(repo, tmp)
-    bare = tmp / "origin.git"   # doctor compares against origin/dev: with no remote it skips its cleanup checks
+    bare = (
+        tmp / "origin.git"
+    )  # doctor compares against origin/dev: with no remote it skips its cleanup checks
     git(tmp, "init", "-q", "--bare", str(bare))
     git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "push", "-q", "origin", "dev", BRANCH)
-    dirs = {"repo": repo.resolve(), "tmp": tmp.resolve(), "fake": script.resolve(), "origin": bare.resolve(),
-            **{k: v.resolve() for k, v in extra.items()}}
+    dirs = {
+        "repo": repo.resolve(),
+        "tmp": tmp.resolve(),
+        "fake": script.resolve(),
+        "origin": bare.resolve(),
+        **{k: v.resolve() for k, v in extra.items()},
+    }
     return repo, dirs
 
 
 def eligibility(repo: Path) -> dict[str, object]:
-    """Cleanup eligibility: orphaned workers, the workers holding a slot, the claims M15.26 reports."""
+    """Cleanup eligibility: orphaned workers, workers holding a slot, the claims M15.26 reports."""
     records = ws.list_records(repo)
     return {
         "orphaned_workers": orphans(repo),
         "holding_slots": [r.worker_id for r in holding_slots(repo, records)],
-        "orphaned_claims": [{"node_id": c["node_id"], "branch": c["branch"]} for c in orphaned_claims(repo)],
+        "orphaned_claims": [
+            {"node_id": c["node_id"], "branch": c["branch"]} for c in orphaned_claims(repo)
+        ],
     }
 
 
@@ -187,11 +218,27 @@ def record(row: Row, tmp: Path) -> str:
     parts = []
     for argv in COMMANDS:
         result = run_cli("specy_road.cli", list(argv), cwd=repo, env=env)
-        parts.append(step_transcript(list(argv), result.returncode, result.stdout, result.stderr, dirs))
-    parts.append(step_transcript(["(eligibility)"], 0, json.dumps(eligibility(repo), indent=2) + "\n", "", dirs))
+        parts.append(
+            step_transcript(list(argv), result.returncode, result.stdout, result.stderr, dirs)
+        )
+    parts.append(
+        step_transcript(
+            ["(eligibility)"], 0, json.dumps(eligibility(repo), indent=2) + "\n", "", dirs
+        )
+    )
     return normalise("\n".join(parts))
 
 
 def golden_path(row: Row) -> Path:
     """Where ``row``'s recorded output lives."""
     return GOLDEN / f"{row.name}.txt"
+
+
+def snapshot_text(repo: Path, dirs: dict[str, Path]) -> str:
+    """``snapshot(repo)`` as JSON, normalised as the command transcripts are."""
+    return step_transcript(["(snapshot)"], 0, json.dumps(snapshot(repo), indent=2) + "\n", "", dirs)
+
+
+def snapshot_golden(row: Row) -> Path:
+    """Where ``row``'s snapshot lives, apart from the pickup goldens (it was recorded later)."""
+    return GOLDEN / f"{row.name}.snapshot.txt"
