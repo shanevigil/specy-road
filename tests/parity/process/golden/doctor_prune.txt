@@ -1,0 +1,22 @@
+$ specy-road doctor --fix --yes
+exit: 0
+--- stdout ---
+Install: specy-road <VERSION> running from <PREFIX>
+- no specy-road or specyrd on PATH
+feature/rm-* branches whose leaf is Complete or that nothing claims (against origin/dev):
+  local     feature/rm-thing  — merged
+  origin    feature/rm-thing  — merged
+Registry rows on origin/dev with no branch (advisory: another clone's claim looks the same until it pushes its branch; --fix leaves them — specy-road registry-prune --remove <CODENAME>) or whose leaf is Complete:
+  settled  — node M1.4: leaf Complete
+[ok] deleted local branch feature/rm-thing
+[ok] deleted feature/rm-thing on origin
+[ok] removed registry row settled on origin/dev
+--- stderr ---
+
+$ specy-road doctor
+exit: 0
+--- stdout ---
+Install: specy-road <VERSION> running from <PREFIX>
+- no specy-road or specyrd on PATH
+Nothing to tidy: no stale branch, worktree, registry row or toolkit stash.
+--- stderr ---

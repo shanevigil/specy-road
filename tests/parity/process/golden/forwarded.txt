@@ -1,0 +1,149 @@
+$ specy-road digest --repo-root <B> --check
+exit: 1
+--- stdout ---
+--- stderr ---
+missing <B>/roadmap-context.md — run: specy-road digest
+
+$ specy-road digest --repo-root <B> -o <OUT>/context.md
+exit: 0
+--- stdout ---
+Wrote <OUT>/context.md (<N> bytes)
+--- stderr ---
+
+$ specy-road search Node --repo-root <B>
+exit: 0
+--- stdout ---
+roadmap/phases/M2.json  ## M2
+    M2 Node M2 · phase · In Progress · roadmap node
+    «Node» M2
+
+roadmap/phases/M2.json  ## M2.1
+    M2.1 Node M2.1 · task · Complete · alpha · under M2 Node M2 · roadmap node
+    «Node» M2.1
+
+roadmap/phases/M2.json  ## M2.2
+    M2.2 Node M2.2 · task · Complete · beta · under M2 Node M2 · roadmap node
+    «Node» M2.2
+
+planning/M2.1_alpha_50000000-0000-4000-8000-000000000002.md
+    M2.1 Node M2.1 · task · Complete · alpha · under M2 Node M2 · planning sheet
+    # M2.1
+
+planning/M2.2_beta_50000000-0000-4000-8000-000000000003.md
+    M2.2 Node M2.2 · task · Complete · beta · under M2 Node M2 · planning sheet
+    # M2.2
+
+planning/M2.1_alpha_50000000-0000-4000-8000-000000000002.md  ## Intent
+    M2.1 Node M2.1 · task · Complete · alpha · under M2 Node M2 · planning sheet · Intent
+    Do it.
+
+planning/M2_unnamed_50000000-0000-4000-8000-000000000001.md
+    M2 Node M2 · phase · In Progress · planning sheet
+    # M2
+
+7 result(s). Open a path above for the full text.
+--- stderr ---
+
+$ specy-road brainstorm sessions --repo-root <B>
+exit: 0
+--- stdout ---
+no brainstorm sessions in work/
+next: `specy-road brainstorm start --topic '<question>'`
+--- stderr ---
+
+$ specy-road history --repo-root <B> --json
+exit: 0
+--- stdout ---
+{
+  "events": [
+    {
+      "at": "<TIME>",
+      "author": "T",
+      "commit": "<SHA>",
+      "from": "Not Started",
+      "id": "M2.2",
+      "kind": "status",
+      "node_key": "50000000-0000-4000-8000-000000000003",
+      "seq": 7,
+      "to": "Complete"
+    },
+    {
+      "at": "<TIME>",
+      "author": "T",
+      "commit": "<SHA>",
+      "from": "Not Started",
+      "id": "M2.1",
+      "kind": "status",
+      "node_key": "50000000-0000-4000-8000-000000000002",
+      "seq": 6,
+      "to": "Complete"
+    },
+    {
+      "at": "<TIME>",
+      "author": "T",
+      "commit": "<SHA>",
+      "id": "M2.2",
+      "kind": "created",
+      "node_key": "50000000-0000-4000-8000-000000000003",
+      "seq": 5,
+      "title": "Node M2.2"
+    },
+    {
+      "at": "<TIME>",
+      "author": "T",
+      "commit": "<SHA>",
+      "id": "M2.1",
+      "kind": "created",
+      "node_key": "50000000-0000-4000-8000-000000000002",
+      "seq": 4,
+      "title": "Node M2.1"
+    },
+    {
+      "at": "<TIME>",
+      "author": "T",
+      "commit": "<SHA>",
+      "id": "M2",
+      "kind": "created",
+      "node_key": "50000000-0000-4000-8000-000000000001",
+      "seq": 3,
+      "title": "Node M2"
+    },
+    {
+      "at": "<TIME>",
+      "author": "T",
+      "commit": "<SHA>",
+      "id": "M2.2",
+      "kind": "sheet_edit",
+      "node_key": "50000000-0000-4000-8000-000000000003",
+      "path": "planning/M2.2_beta_50000000-0000-4000-8000-000000000003.md",
+      "seq": 2
+    },
+    {
+      "at": "<TIME>",
+      "author": "T",
+      "commit": "<SHA>",
+      "id": "M2.1",
+      "kind": "sheet_edit",
+      "node_key": "50000000-0000-4000-8000-000000000002",
+      "path": "planning/M2.1_alpha_50000000-0000-4000-8000-000000000002.md",
+      "seq": 1
+    },
+    {
+      "at": "<TIME>",
+      "author": "T",
+      "commit": "<SHA>",
+      "id": "M2",
+      "kind": "sheet_edit",
+      "node_key": "50000000-0000-4000-8000-000000000001",
+      "path": "planning/M2_unnamed_50000000-0000-4000-8000-000000000001.md",
+      "seq": 0
+    }
+  ]
+}
+--- stderr ---
+
+$ specy-road orchestration guard --format generic --role executor --command git push --force origin dev
+exit: 2
+--- stdout ---
+--- stderr ---
+orchestration guard (executor): orchestration roles must not push; finish-this-task and the maintainer push

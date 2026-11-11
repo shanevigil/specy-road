@@ -1,0 +1,67 @@
+$ specy-road list-nodes
+exit: 0
+--- stdout ---
+ID            TYPE        STATUS        ROLLUP        TITLE  [CHUNK]
+M1.1          task        In Progress (claimed)  In Progress   Thing  [roadmap/phases/M1.json]
+--- stderr ---
+
+$ specy-road list-nodes
+exit: 0
+--- stdout ---
+ID            TYPE        STATUS        ROLLUP        TITLE  [CHUNK]
+M2            phase       Not Started   In Progress (review hold)  Node M2  [roadmap/phases/M2.json]
+M2.1          task        Complete      Complete      Node M2.1  [roadmap/phases/M2.json]
+M2.2          task        Complete      Complete      Node M2.2  [roadmap/phases/M2.json]
+--- stderr ---
+
+$ specy-road validate
+exit: 0
+--- stdout ---
+OK: roadmap and registry validate.
+notice: no roadmap/orchestration.yaml, so the default policy applies: one reviewer, any family, and a roster of one human (`specy-road validate --generate-orchestration` writes an editable starter)
+notice: no roadmap/orchestration.yaml on dev, where the roster is read from, nor in the working tree, so routing uses the default roster (one human, no executor); see docs/orchestration.md to write and commit one
+--- stderr ---
+agents: warning — AGENTS.md has no specy-road section, so agents here miss the current coordination rules. Run: specy-road refresh-stubs (it needs no stub pack and touches only managed blocks and the files specy-road owns)
+
+$ specy-road validate
+exit: 0
+--- stdout ---
+OK: roadmap and registry validate.
+milestone review: notice — M2 is held at In Progress: every leaf is Complete but its full review is not approved at refs/heads/dev (0/1 approvals, 0 block(s): not met) (policy.milestone_full_review). Ways out:
+  1. Review it: specy-road review-packet M2; each reviewer: specy-road review record M2 --model <id> --verdict approve|block --file <notes.md>; then specy-road mark-implementation-reviewed M2
+  2. Record it Complete: specy-road edit-node M2 --set status=Complete
+  3. Turn the hold off: set policy.milestone_full_review: false in roadmap/orchestration.yaml
+notice: no roadmap/orchestration.yaml, so the default policy applies: one reviewer, any family, and a roster of one human (`specy-road validate --generate-orchestration` writes an editable starter)
+notice: no roadmap/orchestration.yaml on dev, where the roster is read from, nor in the working tree, so routing uses the default roster (one human, no executor); see docs/orchestration.md to write and commit one
+--- stderr ---
+agents: warning — AGENTS.md has no specy-road section, so agents here miss the current coordination rules. Run: specy-road refresh-stubs (it needs no stub pack and touches only managed blocks and the files specy-road owns)
+
+$ specy-road mark-implementation-reviewed --yes
+exit: 1
+--- stdout ---
+--- stderr ---
+error: implementation summary not found: <A>/work/implementation-summary-M1.1.md
+  Create this file (see docs/dev-workflow.md) or use --allow-missing-summary for emergencies.
+
+$ specy-road mark-implementation-reviewed --yes
+exit: 1
+--- stdout ---
+--- stderr ---
+error: current branch 'dev' is not a roadmap feature branch (expected feature/rm-<codename>).
+
+$ specy-road mark-implementation-reviewed --yes --allow-missing-summary
+exit: 1
+--- stdout ---
+Implementation review — [M1.1]
+Summary file: work/implementation-summary-M1.1.md
+
+Review policy: 0/1 approvals, 0 block(s): not met (commit <SHA>)
+  - need 1 approvals at this commit, have 0
+
+--- stderr ---
+warning: missing work/implementation-summary-M1.1.md — proceeding due to --allow-missing-summary.
+error: the review gate is not met, so the implementation cannot be marked reviewed.
+  Inspect: specy-road handoff status M1.1
+  Reviewers read: specy-road review-packet M1.1
+  Record each review: specy-road review record M1.1 --model <id> --verdict approve|block --file <notes.md>
+  --yes only commits an approval the recorded reviews already earned.
