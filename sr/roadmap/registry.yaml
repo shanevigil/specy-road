@@ -70,16 +70,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once
-    node_id: M16.2.11
-    branch: feature/rm-one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once
-    touch_zones:
-      - specy_road/errors.py
-      - specy_road/cli_entry.py
-      - specy_road/
-      - tests/
-      - sr/planning/M16.2.11_one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once_3ae67e69-01ea-46bc-a70c-2642964c6e0c.md
-    started: '2026-11-11'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-11T22:05:49+00:00'
