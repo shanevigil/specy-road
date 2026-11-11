@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli import run as run_command
+from specy_road.cli_entry import run_reporting
 from specy_road.clock import utc_now_iso
 from specy_road.decisions import DECISIONS_REL
 from specy_road.git_subprocess import git_code, git_run, git_text
@@ -524,6 +525,11 @@ def _refresh_generated(root: Path) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Close the implementation review. A command error is printed once and exits with its code."""
+    run_reporting(lambda: _mark(argv))
+
+
+def _mark(argv: list[str] | None) -> None:
     args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     root = resolve_repo_root(args)
 

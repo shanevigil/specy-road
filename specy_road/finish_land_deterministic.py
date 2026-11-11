@@ -34,6 +34,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from specy_road import safe_write
+from specy_road.errors import SpecyError
 from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 from specy_road.roadmap_chunk_utils import discover_manifest_path
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
@@ -67,8 +68,11 @@ DETERMINISTIC_PATHS: tuple[str, ...] = (REGISTRY_REL.as_posix(), *GENERATED_COMM
 _REF_READ_TIMEOUT = 4.0
 
 
-class DeterministicResolveError(RuntimeError):
+class DeterministicResolveError(SpecyError, RuntimeError):
     """Resolution could not complete; the caller must abort the merge."""
+
+    def __init__(self, message: str = "") -> None:
+        super().__init__(message, 1)
 
 
 def codename_from_branch(branch: str) -> str | None:

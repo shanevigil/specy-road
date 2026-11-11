@@ -62,6 +62,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_args import add_model_arg, add_ref_arg
+from specy_road.cli_entry import run_reporting
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.brief_generation import index, render_brief
 from specy_road.verify_cmd_config import verify_cmd_lines
@@ -380,6 +381,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Write a role prompt. A command error is printed once and becomes its exit code."""
+    run_reporting(lambda: _prompt_command(argv))
+
+
+def _prompt_command(argv: list[str] | None) -> None:
     p = build_parser()
     ns = p.parse_args(argv)
     if ns.force and ns.role != "rca":

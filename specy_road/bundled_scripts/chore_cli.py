@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg, add_model_arg
+from specy_road.cli_entry import run_cli
 from specy_road.bundled_scripts.chore_garden import as_json, garden
 from specy_road.chore_records import (
     _SLUG,
@@ -168,12 +169,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    ns = build_parser().parse_args(list(sys.argv[1:] if argv is None else argv))
-    try:
-        raise SystemExit(ns.func(ns))
-    except WorkerError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from None
+    """Run a chore command. A command error is printed once and becomes its exit code."""
+    run_cli(build_parser, argv)
 
 
 if __name__ == "__main__":

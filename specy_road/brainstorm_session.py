@@ -22,6 +22,7 @@ from typing import Any
 import yaml
 
 from specy_road import safe_write
+from specy_road.errors import SpecyError
 from specy_road.bundled_scripts.brainstorm_fields import extra_to_dict, parse_extra
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.fs_atomic import atomic_write_text
@@ -55,12 +56,15 @@ SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SLUG_MAX_LEN = 80
 
 
-class BrainstormError(ValueError):
+class BrainstormError(SpecyError, ValueError):
     """A brainstorm session could not be read, written, or mutated.
 
-    A ``ValueError`` so that ``run_forwarded_cli`` already prints it as
-    ``error: <message>`` and exits 1, like every other bundled CLI.
+    A ``ValueError`` as well, so a handler that catches ``ValueError`` still
+    sees it. The command entry prints it as ``error: <message>`` and exits 1.
     """
+
+    def __init__(self, message: str = "") -> None:
+        super().__init__(message, 1)
 
 
 def slugify(text: str) -> str:

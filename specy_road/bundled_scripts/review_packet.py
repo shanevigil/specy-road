@@ -40,6 +40,7 @@ from datetime import date
 from pathlib import Path
 
 from specy_road.cli_args import add_base_arg, add_ref_arg
+from specy_road.cli_entry import run_reporting
 from specy_road.brief_generation import index, render_brief
 from specy_road.bundled_scripts.review_packet_nested import nested_diff_section
 from specy_road.bundled_scripts.review_packet_observed import (
@@ -389,6 +390,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Write the review packet. A command error is printed once and becomes its exit code."""
+    run_reporting(lambda: _write_packet(argv))
+
+
+def _write_packet(argv: list[str] | None) -> None:
     args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     text = build_packet(root, args.node_id, ref=args.ref, verify_cmds=args.verify_cmd, base=args.base,

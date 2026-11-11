@@ -7,13 +7,17 @@ import threading
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
+from specy_road.errors import SpecyError
 from specy_road.review_files import reviews_root
 
 WORKERS_DIRNAME = ".workers"
 
 
-class WorkerError(Exception):
+class WorkerError(SpecyError):
     """A record is missing, invalid, or the operation is not allowed in its state."""
+
+    def __init__(self, message: str = "") -> None:
+        super().__init__(message, 1)
 
 
 def workers_dir(repo_root: Path) -> Path:

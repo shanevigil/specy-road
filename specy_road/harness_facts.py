@@ -31,6 +31,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from specy_road.errors import SpecyError
 from specy_road.init_project import project_template_root
 from specy_road.model_profiles import PROFILES_REL, list_profiles
 
@@ -58,8 +59,11 @@ _FLAG = re.compile(r"(?<![\w-])--[A-Za-z][A-Za-z0-9-]*")
 _COMMAND_ROW = re.compile(r"^ {2,4}([a-z][\w|-]*)(?=\s|$)")
 
 
-class HarnessFactsError(ValueError):
+class HarnessFactsError(SpecyError, ValueError):
     """The fixture is missing, unparsable, or does not match its schema."""
+
+    def __init__(self, message: str = "") -> None:
+        super().__init__(message, 1)
 
 
 def bundled_facts_path() -> Path:

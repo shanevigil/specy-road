@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg
+from specy_road.cli_entry import run_cli
 from specy_road.model_profiles import (
     DEFAULT_MAX_AGE_DAYS,
     GUIDANCE_BYPASS_KEY,
@@ -32,7 +33,12 @@ from specy_road.model_profiles import (
 )
 from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_diff, roster_source
-from specy_road.roster_generate import RosterError, format_entries, missing_profile_files, roster_entries, write_entries
+from specy_road.roster_generate import (
+    format_entries,
+    missing_profile_files,
+    roster_entries,
+    write_entries,
+)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
@@ -200,17 +206,13 @@ def cmd_roster(ns: argparse.Namespace) -> int:
     if not requests:
         print("error: name at least one profile with --executor, --reviewer or --coordinator", file=sys.stderr)
         return 2
-    try:
-        entries = roster_entries(requests)
-        if not ns.write:
-            print(format_entries(entries), end="")
-        else:
-            added, skipped = write_entries(root, entries)
-            print(f"added to roadmap/orchestration.yaml: {', '.join(added) or 'none'}"
-                  + (f"; already rostered: {', '.join(skipped)}" if skipped else ""))
-    except RosterError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
+    entries = roster_entries(requests)
+    if not ns.write:
+        print(format_entries(entries), end="")
+    else:
+        added, skipped = write_entries(root, entries)
+        print(f"added to roadmap/orchestration.yaml: {', '.join(added) or 'none'}"
+              + (f"; already rostered: {', '.join(skipped)}" if skipped else ""))
     for note in missing_profile_files(root, entries):
         print(f"note: {note}", file=sys.stderr)
     return 0
@@ -252,9 +254,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    ns = build_parser().parse_args(argv)
-    raise SystemExit(ns.func(ns))
+    """Run a models command. A command error is printed once and becomes its exit code."""
+    run_cli(build_parser, argv)
 
 
 if __name__ == "__main__":

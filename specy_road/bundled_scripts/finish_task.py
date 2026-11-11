@@ -10,6 +10,7 @@ from pathlib import Path
 
 from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.finish_task_args import build_parser, parse_finish_args
+from specy_road.cli_entry import run_reporting
 from specy_road.git_subprocess import git_run
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
@@ -315,6 +316,11 @@ def _end_leaf_workers(root: Path, node_id: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Finish the current leaf. A command error is printed once and becomes its exit code."""
+    run_reporting(lambda: _finish(argv))
+
+
+def _finish(argv: list[str] | None) -> None:
     args = parse_finish_args(argv if argv is not None else sys.argv[1:])
     root = resolve_repo_root(args)
     with pickup_finish_lock(root, operation="finish-this-task"):

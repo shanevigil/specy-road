@@ -19,6 +19,7 @@ from specy_road.bundled_scripts.do_next_prompt import (
     write_agent_prompt,
 )
 from specy_road.bundled_scripts.do_next_task_args import build_parser, parse_do_next_task_args
+from specy_road.cli_entry import run_reporting
 from specy_road.bundled_scripts.do_next_task_interactive import pick_interactive as _pick_interactive
 from specy_road.bundled_scripts.do_next_task_self_heal import (
     warn_about_stale_claims_before_pickup as _warn_about_stale_claims_before_pickup,
@@ -314,6 +315,11 @@ def _pick_node(root: Path, args, nodes, reg, available, integration_statuses) ->
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Pick up the next leaf. A command error is printed once and becomes its exit code."""
+    run_reporting(lambda: _pickup(argv))
+
+
+def _pickup(argv: list[str] | None) -> None:
     args = parse_do_next_task_args(argv)
     include_ci_skip = not args.no_ci_skip_in_message
     root = resolve_repo_root(args)

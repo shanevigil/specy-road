@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_args import add_json_arg, add_ref_arg
+from specy_road.cli_entry import run_reporting
 from specy_road.integrity import compare_integrity, findings_to_json
 from specy_road.review_target import resolve_target_or_exit
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
@@ -28,6 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Report test-integrity findings. A command error is printed once and exits with its code."""
+    run_reporting(lambda: _report_integrity(argv))
+
+
+def _report_integrity(argv: list[str] | None) -> None:
     args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     target = resolve_target_or_exit(root, args.node_id, args.ref)
