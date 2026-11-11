@@ -126,7 +126,7 @@ def test_specy_road_update_help() -> None:
 
 
 def test_parser_reset_to_origin_flag() -> None:
-    p = usr._build_parser()
+    p = usr.build_parser()
     args = p.parse_args(["--reset-to-origin"])
     assert args.reset_to_origin is True
 

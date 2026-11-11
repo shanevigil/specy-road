@@ -55,7 +55,7 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
     warn_touch_zones_match_nothing,
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
-from specy_road.bundled_scripts.validate_notices import notice_milestone_review_holds, notice_repeated_ignore_patterns, parse_validate_args, report_context_warnings
+from specy_road.bundled_scripts.validate_notices import add_context_arg, notice_milestone_review_holds, notice_repeated_ignore_patterns, parse_validate_args, report_context_warnings
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 from specy_road.bundled_scripts.validate_registry_overlap import (
     authoring_overlap_scope,
@@ -91,7 +91,8 @@ __all__ = [
 ]
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road validate`` parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--no-overlap-warn",
@@ -130,7 +131,12 @@ def main(argv: list[str] | None = None) -> None:
         "that init project writes, when the file does not exist.",
     )
     add_repo_root_arg(parser)
-    args = parse_validate_args(parser, argv)
+    add_context_arg(parser)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_validate_args(build_parser(), argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     with _counting_stderr() as stderr:
         validate_at(

@@ -18,7 +18,8 @@ from specy_road.milestone_chunk_io import (
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road reconcile-milestone-status`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Milestone delivery: default is MR-first (rollup branch merged into "
@@ -41,7 +42,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "milestones whose rollup_status is Complete (backup / integration-via-merge path)."
         ),
     )
-    return p.parse_args(argv)
+    return p
 
 
 def _node_milestone_fields(
@@ -186,7 +187,7 @@ def _node_pid(n: object) -> str:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv)
+    args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     nodes = load_roadmap(root)["nodes"]
     _, default_remote, warns = resolve_integration_defaults(

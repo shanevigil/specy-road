@@ -360,7 +360,8 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road review-packet`` parser."""
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("node_id", help="Roadmap node id, e.g. M1.2")
     p.add_argument("--ref", help="Branch or commit to review (default: the node's registered branch, local or remote-tracking)")
@@ -382,7 +383,11 @@ def main(argv: list[str] | None = None) -> None:
                    help=f"Also write here; work/reviews/<NODE_ID>/{PACKET_NAME} is always written, "
                         "since `prompt --role reviewer` reads that path")
     add_repo_root_arg(p)
-    args = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     text = build_packet(root, args.node_id, ref=args.ref, verify_cmds=args.verify_cmd, base=args.base,
                         max_diff_lines=args.max_diff_lines, max_diff_bytes=args.max_diff_bytes, full=args.full)

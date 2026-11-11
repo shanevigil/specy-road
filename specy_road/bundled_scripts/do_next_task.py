@@ -18,7 +18,7 @@ from specy_road.bundled_scripts.do_next_prompt import (
     print_pickup_header,
     write_agent_prompt,
 )
-from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
+from specy_road.bundled_scripts.do_next_task_args import build_parser, parse_do_next_task_args
 from specy_road.bundled_scripts.do_next_task_interactive import pick_interactive as _pick_interactive
 from specy_road.bundled_scripts.do_next_task_self_heal import (
     warn_about_stale_claims_before_pickup as _warn_about_stale_claims_before_pickup,

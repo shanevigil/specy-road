@@ -13,7 +13,7 @@ import json
 import pytest
 
 from tests.parity.command_map import apply_rows, command_map_rows, inventory_differences
-from tests.parity.help_surface import crawl, parse_help
+from tests.parity.help_surface import crawl, parser_inventory
 from tests.parity.support import GOLDEN, REGEN, check_golden, help_text, normalise
 
 pytestmark = pytest.mark.parity
@@ -88,20 +88,12 @@ def test_every_current_name_has_a_golden_transcript() -> None:
     assert not missing, f"no golden transcript for {missing}; run SPECY_ROAD_PARITY_REGEN=missing"
 
 
-@pytest.mark.parametrize(
-    "nargs, usage_tail, passthrough",
-    [
-        (argparse.REMAINDER, "...", True),
-        ("*", "[rest ...]", False),
-    ],
-)
-def test_passthrough_is_read_from_usage(nargs, usage_tail: str, passthrough: bool) -> None:
+@pytest.mark.parametrize("nargs, passthrough", [(argparse.REMAINDER, True), ("*", False)])
+def test_passthrough_is_read_from_the_parser(nargs, passthrough: bool) -> None:
     """The inventory's passthrough flag tells ``argparse.REMAINDER`` from a list positional."""
     parser = argparse.ArgumentParser(prog="specy-road demo")
     parser.add_argument("rest", nargs=nargs)
-    text = parser.format_help()
-    assert usage_tail in text
-    assert parse_help(("specy-road", "demo"), text)["passthrough"] is passthrough
+    assert parser_inventory(("specy-road", "demo"), parser)["passthrough"] is passthrough
 
 
 def _entry(path: list[str], subs=(), options=("-h",)) -> dict:

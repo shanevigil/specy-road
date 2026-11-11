@@ -307,7 +307,8 @@ def _print_diffs(repo_root: Path, written: list[str], prefix: str) -> list[str]:
     return rest
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road refresh-stubs`` parser."""
     p = argparse.ArgumentParser(prog="specy-road refresh-stubs", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     add_repo_root_arg(p)
@@ -317,6 +318,11 @@ def main(argv: list[str] | None = None) -> None:
                    "(e.g. the pre-0.3.0 .cursor/commands/specyrd-*.md) and verbatim .cursor/.codex copies of the skills; with --dry-run, list them.")
     p.add_argument("--diff", action="store_true", help="Print a unified diff of every stub, skill "
                    "and managed block that would change; implies --dry-run.")
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _resolve_root(args.repo_root)
     dry_run = args.dry_run or args.diff

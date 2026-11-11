@@ -89,7 +89,8 @@ def _add_landing_args(p: argparse.ArgumentParser) -> None:
     )
 
 
-def parse_finish_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road finish-this-task`` parser."""
     p = argparse.ArgumentParser(
         description=_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -131,4 +132,8 @@ def parse_finish_args(argv: list[str] | None) -> argparse.Namespace:
             "on_complete instead."
         ),
     )
-    return p.parse_args(argv)
+    return p
+
+
+def parse_finish_args(argv: list[str] | None) -> argparse.Namespace:
+    return build_parser().parse_args(argv)

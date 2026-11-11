@@ -436,7 +436,8 @@ def _gate_or_human_approval(
     _refuse_unmet(args, node, gate, branch if over_block else None, withheld)
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road mark-implementation-reviewed`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Close the implementation review gate: require review records under "
@@ -465,7 +466,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p.add_argument("node_id", nargs="?", help="A milestone id: close its full review at the integration tip and set "
                    "it Complete (policy.milestone_full_review). Without it, the current feature branch's leaf.")
     add_repo_root_arg(p)
-    return p.parse_args(argv)
+    return p
 
 
 def _close_milestone(root: Path, args: argparse.Namespace, node_id: str) -> None:
@@ -523,7 +524,7 @@ def _refresh_generated(root: Path) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     root = resolve_repo_root(args)
 
     if not review_required(root):

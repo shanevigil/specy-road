@@ -296,7 +296,8 @@ def _run_normalize(root: Path, dry_run: bool) -> None:
     print("\nrebalance-chunks --normalize: applied; specy-road validate passed.")
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road rebalance-chunks`` parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     add_repo_root_arg(parser)
     parser.add_argument(
@@ -312,6 +313,11 @@ def main(argv: list[str] | None = None) -> None:
             "or touching the manifest; a no-op on already-canonical chunks."
         ),
     )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = build_parser()
     args = parser.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     # Refuse to rebalance while any milestone is in-flight: rebalance

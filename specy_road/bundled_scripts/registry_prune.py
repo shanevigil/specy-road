@@ -116,7 +116,8 @@ def _remove_and_push(
     return 0
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road registry-prune`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road registry-prune",
         description=(
@@ -149,11 +150,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="NAME",
         help="Git remote (default: roadmap/git-workflow.yaml, else origin).",
     )
-    return p.parse_args(argv)
+    return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     root = resolve_repo_root(args)
     base, remote, gw_warns = resolve_integration_defaults(
         root,

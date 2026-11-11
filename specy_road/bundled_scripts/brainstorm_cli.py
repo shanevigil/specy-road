@@ -18,7 +18,7 @@ import json
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.brainstorm_cli_args import build_parser, execution_milestone_from_promote_sets
+from specy_road.bundled_scripts.brainstorm_cli_args import bound_parser, execution_milestone_from_promote_sets
 from specy_road.bundled_scripts.brainstorm_cli_v2 import (
     HANDLERS_V2,
     cmd_add_ideas_from_file,
@@ -378,8 +378,13 @@ HANDLERS = {name: fn if name == "verify" else _serialised(fn) for name, fn in {
 }.items()}
 
 
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road brainstorm`` parser, each subcommand bound to its handler."""
+    return bound_parser(HANDLERS)
+
+
 def main(argv: list[str] | None = None) -> None:
-    run_handler(build_parser(HANDLERS).parse_args(argv))
+    run_handler(build_parser().parse_args(argv))
 
 
 if __name__ == "__main__":

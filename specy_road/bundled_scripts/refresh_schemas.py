@@ -133,7 +133,8 @@ def refresh_schemas(repo_root: Path, *, dry_run: bool = False) -> list[str]:
     return written
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road refresh-schemas`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road refresh-schemas",
         description=__doc__,
@@ -145,6 +146,11 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Print what would be written; do not modify files.",
     )
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = (args.repo_root or default_user_repo_root()).resolve()
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(root)}

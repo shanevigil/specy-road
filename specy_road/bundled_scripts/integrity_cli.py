@@ -13,7 +13,8 @@ from specy_road.review_target import resolve_target_or_exit
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road integrity`` parser."""
     p = argparse.ArgumentParser(
         description="Report removed tests, new skips, lost asserts and pytest config edits "
         "between a leaf and its merge base (git objects only; no checkout).",
@@ -22,7 +23,11 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--ref", help="Branch or commit (default: the node's registered branch)")
     p.add_argument("--json", action="store_true", help='Print {"findings": [...]} instead of lines')
     add_repo_root_arg(p)
-    args = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     target = resolve_target_or_exit(root, args.node_id, args.ref)
     if not target.base or not target.commit:

@@ -232,7 +232,8 @@ def _run_update(
     _git_fast_forward(kit, remote, branch)
 
 
-def _build_parser() -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road update`` parser."""
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -301,7 +302,7 @@ def _resolve_kit_explicit(start: Path, remote: str) -> Path:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _build_parser().parse_args(argv if argv is not None else sys.argv[1:])
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     if args.path is not None:
         kit = _resolve_kit_explicit(args.path.resolve(), args.remote)
     else:

@@ -342,7 +342,8 @@ def show_cli(prof: Profile | None, prompt_path: Path, entry_cli: str | None, har
     return 0
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road prompt`` parser."""
     p = argparse.ArgumentParser(prog="specy-road prompt", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("node_id")
@@ -374,6 +375,11 @@ def main(argv: list[str] | None = None) -> None:
                    help="Reviewer --channel cli: sign the filed record with this OpenSSH private key "
                         "(`review record --sign-key`; needed under policy.signed_reviews)")
     add_repo_root_arg(p)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = build_parser()
     ns = p.parse_args(argv)
     if ns.force and ns.role != "rca":
         p.error("--force applies only to --role rca")

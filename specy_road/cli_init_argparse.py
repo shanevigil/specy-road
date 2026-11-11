@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 
 
-def build_specy_road_init_parser() -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
     """Parser for ``specy-road init project|gui ...``."""
     p = argparse.ArgumentParser(
         prog="specy-road init",

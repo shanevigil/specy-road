@@ -220,7 +220,8 @@ def _plan_fields(p: argparse.ArgumentParser, ns) -> list[str] | None:
     return keys
 
 
-def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road grind-session`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road grind-session",
         description=(
@@ -234,6 +235,11 @@ def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
     _add_implement_args(p)
     _add_implement_limit_args(p)
     _add_passthrough_args(p)
+    return p
+
+
+def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
+    p = build_parser()
     ns = p.parse_args(argv if argv is not None else sys.argv[1:])
     ns.fields = _plan_fields(p, ns)
     _reject_status_conflicts(p, ns)

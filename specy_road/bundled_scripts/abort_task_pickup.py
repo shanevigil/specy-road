@@ -154,7 +154,8 @@ def _remove_pickup_work_files(root: Path, node_id: str, *, force: bool) -> None:
     remove_main_checkout_pickup_files(root, node_id)
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road abort-task-pickup`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Abort a do-next-available-task pickup: remove registry row on the integration "
@@ -184,7 +185,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "Also removes work/implementation-summary-<NODE_ID>.md if present."
         ),
     )
-    return p.parse_args(argv)
+    return p
 
 
 def _require_feature_rm_branch_or_exit(root: Path) -> str:
@@ -294,7 +295,7 @@ def _exit_if_base_checked_out_elsewhere(root: Path, base: str, branch: str, node
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     root = resolve_repo_root(args)
     with pickup_finish_lock(root, operation="abort-task-pickup"):
         _abort_locked(root, args)

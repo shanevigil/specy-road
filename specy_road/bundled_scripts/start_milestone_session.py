@@ -92,7 +92,8 @@ def _ensure_rollup_branch(root: Path, rollup: str, base: str, remote: str) -> No
     git_run(root, "checkout", base)
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road start-milestone-session`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Sync integration branch, ensure rollup branch feature/rm-<parent-codename>, "
@@ -117,11 +118,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="NAME",
         help="Git remote (default: roadmap/git-workflow.yaml).",
     )
-    return p.parse_args(argv)
+    return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv)
+    args = build_parser().parse_args(argv)
     root = resolve_repo_root(args)
     base, remote = integration_defaults(root, args)
 

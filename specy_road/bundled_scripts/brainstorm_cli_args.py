@@ -281,7 +281,7 @@ def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
     return value
 
 
-def build_parser(handlers: dict[str, Callable]) -> argparse.ArgumentParser:
+def bound_parser(handlers: dict[str, Callable]) -> argparse.ArgumentParser:
     """The whole ``brainstorm`` parser, bound to ``handlers`` by name."""
     p = argparse.ArgumentParser(prog="specy-road brainstorm", description=_DESCRIPTION)
     sub = p.add_subparsers(dest="brainstorm_cmd", required=True)

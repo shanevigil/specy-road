@@ -22,7 +22,8 @@ def _validate_export_digest(root: Path) -> None:
         )
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road sync`` parser."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--base",
@@ -43,7 +44,11 @@ def main(argv: list[str] | None = None) -> None:
         ),
     )
     add_repo_root_arg(p)
-    args = p.parse_args(argv if argv is not None else sys.argv[1:])
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
 
     root = resolve_repo_root(args)
     base, remote = integration_defaults(root, args)
