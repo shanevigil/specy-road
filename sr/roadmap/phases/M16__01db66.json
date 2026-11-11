@@ -295,7 +295,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.10_every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers_955ec135-b330-402f-ab9f-6f1fed66614c.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Every command exposes build_parser(), imports lazily and shares the common argument helpers",
       "touch_zones": [
         "specy_road/cli.py",
