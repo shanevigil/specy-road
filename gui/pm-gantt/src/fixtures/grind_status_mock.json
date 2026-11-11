@@ -61,7 +61,12 @@
       },
       "claimed": true,
       "status": "Not Started",
-      "review": "waiting"
+      "review": "waiting",
+      "commit": "fedcba9876543210fedcba9876543210fedcba98",
+      "can_approve_over_block": false,
+      "settles": [
+        "approval shortfall: need 1, have 0"
+      ]
     }
   ],
   "ready": [
@@ -158,7 +163,8 @@
         ],
         "options": "no options recorded (not a ledger entry)"
       }
-    ]
+    ],
+    "gui_pending": []
   },
   "sessions": {
     "brainstorm": [

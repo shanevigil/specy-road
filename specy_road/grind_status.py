@@ -12,6 +12,7 @@ recommendation and next step printed is the record's own text.
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 from datetime import datetime, timedelta
@@ -20,15 +21,18 @@ from typing import Any, Callable
 
 from specy_road.brainstorm_session import SESSION_PREFIX, SESSION_SUFFIX, list_slugs, read_session
 from specy_road.bundled_scripts.review_cli import rca_command, review_state
-from specy_road.decisions import open_questions
+from specy_road.decisions import open_questions, recorded_on_sheet
 from specy_road.decisions_local import LOCAL, SHARED, load_merged
-from specy_road.git_subprocess import git_ok, head_sha
+from specy_road.git_subprocess import git_ok, git_stdout, head_sha
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.history_events import STATUS
 from specy_road.history_index import events, history_index
 from specy_road.milestone_session import milestone_session_path, read_milestone_session
 from specy_road.milestone_subtree import leaf_ids_under_parent, subtree_node_ids
 from specy_road.node_kinds import is_gate
+from specy_road.registry_remote_overlay_merge import read_registry_at_ref
+from specy_road.review_override import PM_GUI, integration, marker_path, over_block_offer
+from specy_road.review_policy_ref import policy_source
 from specy_road.review_target import ReviewTargetError
 from specy_road.roadmap_index import RoadmapIndex
 from specy_road.roadmap_layout import natural_id_sort_key
@@ -48,6 +52,10 @@ PROS_CONS = "not recorded: the decisions schema has no field for them"
 NO_RECENT = "none at the recent pace (no completions in 7 days)"
 ASSUMPTION = "held and waiting leaves are assumed to clear at the past pace"
 SEPARATOR = "-" * 72
+OFFER_KEYS = ("commit", "can_approve_over_block", "settles")   # over_block_offer's, on each evaluated claimed leaf
+NO_MARKER = "this clone has no marker for this decision; process it from the clone that ran the GUI"
+_APPROVAL = re.compile(r"Accepted by operator decision \(approve\) for commit ([0-9a-f]{40}),")
+_SHOW_TIMEOUT_S = 10.0
 
 
 class StatusError(Exception):
@@ -134,7 +142,7 @@ def _held_reasons(root: Path, index: RoadmapIndex, node: dict, claimed: bool, wo
         except ReviewTargetError as e:   # a claim whose branch this clone does not have
             review = {"state": None, "error": f"not evaluated: {e}"}
         else:
-            review = {"state": rs.state}
+            review = {"state": rs.state, **over_block_offer(root, rs.gate)}
             reasons += _review_reasons(nid, rs)
     if worker is not None and (worker.lease.get("holder") == "human" or FLAG_NEEDS_PERSON in worker.flags):
         why = "leased to human" if worker.lease.get("holder") == "human" else f"flagged {FLAG_NEEDS_PERSON}"
@@ -172,8 +180,9 @@ def _open_bucket(plan, node: dict, item: dict, own: str, claimed: bool, reasons:
     if claimed or own == "in progress":
         note = {"note": f"feature tip is {UNMERGED}"} if nid in plan.finished_claimed else {}
         error = {"review_error": review["error"]} if "error" in review else {}
+        offer = {k: review[k] for k in OFFER_KEYS if k in review}
         return "active", {**item, "claimed": claimed, "status": node.get("status"),
-                          "review": review.get("state"), **error, **note}
+                          "review": review.get("state"), **error, **offer, **note}
     if nid in plan.ready:
         return "ready", item
     if nid in waiting:
@@ -288,6 +297,48 @@ def ledger(root: Path, scope_nodes: set[str], missing: list[dict]) -> tuple[list
     return inside, outside
 
 
+def _approval_processed(root: Path, node: dict) -> bool:
+    """The leaf is Complete, or the registry on its own branch has ``implementation_review: approved`` (the tree
+    ``mark-implementation-reviewed --yes`` commits to, so the approval drops out before the leaf lands)."""
+    if (node.get("status") or "").lower() == "complete":
+        return True
+    reg = read_registry_at_ref(root, f"feature/rm-{node.get('codename')}", _SHOW_TIMEOUT_S) or {}
+    return any(isinstance(e, dict) and e.get("node_id") == node["id"] and e.get("implementation_review") == "approved"
+               for e in reg.get("entries") or [])
+
+
+def gui_pending(root: Path, index: RoadmapIndex) -> list[dict[str, Any]]:
+    """Closed ``channel: pm-gui`` entries no coordinator has processed yet, judged from local refs and files (no
+    fetch), each with its next step (M17.15). An approval over a block is pending until :func:`_approval_processed`;
+    an answer until the planning sheet on the local integration branch has its ``<ID>: <answer>`` line."""
+    doc = load_merged(root)[0]   # ledger() reports an unreadable ledger under missing
+    ref = policy_source(root)[0]
+    ib = integration(ref)[1] if ref else None
+    out = []
+    for e in doc.get("entries") or []:
+        if not isinstance(e, dict) or e.get("channel") != PM_GUI or e.get("status") != "closed":
+            continue
+        nid, answer = e.get("node"), str(e.get("answer") or "")
+        node = index.by_id.get(nid) or {"id": nid}
+        item = {"id": e["id"], "node": nid, "answer": answer}
+        if m := _APPROVAL.search(answer):
+            if _approval_processed(root, node):
+                continue
+            branch = f"feature/rm-{node.get('codename')}"
+            nxt = ([f"specy-road mark-implementation-reviewed --yes on {branch}", "specy-road finish-this-task"]
+                   if marker_path(root, nid, m[1]).is_file() else [NO_MARKER])
+            out.append({**item, "kind": "approve-over-block", "next": nxt})
+            continue
+        rel = node.get("planning_dir")
+        sheet = git_stdout(["show", f"refs/heads/{ib}:./{rel}"], root) if ib and rel else None
+        if sheet and recorded_on_sheet(sheet, e["id"], answer):
+            continue
+        out.append({**item, "kind": "answer",
+                    "next": [f"commit the line `{e['id']}: {answer}` under ## Decisions and notes in {rel} on {ib}",
+                             "then act on the answer"]})
+    return out
+
+
 def sessions(root: Path, now: datetime, missing: list[dict]) -> dict[str, list]:
     """Open brainstorm sessions and live presence sessions, whatever the goal scope.
 
@@ -333,7 +384,8 @@ def build_report(root: Path, until: str | None, under: str | None, now: datetime
         "totals": tot,
         **{k: buckets[k] for k in ("held", "active", "ready", "waiting", "awaiting_merge", "not_pickable")},
         "estimate": estimate(completions(root, index, [d["id"] for d in buckets["done"]]), tot["remaining"], now),
-        "decisions": {"ledger": inside, "ledger_outside_scope": outside, "held": held},
+        "decisions": {"ledger": inside, "ledger_outside_scope": outside, "held": held,
+                      "gui_pending": gui_pending(root, index)},
         "sessions": sessions(root, now, missing),
         "missing": missing,
     }
@@ -376,7 +428,12 @@ def _decision_lines(d: dict) -> list[str]:
     for h in d["held"]:
         lines += [f"  held {h['node']}: {h['reason']}"] + [f"    next: `{n}`" for n in h["next"]]
         lines.append(f"    {h['options']}")
-    return lines + (["  (none)"] if len(lines) == 1 else [])
+    lines += ["  (none)"] if len(lines) == 1 else []
+    if d["gui_pending"]:   # shown only when a PM GUI decision waits on a coordinator
+        lines.append("Decided in the GUI, not yet processed:")
+    for g in d["gui_pending"]:
+        lines += [f"  {g['id']} [{g['kind']}] node {g['node']}: {g['answer']}"] + [f"    next: {n}" for n in g["next"]]
+    return lines
 
 
 def render_text(r: dict[str, Any]) -> str:

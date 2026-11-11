@@ -1,16 +1,20 @@
 """FastAPI server for the PM Gantt SPA.
 
-Includes roadmap CRUD, planning files, and settings endpoints.
+Includes roadmap CRUD, planning files, and settings endpoints, and the one orchestration write: a PM decision
+from the status modal (``POST /api/pm-decisions``, M17.15), behind a per-session code printed at startup.
 """
 
 from __future__ import annotations
 
 import os
+import secrets
+import sys
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
+from typing import Any, AsyncIterator, Callable
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, Body, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -20,6 +24,11 @@ from specy_road.grind_status import StatusError, build_report
 from specy_road.gui_app_api import make_api_router  # noqa: E402
 from specy_road.gui_app_helpers import get_repo_root
 from specy_road.gui_app_routes_workers import register_worker_routes
+from specy_road.clock import utc_now_iso
+from specy_road.decisions import close_entry
+from specy_road.decisions_local import load_merged
+from specy_road.review_override import (OPERATOR, PM_GUI, blocks_to_settle, commit_ledger_entry, integration_preflight,
+                                        over_block_preflight, record_over_block, settle_lines)
 
 _PKG_DIR = Path(__file__).resolve().parent
 _STATIC_DIR = _PKG_DIR / "pm_gantt_static"
@@ -51,10 +60,130 @@ def _register_grind_status_route(app: FastAPI, clock: Callable[[], datetime] | N
             raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-def create_app(read_only: bool | None = None, clock: Callable[[], datetime] | None = None) -> FastAPI:
+DECISION_CODE_HEADER = "X-PM-Decision-Code"
+_ANSWERABLE = ("decision", "human-action")
+NOT_STAMPED = "the registry was not stamped"
+
+
+def _answer(root: Path, payload: dict[str, Any], words: str) -> tuple[int, dict[str, Any]]:
+    """Close an open decision or human-action entry with ``<option>: <words>`` (or the words for Other, ``option``
+    null) as the operator, channel pm-gui, sheet line left to the coordinator. A shared entry is closed in a
+    temporary worktree of the integration branch and committed there; a ``decisions.local.yaml`` one in place."""
+    eid, option = payload.get("id"), payload.get("option")
+    doc, local_ids, _problems = load_merged(root)   # an unreadable ledger is empty here: the id is unknown
+    entry = next((e for e in doc.get("entries") or [] if isinstance(e, dict) and e.get("id") == eid), None)
+    if entry is None or entry.get("kind") not in _ANSWERABLE:
+        return 400, {"detail": f"{eid!r} is not a decision or human-action entry in the ledger"}
+    if entry.get("status") != "open":
+        return 409, {"detail": f"{eid} is no longer open (closed since the status was loaded); nothing was recorded"}
+    labels = [o.get("label") for o in entry.get("options") or [] if isinstance(o, dict)]
+    if option is not None and option not in labels:
+        return 400, {"detail": f"option {option!r} is not one of {eid}'s options ({', '.join(labels)}) nor Other"}
+    answer = words if option is None else f"{option}: {words}"
+
+    def close(project: Path, local: bool = False) -> dict[str, Any]:
+        return close_entry(project, eid, answer, sheet_text=None, ledger_only=True, local=local,
+                           decided_by=OPERATOR, channel=PM_GUI)
+
+    try:
+        if eid in local_ids:
+            close(root, local=True)
+            return 200, {"id": eid, "integration_commit": None, "destination": "local ledger"}
+        ref, why = integration_preflight(root)
+        if why or ref is None:
+            return 400, {"detail": why}
+        landed = commit_ledger_entry(root, ref, close, lambda _e: f"roadmap: PM GUI answer closes {eid}")
+    except ValueError as e:   # the local ledger's copied schema refuses channel
+        return 400, {"detail": f"{e}; run `specy-road refresh-schemas`; nothing was recorded"}
+    except SystemExit:   # close_entry: not open on the integration branch (closed there, or never committed there)
+        return 409, {"detail": f"{eid} is not open on the integration branch; nothing was recorded"}
+    if landed.error:
+        return 400, {"detail": f"{landed.error}; nothing was recorded"}
+    return 200, {"id": eid, "integration_commit": landed.commit, "destination": landed.where}
+
+
+def _approve_over_block(root: Path, payload: dict[str, Any], words: str) -> tuple[int, dict[str, Any]]:
+    """M22.67's approval over a block, for the commit and settlement set the modal showed (409 otherwise)."""
+    from specy_road.review_gate import evaluate_gate
+    from specy_road.review_target import ReviewTargetError, resolve_target
+
+    node_id, commit, settles = payload.get("node_id"), payload.get("commit"), payload.get("settles")
+    try:
+        t = resolve_target(root, str(node_id))
+    except ReviewTargetError as e:
+        return 400, {"detail": str(e)}
+    branch = (t.entry or {}).get("branch")
+    if not branch:
+        return 400, {"detail": f"{node_id} is not a claimed leaf; an approval over a block is for one leaf's branch"}
+    gate = evaluate_gate(root, t.node, t.commit, branch=branch)
+    if gate.commit != commit:
+        return 409, {"detail": f"the commit under review is now {gate.commit}, not {commit}; reload the status"}
+    if not gate.blocks:
+        return 400, {"detail": f"no reviewer block counts at {gate.commit}; nothing to approve over"}
+    gate, ref, why = over_block_preflight(root, t.node, gate, branch)
+    if why or ref is None:
+        return 400, {"detail": f"approval over the block withheld: {why}"}
+    if settle_lines(root, gate, blocks_to_settle(root, gate, str(gate.commit))) != settles:
+        return 409, {"detail": "what the decision would settle changed since the status was loaded; reload it"}
+    rec = record_over_block(root, t.node, gate, ref, words, branch, session=f"pm-gui {utc_now_iso()}",
+                            channel=PM_GUI)
+    landed = rec.landed
+    if landed.error or landed.entry is None or rec.gate is None:
+        return 400, {"detail": f"{landed.error}; nothing was recorded"}
+    body = {"id": landed.entry["id"], "integration_commit": landed.commit, "destination": landed.where,
+            "gate_met": rec.gate.passed}
+    if not rec.gate.passed:
+        body["detail"] = (f"decision {landed.entry['id']} is recorded on {landed.where}, but the review gate is still "
+                          f"not met; {NOT_STAMPED}: " + "; ".join(rec.gate.problems()))
+    return 200, body
+
+
+def record_pm_decision(root: Path, payload: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    """``(HTTP status, body)`` for one decision; every refusal comes before anything is written."""
+    words = payload.get("words")
+    if not isinstance(words, str) or not words.strip():
+        return 400, {"detail": "words: say why, in your own words"}
+    if payload.get("kind") == "answer":
+        return _answer(root, payload, words.strip())
+    if payload.get("kind") == "approve-over-block":
+        return _approve_over_block(root, payload, words.strip())
+    return 400, {"detail": "kind: answer or approve-over-block"}
+
+
+@asynccontextmanager
+async def _draw_decision_code(app: FastAPI) -> AsyncIterator[None]:
+    """At server startup (not import): draw the PM decision code, keep it in memory and show it once to the person
+    who started the server, on its stderr. Never in a file, an environment variable, a log line or a response."""
+    if app.state.decision_code is None:
+        app.state.decision_code = secrets.token_urlsafe(16)
+        print("PM decisions: enter this code in the Status window to confirm a decision: "
+              f"{app.state.decision_code} (kept in memory only; it changes each time the GUI starts)",
+              file=sys.stderr, flush=True)
+    yield
+
+
+def _register_pm_decision_route(app: FastAPI) -> None:
+    @app.post("/api/pm-decisions")
+    def pm_decision(payload: dict[str, Any] = Body(...),  # noqa: B008
+                    code: str | None = Header(None, alias=DECISION_CODE_HEADER)) -> JSONResponse:
+        """Record a PM decision (an answer, or an approval over a block); 403 without the startup code."""
+        expected = app.state.decision_code
+        if not expected or code is None or not secrets.compare_digest(code.encode(), expected.encode()):
+            raise HTTPException(status_code=403, detail=f"wrong or missing {DECISION_CODE_HEADER}: enter the code "
+                                                        "`specy-road gui` printed in its terminal")
+        status, body = record_pm_decision(get_repo_root(), payload)
+        return JSONResponse(body, status_code=status)
+
+
+def create_app(read_only: bool | None = None, clock: Callable[[], datetime] | None = None,
+               decision_code: str | None = None) -> FastAPI:
+    """The app. ``decision_code`` fixes the PM decision code (tests); otherwise one is drawn at startup, and under
+    ``read_only`` none is drawn or printed."""
     if read_only is None:
         read_only = os.environ.get(READ_ONLY_ENV) == "1"
-    app = FastAPI(title="specy-road PM Gantt API", version="1.0.0")
+    app = FastAPI(title="specy-road PM Gantt API", version="1.0.0",
+                  lifespan=None if read_only else _draw_decision_code)
+    app.state.decision_code = None if read_only else decision_code
     if read_only:
         _register_read_only_guard(app)
     app.add_middleware(
@@ -74,6 +203,7 @@ def create_app(read_only: bool | None = None, clock: Callable[[], datetime] | No
     register_worker_routes(workers)
     app.include_router(workers)
     _register_grind_status_route(app, clock)
+    _register_pm_decision_route(app)
 
     # Registered before the SPA fallback so scripts get JSON, not the HTML shell.
     @app.api_route("/api/{rest:path}", methods=_ALL_METHODS, include_in_schema=False)

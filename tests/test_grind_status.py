@@ -19,16 +19,21 @@ import yaml
 from specy_road import grind_status as gst
 from specy_road.brainstorm_session import BrainstormSession, write_session
 from specy_road.bundled_scripts import grind_session as gs
-from specy_road.bundled_scripts import review_cli
+from specy_road.bundled_scripts import mark_implementation_reviewed, review_cli
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 from specy_road.history_index import clear_memo
 from specy_road.planning_sheet_bootstrap import promote_placeholder
 from specy_road.registration_pickup_commit import registration_commit_message
 from specy_road.review_files import render_front_matter, reviews_dir
+from specy_road.review_override import block_item, shortfall_text
 from specy_road.review_policy_pin import pinned_message
 from specy_road.session_presence import start_session
 from specy_road.worker_state import FLAG_NEEDS_PERSON, add_flag, create_record, set_lease, set_state
-from tests.review_repo_helpers import commit_file, diverge, make_review_repo, review_text
+from specy_road.orchestration_role_env import ROLE_ENV
+from specy_road.review_gate import evaluate_gate
+from tests.review_repo_helpers import NODE, commit_file, diverge, make_review_repo, review_text
+from tests import test_gui_app_pm_decisions as gui
+from tests.test_review_override import ROSTER as REVIEWERS, STRONG
 from tests.test_review_rca import ROSTER
 
 NOW = datetime(2026, 11, 10, 12, 0, tzinfo=timezone.utc)
@@ -315,6 +320,30 @@ def test_a_claimed_leaf_held_by_its_review_names_the_records_next_step(
     assert {"node": "M1.1", **reason, "options": gst.NO_OPTIONS} in r["decisions"]["held"]
 
 
+@pytest.mark.parametrize("roster, can, shortfall", [
+    (REVIEWERS, True, (1, 0)),                                                     # settling passes
+    (REVIEWERS.replace("{reviewers_required: 1}", "{reviewers_required: 2}"), True, (2, 0)),
+    (STRONG, False, (1, 0)),                                                       # an unmet strong_review item
+])
+def test_a_blocked_claimed_leaf_says_whether_the_pm_can_approve_over_the_block(
+        tmp_path: Path, capsys, roster: str, can: bool, shortfall: tuple[int, int]) -> None:
+    """M17.15: each evaluated claimed leaf gains commit, can_approve_over_block and settles, and no other key."""
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    findings = {"correctness": ["A1 regressed"]}
+    head = git(repo, "rev-parse", "HEAD")
+    data = yaml.safe_load(review_text(head, model="opus", verdict="block", a1="fail").split("---\n")[1])
+    data["findings"].update(findings)
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / "REVIEW-opus.md").write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n")
+    r = status(repo, capsys, "--until", "M1.1")
+    (leaf,) = r["held"] + r["active"]
+    assert set(leaf) == ({"id", "title", "claimed", "reasons", "state"} if r["held"] else
+                         {"id", "title", "claimed", "status", "review"}) | {"commit", "can_approve_over_block", "settles"}
+    assert (leaf["commit"], leaf["can_approve_over_block"]) == (head, can)
+    assert leaf["settles"] == [block_item("opus", head, findings), shortfall_text(*shortfall)]
+
+
 def test_status_runs_no_trial_merge_and_handoff_still_reports_the_conflict(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     diverge(repo, "code")
@@ -370,6 +399,64 @@ def test_ledger_entries_print_as_recorded_in_scope_and_one_line_outside(tmp_path
                   "json (no comments)", "yaml — people edit these files by hand", "json after the deadline",
                   f"pros/cons: {gst.PROS_CONS}", "outside scope: D2 node M2.1: Somewhere else"):
         assert value in text, value
+
+
+# --- decisions decided in the PM GUI, not yet processed (M17.15) --------------
+
+
+def pending(root: Path) -> dict:
+    return {g["id"]: g for g in gst.build_report(root, "M1.1", None, NOW)["decisions"]["gui_pending"]}
+
+
+def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv(ROLE_ENV, raising=False)   # the manual coordinator
+    lay = gui.layout(tmp_path, monkeypatch)
+    gui.with_questions(lay, gui.question("D1"))
+    git(lay.leaf, "merge", "-q", "--no-edit", "dev")
+    gui.block(lay)
+    c = gui.client()
+    assert gui.answer(c, "D1", "A", "ship A").status_code == 200
+    assert gui.approve(c, gui.leaf_offer(c)).status_code == 200
+    git(lay.top, "merge", "-q", "--ff-only", "origin/dev")   # the coordinator pulls
+    got = pending(lay.run)
+    assert {k: (g["kind"], g["node"]) for k, g in got.items()} == {
+        "D1": ("answer", "M1.1"), "D2": ("approve-over-block", "M1.1")}
+    assert "`D1: A: ship A`" in got["D1"]["next"][0]
+    assert got["D2"]["next"] == ["specy-road mark-implementation-reviewed --yes on feature/rm-thing",
+                                 "specy-road finish-this-task"]
+    text = gst.render_text(gst.build_report(lay.run, "M1.1", None, NOW))
+    assert "Decided in the GUI, not yet processed:\n  D1 [answer] node M1.1: A: ship A" in text
+    sheet = (lay.run / NODE["planning_dir"]).read_text() + "\n## Decisions and notes\n\n- D1: A: ship A\n"
+    commit_file(lay.leaf, NODE["planning_dir"], sheet, "D1 on the leaf branch")
+    assert "D1" in pending(lay.run)   # a line only on a leaf branch does not clear it
+    commit_file(lay.top, f"{lay.prefix}{NODE['planning_dir']}", sheet, "D1 on the integration branch")
+    assert set(pending(lay.run)) == {"D2"}
+    with pytest.raises(SystemExit) as e:
+        mark_implementation_reviewed.main(["--yes", "--allow-missing-summary", "--repo-root", str(lay.leaf)])
+        raise SystemExit(0)
+    assert (e.value.code or 0) == 0
+    assert pending(lay.run) == {}   # before the leaf lands
+
+
+def test_another_clone_lists_the_approval_without_a_marker(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv(ROLE_ENV, raising=False)   # the manual coordinator
+    lay = gui.layout(tmp_path, monkeypatch)
+    gui.block(lay)
+    c = gui.client()
+    assert gui.approve(c, gui.leaf_offer(c)).status_code == 200
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", "-b", "dev", str(lay.bare), str(other))
+    assert pending(other)["D1"]["next"] == [gst.NO_MARKER]
+    d = reviews_dir(other, "M1.1")
+    d.mkdir(parents=True)
+    (d / "REVIEW-opus.md").write_bytes((reviews_dir(lay.run, "M1.1") / "REVIEW-opus.md").read_bytes())
+    head = git(lay.leaf, "rev-parse", "HEAD")
+    assert [b.model for b in evaluate_gate(other, NODE, head, branch="origin/feature/rm-thing").blocks] == ["opus"]
+    phases = other / "roadmap" / "phases" / "M1.json"
+    doc = json.loads(phases.read_text())
+    doc["nodes"][0]["status"] = "Complete"
+    phases.write_text(json.dumps(doc))
+    assert pending(other) == {}   # a Complete leaf has nothing left to process
 
 
 # --- estimate ----------------------------------------------------------------
@@ -469,7 +556,7 @@ def test_json_is_one_object_naming_its_checkout(tmp_path: Path, capsys) -> None:
     assert set(r) == {"generated_at", "source", "goal", "scope", "totals", "held", "active", "ready", "waiting",
                       "awaiting_merge", "not_pickable", "estimate", "decisions", "sessions", "missing"}
     assert set(r["estimate"]) == {"method", "inputs", "earliest", "latest", "reason"}
-    assert set(r["decisions"]) == {"ledger", "ledger_outside_scope", "held"}
+    assert set(r["decisions"]) == {"ledger", "ledger_outside_scope", "held", "gui_pending"}
     assert set(r["sessions"]) == {"brainstorm", "presence"}
     head = git(repo, "rev-parse", "HEAD")
     assert r["generated_at"] == NOW.isoformat() and r["goal"] == "M1.1"
