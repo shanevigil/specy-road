@@ -333,6 +333,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
+- `M16.2.11` on `feature/rm-one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once` since 2026-11-11
 - `M17.15` on `feature/rm-gui-pm-decisions` since 2026-11-10
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
