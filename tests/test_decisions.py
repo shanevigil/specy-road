@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.decisions import read_decisions, write_decisions
+from specy_road.decisions import read_decisions, schema_errors, write_decisions
 from specy_road.runtime_paths import specy_road_package_dir
 from tests.helpers import DOGFOOD
 from tests.decisions_repo_helpers import SHEET, add_args, decisions_repo, run_decisions
@@ -183,6 +183,32 @@ def test_skills_post_the_grind_status_on_the_interval(name: str) -> None:
                    "a person's terminal"):
         assert phrase in para, phrase
     assert "/loop" not in para and "Claude Code" not in para
+
+
+CLOSED = {"status": "closed", "answer": "A: ship A", "closed": "2026-11-10T12:00:00+00:00"}
+
+
+@pytest.mark.parametrize("kind, extra, ok", [
+    ("decision", {**CLOSED, "decided_by": "operator", "channel": "pm-gui"}, True),
+    ("human-action", {**CLOSED, "channel": "pm-gui"}, True),
+    ("decision", {"channel": "pm-gui"}, False),                        # an open entry
+    ("preference", {**CLOSED, "channel": "pm-gui"}, False),
+    ("decision", {**CLOSED, "channel": "chat"}, False),
+])
+def test_channel_is_pm_gui_on_closed_questions_only(kind: str, extra: dict, ok: bool) -> None:
+    """M17.15: ``channel`` says a decision was made in the PM GUI; nowhere else, and no other value."""
+    doc = {"version": 1, "entries": [_question("D1", kind, "M1.1", **extra)]}
+    assert (schema_errors(doc) == []) == ok, schema_errors(doc)
+
+
+def test_the_coordinator_skill_processes_pm_gui_decisions() -> None:
+    """M17.15 A6: the bundled skill pulls before each status check, processes every GUI decision, says so."""
+    text = SKILL.read_text(encoding="utf-8")
+    para = next(p for p in text.split("\n\n") if p.startswith("**Decisions made in the PM GUI.**"))
+    for phrase in ("git pull --ff-only", "before each status check", "Decided in the GUI, not yet processed",
+                   "decisions.gui_pending", "as an operator decision", "the PM's words",
+                   "Processing PM GUI decision <id> on <node>: <words>"):
+        assert phrase in para, phrase
 
 
 def test_documented_search_kind_planning(tmp_path: Path) -> None:

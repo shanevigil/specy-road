@@ -46,6 +46,11 @@
           "enum": ["operator", "coordinator"],
           "description": "A closed decision written by review operator-decision: operator (the operator's own words) or coordinator (under a standing rule). The review gate reads only such a decision for the blocks and shortfall its answer names"
         },
+        "channel": {
+          "type": "string",
+          "enum": ["pm-gui"],
+          "description": "Closed decision and human-action entries only: where the decision was made. pm-gui: the PM recorded it from the PM GUI's status modal, and a coordinator processes it (grind-session --status lists it under decisions.gui_pending)"
+        },
         "summary": {
           "type": "string",
           "minLength": 1,
@@ -137,7 +142,8 @@
                 { "required": ["recommendation"] },
                 { "required": ["recommendation_reason"] },
                 { "required": ["default_if_unanswered"] },
-                { "required": ["needed_by"] }
+                { "required": ["needed_by"] },
+                { "required": ["channel"] }
               ]
             }
           }
@@ -156,7 +162,8 @@
                 { "required": ["role"] },
                 { "required": ["models"] },
                 { "required": ["applies_to"] },
-                { "required": ["decided_by"] }
+                { "required": ["decided_by"] },
+                { "required": ["channel"] }
               ]
             }
           }
@@ -171,7 +178,8 @@
             "not": {
               "anyOf": [
                 { "required": ["answer"] },
-                { "required": ["closed"] }
+                { "required": ["closed"] },
+                { "required": ["channel"] }
               ]
             }
           }

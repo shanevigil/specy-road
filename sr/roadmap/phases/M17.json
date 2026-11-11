@@ -465,7 +465,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.15_gui-pm-decisions_d4d16cb9-49c7-49ef-a254-3223e0b3a80c.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it",
       "touch_zones": [
         "specy_road/review_override.py",
