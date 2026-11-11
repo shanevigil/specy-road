@@ -20,9 +20,23 @@ __all__ = [
     "launchers_on_path",
     "print_install_report",
     "recorded_toolkit_version",
+    "running_toolkit_version",
     "warn_if_blocks_written_by_other_version",
     "warn_if_running_version_older",
 ]
+
+
+def __getattr__(name: str):
+    """``running_toolkit_version``, re-exported from :mod:`specy_road.toolkit_version` on first use.
+
+    Lazy so that ``validate``, which loads this module for every command, does not load that one.
+    """
+    if name == "running_toolkit_version":
+        from specy_road.toolkit_version import running_toolkit_version
+
+        return running_toolkit_version
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 _VERSION = re.compile(r"^(\d+(?:\.\d+)*)(?:(a|b|rc)(\d+))?$", re.IGNORECASE)
 _AGENTS_WRITTEN = re.compile(r"Written by specy-road (\S+)")

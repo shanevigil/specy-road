@@ -12,7 +12,7 @@ from pathlib import Path
 from specy_road import __version__
 from specy_road.git_subprocess import git_root, head_sha, working_tree_clean
 from specy_road.runtime_paths import specy_road_package_dir
-from specy_road.toolkit_version import running_toolkit_version
+from specy_road.version_skew import running_toolkit_version
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -65,6 +65,14 @@ def _import_running_version_on_path(site_packages: Path) -> str:
 
 def _stage_specy_road_package(target_repo_root: Path) -> None:
     shutil.copytree(REPO / "specy_road", target_repo_root / "specy_road")
+
+
+def test_version_skew_still_exports_running_toolkit_version() -> None:
+    """The old public path keeps working: ``version_skew`` re-exports the function, lazily."""
+    from specy_road import toolkit_version, version_skew
+
+    assert "running_toolkit_version" in version_skew.__all__
+    assert running_toolkit_version is toolkit_version.running_toolkit_version
 
 
 def test_running_version_in_this_checkout_matches_head() -> None:

@@ -11,7 +11,7 @@ REPO = Path(__file__).resolve().parent.parent
 
 def test_specy_road_version_flag() -> None:
     """B4: the first thing anyone types when filing a bug or pinning an image."""
-    from specy_road.toolkit_version import running_toolkit_version
+    from specy_road.version_skew import running_toolkit_version
 
     for flag in ("--version", "-V", "version"):
         r = subprocess.run(
