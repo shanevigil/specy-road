@@ -237,6 +237,8 @@ FLAGS_MD = """Run `specy-road validate --strict --stirct` before you push.
 specy-road add-dependency M1 M2 --repo-root sr -x | tail -1
 specy-road brief <NODE_ID> --bad && specy-road list-nodes --json -- --ignored
 specy-road review frob --zzz; specy-road export --check "unclosed
+specy-road brief M1 --outupt <FILE>
+specy-road search "|" --jsno 2>&1 | tail -1
 ```
 """
 
@@ -244,14 +246,17 @@ specy-road review frob --zzz; specy-road export --check "unclosed
 def test_an_unknown_long_flag_is_reported_with_the_closest_valid_one(
     tmp_path: Path, capsys
 ) -> None:
-    """One stale flag and one valid one; a parent parser's option, a short option, a placeholder,
-    words after a shell operator or a bare ``--``, a word that is no subcommand and an unparseable
-    line report nothing."""
+    """Stale flags and valid ones. A quoted operator is an argument, so the flag after it is read.
+    A parent parser's option, a short option, an invocation holding a placeholder (before or after
+    a stale flag), words after an unquoted operator or a bare ``--``, a word that is no subcommand
+    and an unparseable line report nothing."""
     (tmp_path / "AGENTS.md").write_text(FLAGS_MD, encoding="utf-8")
     warn_unregistered_commands(tmp_path)
     assert capsys.readouterr().err.splitlines() == [
         f"agents: warning — AGENTS.md:1: `specy-road validate` has no `--stirct` in specy-road "
         f"{__version__}; closest: `--strict`.",
+        f"agents: warning — AGENTS.md:8: `specy-road search` has no `--jsno` in specy-road "
+        f"{__version__}; closest: `--json`.",
     ]
 
 

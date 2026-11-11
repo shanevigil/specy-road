@@ -368,7 +368,8 @@ def stale_command_advice(mention: str) -> str:
 
 
 _INVOKED = re.compile(r"(?<![\w/.-])specy-road(?=[ \t])")
-_OPERATOR = re.compile(r"[();<>|&]+")
+#: An unquoted shell operator or a standalone redirection (``>``, ``>>``, ``2>``, ``<``).
+_OPERATOR = re.compile(r"[();|&]+|\d*[<>]+")
 #: An invocation holding one of these is a template (``specy-road <cmd> --x``), not a command line.
 _PLACEHOLDER = re.compile(r"<[^<>\s]+>|\.\.\.|…|[{}]")
 
@@ -383,18 +384,24 @@ def _code_texts(lines: list[tuple[int, str]]):
 
 
 def _invocation_words(text: str) -> list[str] | None:
-    """The shell words of ``text`` up to a shell operator or a bare ``--``.
+    """The shell words of the invocation ``text`` starts with, unquoted.
 
-    ``None`` when ``shlex`` cannot split it or it holds a placeholder: neither is a command line.
+    One rule, read on the words as written (quotes kept, ``<NAME>`` whole): the invocation runs to
+    the first unquoted shell operator (``( ) ; | &``), standalone redirection (``<``, ``>``,
+    ``>>``, ``2>``) or bare ``--``. ``None`` when ``shlex`` cannot split it or any of its words is
+    a placeholder (``<NAME>``, ``...``, ``…``, braces): neither is a command line. Limit: a
+    redirection written onto a word (``--out>file``) is read as part of that word.
     """
-    lexer = shlex.shlex(text, posix=True, punctuation_chars=True)
+    lexer = shlex.shlex(text, posix=False, punctuation_chars="();|&")
     lexer.whitespace_split = True
     try:
-        words = list(lexer)
+        raw = list(lexer)
+        end = next((i for i, w in enumerate(raw) if w == "--" or _OPERATOR.fullmatch(w)), len(raw))
+        # Unquoted here, so a word ending in a lone ``\`` (a line continuation) is unparseable too.
+        words = ["".join(shlex.split(word)) for word in raw[:end]]
     except ValueError:
         return None
-    end = next((i for i, w in enumerate(words) if w == "--" or _OPERATOR.fullmatch(w)), len(words))
-    return None if _PLACEHOLDER.search(" ".join(words[:end])) else words[:end]
+    return None if any(_PLACEHOLDER.search(word) for word in raw[:end]) else words
 
 
 @functools.cache
