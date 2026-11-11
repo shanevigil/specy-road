@@ -334,6 +334,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.2.10` on `feature/rm-every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers` since 2026-11-10
+- `M17.15` on `feature/rm-gui-pm-decisions` since 2026-11-10
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05

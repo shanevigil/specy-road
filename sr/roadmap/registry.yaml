@@ -83,3 +83,31 @@ entries:
     started: '2026-11-10'
     owner: savigil
     implementation_review: pending
+  - codename: gui-pm-decisions
+    node_id: M17.15
+    branch: feature/rm-gui-pm-decisions
+    touch_zones:
+      - specy_road/review_override.py
+      - specy_road/bundled_scripts/mark_implementation_reviewed.py
+      - specy_road/decisions.py
+      - specy_road/templates/project/schemas/decisions.schema.json
+      - specy_road/grind_status.py
+      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
+      - tests/test_gui_app_pm_decisions.py
+      - tests/test_grind_status.py
+      - tests/test_decisions.py
+      - gui/pm-gantt/src/pmDecision.ts
+      - gui/pm-gantt/src/pmDecision.test.ts
+      - gui/pm-gantt/src/grindStatus.ts
+      - gui/pm-gantt/src/fixtures/grind_status_mock.json
+      - gui/pm-gantt/src/components/StatusModal.tsx
+      - gui/pm-gantt/src/App.css
+      - specy_road/pm_gantt_static/
+      - docs/pm-gui.md
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+      - specy_road/gui_app.py
+      - docs/grind-session.md
+    started: '2026-11-10'
+    owner: savigil
+    implementation_review: pending
