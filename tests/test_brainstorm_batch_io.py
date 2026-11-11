@@ -29,7 +29,7 @@ def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         try:
-            brainstorm_cli.main(["brainstorm", *args, "--repo-root", str(repo)])
+            brainstorm_cli.main([*args, "--repo-root", str(repo)])
             code = 0
         except SystemExit as e:
             code = int(e.code) if isinstance(e.code, int) else 1

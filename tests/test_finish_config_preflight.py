@@ -28,6 +28,7 @@ AGAIN = "nothing was committed; fix it and run finish-this-task again"
 #: Runs finish with the failure named by ``INJECT`` (validate, digest or registry) injected.
 _INJECTED = """
 import os, subprocess, sys
+from pathlib import Path
 from unittest import mock
 import specy_road.bundled_scripts.finish_task as ft
 
@@ -37,7 +38,8 @@ real = subprocess.check_call
 def check_call(argv, **kw):
     if where in ("validate", "digest") and argv[1:4] == ["-m", "specy_road.cli", where]:
         if where == "digest":
-            assert "Complete" in (ft.ROOT / "roadmap.md").read_text()   # export rewrote it first
+            # export rewrote it first
+            assert "Complete" in (Path(kw["cwd"]) / "roadmap.md").read_text()
         raise subprocess.CalledProcessError(3, argv)   # what check_call raises when the command exits 3
     return real(argv, **kw)
 

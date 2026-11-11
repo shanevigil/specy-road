@@ -28,7 +28,7 @@ from specy_road.search_corpus import (
     SCOPE_LIVE,
 )
 from specy_road.search_index import corpus_stats, fts5_available, search
-from specy_road.cli_entry import run_forwarded_cli
+from specy_road.cli_entry import run_handler
 
 _KINDS = (KIND_PLANNING, KIND_SHARED, KIND_NODE, KIND_SUMMARY, KIND_CONSTITUTION)
 
@@ -146,7 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    run_forwarded_cli(build_parser, "search", argv)
+    run_handler(build_parser().parse_args(argv))
 
 
 if __name__ == "__main__":

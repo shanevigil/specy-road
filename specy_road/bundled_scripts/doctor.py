@@ -51,6 +51,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.branches_cli import feature_branches, fetch_integration, live_branches
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
 from specy_road.bundled_scripts.doctor_env_setup import report_checkout
+from specy_road.cli import run_captured
 from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WORKTREES re-exported for callers
     NO_EVIDENCE, SAME_PATCH, TEMP_WORKTREES, Finding, classify, containment, evidence_kind, live_holders,
@@ -153,14 +154,16 @@ def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], dict[str, tuple[str, str
 
 
 def _prune_row(ctx: _Ctx, codename: str) -> str | None:
-    """``registry-prune --remove``: it syncs, commits on the integration branch and pushes."""
-    r = subprocess.run(
-        [sys.executable, "-m", "specy_road.bundled_scripts.registry_prune",
-         "--remove", codename, "--base", ctx.base, "--remote", ctx.remote,
+    """``registry-prune --remove``: it syncs, commits on the integration branch and pushes.
+
+    Its output is captured and only a failure's is reported: a finding's one line.
+    """
+    status, out, err = run_captured(
+        "registry_prune",
+        ["--remove", codename, "--base", ctx.base, "--remote", ctx.remote,
          "--repo-root", str(ctx.root)],
-        capture_output=True, text=True, check=False,
     )
-    return (r.stderr or r.stdout).strip() if r.returncode else None
+    return (err or out).strip() if status else None
 
 
 # True when the branch is in this clone or on the remote, so the branch section lists it.

@@ -174,7 +174,6 @@ def test_pickup_claims_by_the_resolved_setting(
 ) -> None:
     """``--local`` pickup reads the flag, else git-workflow.yaml, and claims accordingly."""
     repo = _pickup_repo(tmp_path, yaml_value)
-    monkeypatch.setattr(dnt, "ROOT", repo)
     try:
         dnt.main(["--local", "--on-complete", "merge", "--repo-root", str(repo), *cli])
     except SystemExit as e:

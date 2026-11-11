@@ -9,7 +9,11 @@ from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
+    argv = list(sys.argv[1:] if argv is None else argv)
+    # The parser reads ``--repo-root`` before the subcommand; ``specy-road list-nodes --repo-root
+    # DIR`` gives it after, so the first one and the word after it go first (no-op without one).
+    i = argv.index("--repo-root") if "--repo-root" in argv else len(argv)
+    args = build_parser().parse_args(argv[i : i + 2] + argv[:i] + argv[i + 2 :])
     args.func(args)
 
 

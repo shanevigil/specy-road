@@ -1,0 +1,37 @@
+$ specy-road mark-implementation-reviewed M2 --yes
+exit: 0
+--- stdout ---
+Milestone full review — [M2] at refs/heads/dev
+
+Review policy: 1/1 approvals, 0 block(s): met (commit <SHA>)
+  REVIEW-human.md: approve by human (human)
+
+[ok] M2 status -> Complete (all leaf descendants complete)
+OK: roadmap and registry validate.
+notice: no roadmap/orchestration.yaml, so the default policy applies: one reviewer, any family, and a roster of one human (`specy-road validate --generate-orchestration` writes an editable starter)
+notice: no roadmap/orchestration.yaml on dev, where the roster is read from, nor in the working tree, so routing uses the default roster (one human, no executor); see docs/orchestration.md to write and commit one
+Wrote <B>/roadmap.md
+Wrote <B>/roadmap-context.md (<N> bytes)
+[dev <SHA>] roadmap: M2 full review approved; status -> Complete
+ 3 files changed, 61 insertions(+), 12 deletions(-)
+ create mode 100644 roadmap-context.md
+ create mode 100644 roadmap.md
+[ok] committed M2 -> Complete
+--- stderr ---
+agents: warning — AGENTS.md has no specy-road section, so agents here miss the current coordination rules. Run: specy-road refresh-stubs (it needs no stub pack and touches only managed blocks and the files specy-road owns)
+
+$ specy-road mark-implementation-reviewed M2 --yes
+exit: 1
+--- stdout ---
+Milestone full review — [M2] at refs/heads/dev
+
+Review policy: 0/1 approvals, 0 block(s): not met (commit <SHA>)
+  - REVIEW-human.md: reviewed <SHA>, not the current commit — re-review
+  - need 1 approvals at this commit, have 0
+
+--- stderr ---
+error: the review gate is not met, so the implementation cannot be marked reviewed.
+  Inspect: specy-road handoff status M2
+  Reviewers read: specy-road review-packet M2
+  Record each review: specy-road review record M2 --model <id> --verdict approve|block --file <notes.md>
+  --yes only commits an approval the recorded reviews already earned.

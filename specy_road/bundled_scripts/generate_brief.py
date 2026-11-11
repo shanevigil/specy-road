@@ -31,7 +31,7 @@ from specy_road.brief_generation import (  # noqa: E402 — re-export after __al
 )
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=_BRIEF_DOC.split("The CLI entry point", 1)[0].strip())
     p.add_argument("node_id", help="Roadmap node id, e.g. M1.1")
     p.add_argument(
@@ -54,7 +54,7 @@ def main() -> None:
             "planning chain's `## References`. Restores pre-0.2.1 behaviour."
         ),
     )
-    args = p.parse_args()
+    args = p.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
 
     nodes = load_nodes(root)

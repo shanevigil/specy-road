@@ -36,11 +36,9 @@ def _repo_with_tracked_session_files(tmp_path: Path, monkeypatch) -> list[list[s
         (tmp_path / "work" / name).write_text("x", encoding="utf-8")
 
     git_calls: list[list[str]] = []
-    # Patching ROOT is enough: the registry path is derived from it.
-    monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(ft, "git_run", lambda _root, *a: git_calls.append(list(a)))
-    monkeypatch.setattr(ft, "_update_chunk_status", lambda _n: [])
-    monkeypatch.setattr(ft, "_validate_export_digest", lambda: None)
+    monkeypatch.setattr(ft, "_update_chunk_status", lambda _root, _n: [])
+    monkeypatch.setattr(ft, "_validate_export_digest", lambda _root: None)
     monkeypatch.setattr(ft, "write_registry", lambda _path, _doc: None)
     return git_calls
 
@@ -58,7 +56,7 @@ def test_bookkeeping_stages_the_tracked_sidecar_deletion(tmp_path, monkeypatch) 
     )
 
     ft._bookkeeping_commit_phase(
-        _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []},
+        tmp_path, _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []},
         sess_path=tmp_path / "work" / ".on-complete-M1.1.yaml",
     )
 
@@ -76,7 +74,7 @@ def test_bookkeeping_stages_tracked_document_deletions(tmp_path, monkeypatch) ->
     monkeypatch.setattr(ft, "cleanup_session_sidecar", lambda *_a: [])
 
     ft._bookkeeping_commit_phase(
-        _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
+        tmp_path, _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
     )
 
     staged = _staged(git_calls)
@@ -100,7 +98,7 @@ def test_sidecar_goes_even_with_no_cleanup_work(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(ft, "cleanup_session_sidecar", _sidecar)
 
     ft._bookkeeping_commit_phase(
-        _args(no_cleanup_work=True), "cn", "M1.1", "feature/rm-cn", {"entries": []},
+        tmp_path, _args(no_cleanup_work=True), "cn", "M1.1", "feature/rm-cn", {"entries": []},
         sess_path=tmp_path / "work" / ".on-complete-M1.1.yaml",
     )
 
@@ -117,7 +115,7 @@ def test_bookkeeping_stages_both_generated_files(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(ft, "unstageable_generated_files", lambda _r: [])
 
     ft._bookkeeping_commit_phase(
-        _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
+        tmp_path, _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
     )
 
     staged = _staged(git_calls)
@@ -135,7 +133,7 @@ def test_bookkeeping_skips_an_untracked_gitignored_file(tmp_path, monkeypatch) -
     )
 
     ft._bookkeeping_commit_phase(
-        _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
+        tmp_path, _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
     )
 
     staged = _staged(git_calls)
@@ -160,7 +158,7 @@ def test_a_tracked_but_ignored_generated_file_is_still_staged(
     monkeypatch.setattr(ft, "unstageable_generated_files", lambda _r: [])
 
     ft._bookkeeping_commit_phase(
-        _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
+        tmp_path, _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
     )
 
     assert "roadmap-context.md" in _staged(git_calls)

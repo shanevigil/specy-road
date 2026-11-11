@@ -30,13 +30,13 @@ def test_sync_integration_branch_git_sequence(monkeypatch: pytest.MonkeyPatch) -
 
 def test_assert_current_branch_equals_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(dnt, "current_branch", lambda _root: "dev")
-    dnt._assert_current_branch_equals("dev")
+    dnt._assert_current_branch_equals(Path("."), "dev")
 
 
 def test_assert_current_branch_equals_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(dnt, "current_branch", lambda _root: "other")
     with pytest.raises(SystemExit):
-        dnt._assert_current_branch_equals("dev")
+        dnt._assert_current_branch_equals(Path("."), "dev")
 
 
 def test_assert_current_branch_equals_detached_fails(
@@ -44,7 +44,7 @@ def test_assert_current_branch_equals_detached_fails(
 ) -> None:
     monkeypatch.setattr(dnt, "current_branch", lambda _root: "HEAD")
     with pytest.raises(SystemExit):
-        dnt._assert_current_branch_equals("main")
+        dnt._assert_current_branch_equals(Path("."), "main")
 
 
 # F-009: _validate_touch_zones was removed (touch_zones are optional; the

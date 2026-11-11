@@ -91,7 +91,7 @@ __all__ = [
 ]
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--no-overlap-warn",
@@ -130,7 +130,7 @@ def main() -> None:
         "that init project writes, when the file does not exist.",
     )
     add_repo_root_arg(parser)
-    args = parse_validate_args(parser)
+    args = parse_validate_args(parser, argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     with _counting_stderr() as stderr:
         validate_at(

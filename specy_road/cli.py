@@ -1,14 +1,20 @@
-"""Console entrypoint: thin wrappers around bundled_scripts/."""
+"""Console entrypoint: each command's bundled_scripts module, run in this process."""
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import difflib
+import importlib
 import importlib.util
 import os
 import subprocess
 import sys
+import tempfile
+import traceback
 from pathlib import Path
+from types import ModuleType
+from typing import IO
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
 from specy_road.cli_usage import USAGE_TEXT
@@ -20,65 +26,67 @@ _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
 
 
-# Commands that are exactly "run this script with these args". A table rather
-# than a chain of elifs: the chain was one branch from the per-function line cap
-# and every new command pushed it over.
+# The dispatcher tables. Each command imports ``specy_road.bundled_scripts.<module>`` and calls
+# its ``main(argv)`` in this process. A table rather than a chain of elifs: the chain was one
+# branch from the per-function line cap and every new command pushed it over.
+#
+# Commands whose module parses the words after the command name; argparse names the program
+# ``specy-road <command>``.
 _SCRIPTS = {
-    "validate": "validate_roadmap.py",
-    "brief": "generate_brief.py",
-    "export": "export_roadmap_md.py",
-    "update": "update_specy_road.py",
-    "file-limits": "validate_file_limits.py",
-    "do-next-available-task": "do_next_task.py",
-    "abort-task-pickup": "abort_task_pickup.py",
-    "reconcile-branch": "reconcile_branch_cli.py",
-    "registry-prune": "registry_prune.py",
-    "mark-implementation-reviewed": "mark_implementation_reviewed.py",
-    "review-packet": "review_packet.py",
-    "integrity": "integrity_cli.py",
-    "impact": "impact_cli.py",
-    "prompt": "role_prompt.py",
-    "finish-this-task": "finish_task.py",
-    "grind-session": "grind_session.py",
-    "start-milestone-session": "start_milestone_session.py",
-    "open-milestone-pr": "open_milestone_pr.py",
-    "reconcile-milestone-status": "reconcile_milestone_status.py",
-    "sync": "pm_sync.py",
-    "rebalance-chunks": "roadmap_rebalance.py",
-    "refresh-schemas": "refresh_schemas.py",
-    "refresh-profiles": "refresh_profiles.py",
-    "refresh-stubs": "refresh_stubs.py",
-    "upgrade": "upgrade.py",
-    "review-node": "review_node.py",
-    "scaffold-planning": "scaffold_planning.py",
-    "author-approach": "author_approach.py",
-    "move-node": "roadmap_move_node.py", "rename-refs": "planning_rename.py",
-    "doctor": "doctor.py",
+    "validate": "validate_roadmap",
+    "brief": "generate_brief",
+    "export": "export_roadmap_md",
+    "update": "update_specy_road",
+    "file-limits": "validate_file_limits",
+    "do-next-available-task": "do_next_task",
+    "abort-task-pickup": "abort_task_pickup",
+    "reconcile-branch": "reconcile_branch_cli",
+    "registry-prune": "registry_prune",
+    "mark-implementation-reviewed": "mark_implementation_reviewed",
+    "review-packet": "review_packet",
+    "integrity": "integrity_cli",
+    "impact": "impact_cli",
+    "prompt": "role_prompt",
+    "finish-this-task": "finish_task",
+    "grind-session": "grind_session",
+    "start-milestone-session": "start_milestone_session",
+    "open-milestone-pr": "open_milestone_pr",
+    "reconcile-milestone-status": "reconcile_milestone_status",
+    "sync": "pm_sync",
+    "rebalance-chunks": "roadmap_rebalance",
+    "refresh-schemas": "refresh_schemas",
+    "refresh-profiles": "refresh_profiles",
+    "refresh-stubs": "refresh_stubs",
+    "upgrade": "upgrade",
+    "review-node": "review_node",
+    "scaffold-planning": "scaffold_planning",
+    "author-approach": "author_approach",
+    "move-node": "roadmap_move_node", "rename-refs": "planning_rename",
+    "doctor": "doctor",
+    "history": "history_cli",
+    "digest": "digest_cli",
+    "search": "search_cli",
+    "brainstorm": "brainstorm_cli",
 }
 
-# Commands whose bundled script owns its own argparse. The command name is
-# forwarded so `specy-road <cmd> -h` prints that subcommand's help.
+# Commands whose module's parser has one subcommand per command it serves, so the command
+# name goes first in its argv and argparse names the program ``specy-road``.
 _FORWARDED = {
-    "history": "history_cli.py",
-    "digest": "digest_cli.py",
-    "search": "search_cli.py",
-    "brainstorm": "brainstorm_cli.py",
-    "why-blocked": "roadmap_query_cli.py",
-    "list-gates": "roadmap_query_cli.py",
-    "handoff": "review_cli.py",
-    "models": "models_cli.py",
-    "orchestrate": "orchestrate_cli.py",
-    "session": "session_cli.py",
-    "review": "review_cli.py",
-    "ready": "review_cli.py",
-    "worker": "worker_cli.py",
-    "chore": "chore_cli.py",
-    "orchestration": "orchestration_guard_cli.py",
-    "decisions": "decisions_cli.py",
-    "lessons": "lessons_cli.py",
-    "branches": "branches_cli.py",
-    "worktree": "worktree_cli.py",
-    **dict.fromkeys(("indent", "outdent", "group-nodes"), "roadmap_outline_group.py"),
+    "why-blocked": "roadmap_query_cli",
+    "list-gates": "roadmap_query_cli",
+    "handoff": "review_cli",
+    "models": "models_cli",
+    "orchestrate": "orchestrate_cli",
+    "session": "session_cli",
+    "review": "review_cli",
+    "ready": "review_cli",
+    "worker": "worker_cli",
+    "chore": "chore_cli",
+    "decisions": "decisions_cli",
+    "lessons": "lessons_cli",
+    "branches": "branches_cli",
+    "worktree": "worktree_cli",
+    **dict.fromkeys(("indent", "outdent", "group-nodes"), "roadmap_outline_group"),
 }
 
 _CRUD_COMMANDS = (
@@ -116,8 +124,7 @@ REPLACED_COMMANDS = {
 
 def _known_commands() -> list[str]:
     return sorted(
-        {*_SCRIPTS, *_FORWARDED, *_CRUD_COMMANDS, *_ARCHIVE_COMMANDS,
-         "scaffold-constitution", "init", "gui"}
+        {*_SCRIPTS, *_FORWARDED, *_CRUD_COMMANDS, *_ARCHIVE_COMMANDS, *_FUNCTIONS}
     )
 
 
@@ -194,52 +201,102 @@ def _gui_static_ok() -> bool:
     return _PM_GANTT_INDEX.is_file()
 
 
-def _args_repo_root_first(args: list[str]) -> list[str]:
-    """``roadmap_crud`` expects ``--repo-root`` before the subcommand."""
-    out: list[str] = []
-    i = 0
-    while i < len(args):
-        if args[i] == "--repo-root" and i + 1 < len(args):
-            out.extend(["--repo-root", args[i + 1]])
-            i += 2
-        else:
-            out.append(args[i])
-            i += 1
-    try:
-        idx = out.index("--repo-root")
-    except ValueError:
-        return out
-    pair = out[idx : idx + 2]
-    rest_ = out[:idx] + out[idx + 2 :]
-    return pair + rest_
-
-
-def _run(script: str, args: list[str], prog: str = "specy-road") -> None:
-    """Run a bundled entrypoint in its own process.
-
-    The module runs by name on the installed package, so the child resolves
-    imports the same way the parent did. This used to exec the file by path with
-    a hand-built PYTHONPATH prefix, which was the only thing making the scripts'
-    bare-module-name imports resolve. ``sys.argv[0]`` is set to ``prog`` (what
-    ``-m`` would set to the module file) so argparse help reads ``usage:
-    specy-road <cmd>`` rather than the module's file name.
-    """
-    module = f"specy_road.bundled_scripts.{script.removesuffix('.py')}"
-    if not (bundled_scripts_dir() / script).is_file():
+def _run(module: str, argv: list[str], prog: str = "specy-road") -> None:
+    """Call ``bundled_scripts.<module>``'s ``main(argv)`` in this process (:func:`_call_main`)."""
+    if not (bundled_scripts_dir() / f"{module}.py").is_file():
         print(
-            f"error: missing bundled script {script} (broken install).",
+            f"error: missing bundled script {module}.py (broken install).",
             file=sys.stderr,
         )
         raise SystemExit(2)
-    boot = (
-        "import runpy, sys; sys.argv[0] = sys.argv[1]; del sys.argv[1]; "
-        f"runpy.run_module({module!r}, run_name='__main__')"
-    )
-    proc = subprocess.run([sys.executable, "-c", boot, prog, *args])
-    if proc.returncode != 0:
-        # Avoid chaining from CalledProcessError: bundled scripts already print
-        # stderr messages; surfacing subprocess.check_call adds a noisy traceback.
-        raise SystemExit(proc.returncode) from None
+    _call_main(importlib.import_module(f"specy_road.bundled_scripts.{module}"), argv, prog)
+
+
+def _call_main(entry: ModuleType, argv: list[str], prog: str) -> None:
+    """``entry.main(argv)``, with ``sys.argv`` ``[prog, *argv]`` while it runs.
+
+    That is what it was when each command ran in a child interpreter, so argparse help reads
+    ``usage: specy-road <cmd>`` rather than this module's file name. It returns when the command
+    exits 0, as it did when the child did; any other exit is the ``SystemExit`` the command raised.
+    """
+    saved = sys.argv
+    sys.argv = [prog, *argv]
+    try:
+        entry.main(argv)
+    except SystemExit as e:
+        if e.code not in (None, 0):
+            raise
+    finally:
+        sys.argv = saved
+
+
+def run(argv: list[str]) -> int:
+    """Run ``specy-road <argv>`` in this process; return the exit status a child would have had.
+
+    For a command that runs another, as a step it must see succeed. The output is flushed
+    before this returns, so it lands ahead of anything a later git command prints.
+    """
+    try:
+        main(argv)
+        status = 0
+    except SystemExit as e:
+        status = exit_status(e)
+    finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    return status
+
+
+def run_captured(module: str, argv: list[str]) -> tuple[int, str, str]:
+    """Run ``bundled_scripts.<module>``'s ``main(argv)`` here; return ``(status, stdout, stderr)``.
+
+    The output is captured as a child's pipes captured it: at the file descriptors too, because
+    the git commands a module runs write there directly. An exception the module does not handle is
+    reported as a child's would be: its traceback on stderr and status 1.
+    """
+    sys.stdout.flush()
+    sys.stderr.flush()
+    with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+        saved = os.dup(1), os.dup(2)
+        os.dup2(out.fileno(), 1)
+        os.dup2(err.fileno(), 2)
+        py_out, py_err = (_line_writer(f) for f in (out, err))
+        try:
+            with contextlib.redirect_stdout(py_out), contextlib.redirect_stderr(py_err):
+                try:
+                    _run(module, argv)
+                    status = 0
+                except SystemExit as e:
+                    status = exit_status(e)
+                except Exception:  # noqa: BLE001 — a child's traceback, as its pipe captured it
+                    traceback.print_exc()
+                    status = 1
+        finally:
+            py_out.close()
+            py_err.close()
+            os.dup2(saved[0], 1)
+            os.dup2(saved[1], 2)
+            os.close(saved[0])
+            os.close(saved[1])
+        return status, _read(out), _read(err)
+
+
+def _line_writer(f: IO[bytes]) -> IO[str]:
+    """A line-buffered text stream on ``f``'s descriptor, which the caller closes."""
+    return open(f.fileno(), "w", buffering=1, encoding="utf-8", closefd=False)  # noqa: SIM115
+
+
+def _read(f: IO[bytes]) -> str:
+    f.seek(0)
+    return f.read().decode("utf-8", errors="replace")
+
+
+def exit_status(e: SystemExit) -> int:
+    """The status an interpreter exits with on ``e``, printing a message code as it would."""
+    if e.code is None or isinstance(e.code, int):
+        return e.code or 0
+    print(e.code, file=sys.stderr)
+    return 1
 
 
 def _cmd_scaffold_constitution(rest: list[str]) -> None:
@@ -337,6 +394,23 @@ def _cmd_gui(rest: list[str]) -> None:
         raise SystemExit(proc.returncode) from None
 
 
+def _cmd_orchestration(rest: list[str]) -> None:
+    """``orchestration guard …`` is the only form; the guard's ``main`` gets the words after it."""
+    if rest[:1] != ["guard"]:
+        print("usage: specy-road orchestration guard --format …", file=sys.stderr)
+        raise SystemExit(2)
+    _run("orchestration_guard_cli", rest[1:], prog="specy-road orchestration guard")
+
+
+# Commands implemented here rather than by a bundled_scripts module.
+_FUNCTIONS = {
+    "scaffold-constitution": _cmd_scaffold_constitution,
+    "init": _run_init_cli,
+    "gui": _cmd_gui,
+    "orchestration": _cmd_orchestration,
+}
+
+
 def _unknown_command(cmd: str) -> None:
     print(f"unknown command: {cmd}", file=sys.stderr)
     for suggestion in _did_you_mean(cmd):
@@ -381,17 +455,13 @@ def main(argv: list[str] | None = None) -> None:
     if cmd in _SCRIPTS:
         _run(_SCRIPTS[cmd], rest, prog=f"specy-road {cmd}")
     elif cmd in _CRUD_COMMANDS:
-        _run("roadmap_crud.py", _args_repo_root_first([cmd, *rest]))
+        _run("roadmap_crud", [cmd, *rest])
     elif cmd in _ARCHIVE_COMMANDS:
-        _run("archive_cli.py", [cmd, *rest])
+        _run("archive_cli", [cmd, *rest])
     elif cmd in _FORWARDED:
         _run(_FORWARDED[cmd], [cmd, *rest])
-    elif cmd == "scaffold-constitution":
-        _cmd_scaffold_constitution(rest)
-    elif cmd == "init":
-        _run_init_cli(rest)
-    elif cmd == "gui":
-        _cmd_gui(rest)
+    elif cmd in _FUNCTIONS:
+        _FUNCTIONS[cmd](rest)
     else:
         _unknown_command(cmd)
 

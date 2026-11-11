@@ -1,0 +1,51 @@
+$ specy-road validate --bogus
+exit: 2
+--- stdout ---
+--- stderr ---
+usage: specy-road validate [-h] [--no-overlap-warn] [--no-phase-status-warn] [--strict]
+                           [--strict-authoring] [--all] [--generate-orchestration]
+                           [--repo-root DIR] [--context]
+specy-road validate: error: unrecognized arguments: --bogus
+
+$ specy-road frobnicate
+exit: 2
+--- stdout ---
+--- stderr ---
+unknown command: frobnicate
+Run 'specy-road --help' for the full list.
+
+$ specy-road grind
+exit: 2
+--- stdout ---
+--- stderr ---
+unknown command: grind
+did you mean 'grind-session'? Try: specy-road grind-session --help
+Run 'specy-road --help' for the full list.
+
+$ specy-road orchestration
+exit: 2
+--- stdout ---
+--- stderr ---
+usage: specy-road orchestration guard --format …
+
+$ specy-road orchestration --format generic
+exit: 2
+--- stdout ---
+--- stderr ---
+usage: specy-road orchestration guard --format …
+
+$ specy-road list-nodes --status
+exit: 2
+--- stdout ---
+--- stderr ---
+usage: specy-road list-nodes [-h] [--status STATUS] [--json]
+specy-road list-nodes: error: argument --status: expected one argument
+
+$ specy-road history --bogus
+exit: 2
+--- stdout ---
+--- stderr ---
+usage: specy-road history [-h] [--since DATE] [--archived] [--limit N] [--reverse] [--json]
+                          [--rebuild] [--repo-root DIR]
+                          [NODE_ID]
+specy-road history: error: unrecognized arguments: --bogus

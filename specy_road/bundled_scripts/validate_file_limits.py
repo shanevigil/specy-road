@@ -12,7 +12,7 @@ from specy_road.file_limits_engine import run_file_limits_scan
 from specy_road.runtime_paths import add_repo_root_arg, project_root, source_scan_root
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     add_repo_root_arg(parser)
     parser.add_argument(
@@ -28,7 +28,7 @@ def main() -> None:
             "sees them (has no effect outside a git worktree)."
         ),
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     # Two roots: the config belongs to the specy-road project, but the globs
     # inside it name the consumer's own source, which stays at the git root
     # when that project lives in a subfolder.

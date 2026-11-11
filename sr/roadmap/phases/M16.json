@@ -232,7 +232,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.9_commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals_6902ede7-bde3-4667-b192-366c09681589.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Commands run in the CLI's process: no python -m re-launch, no cwd globals",
       "touch_zones": [
         "specy_road/cli.py",

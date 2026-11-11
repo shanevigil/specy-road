@@ -25,7 +25,7 @@ from specy_road.history_index import (
     resolve_node_key,
 )
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.cli_entry import run_forwarded_cli
+from specy_road.cli_entry import run_handler
 
 # How each event kind reads on one line. `{}` slots are filled from the event.
 _PHRASES = {
@@ -226,7 +226,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    run_forwarded_cli(build_parser, "history", argv)
+    run_handler(build_parser().parse_args(argv))
 
 
 if __name__ == "__main__":

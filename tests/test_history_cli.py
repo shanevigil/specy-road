@@ -36,7 +36,7 @@ def test_a_node_timeline_prints_oldest_first(repo: Path, capsys) -> None:
     edit_node(repo, "M2", status="Complete")
     commit(repo, "finish M2")
 
-    assert run(["history", "M2"], repo) == 0
+    assert run(["M2"], repo) == 0
     lines = capsys.readouterr().out.splitlines()
 
     statuses = [ln for ln in lines if "status" in ln]
@@ -48,7 +48,7 @@ def test_the_feed_lists_every_node_newest_first(repo: Path, capsys) -> None:
     edit_node(repo, "M2", status="In Progress")
     commit(repo, "start M2")
 
-    assert run(["history"], repo) == 0
+    assert run([], repo) == 0
     out = capsys.readouterr().out
 
     assert out.splitlines()[0].count("status Not Started -> In Progress") == 1
@@ -56,7 +56,7 @@ def test_the_feed_lists_every_node_newest_first(repo: Path, capsys) -> None:
 
 
 def test_json_carries_the_node_key_its_ids_and_its_events(repo: Path, capsys) -> None:
-    assert run(["history", "M0.1", "--json"], repo) == 0
+    assert run(["M0.1", "--json"], repo) == 0
     payload = json.loads(capsys.readouterr().out)
 
     assert payload["node_key"] == M01_KEY
@@ -73,7 +73,7 @@ def test_archived_flag_narrows_to_work_that_left_the_graph(
     archive_node(repo, "M0.1")
     commit(repo, "archive M0.1")
 
-    assert run(["history", "--archived", "--json"], repo) == 0
+    assert run(["--archived", "--json"], repo) == 0
     events = json.loads(capsys.readouterr().out)["events"]
 
     assert {e["kind"] for e in events} == {"archived"}
@@ -81,12 +81,12 @@ def test_archived_flag_narrows_to_work_that_left_the_graph(
 
 
 def test_since_filters_the_feed(repo: Path, capsys) -> None:
-    assert run(["history", "--since", "2999-01-01"], repo) == 0
+    assert run(["--since", "2999-01-01"], repo) == 0
     assert "no matching events" in capsys.readouterr().out
 
 
 def test_an_unknown_node_exits_one(repo: Path, capsys) -> None:
-    assert run(["history", "M9.9"], repo) == 1
+    assert run(["M9.9"], repo) == 1
     assert "no node 'M9.9'" in capsys.readouterr().err
 
 
@@ -101,7 +101,7 @@ def test_an_ambiguous_id_exits_two_and_lists_the_candidates(
     edit_node(repo, "M0.1", id="M0.7")
     commit(repo, "vacate it again")
 
-    assert run(["history", "M0.1"], repo) == 2
+    assert run(["M0.1"], repo) == 2
     err = capsys.readouterr().err
 
     assert "ambiguous" in err
@@ -110,23 +110,23 @@ def test_an_ambiguous_id_exits_two_and_lists_the_candidates(
 
 
 def test_a_node_key_is_accepted_directly(repo: Path, capsys) -> None:
-    assert run(["history", M01_KEY], repo) == 0
+    assert run([M01_KEY], repo) == 0
     assert M01_KEY in capsys.readouterr().out
 
 
 def test_rebuild_discards_the_cache_and_still_answers(repo: Path, capsys) -> None:
     from specy_road.history_cache import cache_path
 
-    run(["history"], repo)
+    run([], repo)
     cache_path(repo).write_text("garbage", encoding="utf-8")
     clear_memo()
 
-    assert run(["history", "--rebuild"], repo) == 0
+    assert run(["--rebuild"], repo) == 0
     assert "event(s) from" in capsys.readouterr().out
 
 
 def test_a_non_repo_explains_that_history_comes_from_git(
     tmp_path: Path, capsys
 ) -> None:
-    assert run(["history"], tmp_path) == 0
+    assert run([], tmp_path) == 0
     assert "derived from git" in capsys.readouterr().out

@@ -97,7 +97,7 @@ def _run_scaffold_folder(
     print(f"[ok] set planning_dir={result['planning_dir']!r} on {nid}")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "node_id",
@@ -115,7 +115,7 @@ def main() -> None:
         help="Overwrite existing feature sheet",
     )
     add_repo_root_arg(p)
-    args = p.parse_args()
+    args = p.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     nid = args.node_id.strip()
     by_id = {n["id"]: n for n in load_roadmap(root)["nodes"]}

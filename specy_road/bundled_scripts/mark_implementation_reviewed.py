@@ -28,6 +28,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.cli import run as run_command
 from specy_road.clock import utc_now_iso
 from specy_road.decisions import DECISIONS_REL
 from specy_road.git_subprocess import git_code, git_run, git_text
@@ -57,14 +58,9 @@ from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
 from specy_road.repo_ops import assert_working_tree_clean, current_branch
 
-#: Rebound by :func:`main` before any helper runs; this is only a placeholder
-#: so the name exists at import. Resolving the real root here would make
-#: importing the module shell out to git.
-ROOT = Path.cwd()
 
-
-def _summary_path(node_id: str) -> Path:
-    return ROOT / "work" / f"implementation-summary-{node_id}.md"
+def _summary_path(root: Path, node_id: str) -> Path:
+    return root / "work" / f"implementation-summary-{node_id}.md"
 
 
 def _extract_walkthrough(text: str) -> str | None:
@@ -131,6 +127,7 @@ def _run_interactive_menu(
 
 
 def _load_summary_text(
+    root: Path,
     args: argparse.Namespace,
     spath: Path,
 ) -> str:
@@ -138,7 +135,7 @@ def _load_summary_text(
         return spath.read_text(encoding="utf-8")
     if args.allow_missing_summary:
         print(
-            f"warning: missing {spath.relative_to(ROOT)} — proceeding due to "
+            f"warning: missing {spath.relative_to(root)} — proceeding due to "
             "--allow-missing-summary.",
             file=sys.stderr,
         )
@@ -177,22 +174,22 @@ def _user_approves(
     raise SystemExit(1)
 
 
-def _commit_registry_approved(codename: str, reg: dict, trailers: list[str]) -> None:
+def _commit_registry_approved(root: Path, codename: str, reg: dict, trailers: list[str]) -> None:
     now = utc_now_iso()
     for e in reg.get("entries", []):
         if e.get("codename") == codename:
             e["implementation_review"] = "approved"
             e["implementation_review_at"] = now
             break
-    write_registry(registry_path(ROOT), reg)
+    write_registry(registry_path(root), reg)
     print(f"[ok] registry: implementation_review -> approved ({now})\n")
 
-    rel = str(registry_path(ROOT).relative_to(ROOT))
-    git_run(ROOT, "add", rel)
+    rel = str(registry_path(root).relative_to(root))
+    git_run(root, "add", rel)
     message = f"chore(rm-{codename}): mark implementation reviewed"
     if trailers:
         message += "\n\n" + "\n".join(trailers)
-    git_run(ROOT, "commit", "-m", message, "--", rel)   # only the registry, whatever else is staged
+    git_run(root, "commit", "-m", message, "--", rel)   # only the registry, whatever else is staged
     print("[ok] committed registry update")
     print()
     print("Next: specy-road finish-this-task")
@@ -216,19 +213,19 @@ def _approval_failure(node_id: str, error: BaseException) -> str:
     return str(error)
 
 
-def _write_human_or_exit(node: dict, commit: str, sign_key: Path | None) -> Path:
+def _write_human_or_exit(root: Path, node: dict, commit: str, sign_key: Path | None) -> Path:
     """Write the human approval, or exit 1 with ``error:`` and no traceback."""
     try:
-        return write_human_approval(ROOT, node, commit, sign_key)
+        return write_human_approval(root, node, commit, sign_key)
     except (SigningError, ReviewRunBusy, safe_write.SafeWriteError) as e:
         # a reviewer run holds the hand-off directory, or a symlink is on the path: nothing written
         print(f"error: {_approval_failure(node['id'], e)}", file=sys.stderr)
         raise SystemExit(1) from None
 
 
-def _refuse_linked_handoff(node_id: str) -> None:
+def _refuse_linked_handoff(root: Path, node_id: str) -> None:
     """A symlink at ``work``, ``work/reviews`` or the node directory refuses before the gate is read."""
-    d = reviews_dir(ROOT, node_id)
+    d = reviews_dir(root, node_id)
     try:
         safe_write.check(project_of(d), d, safe_write.DIRECTORY)
     except safe_write.SafeWriteError as e:
@@ -247,26 +244,28 @@ def _integration(ref: str) -> tuple[str | None, str]:
     return None, ref.removeprefix("refs/heads/")
 
 
-def _over_block_preflight(node: dict, gate: GateResult, branch: str) -> tuple[GateResult, str | None, str | None]:
+def _over_block_preflight(
+    root: Path, node: dict, gate: GateResult, branch: str
+) -> tuple[GateResult, str | None, str | None]:
     """``(the gate at the integration tip, the integration ref, why approving over the block is withheld)``.
 
     Every check that can refuse runs here, before the menu and before anything is written.
     """
-    assert_working_tree_clean(ROOT, except_work=True)   # a decision never sits beside an unstamped registry
+    assert_working_tree_clean(root, except_work=True)   # a decision never sits beside an unstamped registry
     if why := role_refusal():
         return gate, None, why
-    if not recorder(ROOT):
+    if not recorder(root):
         return gate, None, "git identity: set git user.name and user.email; the decision entry names who recorded it"
-    ref, err = policy_source(ROOT)
+    ref, err = policy_source(root)
     if ref is None:
         return gate, None, err or "no integration branch to record the decision on"
     remote, ib = _integration(ref)
     if remote:   # the gate reads only the remote-tracking ref: read the policy at the fetched tip
-        code, out = git_code(["fetch", remote, ib], ROOT)
+        code, out = git_code(["fetch", remote, ib], root)
         if code != 0:
             return gate, ref, f"git fetch {remote} {ib} failed: {out}"
-        gate = evaluate_gate(ROOT, node, gate.commit, branch=branch)
-    elif (holder := checked_out_in(ROOT, ib)) is not None:
+        gate = evaluate_gate(root, node, gate.commit, branch=branch)
+    elif (holder := checked_out_in(root, ib)) is not None:
         status = git_text(["status", "--porcelain", "--untracked-files=no"], holder)
         if status is None or status:
             return gate, ref, (f"{ib} is checked out in {holder} with uncommitted changes (or an unreadable "
@@ -296,16 +295,18 @@ def _read_reason(gate: GateResult) -> str:
         return ""
 
 
-def _record_over_block(node: dict, gate: GateResult, ref: str, reason: str, branch: str) -> GateResult:
+def _record_over_block(
+    root: Path, node: dict, gate: GateResult, ref: str, reason: str, branch: str
+) -> GateResult:
     """Commit the operator decision on the integration branch from a temporary worktree of the tip the gate read,
     push it (or move the local branch), then write the marker here; the passing gate, or exit 1."""
     sha, (remote, ib) = str(gate.commit), _integration(ref)
     where = f"{remote}/{ib}" if remote else f"local {ib}"
-    tip, prefix = git_text(["rev-parse", ref], ROOT) or "", project_prefix(ROOT)
+    tip, prefix = git_text(["rev-parse", ref], root) or "", project_prefix(root)
     rel = f"{prefix}{DECISIONS_REL.as_posix()}"
     ns = argparse.Namespace(node_id=node["id"], decision=APPROVE, quote=reason, rule=None, limit=[],
                             session=f"mark-implementation-reviewed {utc_now_iso()}")
-    blocks, who, done = blocks_to_settle(ROOT, gate, sha), str(recorder(ROOT)), {}
+    blocks, who, done = blocks_to_settle(root, gate, sha), str(recorder(root)), {}
 
     def commit(tree: Path) -> str | None:
         try:
@@ -321,16 +322,16 @@ def _record_over_block(node: dict, gate: GateResult, ref: str, reason: str, bran
         if remote:
             code, out = git_code(["push", remote, f"HEAD:refs/heads/{ib}"], tree)
             return f"git push {remote} HEAD:refs/heads/{ib} was refused: {out}" if code != 0 else None
-        return move_ref(ROOT, f"refs/heads/{ib}", tip, done["new"], checked_out_in(ROOT, ib), "the decision commit")
+        return move_ref(root, f"refs/heads/{ib}", tip, done["new"], checked_out_in(root, ib), "the decision commit")
 
-    if err := in_temp_worktree(ROOT, tip, commit):
+    if err := in_temp_worktree(root, tip, commit):
         print(f"error: {err}\n  Nothing was recorded. The coordinator can record the decision from the "
               f"integration-branch checkout: specy-road review operator-decision {node['id']} --decision approve "
               "--quote '<the operator's words>' --session <id>", file=sys.stderr)
         raise SystemExit(1)
-    marker = write_operator_marker(ROOT, done["entry"], sha, ns.session)
+    marker = write_operator_marker(root, done["entry"], sha, ns.session)
     print(f"[ok] decision {done['entry']['id']} committed on {where} as {done['new']}; wrote {marker}")
-    gate = evaluate_gate(ROOT, node, sha, branch=branch)
+    gate = evaluate_gate(root, node, sha, branch=branch)
     if not gate.passed:
         for problem in gate.problems():
             print(f"  - {problem}", file=sys.stderr)
@@ -340,19 +341,21 @@ def _record_over_block(node: dict, gate: GateResult, ref: str, reason: str, bran
     return gate
 
 
-def _approve_over_block(node: dict, gate: GateResult, branch: str) -> tuple[GateResult | None, str | None]:
+def _approve_over_block(
+    root: Path, node: dict, gate: GateResult, branch: str
+) -> tuple[GateResult | None, str | None]:
     """``(the passing gate after the person approved over the block, why the approval is withheld)``.
 
     Exits 0 when the person quits or gives no reason, and 1 when recording fails.
     """
-    gate, ref, why = _over_block_preflight(node, gate, branch)
+    gate, ref, why = _over_block_preflight(root, node, gate, branch)
     if why or ref is None:
         return None, why
     reason = _read_reason(gate)
     if not reason:
         print("Aborted (nothing recorded).")
         raise SystemExit(0)
-    return _record_over_block(node, gate, ref, reason, branch), None
+    return _record_over_block(root, node, gate, ref, reason, branch), None
 
 
 def _refuse_unmet(args: argparse.Namespace, node: dict, gate: GateResult, block_branch: str | None,
@@ -382,6 +385,7 @@ def _refuse_unmet(args: argparse.Namespace, node: dict, gate: GateResult, block_
 
 
 def _gate_or_human_approval(
+    root: Path,
     args: argparse.Namespace,
     node: dict,
     *,
@@ -396,11 +400,11 @@ def _gate_or_human_approval(
     and a human approval here could not (or may not) make up the difference.
     ``commit`` is the commit under review when it is not ``HEAD`` (a milestone's integration tip).
     """
-    _refuse_linked_handoff(node["id"])
+    _refuse_linked_handoff(root, node["id"])
     gate = evaluate_gate(
-        ROOT,
+        root,
         node,
-        commit or resolve_target_or_exit(ROOT, node["id"], "HEAD").commit,
+        commit or resolve_target_or_exit(root, node["id"], "HEAD").commit,
         branch=branch,
     )
     _print_gate(gate)
@@ -411,22 +415,22 @@ def _gate_or_human_approval(
         return gate
     interactive = sys.stdin.isatty() and not args.yes
     sign_key = Path(args.sign_key) if args.sign_key else None
-    if interactive and human_approval_completes(ROOT, gate, node, sign_key):
+    if interactive and human_approval_completes(root, gate, node, sign_key):
         if not _user_approves(args, summary_text=summary_text, walkthrough=walkthrough,
                               approve_label=_APPROVE_AS_HUMAN):
             print("Aborted (registry unchanged).")
             raise SystemExit(0)
-        written = _write_human_or_exit(node, gate.commit, sign_key)
+        written = _write_human_or_exit(root, node, gate.commit, sign_key)
         # From a linked worktree the review lands in the main worktree.
-        print(f"[ok] wrote {written.relative_to(ROOT) if written.is_relative_to(ROOT) else written}")
-        gate = evaluate_gate(ROOT, node, gate.commit, branch=branch)
+        print(f"[ok] wrote {written.relative_to(root) if written.is_relative_to(root) else written}")
+        gate = evaluate_gate(root, node, gate.commit, branch=branch)
         if gate.passed:
             return gate
         for problem in gate.problems():   # say why the record just written does not count
             print(f"  - {problem}", file=sys.stderr)
     over_block, withheld = bool(gate.blocks and branch), None   # a leaf: an operator decision is for one leaf
     if over_block and interactive:
-        decided, withheld = _approve_over_block(node, gate, branch)
+        decided, withheld = _approve_over_block(root, node, gate, branch)
         if decided is not None:
             return decided
     _refuse_unmet(args, node, gate, branch if over_block else None, withheld)
@@ -464,11 +468,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
-def _close_milestone(args: argparse.Namespace, node_id: str) -> None:
+def _close_milestone(root: Path, args: argparse.Namespace, node_id: str) -> None:
     """Pass the milestone's gate at the integration tip, then commit its Complete status."""
     from specy_road.roadmap_load import compute_rollup_status, load_roadmap
 
-    nodes = load_roadmap(ROOT)["nodes"]
+    nodes = load_roadmap(root)["nodes"]
     node = next((n for n in nodes if n.get("id") == node_id), None)
     if node is None:
         print(f"error: unknown node id: {node_id}", file=sys.stderr)
@@ -482,37 +486,47 @@ def _close_milestone(args: argparse.Namespace, node_id: str) -> None:
         print(f"error: {node_id} still has unfinished leaves ({leaf_rollup}); its full review "
               "closes it only after the last one lands.", file=sys.stderr)
         raise SystemExit(1)
-    target = resolve_target_or_exit(ROOT, node_id)
-    if why := milestone_close_problem(ROOT, target):   # before a human reads, approves, or a record is written
+    target = resolve_target_or_exit(root, node_id)
+    if why := milestone_close_problem(root, target):   # before a human reads, approves, or a record is written
         print(f"error: {why}", file=sys.stderr)
         raise SystemExit(1)
     print(f"Milestone full review — [{node_id}] at {target.ref}\n")
-    gate = _gate_or_human_approval(args, node, branch=None, summary_text="", walkthrough=None,
+    gate = _gate_or_human_approval(root, args, node, branch=None, summary_text="", walkthrough=None,
                                    commit=target.commit)
-    assert_working_tree_clean(ROOT, except_work=True)
-    changed = complete_reviewed_milestone(ROOT, node_id)   # the checks above make its ValueError unreachable
+    assert_working_tree_clean(root, except_work=True)
+    changed = complete_reviewed_milestone(root, node_id)   # the checks above make its ValueError unreachable
     if not changed:
         print(f"{node_id} is already Complete; nothing to commit.")
         return
-    for command in ("validate", "export", "digest"):   # the generated files follow the status, as in finish
-        subprocess.check_call([sys.executable, "-m", "specy_road.cli", command, "--repo-root", str(ROOT)], cwd=ROOT)
-    refused = set(unstageable_generated_files(ROOT))
-    paths = changed + [n for n in GENERATED_COMMITTED if n not in refused and (ROOT / n).exists()]
+    _refresh_generated(root)
+    refused = set(unstageable_generated_files(root))
+    paths = changed + [n for n in GENERATED_COMMITTED if n not in refused and (root / n).exists()]
     message = f"roadmap: {node_id} full review approved; status -> Complete"
     trailers = commit_trailers(gate)
     if trailers:
         message += "\n\n" + "\n".join(trailers)
-    git_run(ROOT, "add", *paths)
-    git_run(ROOT, "commit", "-m", message, "--", *paths)
+    git_run(root, "add", *paths)
+    git_run(root, "commit", "-m", message, "--", *paths)
     print(f"[ok] committed {node_id} -> Complete")
 
 
-def main(argv: list[str] | None = None) -> None:
-    global ROOT
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
-    ROOT = resolve_repo_root(args)
+def _refresh_generated(root: Path) -> None:
+    """validate, export and digest, in this process: the generated files follow the status.
 
-    if not review_required(ROOT):
+    As in finish. A failing one has printed why; stop before anything is staged or committed.
+    """
+    for command in ("validate", "export", "digest"):
+        if status := run_command([command, "--repo-root", str(root)]):
+            print(f"error: specy-road {command} exited {status}; nothing was committed.",
+                  file=sys.stderr)
+            raise SystemExit(1)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    root = resolve_repo_root(args)
+
+    if not review_required(root):
         print(
             "require_implementation_review_before_finish is not enabled in roadmap/git-workflow.yaml, "
             "so the review gate is not enforced at finish-this-task — nothing to do.",
@@ -525,10 +539,10 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(0)
 
     if args.node_id:
-        _close_milestone(args, args.node_id)
+        _close_milestone(root, args, args.node_id)
         return
 
-    branch = current_branch(ROOT)
+    branch = current_branch(root)
     if not branch.startswith("feature/rm-"):
         print(
             f"error: current branch '{branch}' is not a roadmap feature branch "
@@ -537,33 +551,35 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(1)
 
-    codename, reg, entry, nodes = resolve_feature_rm_registry_context(ROOT, branch)
+    codename, reg, entry, nodes = resolve_feature_rm_registry_context(root, branch)
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
 
-    trial_merge_or_exit(ROOT)   # before a human reads, approves, or a record is written
-    spath = _summary_path(node_id)
-    summary_text = _load_summary_text(args, spath)
+    trial_merge_or_exit(root)   # before a human reads, approves, or a record is written
+    spath = _summary_path(root, node_id)
+    summary_text = _load_summary_text(root, args, spath)
 
     print(f"Implementation review — [{node_id}]")
-    print(f"Summary file: {spath.relative_to(ROOT)}\n")
+    print(f"Summary file: {spath.relative_to(root)}\n")
     if summary_text and sys.stdin.isatty() and not args.yes:   # for the human about to approve
         print(summary_text)
         print()
 
     walkthrough = _extract_walkthrough(summary_text) if summary_text else None
     gate = _gate_or_human_approval(
-        args, node, branch=entry.get("branch"), summary_text=summary_text, walkthrough=walkthrough
+        root, args, node, branch=entry.get("branch"), summary_text=summary_text,
+        walkthrough=walkthrough,
     )
 
     # work/ changes stay where they are: the registry commit names its one path.
-    assert_working_tree_clean(ROOT, except_work=True)
+    assert_working_tree_clean(root, except_work=True)
     try:
-        _commit_registry_approved(codename, reg, commit_trailers(gate) + tally_trailers(ROOT, gate))
+        trailers = commit_trailers(gate) + tally_trailers(root, gate)
+        _commit_registry_approved(root, codename, reg, trailers)
     except subprocess.CalledProcessError:
         if not gate.accepted:
             raise
-        rel = registry_path(ROOT).relative_to(ROOT).as_posix()
+        rel = registry_path(root).relative_to(root).as_posix()
         print(f"error: the operator decision is recorded ({'; '.join(gate.accepted)}), but the registry commit "
               f"failed. To finish: restore {rel} (`git restore --staged --worktree {rel}`), then re-run "
               "`specy-road mark-implementation-reviewed --yes`.", file=sys.stderr)

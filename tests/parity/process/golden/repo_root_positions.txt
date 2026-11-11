@@ -1,0 +1,111 @@
+$ specy-road --repo-root <A> list-nodes
+exit: 2
+--- stdout ---
+--- stderr ---
+unknown command: --repo-root
+Run 'specy-road --help' for the full list.
+
+$ specy-road list-nodes --repo-root <A>
+exit: 0
+--- stdout ---
+ID            TYPE        STATUS        ROLLUP        TITLE  [CHUNK]
+M1.1          task        In Progress (claimed)  In Progress   Thing  [roadmap/phases/M1.json]
+--- stderr ---
+
+$ specy-road list-nodes --json --repo-root <B> --status Complete
+exit: 0
+--- stdout ---
+[
+  {
+    "id": "M2.1",
+    "node_key": "50000000-0000-4000-8000-000000000002",
+    "parent_id": "M2",
+    "type": "task",
+    "title": "Node M2.1",
+    "planning_dir": "planning/M2.1_alpha_50000000-0000-4000-8000-000000000002.md",
+    "status": "Complete",
+    "touch_zones": [
+      "src"
+    ],
+    "dependencies": [],
+    "codename": "alpha",
+    "rollup_status": "Complete",
+    "chunk": "roadmap/phases/M2.json",
+    "claimed": false
+  },
+  {
+    "id": "M2.2",
+    "node_key": "50000000-0000-4000-8000-000000000003",
+    "parent_id": "M2",
+    "type": "task",
+    "title": "Node M2.2",
+    "planning_dir": "planning/M2.2_beta_50000000-0000-4000-8000-000000000003.md",
+    "status": "Complete",
+    "touch_zones": [
+      "src"
+    ],
+    "dependencies": [],
+    "codename": "beta",
+    "rollup_status": "Complete",
+    "chunk": "roadmap/phases/M2.json",
+    "claimed": false
+  }
+]
+--- stderr ---
+
+$ specy-road list-nodes --repo-root=<A>
+exit: 2
+--- stdout ---
+--- stderr ---
+usage: specy-road [-h] [--repo-root DIR]
+                  {list-nodes,show-node,add-node,edit-node,set-gate-status,list-dependencies,set-dependencies,add-dependency,remove-dependency,apply,archive-node,remove-node}
+                  ...
+specy-road: error: unrecognized arguments: --repo-root=<A>
+
+$ specy-road show-node M1.1 --repo-root <A>
+exit: 0
+--- stdout ---
+{
+  "acceptance": [
+    "a.py exists",
+    "nothing else breaks"
+  ],
+  "codename": "thing",
+  "dependencies": [],
+  "goal": "Do the thing.",
+  "id": "M1.1",
+  "node_key": "11111111-1111-5111-8111-111111111111",
+  "parent_id": null,
+  "planning_dir": "planning/M1.1_thing_11111111-1111-5111-8111-111111111111.md",
+  "sibling_order": 1,
+  "status": "In Progress",
+  "title": "Thing",
+  "touch_zones": [
+    "src"
+  ],
+  "type": "task"
+}
+--- stderr ---
+# chunk: roadmap/phases/M1.json
+
+$ specy-road validate --repo-root=<B>
+exit: 0
+--- stdout ---
+OK: roadmap and registry validate.
+milestone review: notice — M2 is held at In Progress: every leaf is Complete but its full review is not approved at refs/heads/dev (0/1 approvals, 0 block(s): not met) (policy.milestone_full_review). Ways out:
+  1. Review it: specy-road review-packet M2; each reviewer: specy-road review record M2 --model <id> --verdict approve|block --file <notes.md>; then specy-road mark-implementation-reviewed M2
+  2. Record it Complete: specy-road edit-node M2 --set status=Complete
+  3. Turn the hold off: set policy.milestone_full_review: false in roadmap/orchestration.yaml
+notice: no roadmap/orchestration.yaml, so the default policy applies: one reviewer, any family, and a roster of one human (`specy-road validate --generate-orchestration` writes an editable starter)
+notice: no roadmap/orchestration.yaml on dev, where the roster is read from, nor in the working tree, so routing uses the default roster (one human, no executor); see docs/orchestration.md to write and commit one
+--- stderr ---
+agents: warning — AGENTS.md has no specy-road section, so agents here miss the current coordination rules. Run: specy-road refresh-stubs (it needs no stub pack and touches only managed blocks and the files specy-road owns)
+
+$ specy-road validate --repo-root <A>
+exit: 0
+--- stdout ---
+OK: roadmap and registry validate.
+notice: no roadmap/orchestration.yaml, so the default policy applies: one reviewer, any family, and a roster of one human (`specy-road validate --generate-orchestration` writes an editable starter)
+notice: no roadmap/orchestration.yaml on dev, where the roster is read from, nor in the working tree, so routing uses the default roster (one human, no executor); see docs/orchestration.md to write and commit one
+--- stderr ---
+agents: warning — AGENTS.md has no specy-road section, so agents here miss the current coordination rules. Run: specy-road refresh-stubs (it needs no stub pack and touches only managed blocks and the files specy-road owns)

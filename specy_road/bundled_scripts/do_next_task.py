@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import sys
+from functools import partial
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_available import (
@@ -56,31 +57,25 @@ from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
     on_complete_from_git_workflow,
     require_implementation_review_before_finish,
-    resolve_integration_defaults,
     resolve_prefer_agentic,
 )
 from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.nested_repos import announce_nested_worktrees
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.planning_scaffold_check import warn_scaffold_at_pickup
+from specy_road.cli_entry import integration_defaults
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.repo_ops import assert_working_tree_clean, current_branch, sync_integration_branch
 from specy_road.repo_lock import pickup_finish_lock
-
-#: Rebound by :func:`main` before any helper runs; this is only a placeholder
-#: so the name exists at import. Resolving the real root here would make
-#: importing the module shell out to git.
-ROOT = Path.cwd()
-
 
 # ---------------------------------------------------------------------------
 # Roadmap queries
 # ---------------------------------------------------------------------------
 
 
-def _virtual_keys_for_mode(reg: dict, remote: str) -> tuple[set[str], list[str]]:
+def _virtual_keys_for_mode(root: Path, reg: dict, remote: str) -> tuple[set[str], list[str]]:
     """Apply F-007 PR-gating to the virtual-complete computation."""
-    on_complete_mode = on_complete_from_git_workflow(ROOT)
+    on_complete_mode = on_complete_from_git_workflow(root)
     if on_complete_mode == "pr":
         logs: list[str] = []
         if reg.get("entries"):
@@ -89,11 +84,11 @@ def _virtual_keys_for_mode(reg: dict, remote: str) -> tuple[set[str], list[str]]
                 "upstream PRs merge (per F-007 PR-gating)."
             )
         return set(), logs
-    return _virtual_complete_from_registry(reg, repo_root=ROOT, remote=remote)
+    return _virtual_complete_from_registry(reg, repo_root=root, remote=remote)
 
 
 def _drop_finished_unmerged(
-    available: list[dict], base: str, remote: str
+    root: Path, available: list[dict], base: str, remote: str
 ) -> list[dict]:
     """Remove leaves a feature branch already finished but ``base`` has not merged.
 
@@ -103,7 +98,7 @@ def _drop_finished_unmerged(
     :mod:`specy_road.bundled_scripts.do_next_finished_unmerged`.
     """
     finished, logs = finished_unmerged_ids(
-        available, repo_root=ROOT, remote=remote, integration_branch=base
+        available, repo_root=root, remote=remote, integration_branch=base
     )
     for line in logs:
         print(line)
@@ -113,6 +108,7 @@ def _drop_finished_unmerged(
 
 
 def _resync_and_select(
+    root: Path,
     base: str,
     remote: str,
     parent_filter,
@@ -130,7 +126,7 @@ def _resync_and_select(
     """
     if sync:
         sync_integration_branch(
-            ROOT,
+            root,
             base,
             remote,
             retry_hint="retry do-next-available-task",
@@ -142,13 +138,14 @@ def _resync_and_select(
         )
     else:
         assert_working_tree_clean(
-            ROOT, "A local pickup still commits the claim on the integration branch.", except_work=True
+            root, "A local pickup still commits the claim on the integration branch.",
+            except_work=True,
         )
-    reg = read_registry(registry_path(ROOT))
-    nodes = load_roadmap(ROOT)["nodes"]
-    enrich = _load_branch_enrichment(ROOT)
+    reg = read_registry(registry_path(root))
+    nodes = load_roadmap(root)["nodes"]
+    enrich = _load_branch_enrichment(root)
     integration_statuses = _statuses_by_node_key(nodes)
-    virtual_keys, virtual_logs = _virtual_keys_for_mode(reg, remote)
+    virtual_keys, virtual_logs = _virtual_keys_for_mode(root, reg, remote)
     for line in virtual_logs:
         print(line)
     status_overrides = {nk: "complete" for nk in virtual_keys}
@@ -156,13 +153,14 @@ def _resync_and_select(
         nodes, reg, enrich,
         status_overrides=status_overrides or None,
         virtual_complete_keys=virtual_keys or None,
-        prefer_agentic=resolve_prefer_agentic(ROOT, cli=prefer_agentic_cli),
+        prefer_agentic=resolve_prefer_agentic(root, cli=prefer_agentic_cli),
     )
-    available = _drop_finished_unmerged(available, base, remote)
+    available = _drop_finished_unmerged(root, available, base, remote)
     if parent_filter:
         available = filter_available_under_parent(available, parent_filter, nodes)
     available = drop_unauthored(
-        ROOT, available,
+        root,
+        available,
         allow_unauthored=allow_unauthored,
         allow_scaffold_planning=allow_scaffold_planning,
     )
@@ -173,8 +171,8 @@ def _resync_and_select(
     return nodes, reg, available, integration_statuses
 
 
-def _assert_current_branch_equals(base: str) -> None:
-    cur = current_branch(ROOT)
+def _assert_current_branch_equals(root: Path, base: str) -> None:
+    cur = current_branch(root)
     if cur == "HEAD":
         print(
             "error: detached HEAD — check out the integration branch before "
@@ -191,21 +189,21 @@ def _assert_current_branch_equals(base: str) -> None:
         raise SystemExit(1)
 
 
-def _push_integration_branch(remote: str, base: str) -> None:
-    git_run(ROOT, "push", remote, base)
+def _push_integration_branch(root: Path, remote: str, base: str) -> None:
+    git_run(root, "push", remote, base)
 
 
-def _write_brief(node: dict, nodes: list[dict]) -> Path:
-    return _do_write_brief(ROOT / "work", node, nodes)
+def _write_brief(root: Path, node: dict, nodes: list[dict]) -> Path:
+    return _do_write_brief(root / "work", node, nodes)
 
 
-def _push_and_branch_with_self_heal(worktree: Path | None, base: str, **kwargs) -> None:
-    create, adopt = branch_fns(lambda *a: git_run(ROOT, *a), base, worktree)
+def _push_and_branch_with_self_heal(root: Path, worktree: Path | None, base: str, **kwargs) -> None:
+    create, adopt = branch_fns(lambda *a: git_run(root, *a), base, worktree)
     _do_push_and_branch(
-        repo_root=ROOT,
-        registry_path=registry_path(ROOT),
-        git_runner=lambda *a: git_run(ROOT, *a),
-        push_integration_branch_fn=_push_integration_branch,
+        repo_root=root,
+        registry_path=registry_path(root),
+        git_runner=lambda *a: git_run(root, *a),
+        push_integration_branch_fn=partial(_push_integration_branch, root),
         checkout_new_branch_fn=create,
         checkout_existing_branch_fn=adopt,
         base=base,
@@ -221,6 +219,7 @@ def _write_session_and_prompt(**kwargs) -> Path:
 
 
 def _finalize_pickup(
+    root: Path,
     node: dict,
     nodes: list[dict],
     branch: str,
@@ -235,30 +234,30 @@ def _finalize_pickup(
 ) -> None:
     node_id = node["id"]
     codename = node["codename"]
-    print_pickup_header(node, branch, ROOT)
+    print_pickup_header(node, branch, root)
 
-    brief_path = _write_brief(node, nodes)
-    reg = read_registry(registry_path(ROOT))
-    commit_msg = pinned_message(ROOT, registration_commit_message(   # review policy pinned at claim (M21.30)
+    brief_path = _write_brief(root, node, nodes)
+    reg = read_registry(registry_path(root))
+    commit_msg = pinned_message(root, registration_commit_message(   # review policy pinned at claim (M21.30)
         codename,
         include_ci_skip=include_ci_skip,
     ))
     register_claim(
-        ROOT, node, branch, reg, commit_msg,
-        git_runner=lambda *a: git_run(ROOT, *a),
-        impl_review_gate=require_implementation_review_before_finish(ROOT),
+        root, node, branch, reg, commit_msg,
+        git_runner=lambda *a: git_run(root, *a),
+        impl_review_gate=require_implementation_review_before_finish(root),
         owner=owner,
     )
     print("registered in roadmap/registry.yaml on integration branch (committed with the regenerated digest)")
 
     _push_and_branch_with_self_heal(
-        worktree, base, push_registry=push_registry, remote=remote,
+        root, worktree, base, push_registry=push_registry, remote=remote,
         branch=branch, node_id=node_id, codename=codename,
     )
-    leaf_root, work_dir = ROOT, ROOT / "work"
+    leaf_root, work_dir = root, root / "work"
     if worktree:   # the leaf's agent runs in the worktree, so its brief, prompt and session go there
-        leaf_root, work_dir = worktree_work_dir(ROOT, worktree, brief_path)
-        announce_nested_worktrees(ROOT, leaf_root, branch, node.get("touch_zones"))   # nested_repos
+        leaf_root, work_dir = worktree_work_dir(root, worktree, brief_path)
+        announce_nested_worktrees(root, leaf_root, branch, node.get("touch_zones"))   # nested_repos
         brief_path = work_dir / brief_path.name
         print(f"worktree: {worktree} has {branch}; this checkout stays on {base}")
     prompt_path = _write_session_and_prompt(
@@ -267,27 +266,27 @@ def _finalize_pickup(
     )
 
     print_pickup_footer(
-        root=ROOT,
+        root=root,
         work_dir=work_dir,
         brief_path=brief_path,
         prompt_path=prompt_path,
         push_registry=push_registry,
         remote=remote,
         base=base,
-        mr_manual=merge_request_requires_manual_approval(ROOT),
-        impl_review_gate=require_implementation_review_before_finish(ROOT),
+        mr_manual=merge_request_requires_manual_approval(root),
+        impl_review_gate=require_implementation_review_before_finish(root),
         on_complete=on_complete,
         node_id=node_id,
     )
 
 
-def _check_pre_sync_availability(base: str, remote: str, parent_filter) -> None:
+def _check_pre_sync_availability(root: Path, base: str, remote: str, parent_filter) -> None:
     """Pre-sync availability sanity check: exit if no actionable leaf locally."""
-    nodes = load_roadmap(ROOT)["nodes"]
-    reg = read_registry(registry_path(ROOT))
+    nodes = load_roadmap(root)["nodes"]
+    reg = read_registry(registry_path(root))
     # F-014: surface stale registry claims to the next user immediately.
-    _warn_about_stale_claims_before_pickup(repo_root=ROOT, reg=reg, remote=remote)
-    enrich = _load_branch_enrichment(ROOT)
+    _warn_about_stale_claims_before_pickup(repo_root=root, reg=reg, remote=remote)
+    enrich = _load_branch_enrichment(root)
     available = _available(nodes, reg, enrich)
     if parent_filter:
         available = filter_available_under_parent(available, parent_filter, nodes)
@@ -297,7 +296,7 @@ def _check_pre_sync_availability(base: str, remote: str, parent_filter) -> None:
         _exit_no_actionable_leaves(nodes, reg, after_sync=False, integration_branch=base)
 
 
-def _pick_node(args, nodes, reg, available, integration_statuses) -> dict:
+def _pick_node(root: Path, args, nodes, reg, available, integration_statuses) -> dict:
     """Choose a leaf — interactive or first; assert leaf target."""
     if args.interactive:
         blocked = interactive_deps_blocked_entries(
@@ -310,57 +309,50 @@ def _pick_node(args, nodes, reg, available, integration_statuses) -> dict:
         node = available[0]
     _assert_leaf_target(node, nodes)
     if args.allow_scaffold_planning:
-        warn_scaffold_at_pickup(ROOT, node)
+        warn_scaffold_at_pickup(root, node)
     return node
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT
     args = parse_do_next_task_args(argv)
     include_ci_skip = not args.no_ci_skip_in_message
-    ROOT = resolve_repo_root(args)
-    with pickup_finish_lock(ROOT, operation="do-next-available-task"):
-        _run_pickup(args, include_ci_skip=include_ci_skip)
+    root = resolve_repo_root(args)
+    with pickup_finish_lock(root, operation="do-next-available-task"):
+        _run_pickup(root, args, include_ci_skip=include_ci_skip)
 
 
-def _run_pickup(args, *, include_ci_skip: bool) -> None:
-    refuse_linked_worktree(ROOT, local=args.local, worktree=args.worktree)
-    base, remote, gw_warns = resolve_integration_defaults(
-        ROOT,
-        explicit_base=args.base,
-        explicit_remote=args.remote,
-    )
-    for w in gw_warns:
-        print(f"warning: {w}", file=sys.stderr)
+def _run_pickup(root: Path, args, *, include_ci_skip: bool) -> None:
+    refuse_linked_worktree(root, local=args.local, worktree=args.worktree)
+    base, remote = integration_defaults(root, args)
 
-    parent_filter = _resolve_milestone_parent_filter(ROOT / "work", args)
-    validate_or_exit(ROOT)
-    refuse_second_claim(ROOT, allow=args.allow_second_claim)
+    parent_filter = _resolve_milestone_parent_filter(root / "work", args)
+    validate_or_exit(root)
+    refuse_second_claim(root, allow=args.allow_second_claim)
     if args.local:
         print("local pickup: no fetch, no push (see the footer)", file=sys.stderr)
     else:
-        _check_pre_sync_availability(base, remote, parent_filter)
+        _check_pre_sync_availability(root, base, remote, parent_filter)
     # work/ is never stashed: the stash stack is shared by every session in the
     # checkout, and files another session wrote mid-pickup were stranded in it.
     # Untracked work/ files ride the branch switches; the registry commit names
     # its one path, so nothing else in the index goes with it.
     nodes, reg, available, integration_statuses = _resync_and_select(
-        base, remote, parent_filter, sync=not args.local,
+        root, base, remote, parent_filter, sync=not args.local,
         allow_unauthored=args.allow_unauthored,
         allow_scaffold_planning=args.allow_scaffold_planning,
         prefer_agentic_cli=args.prefer_agentic,
     )
-    _assert_current_branch_equals(base)
-    run_baseline_gate(ROOT, base, cli=args.baseline_cmd, warn_only=args.baseline_warn)
-    node = _pick_node(args, nodes, reg, available, integration_statuses)
+    _assert_current_branch_equals(root, base)
+    run_baseline_gate(root, base, cli=args.baseline_cmd, warn_only=args.baseline_warn)
+    node = _pick_node(root, args, nodes, reg, available, integration_statuses)
     branch = f"feature/rm-{node['codename']}"
-    worktree = leaf_worktree_path(ROOT, node["codename"]) if args.worktree else None
-    on_complete = prompt_on_complete(ROOT, args.on_complete)
+    worktree = leaf_worktree_path(root, node["codename"]) if args.worktree else None
+    on_complete = prompt_on_complete(root, args.on_complete)
     _finalize_pickup(
-        node, nodes, branch,
+        root, node, nodes, branch,
         base=base, remote=remote, push_registry=not args.local,
         include_ci_skip=include_ci_skip, on_complete=on_complete,
-        owner=args.owner or git_config_user_name(ROOT), worktree=worktree,
+        owner=args.owner or git_config_user_name(root), worktree=worktree,
     )
 
 

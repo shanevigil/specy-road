@@ -25,8 +25,8 @@ def _claimed(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     monkeypatch.setattr(
         atp,
-        "resolve_integration_defaults",
-        lambda *_a, **_k: ("main", "origin", []),
+        "integration_defaults",
+        lambda *_a, **_k: ("main", "origin"),
     )
 
 
@@ -79,7 +79,7 @@ def test_untracked_files_do_not_block_abort(monkeypatch: pytest.MonkeyPatch, tmp
         (tmp_path / "work" / name).write_text("note\n")
     (tmp_path / "scratch.txt").write_text("untracked outside work/\n")
     _claimed(monkeypatch)
-    monkeypatch.setattr(atp, "resolve_integration_defaults", lambda *_a, **_k: ("dev", "origin", []))
+    monkeypatch.setattr(atp, "integration_defaults", lambda *_a, **_k: ("dev", "origin"))
 
     def fetch(_root, *args: str) -> None:
         raise _PastTheCheck(args)
@@ -138,8 +138,8 @@ def test_abort_refuses_non_feature_branch(
     monkeypatch.setattr(atp, "current_branch", lambda _root: "main")
     monkeypatch.setattr(
         atp,
-        "resolve_integration_defaults",
-        lambda *_a, **_k: ("main", "origin", []),
+        "integration_defaults",
+        lambda *_a, **_k: ("main", "origin"),
     )
     with pytest.raises(SystemExit):
         atp.main(["--repo-root", str(tmp_path)])
@@ -154,8 +154,8 @@ def test_abort_refuses_ahead_of_remote_without_force(
     monkeypatch.setattr(atp, "current_branch", lambda _root: "feature/rm-x")
     monkeypatch.setattr(
         atp,
-        "resolve_integration_defaults",
-        lambda *_a, **_k: ("main", "origin", []),
+        "integration_defaults",
+        lambda *_a, **_k: ("main", "origin"),
     )
     monkeypatch.setattr(
         atp,
@@ -207,8 +207,8 @@ def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> No
     monkeypatch.setattr(atp, "current_branch", fake_branch)
     monkeypatch.setattr(
         atp,
-        "resolve_integration_defaults",
-        lambda *_a, **_k: ("main", "origin", []),
+        "integration_defaults",
+        lambda *_a, **_k: ("main", "origin"),
     )
     monkeypatch.setattr(
         atp,
@@ -264,8 +264,8 @@ def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path
     monkeypatch.setattr(atp, "current_branch", fake_branch)
     monkeypatch.setattr(
         atp,
-        "resolve_integration_defaults",
-        lambda *_a, **_k: ("main", "origin", []),
+        "integration_defaults",
+        lambda *_a, **_k: ("main", "origin"),
     )
     monkeypatch.setattr(
         atp,

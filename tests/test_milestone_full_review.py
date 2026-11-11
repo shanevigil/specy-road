@@ -250,6 +250,20 @@ def test_close_refuses_on_the_wrong_branch(tmp_path: Path, capsys) -> None:
     assert git(root, "rev-parse", "other") == git(root, "rev-parse", "dev")
 
 
+def test_close_stops_before_committing_when_its_validate_fails(tmp_path: Path, capsys) -> None:
+    """validate, export and digest run in this process; a failure among them commits nothing."""
+    root = make_milestone_repo(tmp_path)
+    row = "{codename: ghost, node_id: M9.9, branch: feature/rm-ghost, touch_zones: [x]}"
+    commit_file(root, "roadmap/registry.yaml", f"version: 1\nentries:\n  - {row}\n", "a bad row")
+    _review(root)
+    head = git(root, "rev-parse", "HEAD")
+    assert _mir(root, "M2", "--yes") == 1
+    err = capsys.readouterr().err
+    assert "registry: entry ghost references unknown node_id M9.9" in err
+    assert "error: specy-road validate exited 1; nothing was committed." in err
+    assert git(root, "rev-parse", "HEAD") == head
+
+
 def test_close_refuses_a_divergent_integration_tip(tmp_path: Path, capsys) -> None:
     """The gate is read at the remote-tracking tip; a local dev ahead of it must not close the milestone."""
     root = make_milestone_repo(tmp_path)
