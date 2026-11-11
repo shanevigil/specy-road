@@ -22,7 +22,6 @@ from pathlib import Path
 
 from specy_road import worker_state as ws
 from specy_road.chore_records import chores_dir
-from specy_road.orchestration import snapshot
 from specy_road.orphaned_claims import orphaned_claims
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
@@ -234,11 +233,6 @@ def record(row: Row, tmp: Path) -> str:
 def golden_path(row: Row) -> Path:
     """Where ``row``'s recorded output lives."""
     return GOLDEN / f"{row.name}.txt"
-
-
-def snapshot_text(repo: Path, dirs: dict[str, Path]) -> str:
-    """``snapshot(repo)`` as JSON, normalised as the command transcripts are."""
-    return step_transcript(["(snapshot)"], 0, json.dumps(snapshot(repo), indent=2) + "\n", "", dirs)
 
 
 def snapshot_golden(row: Row) -> Path:
