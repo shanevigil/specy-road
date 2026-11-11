@@ -43,7 +43,11 @@ entries:
     recommendation_reason: Matches the rc line (0.3.1rcN).
     default_if_unanswered: do not promote
     asked: '2026-11-02'
-    status: open
+    status: closed
+    answer: 'not a standing question (maintainer, 2026-11-10): at promotion the maintainer
+      states the exact version and the agent sets it in the version files, per the AGENTS.md
+      version rule'
+    closed: '2026-11-11T05:40:00+00:00'
   - id: D3
     node: M11.72
     kind: decision
