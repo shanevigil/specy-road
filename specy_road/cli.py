@@ -17,6 +17,7 @@ from types import ModuleType
 from typing import IO
 
 from specy_road.cli_args import subcommand_parsers
+from specy_road.errors import SpecyError, exit_for
 from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, project_root, resolve_repo_root
 from specy_road.version_skew import warn_if_running_version_older
 
@@ -232,6 +233,14 @@ def _run(module: str, argv: list[str], prog: str = "specy-road") -> None:
     _call_main(_module(module), argv, prog)
 
 
+def _invoke_main(entry: ModuleType, argv: list[str]) -> None:
+    """Run ``entry.main``; a command error is printed once and becomes its exit code."""
+    try:
+        entry.main(argv)
+    except SpecyError as error:
+        exit_for(error)
+
+
 def _call_main(entry: ModuleType, argv: list[str], prog: str) -> None:
     """``entry.main(argv)``, with ``sys.argv`` ``[prog, *argv]`` while it runs.
 
@@ -242,7 +251,7 @@ def _call_main(entry: ModuleType, argv: list[str], prog: str) -> None:
     saved = sys.argv
     sys.argv = [prog, *argv]
     try:
-        entry.main(argv)
+        _invoke_main(entry, argv)
     except SystemExit as e:
         if e.code not in (None, 0):
             raise
@@ -337,15 +346,11 @@ def _scaffold_constitution_parser() -> argparse.ArgumentParser:
 
 
 def _cmd_scaffold_constitution(rest: list[str]) -> None:
-    from specy_road.constitution_scaffold import ConstitutionExistsError, write_constitution
+    from specy_road.constitution_scaffold import write_constitution
 
     ns = _scaffold_constitution_parser().parse_args(rest)
     root = resolve_repo_root(ns)
-    try:
-        result = write_constitution(root, force=ns.force)
-    except ConstitutionExistsError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    result = write_constitution(root, force=ns.force)
     for rel in result.written:
         print(f"wrote {rel}")
     for rel in result.skipped_existing:
@@ -490,6 +495,14 @@ def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Dispatch ``argv``. A command error is printed once and becomes its exit code."""
+    try:
+        _dispatch(argv)
+    except SpecyError as error:
+        exit_for(error)
+
+
+def _dispatch(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
         from specy_road.cli_usage import USAGE_TEXT

@@ -48,7 +48,7 @@ from specy_road.review_files import (
     reviews_dir,
 )
 from specy_road.review_gate import evaluate_gate
-from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.review_target import resolve_target
 from specy_road.runtime_paths import project_prefix, resolve_repo_root
 
 PRE_EXISTING_NAME = "PRE-EXISTING.md"
@@ -177,11 +177,7 @@ def run_twice(repo_root: Path, sha: str, cmds: list[str], leaf: str | None = Non
 def cmd_check_pre_existing(ns: argparse.Namespace) -> int:
     """Run every claimed failing READY verifier twice on the integration tip; record the exits."""
     root = resolve_repo_root(ns)
-    try:
-        t = resolve_target(root, ns.node_id, ns.ref)
-    except ReviewTargetError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
+    t = resolve_target(root, ns.node_id, ns.ref)
     branch = (t.entry or {}).get("branch")
     gate = evaluate_gate(root, t.node, t.commit, branch=branch)
     ready = latest_ready(root, ns.node_id, branch, acceptance_ids(t.node))

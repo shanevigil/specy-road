@@ -33,7 +33,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.8` | Break the 25-module import cycle between roadmap CRUD, worker ops and the chore CLI | task | Agentic-led | Complete |
 | `M16.2.9` | Commands run in the CLI's process: no python -m re-launch, no cwd globals | task | Agentic-led | Complete |
 | `M16.2.10` | Every command exposes build_parser(), imports lazily and shares the common argument helpers | task | Agentic-led | Complete |
-| `M16.2.11` | One SpecyError base for the 15 error classes, printed and turned into an exit code once | task | Agentic-led | Not Started |
+| `M16.2.11` | One SpecyError base for the 15 error classes, printed and turned into an exit code once | task | Agentic-led | Complete |
 | `M16.2.12` | Review packets and prompts show a held milestone's rollup as the public loader does | task | Agentic-led | Complete |
 | `M16.2.13` | The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle | task | Agentic-led | Not Started |
 | `M16.3` | Orchestration state model and the cap-driven folds | milestone | — | Not Started |

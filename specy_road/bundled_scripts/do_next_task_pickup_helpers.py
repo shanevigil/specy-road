@@ -25,7 +25,7 @@ from specy_road.on_complete_session import (
 from specy_road.registry_yaml import write_registry
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapters import linked_worktree
-from specy_road.worktree_env import EnvSetupError, setup_worktree_env
+from specy_road.worktree_env import setup_worktree_env
 
 
 def write_brief(work_dir: Path, node: dict, nodes: list[dict]) -> Path:
@@ -174,11 +174,8 @@ def worktree_work_dir(repo_root: Path, wt: Path, brief_path: Path) -> tuple[Path
     work = wt_root / "work"
     work.mkdir(parents=True, exist_ok=True)
     shutil.move(brief_path, work / brief_path.name)
-    try:
-        for line in setup_worktree_env(repo_root, wt_root):
-            print(f"env_setup: {line}")
-    except EnvSetupError as e:
-        raise SystemExit(f"error: {e}") from None
+    for line in setup_worktree_env(repo_root, wt_root):
+        print(f"env_setup: {line}")
     return wt_root, work
 
 

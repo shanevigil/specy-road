@@ -34,7 +34,7 @@ from specy_road.review_record_write import (Outcome, answer_scratch, close_revie
 from specy_road.review_files import project_of, reviews_dir
 from specy_road.review_write_check import path_ancestor_link
 from specy_road.review_model_check import resolve_effective_model
-from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target
+from specy_road.review_target import ReviewTarget, resolve_target
 from specy_road.reviewer_auth import claude_launch_decision, launch_note
 from specy_road.reviewer_run_failure import harness_error_line, save_run, turn_capacity_error
 from specy_road.worker_adapter_base import checked, oversized_arg
@@ -323,11 +323,7 @@ def reviewer_turn(prof: Profile | None, out: Path, root: Path, entry: dict[str, 
     any run record or process; without ``run`` the command shown (:func:`show_reviewer`), with it the turn run, filed
     and its run record closed from the filing. The exit code."""
     from specy_road.reviewer_run_failure import open_reviewer_cli_run
-    try:
-        reviewer_target = resolve_target(root, node_id, ref)
-    except ReviewTargetError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
+    reviewer_target = resolve_target(root, node_id, ref)
     cwd, where = leaf_worktree(root, reviewer_target, worktree)
     if not run:   # the preview always shows the command; the worktree is enforced only for a launch
         rc = show_reviewer(prof, out, entry, model, reviews_dir(root, node_id), cwd)

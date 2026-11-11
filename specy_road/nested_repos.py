@@ -23,13 +23,16 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.git_subprocess import current_branch_name, git_code, git_ok, git_text, is_worktree_root
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.runtime_paths import nested_repo_path, project_prefix, rebase_to_project
 
 
-class NestedRepoError(RuntimeError):
+class NestedRepoError(SpecyError, RuntimeError):
     """A configured nested repository cannot be given its worktree."""
+
+    __init__ = inherited_init
 
 
 @dataclass(frozen=True)

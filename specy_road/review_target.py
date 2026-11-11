@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.roadmap_chunk_utils import find_chunk_path
 from specy_road.roadmap_graph import load_roadmap
 from specy_road.git_subprocess import git_stdout, git_text, local_branch_exists
@@ -33,8 +34,10 @@ from specy_road.registry_yaml import REGISTRY_REL, read_registry, registry_path
 from specy_road.roadmap_json import nodes_from_chunk_doc
 from specy_road.runtime_paths import project_prefix
 
-class ReviewTargetError(Exception):
+class ReviewTargetError(SpecyError):
     """The node, branch, or commit to review cannot be resolved."""
+
+    __init__ = inherited_init
 
 
 @dataclass
@@ -288,11 +291,8 @@ def resolve_target_or_exit(
     repo_root: Path, node_id: str, ref: str | None = None, *,
     nodes: list[dict[str, Any]] | None = None,
 ) -> ReviewTarget:
-    try:
-        return resolve_target(repo_root, node_id, ref, nodes=nodes)
-    except ReviewTargetError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    """The review target. A ReviewTargetError propagates for the command entry to print and exit."""
+    return resolve_target(repo_root, node_id, ref, nodes=nodes)
 
 
 # --- Milestone full review: what every command says about it (policy.milestone_full_review) ---

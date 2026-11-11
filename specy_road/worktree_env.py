@@ -22,13 +22,16 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.review_files import reviews_root
 from specy_road.git_subprocess import git_out
 
 
-class EnvSetupError(Exception):
+class EnvSetupError(SpecyError):
     """A copy or the command failed; the message carries the command's output."""
+
+    __init__ = inherited_init
 
 
 def env_setup_config(repo_root: Path) -> dict[str, Any] | None:

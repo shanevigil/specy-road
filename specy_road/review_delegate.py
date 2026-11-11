@@ -46,6 +46,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
+from specy_road.errors import SpecyError, inherited_init
 from specy_road import safe_write
 from specy_road.clock import utc_now_iso
 from specy_road.chore_records import chore_prompt, chore_target, load_chore
@@ -87,8 +88,10 @@ RESUME_PROMPT = ("Continue the review from where you stopped. Your final message
                  "before or after it: specy-road files the record from it.\n")
 
 
-class DelegateError(Exception):
+class DelegateError(SpecyError):
     """A refusal, with the sentence the CLI prints."""
+
+    __init__ = inherited_init
 
 
 def run_path(repo_root: Path, node_id: str, model: str) -> Path:
@@ -451,8 +454,8 @@ def cmd_review_delegate(ns: argparse.Namespace) -> int:
     try:
         run = delegate(root, ns.node_id, ns.model, ref=ns.ref, resume=ns.resume, retries=ns.retries,
                        backoff=ns.backoff, worktree=Path(ns.worktree) if ns.worktree else None, sign_key=ns.sign_key)
-    except (DelegateError, ReviewTargetError, WorkerError, safe_write.SafeWriteError) as e:
-        # WorkerError: an unsafe recorded session id. SafeWriteError: a symlink on a path the run would write.
+    except safe_write.SafeWriteError as e:
+        # A symlink on a path the run would write.
         print(f"error: {e}", file=sys.stderr)
         return 1
     except Unsupported as e:

@@ -15,6 +15,7 @@ from typing import Any
 
 import yaml
 
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.harness_facts import load_facts
 from specy_road.model_profiles import Profile, bundled_profiles_root, list_profiles
 from specy_road.orchestration_config import ORCHESTRATION_REL
@@ -24,8 +25,10 @@ ROSTER_FAMILY = {"Anthropic Claude": "anthropic", "OpenAI GPT": "openai", "Googl
                  "SpaceXAI Grok": "xai", "Meta Muse": "meta", "Cursor Composer": "cursor", "DeepSeek": "deepseek"}
 
 
-class RosterError(ValueError):
+class RosterError(SpecyError, ValueError):
     """An unknown profile id, or a roster file the entries cannot be added to."""
+
+    __init__ = inherited_init
 
 
 def shipped_profiles() -> list[Profile]:

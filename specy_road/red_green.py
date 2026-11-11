@@ -40,7 +40,7 @@ from specy_road.git_subprocess import git_bytes, git_code
 from specy_road.integrity import _block_statements, _changed_files, _file_at, _is_python_test_module
 from specy_road.review_files import _read, render_front_matter, reviews_dir
 from specy_road.review_policy_ref import policy_source
-from specy_road.review_target import ReviewTargetError, resolve_target, same_commit
+from specy_road.review_target import resolve_target, same_commit
 from specy_road.runtime_paths import resolve_repo_root
 
 RED_GREEN_NAME = "RED-GREEN.md"
@@ -192,11 +192,7 @@ def cmd_red_green(ns: argparse.Namespace) -> int:
     from specy_road.integrity_gate import planned_test_changes   # integrity_gate imports this module
 
     root = resolve_repo_root(ns)
-    try:
-        t = resolve_target(root, ns.node_id, ns.ref)
-    except ReviewTargetError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
+    t = resolve_target(root, ns.node_id, ns.ref)
     if not t.base or not t.commit:
         print("error: cannot resolve merge base or commit under review", file=sys.stderr)
         return 1

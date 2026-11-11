@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
+from specy_road.cli_entry import run_cli
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.roadmap_load import load_roadmap
 from specy_road.red_green import cmd_red_green
@@ -432,8 +433,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    ns = build_parser().parse_args(argv)
-    raise SystemExit(ns.func(ns))
+    """Run a review command. A command error is printed once and becomes its exit code."""
+    run_cli(build_parser, argv)
 if __name__ == "__main__":
     main()

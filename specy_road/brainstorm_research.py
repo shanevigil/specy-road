@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 
 import requests
 
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.bundled_scripts.brainstorm_search_providers import (
     DEFAULT_ENDPOINT,
     DEFAULT_PROVIDER,
@@ -51,8 +52,10 @@ _OPT_IN_HINT = (
 )
 
 
-class ResearchError(Exception):
+class ResearchError(SpecyError):
     """Web search is unconfigured, disabled, or the endpoint failed."""
+
+    __init__ = inherited_init
 
 
 def _as_bool(value: Any) -> bool:
