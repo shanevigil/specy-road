@@ -82,7 +82,8 @@ entries:
       - tests/
     started: '2026-11-10'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-11T18:24:10+00:00'
   - codename: gui-pm-decisions
     node_id: M17.15
     branch: feature/rm-gui-pm-decisions
