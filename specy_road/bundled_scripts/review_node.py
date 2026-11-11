@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from specy_road.brief_generation import index as make_index, render_brief
-from specy_road.errors import SpecyError
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.planning_sheet_bootstrap import (
     feature_sheet_structure_instruction_for_llm,
     gate_sheet_structure_instruction_for_llm,
@@ -51,8 +51,7 @@ _SHARED_CATALOG_CACHE_LOCK = threading.Lock()
 class ReviewError(SpecyError):
     """LLM review failed (missing config, missing package, or API error)."""
 
-    def __init__(self, message: str = "") -> None:
-        super().__init__(message, 1)
+    __init__ = inherited_init
 
 
 def _feature_sheet_system_prompt() -> str:

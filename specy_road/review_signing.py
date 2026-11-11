@@ -36,7 +36,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from specy_road.errors import SpecyError
+from specy_road.errors import SpecyError, inherited_init
 
 NAMESPACE = "specy-road-review"
 UNSIGNED_KEYS = frozenset({"signature", "family", "independence"})
@@ -46,8 +46,7 @@ NOTES_KEY = "notes_sha256"
 class SigningError(SpecyError):
     """Signing or verifying could not run (missing tool, bad key, bad input)."""
 
-    def __init__(self, message: str = "") -> None:
-        super().__init__(message, 1)
+    __init__ = inherited_init
 
 
 def canonical_bytes(data: dict[str, Any]) -> bytes:

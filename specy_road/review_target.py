@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from specy_road.errors import SpecyError
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.roadmap_chunk_utils import find_chunk_path
 from specy_road.roadmap_graph import load_roadmap
 from specy_road.git_subprocess import git_stdout, git_text, local_branch_exists
@@ -37,8 +37,7 @@ from specy_road.runtime_paths import project_prefix
 class ReviewTargetError(SpecyError):
     """The node, branch, or commit to review cannot be resolved."""
 
-    def __init__(self, message: str = "") -> None:
-        super().__init__(message, 1)
+    __init__ = inherited_init
 
 
 @dataclass

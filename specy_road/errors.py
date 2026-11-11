@@ -6,10 +6,24 @@ from __future__ import annotations
 class SpecyError(Exception):
     """A command failure: the text, and the process status it exits with.
 
-    The command errors subclass this and keep the constructors they already
-    had. ``exit_code`` is the status; those constructors do not take it.
+    ``SpecyError(message, exit_code)`` takes both. A command error that used to
+    be a bare ``Exception``, ``ValueError`` or ``RuntimeError`` keeps that
+    constructor: any positional arguments the old base accepted, and exit code 1
+    (:func:`inherited_init`). ``ConstitutionExistsError`` keeps the arguments it
+    already took.
     """
 
     def __init__(self, message, exit_code):
         super().__init__(message)
         self.exit_code = exit_code
+
+
+def inherited_init(self, *args):
+    """Positional arguments the previous base accepted, with exit code 1.
+
+    No keyword arguments, matching ``Exception``. A subclass that is also a
+    ``ValueError`` or ``RuntimeError`` still is. The command entry prints it
+    with this exit code; it does not rewrite the code to 1.
+    """
+    super(SpecyError, self).__init__(*args)
+    self.exit_code = 1

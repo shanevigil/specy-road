@@ -38,6 +38,13 @@ KEPT_PRINT_AND_EXIT = {
     ),
 }
 
+class CodedValueError(SpecyError, ValueError):
+    """A ValueError command error whose exit code is not 1."""
+
+    def __init__(self, message: str) -> None:
+        SpecyError.__init__(self, message, 7)
+
+
 COMMAND_ERRORS = (
     "WorkerError",
     "LeaseError",
@@ -157,6 +164,16 @@ def test_each_command_error_keeps_its_base_and_carries_an_exit_code(
     assert isinstance(error, parent)
     assert error.exit_code == 1
     assert str(error)
+    if type(error) is ConstitutionExistsError:
+        return
+    several = type(error)("a", "b")
+    assert several.args == ("a", "b")
+    assert str(several) == str(parent("a", "b"))
+    assert several.exit_code == 1
+    assert isinstance(several, parent)
+    bare = type(error)()
+    assert bare.args == ()
+    assert bare.exit_code == 1
 
 
 @pytest.mark.parametrize(
@@ -165,6 +182,7 @@ def test_each_command_error_keeps_its_base_and_carries_an_exit_code(
         (SpecyError("boom", 4), 4),
         (WorkerError("missing"), 1),
         (RosterError("no profile"), 1),
+        (CodedValueError("seven"), 7),
     ],
 )
 def test_run_handler_prints_a_specy_error_and_exits_with_its_code(

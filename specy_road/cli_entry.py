@@ -50,18 +50,19 @@ def _parse_and_exit(
 def run_handler(ns: argparse.Namespace) -> None:
     """Exit with ``ns``'s handler's status.
 
-    A :class:`SpecyError` is printed with its own exit code. Any other
-    ``ValueError`` is one ``error:`` line and status 1.
+    A :class:`SpecyError` is printed once with its own exit code, including one
+    that is also a ``ValueError``. Any other ``ValueError`` is one ``error:``
+    line and status 1.
     """
-    run_reporting(lambda: _exit_on_value_error(ns))
-
-
-def _exit_on_value_error(ns: argparse.Namespace) -> None:
     try:
-        raise SystemExit(ns.func(ns))
+        run_reporting(lambda: _handler_status(ns))
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
+
+
+def _handler_status(ns: argparse.Namespace) -> None:
+    raise SystemExit(ns.func(ns))
 
 
 def integration_defaults(root: Path, ns: argparse.Namespace) -> tuple[str, str]:

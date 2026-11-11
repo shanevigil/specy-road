@@ -22,7 +22,7 @@ from typing import Any
 import yaml
 
 from specy_road import safe_write
-from specy_road.errors import SpecyError
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.bundled_scripts.brainstorm_fields import extra_to_dict, parse_extra
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.fs_atomic import atomic_write_text
@@ -63,8 +63,7 @@ class BrainstormError(SpecyError, ValueError):
     sees it. The command entry prints it as ``error: <message>`` and exits 1.
     """
 
-    def __init__(self, message: str = "") -> None:
-        super().__init__(message, 1)
+    __init__ = inherited_init
 
 
 def slugify(text: str) -> str:

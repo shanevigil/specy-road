@@ -46,7 +46,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
-from specy_road.errors import SpecyError
+from specy_road.errors import SpecyError, inherited_init
 from specy_road import safe_write
 from specy_road.clock import utc_now_iso
 from specy_road.chore_records import chore_prompt, chore_target, load_chore
@@ -91,8 +91,7 @@ RESUME_PROMPT = ("Continue the review from where you stopped. Your final message
 class DelegateError(SpecyError):
     """A refusal, with the sentence the CLI prints."""
 
-    def __init__(self, message: str = "") -> None:
-        super().__init__(message, 1)
+    __init__ = inherited_init
 
 
 def run_path(repo_root: Path, node_id: str, model: str) -> Path:

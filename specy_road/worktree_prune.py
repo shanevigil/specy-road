@@ -41,7 +41,7 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from specy_road.errors import SpecyError
+from specy_road.errors import SpecyError, inherited_init
 from specy_road.merged_branch import merged_into
 from specy_road.roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
@@ -59,8 +59,7 @@ from specy_road.worktree_delete_set import cmd, common_dir, deletions, foreign_r
 class PruneError(SpecyError, RuntimeError):
     """The leaf or its worktree cannot be found."""
 
-    def __init__(self, message: str = "") -> None:
-        super().__init__(message, 1)
+    __init__ = inherited_init
 
 
 @dataclass
