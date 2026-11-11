@@ -330,7 +330,8 @@
         "specy_road/errors.py",
         "specy_road/cli_entry.py",
         "specy_road/",
-        "tests/"
+        "tests/",
+        "sr/planning/M16.2.11_one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once_3ae67e69-01ea-46bc-a70c-2642964c6e0c.md"
       ],
       "type": "task"
     },

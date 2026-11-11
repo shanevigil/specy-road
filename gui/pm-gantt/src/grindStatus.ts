@@ -13,14 +13,19 @@ export type GrindScope = { until: string; under: string };
 export type GrindWorker = { id: string; harness: string; state: string; lease: string | null; flags: string[] };
 export type GrindReason = { kind: string; reason: string; next: string[] };
 export type GrindLeaf = { id: string; title: string };
-export type GrindHeld = GrindLeaf & {
+/**
+ * M17.15, on each claimed leaf whose review was evaluated: the commit under review, whether the PM can approve
+ * over its blocks, and what that decision would settle. Optional: a server from before M17.15 sends none.
+ */
+export type GrindApprovalOffer = { commit?: string; can_approve_over_block?: boolean; settles?: string[] };
+export type GrindHeld = GrindLeaf & GrindApprovalOffer & {
   claimed: boolean;
   reasons: GrindReason[];
   state?: string | null;
   error?: string;
   worker?: GrindWorker;
 };
-export type GrindActive = GrindLeaf & {
+export type GrindActive = GrindLeaf & GrindApprovalOffer & {
   claimed: boolean;
   status: string | null;
   review: string | null;
@@ -42,6 +47,9 @@ export type GrindLedgerEntry = {
   pros_cons: string;
   ledger: string;
 };
+
+/** A decision made in the PM GUI that no coordinator has processed yet (M17.15). */
+export type GrindGuiPending = { id: string; node: string; kind: string; answer: string; next: string[] };
 
 export type GrindStatusReport = {
   generated_at: string;
@@ -76,6 +84,8 @@ export type GrindStatusReport = {
     ledger: GrindLedgerEntry[];
     ledger_outside_scope: { id: string; node: string | null; summary: string | null }[];
     held: (GrindReason & { node: string; options: string })[];
+    /** Optional: a server from before M17.15 sends none, and the modal shows no section for it. */
+    gui_pending?: GrindGuiPending[];
   };
   sessions: {
     brainstorm: { slug: string; mode: string; ideas: number }[];
@@ -308,6 +318,19 @@ function decisionLines(d: GrindStatusReport["decisions"]): string[] {
   return lines.length ? lines : NONE;
 }
 
+/**
+ * "Decided in the GUI, not yet processed", as the CLI prints it: only while an item waits, so a server from
+ * before M17.15 (no `gui_pending`) and an empty list both show no section.
+ */
+function guiPendingSections(pending: GrindGuiPending[] | undefined): GrindSection[] {
+  if (!pending?.length) return [];
+  const lines = pending.flatMap((g) => [
+    `${g.id} [${g.kind}] node ${g.node}: ${g.answer}`,
+    ...g.next.map((n) => `  next: ${n}`),
+  ]);
+  return [{ title: "Decided in the GUI, not yet processed", lines }];
+}
+
 /** The report's sections in the CLI's order, each line as `render_text` prints it. */
 export function grindStatusSections(r: GrindStatusReport): GrindSection[] {
   const sections = [
@@ -319,6 +342,7 @@ export function grindStatusSections(r: GrindStatusReport): GrindSection[] {
     leafSection("Not pickable", r.not_pickable, (x) => `${x.id} ${x.title}: ${x.reason}`),
     { title: "Estimate", lines: estimateLines(r.estimate) },
     { title: "Decisions waiting on a person", lines: decisionLines(r.decisions) },
+    ...guiPendingSections(r.decisions.gui_pending),
     leafSection("Open brainstorm sessions", r.sessions.brainstorm, (b) => `${b.slug} (${b.mode}, ${b.ideas} ideas)`),
     leafSection(
       "Live sessions",

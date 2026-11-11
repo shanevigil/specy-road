@@ -31,9 +31,7 @@ from pathlib import Path
 from specy_road.cli import run as run_command
 from specy_road.cli_entry import run_reporting
 from specy_road.clock import utc_now_iso
-from specy_road.decisions import DECISIONS_REL
-from specy_road.git_subprocess import git_code, git_run, git_text
-from specy_road.nested_repos_land import checked_out_in, in_temp_worktree, move_ref
+from specy_road.git_subprocess import git_run
 from specy_road.review_gate import (
     SigningError,
     GateResult,
@@ -44,9 +42,7 @@ from specy_road.review_gate import (
     trial_merge_or_exit,
     write_human_approval,
 )
-from specy_road.review_override import (APPROVE, append_decision, as_if_decided, blocks_to_settle, finding_texts,
-                                        recorder, role_refusal, write_operator_marker)
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_override import finding_texts, over_block_preflight, record_over_block
 from specy_road.review_tally import tally_trailers
 from specy_road.review_target import is_milestone, milestone_close_problem, resolve_target_or_exit
 from specy_road import safe_write
@@ -56,7 +52,7 @@ from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
 from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
 from specy_road.registry_yaml import registry_path, write_registry
-from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.repo_ops import assert_working_tree_clean, current_branch
 
 
@@ -237,46 +233,6 @@ def _refuse_linked_handoff(root: Path, node_id: str) -> None:
 _APPROVE_OVER_BLOCK = "[a] Approve over the block — record your decision on the integration branch and close the gate"
 
 
-def _integration(ref: str) -> tuple[str | None, str]:
-    """``(remote or None, branch)`` of the ref the gate reads policy from."""
-    if ref.startswith("refs/remotes/"):
-        remote, ib = ref.removeprefix("refs/remotes/").split("/", 1)
-        return remote, ib
-    return None, ref.removeprefix("refs/heads/")
-
-
-def _over_block_preflight(
-    root: Path, node: dict, gate: GateResult, branch: str
-) -> tuple[GateResult, str | None, str | None]:
-    """``(the gate at the integration tip, the integration ref, why approving over the block is withheld)``.
-
-    Every check that can refuse runs here, before the menu and before anything is written.
-    """
-    assert_working_tree_clean(root, except_work=True)   # a decision never sits beside an unstamped registry
-    if why := role_refusal():
-        return gate, None, why
-    if not recorder(root):
-        return gate, None, "git identity: set git user.name and user.email; the decision entry names who recorded it"
-    ref, err = policy_source(root)
-    if ref is None:
-        return gate, None, err or "no integration branch to record the decision on"
-    remote, ib = _integration(ref)
-    if remote:   # the gate reads only the remote-tracking ref: read the policy at the fetched tip
-        code, out = git_code(["fetch", remote, ib], root)
-        if code != 0:
-            return gate, ref, f"git fetch {remote} {ib} failed: {out}"
-        gate = evaluate_gate(root, node, gate.commit, branch=branch)
-    elif (holder := checked_out_in(root, ib)) is not None:
-        status = git_text(["status", "--porcelain", "--untracked-files=no"], holder)
-        if status is None or status:
-            return gate, ref, (f"{ib} is checked out in {holder} with uncommitted changes (or an unreadable "
-                               "status); commit or stash them there first")
-    after = as_if_decided(gate)
-    if not after.passed:
-        return gate, ref, "settling the block(s) would not pass the gate: " + "; ".join(after.problems())
-    return gate, ref, None
-
-
 def _read_reason(gate: GateResult) -> str:
     """Show each blocking record's findings, offer the approval over the block and read the reason; ``""``: quit."""
     for b in gate.blocks:
@@ -299,44 +255,22 @@ def _read_reason(gate: GateResult) -> str:
 def _record_over_block(
     root: Path, node: dict, gate: GateResult, ref: str, reason: str, branch: str
 ) -> GateResult:
-    """Commit the operator decision on the integration branch from a temporary worktree of the tip the gate read,
-    push it (or move the local branch), then write the marker here; the passing gate, or exit 1."""
-    sha, (remote, ib) = str(gate.commit), _integration(ref)
-    where = f"{remote}/{ib}" if remote else f"local {ib}"
-    tip, prefix = git_text(["rev-parse", ref], root) or "", project_prefix(root)
-    rel = f"{prefix}{DECISIONS_REL.as_posix()}"
-    ns = argparse.Namespace(node_id=node["id"], decision=APPROVE, quote=reason, rule=None, limit=[],
+    """Record the decision on the integration branch and write the marker (:func:`record_over_block`); the passing
+    gate, or exit 1."""
+    rec = record_over_block(root, node, gate, ref, reason, branch,
                             session=f"mark-implementation-reviewed {utc_now_iso()}")
-    blocks, who, done = blocks_to_settle(root, gate, sha), str(recorder(root)), {}
-
-    def commit(tree: Path) -> str | None:
-        try:
-            entry, _settles = append_decision(tree / prefix, ns, gate, blocks, who)
-        except ValueError as e:   # a copied schema from before decided_by
-            return f"{e}; run `specy-road refresh-schemas`"
-        git_code(["add", "--", rel], tree)
-        code, out = git_code(["commit", "-q", "-m", f"roadmap: operator decision {entry['id']} approves "
-                                                    f"{node['id']} over the block", "--", rel], tree)
-        if code != 0:
-            return f"the decision commit failed: {out}"
-        done.update(entry=entry, new=git_text(["rev-parse", "HEAD"], tree) or "")
-        if remote:
-            code, out = git_code(["push", remote, f"HEAD:refs/heads/{ib}"], tree)
-            return f"git push {remote} HEAD:refs/heads/{ib} was refused: {out}" if code != 0 else None
-        return move_ref(root, f"refs/heads/{ib}", tip, done["new"], checked_out_in(root, ib), "the decision commit")
-
-    if err := in_temp_worktree(root, tip, commit):
-        print(f"error: {err}\n  Nothing was recorded. The coordinator can record the decision from the "
+    landed = rec.landed
+    if landed.error or landed.entry is None:
+        print(f"error: {landed.error}\n  Nothing was recorded. The coordinator can record the decision from the "
               f"integration-branch checkout: specy-road review operator-decision {node['id']} --decision approve "
               "--quote '<the operator's words>' --session <id>", file=sys.stderr)
         raise SystemExit(1)
-    marker = write_operator_marker(root, done["entry"], sha, ns.session)
-    print(f"[ok] decision {done['entry']['id']} committed on {where} as {done['new']}; wrote {marker}")
-    gate = evaluate_gate(root, node, sha, branch=branch)
+    print(f"[ok] decision {landed.entry['id']} committed on {landed.where} as {landed.commit}; wrote {rec.marker}")
+    gate = rec.gate
     if not gate.passed:
         for problem in gate.problems():
             print(f"  - {problem}", file=sys.stderr)
-        print(f"error: decision {done['entry']['id']} is recorded on {where}, but the review gate is still not "
+        print(f"error: decision {landed.entry['id']} is recorded on {landed.where}, but the review gate is still not "
               "met; the registry was not stamped.", file=sys.stderr)
         raise SystemExit(1)
     return gate
@@ -349,7 +283,8 @@ def _approve_over_block(
 
     Exits 0 when the person quits or gives no reason, and 1 when recording fails.
     """
-    gate, ref, why = _over_block_preflight(root, node, gate, branch)
+    assert_working_tree_clean(root, except_work=True)   # a decision never sits beside an unstamped registry
+    gate, ref, why = over_block_preflight(root, node, gate, branch)
     if why or ref is None:
         return None, why
     reason = _read_reason(gate)

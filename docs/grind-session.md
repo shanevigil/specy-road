@@ -204,13 +204,26 @@ each; then each held leaf with the next step its record names (`set-gate-status`
 next command, the executor's `blocked_on` lines, `review accept-policy`, `worker reclaim` or `worker status`).
 Nothing is invented: a field a record lacks is listed under `missing`.
 
+**Decided in the GUI, not yet processed** (`decisions.gui_pending`, whatever the scope): closed entries with
+`channel: pm-gui` (the PM GUI's Status window, [pm-gui.md](pm-gui.md)) that no coordinator has acted on, judged
+from local refs and files without a fetch, each with its `next` steps. An approval over a block is listed while the
+leaf is not Complete and the registry on its own branch (`feature/rm-<codename>`) has no `implementation_review:
+approved`; next: `specy-road mark-implementation-reviewed --yes` on that branch, then `finish-this-task`, or, when
+this clone has no `OPERATOR-<commit>.yaml` marker, "process it from the clone that ran the GUI". An answer is
+listed while the planning sheet on the local integration branch has no `<ID>: <answer>` line in its decision block
+(a line only on a leaf branch does not count); next: commit that line on the integration branch, then act on it.
+The GUI pushes to the integration branch, so a coordinator pulls it (`git pull --ff-only`) before each status
+check. Each claimed leaf whose review was evaluated also carries `commit`, `can_approve_over_block` and `settles`
+(what an approval over its blocks would name), which the GUI reads.
+
 **Sessions.** Open brainstorm sessions (slug, mode, idea count) and every live presence session (agent, branch,
 note, expiry), whatever the scope. A presence record has no role, so no session is classed as a planner: a planner
 starts with `specy-road session start --note 'planner: <topic>'` so its note says what it is.
 
 **JSON.** `--status --json` prints one object with `generated_at`, `source` (`branch`, `head`, `fetched`: false),
 `goal`, `scope`, `totals`, `held`, `active`, `ready`, `waiting`, `awaiting_merge`, `not_pickable`, `estimate`
-(`method`, `inputs`, `earliest`, `latest`, `reason`), `decisions` (`ledger`, `ledger_outside_scope`, `held`),
+(`method`, `inputs`, `earliest`, `latest`, `reason`), `decisions` (`ledger`, `ledger_outside_scope`, `held`,
+`gui_pending`),
 `sessions` (`brainstorm`, `presence`) and `missing`.
 
 **Watch.** `--status --watch [MINUTES]` prints the report again after each interval, each after a separator line
