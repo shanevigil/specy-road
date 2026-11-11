@@ -28,19 +28,27 @@ and each ``review delegate`` run with its commit; an older commit's record never
 from __future__ import annotations
 
 import argparse
+import contextlib
+import getpass
 import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
 from specy_road.cli_entry import run_cli
+from specy_road.clock import utc_now_iso
+from specy_road.decisions import DECISIONS_REL
+from specy_road.git_subprocess import git_text
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.roadmap_load import load_roadmap
 from specy_road.red_green import cmd_red_green
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_files import (
-    REVIEW_LAUNCH_MODES, executor_blocked_display_lines, list_ready,
+    REVIEW_LAUNCH_MODES, executor_blocked_display_lines, list_ready, project_of,
     list_reviews, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
     review_path, reviews_dir, reviews_root, round_span, write_review,
 )
@@ -56,8 +64,22 @@ from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
 from specy_road.review_defer import add_parser as add_defer_parser
-from specy_road.review_policy_pin import add_parser as add_accept_policy_parser
-from specy_road.review_override import add_parser as add_operator_decision_parser
+from specy_road.review_policy_pin import (
+    PolicyUnreadable,
+    _asked_because,
+    _pin_state,
+    acceptance_path,
+)
+from specy_road.review_override import (
+    ACCEPT_WITH_LIMITS,
+    APPROVE,
+    _coordinator_problem,
+    append_decision,
+    blocks_to_settle,
+    recorder,
+    role_refusal,
+    write_operator_marker,
+)
 from specy_road.orphaned_claims import orphaned_claims, report_lines
 from specy_road.review_run_status import (extend_handoff_refused, print_refused_list, refused_by_model,
                                           review_list_payload, unreadable_rejected_lines)
@@ -382,6 +404,232 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
             return _fail(str(e))
         t = None
     return _print_review_list_text(root, ns, t)
+
+
+def _user(root: Path) -> str:
+    name, email = (git_text(["config", f"user.{k}"], root) for k in ("name", "email"))
+    return f"{name} <{email}>" if name and email else name or email or getpass.getuser()
+
+
+def _open_policy_changes(root: Path) -> list[dict[str, Any]]:
+    """Open claims whose pinned review policy differs from the integration branch, in registry order."""
+    nodes = load_roadmap(root)["nodes"]
+    changes = []
+    for entry in read_registry(registry_path(root)).get("entries") or []:
+        if not isinstance(entry, dict) or not entry.get("node_id"):
+            continue
+        target = resolve_target(root, str(entry["node_id"]), None, nodes=nodes)
+        state = _pin_state(root, target.node, target.commit or "HEAD")
+        if state is None:
+            continue
+        ref, pinned, at, current, lines = state
+        changes.append({"node_id": str(entry["node_id"]), "ref": ref, "pinned": pinned, "at": at,
+                        "current": current, "lines": tuple(lines)})
+    return changes
+
+
+def _change_groups(changes: list[dict[str, Any]]) -> list[tuple[tuple[str, ...], list[dict[str, Any]]]]:
+    """Each distinct set of change lines once, with the leaves it affects, earliest leaf id first."""
+    grouped: dict[tuple[str, ...], list[dict[str, Any]]] = {}
+    for change in changes:
+        grouped.setdefault(change["lines"], []).append(change)
+    return sorted(grouped.items(), key=lambda item: min(row["node_id"] for row in item[1]))
+
+
+def _write_acceptances(root: Path, rows: list[dict[str, Any]]) -> int:
+    """One ``POLICY-ACCEPTED.yaml`` per leaf, under that leaf's review lock.
+
+    Nothing is written when a lock is held, or when any acceptance path is a symlink.
+    """
+    ordered = sorted(rows, key=lambda row: row["node_id"])
+    user = _user(root)
+    at = utc_now_iso()
+    with contextlib.ExitStack() as stack:
+        for row in ordered:
+            try:
+                stack.enter_context(review_lock.review_run_lock(
+                    reviews_dir(root, row["node_id"]), wait=review_lock.FILING_WAIT))
+            except review_lock.ReviewRunBusy:
+                print(f"error: {review_lock.filing_busy(row['node_id'])}", file=sys.stderr)
+                return 1
+            except safe_write.SafeWriteError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 1
+        prepared: list[tuple[Path, str]] = []
+        for row in ordered:
+            path = acceptance_path(root, row["node_id"])
+            record = {"node_id": row["node_id"], "pinned_sha256": row["pinned"], "accepted_sha256": row["current"],
+                      "user": user, "at": at}
+            try:
+                safe_write.check(project_of(path), path)
+            except safe_write.SafeWriteError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 1
+            prepared.append((path, yaml.safe_dump(record, sort_keys=False)))
+        for path, body in prepared:
+            try:
+                safe_write.write(project_of(path), path, body)
+            except safe_write.SafeWriteError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 1
+            print(f"wrote {path}")
+    return 0
+
+
+def _accept_one(root: Path, node_id: str, ref: str | None) -> int:
+    target = resolve_target(root, node_id, ref, nodes=load_roadmap(root)["nodes"])
+    state = _pin_state(root, target.node, target.commit or "HEAD")
+    if state is None:
+        print(f"{node_id}: the review policy is unchanged since the claim (or not pinned); nothing to accept")
+        return 0
+    where, pinned, at, current, lines = state
+    print(f"review policy changed on {where} since {node_id} was claimed ({at[:12]}):")
+    print(_asked_because())
+    for line in lines:
+        print(f"  - {line}")
+    if input(f"Type {node_id} to accept this policy for {node_id}: ").strip() != node_id:
+        print("not accepted; nothing was written", file=sys.stderr)
+        return 1
+    return _write_acceptances(root, [{"node_id": node_id, "pinned": pinned, "current": current}])
+
+
+def _print_groups(changes: list[dict[str, Any]]) -> None:
+    print(f"Open claims whose pinned review policy differs from {changes[0]['ref']}:")
+    print(_asked_because())
+    for lines, leaves in _change_groups(changes):
+        ordered = sorted(leaves, key=lambda row: row["node_id"])
+        print(", ".join(row["node_id"] for row in ordered) + ":")
+        for row in ordered:
+            print(f"  {row['node_id']}: pinned {row['pinned']} accepted {row['current']}")
+        for line in lines:
+            print(f"  - {line}")
+
+
+def _accept_all(root: Path) -> int:
+    """``--all-open``: one confirmation, then one acceptance file per leaf that differs."""
+    changes = _open_policy_changes(root)
+    if not changes:
+        print("no open claim has a review policy that differs from its pin; nothing to accept")
+        return 0
+    _print_groups(changes)
+    token = " ".join(sorted(row["node_id"] for row in changes))
+    if input(f"Type {token} to accept this policy for {token}: ").strip() != token:
+        print("not accepted; nothing was written", file=sys.stderr)
+        return 1
+    return _write_acceptances(root, changes)
+
+
+def _usage_error(ns: argparse.Namespace) -> str | None:
+    if bool(ns.node_id) == bool(ns.all_open):
+        return "pass one node id or --all-open, not both and not neither"
+    if ns.all_open and ns.ref:
+        return "--ref is for one node; --all-open uses each claim's registered branch"
+    return None
+
+
+def cmd_accept_policy(ns: argparse.Namespace) -> int:
+    """``review accept-policy``: a human, in a terminal, accepts the policy change since the claim.
+
+    One node id is that leaf. ``--all-open`` is every open claim whose pin differs: one confirmation, then
+    one acceptance file per leaf.
+    """
+    if not sys.stdin.isatty():
+        print("error: a human accepts a review policy change in a terminal; nothing was written", file=sys.stderr)
+        return 1
+    if reason := _usage_error(ns):
+        print(f"error: {reason}; nothing was written", file=sys.stderr)
+        return 1
+    root = resolve_repo_root(ns)
+    try:
+        if ns.all_open:
+            return _accept_all(root)
+        return _accept_one(root, ns.node_id, ns.ref)
+    except (ReviewTargetError, PolicyUnreadable) as e:
+        print(f"error: {e}; nothing was written", file=sys.stderr)
+        return 1
+
+
+def add_accept_policy_parser(rsub: Any) -> None:
+    sp = rsub.add_parser("accept-policy", help="Human-only: accept a review policy change made on the integration "
+                                               "branch since the leaf was claimed")
+    sp.add_argument("node_id", nargs="?", help="One leaf; omit it with --all-open")
+    sp.add_argument("--all-open", action="store_true",
+                    help="Every open claim whose pinned policy differs: print each distinct change once, "
+                         "ask once, write one POLICY-ACCEPTED.yaml per leaf")
+    add_ref_arg(sp)
+    add_repo_root_arg(sp)
+    sp.set_defaults(func=cmd_accept_policy)
+
+
+def _form_problem(ns: argparse.Namespace) -> str | None:
+    """Why the flags are neither the operator form (``--quote``) nor the coordinator form (``--rule``)."""
+    if ns.rule is None:
+        if ns.rca or ns.alignment or ns.limit:
+            return "--rca, --alignment and --limit belong to the coordinator form (--rule)"
+        if not (ns.quote or "").strip():
+            return "--quote is empty: give the operator's words as they said them, or the coordinator form --rule"
+    elif ns.quote is not None:
+        return "--quote and --rule are two forms; give one"
+    elif ns.decision != ACCEPT_WITH_LIMITS:
+        return f"the coordinator form (--rule) records only --decision {ACCEPT_WITH_LIMITS}"
+    if not (ns.session or "").strip():
+        return "--session is empty: name the session the operator decided in"
+    return None
+
+
+def cmd_operator_decision(ns: argparse.Namespace) -> int:
+    if why := role_refusal():   # before anything is read or written
+        return _fail(why)
+    root = resolve_repo_root(ns)
+    if why := _form_problem(ns):
+        return _fail(why)
+    who = recorder(root)
+    if not who:
+        return _fail("set git user.name and user.email: the decision entry names who recorded it")
+    nodes = load_roadmap(root)["nodes"]
+    if any(n.get("parent_id") == ns.node_id for n in nodes):
+        return _fail(f"{ns.node_id} has children: an operator decision is for one leaf and one commit")
+    try:
+        t = resolve_target(root, ns.node_id, nodes=nodes)
+    except ReviewTargetError as e:
+        return _fail(f"the commit under review does not resolve: {e}")
+    gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
+    sha = gate.commit
+    blocks = blocks_to_settle(root, gate, sha)
+    cited: list[dict[str, str]] = []
+    if ns.rule:
+        why, cited = _coordinator_problem(root, ns, gate, t.node, blocks)
+        if why:
+            return _fail(why)
+    try:
+        entry, settles = append_decision(root, ns, gate, blocks, who, cited)
+    except ValueError as e:   # a copied schema from before decided_by
+        return _fail(f"{e}; nothing was written. Run `specy-road refresh-schemas` and try again")
+    marker = write_operator_marker(root, entry, sha, ns.session)
+    print(f"[ok] decision {entry['id']} closed (decided_by: {entry['decided_by']}) for {ns.node_id} at {sha[:12]}: "
+          f"{'; '.join(settles) or 'nothing to settle'}; wrote {marker}")
+    print(f"  Commit {DECISIONS_REL.as_posix()} on the integration branch, then `specy-road handoff status "
+          f"{ns.node_id}`. A later commit on the leaf beyond its sheet or review bookkeeping ends the decision.")
+    return 0
+
+
+def add_operator_decision_parser(rsub: Any) -> None:
+    sp = rsub.add_parser("operator-decision", help="Coordinator: record the operator's review decision for the "
+                                                   "commit under review, or accept with limits under a standing rule")
+    sp.add_argument("node_id")
+    sp.add_argument("--decision", required=True, choices=[APPROVE, ACCEPT_WITH_LIMITS])
+    sp.add_argument("--quote", help="The operator's words, as they said them (operator form)")
+    sp.add_argument("--session", required=True, help="The session the operator decided in; kept in the marker")
+    sp.add_argument("--rule", metavar="ID", help="Coordinator form: an open standing-rule entry in "
+                                                 "roadmap/decisions.yaml; only --decision accept-with-limits")
+    sp.add_argument("--rca", action="append", default=[], metavar="MODEL=PATH",
+                    help="Coordinator form: a root-cause analysis; give two, of two roster families")
+    sp.add_argument("--alignment", action="append", default=[], metavar="MODEL=PATH",
+                    help="Coordinator form: an alignment review; give two, of two roster families")
+    sp.add_argument("--limit", action="append", default=[], metavar="TEXT",
+                    help="Coordinator form: an accepted limit; each counted finding is named in exactly one")
+    add_repo_root_arg(sp)
+    sp.set_defaults(func=cmd_operator_decision)
 
 
 def build_parser() -> argparse.ArgumentParser:

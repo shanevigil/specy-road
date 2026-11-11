@@ -30,7 +30,6 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.init_project import project_template_root
 from specy_road.orchestration_config import harness_model_warnings, load_orchestration_config, orchestration_yaml_path
 from specy_road.orchestration_pinned import roster_report
 from specy_road.planning_artifacts import split_frontmatter
@@ -38,7 +37,7 @@ from specy_road.refresh_stubs_staleness import warn_if_stubs_stale
 from specy_road.roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from specy_road.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.registry_yaml import registry_path
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import default_user_repo_root, project_template_root
 from specy_road.sibling_repos import warn_unconfigured_sibling_repos
 from specy_road.specyrd_init import warn_if_skills_mirrored
 from specy_road.validate_stale_commands import warn_unregistered_commands

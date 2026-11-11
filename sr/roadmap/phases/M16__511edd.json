@@ -457,7 +457,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.13_loader-out-of-review-cycle_7b31d59d-4047-444e-ab6c-2d778e07e451.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle",
       "touch_zones": [
         "specy_road/",

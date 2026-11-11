@@ -16,6 +16,7 @@ from specy_road import git_workflow_config as gwc
 from specy_road import worker_adapters as wa
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
+from specy_road.worker_cli_sync import wait_for_event
 from specy_road.bundled_scripts import worker_cli
 
 
@@ -95,17 +96,17 @@ def test_wait_for_event_returns_on_the_next_event_or_times_out(tmp_path: Path) -
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     since = ws.flag_stamp(repo)
     t0 = time.monotonic()
-    assert ws.wait_for_event(repo, 0.3, since) is False
+    assert wait_for_event(repo, 0.3, since) is False
     assert 0.3 <= time.monotonic() - t0 < 2
     writer = threading.Timer(0.4, lambda: ws.append_event(repo, rec, "output", source="worker", summary="late"))
     writer.start()
     t0 = time.monotonic()
     try:
-        assert ws.wait_for_event(repo, 10, since) is True
+        assert wait_for_event(repo, 10, since) is True
     finally:
         writer.join()
     assert time.monotonic() - t0 < 2   # within a poll of the write, not the 10 s timeout
-    assert ws.wait_for_event(repo, 10, None) is True   # the flag already changed since "no flag": no wait at all
+    assert wait_for_event(repo, 10, None) is True   # the flag already changed since "no flag": no wait at all
 
 
 def test_sync_wait_ctrl_c_exits_130_without_a_traceback(tmp_path: Path, capsys, monkeypatch) -> None:

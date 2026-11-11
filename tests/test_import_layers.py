@@ -47,11 +47,22 @@ def _stems_of(component: dict) -> set[str]:
 
 
 def _loader_component(report: dict) -> dict | None:
+    """The component holding both the graph loader and the review gate, if any."""
     for component in report["components"]:
         stems = _stems_of(component)
-        if "roadmap_load" in stems and "finish_ancestor_rollup" in stems:
+        if "roadmap_load" in stems and "review_gate" in stems:
             return component
     return None
+
+
+def _package_entry_targets(report: dict) -> set[str]:
+    """Entry-point stems imported from outside bundled_scripts; the report must list edges."""
+    assert report["entry_point_edges"], "the report lists no entry-point edges"
+    return {
+        edge["to"].rsplit(".", 1)[-1]
+        for edge in report["entry_point_edges"]
+        if not edge["from"].startswith("specy_road.bundled_scripts.")
+    }
 
 
 def _crud_component(report: dict) -> dict | None:
@@ -186,21 +197,15 @@ def test_difference_lists_every_change_and_main_exits_zero(tmp_path, capsys):
 
 
 def test_report_names_the_cycles_and_running_it_exits_zero(monkeypatch):
-    """The scan and the committed report name the two broken cycles, and the script exits 0."""
+    """The live scan and the committed report keep roadmap_load apart from review_gate and
+    roadmap_crud apart from chore_cli, and the script exits 0."""
     monkeypatch.chdir(ROOT)
     report = layers.build_report(ROOT / "specy_road")
     loader = _loader_component(report)
     crud = _crud_component(report)
     assert loader is None
     assert crud is None
-    package_targets = {
-        edge["to"].rsplit(".", 1)[-1]
-        for edge in report["entry_point_edges"]
-        if not edge["from"].startswith("specy_road.bundled_scripts.")
-    }
-    assert package_targets.isdisjoint(
-        {"generate_brief", "validate_roadmap", "refresh_stubs", "chore_cli"}
-    )
+    assert _package_entry_targets(report).isdisjoint(ENTRY_POINT_STEMS)
 
     same = layers.render_difference(report, report)
     assert "no component contains roadmap_load and finish_ancestor_rollup" in same
@@ -212,12 +217,5 @@ def test_report_names_the_cycles_and_running_it_exits_zero(monkeypatch):
     committed_crud = _crud_component(committed)
     assert committed_loader is None
     assert committed_crud is None
-    committed_package_targets = {
-        edge["to"].rsplit(".", 1)[-1]
-        for edge in committed["entry_point_edges"]
-        if not edge["from"].startswith("specy_road.bundled_scripts.")
-    }
-    assert committed_package_targets.isdisjoint(
-        {"generate_brief", "validate_roadmap", "refresh_stubs", "chore_cli"}
-    )
+    assert _package_entry_targets(committed).isdisjoint(ENTRY_POINT_STEMS)
     assert layers.main([]) == 0

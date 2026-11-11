@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg
@@ -17,7 +18,6 @@ from specy_road.worker_state import (
     events_since,
     flag_stamp,
     load_record,
-    wait_for_event,
 )
 
 _SYNC_UNTIL = frozenset({"completion", "error", "intervention"})
@@ -37,6 +37,22 @@ def parse_sync_until(raw: str | None) -> frozenset[str] | None:
 
 def _delta_has_type(delta: list[dict[str, Any]], event_types: frozenset[str]) -> bool:
     return any(e["type"] in event_types for w in delta for e in w["events"])
+
+
+def wait_for_event(repo_root: Path, timeout: float, since: tuple[int, int] | None, interval: float = 0.25, *,
+                   event_types: frozenset[str] | None = None) -> bool:
+    """``True`` once the flag's stamp differs from ``since``, ``False`` after ``timeout`` seconds. A stat every
+    ``interval`` in the calling process: no OS watch API and no child, so nothing outlives the call (principle 5).
+
+    When ``event_types`` is set, only an unacknowledged event whose ``type`` is in the set counts; the typed loop
+    is :func:`wait_for_typed_event`. Kept here, beside its only callers, rather than in
+    :mod:`specy_road.worker_state`, so the review gate's imports never reach the worker CLI."""
+    if event_types is not None:
+        return wait_for_typed_event(repo_root, timeout, since, interval, event_types)
+    deadline = time.monotonic() + timeout
+    while flag_stamp(repo_root) == since and time.monotonic() < deadline:
+        time.sleep(interval)
+    return flag_stamp(repo_root) != since
 
 
 def wait_for_typed_event(repo_root, timeout: float, since: tuple[int, int] | None, interval: float,

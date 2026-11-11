@@ -90,12 +90,17 @@ from specy_road.generated_files import GENERATED_COMMITTED
 from specy_road.file_limits_engine import build_overlay_match_sets, collect_tracked_files, line_count, resolve_limits
 from specy_road.git_subprocess import git_root, git_text
 from specy_road.ignore_report import GITIGNORE, attempt, observe, observed, print_matches, scratch_git_env
-from specy_road.init_project import project_template_root
 from specy_road import safe_write
 from specy_road.managed_block import refused_link, rule_refusal
 from specy_road.safe_write import SafeWriteError
 from specy_road.model_profiles import PROFILES_REL
-from specy_road.runtime_paths import add_repo_root_arg, prefix_within, project_root, source_scan_root
+from specy_road.runtime_paths import (
+    add_repo_root_arg,
+    prefix_within,
+    project_root,
+    project_template_root,
+    source_scan_root,
+)
 from specy_road.specyrd_init import COMMAND_FILES
 from specy_road.specyrd_skills import LINK_DEST, MIRROR_DIRS, link_rel, skill_rel, stem
 from specy_road.upgrade_templates import (

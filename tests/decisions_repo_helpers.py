@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import decisions_cli
-from specy_road.init_project import project_template_root
+from specy_road.runtime_paths import project_template_root
 from tests.helpers import DOGFOOD
 from tests.review_repo_helpers import NODE, git
 

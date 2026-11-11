@@ -35,11 +35,14 @@ from specy_road.version_pin import pinned_version, warn_if_pin_differs
 from specy_road.chore_garden_due import warn_garden_due
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.init_project import project_template_root
 from specy_road.orchestration_config import harness_model_warnings, load_orchestration_config, orchestration_yaml_path
 from specy_road.orchestration_pinned import roster_report
 from specy_road.planning_scaffold_check import notice_complete_scaffold
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.runtime_paths import (
+    add_repo_root_arg,
+    default_user_repo_root,
+    project_template_root,
+)
 from specy_road.sibling_repos import warn_unconfigured_sibling_repos
 from specy_road.specyrd_init import warn_if_skills_mirrored
 from specy_road.bundled_scripts.validate_roadmap_checks import (

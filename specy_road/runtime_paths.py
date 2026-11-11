@@ -51,6 +51,11 @@ def specy_road_package_dir() -> Path:
     return Path(__file__).resolve().parent
 
 
+def project_template_root() -> Path:
+    """The bundled ``init project`` template tree (``specy_road/templates/project``)."""
+    return specy_road_package_dir() / "templates" / "project"
+
+
 def bundled_scripts_dir() -> Path:
     """Directory with roadmap validators and helpers (shipped in the wheel)."""
     return specy_road_package_dir() / "bundled_scripts"
