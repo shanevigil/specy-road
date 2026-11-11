@@ -70,3 +70,15 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: loader-out-of-review-cycle
+    node_id: M16.2.13
+    branch: feature/rm-loader-out-of-review-cycle
+    touch_zones:
+      - specy_road/
+      - specy_road/bundled_scripts/
+      - constraints/import-layers-baseline.json
+      - tests/test_import_layers.py
+      - tests/
+    started: '2026-11-11'
+    owner: savigil
+    implementation_review: pending
