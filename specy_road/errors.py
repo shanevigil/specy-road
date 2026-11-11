@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 
 class SpecyError(Exception):
     """A command failure: the text, and the process status it exits with.
@@ -27,3 +29,14 @@ def inherited_init(self, *args):
     """
     super(SpecyError, self).__init__(*args)
     self.exit_code = 1
+
+
+def exit_for(error: SpecyError) -> None:
+    """Print ``error`` and stop with its code.
+
+    This is the one place a command error is printed and turned into a status.
+    It lives here so a command that only needs the type does not import the
+    entry module and the git-workflow modules under it.
+    """
+    print(f"error: {error}", file=sys.stderr)
+    raise SystemExit(error.exit_code) from None

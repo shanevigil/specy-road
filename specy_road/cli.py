@@ -17,8 +17,7 @@ from types import ModuleType
 from typing import IO
 
 from specy_road.cli_args import subcommand_parsers
-from specy_road.cli_entry import exit_for
-from specy_road.errors import SpecyError
+from specy_road.errors import SpecyError, exit_for
 from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, project_root, resolve_repo_root
 from specy_road.version_skew import warn_if_running_version_older
 

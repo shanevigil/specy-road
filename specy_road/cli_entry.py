@@ -7,17 +7,8 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from specy_road.errors import SpecyError
+from specy_road.errors import SpecyError, exit_for
 from specy_road.git_workflow_config import resolve_integration_defaults
-
-
-def exit_for(error: SpecyError) -> None:
-    """Print ``error`` and stop with its code.
-
-    This is the one place a command error is printed and turned into a status.
-    """
-    print(f"error: {error}", file=sys.stderr)
-    raise SystemExit(error.exit_code) from None
 
 
 def run_reporting(func: Callable[[], None]) -> None:
