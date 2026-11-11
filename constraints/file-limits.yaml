@@ -9,6 +9,7 @@ max_lines_per_function: 80  # Python (.py) and TS/JS (.ts .tsx .js .jsx .mjs) fu
 applies_to_globs:
   - "specy_road/bundled_scripts/**/*.py"
   - "specy_road/*.py"
+  - "specy_road/orchestration/**/*.py"
   - "tests/**/*.py"
   - "docs/**/*.md"
 

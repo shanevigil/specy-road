@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "about": "The fields of specy_road.orchestration.snapshot(repo_root), schema 1: the read-only orchestration interface (docs/orchestration.md). A field is added or renamed only under a new schema number. 'shape' lists every field; 'status_vocabulary' and 'truth_table' fix each leaf's status; 'unknown' says what an unreadable source sets.",
+  "shape": {
+    "schema": 1,
+    "leaves": {
+      "<node id>": {
+        "claim": {
+          "codename": "registry row's codename",
+          "branch": "registry row's branch",
+          "registered_at": "registry row's started date, or null"
+        },
+        "workers": [
+          {
+            "id": "w-NNNN",
+            "harness": "claude-code | codex | cursor | generic",
+            "model": "roster id",
+            "status": "the record's state: starting, running, idle, paused_by_limit, completed, failed, terminated",
+            "pid_alive": "true when the record's wrapper process is running (worker list's alive)",
+            "started_at": "the record's created time",
+            "ended_at": "the record's last update when its state is completed, failed or terminated; else null"
+          }
+        ],
+        "worktrees": [
+          {
+            "path": "absolute path",
+            "branch": "the branch checked out there, or null (detached, or not a worktree)",
+            "dirty": "true when git status lists a tracked change or an untracked file"
+          }
+        ],
+        "reviews": [
+          {
+            "model": "the record's model",
+            "verdict": "approve | block | ...",
+            "commit": "the reviewed commit",
+            "fresh_for_head": "true when commit is the claim branch's tip"
+          }
+        ],
+        "status": "one of status_vocabulary, by truth_table"
+      }
+    },
+    "leafless_workers": [
+      {
+        "id": "w-NNNN",
+        "harness": "",
+        "model": "",
+        "status": "",
+        "pid_alive": "",
+        "started_at": "",
+        "ended_at": ""
+      }
+    ]
+  },
+  "keys": {
+    "leaves": "every node id the registry claims, and every node id a readable worker record names that is not a chore",
+    "claim": "null for a leaf with workers and no registry row",
+    "worktrees": "every linked or main worktree on the claim's branch, and every worktree a worker record of the leaf names; sorted by path",
+    "reviews": "every REVIEW-*.md in the leaf's hand-off directory, by file name",
+    "leafless_workers": "workers on a chore (work/chores/<slug>.json), and each worker record that cannot be read"
+  },
+  "status_vocabulary": ["claimed", "running", "exited_ok", "exited_failed", "abandoned", "unknown"],
+  "truth_table": [
+    {"rule": 1, "when": "a readable worker on the leaf is in a slot state (starting, running, idle, paused_by_limit); with simultaneous workers, one such worker is enough", "status": "running"},
+    {"rule": 2, "when": "the registry cannot be read", "status": "unknown"},
+    {"rule": 3, "when": "the leaf is claimed and M15.26's rule reports the claim: no live worker on the leaf, no live session on its branch, no valid READY at the branch tip (a fresh manual claim included)", "status": "abandoned"},
+    {"rule": 4, "when": "the leaf's latest readable worker (highest attempt) is completed", "status": "exited_ok"},
+    {"rule": 5, "when": "the leaf's latest readable worker is failed or terminated", "status": "exited_failed"},
+    {"rule": 6, "when": "otherwise: claimed with no worker, kept by a person's live session on the branch (manual presence) or a valid READY at the branch tip", "status": "claimed"}
+  ],
+  "first_match_wins": true,
+  "unknown": {
+    "worker record not readable": "listed in leafless_workers with its id from the file name and every other field 'unknown'; statuses are judged from the readable records, as M15.26 does",
+    "registry not readable": "claim is 'unknown' on each leaf a readable worker names, and status follows rule 1, else rule 2",
+    "worktree status not readable": "dirty is 'unknown'",
+    "review field missing, or claim branch tip not resolvable": "that field, or fresh_for_head, is 'unknown'"
+  },
+  "rows": "tests/parity/orchestration_state/ holds one fixture repo per row of the state table and the status each row gets"
+}

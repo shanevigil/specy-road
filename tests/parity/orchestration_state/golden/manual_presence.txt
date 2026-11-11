@@ -1,0 +1,37 @@
+$ specy-road worker list --all
+exit: 0
+--- stdout ---
+No workers under work/.workers/.
+--- stderr ---
+
+$ specy-road worker list --all --json
+exit: 0
+--- stdout ---
+{
+  "workers": []
+}
+--- stderr ---
+
+$ specy-road orchestrate plan --json
+exit: 1
+--- stdout ---
+--- stderr ---
+error: orchestration config: refs/remotes/origin/HEAD (the remote's default branch) is missing, and with a remote configured the integration branch is named only there; run `git remote set-head origin dev` (`git remote set-head origin --auto` fails when the remote's HEAD is unborn)
+
+$ specy-road doctor
+exit: 0
+--- stdout ---
+Install: specy-road <VERSION> running from <PREFIX>
+- no specy-road or specyrd on PATH
+Nothing to tidy: no stale branch, worktree, registry row or toolkit stash.
+--- stderr ---
+
+$ specy-road (eligibility)
+exit: 0
+--- stdout ---
+{
+  "orphaned_workers": {},
+  "holding_slots": [],
+  "orphaned_claims": []
+}
+--- stderr ---
