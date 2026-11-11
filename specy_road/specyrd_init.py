@@ -11,11 +11,9 @@ from typing import Any
 
 from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report  # noqa: F401 — re-exported
-from specy_road.agent_ignores import apply_and_report, check_ignore_files
 from specy_road.agents_md_block import apply_agents_and_report
 from specy_road.git_subprocess import git_root
 from specy_road.managed_block import raise_rule_refusal
-from specy_road.specyrd_hooks import hook_destinations
 from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refresh_stubs
     SKILLS_REL,
     _package_templates_dir,
@@ -194,6 +192,10 @@ def _refuse_unsafe_paths(
     hook destination (:func:`hook_destinations`), and every stub, canonical skill file and skill link
     (the skills-link rule, :func:`check_install_paths`).
     """
+    # The installers' modules, imported by an install only: validate reads this module's checks.
+    from specy_road.agent_ignores import check_ignore_files
+    from specy_road.specyrd_hooks import hook_destinations
+
     try:
         for name in ("manifest.json", "README.md"):
             safe_write.check(repo_root, repo_root / ".specyrd" / name)
@@ -280,6 +282,8 @@ def _maybe_install_specyrd_hooks(
 
 def _apply_ignores(repo_root: Path, prefix: str, written: list[str], *, dry_run: bool) -> None:
     """Both ignore-file blocks; one linked after the preflight is refused right before replace and raised."""
+    from specy_road.agent_ignores import apply_and_report
+
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
     raise_rule_refusal(written)
 

@@ -23,8 +23,6 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road.finish_implementation_check import _clean, base_ref, in_zones, zone_matches
-from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import current_branch_name, git_code, git_ok, git_text, is_worktree_root
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.runtime_paths import nested_repo_path, project_prefix, rebase_to_project
@@ -60,6 +58,9 @@ def nested_repos(repo_root: Path) -> list[NestedRepo]:
 
 def covers(zones, path: str, prefix: str) -> bool:
     """Any of ``zones`` names the repository at project-relative ``path``, or something inside it."""
+    # finish_implementation_check imports this module.
+    from specy_road.finish_implementation_check import _clean, zone_matches
+
     for z in filter(None, (_clean(z) for z in zones or [])):
         for form in {z, rebase_to_project(z, prefix) or z}:
             if zone_matches(form, path) or form.startswith(f"{path}/"):
@@ -117,6 +118,8 @@ def existing_worktree_problem(src: Path, dest: Path, branch: str | None, tip: st
 def nested_base_ref(repo: Path, nr: NestedRepo) -> str | None:
     """The integration ref ``nr`` starts from: the local branch only for ``base: local``, else :func:`base_ref`."""
     if nr.base != "local":
+        from specy_road.finish_implementation_check import base_ref
+
         return base_ref(repo, nr.remote, nr.integration_branch)
     ref = f"refs/heads/{nr.integration_branch}"
     return ref if git_text(["rev-parse", "--verify", "--quiet", ref], repo) else None
@@ -252,6 +255,8 @@ def nested_changes(repo_root: Path, leaf_root: Path) -> tuple[list[str], list[st
     integration branch, committed or not: a detached, read-only one shows only
     its uncommitted edits.
     """
+    from specy_road.git_changed_paths import diff_paths
+
     prefix, changed, untracked = project_prefix(repo_root), [], []
     for nr in nested_repos(repo_root):
         d = leaf_root / nr.path
@@ -288,6 +293,9 @@ def nested_zone_paths(repo_root: Path, zones) -> list[str]:
     For finish's implementation gate: a leaf whose work lives only in a nested
     repository changes nothing in the main one but its bookkeeping.
     """
+    from specy_road.finish_implementation_check import in_zones
+    from specy_road.git_changed_paths import diff_paths
+
     branch = current_branch_name(repo_root)
     prefix, out = project_prefix(repo_root), []
     for nr in nested_repos(repo_root) if branch else []:

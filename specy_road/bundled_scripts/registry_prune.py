@@ -21,6 +21,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
 from specy_road.repo_ops import sync_integration_branch
 from specy_road.git_workflow_config import resolve_integration_defaults
@@ -116,7 +117,8 @@ def _remove_and_push(
     return 0
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road registry-prune`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road registry-prune",
         description=(
@@ -137,23 +139,13 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "still exists here — use abort-task-pickup for that."
         ),
     )
-    p.add_argument(
-        "--base",
-        default=None,
-        metavar="BRANCH",
-        help="Integration branch (default: roadmap/git-workflow.yaml, else main).",
-    )
-    p.add_argument(
-        "--remote",
-        default=None,
-        metavar="NAME",
-        help="Git remote (default: roadmap/git-workflow.yaml, else origin).",
-    )
-    return p.parse_args(argv)
+    add_base_arg(p)
+    add_remote_arg(p)
+    return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     root = resolve_repo_root(args)
     base, remote, gw_warns = resolve_integration_defaults(
         root,

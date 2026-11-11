@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TextIO
 import yaml
 
-from specy_road.file_limits_js import JS_SUFFIXES, js_function_metrics
 from specy_road.git_subprocess import DEFAULT_TIMEOUT
 
 
@@ -212,6 +211,8 @@ def function_metrics(path: Path) -> list[tuple[str, int, int]]:
     """Per-function spans for the languages the function cap covers; else none."""
     if path.suffix == ".py":
         return python_function_metrics(path)
+    from specy_road.file_limits_js import JS_SUFFIXES, js_function_metrics   # loaded on demand
+
     if path.suffix in JS_SUFFIXES:
         return js_function_metrics(path)
     return []

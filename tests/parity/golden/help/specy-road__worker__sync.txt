@@ -12,7 +12,7 @@ options:
                      intervention)
   --timeout SECONDS  With --wait (default 600)
   --verbose          Show each tool-use output line instead of collapsing runs
-  --json
+  --json             Machine-readable output.
   --repo-root DIR    Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
                      .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
                      root, else the current directory).

@@ -47,6 +47,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from specy_road.cli_args import add_ref_arg
 from specy_road import review_lock, safe_write
 from specy_road.clock import utc_now_iso
 from specy_road.registration_pickup_commit import with_policy_trailer
@@ -445,6 +446,6 @@ def add_parser(rsub: Any) -> None:
     sp.add_argument("--all-open", action="store_true",
                     help="Every open claim whose pinned policy differs: print each distinct change once, "
                          "ask once, write one POLICY-ACCEPTED.yaml per leaf")
-    sp.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_ref_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_accept_policy)

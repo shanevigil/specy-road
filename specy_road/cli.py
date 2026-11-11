@@ -16,9 +16,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import IO
 
-from specy_road.cli_init_argparse import build_specy_road_init_parser
-from specy_road.cli_usage import USAGE_TEXT
-from specy_road.doc_links import link_toolkit_docs
+from specy_road.cli_args import subcommand_parsers
 from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, project_root, resolve_repo_root
 from specy_road.version_skew import warn_if_running_version_older
 
@@ -130,17 +128,38 @@ def _known_commands() -> list[str]:
 
 def registered_agent_command_names() -> dict[str, set[str]]:
     """Registered ``specy-road`` / ``specyrd`` subcommand names for agent-file checks."""
-    from specy_road.specyrd_cli import _build_parser as _specyrd_parser
+    from specy_road.specyrd_cli import build_parser as specyrd_parser
 
-    specyrd = next(
-        a
-        for a in _specyrd_parser()._actions
-        if isinstance(a, argparse._SubParsersAction)
-    )
     return {
         "specy-road": {*_known_commands(), "version"},
-        "specyrd": set(specyrd.choices),
+        "specyrd": set(subcommand_parsers(specyrd_parser())),
     }
+
+
+def command_parsers(name: str) -> list[argparse.ArgumentParser]:
+    """The parsers ``specy-road <name>`` reads its arguments with, outermost first.
+
+    One, its module's ``build_parser()``, for a command whose module parses the words after the
+    command name. Two for a command whose module serves several: that module's parser, whose own
+    options (``--repo-root`` on the roadmap CRUD parser, say) apply too, then the command's
+    subparser. Only ``name``'s module is imported. ``KeyError`` for a name that is not a command.
+    """
+    if name in _PARSERS:
+        return [_PARSERS[name]()]
+    if name in _SCRIPTS:
+        return [_module(_SCRIPTS[name]).build_parser()]
+    if name in _CRUD_COMMANDS:
+        module = "roadmap_crud"
+    elif name in _ARCHIVE_COMMANDS:
+        module = "archive_cli"
+    else:
+        module = _FORWARDED[name]
+    outer = _module(module).build_parser()
+    return [outer, subcommand_parsers(outer)[name]]
+
+
+def _module(name: str) -> ModuleType:
+    return importlib.import_module(f"specy_road.bundled_scripts.{name}")
 
 
 def _did_you_mean(cmd: str) -> list[str]:
@@ -161,9 +180,10 @@ def _did_you_mean(cmd: str) -> list[str]:
 
 def _run_init_cli(rest: list[str]) -> None:
     from specy_road.cli_init import run_install_gui
+    from specy_road.cli_init_argparse import build_parser
     from specy_road.init_project import run_init_project
 
-    p = build_specy_road_init_parser()
+    p = build_parser()
     ns = p.parse_args(rest)
     if ns.init_cmd == "project":
         raise SystemExit(
@@ -209,7 +229,7 @@ def _run(module: str, argv: list[str], prog: str = "specy-road") -> None:
             file=sys.stderr,
         )
         raise SystemExit(2)
-    _call_main(importlib.import_module(f"specy_road.bundled_scripts.{module}"), argv, prog)
+    _call_main(_module(module), argv, prog)
 
 
 def _call_main(entry: ModuleType, argv: list[str], prog: str) -> None:
@@ -299,9 +319,7 @@ def exit_status(e: SystemExit) -> int:
     return 1
 
 
-def _cmd_scaffold_constitution(rest: list[str]) -> None:
-    from specy_road.constitution_scaffold import ConstitutionExistsError, write_constitution
-
+def _scaffold_constitution_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="specy-road scaffold-constitution",
         description=(
@@ -315,7 +333,13 @@ def _cmd_scaffold_constitution(rest: list[str]) -> None:
         action="store_true",
         help="Overwrite existing purpose.md and/or principles.md.",
     )
-    ns = p.parse_args(rest)
+    return p
+
+
+def _cmd_scaffold_constitution(rest: list[str]) -> None:
+    from specy_road.constitution_scaffold import ConstitutionExistsError, write_constitution
+
+    ns = _scaffold_constitution_parser().parse_args(rest)
     root = resolve_repo_root(ns)
     try:
         result = write_constitution(root, force=ns.force)
@@ -328,7 +352,7 @@ def _cmd_scaffold_constitution(rest: list[str]) -> None:
         print(f"skipped (exists, use --force to overwrite): {rel}")
 
 
-def _cmd_gui(rest: list[str]) -> None:
+def _gui_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="specy-road gui")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
@@ -338,7 +362,11 @@ def _cmd_gui(rest: list[str]) -> None:
         help="Serve every GET route and refuse every write route with 403.",
     )
     add_repo_root_arg(p)
-    ns = p.parse_args(rest)
+    return p
+
+
+def _cmd_gui(rest: list[str]) -> None:
+    ns = _gui_parser().parse_args(rest)
     uvicorn_spec = importlib.util.find_spec("uvicorn")
     if uvicorn_spec is None:
         print(
@@ -402,12 +430,33 @@ def _cmd_orchestration(rest: list[str]) -> None:
     _run("orchestration_guard_cli", rest[1:], prog="specy-road orchestration guard")
 
 
+def _orchestration_parser() -> argparse.ArgumentParser:
+    """``orchestration``'s surface: its one subcommand, ``guard``, with the guard's own options.
+
+    :func:`_cmd_orchestration` dispatches on the first word itself (anything but ``guard`` gets a
+    one-line usage); this parser is what the command accepts, for the inventory and the flag scan.
+    """
+    p = argparse.ArgumentParser(prog="specy-road orchestration", add_help=False)
+    sub = p.add_subparsers(dest="orchestration_cmd")
+    guard = _module("orchestration_guard_cli").build_parser()
+    sub.add_parser("guard", parents=[guard], add_help=False, description=guard.description)
+    return p
+
+
 # Commands implemented here rather than by a bundled_scripts module.
 _FUNCTIONS = {
     "scaffold-constitution": _cmd_scaffold_constitution,
     "init": _run_init_cli,
     "gui": _cmd_gui,
     "orchestration": _cmd_orchestration,
+}
+
+# The parsers of the commands in _FUNCTIONS, for command_parsers().
+_PARSERS = {
+    "scaffold-constitution": _scaffold_constitution_parser,
+    "init": lambda: importlib.import_module("specy_road.cli_init_argparse").build_parser(),
+    "gui": _gui_parser,
+    "orchestration": _orchestration_parser,
 }
 
 
@@ -443,6 +492,9 @@ def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
+        from specy_road.cli_usage import USAGE_TEXT
+        from specy_road.doc_links import link_toolkit_docs
+
         print(link_toolkit_docs(USAGE_TEXT))
         raise SystemExit(0)
     if argv[0] in ("--version", "-V", "version"):

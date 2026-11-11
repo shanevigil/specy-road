@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.doc_links import link_toolkit_docs
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
 from specy_road.runtime_paths import add_repo_root_arg
@@ -134,24 +135,21 @@ def _add_planning_sheet_pick_flags(p: argparse.ArgumentParser) -> None:
     )
 
 
-def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road do-next-available-task`` parser."""
     p = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=_DESCRIPTION,
     )
-    p.add_argument(
-        "--base",
-        default=None,
-        metavar="BRANCH",
+    add_base_arg(
+        p,
         help=(
             "Integration branch to sync before registering and branching "
             "(default: roadmap/git-workflow.yaml, else main)."
         ),
     )
-    p.add_argument(
-        "--remote",
-        default=None,
-        metavar="NAME",
+    add_remote_arg(
+        p,
         help=(
             "Git remote to fetch and merge from "
             "(default: roadmap/git-workflow.yaml, else origin)."
@@ -202,4 +200,8 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
             "Limit pickup to leaves under this roadmap node (e.g. M7). Pass a parent id to scope to its whole subtree, or a single leaf id to target exactly that leaf — the scope includes the node itself. If work/.milestone-session.yaml exists, it must match this node."
         ),
     )
-    return p.parse_args(argv if argv is not None else sys.argv[1:])
+    return p
+
+
+def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
+    return build_parser().parse_args(argv if argv is not None else sys.argv[1:])

@@ -67,6 +67,14 @@ def _stage_specy_road_package(target_repo_root: Path) -> None:
     shutil.copytree(REPO / "specy_road", target_repo_root / "specy_road")
 
 
+def test_version_skew_still_exports_running_toolkit_version() -> None:
+    """The old public path keeps working: ``version_skew`` re-exports the function, lazily."""
+    from specy_road import toolkit_version, version_skew
+
+    assert "running_toolkit_version" in version_skew.__all__
+    assert running_toolkit_version is toolkit_version.running_toolkit_version
+
+
 def test_running_version_in_this_checkout_matches_head() -> None:
     root = git_root(specy_road_package_dir())
     assert root is not None

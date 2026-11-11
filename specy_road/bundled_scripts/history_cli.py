@@ -15,6 +15,7 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_json_arg
 from specy_road.history_events import ARCHIVED, RESTORED, SHEET_EDIT
 from specy_road.history_index import (
     events as all_events,
@@ -214,7 +215,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Flip the order of whichever view you asked for.",
     )
-    p.add_argument("--json", action="store_true", help="Machine-readable output.")
+    add_json_arg(p)
     p.add_argument(
         "--rebuild",
         action="store_true",

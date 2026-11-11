@@ -17,9 +17,12 @@ import sys
 from pathlib import Path
 
 from specy_road import safe_write
-from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.git_subprocess import run as git_run
 from specy_road.managed_block import refused_link
+
+#: The digest's file (``specy-road digest``), named here so a reader of the name need not load the
+#: digest and the roadmap index it renders from.
+DEFAULT_OUTPUT = "roadmap-context.md"
 
 #: Repo-root-relative names that are generated and committed.
 GENERATED_COMMITTED: tuple[str, ...] = ("roadmap.md", DEFAULT_OUTPUT)
@@ -114,8 +117,9 @@ def regenerate_generated_files(root: Path) -> list[str]:
     A name the safe-write rule refuses (a symlink of any kind) is not written:
     a stderr line names it, and the refused names are returned.
     """
-    # Imported here: export_roadmap_md imports this module.
+    # Imported here: export_roadmap_md and digest import this module.
     from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
+    from specy_road.digest import render_digest
 
     refused = refused_generated_files(root)
     for why in refused.values():

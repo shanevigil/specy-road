@@ -45,6 +45,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
 from specy_road import safe_write
 from specy_road.clock import utc_now_iso
 from specy_road.chore_records import chore_prompt, chore_target, load_chore
@@ -486,8 +487,8 @@ def add_parser(rsub: Any) -> None:
     """``review delegate``, and ``review usage`` over its runs, under ``review_cli``'s ``review`` subcommands."""
     sp = rsub.add_parser("delegate", help="Run a rostered reviewer on its harness and wait for its record")
     sp.add_argument("node_id")
-    sp.add_argument("--model", required=True, help="Roster id (reviewer role, or an active substitute)")
-    sp.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_model_arg(sp, help="Roster id (reviewer role, or an active substitute)", required=True)
+    add_ref_arg(sp)
     sp.add_argument("--resume", action="store_true", help="Continue the recorded reviewer session for this commit")
     sp.add_argument("--retries", type=_count, default=DEFAULT_RETRIES, metavar="N",
                     help=f"Capacity or rate-limit retries (default {DEFAULT_RETRIES})")
@@ -497,7 +498,7 @@ def add_parser(rsub: Any) -> None:
                                        "chore slug, else this checkout's git root)")
     sp.add_argument("--sign-key", type=Path, metavar="PATH",
                     help="Sign the filed record with this OpenSSH private key (needed under policy.signed_reviews)")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_review_delegate)
     add_usage_parser(rsub)   # registered here so review_cli.py stays under its file-limits cap

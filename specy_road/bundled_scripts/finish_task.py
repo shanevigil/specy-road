@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-from specy_road.bundled_scripts.finish_task_args import parse_finish_args
+from specy_road.bundled_scripts.finish_task_args import build_parser, parse_finish_args
 from specy_road.git_subprocess import git_run
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,

@@ -220,7 +220,8 @@ def run_capture(harness_id: str, from_dir: Path | None, *, accept: bool, dry_run
     return 0
 
 
-def _parser() -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road refresh-profiles`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road refresh-profiles",
         description=__doc__,
@@ -286,7 +287,7 @@ def _copy_missing(root: Path, args: argparse.Namespace) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    p = _parser()
+    p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     if (args.from_dir or args.accept) and not args.capture:
         p.error("--from and --accept need --capture")

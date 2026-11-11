@@ -29,6 +29,7 @@ from pathlib import Path
 
 
 from specy_road.bundled_scripts.grind_session_args import (
+    build_parser,
     finish_args as _finish_args,
     parse_grind_session_args,
     pickup_args as _pickup_args,

@@ -17,6 +17,7 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_json_arg
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.search_corpus import (
     KIND_CONSTITUTION,
@@ -131,7 +132,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--node", metavar="NODE_ID", default=None, help="Only this node's material."
     )
     p.add_argument("--limit", type=int, default=10, metavar="N")
-    p.add_argument("--json", action="store_true", help="Machine-readable output.")
+    add_json_arg(p)
     p.add_argument(
         "--stats", action="store_true", help="Report index size instead of searching."
     )

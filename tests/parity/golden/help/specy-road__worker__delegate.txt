@@ -20,7 +20,7 @@ options:
   --offline             Count this checkout's workers only and push no lease (when the integration
                         remote is unreachable)
   --rework              Take over after blocking reviews or a terminated or failed worker
-  --json
+  --json                Machine-readable output.
   --op-id ID
   --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
                         .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git

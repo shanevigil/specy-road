@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_base_arg, add_json_arg, add_remote_arg
 from specy_road.bundled_scripts.session_plan_render import PLAN_FIELDS
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
 from specy_road.runtime_paths import add_repo_root_arg
@@ -142,10 +143,8 @@ def _add_implement_limit_args(p: argparse.ArgumentParser) -> None:
 
 def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
     add_repo_root_arg(p)
-    p.add_argument("--base", default=None, metavar="BRANCH",
-                   help="Integration branch (default: roadmap/git-workflow.yaml).")
-    p.add_argument("--remote", default=None, metavar="NAME",
-                   help="Git remote (default: roadmap/git-workflow.yaml).")
+    add_base_arg(p, help="Integration branch (default: roadmap/git-workflow.yaml).")
+    add_remote_arg(p, help="Git remote (default: roadmap/git-workflow.yaml).")
     p.add_argument("--on-complete", choices=sorted(ON_COMPLETE_MODES), default=None,
                    metavar="MODE",
                    help="Completion workflow per leaf: pr|merge|auto. Loop needs merge/auto.")
@@ -176,9 +175,8 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
                         "on the remote too when --push was given. Only branches "
                         "the integration branch already contains are touched. "
                         "Off by default; the loop prints the command instead.")
-    p.add_argument("--json", action="store_true",
-                   help="Emit one JSON event per line (picked/finished/blocked/stopped/...). "
-                        "stdout carries only JSON; sub-command output goes to stderr.")
+    add_json_arg(p, help="Emit one JSON event per line (picked/finished/blocked/stopped/...). "
+                      "stdout carries only JSON; sub-command output goes to stderr.")
     p.add_argument("--fields", default=None, metavar="KEY,...",
                    help="With --plan --json: print only these top-level plan keys (no event or "
                         f"ts). Valid: {', '.join(PLAN_FIELDS)}.")
@@ -220,7 +218,8 @@ def _plan_fields(p: argparse.ArgumentParser, ns) -> list[str] | None:
     return keys
 
 
-def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road grind-session`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road grind-session",
         description=(
@@ -234,6 +233,11 @@ def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
     _add_implement_args(p)
     _add_implement_limit_args(p)
     _add_passthrough_args(p)
+    return p
+
+
+def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
+    p = build_parser()
     ns = p.parse_args(argv if argv is not None else sys.argv[1:])
     ns.fields = _plan_fields(p, ns)
     _reject_status_conflicts(p, ns)

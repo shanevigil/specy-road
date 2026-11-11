@@ -18,6 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_remote_arg
 from specy_road.git_subprocess import git_checked, git_root, git_run, git_text
 
 # Canonical upstream (SSH/HTTPS variants accepted via normalization).
@@ -232,7 +233,8 @@ def _run_update(
     _git_fast_forward(kit, remote, branch)
 
 
-def _build_parser() -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road update`` parser."""
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -244,12 +246,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="DIR",
         help="Root of the specy-road git clone (default: auto-discover).",
     )
-    p.add_argument(
-        "--remote",
-        default="origin",
-        metavar="NAME",
-        help="Remote to fetch and merge from (default: origin).",
-    )
+    add_remote_arg(p, help="Remote to fetch and merge from (default: origin).", default="origin")
     p.add_argument(
         "--branch",
         default="main",
@@ -301,7 +298,7 @@ def _resolve_kit_explicit(start: Path, remote: str) -> Path:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _build_parser().parse_args(argv if argv is not None else sys.argv[1:])
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     if args.path is not None:
         kit = _resolve_kit_explicit(args.path.resolve(), args.remote)
     else:

@@ -18,7 +18,8 @@ from specy_road.milestone_session import (
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road open-milestone-pr`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Show commands to open a single PR/MR from "
@@ -27,11 +28,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         ),
     )
     add_repo_root_arg(p)
-    return p.parse_args(argv)
+    return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv)
+    args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     ms = read_milestone_session(milestone_session_path(root / "work"))
     if not ms:

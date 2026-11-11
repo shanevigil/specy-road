@@ -1,0 +1,802 @@
+{
+ "specy-road abort-task-pickup --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road abort-task-pickup --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road brainstorm list --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road branches prune --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road branches prune --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road chore close --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road chore garden --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road chore start --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road chore start --model": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "model",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road decisions add --model": {
+  "action": "_AppendAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "model",
+  "nargs": null,
+  "metavar": "ROSTER_ID"
+ },
+ "specy-road decisions list --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road do-next-available-task --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road do-next-available-task --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road doctor --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road doctor --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road finish-this-task --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": "origin",
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road grind-session --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road grind-session --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road grind-session --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road handoff status --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road handoff status --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road history --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road impact --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road integrity --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road integrity --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road list-archives --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road list-gates --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road list-nodes --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "as_json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road models list --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road models show --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road models stale --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road orchestrate plan --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road prompt --model": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": true,
+  "default": null,
+  "dest": "model",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road prompt --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road ready --model": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": true,
+  "default": null,
+  "dest": "model",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road reconcile-branch --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road reconcile-branch --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road registry-prune --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road registry-prune --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road review accept-policy --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road review check-pre-existing --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road review delegate --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road review delegate --model": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": true,
+  "default": null,
+  "dest": "model",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road review delegate --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road review list --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road review list --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road review record --model": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": true,
+  "default": null,
+  "dest": "model",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road review record --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road review red-green --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road review usage --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road review-packet --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "REF"
+ },
+ "specy-road review-packet --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road search --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road session list --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road show-archive --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road start-milestone-session --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road start-milestone-session --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road sync --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road sync --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road update --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": "origin",
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
+ "specy-road why-blocked --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker adopt --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker adopt --model": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": "unknown",
+  "dest": "model",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road worker delegate --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker delegate --model": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "model",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road worker events --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker handoff --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker interrupt --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker list --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker message --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker open --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker reclaim --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker reconcile --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker recover --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker resume --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker status --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker sync --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker terminate --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker timeline --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road worker usage --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ }
+}

@@ -786,7 +786,8 @@ def run_review(
     return _normalize_review_markdown_output(raw)
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road review-node`` parser."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("node_id", metavar="NODE_ID")
     p.add_argument(
@@ -797,6 +798,11 @@ def main(argv: list[str] | None = None) -> None:
         help="Write Markdown report to this file (default: stdout)",
     )
     add_repo_root_arg(p)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _repo_root(args)
     try:

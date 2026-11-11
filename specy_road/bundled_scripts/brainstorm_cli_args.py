@@ -15,6 +15,7 @@ from pathlib import Path
 
 import yaml
 
+from specy_road.cli_args import add_json_arg
 from specy_road.brainstorm_promote import (
     DEFAULT_PROMOTE_TYPE,
     INHERIT_EXECUTION_MILESTONE,
@@ -129,7 +130,7 @@ def _add_list(sub) -> None:
         choices=IDEA_STATUSES,
         help="Show only ideas in this state.",
     )
-    p.add_argument("--json", action="store_true", help="Machine-readable output.")
+    add_json_arg(p)
     p.add_argument("--summary", action="store_true",
                    help="Print per-status and per-recommendation counts instead of a row listing.")
     p.add_argument("--by", default=None, choices=("cluster",),
@@ -281,7 +282,7 @@ def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
     return value
 
 
-def build_parser(handlers: dict[str, Callable]) -> argparse.ArgumentParser:
+def bound_parser(handlers: dict[str, Callable]) -> argparse.ArgumentParser:
     """The whole ``brainstorm`` parser, bound to ``handlers`` by name."""
     p = argparse.ArgumentParser(prog="specy-road brainstorm", description=_DESCRIPTION)
     sub = p.add_subparsers(dest="brainstorm_cmd", required=True)

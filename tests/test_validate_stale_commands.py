@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import shutil
 import subprocess
 import sys
@@ -16,6 +17,7 @@ from specy_road.agents_md_block import render_agents_lines
 from specy_road.bundled_scripts.validate_roadmap import unregistered_commands, warn_unregistered_commands
 from specy_road.cli import REPLACED_COMMANDS
 from specy_road.managed_block import HTML_COMMENT, render_block
+from specy_road.validate_stale_commands import invocation_unknown_flags
 
 AGENTS_MD = """# Our agents guide
 
@@ -229,6 +231,54 @@ def test_registered_subcommand_in_a_span_does_not_abort_validate(tmp_path: Path,
     assert capsys.readouterr().err == ""
 
 
+FLAGS_MD = """Run `specy-road validate --strict --stirct` before you push.
+
+```bash
+specy-road add-dependency M1 M2 --repo-root sr -x | tail -1
+specy-road brief <NODE_ID> --bad && specy-road list-nodes --json -- --ignored
+specy-road review frob --zzz; specy-road export --check "unclosed
+specy-road brief M1 --outupt <FILE>
+specy-road search "|" --jsno 2>&1 | tail -1
+specy-road list-nodes --json>nodes.json; specy-road validate --strict>>validate.log <in
+specy-road review record M1 --file="work/my notes.md" --modle gpt
+specy-road search road\\ map --jsno
+```
+"""
+
+
+def test_an_unknown_long_flag_is_reported_with_the_closest_valid_one(
+    tmp_path: Path, capsys
+) -> None:
+    """Stale flags and valid ones. A quoted operator is an argument, so the flag after it is read;
+    a redirection written onto a valid flag ends the invocation and reports nothing; a quoted
+    ``--option=value`` with spaces and an escaped space are one word each.
+    A parent parser's option, a short option, an invocation holding a placeholder (before or after
+    a stale flag), words after an unquoted operator or a bare ``--``, a word that is no subcommand
+    and an unparseable line report nothing."""
+    (tmp_path / "AGENTS.md").write_text(FLAGS_MD, encoding="utf-8")
+    warn_unregistered_commands(tmp_path)
+    assert capsys.readouterr().err.splitlines() == [
+        f"agents: warning — AGENTS.md:1: `specy-road validate` has no `--stirct` in specy-road "
+        f"{__version__}; closest: `--strict`.",
+        f"agents: warning — AGENTS.md:8: `specy-road search` has no `--jsno` in specy-road "
+        f"{__version__}; closest: `--json`.",
+        f"agents: warning — AGENTS.md:10: `specy-road review record` has no `--modle` in "
+        f"specy-road {__version__}; closest: `--model`.",
+        f"agents: warning — AGENTS.md:11: `specy-road search` has no `--jsno` in specy-road "
+        f"{__version__}; closest: `--json`.",
+    ]
+
+
+@pytest.mark.parametrize(
+    "nargs, reported", [(None, [("--nope", "--known")]), (argparse.REMAINDER, [])]
+)
+def test_a_parser_that_passes_its_words_through_reports_no_flag(nargs, reported) -> None:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--known")
+    parser.add_argument("rest", nargs=nargs)
+    assert invocation_unknown_flags(["x", "--nope"], [parser]) == reported
+
+
 def test_validate_and_garden_share_the_scanner_and_only_garden_reads_docs(tmp_path: Path, capsys) -> None:
     """M12.3: ``chore garden`` runs validate's scanner over ``docs/**/*.md`` too; validate's file set is unchanged."""
     from specy_road.bundled_scripts.chore_garden import stale_command_findings  # noqa: PLC0415
@@ -237,7 +287,9 @@ def test_validate_and_garden_share_the_scanner_and_only_garden_reads_docs(tmp_pa
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     root = tmp_path / "sr"
     (root / "docs" / "deep").mkdir(parents=True)
-    (root / "docs" / "deep" / "guide.md").write_text("Run `specy-road pm-sync` nightly.\n", encoding="utf-8")
+    (root / "docs" / "deep" / "guide.md").write_text(
+        "Run `specy-road pm-sync` nightly.\nThen `specy-road sync --bse dev`.\n"
+        "Log it: `specy-road digest --check>digest.log`.\n", encoding="utf-8")
     (tmp_path / "CLAUDE.md").write_text("Run `specy-road backfill-activity` weekly.\n", encoding="utf-8")
     assert agent_files(root) == [root.resolve() / n for n in ("AGENTS.md", "CLAUDE.md")] + [
         tmp_path.resolve() / n for n in ("AGENTS.md", "CLAUDE.md")] + [root.resolve() / ".specyrd" / "AGENTS.team.md"]
@@ -250,4 +302,6 @@ def test_validate_and_garden_share_the_scanner_and_only_garden_reads_docs(tmp_pa
         f"{__version__}; use `specy-road sync`",
         f"stale-command: CLAUDE.md:1: `specy-road backfill-activity` is not a command in specy-road "
         f"{__version__}; it was removed and nothing replaces it",
+        f"stale-command: sr/docs/deep/guide.md:2: `specy-road sync` has no `--bse` in specy-road "
+        f"{__version__}; closest: `--base`",
     ]

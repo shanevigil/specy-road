@@ -6,22 +6,28 @@ from __future__ import annotations
 import argparse
 import sys
 
+from specy_road.cli_args import add_ref_arg
 from specy_road.impact import impact_for_diff, impact_for_zones
 from specy_road.review_target import resolve_target_or_exit
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road impact`` parser."""
     p = argparse.ArgumentParser(
         description="List, sorted, every Python test file that imports (at any depth) a module changed "
         "between the merge base and REF; ALL when a conftest.py changed. Advisory; git objects only.",
     )
     p.add_argument("node_id", help="Roadmap node id, e.g. M9.9")
-    p.add_argument("--ref", help="Branch or commit (default: the node's registered branch)")
+    add_ref_arg(p, help="Branch or commit (default: the node's registered branch)")
     p.add_argument("--zones", action="store_true",
                    help="Start from the modules under the node's touch zones at REF instead of the diff")
     add_repo_root_arg(p)
-    args = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     target = resolve_target_or_exit(root, args.node_id, args.ref)
     if not target.commit or not (args.zones or target.base):

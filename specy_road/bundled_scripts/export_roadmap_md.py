@@ -130,7 +130,8 @@ def _write_export(
     print(f"Wrote {out_index}")
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road export`` parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--check",
@@ -138,7 +139,11 @@ def main(argv: list[str] | None = None) -> None:
         help="Exit 1 if generated files differ from disk (CI drift check)",
     )
     add_repo_root_arg(parser)
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     try:
         discover_manifest_path(root)

@@ -6,12 +6,14 @@ from __future__ import annotations
 import argparse
 import sys
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.reconcile_branch import reconcile_branch
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road reconcile-branch`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road reconcile-branch",
         description=(
@@ -24,11 +26,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     add_repo_root_arg(p)
     p.add_argument("node_id", nargs="?", default=None, metavar="NODE_ID",
                    help="Refuse unless HEAD is this leaf's feature branch.")
-    p.add_argument("--base", default=None, metavar="BRANCH",
-                   help="Integration branch (default: roadmap/git-workflow.yaml, else main).")
-    p.add_argument("--remote", default=None, metavar="NAME",
-                   help="Git remote (default: roadmap/git-workflow.yaml, else origin).")
-    return p.parse_args(argv)
+    add_base_arg(p)
+    add_remote_arg(p)
+    return p
 
 
 def _codename(root, node_id: str | None) -> str | None:
@@ -43,7 +43,7 @@ def _codename(root, node_id: str | None) -> str | None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     root = resolve_repo_root(args)
     base, remote, warns = resolve_integration_defaults(root, explicit_base=args.base, explicit_remote=args.remote)
     for w in warns:

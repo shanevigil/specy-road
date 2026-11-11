@@ -14,17 +14,12 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from specy_road.clock import utc_now
-from specy_road.model_names import same_model
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_config import active_substitutions, harness_model
 from specy_road.orchestration_pinned import (
     GuidanceSource, bundled_flags, flags_of, guidance_source, pinned_config, pinned_profile_for_entry,
 )
 from specy_road.roster_local import GUIDANCE_OPT_IN
-from specy_road.review_strong import applicable_items, item_label
-from specy_road.review_tally import quality_review
-from specy_road.worker_models import command_model
 
 DEFAULT_SENSITIVITY = "public"
 ANY = "any"
@@ -58,6 +53,8 @@ def _pause_boundary(entry: dict[str, Any]) -> str | None:
 
 def _as_utc(now: datetime | date | None) -> datetime:
     if now is None:
+        from specy_road.clock import utc_now
+
         return utc_now()
     if isinstance(now, date) and not isinstance(now, datetime):
         return datetime.combine(now, datetime.min.time(), tzinfo=timezone.utc)
@@ -126,6 +123,9 @@ def _launch_models(entry: dict[str, Any], *profiles: Profile | None) -> list[str
     entry's id matches), the id a default command passes (:func:`harness_model`: ``harness_model``, else that
     ``api_id``, else the roster id), and the literal ``--model`` / ``-m`` of ``channels.cli`` / ``cli_resume`` and of
     each copy's ``access.cli`` (read, never run; ``worker delegate`` and ``prompt --channel cli`` run it)."""
+    # The worker stack, only with a roster to read.
+    from specy_road.worker_models import command_model
+
     channels = _channels(entry)
     names = [command_model(str(channels[k])) or "" for k in LAUNCH_CHANNELS if channels.get(k)]
     copies = _copies(entry, profiles)
@@ -140,6 +140,8 @@ def _model_unreadable(command: str) -> bool:
     ``role_prompt_cli.bypass_problem`` splits (backslash-newlines removed, POSIX ``shlex`` with ``punctuation_chars``
     and no comment character; a command that cannot be split is unreadable), it has a ``--model``, ``--model=…``,
     ``-m`` or ``-m<value>`` word and no literal model is read, or it has more than one such word."""
+    from specy_road.worker_models import command_model
+
     lexer = shlex.shlex(command.replace("\\\n", ""), posix=True, punctuation_chars=True)
     lexer.whitespace_split, lexer.commenters = True, ""
     try:
@@ -194,6 +196,8 @@ class _Hit(NamedTuple):
 def _flagged(names: list[str], flags: dict[str, dict[str, Any]]) -> tuple[str, dict[str, Any]] | None:
     """The first name with a flag, exactly or after :func:`~specy_road.model_names.same_model` (case, separators,
     Cursor's ``cursor-`` prefix), and the matched key's record."""
+    from specy_road.model_names import same_model
+
     for n in names:
         key = n if n in flags else next((k for k in flags if same_model(n, k)), None)
         if key is not None:
@@ -500,6 +504,11 @@ def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, 
     """``prefix``: :func:`project_prefix`, so a strong-review zone written from either root meets the leaf's.
     ``spread_index``: the leaf's position in the plan, for ``--spread``; ``None`` picks the cheapest executor.
     ``flagged``: the areas ``policy.quality_routing`` routes a strong reviewer to (:mod:`specy_road.review_tally`)."""
+    # The review stack, imported only by a plan: validate reaches this module for its roster
+    # warnings.
+    from specy_road.review_strong import applicable_items, item_label
+    from specy_road.review_tally import quality_review
+
     a = Assignment(node["id"], node_sensitivity(node), node_eligibility(node))
     a.strong_review = [{"item": item_label(i, item), "require_one_of": list(item["require_one_of"])}
                        for i, item in applicable_items(config["policy"], node.get("touch_zones"), prefix)]

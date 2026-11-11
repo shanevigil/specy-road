@@ -8,6 +8,7 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_json_arg, add_model_arg
 from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.roadmap_load import load_roadmap
 from specy_road.decisions import (
@@ -196,9 +197,9 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--needed-by", help="ISO date by which an answer is needed")
     add.add_argument("--asked", help="ISO date when asked or stated (default: today)")
     add.add_argument("--role", choices=ROLES, help="Preference: the role the rule routes")
-    add.add_argument("--model", action="append", metavar="ROSTER_ID",
-                     help="Preference: a preferred roster id; repeat, most preferred first. "
-                          "Availability is not a preference: set available/paused_until in the roster")
+    add_model_arg(add, append=True,
+                  help="Preference: a preferred roster id; repeat, most preferred first. "
+                       "Availability is not a preference: set available/paused_until in the roster")
     add.add_argument("--applies-to", action="append", metavar="LEAF_KIND",
                      help="Preference: a leaf kind it covers, such as docs or data; repeat (default: every leaf)")
     add.add_argument("--expires", help="Preference or standing rule: active through this date (YYYY-MM-DD) or "
@@ -211,7 +212,7 @@ def build_parser() -> argparse.ArgumentParser:
     add.set_defaults(func=cmd_add)
 
     lst = dsub.add_parser("list", help="List active preferences, then open entries ordered by needed-by")
-    lst.add_argument("--json", action="store_true")
+    add_json_arg(lst)
     add_repo_root_arg(lst)
     lst.set_defaults(func=cmd_list)
 

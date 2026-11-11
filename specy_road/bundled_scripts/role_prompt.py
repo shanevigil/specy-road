@@ -61,6 +61,7 @@ import contextlib
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_model_arg, add_ref_arg
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.brief_generation import index, render_brief
 from specy_road.verify_cmd_config import verify_cmd_lines
@@ -342,11 +343,12 @@ def show_cli(prof: Profile | None, prompt_path: Path, entry_cli: str | None, har
     return 0
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road prompt`` parser."""
     p = argparse.ArgumentParser(prog="specy-road prompt", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("node_id")
-    p.add_argument("--model", required=True, help="Roster id")
+    add_model_arg(p, required=True)
     p.add_argument("--role", required=True, choices=PROMPT_ROLES)
     p.add_argument("--channel", choices=CHANNELS, default="paste",
                    help="cli writes the prompt and prints the command it would run (the roster's channels.cli, "
@@ -362,7 +364,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("-o", "--output", type=Path,
                    help="Prompt file. A relative path is relative to the current directory; after that, a path "
                         "inside the project follows the safe-write rule and a path outside is a plain write")
-    p.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_ref_arg(p)
     p.add_argument("--context-feedback", action="store_true",
                    help="Executor only: ask for the pilot's three-line context-feedback block "
                         "(missing / wrong / unused) at the end of the implementation summary")
@@ -374,6 +376,11 @@ def main(argv: list[str] | None = None) -> None:
                    help="Reviewer --channel cli: sign the filed record with this OpenSSH private key "
                         "(`review record --sign-key`; needed under policy.signed_reviews)")
     add_repo_root_arg(p)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = build_parser()
     ns = p.parse_args(argv)
     if ns.force and ns.role != "rca":
         p.error("--force applies only to --role rca")

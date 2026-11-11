@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_run
 from specy_road.milestone_chunk_io import (
@@ -92,7 +93,8 @@ def _ensure_rollup_branch(root: Path, rollup: str, base: str, remote: str) -> No
     git_run(root, "checkout", base)
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road start-milestone-session`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Sync integration branch, ensure rollup branch feature/rm-<parent-codename>, "
@@ -105,23 +107,13 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Roadmap id of the milestone parent (e.g. M7).",
     )
     add_repo_root_arg(p)
-    p.add_argument(
-        "--base",
-        default=None,
-        metavar="BRANCH",
-        help="Integration branch (default: roadmap/git-workflow.yaml).",
-    )
-    p.add_argument(
-        "--remote",
-        default=None,
-        metavar="NAME",
-        help="Git remote (default: roadmap/git-workflow.yaml).",
-    )
-    return p.parse_args(argv)
+    add_base_arg(p, help="Integration branch (default: roadmap/git-workflow.yaml).")
+    add_remote_arg(p, help="Git remote (default: roadmap/git-workflow.yaml).")
+    return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv)
+    args = build_parser().parse_args(argv)
     root = resolve_repo_root(args)
     base, remote = integration_defaults(root, args)
 

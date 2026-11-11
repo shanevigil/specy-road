@@ -18,7 +18,6 @@ from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import AGENTS_MD, RULES_MD, _imports_in, claude_paths, claude_rules
 from specy_road.managed_block import HTML_COMMENT, _split
 from specy_road.runtime_paths import SPECYRD_MANIFEST
-from specy_road.text_sections import normalize_heading
 
 #: ``agents_block`` in ``.specyrd/manifest.json``: ``full`` (default) or ``minimal``.
 MINIMAL = "minimal"
@@ -105,6 +104,8 @@ def print_rules_overlap(project_root: Path, rules: str, prefix: str = "") -> Non
     before, block, _after = _split(text, HTML_COMMENT)
     first = before.count("\n") + 1   # the managed section's lines, which are specy-road's own
     ours = range(first, first + block.count("\n") + 1) if block is not None else range(0)
+    from specy_road.text_sections import normalize_heading
+
     keys = {normalize_heading(h) for _n, h in new}
     dupes = [(n, h) for n, h in _headings(text) if normalize_heading(h) in keys and n not in ours]
     for n, heading in dupes:

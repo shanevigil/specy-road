@@ -19,6 +19,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.merged_branch import (
     delete_local_branch,
     delete_remote_branch,
@@ -167,10 +168,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     prune.add_argument("--delete", action="store_true",
                        help="Delete the listed branches locally and on the remote.")
-    prune.add_argument("--base", default=None, metavar="BRANCH",
-                       help="Integration branch (default: roadmap/git-workflow.yaml, else main).")
-    prune.add_argument("--remote", default=None, metavar="NAME",
-                       help="Git remote (default: roadmap/git-workflow.yaml, else origin).")
+    add_base_arg(prune)
+    add_remote_arg(prune)
     add_repo_root_arg(prune)
     prune.set_defaults(func=cmd_prune)
     return p

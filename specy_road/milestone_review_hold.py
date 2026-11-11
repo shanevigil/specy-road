@@ -10,8 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.orchestration_config import effective_config
-from specy_road.review_gate import evaluate_gate, review_required
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_policy_ref import policy_source, review_required
 from specy_road.review_target import ReviewTargetError, is_milestone, resolve_target
 
 UNRESOLVABLE_HOLD = "its full review cannot be evaluated"
@@ -43,6 +42,8 @@ def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> s
         return f"{UNRESOLVABLE_HOLD} ({e})"
     if target.unfinished_leaves:   # a review of the tip before the last leaf landed covers less than the milestone
         return f"its leaves {', '.join(target.unfinished_leaves)} have not landed on {target.ref}"
+    from specy_road.review_gate import evaluate_gate   # the whole gate, only for a held milestone
+
     gate = evaluate_gate(repo_root, node, target.commit)
     if gate.passed:
         return None

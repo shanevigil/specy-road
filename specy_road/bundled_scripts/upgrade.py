@@ -585,7 +585,8 @@ def _upgrade(repo_root: Path | None, *, dry_run: bool, prune: bool) -> int:
     return 0 if failed is None else 1
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road upgrade`` parser."""
     p = argparse.ArgumentParser(
         prog="specy-road upgrade",
         description=__doc__,
@@ -600,6 +601,11 @@ def main(argv: list[str] | None = None) -> None:
         help="Also delete stubs this version no longer installs (e.g. pre-0.3.0 .cursor/commands/specyrd-*.md) "
         "and .cursor/.codex copies of the skills in .agents/skills.",
     )
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     try:
         with safe_write.exit_on_refusal():   # a refusal, or a symlink loop met before the rule

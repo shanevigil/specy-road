@@ -97,7 +97,8 @@ def _run_scaffold_folder(
     print(f"[ok] set planning_dir={result['planning_dir']!r} on {nid}")
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road scaffold-planning`` parser."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "node_id",
@@ -115,6 +116,11 @@ def main(argv: list[str] | None = None) -> None:
         help="Overwrite existing feature sheet",
     )
     add_repo_root_arg(p)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = build_parser()
     args = p.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     nid = args.node_id.strip()

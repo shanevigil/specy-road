@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import re
 
-from specy_road.roadmap_index import RoadmapIndex
+
+def _index(nodes: list[dict]):
+    """The graph index of ``nodes``, its module imported by the dependency views that need it."""
+    from specy_road.roadmap_index import RoadmapIndex
+
+    return RoadmapIndex(nodes)
 
 
 def _digit_run_to_int(run: str) -> int:
@@ -69,7 +74,7 @@ def effective_dependency_keys(nodes: list[dict]) -> dict[str, set[str]]:
     Answered by :attr:`roadmap_index.RoadmapIndex.effective_dependencies`; this
     name stays for the many callers that only need the map.
     """
-    return RoadmapIndex(nodes).effective_dependencies
+    return _index(nodes).effective_dependencies
 
 
 _MAX_DEP_STEP_ITERS = 1000
@@ -119,7 +124,7 @@ def compute_dependency_steps(
       post-order so children are finalized first.
     * Values converge by fixed-point iteration (valid roadmaps are DAGs; cap for safety).
     """
-    index = RoadmapIndex(nodes)
+    index = _index(nodes)
     eff = index.effective_dependencies
     by_id = index.by_id
     ids_with_key = {n["id"] for n in nodes if n.get("node_key")}
@@ -210,7 +215,7 @@ def dependency_edges_detailed(
 
     Each item is ``{"from": dep_display_id, "to": dependent_display_id, "kind": "explicit"|"inherited"}``.
     """
-    index = RoadmapIndex(nodes)
+    index = _index(nodes)
     out: list[dict[str, str]] = []
     for n in nodes:
         nk = n.get("node_key")
@@ -237,7 +242,7 @@ def dependency_inheritance_display(
     Per display ``id``: dependency display ids that are explicit on the node vs
     inherited from ancestors (effective minus explicit).
     """
-    index = RoadmapIndex(nodes)
+    index = _index(nodes)
     out: dict[str, dict[str, list[str]]] = {}
     for n in nodes:
         nk = n.get("node_key")

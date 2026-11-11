@@ -254,8 +254,8 @@ def print_rewrite_refs_note(rewrite_refs: bool) -> None:
         )
 
 
-def main(argv: list[str] | None = None) -> None:
-    from specy_road.roadmap_crud_ops import repo_root
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road rename-refs`` parser."""
     from specy_road.runtime_paths import add_repo_root_arg
 
     p = argparse.ArgumentParser(
@@ -272,6 +272,13 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("id_map", metavar="ID_MAP_JSON", help='JSON file: {"OLD_ID": "NEW_ID", ...}.')
     p.add_argument("--dry-run", action="store_true", help="Print the counts; write nothing.")
     add_repo_root_arg(p)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    from specy_road.roadmap_crud_ops import repo_root
+
+    p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = repo_root(args)
     try:

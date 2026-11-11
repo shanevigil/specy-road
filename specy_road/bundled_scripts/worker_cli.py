@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from specy_road.cli_args import add_json_arg, add_model_arg
 from specy_road import worker_ops as ops
 from specy_road import worker_ops_slots as slots
 from specy_road.role_prompt_rework import rework_check
@@ -301,7 +302,7 @@ def _offline_arg(sp: argparse.ArgumentParser) -> None:
 
 def _w(sp: argparse.ArgumentParser, *, op: bool = True) -> None:
     sp.add_argument("worker_id", metavar="W")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     if op:
         sp.add_argument("--op-id", metavar="ID", help="Idempotency key; a retry returns the first result")
     add_repo_root_arg(sp)
@@ -315,16 +316,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = ws.add_parser("delegate", help="Launch a worker for a claimed leaf and return at once")
     sp.add_argument("node_id", help="A claimed leaf, or a chore slug (`specy-road chore start`)")
-    sp.add_argument("--model", help="Roster id (executor role); a chore's default is its own --model")
+    add_model_arg(sp, help="Roster id (executor role); a chore's default is its own --model")
     sp.add_argument("--harness", choices=HARNESSES, help="Override the roster entry's harness")
     sp.add_argument("--worktree", help="Run in this checkout (default: this one if it has the claim's branch, else a linked worktree)")
     _offline_arg(sp); sp.add_argument("--rework", action="store_true", help="Take over after blocking reviews or a terminated or failed worker")
-    sp.add_argument("--json", action="store_true"); sp.add_argument("--op-id", metavar="ID")
+    add_json_arg(sp); sp.add_argument("--op-id", metavar="ID")
     add_repo_root_arg(sp); sp.set_defaults(func=cmd_delegate)
 
     sp = ws.add_parser("list", help="Active workers (--all includes finished)")
     sp.add_argument("--all", action="store_true")
-    sp.add_argument("--json", action="store_true")
+    add_json_arg(sp)
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_list)
 
@@ -359,17 +360,17 @@ def build_parser() -> argparse.ArgumentParser:
     sp = ws.add_parser("open", help="Where a human can look: worktree, log, resume command"); _w(sp, op=False)
     sp.set_defaults(func=cmd_open)
     sp = ws.add_parser("timeline", help="Seconds per phase of a worker's latest turn (worker id or node id)")
-    sp.add_argument("target", metavar="W|NODE_ID"); sp.add_argument("--json", action="store_true")
+    sp.add_argument("target", metavar="W|NODE_ID"); add_json_arg(sp)
     add_repo_root_arg(sp); sp.set_defaults(func=cmd_timeline)
     sp = ws.add_parser("usage", help="Tokens and cost per attempt, and the node's total (worker id or node id)")
-    sp.add_argument("target", metavar="W|NODE_ID"); sp.add_argument("--json", action="store_true")
+    sp.add_argument("target", metavar="W|NODE_ID"); add_json_arg(sp)
     add_repo_root_arg(sp); sp.set_defaults(func=cmd_usage)
 
     sp = ws.add_parser("adopt", help="Register a session the user started natively (observe only)")
     sp.add_argument("--node", required=True); sp.add_argument("--harness", required=True, choices=HARNESSES)
     sp.add_argument("--session", required=True, help="The harness's session/thread/chat id")
-    sp.add_argument("--model", default="unknown"); sp.add_argument("--worktree")
-    sp.add_argument("--json", action="store_true"); sp.add_argument("--op-id", metavar="ID")
+    add_model_arg(sp, default="unknown"); sp.add_argument("--worktree")
+    add_json_arg(sp); sp.add_argument("--op-id", metavar="ID")
     add_repo_root_arg(sp); sp.set_defaults(func=cmd_adopt)
 
     sp = ws.add_parser("hook", help="Prompt-submit hook body: record a human's prompt to a worker session")

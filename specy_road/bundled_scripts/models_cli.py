@@ -20,6 +20,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from specy_road.cli_args import add_json_arg
 from specy_road.model_profiles import (
     DEFAULT_MAX_AGE_DAYS,
     GUIDANCE_BYPASS_KEY,
@@ -222,21 +223,21 @@ def build_parser() -> argparse.ArgumentParser:
     msub = models.add_subparsers(dest="models_cmd", required=True)
 
     ls = msub.add_parser("list", help="The roster with each model's profile, role scores, and staleness")
-    ls.add_argument("--json", action="store_true")
+    add_json_arg(ls)
     add_repo_root_arg(ls)
     ls.set_defaults(func=cmd_list)
 
     show = msub.add_parser("show", help="One model's profile: machine fields plus a body section")
     show.add_argument("model", help="Roster id or profile api_id")
     show.add_argument("--section", help="Body section to print (default: Prompting rules)")
-    show.add_argument("--json", action="store_true")
+    add_json_arg(show)
     add_repo_root_arg(show)
     show.set_defaults(func=cmd_show)
 
     st = msub.add_parser("stale", help="Profiles whose research is old, superseded, or alias-moved; exit 1 if any is rostered")
     st.add_argument("--max-age-days", type=int, default=DEFAULT_MAX_AGE_DAYS)
     st.add_argument("--today", help="YYYY-MM-DD, for reproducible checks")
-    st.add_argument("--json", action="store_true")
+    add_json_arg(st)
     add_repo_root_arg(st)
     st.set_defaults(func=cmd_stale)
 

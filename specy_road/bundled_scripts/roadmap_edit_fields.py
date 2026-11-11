@@ -10,12 +10,10 @@ from typing import Any
 from specy_road.planning_artifacts import normalize_planning_dir, planning_filename_for_node
 
 from specy_road.bundled_scripts.roadmap_edit_list_fields import PLANNED_TEST_CHANGES, set_planned_test_changes
-from specy_road.roadmap_node_keys import NODE_KEY_PATTERN
 
 ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
 CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
-from specy_road.bundled_scripts.roadmap_codename_cap import CODENAME_MAX_CHARS, cap_codename_slug, codename_length_error, derived_codename_from_title  # noqa: E402
 
 def title_to_codename(title: str, *, max_words: int | None = None) -> str:
     """
@@ -73,6 +71,9 @@ DECISION_STATUS = frozenset({"pending", "decided"})
 
 
 def _parse_dependency_keys(raw: str, all_node_keys: set[str]) -> list[str]:
+    # An edit only: validate reads this module.
+    from specy_road.roadmap_node_keys import NODE_KEY_PATTERN
+
     parts = re.split(r"[\s,;]+", raw.strip())
     out: list[str] = []
     for p in parts:
@@ -184,6 +185,8 @@ def codename_was_derived(codename: str | None, old_title: str | None) -> bool:
     picked that is indistinguishable from it, which is the same thing for this
     decision). Anything else was chosen deliberately.
     """
+    from specy_road.bundled_scripts.roadmap_codename_cap import cap_codename_slug
+
     if not codename:
         return True
     uncapped = title_to_codename(old_title or "")
@@ -210,6 +213,8 @@ def maybe_sync_codename_from_title(
     (``edit-node --sync-codename``) overrides. If the new title yields no valid
     kebab slug, a derived codename is cleared (the filename uses ``unnamed``).
     """
+    from specy_road.bundled_scripts.roadmap_codename_cap import derived_codename_from_title
+
     old = node.get("codename")
     new_tc = derived_codename_from_title(str(node.get("title") or ""))
     if not force and not codename_was_derived(old, old_title):
@@ -234,6 +239,8 @@ def _maybe_resync_planning_dir_after_edit(node: dict, dotted_key: str) -> None:
 
 
 def _set_codename(node: dict, raw_val: str) -> None:
+    from specy_road.bundled_scripts.roadmap_codename_cap import codename_length_error
+
     if raw_val.lower() in ("null", "~", ""):
         node["codename"] = None
     else:

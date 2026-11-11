@@ -27,7 +27,6 @@ from pathlib import Path
 
 from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS
-from specy_road.doc_links import link_toolkit_docs
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
 
 SKILLS_REL = Path(".agents/skills")
@@ -50,6 +49,8 @@ def _commands_traversable():
 
 def _read_template(name: str) -> str:
     """Load a command template; substitute version placeholder."""
+    from specy_road.doc_links import link_toolkit_docs   # an install only
+
     path = _package_templates_dir() / "commands" / name
     text = path.read_text(encoding="utf-8") if path.is_file() else (_commands_traversable() / name).read_text(encoding="utf-8")
     return link_toolkit_docs(text.replace("{{SPECYRD_VERSION}}", __version__))

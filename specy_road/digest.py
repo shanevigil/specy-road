@@ -25,13 +25,13 @@ from typing import Any
 from specy_road.roadmap_index import RoadmapIndex
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import records_or_empty
+from specy_road.generated_files import DEFAULT_OUTPUT
 from specy_road.node_kinds import is_gate
 
 BANNER = (
     "<!-- specy-road: generated context digest — do not edit by hand. "
     "Regenerate with `specy-road digest`. -->"
 )
-DEFAULT_OUTPUT = "roadmap-context.md"
 
 # A digest is only useful if an agent reads all of it, so the long tail of each
 # unbounded section is summarised rather than listed.

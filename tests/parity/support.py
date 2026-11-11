@@ -107,16 +107,32 @@ def help_paragraphs(text: str) -> list[str]:
     return ["\n".join(p) for p in paragraphs]
 
 
-def help_text(text: str) -> str:
-    """The form help transcripts are compared in: byte for byte, with one bounded exception.
+#: Options ``specy_road.cli_args`` declares for every command; their help strings may change.
+SHARED_OPTIONS = frozenset({"--json", "--ref", "--model", "--base", "--remote"})
+
+
+def help_text(text: str, help_free: frozenset[str] = frozenset()) -> str:
+    """The form help transcripts are compared in: byte for byte, with two bounded exceptions.
 
     A paragraph (:func:`help_paragraphs`) holding a toolkit docs URL (``<DOCS_REF>``) has its
     whitespace runs collapsed to one space. The docs tag follows the version (``v0.3.1-rc2`` to
     ``v0.3.1``), so a version bump changes the URL's length and argparse reflows that paragraph.
     Limit: whitespace-only drift inside such a paragraph passes; a changed word still fails, and
     every other paragraph must match exactly.
+
+    An option entry whose first option string is in ``help_free`` keeps only its invocation
+    (``--ref REF``): its help string may differ, its name and metavar may not.
     """
-    return "\n".join(" ".join(p.split()) if "<DOCS_REF>" in p else p for p in help_paragraphs(text))
+    return "\n".join(_help_paragraph(p, help_free) for p in help_paragraphs(text))
+
+
+def _help_paragraph(paragraph: str, help_free: frozenset[str]) -> str:
+    if "<DOCS_REF>" in paragraph:
+        return " ".join(paragraph.split())
+    invocation = re.split(r"\s{2,}", paragraph.split("\n", 1)[0].strip())[0]
+    if paragraph.startswith("  -") and invocation.split()[0] in help_free:
+        return f"  {invocation} <HELP>"
+    return paragraph
 
 
 def check_golden(path: Path, actual: str, compare: Callable[[str], str] = str) -> None:
