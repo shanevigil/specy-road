@@ -22,7 +22,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.1.10` Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold `tests-public-scenarios-for-outline-moves-edit-field-setters-archive-scaffold-and-update-written-before-the-crud-fold` — task — **Complete**
     - `M16.1.11` Ruff quality rule families reported per file against a baseline, with per-release totals `ruff-quality-family-baseline` — task — **Complete**
     - `M16.1.12` Shipped agent templates carry no maintainer provenance comments `shipped-templates-carry-no-provenance-comments` — task — **Complete**
-  - `M16.2` Mechanical clean-up, layering and the in-process CLI `mechanical-clean-up-layering-and-the-in-process-cli` — milestone — **Not Started**
+  - `M16.2` Mechanical clean-up, layering and the in-process CLI `mechanical-clean-up-layering-and-the-in-process-cli` — milestone — **In Progress**
     - `M16.2.1` Delete dead and unwired code from a decided list, and add vulture as an advisory CI step `delete-dead-and-unwired-code-from-a-decided-list-and-add-vulture-as-an-advisory-ci-step` — task — **Complete**
     - `M16.2.2` Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers `shared-clock-and-atomic-write-helpers-replace-the-nine-now-copies-and-the-hand-written-atomic-writers` — task — **Complete**
     - `M16.2.3` Git queries and registry I/O go through one helper each `git-queries-and-registry-i-o-go-through-one-helper-each` — task — **Complete**
@@ -35,7 +35,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.10` Every command exposes build_parser(), imports lazily and shares the common argument helpers `every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers` — task — **Complete**
     - `M16.2.11` One SpecyError base for the 15 error classes, printed and turned into an exit code once `one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once` — task — **Complete**
     - `M16.2.12` Review packets and prompts show a held milestone's rollup as the public loader does `held-rollup-in-review-packets` — task — **Complete**
-    - `M16.2.13` The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle `loader-out-of-review-cycle` — task — **Not Started**
+    - `M16.2.13` The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle `loader-out-of-review-cycle` — task — **Complete**
   - `M16.3` Orchestration state model and the cap-driven folds `orchestration-state-model-and-the-cap-driven-folds` — milestone — **Not Started**
     - `M16.3.1` Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI `orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` — task — **Not Started**
     - `M16.3.2` Fold the cap-driven splits in pickup and finish into their parents `fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents` — task — **Not Started**
@@ -333,7 +333,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.2.13` on `feature/rm-loader-out-of-review-cycle` since 2026-11-11
 - `M16.3.1` on `feature/rm-orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` since 2026-11-11
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -348,22 +347,21 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `CHANGELOG.md` **flagged** | 25 | 0 | 2.20 | 60% | 21 | 2 |
-| `CLAUDE.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 1 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 28 | 0 | 2.36 | 64% | 55 | 3 |
+| `docs` **flagged** | 27 | 0 | 2.22 | 63% | 55 | 2 |
 | `gui` **flagged** | 9 | 0 | 1.67 | 56% | 3 | 0 |
 | `planning` **flagged** | 4 | 0 | 2.75 | 75% | 23 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 42 | 0 | 2.24 | 55% | 91 | 3 |
-| `tests` **flagged** | 44 | 0 | 2.23 | 57% | 103 | 3 |
+| `specy_road` **flagged** | 42 | 0 | 2.12 | 52% | 91 | 2 |
+| `tests` **flagged** | 44 | 0 | 2.11 | 55% | 103 | 2 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `.cursor` | 2 | 0 | 3.50 | 50% | 19 | 1 |
+| `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.github` | 4 | 0 | 2.00 | 50% | 31 | 0 |
 | `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
-| `AGENTS.md` | 2 | 0 | 3.50 | 50% | 2 | 1 |
-| `constraints` | 7 | 0 | 1.71 | 29% | 57 | 0 |
+| `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
+| `constraints` | 8 | 0 | 1.62 | 25% | 57 | 0 |
 | `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |

@@ -12,6 +12,7 @@ from pathlib import Path
 from specy_road.orchestration_config import effective_config
 from specy_road.review_policy_ref import policy_source, review_required
 from specy_road.review_target import ReviewTargetError, is_milestone, resolve_target
+from specy_road.roadmap_graph import compute_rollup_status
 
 UNRESOLVABLE_HOLD = "its full review cannot be evaluated"
 
@@ -82,8 +83,6 @@ def milestone_review_next_steps(node_id: str) -> str:
 
 def held_milestones(repo_root: Path, nodes: list[dict]) -> dict[str, str]:
     """``{milestone id: hold reason}`` for each milestone whose leaves are all Complete but which is held."""
-    from specy_road.roadmap_graph import compute_rollup_status
-
     leaf = compute_rollup_status(nodes)
     out: dict[str, str] = {}
     for n in nodes:

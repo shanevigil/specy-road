@@ -22,7 +22,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.1.10` | Tests: public scenarios for outline moves, edit-field setters, archive, scaffold and update, written before the CRUD fold | task | Agentic-led | Complete |
 | `M16.1.11` | Ruff quality rule families reported per file against a baseline, with per-release totals | task | Agentic-led | Complete |
 | `M16.1.12` | Shipped agent templates carry no maintainer provenance comments | task | — | Complete |
-| `M16.2` | Mechanical clean-up, layering and the in-process CLI | milestone | — | Not Started |
+| `M16.2` | Mechanical clean-up, layering and the in-process CLI | milestone | — | In Progress |
 | `M16.2.1` | Delete dead and unwired code from a decided list, and add vulture as an advisory CI step | task | Agentic-led | Complete |
 | `M16.2.2` | Shared clock and atomic-write helpers replace the nine now() copies and the hand-written atomic writers | task | Agentic-led | Complete |
 | `M16.2.3` | Git queries and registry I/O go through one helper each | task | Agentic-led | Complete |
@@ -35,7 +35,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.10` | Every command exposes build_parser(), imports lazily and shares the common argument helpers | task | Agentic-led | Complete |
 | `M16.2.11` | One SpecyError base for the 15 error classes, printed and turned into an exit code once | task | Agentic-led | Complete |
 | `M16.2.12` | Review packets and prompts show a held milestone's rollup as the public loader does | task | Agentic-led | Complete |
-| `M16.2.13` | The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle | task | Agentic-led | Not Started |
+| `M16.2.13` | The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle | task | Agentic-led | Complete |
 | `M16.3` | Orchestration state model and the cap-driven folds | milestone | — | Not Started |
 | `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Not Started |
 | `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Not Started |

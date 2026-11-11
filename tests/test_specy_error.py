@@ -31,7 +31,7 @@ REPO = Path(__file__).resolve().parents[1]
 # Handlers whose removal would change the printed text. Recorded with the census.
 KEPT_PRINT_AND_EXIT = {
     ("specy_road/nested_repos.py", ("NestedRepoError",)),
-    ("specy_road/review_policy_pin.py", ("ReviewTargetError", "PolicyUnreadable")),
+    ("specy_road/bundled_scripts/review_cli.py", ("ReviewTargetError", "PolicyUnreadable")),
     (
         "specy_road/bundled_scripts/mark_implementation_reviewed.py",
         ("SigningError", "ReviewRunBusy", "SafeWriteError"),

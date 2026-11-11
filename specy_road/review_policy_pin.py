@@ -18,6 +18,9 @@ different digest means the review rules changed after the work started, so the g
 once for every open claim whose pin differs, prints each distinct set of changes once with the leaves it affects,
 and writes each of those leaves the same per-leaf file. Re-claiming the leaf declines and pins the policy then in
 force. The prompt and the gate refusal name this module, which is installed with the package.
+The ``review accept-policy`` command itself lives in :mod:`specy_road.bundled_scripts.review_cli`:
+it loads the roadmap through the public loader, and the gate imports this module, so the gate's
+imports never reach the loader.
 
 Unreadable input — one rule (:func:`_unreadable_as`). There are two input boundaries: the committed policy (every
 git read, decode, YAML load, shape check, digest and change line, in :func:`policy_digest` and the gate's pin check)
@@ -33,9 +36,7 @@ keep their own rules.
 
 from __future__ import annotations
 
-import argparse
 import contextlib
-import getpass
 import hashlib
 import json
 import re
@@ -47,17 +48,11 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road.cli_args import add_ref_arg
-from specy_road import review_lock, safe_write
-from specy_road.clock import utc_now_iso
 from specy_road.registration_pickup_commit import with_policy_trailer
-from specy_road.roadmap_load import load_roadmap
-from specy_road.git_subprocess import git_text, run
-from specy_road.registry_yaml import read_registry, registry_path
-from specy_road.review_files import check_handoff_read, project_of, reviews_dir
+from specy_road.git_subprocess import run
+from specy_road.review_files import check_handoff_read, reviews_dir
 from specy_road.review_policy_ref import policy_source
-from specy_road.review_target import REGISTER_SUBJECT, ReviewTargetError, full_sha, resolve_target
-from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.review_target import REGISTER_SUBJECT, full_sha
 
 ORCHESTRATION_REL = "roadmap/orchestration.yaml"
 WORKFLOW_REL = "roadmap/git-workflow.yaml"
@@ -270,11 +265,6 @@ def pin_holds_or_exit(root: Path, node: dict[str, Any]) -> None:
         raise SystemExit(1)
 
 
-def _user(root: Path) -> str:
-    name, email = (git_text(["config", f"user.{k}"], root) for k in ("name", "email"))
-    return f"{name} <{email}>" if name and email else name or email or getpass.getuser()
-
-
 def _asked_because() -> str:
     """Plain language for the accept-policy prompt and the gate refusal: what changed, why a person is asked,
     what approving covers, and the installed-package reference. The raw change lines are printed below it."""
@@ -299,153 +289,3 @@ def _policy_refusal(nid: str, ref: str, at: str, lines: list[str]) -> str:
         f"    a human accepts it with `specy-road review accept-policy {nid}` in a terminal, "
         "or re-claims the leaf"
     )
-
-
-def _open_policy_changes(root: Path) -> list[dict[str, Any]]:
-    """Open claims whose pinned review policy differs from the integration branch, in registry order."""
-    nodes = load_roadmap(root)["nodes"]
-    changes = []
-    for entry in read_registry(registry_path(root)).get("entries") or []:
-        if not isinstance(entry, dict) or not entry.get("node_id"):
-            continue
-        target = resolve_target(root, str(entry["node_id"]), None, nodes=nodes)
-        state = _pin_state(root, target.node, target.commit or "HEAD")
-        if state is None:
-            continue
-        ref, pinned, at, current, lines = state
-        changes.append({"node_id": str(entry["node_id"]), "ref": ref, "pinned": pinned, "at": at,
-                        "current": current, "lines": tuple(lines)})
-    return changes
-
-
-def _change_groups(changes: list[dict[str, Any]]) -> list[tuple[tuple[str, ...], list[dict[str, Any]]]]:
-    """Each distinct set of change lines once, with the leaves it affects, earliest leaf id first."""
-    grouped: dict[tuple[str, ...], list[dict[str, Any]]] = {}
-    for change in changes:
-        grouped.setdefault(change["lines"], []).append(change)
-    return sorted(grouped.items(), key=lambda item: min(row["node_id"] for row in item[1]))
-
-
-def _write_acceptances(root: Path, rows: list[dict[str, Any]]) -> int:
-    """One ``POLICY-ACCEPTED.yaml`` per leaf, under that leaf's review lock.
-
-    Nothing is written when a lock is held, or when any acceptance path is a symlink.
-    """
-    ordered = sorted(rows, key=lambda row: row["node_id"])
-    user = _user(root)
-    at = utc_now_iso()
-    with contextlib.ExitStack() as stack:
-        for row in ordered:
-            try:
-                stack.enter_context(review_lock.review_run_lock(
-                    reviews_dir(root, row["node_id"]), wait=review_lock.FILING_WAIT))
-            except review_lock.ReviewRunBusy:
-                print(f"error: {review_lock.filing_busy(row['node_id'])}", file=sys.stderr)
-                return 1
-            except safe_write.SafeWriteError as e:
-                print(f"error: {e}", file=sys.stderr)
-                return 1
-        prepared: list[tuple[Path, str]] = []
-        for row in ordered:
-            path = acceptance_path(root, row["node_id"])
-            record = {"node_id": row["node_id"], "pinned_sha256": row["pinned"], "accepted_sha256": row["current"],
-                      "user": user, "at": at}
-            try:
-                safe_write.check(project_of(path), path)
-            except safe_write.SafeWriteError as e:
-                print(f"error: {e}", file=sys.stderr)
-                return 1
-            prepared.append((path, yaml.safe_dump(record, sort_keys=False)))
-        for path, body in prepared:
-            try:
-                safe_write.write(project_of(path), path, body)
-            except safe_write.SafeWriteError as e:
-                print(f"error: {e}", file=sys.stderr)
-                return 1
-            print(f"wrote {path}")
-    return 0
-
-
-def _accept_one(root: Path, node_id: str, ref: str | None) -> int:
-    target = resolve_target(root, node_id, ref, nodes=load_roadmap(root)["nodes"])
-    state = _pin_state(root, target.node, target.commit or "HEAD")
-    if state is None:
-        print(f"{node_id}: the review policy is unchanged since the claim (or not pinned); nothing to accept")
-        return 0
-    where, pinned, at, current, lines = state
-    print(f"review policy changed on {where} since {node_id} was claimed ({at[:12]}):")
-    print(_asked_because())
-    for line in lines:
-        print(f"  - {line}")
-    if input(f"Type {node_id} to accept this policy for {node_id}: ").strip() != node_id:
-        print("not accepted; nothing was written", file=sys.stderr)
-        return 1
-    return _write_acceptances(root, [{"node_id": node_id, "pinned": pinned, "current": current}])
-
-
-def _print_groups(changes: list[dict[str, Any]]) -> None:
-    print(f"Open claims whose pinned review policy differs from {changes[0]['ref']}:")
-    print(_asked_because())
-    for lines, leaves in _change_groups(changes):
-        ordered = sorted(leaves, key=lambda row: row["node_id"])
-        print(", ".join(row["node_id"] for row in ordered) + ":")
-        for row in ordered:
-            print(f"  {row['node_id']}: pinned {row['pinned']} accepted {row['current']}")
-        for line in lines:
-            print(f"  - {line}")
-
-
-def _accept_all(root: Path) -> int:
-    """``--all-open``: one confirmation, then one acceptance file per leaf that differs."""
-    changes = _open_policy_changes(root)
-    if not changes:
-        print("no open claim has a review policy that differs from its pin; nothing to accept")
-        return 0
-    _print_groups(changes)
-    token = " ".join(sorted(row["node_id"] for row in changes))
-    if input(f"Type {token} to accept this policy for {token}: ").strip() != token:
-        print("not accepted; nothing was written", file=sys.stderr)
-        return 1
-    return _write_acceptances(root, changes)
-
-
-def _usage_error(ns: argparse.Namespace) -> str | None:
-    if bool(ns.node_id) == bool(ns.all_open):
-        return "pass one node id or --all-open, not both and not neither"
-    if ns.all_open and ns.ref:
-        return "--ref is for one node; --all-open uses each claim's registered branch"
-    return None
-
-
-def cmd_accept_policy(ns: argparse.Namespace) -> int:
-    """``review accept-policy``: a human, in a terminal, accepts the policy change since the claim.
-
-    One node id is that leaf. ``--all-open`` is every open claim whose pin differs: one confirmation, then
-    one acceptance file per leaf.
-    """
-    if not sys.stdin.isatty():
-        print("error: a human accepts a review policy change in a terminal; nothing was written", file=sys.stderr)
-        return 1
-    if reason := _usage_error(ns):
-        print(f"error: {reason}; nothing was written", file=sys.stderr)
-        return 1
-    root = resolve_repo_root(ns)
-    try:
-        if ns.all_open:
-            return _accept_all(root)
-        return _accept_one(root, ns.node_id, ns.ref)
-    except (ReviewTargetError, PolicyUnreadable) as e:
-        print(f"error: {e}; nothing was written", file=sys.stderr)
-        return 1
-
-
-def add_parser(rsub: Any) -> None:
-    sp = rsub.add_parser("accept-policy", help="Human-only: accept a review policy change made on the integration "
-                                               "branch since the leaf was claimed")
-    sp.add_argument("node_id", nargs="?", help="One leaf; omit it with --all-open")
-    sp.add_argument("--all-open", action="store_true",
-                    help="Every open claim whose pinned policy differs: print each distinct change once, "
-                         "ask once, write one POLICY-ACCEPTED.yaml per leaf")
-    add_ref_arg(sp)
-    add_repo_root_arg(sp)
-    sp.set_defaults(func=cmd_accept_policy)

@@ -271,15 +271,6 @@ def area_quality(root: Path, nodes: list[dict[str, Any]]) -> list[AreaQuality]:
     return sorted(areas.values(), key=lambda a: (not a.flagged, a.area))
 
 
-def flagged_areas(root: Path, policy: dict[str, Any]) -> set[str]:
-    """The flagged areas when ``policy.quality_routing`` is on; empty when it is off."""
-    if not policy.get("quality_routing"):
-        return set()
-    from specy_road.roadmap_load import load_roadmap
-
-    return {a.area for a in area_quality(root, load_roadmap(root)["nodes"]) if a.flagged}
-
-
 def quality_review(policy: dict[str, Any], zones: Iterable[Any] | None, flagged: set[str],
                    prefix: str = "") -> tuple[list[dict[str, Any]], list[str]]:
     """``(strong_review items, notes)`` for one leaf in ``orchestrate plan``: each flagged area one of its zones

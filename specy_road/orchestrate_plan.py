@@ -83,7 +83,7 @@ from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: calle
     unavailable_prompt_error,
 )
 from specy_road.orchestration_pinned import WORKTREE_REF, pinned_config, pinned_profile_for_entry, roster_source
-from specy_road.review_tally import flagged_areas
+from specy_road.review_tally import area_quality
 from specy_road.reviewer_auth import claude_reviewer_auth_notices
 from specy_road.roster_local import local_roster_ids
 from specy_road.runtime_paths import project_prefix
@@ -137,6 +137,17 @@ def _candidate(root: Path, config: dict[str, Any], entry: dict[str, Any], local:
     prof = pinned_profile_for_entry(root, entry, worktree=worktree)
     return Candidate(entry, prof, local, guidance_bypass_refusal(config, entry, prof, root),
                      guidance_bypass_warning(config, entry, prof, root))
+
+
+def flagged_areas(root: Path, policy: dict[str, Any]) -> set[str]:
+    """The flagged areas when ``policy.quality_routing`` is on; empty when it is off.
+
+    Lives with its one caller rather than in :mod:`specy_road.review_tally`, so the review
+    gate's imports never reach the graph loader.
+    """
+    if not policy.get("quality_routing"):
+        return set()
+    return {a.area for a in area_quality(root, load_roadmap(root)["nodes"]) if a.flagged}
 
 
 def build_orchestration_plan(root: Path, *, under: str | None = None, today: date | None = None,

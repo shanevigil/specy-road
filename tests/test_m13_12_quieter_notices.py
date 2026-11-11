@@ -18,7 +18,7 @@ from specy_road.bundled_scripts.touch_zone_tracked import LISTED_LIMIT, warn_unt
 from specy_road.bundled_scripts.validate_notices import notice_repeated_ignore_patterns
 from specy_road.context_notice_cache import report_context_warnings
 from specy_road.ignore_report import UNTRACK_HINT
-from specy_road.init_project import project_template_root
+from specy_road.runtime_paths import project_template_root
 from specy_road.managed_block import MARKER_END, MARKER_START
 from tests.m13_7_ignore_helpers import repo_with_prompts
 from tests.test_touch_zone_tracked import UNTRACKED, zone_git_repo
