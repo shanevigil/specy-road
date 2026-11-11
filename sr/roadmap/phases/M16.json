@@ -252,7 +252,8 @@
         "specy_road/bundled_scripts/digest_cli.py",
         "specy_road/bundled_scripts/search_cli.py",
         "specy_road/bundled_scripts/brainstorm_cli.py",
-        "specy_road/bundled_scripts/"
+        "specy_road/bundled_scripts/",
+        "sr/planning/M16.2.9_commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals_6902ede7-bde3-4667-b192-366c09681589.md"
       ],
       "type": "task"
     },
