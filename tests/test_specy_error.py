@@ -125,6 +125,7 @@ def _matches() -> set[tuple[str, tuple[str, ...]]]:
 
 
 def test_print_and_exit_handlers_are_only_the_named_exceptions() -> None:
+    """A print-and-exit of one of the fifteen is one of the three recorded handlers."""
     assert _matches() == KEPT_PRINT_AND_EXIT
 
 
@@ -151,6 +152,7 @@ def test_print_and_exit_handlers_are_only_the_named_exceptions() -> None:
 def test_each_command_error_keeps_its_base_and_carries_an_exit_code(
     error: SpecyError, parent: type,
 ) -> None:
+    """Each command error is still its old base, is a SpecyError, and exits 1."""
     assert isinstance(error, SpecyError)
     assert isinstance(error, parent)
     assert error.exit_code == 1
@@ -168,6 +170,7 @@ def test_each_command_error_keeps_its_base_and_carries_an_exit_code(
 def test_run_handler_prints_a_specy_error_and_exits_with_its_code(
     error: SpecyError, code: int, capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """The command entry prints ``error:`` once and exits with the error's code."""
     def fail(ns: argparse.Namespace) -> int:
         raise error
 

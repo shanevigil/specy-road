@@ -17,6 +17,8 @@ from types import ModuleType
 from typing import IO
 
 from specy_road.cli_args import subcommand_parsers
+from specy_road.cli_entry import exit_for
+from specy_road.errors import SpecyError
 from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, project_root, resolve_repo_root
 from specy_road.version_skew import warn_if_running_version_older
 
@@ -234,9 +236,6 @@ def _run(module: str, argv: list[str], prog: str = "specy-road") -> None:
 
 def _invoke_main(entry: ModuleType, argv: list[str]) -> None:
     """Run ``entry.main``; a command error is printed once and becomes its exit code."""
-    from specy_road.cli_entry import exit_for
-    from specy_road.errors import SpecyError
-
     try:
         entry.main(argv)
     except SpecyError as error:
@@ -498,9 +497,6 @@ def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     """Dispatch ``argv``. A command error is printed once and becomes its exit code."""
-    from specy_road.cli_entry import exit_for
-    from specy_road.errors import SpecyError
-
     try:
         _dispatch(argv)
     except SpecyError as error:
