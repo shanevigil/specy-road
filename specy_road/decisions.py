@@ -23,11 +23,9 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road.clock import utc_now_iso
 from specy_road.init_project import project_template_root
 from specy_road.orchestration_config import _paused_until_error
 from specy_road.registry_yaml import dump_registry_text
-from specy_road.text_sections import find_section
 
 DECISIONS_REL = Path("roadmap") / "decisions.yaml"
 DECISIONS_LOCAL_REL = Path("roadmap") / "decisions.local.yaml"   # this clone only (M15.22)
@@ -261,6 +259,8 @@ def recorded_on_sheet(sheet_text: str, decision_id: str, answer: str) -> bool:
     ``decisions and notes`` or ``decisions``. A heading that exists only
     inside a fence is not that block.
     """
+    from specy_road.text_sections import find_section
+
     unfenced = "\n".join(_unfenced_lines(sheet_text))
     block = find_section(unfenced, _DECISION_HEADINGS)
     if not block:
@@ -421,6 +421,8 @@ def add_preference(
         old = next((e for e in entries if isinstance(e, dict) and e.get("id") == supersedes), None)
         if not old or old.get("kind") != PREFERENCE or old.get("status") != "open":
             raise ValueError(f"--supersedes {supersedes!r} is not an open preference")
+        from specy_road.clock import utc_now_iso   # writers only
+
         old.update(status="closed", answer=f"superseded by {entry_id}", closed=utc_now_iso())
     entries.append(entry)
     write_decisions(path, doc)
@@ -455,6 +457,8 @@ def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | 
                 raise SystemExit(1)
             e["status"] = "closed"
             e["answer"] = answer.strip()
+            from specy_road.clock import utc_now_iso
+
             e["closed"] = utc_now_iso()
             write_decisions(path, doc)
             return e

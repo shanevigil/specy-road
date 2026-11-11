@@ -32,8 +32,7 @@ from pathlib import Path
 from specy_road import __version__
 from specy_road.agent_guide_block import strip_provenance
 from specy_road.agents_md_report import MINIMAL, agents_block_mode, claude_reread, minimal_lines, print_rules_overlap, total
-from specy_road.digest import DEFAULT_OUTPUT as DIGEST
-from specy_road.doc_links import link_toolkit_docs
+from specy_road.generated_files import DEFAULT_OUTPUT as DIGEST
 from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import (
     AGENTS_MD,
@@ -85,6 +84,8 @@ AGENTS_FILES = (AGENTS_MD, RULES_MD, TEAM_MD)
 
 
 def _render(template: Path) -> str:
+    from specy_road.doc_links import link_toolkit_docs   # a render only
+
     text = strip_provenance(template.read_text(encoding="utf-8"))
     return link_toolkit_docs(text.replace("{{SPECYRD_VERSION}}", __version__)).rstrip("\n") + "\n"
 

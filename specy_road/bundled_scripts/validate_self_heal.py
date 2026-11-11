@@ -19,7 +19,6 @@ from specy_road.roadmap_chunk_utils import (
 from specy_road.bundled_scripts.roadmap_edit_fields import (
     update_planning_dir_to_canonical,
 )
-from specy_road.bundled_scripts.planning_rename import rename_planning_file_if_path_changed
 
 # Fields that were part of the schema before F-003/F-007 and should now be
 # silently stripped from any chunk file that still carries them.
@@ -85,6 +84,10 @@ def _heal_one_chunk(  # noqa: C901 — baseline 2026-10-28; simplify, then drop 
                         update_planning_dir_to_canonical(node)
                         new_pd = node.get("planning_dir")
                         if isinstance(new_pd, str) and new_pd != old_pd_norm:
+                            from specy_road.bundled_scripts.planning_rename import (
+                                rename_planning_file_if_path_changed,   # only a heal that renames
+                            )
+
                             rename_planning_file_if_path_changed(
                                 root, old_pd_norm, new_pd
                             )

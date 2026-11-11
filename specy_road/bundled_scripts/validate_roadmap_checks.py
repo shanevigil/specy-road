@@ -15,9 +15,8 @@ from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.git_subprocess import git_root
 from specy_road.roster_profile_check import report_roster_profiles
 from specy_road.git_workflow_config import require_implementation_review_before_finish
-from specy_road.review_gate import review_required
 from specy_road.review_gate_agreement import gate_config_mismatch
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_policy_ref import policy_source, review_required
 from specy_road.runtime_paths import default_user_repo_root
 from specy_road.workflow_prefs import warn_summary_rule
 

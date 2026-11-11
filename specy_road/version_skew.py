@@ -14,14 +14,12 @@ from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agents_md_block import AGENTS_MD
 from specy_road.git_subprocess import git_root
 from specy_road.managed_block import HTML_COMMENT, _split
-from specy_road.toolkit_version import running_toolkit_version
 
 __all__ = [
     "Launcher",
     "launchers_on_path",
     "print_install_report",
     "recorded_toolkit_version",
-    "running_toolkit_version",
     "warn_if_blocks_written_by_other_version",
     "warn_if_running_version_older",
 ]

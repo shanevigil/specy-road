@@ -52,7 +52,6 @@ from specy_road.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import in_zones
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_code, git_stdout, git_text
-from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.integrity import compare_integrity
 from specy_road.integrity_gate import integrity_gate_problems
 from specy_road.orchestrate_plan import entry_may_process, guidance_problem, may_handle, node_sensitivity
@@ -73,7 +72,8 @@ from specy_road.review_files import (HUMAN, PACKET_NAME, REVIEWS_REL, ReviewFile
                                      list_review_history, list_reviews, review_semantic_errors, reviews_dir,
                                      verifier_gate_problems)
 from specy_road.review_policy_pin import pin_problem
-from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
+from specy_road.review_policy_ref import (  # noqa: F401 — review_required re-exported
+    committed_yaml as _committed_yaml, policy_source, review_required)
 from specy_road.review_resumed_delta import FRESH_SESSION, fresh_only_note, fresh_session_problem
 from specy_road.review_strong import human_closes_strong, strong_problem, touch_zones, unmet_strong
 from specy_road.review_target import REGISTRY_REL, full_sha, node_at, resolve_target_or_exit, same_commit
@@ -89,23 +89,6 @@ FULL_MARK = "- **Delta review:** off (`--full`): every reviewer reads this full 
 _TIER = re.compile(r"^## Tier\s*\n+\s*([A-Za-z]+(?: boundary)?)", re.M)
 #: The tiers whose one-commit fix of a block may carry the other family's approval (``fix_of``).
 FIX_CARRY_TIERS = ("plain", "behavioural")
-
-
-def review_required(repo_root: Path) -> bool:
-    """Whether the review gate is on — in the working tree **or** on the integration branch.
-
-    Fails closed: when the integration branch cannot be found, its switch
-    cannot be read, so the gate counts as on.
-    """
-    if require_implementation_review_before_finish(repo_root):
-        return True
-    ref, err = policy_source(repo_root)
-    if err:
-        return True
-    if ref is None:
-        return False
-    flag = _committed_yaml(repo_root, ref, "roadmap/git-workflow.yaml")
-    return bool(flag.get("require_implementation_review_before_finish"))
 
 
 @dataclass

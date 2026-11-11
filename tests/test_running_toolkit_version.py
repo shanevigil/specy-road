@@ -12,7 +12,7 @@ from pathlib import Path
 from specy_road import __version__
 from specy_road.git_subprocess import git_root, head_sha, working_tree_clean
 from specy_road.runtime_paths import specy_road_package_dir
-from specy_road.version_skew import running_toolkit_version
+from specy_road.toolkit_version import running_toolkit_version
 
 REPO = Path(__file__).resolve().parent.parent
 

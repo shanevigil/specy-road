@@ -27,7 +27,6 @@ from typing import Any
 
 from specy_road.roadmap_chunk_utils import find_chunk_path
 from specy_road.roadmap_graph import load_roadmap
-from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_stdout, git_text, local_branch_exists
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_yaml import REGISTRY_REL, read_registry, registry_path
@@ -259,6 +258,8 @@ def resolve_target(
     ib, remote, _warn = resolve_integration_defaults(
         repo_root, explicit_base=None, explicit_remote=None
     )
+    from specy_road.finish_implementation_check import base_ref
+
     bref = base_ref(repo_root, remote, ib)
     if is_milestone(nodes, node_id) and not (entry or {}).get("branch"):
         use_ref = ref or bref

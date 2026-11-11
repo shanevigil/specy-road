@@ -7,7 +7,7 @@ reviewers and the second off, ``review list`` reports a gate that finish never
 checks, so finish lands the leaf with the gate unmet. ``validate`` and ``doctor``
 report that as an error. Nothing turns the gate on: that is the project's call.
 
-The gate counts as on by :func:`review_gate.review_required`, the rule finish
+The gate counts as on by :func:`review_policy_ref.review_required`, the rule finish
 uses (working tree or integration branch, failing closed). A missing
 ``orchestration.yaml`` asks for no reviewers here: the file is optional, and a
 repo without one has stated no review policy. An unreadable one is left to the
@@ -21,7 +21,7 @@ from pathlib import Path
 
 from specy_road.git_workflow_config import GIT_WORKFLOW_REL
 from specy_road.orchestration_config import DEFAULT_POLICY, ORCHESTRATION_REL, load_orchestration_config
-from specy_road.review_gate import review_required
+from specy_road.review_policy_ref import review_required
 
 GATE_KEY = "require_implementation_review_before_finish"
 #: The fix the mismatch message names, also printed by ``mark-implementation-reviewed``.

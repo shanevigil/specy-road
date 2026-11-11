@@ -30,8 +30,8 @@ from typing import Any
 
 import yaml
 
-from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_stdout, git_text
+from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.review_target import full_sha
 
 WORKFLOW_REL = "roadmap/git-workflow.yaml"
@@ -132,6 +132,8 @@ def trusted_integration_ref(
                 f"run `git fetch {remote} {ib}`, or fix integration_branch on the integration branch"
             )
     else:
+        from specy_road.finish_implementation_check import base_ref   # git and the finish gate's helpers
+
         ref = base_ref(repo_root, remote, ib)
         if ref is None:
             return None, (
@@ -171,3 +173,20 @@ def policy_source(repo_root: Path) -> tuple[str | None, str | None]:
     if named is None:
         return None, err
     return trusted_integration_ref(repo_root, remotes, *named)
+
+
+def review_required(repo_root: Path) -> bool:
+    """Whether the review gate is on — in the working tree **or** on the integration branch.
+
+    Fails closed: when the integration branch cannot be found, its switch
+    cannot be read, so the gate counts as on.
+    """
+    if require_implementation_review_before_finish(repo_root):
+        return True
+    ref, err = policy_source(repo_root)
+    if err:
+        return True
+    if ref is None:
+        return False
+    flag = committed_yaml(repo_root, ref, WORKFLOW_REL)
+    return bool(flag.get("require_implementation_review_before_finish"))

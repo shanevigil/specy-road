@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from specy_road import __version__, safe_write
-from specy_road.agent_ignores import apply_and_report, check_ignore_files
 from specy_road.agents_md_block import apply_agents_files
 from specy_road.generated_files import GENERATED_COMMITTED, regenerate_generated_files
 from specy_road.git_subprocess import git_root
@@ -241,6 +240,8 @@ def _scaffold(
     top = git_root(next(p for p in (dst, *dst.parents) if p.is_dir()))   # dst may not exist yet
     root = top or dst
     prefix = prefix_within(top, dst) if top else ""
+    from specy_road.agent_ignores import apply_and_report, check_ignore_files   # writers, on demand
+
     check_ignore_files(root)
     if top is not None:
         safe_write.check(top, top / _MANIFEST)

@@ -37,7 +37,6 @@ import sys
 from collections import Counter
 from pathlib import Path, PurePosixPath
 
-from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_subprocess import git_root, git_stdout
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 
@@ -70,6 +69,8 @@ class Tracked:
     def matches(self, zone: str) -> bool:
         """Whether ``zone`` names a tracked file, or a directory tracked or on disk."""
         if any(c in zone for c in _GLOB_CHARS):
+            from specy_road.finish_implementation_check import zone_matches   # a glob only
+
             return any(zone_matches(zone, p) for p in self.ordered)
         i = bisect.bisect_left(self.ordered, zone)
         if i < len(self.ordered) and self.ordered[i] == zone:
