@@ -87,11 +87,10 @@ def test_local_pickup_skips_sync_and_push(tmp_path: Path, monkeypatch) -> None:
     chunk = repo / "roadmap" / "phases" / "M1.json"
     chunk.write_text(chunk.read_text().replace('"status": "In Progress"', '"status": "Not Started"'))
     git(repo, "commit", "-qam", "free the claim")
-    monkeypatch.setattr(dnt, "ROOT", repo)
     synced: list[str] = []
     pushed: list[tuple] = []
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *a, **k: synced.append("sync"))
-    monkeypatch.setattr(dnt, "_push_integration_branch", lambda remote, base: pushed.append((remote, base)),
+    monkeypatch.setattr(dnt, "_push_integration_branch", lambda _root, *rb: pushed.append(rb),
                         raising=False)
     monkeypatch.setattr(dnt, "git_config_user_name", lambda _r: "Test User")
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _r, oc: "merge")

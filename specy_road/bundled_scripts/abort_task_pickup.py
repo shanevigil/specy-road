@@ -13,22 +13,16 @@ from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_integration import integration_worktree
 from specy_road.finish_work_artifacts import remove_main_checkout_pickup_files
 from specy_road.git_subprocess import git_capture, git_root, git_run
-from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     remove_on_complete_session,
 )
+from specy_road.cli_entry import integration_defaults
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.abort_task_pickup_own_commit import only_own_registration_ahead
 from specy_road.repo_ops import current_branch
 from specy_road.repo_lock import pickup_finish_lock
-
-#: Rebound by :func:`main` before any helper runs; this is only a placeholder
-#: so the name exists at import. Resolving the real root here would make
-#: importing the module shell out to git.
-ROOT = Path.cwd()
-
 
 #: Why a tracked change blocks, by porcelain status letter (index, then worktree).
 _STAGED = {"M": "staged edit", "A": "staged new file", "D": "staged deletion",
@@ -43,7 +37,7 @@ def _why_blocking(xy: str) -> str:
     return ", ".join(r for r in reasons if r) or f"status {xy.strip()}"
 
 
-def _tracked_changes() -> list[str]:
+def _tracked_changes(root: Path) -> list[str]:
     """Tracked changes, each with why it blocks: the only thing abort refuses on.
 
     Pickup refuses on nothing under ``work/``, so it leaves its brief there
@@ -54,12 +48,12 @@ def _tracked_changes() -> list[str]:
     does, under ``work/`` too: the checkout would carry it to the integration
     branch or stop on it.
     """
-    out = git_capture(ROOT, "status", "--porcelain", "--untracked-files=no")
+    out = git_capture(root, "status", "--porcelain", "--untracked-files=no")
     return [f"{line[3:]} ({_why_blocking(line[:2])})" for line in out.splitlines() if line.strip()]
 
 
-def _assert_no_tracked_changes(base: str) -> None:
-    blocking = _tracked_changes()
+def _assert_no_tracked_changes(root: Path, base: str) -> None:
+    blocking = _tracked_changes(root)
     if not blocking:
         return
     print(f"error: tracked changes block abort-task-pickup: it checks out '{base}', which would "
@@ -71,31 +65,33 @@ def _assert_no_tracked_changes(base: str) -> None:
     raise SystemExit(1)
 
 
-def _git_keeping_untracked(what: str, *args: str, retry: str = "retry abort-task-pickup") -> None:
+def _git_keeping_untracked(
+    root: Path, what: str, *args: str, retry: str = "retry abort-task-pickup"
+) -> None:
     """Run a git step that refuses rather than overwrite an untracked file; exit 1 cleanly if it does."""
     try:
-        git_run(ROOT, *args)
+        git_run(root, *args)
     except subprocess.CalledProcessError:
         print(f"error: could not {what}; git's message above names the paths.", file=sys.stderr)
         print(f"  An untracked file there would be overwritten: move it aside, then {retry}.", file=sys.stderr)
         raise SystemExit(1) from None
 
 
-def _checkout_base(base: str) -> None:
-    _git_keeping_untracked(f"check out '{base}'", "checkout", base)
+def _checkout_base(root: Path, base: str) -> None:
+    _git_keeping_untracked(root, f"check out '{base}'", "checkout", base)
 
 
-def _count_commits_ahead_of_remote_base(remote: str, base: str) -> int:
+def _count_commits_ahead_of_remote_base(root: Path, remote: str, base: str) -> int:
     upstream = f"{remote}/{base}"
-    out = git_capture(ROOT, "rev-list", "--count", f"{upstream}..HEAD").strip()
+    out = git_capture(root, "rev-list", "--count", f"{upstream}..HEAD").strip()
     return int(out) if out else 0
 
 
-def _log_commits_ahead_of_remote_base(remote: str, base: str) -> str:
+def _log_commits_ahead_of_remote_base(root: Path, remote: str, base: str) -> str:
     upstream = f"{remote}/{base}"
     r = subprocess.run(
         ["git", "log", "--oneline", "--no-decorate", f"{upstream}..HEAD"],
-        cwd=ROOT,
+        cwd=root,
         capture_output=True,
         text=True,
         check=False,
@@ -103,10 +99,10 @@ def _log_commits_ahead_of_remote_base(remote: str, base: str) -> str:
     return (r.stdout or "").strip()
 
 
-def _sync_integration_branch_ff(remote: str, base: str) -> None:
-    _checkout_base(base)
+def _sync_integration_branch_ff(root: Path, remote: str, base: str) -> None:
+    _checkout_base(root, base)
     try:
-        git_run(ROOT, "merge", "--ff-only", f"{remote}/{base}")
+        git_run(root, "merge", "--ff-only", f"{remote}/{base}")
     except subprocess.CalledProcessError:
         print(
             f"error: could not fast-forward local '{base}' to {remote}/{base}.",
@@ -119,13 +115,13 @@ def _sync_integration_branch_ff(remote: str, base: str) -> None:
         raise SystemExit(1) from None
 
 
-def _delete_feature_branch(branch: str, *, force: bool) -> None:
+def _delete_feature_branch(root: Path, branch: str, *, force: bool) -> None:
     if force:
-        git_run(ROOT, "branch", "-D", branch)
+        git_run(root, "branch", "-D", branch)
         return
     r = subprocess.run(
         ["git", "branch", "-d", branch],
-        cwd=ROOT,
+        cwd=root,
         capture_output=True,
         text=True,
         check=False,
@@ -139,8 +135,8 @@ def _delete_feature_branch(branch: str, *, force: bool) -> None:
     print(f"  Remove it manually: git branch -D {branch}", file=sys.stderr)
 
 
-def _remove_pickup_work_files(node_id: str, *, force: bool) -> None:
-    work_dir = ROOT / "work"
+def _remove_pickup_work_files(root: Path, node_id: str, *, force: bool) -> None:
+    work_dir = root / "work"
     for name in (
         f"brief-{node_id}.md",
         f"prompt-{node_id}.md",
@@ -155,7 +151,7 @@ def _remove_pickup_work_files(node_id: str, *, force: bool) -> None:
         if summary.is_file():
             summary.unlink()
             print(f"[ok] removed work/implementation-summary-{node_id}.md")
-    remove_main_checkout_pickup_files(ROOT, node_id)
+    remove_main_checkout_pickup_files(root, node_id)
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -191,8 +187,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
-def _require_feature_rm_branch_or_exit() -> str:
-    branch = current_branch(ROOT)
+def _require_feature_rm_branch_or_exit(root: Path) -> str:
+    branch = current_branch(root)
     if branch == "HEAD":
         print(
             "error: detached HEAD — check out your feature/rm-<codename> branch first.",
@@ -210,7 +206,7 @@ def _require_feature_rm_branch_or_exit() -> str:
 
 
 def _exit_if_unpushed_commits_without_force(
-    remote: str, base: str, ahead: int, force: bool
+    root: Path, remote: str, base: str, ahead: int, force: bool
 ) -> None:
     if ahead == 0 or force:
         if ahead > 0 and force:
@@ -225,7 +221,7 @@ def _exit_if_unpushed_commits_without_force(
         f"{remote}/{base} ({ahead} commit(s)).",
         file=sys.stderr,
     )
-    log_excerpt = _log_commits_ahead_of_remote_base(remote, base)
+    log_excerpt = _log_commits_ahead_of_remote_base(root, remote, base)
     if log_excerpt:
         print("  Local commits not in remote integration branch:", file=sys.stderr)
         for line in log_excerpt.splitlines()[:20]:
@@ -240,22 +236,22 @@ def _exit_if_unpushed_commits_without_force(
     raise SystemExit(1)
 
 
-def _drop_local_registration(remote: str, base: str, branch: str) -> None:
-    _checkout_base(base)
+def _drop_local_registration(root: Path, remote: str, base: str, branch: str) -> None:
+    _checkout_base(root, base)
     # --keep, not --hard: --hard silently overwrites an untracked file at a path
     # the advanced remote base now tracks. The tree has no tracked changes here.
-    _git_keeping_untracked(f"reset '{base}' to {remote}/{base}", "reset", "--keep", f"{remote}/{base}",
-                           retry=f"`git checkout {branch}` and retry abort-task-pickup")
+    _git_keeping_untracked(root, f"reset '{base}' to {remote}/{base}", "reset", "--keep",
+                           f"{remote}/{base}", retry=f"`git checkout {branch}` and retry abort-task-pickup")
     print(
         f"[ok] the claim was never pushed (--local pickup): dropped its registration "
         f"commit from local {base}; nothing pushed"
     )
 
 
-def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None:
+def _remove_registry_row_and_push(root: Path, remote: str, base: str, codename: str) -> None:
     from specy_road.bundled_scripts.do_next_task_register import regenerated_tracked_paths
 
-    reg = read_registry(registry_path(ROOT))
+    reg = read_registry(registry_path(root))
     entries = reg.get("entries") or []
     if not next((e for e in entries if e.get("codename") == codename), None):
         print(
@@ -269,25 +265,25 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
         )
         raise SystemExit(1)
     reg["entries"] = [e for e in entries if e.get("codename") != codename]
-    write_registry(registry_path(ROOT), reg)
-    rel_reg = str(registry_path(ROOT).relative_to(ROOT))
-    paths = [rel_reg, *regenerated_tracked_paths(ROOT)]
-    git_run(ROOT, "add", *paths)
-    git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): abort task pickup", "--", *paths)
+    write_registry(registry_path(root), reg)
+    rel_reg = str(registry_path(root).relative_to(root))
+    paths = [rel_reg, *regenerated_tracked_paths(root)]
+    git_run(root, "add", *paths)
+    git_run(root, "commit", "-m", f"chore(rm-{codename}): abort task pickup", "--", *paths)
     print(f"-> git push {remote} {base}")
-    git_run(ROOT, "push", remote, base)
+    git_run(root, "push", remote, base)
 
 
-def _exit_if_base_checked_out_elsewhere(base: str, branch: str, node_id: str) -> None:
+def _exit_if_base_checked_out_elsewhere(root: Path, base: str, branch: str, node_id: str) -> None:
     """Abort moves this checkout to ``base``; git refuses while another worktree holds it.
 
     The hint's ``--force`` is what lets git remove the worktree at all: pickup
     leaves its brief there untracked, and tracked changes were refused already.
     """
-    holder = integration_worktree(ROOT, base)
+    holder = integration_worktree(root, base)
     if holder is None:
         return
-    wt = shlex.quote(str(git_root(ROOT) or ROOT))
+    wt = shlex.quote(str(git_root(root) or root))
     print(f"error: '{base}' is checked out in {holder}, and abort-task-pickup needs it here.", file=sys.stderr)
     print("  For a delegated leaf: `specy-road worker terminate <W>`; then, in that checkout:", file=sys.stderr)
     print(f"  `git -C {wt} status --short` lists what removing this worktree discards: pickup's untracked "
@@ -298,50 +294,43 @@ def _exit_if_base_checked_out_elsewhere(base: str, branch: str, node_id: str) ->
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    ROOT = resolve_repo_root(args)
-    with pickup_finish_lock(ROOT, operation="abort-task-pickup"):
-        _abort_locked(args)
+    root = resolve_repo_root(args)
+    with pickup_finish_lock(root, operation="abort-task-pickup"):
+        _abort_locked(root, args)
 
 
-def _abort_locked(args) -> None:
-    base, remote, gw_warns = resolve_integration_defaults(
-        ROOT,
-        explicit_base=args.base,
-        explicit_remote=args.remote,
-    )
-    for w in gw_warns:
-        print(f"warning: {w}", file=sys.stderr)
+def _abort_locked(root: Path, args) -> None:
+    base, remote = integration_defaults(root, args)
 
-    branch = _require_feature_rm_branch_or_exit()
+    branch = _require_feature_rm_branch_or_exit(root)
 
     # Reads roadmap/registry.yaml only; no git state changes before the check.
     codename, _reg_before, entry, _nodes = resolve_feature_rm_registry_context(
-        ROOT,
+        root,
         branch,
     )
     node_id = entry["node_id"]
-    _assert_no_tracked_changes(base)
-    _exit_if_base_checked_out_elsewhere(base, branch, node_id)
+    _assert_no_tracked_changes(root, base)
+    _exit_if_base_checked_out_elsewhere(root, base, branch, node_id)
 
-    git_run(ROOT, "fetch", remote)
+    git_run(root, "fetch", remote)
     local_claim = all(
-        only_own_registration_ahead(ROOT, remote, base, codename, ref, capture=git_capture)
+        only_own_registration_ahead(root, remote, base, codename, ref, capture=git_capture)
         for ref in ("HEAD", base)
     )
     if local_claim:
-        _drop_local_registration(remote, base, branch)
+        _drop_local_registration(root, remote, base, branch)
     else:
-        ahead = _count_commits_ahead_of_remote_base(remote, base)
-        _exit_if_unpushed_commits_without_force(remote, base, ahead, args.force)
-        _sync_integration_branch_ff(remote, base)
-        _remove_registry_row_and_push(remote, base, codename)
+        ahead = _count_commits_ahead_of_remote_base(root, remote, base)
+        _exit_if_unpushed_commits_without_force(root, remote, base, ahead, args.force)
+        _sync_integration_branch_ff(root, remote, base)
+        _remove_registry_row_and_push(root, remote, base, codename)
 
-    _delete_feature_branch(branch, force=args.force or local_claim)
-    _remove_pickup_work_files(node_id, force=args.force)
+    _delete_feature_branch(root, branch, force=args.force or local_claim)
+    _remove_pickup_work_files(root, node_id, force=args.force)
 
-    print(f"\n[ok] pickup aborted; on branch {current_branch(ROOT)}")
+    print(f"\n[ok] pickup aborted; on branch {current_branch(root)}")
 
 
 if __name__ == "__main__":

@@ -55,7 +55,7 @@ from specy_road.brainstorm_session import (
     write_session,
 )
 from specy_road.roadmap_load import load_roadmap
-from specy_road.cli_entry import run_forwarded_cli
+from specy_road.cli_entry import run_handler
 from specy_road.runtime_paths import resolve_repo_root
 
 
@@ -379,7 +379,7 @@ HANDLERS = {name: fn if name == "verify" else _serialised(fn) for name, fn in {
 
 
 def main(argv: list[str] | None = None) -> None:
-    run_forwarded_cli(lambda: build_parser(HANDLERS), "brainstorm", argv)
+    run_handler(build_parser(HANDLERS).parse_args(argv))
 
 
 if __name__ == "__main__":

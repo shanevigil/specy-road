@@ -50,7 +50,7 @@ def test_a_new_project_passes_each_check_with_nothing_about_the_scaffold(
     run = {
         "validate": _argv_main(validate_roadmap.main, monkeypatch, *repo_args),
         "export": _argv_main(export_roadmap_md.main, monkeypatch, *repo_args),
-        "digest": lambda: digest_cli.main(["digest", *repo_args]),
+        "digest": lambda: digest_cli.main(repo_args),
     }[name]
 
     code = _exit_code(run)

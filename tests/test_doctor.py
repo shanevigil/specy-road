@@ -16,7 +16,6 @@ import yaml
 
 from specy_road import cli
 from specy_road.bundled_scripts import doctor
-from tests.helpers import REPO
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
 
 TOOLKIT_STASH = "specy-road: temp stash work/ around pickup"
@@ -59,7 +58,6 @@ def _graph_and_registry(repo: Path) -> None:
 
 @pytest.fixture
 def doctor_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
-    monkeypatch.setenv("PYTHONPATH", str(REPO))   # --fix runs registry-prune as a subprocess
     repo = make_review_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
     _graph_and_registry(repo)
@@ -213,6 +211,34 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
     assert any("wt-thing  — branch feature/rm-thing live: claimed by M1.1" in line for line in listed)
     assert any("ghost  —" in line and "specy-road registry-prune --remove ghost" in line for line in listed)
     assert "M1.1" in out.split("Claims with no live worker", 1)[1]   # the claim is reported, not released
+
+
+def test_a_failed_registry_prune_warns_and_the_next_row_is_still_tried(doctor_repo, capsys) -> None:
+    """registry-prune runs in doctor's process. A push it fails on is reported as its child's
+    failure was, a ``[warn]`` line holding its output with git's; doctor goes on to the next row."""
+    repo, bare = doctor_repo
+    chunk = json.loads((repo / "roadmap" / "phases" / "M1.json").read_text())
+    chunk["nodes"].append({**NODE, "id": "M1.5", "codename": "buried", "status": "Complete",
+                           "node_key": "55555555-5555-5555-8555-555555555555", "sibling_order": 5})
+    commit_file(repo, "roadmap/phases/M1.json", json.dumps(chunk), "complete without a branch")
+    reg = yaml.safe_load((repo / "roadmap" / "registry.yaml").read_text())
+    reg["entries"].append({"codename": "buried", "node_id": "M1.5",
+                           "branch": "feature/rm-buried", "touch_zones": ["buried"]})
+    commit_file(repo, "roadmap/registry.yaml", yaml.safe_dump(reg), "buried claim")
+    git(repo, "push", "-q", "origin", "dev")
+    hook = bare / "hooks" / "pre-receive"
+    refuse_dev = 'while read old new ref; do [ "$ref" = refs/heads/dev ] && exit 1; done'
+    hook.write_text(f"#!/bin/sh\n{refuse_dev}\nexit 0\n")
+    hook.chmod(0o755)
+
+    assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 1
+
+    err = capsys.readouterr().err
+    for codename in ("settled", "buried"):
+        warning = err.split(f"[warn] {codename}: ", 1)[1].split("[warn] ", 1)[0]
+        assert "pre-receive hook declined" in warning   # git's own output, at the descriptor
+        assert "CalledProcessError" in warning   # the unhandled error, as a child's traceback
+    assert "settled" in git(bare, "show", "dev:roadmap/registry.yaml")
 
 
 def test_detached_worktrees_are_listed_and_fix_removes_only_clean_ones(doctor_repo, capsys) -> None:

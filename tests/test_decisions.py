@@ -191,7 +191,7 @@ def test_documented_search_kind_planning(tmp_path: Path) -> None:
     dest = tmp_path / "dogfood"
     shutil.copytree(DOGFOOD, dest)
     with pytest.raises(SystemExit) as exc:
-        search_main(["search", "contract", "--kind", "planning", "--repo-root", str(dest)])
+        search_main(["contract", "--kind", "planning", "--repo-root", str(dest)])
     assert int(exc.value.code or 0) == 0
 
 

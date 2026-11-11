@@ -57,17 +57,17 @@ def test_pickup_git_order_after_sync(monkeypatch: pytest.MonkeyPatch, tmp_path) 
     monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [node]})
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
-    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
-    monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
+    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _root, _b: None)
+    monkeypatch.setattr(dnt, "_push_integration_branch", lambda _root, _r, _b: None)
     monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(
         dnt,
-        "resolve_integration_defaults",
-        lambda _root, explicit_base=None, explicit_remote=None: ("main", "origin", []),
+        "integration_defaults",
+        lambda _root, _args: ("main", "origin"),
     )
-    monkeypatch.setattr(dnt, "_write_brief", lambda n, nodes: tmp_path / "work" / "brief-M9.1.md")
+    monkeypatch.setattr(dnt, "_write_brief", lambda *_a: tmp_path / "work" / "brief-M9.1.md")
     monkeypatch.setattr(
         dnt,
         "write_agent_prompt",
@@ -110,16 +110,16 @@ def test_pickup_git_order_pushes_by_default(monkeypatch: pytest.MonkeyPatch, tmp
     monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [node]})
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
-    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
+    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _root, _b: None)
     monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(
         dnt,
-        "resolve_integration_defaults",
-        lambda _root, explicit_base=None, explicit_remote=None: ("main", "origin", []),
+        "integration_defaults",
+        lambda _root, _args: ("main", "origin"),
     )
-    monkeypatch.setattr(dnt, "_write_brief", lambda n, nodes: tmp_path / "work" / "brief-M9.1.md")
+    monkeypatch.setattr(dnt, "_write_brief", lambda *_a: tmp_path / "work" / "brief-M9.1.md")
     monkeypatch.setattr(
         dnt,
         "write_agent_prompt",
@@ -168,17 +168,17 @@ def test_pickup_registers_leaf_claim_only(
     monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [parent, leaf]})
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
-    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
-    monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
+    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _root, _b: None)
+    monkeypatch.setattr(dnt, "_push_integration_branch", lambda _root, _r, _b: None)
     monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(
         dnt,
-        "resolve_integration_defaults",
-        lambda _root, explicit_base=None, explicit_remote=None: ("main", "origin", []),
+        "integration_defaults",
+        lambda _root, _args: ("main", "origin"),
     )
-    monkeypatch.setattr(dnt, "_write_brief", lambda n, nodes: tmp_path / "work" / "brief-M9.1.md")
+    monkeypatch.setattr(dnt, "_write_brief", lambda *_a: tmp_path / "work" / "brief-M9.1.md")
     monkeypatch.setattr(
         dnt,
         "write_agent_prompt",
@@ -239,7 +239,7 @@ def test_pickup_rejects_non_leaf_when_available_returns_parent(
     monkeypatch.setattr(dnt, "_available", misconfigured_available)
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
-    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
+    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _root, _b: None)
     monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(
@@ -249,12 +249,8 @@ def test_pickup_rejects_non_leaf_when_available_returns_parent(
     )
     monkeypatch.setattr(
         dnt,
-        "resolve_integration_defaults",
-        lambda _root, explicit_base=None, explicit_remote=None: (
-            "main",
-            "origin",
-            [],
-        ),
+        "integration_defaults",
+        lambda _root, _args: ("main", "origin"),
     )
 
     with pytest.raises(SystemExit) as excinfo:
@@ -308,18 +304,18 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
     monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [node]})
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
-    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
-    monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
+    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _root, _b: None)
+    monkeypatch.setattr(dnt, "_push_integration_branch", lambda _root, _r, _b: None)
     if orchestration is None:   # no commit to read back: the message is checked as handed to git
         monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(
         dnt,
-        "resolve_integration_defaults",
-        lambda _root, explicit_base=None, explicit_remote=None: ("main", "origin", []),
+        "integration_defaults",
+        lambda _root, _args: ("main", "origin"),
     )
-    monkeypatch.setattr(dnt, "_write_brief", lambda n, nodes: tmp_path / "work" / "brief-M9.1.md")
+    monkeypatch.setattr(dnt, "_write_brief", lambda *_a: tmp_path / "work" / "brief-M9.1.md")
     monkeypatch.setattr(
         dnt,
         "write_agent_prompt",

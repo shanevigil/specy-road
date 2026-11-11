@@ -24,7 +24,7 @@ from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.generated_files import gitignore_resolution_hint
 from specy_road.git_subprocess import git_root
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.cli_entry import run_forwarded_cli
+from specy_road.cli_entry import run_handler
 
 
 def _print_gitignore_hint(root: Path, name: str) -> None:
@@ -130,7 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    run_forwarded_cli(build_parser, "digest", argv)
+    run_handler(build_parser().parse_args(argv))
 
 
 if __name__ == "__main__":

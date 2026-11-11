@@ -41,14 +41,13 @@ def test_resolve_context_rejects_registry_branch_mismatch(
         ],
     }
     _write_registry(tmp_path, reg)
-    monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(
         frm,
         "load_roadmap",
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
     with pytest.raises(SystemExit):
-        ft._resolve_context("feature/rm-example")
+        ft._resolve_context(tmp_path, "feature/rm-example")
 
 
 def test_resolve_context_rejects_missing_branch_field(
@@ -66,14 +65,13 @@ def test_resolve_context_rejects_missing_branch_field(
         ],
     }
     _write_registry(tmp_path, reg)
-    monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(
         frm,
         "load_roadmap",
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
     with pytest.raises(SystemExit):
-        ft._resolve_context("feature/rm-example")
+        ft._resolve_context(tmp_path, "feature/rm-example")
 
 
 def test_resolve_context_rejects_non_leaf_registry_claim(
@@ -97,10 +95,9 @@ def test_resolve_context_rejects_non_leaf_registry_claim(
         {"id": "M1.1", "title": "Child", "parent_id": "M1"},
     ]
     _write_registry(tmp_path, reg)
-    monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(frm, "load_roadmap", lambda _p: {"nodes": nodes})
     with pytest.raises(SystemExit):
-        ft._resolve_context("feature/rm-example")
+        ft._resolve_context(tmp_path, "feature/rm-example")
     err = capsys.readouterr().err.lower()
     assert "leaf" in err
     assert "registry" in err
@@ -146,7 +143,6 @@ def test_finish_blocks_when_implementation_review_pending(
         ],
     }
     _write_registry(tmp_path, reg)
-    monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(
         frm,
         "load_roadmap",
@@ -186,8 +182,7 @@ def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None
         json.dumps({"nodes": nodes}, indent=2) + "\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(ft, "ROOT", tmp_path)
-    changed = ft._update_chunk_status("M1.1")
+    changed = ft._update_chunk_status(tmp_path, "M1.1")
     assert changed == ["roadmap/phases/x.json"]
     out = load_json_chunk(tmp_path / "roadmap" / "phases" / "x.json")
     assert out[0]["status"] == "Complete"
@@ -196,12 +191,11 @@ def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None
 def test_validate_export_digest_runs_all_three_in_order(tmp_path, monkeypatch) -> None:
     """digest is a CI drift gate, so finish must refresh roadmap-context.md too."""
     calls: list[list[str]] = []
-    monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(
         ft.subprocess, "check_call", lambda argv, **_k: calls.append(list(argv))
     )
 
-    ft._validate_export_digest()
+    ft._validate_export_digest(tmp_path)
 
     assert [c[3] for c in calls] == ["validate", "export", "digest"]
     assert all(c[1:3] == ["-m", "specy_road.cli"] for c in calls)
@@ -233,9 +227,8 @@ def test_finish_already_done_on_branch_when_complete_and_deregistered(
             ]
         },
     )
-    monkeypatch.setattr(ft, "ROOT", tmp_path)
     with pytest.raises(SystemExit) as exc:
-        ft._resolve_context("feature/rm-manuscript-privacy-guard")
+        ft._resolve_context(tmp_path, "feature/rm-manuscript-privacy-guard")
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "already Complete" in out

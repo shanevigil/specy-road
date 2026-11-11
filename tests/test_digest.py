@@ -195,7 +195,7 @@ def test_a_corrupt_archive_ledger_does_not_break_the_digest(repo: Path) -> None:
 
 
 def test_cli_writes_the_default_file(repo: Path, capsys) -> None:
-    assert run_cli(["digest"], repo) == 0
+    assert run_cli([], repo) == 0
     out = repo / DEFAULT_OUTPUT
 
     assert out.is_file()
@@ -216,26 +216,26 @@ def _forget_the_committed_digest(repo: Path) -> None:
 def test_cli_stdout_mode_writes_no_file(repo: Path, capsys) -> None:
     _forget_the_committed_digest(repo)
 
-    assert run_cli(["digest", "-o", "-"], repo) == 0
+    assert run_cli(["-o", "-"], repo) == 0
 
     assert not (repo / DEFAULT_OUTPUT).exists()
     assert "# Roadmap context" in capsys.readouterr().out
 
 
 def test_check_passes_on_a_fresh_digest(repo: Path, capsys) -> None:
-    run_cli(["digest"], repo)
+    run_cli([], repo)
     capsys.readouterr()
 
-    assert run_cli(["digest", "--check"], repo) == 0
+    assert run_cli(["--check"], repo) == 0
     assert "matches the roadmap" in capsys.readouterr().out
 
 
 def test_check_fails_once_the_roadmap_moves(repo: Path, capsys) -> None:
-    run_cli(["digest"], repo)
+    run_cli([], repo)
     edit_node(repo, "M0.2", status="In Progress")
     capsys.readouterr()
 
-    assert run_cli(["digest", "--check"], repo) == 1
+    assert run_cli(["--check"], repo) == 1
     assert "drift" in capsys.readouterr().err
 
 
@@ -244,14 +244,14 @@ def test_check_reports_a_missing_file_rather_than_writing_one(
 ) -> None:
     _forget_the_committed_digest(repo)
 
-    assert run_cli(["digest", "--check"], repo) == 1
+    assert run_cli(["--check"], repo) == 1
     assert not (repo / DEFAULT_OUTPUT).exists()
     assert "missing" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(
     "argv",
-    [["digest"], ["digest", "--check"], ["digest", "-o", "-"]],
+    [[], ["--check"], ["-o", "-"]],
     ids=["plain", "check", "stdout"],
 )
 def test_no_manifest_is_one_clean_line_and_writes_nothing(

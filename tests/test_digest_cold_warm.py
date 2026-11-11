@@ -113,12 +113,12 @@ def _stamp_cache(repo: Path) -> None:
 
 
 def _assert_check_keeps_bytes(repo: Path, body: str) -> None:
-    assert run_cli(["digest"], repo) == 0
+    assert run_cli([], repo) == 0
     path = repo / DEFAULT_OUTPUT
     written = path.read_bytes()
     assert written.decode("utf-8") == body
     clear_memo()
-    assert run_cli(["digest", "--check"], repo) == 0
+    assert run_cli(["--check"], repo) == 0
     assert path.read_bytes() == written
 
 

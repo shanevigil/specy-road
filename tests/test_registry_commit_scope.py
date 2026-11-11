@@ -119,7 +119,6 @@ def test_pickup_leaves_worker_events_and_stash_alone_while_the_log_grows(
             if n >= 12:
                 break
 
-    monkeypatch.setattr(dnt, "ROOT", repo)
     monkeypatch.setattr(dnt, "git_run", git_run)
     monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(dnt, "git_config_user_name", lambda _r: "T")

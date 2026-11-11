@@ -9,13 +9,14 @@ command, for :mod:`tests.parity.process.test_process_corpus`.
 
 from __future__ import annotations
 
-import io
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
+import traceback
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,7 +40,7 @@ _SIZE = re.compile(r"\(\d+ bytes\)")
 
 @dataclass(frozen=True)
 class Case:
-    """``steps`` are ``(directory label, argv)``; ``build`` makes the labelled directories under a root."""
+    """``steps`` are ``(directory label, argv)``; ``build`` makes the labelled directories."""
 
     name: str
     build: Callable[[Path], dict[str, Path]]
@@ -47,9 +48,10 @@ class Case:
 
 
 def _two_repos(tmp: Path) -> dict[str, Path]:
-    """``a``: a claimed leaf on its feature branch; ``b``: milestone ``M2`` on ``dev``; ``out``: no project."""
+    """``a``: a claimed leaf on its branch; ``b``: milestone ``M2`` on ``dev``; ``out``: empty."""
     (tmp / "out").mkdir(parents=True)
-    return {"a": make_review_repo(tmp / "a"), "b": make_milestone_repo(tmp / "b"), "out": tmp / "out"}
+    a, b = make_review_repo(tmp / "a"), make_milestone_repo(tmp / "b")
+    return {"a": a, "b": b, "out": tmp / "out"}
 
 
 def _milestone_reviewed(tmp: Path) -> dict[str, Path]:
@@ -59,15 +61,17 @@ def _milestone_reviewed(tmp: Path) -> dict[str, Path]:
     d.mkdir(parents=True)
     record = {"node_id": "M2", "model": "human", "date": "2026-11-02", "verdict": "approve",
               "commit": git(root, "rev-parse", "dev"), "acceptance": {},
-              "findings": {"correctness": [], "regression": [], "boundary": [], "test_integrity": []},
-              "commands_rerun": [], "required_changes": [], "fresh_session": True, "authored_fix": False,
-              "is_coordinator": False}
-    (d / "REVIEW-human.md").write_text("---\n" + yaml.safe_dump(record, sort_keys=False) + "---\nnotes\n")
+              "findings": {"correctness": [], "regression": [], "boundary": [],
+                           "test_integrity": []},
+              "commands_rerun": [], "required_changes": [], "fresh_session": True,
+              "authored_fix": False, "is_coordinator": False}
+    front = yaml.safe_dump(record, sort_keys=False)
+    (d / "REVIEW-human.md").write_text(f"---\n{front}---\nnotes\n")
     return {"b": root}
 
 
 def _doctor_repo(tmp: Path, *, dirty: bool = False) -> dict[str, Path]:
-    """``dev`` holds a registry row whose leaf ``M1.4`` is Complete; ``origin`` is bare; no open claim.
+    """``dev`` holds a registry row whose leaf ``M1.4`` is Complete; ``origin`` is bare; no claim.
 
     With ``dirty`` a tracked file has an uncommitted change, so the nested registry-prune run
     refuses to sync the integration branch and doctor goes on.
@@ -95,7 +99,8 @@ def _doctor_repo(tmp: Path, *, dirty: bool = False) -> dict[str, Path]:
 
 
 def _prompt_repo(tmp: Path) -> dict[str, Path]:
-    """The ``opus`` roster entry with the shipped Claude Opus profile, on the claimed leaf's branch."""
+    """The ``opus`` roster entry with the shipped Claude Opus profile, on the claimed leaf's
+    branch, with a review packet filed."""
     from tests.test_models_and_prompt import make_profile_repo
 
     repo = make_profile_repo(tmp)
@@ -198,3 +203,59 @@ def step_transcript(argv: list[str], code: int, out: str, err: str, dirs: dict[s
 def golden_path(case: Case) -> Path:
     """Where ``case``'s recorded steps live."""
     return GOLDEN / f"{case.name}.txt"
+
+
+def _refuse_interpreters() -> None:
+    """Make every launch of a Python interpreter raise, but uvicorn's for ``specy-road gui``."""
+    real = subprocess.Popen
+
+    class Refusing(real):  # type: ignore[misc, valid-type]
+        def __init__(self, args, *a, **kw):
+            argv = args.split() if isinstance(args, str) else [str(x) for x in args]
+            prog = Path(argv[0]).name
+            if (prog.startswith("python") or argv[0] == sys.executable) and "uvicorn" not in argv:
+                raise RuntimeError(f"refused: a command launched a Python interpreter: {argv}")
+            super().__init__(args, *a, **kw)
+
+    subprocess.Popen = Refusing  # type: ignore[misc]
+
+
+def _step(cwd: str, argv: list[str]) -> list:
+    """``specy-road <argv>`` from ``cwd`` through ``specy_road.cli.main``: ``[exit, out, err]``."""
+    from specy_road import cli
+
+    os.chdir(cwd)
+    with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+        saved = os.dup(1), os.dup(2)
+        os.dup2(out.fileno(), 1)
+        os.dup2(err.fileno(), 2)
+        try:
+            cli.main(argv)
+            code = 0
+        except SystemExit as e:
+            code = cli.exit_status(e)
+        except Exception:  # noqa: BLE001 — what the interpreter prints for an unhandled error
+            traceback.print_exc()
+            code = 1
+        finally:
+            os.dup2(saved[0], 1)
+            os.dup2(saved[1], 2)
+            os.close(saved[0])
+            os.close(saved[1])
+        return [code, *(f.seek(0) or f.read().decode() for f in (out, err))]
+
+
+def run_in_one_process(plan: list[dict]) -> dict[str, list]:
+    """Every case's steps in this interpreter, in order: ``{case: [[exit, stdout, stderr], ...]}``.
+
+    Needs unbuffered output (:func:`corpus_env`): the steps' output is captured at the file
+    descriptors, so a buffered line would land in the next step's capture.
+    """
+    _refuse_interpreters()
+    return {item["case"]: [_step(cwd, argv) for cwd, argv in item["steps"]] for item in plan}
+
+
+if __name__ == "__main__":
+    plan_file, result_file = sys.argv[1:]
+    results = run_in_one_process(json.loads(Path(plan_file).read_text()))
+    Path(result_file).write_text(json.dumps(results))

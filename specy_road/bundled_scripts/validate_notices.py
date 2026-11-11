@@ -28,14 +28,16 @@ __all__ = ["notice_milestone_review_holds", "notice_repeated_ignore_patterns", "
            "report_context_warnings"]
 
 
-def parse_validate_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
+def parse_validate_args(
+    parser: argparse.ArgumentParser, argv: list[str] | None = None
+) -> argparse.Namespace:
     """The ``validate`` CLI's arguments, with ``--context``; folds this run's unchanged ``context:`` warnings unless it is given.
 
     Lives here so the options M13.12 adds stay out of ``validate_roadmap.py``.
     """
     parser.add_argument("--context", action="store_true",
                         help="Print the context: warnings in full even when unchanged since the last validate.")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     fold_next_report(not args.context)
     return args
 
