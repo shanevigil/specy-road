@@ -368,10 +368,21 @@ def stale_command_advice(mention: str) -> str:
 
 
 _INVOKED = re.compile(r"(?<![\w/.-])specy-road(?=[ \t])")
-#: An unquoted shell operator or a standalone redirection (``>``, ``>>``, ``2>``, ``<``).
-_OPERATOR = re.compile(r"[();|&]+|\d*[<>]+")
-#: An invocation holding one of these is a template (``specy-road <cmd> --x``), not a command line.
-_PLACEHOLDER = re.compile(r"<[^<>\s]+>|\.\.\.|…|[{}]")
+#: One shell token, after any whitespace: a ``<NAME>`` placeholder, an unquoted operator or comment
+#: start (``( ) ; | & < > #``), a word (unquoted characters, ``\``-escapes, and single- or
+#: double-quoted runs, joined as the shell joins them), or anything else (an unclosed quote, a
+#: trailing ``\``), which makes the line unparseable.
+_SHELL_TOKEN = re.compile(
+    r"""\s*(?:
+        (?P<placeholder><[^<>\s]+>)
+      | (?P<operator>[();|&<>\#])
+      | (?P<word>(?:[^\s"'\\();|&<>]|\\.|"(?:[^"\\]|\\.)*"|'[^']*')+)
+      | (?P<unparseable>\S)
+    )""",
+    re.VERBOSE,
+)
+#: A word holding one of these makes the invocation a template, not a command line.
+_PLACEHOLDER = re.compile(r"\.\.\.|…|[{}]")
 
 
 def _code_texts(lines: list[tuple[int, str]]):
@@ -386,22 +397,24 @@ def _code_texts(lines: list[tuple[int, str]]):
 def _invocation_words(text: str) -> list[str] | None:
     """The shell words of the invocation ``text`` starts with, unquoted.
 
-    One rule, read on the words as written (quotes kept, ``<NAME>`` whole): the invocation runs to
-    the first unquoted shell operator (``( ) ; | &``), standalone redirection (``<``, ``>``,
-    ``>>``, ``2>``) or bare ``--``. ``None`` when ``shlex`` cannot split it or any of its words is
-    a placeholder (``<NAME>``, ``...``, ``…``, braces): neither is a command line. Limit: a
-    redirection written onto a word (``--out>file``) is read as part of that word.
+    One rule, a shell's word grammar (:data:`_SHELL_TOKEN`): the invocation runs to its first
+    unquoted operator, redirection or comment (``( ) ; | & < > #``, attached to a word or not:
+    ``--json>out`` passes ``--json``) or bare ``--``. Quotes and ``\\``-escapes join a word as the
+    shell joins it (``--file="my notes.md"``, ``road\\ map``). ``None`` when a token before that
+    end is unparseable (an unclosed quote, a trailing ``\\``) or a placeholder (``<NAME>``,
+    ``...``, ``…``, braces): neither is a command line. Limits: no expansion (``$VAR`` and globs
+    are read as written; ``$(`` ends the invocation at its ``(``), and ``2>`` passes ``2`` as a
+    word, which is never a flag.
     """
-    lexer = shlex.shlex(text, posix=False, punctuation_chars="();|&")
-    lexer.whitespace_split = True
-    try:
-        raw = list(lexer)
-        end = next((i for i, w in enumerate(raw) if w == "--" or _OPERATOR.fullmatch(w)), len(raw))
-        # Unquoted here, so a word ending in a lone ``\`` (a line continuation) is unparseable too.
-        words = ["".join(shlex.split(word)) for word in raw[:end]]
-    except ValueError:
+    tokens = [(m.lastgroup, m.group(m.lastgroup)) for m in _SHELL_TOKEN.finditer(text)]
+    end = next(
+        (i for i, (kind, raw) in enumerate(tokens) if kind == "operator" or raw == "--"),
+        len(tokens),
+    )
+    head = tokens[:end]
+    if any(kind != "word" or _PLACEHOLDER.search(raw) for kind, raw in head):
         return None
-    return None if any(_PLACEHOLDER.search(word) for word in raw[:end]) else words
+    return [shlex.split(raw)[0] for _kind, raw in head]
 
 
 @functools.cache

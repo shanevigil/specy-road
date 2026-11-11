@@ -239,6 +239,9 @@ specy-road brief <NODE_ID> --bad && specy-road list-nodes --json -- --ignored
 specy-road review frob --zzz; specy-road export --check "unclosed
 specy-road brief M1 --outupt <FILE>
 specy-road search "|" --jsno 2>&1 | tail -1
+specy-road list-nodes --json>nodes.json; specy-road validate --strict>>validate.log <in
+specy-road review record M1 --file="work/my notes.md" --modle gpt
+specy-road search road\\ map --jsno
 ```
 """
 
@@ -246,7 +249,9 @@ specy-road search "|" --jsno 2>&1 | tail -1
 def test_an_unknown_long_flag_is_reported_with_the_closest_valid_one(
     tmp_path: Path, capsys
 ) -> None:
-    """Stale flags and valid ones. A quoted operator is an argument, so the flag after it is read.
+    """Stale flags and valid ones. A quoted operator is an argument, so the flag after it is read;
+    a redirection written onto a valid flag ends the invocation and reports nothing; a quoted
+    ``--option=value`` with spaces and an escaped space are one word each.
     A parent parser's option, a short option, an invocation holding a placeholder (before or after
     a stale flag), words after an unquoted operator or a bare ``--``, a word that is no subcommand
     and an unparseable line report nothing."""
@@ -256,6 +261,10 @@ def test_an_unknown_long_flag_is_reported_with_the_closest_valid_one(
         f"agents: warning — AGENTS.md:1: `specy-road validate` has no `--stirct` in specy-road "
         f"{__version__}; closest: `--strict`.",
         f"agents: warning — AGENTS.md:8: `specy-road search` has no `--jsno` in specy-road "
+        f"{__version__}; closest: `--json`.",
+        f"agents: warning — AGENTS.md:10: `specy-road review record` has no `--modle` in "
+        f"specy-road {__version__}; closest: `--model`.",
+        f"agents: warning — AGENTS.md:11: `specy-road search` has no `--jsno` in specy-road "
         f"{__version__}; closest: `--json`.",
     ]
 
@@ -279,7 +288,8 @@ def test_validate_and_garden_share_the_scanner_and_only_garden_reads_docs(tmp_pa
     root = tmp_path / "sr"
     (root / "docs" / "deep").mkdir(parents=True)
     (root / "docs" / "deep" / "guide.md").write_text(
-        "Run `specy-road pm-sync` nightly.\nThen `specy-road sync --bse dev`.\n", encoding="utf-8")
+        "Run `specy-road pm-sync` nightly.\nThen `specy-road sync --bse dev`.\n"
+        "Log it: `specy-road digest --check>digest.log`.\n", encoding="utf-8")
     (tmp_path / "CLAUDE.md").write_text("Run `specy-road backfill-activity` weekly.\n", encoding="utf-8")
     assert agent_files(root) == [root.resolve() / n for n in ("AGENTS.md", "CLAUDE.md")] + [
         tmp_path.resolve() / n for n in ("AGENTS.md", "CLAUDE.md")] + [root.resolve() / ".specyrd" / "AGENTS.team.md"]
