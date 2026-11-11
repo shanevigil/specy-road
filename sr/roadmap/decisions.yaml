@@ -45,8 +45,8 @@ entries:
     asked: '2026-11-02'
     status: closed
     answer: 'not a standing question (maintainer, 2026-11-10): at promotion the maintainer
-      states the exact version and the agent sets it in the version files, per the AGENTS.md
-      version rule'
+      states the exact version and the agent sets it in the version files, per the
+      AGENTS.md version rule'
     closed: '2026-11-11T05:40:00+00:00'
   - id: D3
     node: M11.72
@@ -214,4 +214,7 @@ entries:
       sandbox
     default_if_unanswered: keep
     asked: '2026-11-05'
-    status: open
+    status: closed
+    answer: 'keep (maintainer, 2026-11-10): composer-2.5 and grok-4.7-exec keep cursor_force:
+      true until M20 provides isolation or Cursor''s sandbox starts on this host'
+    closed: '2026-11-11T05:55:37+00:00'
