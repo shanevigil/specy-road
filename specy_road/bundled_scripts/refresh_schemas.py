@@ -20,7 +20,11 @@ import sys
 from pathlib import Path
 
 from specy_road import safe_write
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_template_root
+from specy_road.runtime_paths import (
+    add_repo_root_arg,
+    default_user_repo_root,
+    project_template_root,
+)
 
 SCHEMAS_DIRNAME = "schemas"
 

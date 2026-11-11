@@ -16,7 +16,12 @@ from specy_road.cli_args import subcommand_parsers
 from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import TEAM_MD
 from specy_road.managed_block import agent_file_lines_outside_block
-from specy_road.text_sections import _code_spans, _fence_closes, _fence_marker, _opening_is_code_span
+from specy_road.text_sections import (
+    _code_spans,
+    _fence_closes,
+    _fence_marker,
+    _opening_is_code_span,
+)
 
 # Emphasis directly attached to the product name is markup, so "_" is not a word
 # boundary there. A "_" inside an identifier (foo_specy-road) still blocks.

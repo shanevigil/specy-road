@@ -17,9 +17,10 @@ different digest means the review rules changed after the work started, so the g
 ``review accept-policy <ID>`` records an acceptance for that leaf and those two digests only; ``--all-open`` asks
 once for every open claim whose pin differs, prints each distinct set of changes once with the leaves it affects,
 and writes each of those leaves the same per-leaf file. Re-claiming the leaf declines and pins the policy then in
-force. The prompt and the gate refusal name this module, which is installed with the package. The
-``review accept-policy`` command itself lives in :mod:`specy_road.bundled_scripts.review_cli`: it loads the roadmap
-through the public loader, and the gate imports this module, so the gate's imports never reach the loader.
+force. The prompt and the gate refusal name this module, which is installed with the package.
+The ``review accept-policy`` command itself lives in :mod:`specy_road.bundled_scripts.review_cli`:
+it loads the roadmap through the public loader, and the gate imports this module, so the gate's
+imports never reach the loader.
 
 Unreadable input — one rule (:func:`_unreadable_as`). There are two input boundaries: the committed policy (every
 git read, decode, YAML load, shape check, digest and change line, in :func:`policy_digest` and the gate's pin check)

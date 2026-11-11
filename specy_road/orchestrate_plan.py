@@ -142,8 +142,8 @@ def _candidate(root: Path, config: dict[str, Any], entry: dict[str, Any], local:
 def flagged_areas(root: Path, policy: dict[str, Any]) -> set[str]:
     """The flagged areas when ``policy.quality_routing`` is on; empty when it is off.
 
-    Lives with its one caller rather than in :mod:`specy_road.review_tally`, so the review gate's imports never
-    reach the graph loader.
+    Lives with its one caller rather than in :mod:`specy_road.review_tally`, so the review
+    gate's imports never reach the graph loader.
     """
     if not policy.get("quality_routing"):
         return set()

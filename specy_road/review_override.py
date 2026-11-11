@@ -20,8 +20,9 @@ is the one under review or only this leaf's sheet or review bookkeeping changed 
 (:func:`~specy_road.review_bookkeeping.only_planning_or_review_bookkeeping_since`). It then settles only the
 blocks and the shortfall the answer names; every other gate condition applies unchanged.
 
-The command handler (``cmd_operator_decision``) lives in :mod:`specy_road.bundled_scripts.review_cli`: it loads the
-roadmap through the public loader, and the gate imports this module, so the gate's imports never reach the loader.
+The command handler (``cmd_operator_decision``) lives in
+:mod:`specy_road.bundled_scripts.review_cli`: it loads the roadmap through the public loader,
+and the gate imports this module, so the gate's imports never reach the loader.
 """
 
 from __future__ import annotations
