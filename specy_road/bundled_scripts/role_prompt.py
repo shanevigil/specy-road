@@ -235,13 +235,13 @@ def role_check(root: Path, node_id: str, role: str, model: str) -> tuple[dict, d
 
 def _target_node(root: Path, node_id: str, role: str, ref: str | None):
     """``(target, nodes, node, error)``; a coordinator's leaf need not be claimed yet (its prompt picks it up)."""
+    nodes = load_roadmap(root)["nodes"]
     try:
-        t = resolve_target(root, node_id, ref)
+        t = resolve_target(root, node_id, ref, nodes=nodes)
     except ReviewTargetError as e:
         if role != "coordinator":
             return None, [], None, str(e)
         t = None   # the coordinator's prompt is what picks the leaf up
-    nodes = t.nodes if t else load_roadmap(root)["nodes"]
     node = t.node if t else next((n for n in nodes if n.get("id") == node_id), None)
     return t, nodes, node, None if node is not None else f"unknown node id: {node_id}"
 

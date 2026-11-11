@@ -29,6 +29,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.reviewer_auth import claude_worker_refusal
+from specy_road.roadmap_load import load_roadmap
 from specy_road.runtime_paths import REPO_ROOT_ENV, project_prefix
 from specy_road.worker_adapter_parsers import effort_note, output_mode_note, resume_form_note
 from specy_road.worker_adapters import adapter_for
@@ -51,7 +52,7 @@ from specy_road.worktree_env import EnvSetupError, linked_status_paths, setup_wo
 
 def _target(repo_root: Path, node_id: str):
     try:
-        t = resolve_target(repo_root, node_id)
+        t = resolve_target(repo_root, node_id, nodes=load_roadmap(repo_root)["nodes"])
     except ReviewTargetError as e:
         raise WorkerError(f"{e}; `delegate` runs after pickup (do-next-available-task --under {node_id})") from None
     if not t.entry or not t.entry.get("branch"):

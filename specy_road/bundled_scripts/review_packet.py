@@ -58,6 +58,7 @@ from specy_road.review_target import (
     MILESTONE_SUMMARY, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
     resolve_target_or_exit, same_commit,
 )
+from specy_road.roadmap_load import load_roadmap
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
 
 TAIL_LINES = 60
@@ -336,7 +337,7 @@ def _delta_section(root: Path, prior: ReviewFile) -> list[str]:
 def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str],
                  base: str | None = None, max_diff_lines: int = MAX_DIFF_LINES,
                  max_diff_bytes: int = MAX_DIFF_BYTES, prior: ReviewFile | None = None, full: bool = False) -> str:
-    t = resolve_target_or_exit(root, node_id, ref)
+    t = resolve_target_or_exit(root, node_id, ref, nodes=load_roadmap(root)["nodes"])
     integration_ref = t.base_ref   # --base moves the diff range, never the trial merge mark and finish check
     if base or prior:
         t = _with_base(root, t, prior.data["commit"] if prior else str(base))
