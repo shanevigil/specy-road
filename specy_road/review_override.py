@@ -37,9 +37,8 @@ from typing import TYPE_CHECKING, Any, Callable
 import yaml
 
 from specy_road.clock import utc_now_iso
-from specy_road.decisions import (DECISIONS_REL, STANDING_RULE, decisions_path, read_decisions,
+from specy_road.decisions import (DECISIONS_REL, STANDING_RULE, decisions_path, next_decision_id, read_decisions,
                                   standing_rule_active, write_decisions)
-from specy_road.decisions_local import next_free_id
 from specy_road.git_subprocess import git_code, git_stdout, git_text
 from specy_road.nested_repos_land import checked_out_in, in_temp_worktree, move_ref
 from specy_road.orchestration_role_env import ROLE_ENV
@@ -320,10 +319,22 @@ def _answer(ns: argparse.Namespace, sha: str, who: str, settles: list[str], cite
     return text + f" Operator's words: {json.dumps(ns.quote.strip(), ensure_ascii=False)}"
 
 
-def _entry(root: Path, ns: argparse.Namespace, sha: str, answer: str, channel: str | None) -> dict[str, Any]:
+def free_decision_id(root: Path, clone: Path) -> str:
+    """The next ``D#`` used in neither ledger under ``root`` nor ``clone``'s ``decisions.local.yaml``. One rule for
+    every new decision entry: ``root`` may be a temporary worktree of the integration branch, which has no local
+    ledger, and the clone's local overlay would hide a shared entry with the same id (``load_merged``). A local id
+    in another clone is not visible here; that clone's overlay can still hide the entry (a documented limit)."""
+    entries = [*(read_decisions(decisions_path(root)).get("entries") or []),
+               *(read_decisions(decisions_path(root, True)).get("entries") or []),
+               *(read_decisions(decisions_path(clone, True)).get("entries") or [])]
+    return next_decision_id({"entries": entries}, "D")
+
+
+def _entry(root: Path, ns: argparse.Namespace, sha: str, answer: str, channel: str | None,
+           clone: Path) -> dict[str, Any]:
     by = COORDINATOR if ns.rule else OPERATOR
     return {
-        "id": next_free_id(root, "D"), "node": ns.node_id, "kind": "decision",
+        "id": free_decision_id(root, clone), "node": ns.node_id, "kind": "decision",
         "summary": f"{ns.decision} {ns.node_id} at {sha[:12]} ({by}"
                    + (f" under standing rule {ns.rule})" if ns.rule else " decision)"),
         "why_now": (f"standing rule {ns.rule} lets the coordinator accept with limits on this evidence" if ns.rule
@@ -349,14 +360,15 @@ def settle_lines(root: Path, gate: GateResult, blocks: list[tuple[str, ReviewFil
 
 def append_decision(root: Path, ns: argparse.Namespace, gate: GateResult, blocks: list[tuple[str, ReviewFile]],
                     who: str, cited: list[dict[str, str]] | None = None,
-                    channel: str | None = None) -> tuple[dict[str, Any], list[str]]:
+                    channel: str | None = None, clone: Path | None = None) -> tuple[dict[str, Any], list[str]]:
     """Append the closed decision entry settling ``blocks`` and any shortfall of ``gate`` to the ledger under
-    ``root`` (its id from that ledger); ``(entry, what it settles)``. ``channel`` (:data:`PM_GUI`) says where it
+    ``root`` (its id from :func:`free_decision_id`, ``clone`` the checkout whose local ledger is reserved too,
+    ``root`` by default); ``(entry, what it settles)``. ``channel`` (:data:`PM_GUI`) says where it
     was decided. No marker is written: the caller writes it (:func:`write_operator_marker`). Raises
     ``ValueError`` when ``root``'s copied schema refuses the entry."""
     sha = str(gate.commit)
     settles = settle_lines(root, gate, blocks)
-    entry = _entry(root, ns, sha, _answer(ns, sha, who, settles, cited or []), channel)
+    entry = _entry(root, ns, sha, _answer(ns, sha, who, settles, cited or []), channel, clone or root)
     path = decisions_path(root)
     doc = read_decisions(path)
     doc.setdefault("entries", []).append(entry)
@@ -507,7 +519,7 @@ def record_over_block(root: Path, node: dict[str, Any], gate: GateResult, ref: s
     ns = argparse.Namespace(node_id=node["id"], decision=APPROVE, quote=reason, rule=None, limit=[], session=session)
     blocks, who = blocks_to_settle(root, gate, sha), str(recorder(root))
     landed = commit_ledger_entry(
-        root, ref, lambda project: append_decision(project, ns, gate, blocks, who, channel=channel)[0],
+        root, ref, lambda project: append_decision(project, ns, gate, blocks, who, channel=channel, clone=root)[0],
         lambda entry: f"roadmap: operator decision {entry['id']} approves {node['id']} over the block")
     if landed.error or landed.entry is None:
         return OverBlockRecord(landed)

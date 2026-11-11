@@ -7,6 +7,7 @@ import {
   EMPTY_FORM,
   PM_DECISIONS_URL,
   approvalOffers,
+  decisionCodeStore,
   decisionTargets,
   resultText,
   reviewDecision,
@@ -164,5 +165,19 @@ describe("StatusModal keeps the code in page memory only", () => {
     expect(modalSource).not.toMatch(/localStorage|sessionStorage/);
     expect(modalSource).toContain('type="password"');
     expect(modalSource).toContain("sendDecision(fetchImpl, reviewed.request)");
+  });
+
+  it("keeps the code entered for the page across closing and reopening Status", () => {
+    const seen: string[] = [];
+    const close = decisionCodeStore.subscribe(() => seen.push(decisionCodeStore.get()));   // Status open
+    decisionCodeStore.set("c0de");
+    close();   // Status closed: the modal unmounts
+    const reopen = decisionCodeStore.subscribe(() => undefined);
+    expect(decisionCodeStore.get()).toBe("c0de");   // reopened: no need to type it again
+    expect(seen).toEqual(["c0de"]);
+    reopen();
+    decisionCodeStore.set("");
+    expect(modalSource).toContain("useSyncExternalStore(decisionCodeStore.subscribe, decisionCodeStore.get)");
+    expect(modalSource).toContain("value={code} onChange={(e) => editCode(e.target.value)}");   // the input reads the store
   });
 });

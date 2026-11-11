@@ -414,6 +414,8 @@ def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_pat
     gui.with_questions(lay, gui.question("D1"))
     git(lay.leaf, "merge", "-q", "--no-edit", "dev")
     gui.block(lay)
+    local = lay.run / "roadmap" / "decisions.local.yaml"   # a local-only D2: the approval must not take its id
+    local.write_text(yaml.safe_dump({"version": 1, "entries": [gui.question("D2")]}))
     c = gui.client()
     assert gui.answer(c, "D1", "A", "ship A\nnow").status_code == 400   # one line, so the sheet line can match
     assert gui.answer(c, "D1", "A", "ship A").status_code == 200
@@ -421,9 +423,9 @@ def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_pat
     git(lay.top, "merge", "-q", "--ff-only", "origin/dev")   # the coordinator pulls
     got = pending(lay.run)
     assert {k: (g["kind"], g["node"]) for k, g in got.items()} == {
-        "D1": ("answer", "M1.1"), "D2": ("approve-over-block", "M1.1")}
+        "D1": ("answer", "M1.1"), "D3": ("approve-over-block", "M1.1")}
     assert "`D1: A: ship A`" in got["D1"]["next"][0]
-    assert got["D2"]["next"] == ["specy-road mark-implementation-reviewed --yes on feature/rm-thing",
+    assert got["D3"]["next"] == ["specy-road mark-implementation-reviewed --yes on feature/rm-thing",
                                  "specy-road finish-this-task"]
     text = gst.render_text(gst.build_report(lay.run, "M1.1", None, NOW))
     assert "Decided in the GUI, not yet processed:\n  D1 [answer] node M1.1: A: ship A" in text
@@ -431,7 +433,7 @@ def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_pat
     commit_file(lay.leaf, NODE["planning_dir"], sheet, "D1 on the leaf branch")
     assert "D1" in pending(lay.run)   # a line only on a leaf branch does not clear it
     commit_file(lay.top, f"{lay.prefix}{NODE['planning_dir']}", sheet, "D1 on the integration branch")
-    assert set(pending(lay.run)) == {"D2"}
+    assert set(pending(lay.run)) == {"D3"}
     with pytest.raises(SystemExit) as e:
         mark_implementation_reviewed.main(["--yes", "--allow-missing-summary", "--repo-root", str(lay.leaf)])
         raise SystemExit(0)

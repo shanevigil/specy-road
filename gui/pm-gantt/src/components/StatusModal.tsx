@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import {
   GRIND_STATUS_INTERVALS,
   applyGrindStatus,
@@ -18,6 +18,7 @@ import {
 } from "../grindStatus";
 import {
   EMPTY_FORM,
+  decisionCodeStore,
   decisionTargets,
   resultText,
   reviewDecision,
@@ -59,11 +60,12 @@ const sameTarget = (a: DecisionTarget, b: DecisionTarget | null) =>
 
 /**
  * PM decisions (M17.15): choose an entry to answer or a leaf to approve over its block, type why and the code,
- * **Review decision**, then **Record decision** sends the reviewed request. The code stays in this component's
- * state only: never in web storage, a URL or the request body.
+ * **Review decision**, then **Record decision** sends the reviewed request. The code lives in `decisionCodeStore`
+ * (page memory), so closing and reopening Status keeps it until a reload: never in web storage, a URL or a body.
  */
 function DecisionPanel({ report, onRecorded }: { report: GrindStatusReport; onRecorded: () => void }) {
-  const [form, setForm] = useState<DecisionForm>(EMPTY_FORM);
+  const [form, setForm] = useState<Omit<DecisionForm, "code">>(EMPTY_FORM);
+  const code = useSyncExternalStore(decisionCodeStore.subscribe, decisionCodeStore.get);
   const [reviewed, setReviewed] = useState<ReviewedDecision | null>(null);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -71,8 +73,12 @@ function DecisionPanel({ report, onRecorded }: { report: GrindStatusReport; onRe
   if (!targets.length && !result) return null;
 
   /** Any edit drops the review: Record decision sends only what was last reviewed. */
-  const edit = (patch: Partial<DecisionForm>) => {
+  const edit = (patch: Partial<Omit<DecisionForm, "code">>) => {
     setForm((f) => ({ ...f, ...patch }));
+    setReviewed(null);
+  };
+  const editCode = (value: string) => {
+    decisionCodeStore.set(value);
     setReviewed(null);
   };
   const record = async () => {
@@ -82,7 +88,7 @@ function DecisionPanel({ report, onRecorded }: { report: GrindStatusReport; onRe
     setSending(false);
     setResult(resultText(sent));
     if (sent.kind === "ok") {
-      setForm((f) => ({ ...EMPTY_FORM, code: f.code }));
+      setForm(EMPTY_FORM);
       setReviewed(null);
       onRecorded();
     }
@@ -142,10 +148,10 @@ function DecisionPanel({ report, onRecorded }: { report: GrindStatusReport; onRe
       </label>
       <label style={FIELD}>
         Code from the terminal that started the GUI{" "}
-        <input type="password" autoComplete="off" value={form.code} onChange={(e) => edit({ code: e.target.value })} />
+        <input type="password" autoComplete="off" value={code} onChange={(e) => editCode(e.target.value)} />
       </label>
       <div className="workspace-notes-actions" style={CONTROLS}>
-        <button type="button" onClick={() => setReviewed(reviewDecision(form))}>
+        <button type="button" onClick={() => setReviewed(reviewDecision({ ...form, code }))}>
           Review decision
         </button>
         {reviewed?.ok ? (

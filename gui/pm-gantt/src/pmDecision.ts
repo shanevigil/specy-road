@@ -29,11 +29,32 @@ export type DecisionForm = {
   /** Answers only. */
   choice: AnswerChoice | null;
   words: string;
-  /** The code `specy-road gui` printed; page memory only. */
+  /** The code `specy-road gui` printed; page memory only (`decisionCodeStore`). */
   code: string;
 };
 
 export const EMPTY_FORM: DecisionForm = { target: null, choice: null, words: "", code: "" };
+
+/**
+ * The decision code for this page load: a module variable, so it outlives the Status modal, which is unmounted
+ * whenever it closes, and is gone on reload. Never in web storage, a URL or a request body. Components read it
+ * through `useSyncExternalStore(decisionCodeStore.subscribe, decisionCodeStore.get)`.
+ */
+let pageDecisionCode = "";
+const codeListeners = new Set<() => void>();
+export const decisionCodeStore = {
+  get: (): string => pageDecisionCode,
+  set: (code: string): void => {
+    pageDecisionCode = code;
+    for (const listener of codeListeners) listener();
+  },
+  subscribe: (listener: () => void): (() => void) => {
+    codeListeners.add(listener);
+    return () => {
+      codeListeners.delete(listener);
+    };
+  },
+};
 
 /** The open decision and human-action entries the status lists in scope. */
 export function answerableEntries(report: GrindStatusReport): GrindLedgerEntry[] {
