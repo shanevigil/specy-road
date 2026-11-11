@@ -34,7 +34,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.9` Commands run in the CLI's process: no python -m re-launch, no cwd globals `commands-run-in-the-cli-s-process-no-python-m-re-launch-no-cwd-globals` — task — **Not Started**
     - `M16.2.10` Every command exposes build_parser(), imports lazily and shares the common argument helpers `every-command-exposes-build-parser-imports-lazily-and-shares-the-common-argument-helpers` — task — **Not Started**
     - `M16.2.11` One SpecyError base for the 15 error classes, printed and turned into an exit code once `one-specyerror-base-for-the-15-error-classes-printed-and-turned-into-an-exit-code-once` — task — **Not Started**
-    - `M16.2.12` Review packets and prompts show a held milestone's rollup as the public loader does `held-rollup-in-review-packets` — task — **Not Started**
+    - `M16.2.12` Review packets and prompts show a held milestone's rollup as the public loader does `held-rollup-in-review-packets` — task — **Complete**
     - `M16.2.13` The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle `loader-out-of-review-cycle` — task — **Not Started**
   - `M16.3` Orchestration state model and the cap-driven folds `orchestration-state-model-and-the-cap-driven-folds` — milestone — **Not Started**
     - `M16.3.1` Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI `orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` — task — **Not Started**
@@ -333,7 +333,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.2.12` on `feature/rm-held-rollup-in-review-packets` since 2026-11-10
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05

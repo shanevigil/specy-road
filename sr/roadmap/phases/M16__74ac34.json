@@ -455,7 +455,7 @@
       "parent_id": "M16.2",
       "planning_dir": "planning/M16.2.12_held-rollup-in-review-packets_39346268-fb55-424c-a152-e0423d19e461.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review packets and prompts show a held milestone's rollup as the public loader does",
       "touch_zones": [
         "specy_road/review_target.py",
