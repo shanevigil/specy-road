@@ -32,8 +32,10 @@ from specy_road.chore_garden_due import garden_due, record_path, warn_garden_due
 from specy_road.chore_records import chores_dir
 from specy_road.validate_stale_commands import (
     agent_files,
+    line_unknown_flags,
     line_unregistered_commands,
     stale_command_advice,
+    unknown_flag_advice,
 )
 from specy_road.git_subprocess import git_root, git_text
 from specy_road.harness_instruction_files import RULES_MD
@@ -86,13 +88,21 @@ def _numbered_lines(path: Path) -> list[tuple[int, str]]:
 
 
 def stale_command_findings(root: Path) -> list[Finding]:
+    """Commands this version does not register, then long flags their command refuses."""
     root, checkout = _roots(root)
     docs = [p for base in (root, checkout) for p in sorted((base / "docs").rglob("*.md"))]
-    return list(dict.fromkeys(   # a line naming one command twice is one finding
+    commands = (
         Finding("stale-command", path.relative_to(checkout).as_posix(), lineno,
                 f"`{mention}` is not a command in specy-road {__version__}; {stale_command_advice(mention)}")
         for path in dict.fromkeys([*docs, *agent_files(root), root / RULES_MD])   # validate's set, plus the rules
-        for lineno, mention in line_unregistered_commands(_numbered_lines(path))))
+        for lineno, mention in line_unregistered_commands(_numbered_lines(path)))
+    flags = (
+        Finding("stale-command", path.relative_to(checkout).as_posix(), lineno,
+                unknown_flag_advice(*found))
+        for path in dict.fromkeys([*docs, *agent_files(root)])   # validate's set, plus docs/
+        for lineno, *found in line_unknown_flags(_numbered_lines(path)))
+    # a line naming one command twice is one finding
+    return list(dict.fromkeys([*commands, *flags]))
 
 
 def advisory_rule_findings(root: Path) -> list[Finding]:

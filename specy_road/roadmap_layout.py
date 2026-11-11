@@ -6,7 +6,7 @@ import re
 
 
 def _index(nodes: list[dict]):
-    """The graph index of ``nodes``; its module is imported here, by the dependency views that need it."""
+    """The graph index of ``nodes``, its module imported by the dependency views that need it."""
     from specy_road.roadmap_index import RoadmapIndex
 
     return RoadmapIndex(nodes)

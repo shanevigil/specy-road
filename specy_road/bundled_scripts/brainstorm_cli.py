@@ -18,7 +18,10 @@ import json
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.brainstorm_cli_args import bound_parser, execution_milestone_from_promote_sets
+from specy_road.bundled_scripts.brainstorm_cli_args import (
+    bound_parser,
+    execution_milestone_from_promote_sets,
+)
 from specy_road.bundled_scripts.brainstorm_cli_v2 import (
     HANDLERS_V2,
     cmd_add_ideas_from_file,

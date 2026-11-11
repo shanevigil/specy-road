@@ -1,13 +1,18 @@
-"""Warn when AGENTS.md or CLAUDE.md names a specy-road command this version does not register."""
+"""Warn when AGENTS.md or CLAUDE.md names a specy-road command or long flag this version lacks."""
 
 from __future__ import annotations
 
+import argparse
+import difflib
+import functools
 import re
+import shlex
 import sys
 from pathlib import Path
 
 from specy_road import __version__
-from specy_road.cli import REPLACED_COMMANDS, registered_agent_command_names
+from specy_road.cli import REPLACED_COMMANDS, command_parsers, registered_agent_command_names
+from specy_road.cli_args import subcommand_parsers
 from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import TEAM_MD
 from specy_road.managed_block import agent_file_lines_outside_block
@@ -270,20 +275,29 @@ def _mentions_on_open_line(lineno: int, line: str):
             yield lineno, match.group(1), match.group(2)
 
 
-def _command_mentions(lines: list[tuple[int, str]]):
+def _classified_lines(lines: list[tuple[int, str]]):
+    """``(line, text, fenced)`` for each numbered line that is not a fence marker."""
     open_fence: tuple[str, int] | None = None
     for lineno, line in lines:
         if open_fence is not None:
             if _fence_closes(line, open_fence):
                 open_fence = None
                 continue
-            yield from _mentions_in_fenced_line(lineno, line)
+            yield lineno, line, True
             continue
         marker = _fence_marker(line)
         if marker is not None and not _opening_is_code_span(line):
             open_fence = (marker[0], marker[1])
             continue
-        yield from _mentions_on_open_line(lineno, line)
+        yield lineno, line, False
+
+
+def _command_mentions(lines: list[tuple[int, str]]):
+    for lineno, line, fenced in _classified_lines(lines):
+        if fenced:
+            yield from _mentions_in_fenced_line(lineno, line)
+        else:
+            yield from _mentions_on_open_line(lineno, line)
 
 
 def _occurrences(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
@@ -317,18 +331,23 @@ def agent_files(root: Path) -> list[Path]:
     ))
 
 
-def file_unregistered_commands(path: Path) -> list[tuple[int, str]]:
-    """``(line, mention)`` per unregistered command ``path`` names outside its managed block; none when unreadable.
-
-    The scanner ``validate`` runs over :func:`agent_files` and ``chore garden`` runs over those and ``docs/``.
-    """
+def _lines_outside_block(path: Path) -> list[tuple[int, str]]:
+    """``path``'s numbered lines outside its managed block; none when it is missing or not UTF-8."""
     if not path.is_file():
         return []
     try:
         text = path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         return []
-    return _occurrences(agent_file_lines_outside_block(text))
+    return agent_file_lines_outside_block(text)
+
+
+def file_unregistered_commands(path: Path) -> list[tuple[int, str]]:
+    """``(line, mention)`` per unregistered command ``path`` names outside its managed block; none when unreadable.
+
+    The scanner ``validate`` runs over :func:`agent_files` and ``chore garden`` runs over those and ``docs/``.
+    """
+    return _occurrences(_lines_outside_block(path))
 
 
 def line_unregistered_commands(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
@@ -348,14 +367,125 @@ def stale_command_advice(mention: str) -> str:
     )
 
 
+_INVOKED = re.compile(r"(?<![\w/.-])specy-road(?=[ \t])")
+_OPERATOR = re.compile(r"[();<>|&]+")
+#: An invocation holding one of these is a template (``specy-road <cmd> --x``), not a command line.
+_PLACEHOLDER = re.compile(r"<[^<>\s]+>|\.\.\.|…|[{}]")
+
+
+def _code_texts(lines: list[tuple[int, str]]):
+    """``(line, text)``: each fenced line whole, and each code span's content on an open line."""
+    for lineno, line, fenced in _classified_lines(lines):
+        if fenced:
+            yield lineno, line
+        else:
+            yield from ((lineno, content) for _start, _end, content in _code_spans(line))
+
+
+def _invocation_words(text: str) -> list[str] | None:
+    """The shell words of ``text`` up to a shell operator or a bare ``--``.
+
+    ``None`` when ``shlex`` cannot split it or it holds a placeholder: neither is a command line.
+    """
+    lexer = shlex.shlex(text, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    try:
+        words = list(lexer)
+    except ValueError:
+        return None
+    end = next((i for i, w in enumerate(words) if w == "--" or _OPERATOR.fullmatch(w)), len(words))
+    return None if _PLACEHOLDER.search(" ".join(words[:end])) else words[:end]
+
+
+@functools.cache
+def _parsers(name: str) -> tuple[argparse.ArgumentParser, ...]:
+    return tuple(command_parsers(name))
+
+
+def _command_chain(words: list[str]) -> tuple[str, list[argparse.ArgumentParser], list[str]] | None:
+    """``(command words, parsers outermost first, the words after them)`` for a registered command.
+
+    The words name each subcommand down to a parser with none. ``None`` when the first word is not a
+    command with a parser, or a word in a subcommand's place is not one of that parser's.
+    """
+    if not words or words[0] not in registered_agent_command_names()["specy-road"] - {"version"}:
+        return None
+    chain, rest = list(_parsers(words[0])), words[1:]
+    named = [words[0]]
+    while subs := subcommand_parsers(chain[-1]):
+        if not rest or rest[0] not in subs:
+            return None
+        chain.append(subs[rest[0]])
+        named.append(rest.pop(0))
+    return " ".join(named), chain, rest
+
+
+def invocation_unknown_flags(
+    words: list[str], parsers: list[argparse.ArgumentParser]
+) -> list[tuple[str, str]]:
+    """``(flag, closest valid long flag)`` per ``--long`` flag in ``words`` that ``parsers`` refuse.
+
+    ``parsers`` is a command's chain, outermost first (:func:`specy_road.cli.command_parsers`):
+    an option declared on an outer parser is accepted too. Short options are not checked, and
+    nothing is reported for a parser that passes its words through (``argparse.REMAINDER``).
+    """
+    if any(action.nargs == argparse.REMAINDER for action in parsers[-1]._actions):
+        return []
+    valid = {option for parser in parsers for a in parser._actions for option in a.option_strings}
+    longs = sorted(option for option in valid if option.startswith("--"))
+    flags = (word.split("=", 1)[0] for word in words if word.startswith("--"))
+    return [
+        (flag, difflib.get_close_matches(flag, longs, n=1, cutoff=0)[0])
+        for flag in flags
+        if flag not in valid
+    ]
+
+
+def line_unknown_flags(lines: list[tuple[int, str]]) -> list[tuple[int, str, str, str]]:
+    """``(line, command, flag, closest)`` per long flag its command refuses, in numbered ``lines``.
+
+    Only ``specy-road <cmd> [<sub>] --flag`` invocations inside a code span or a fenced block are
+    read; one that cannot be split, or holds a placeholder, is skipped. The flag scan ``validate``
+    runs over :func:`agent_files` and ``chore garden`` over those and ``docs/``.
+    """
+    found = []
+    for lineno, text in _code_texts(lines):
+        for match in _INVOKED.finditer(text):
+            words = _invocation_words(text[match.end() :])
+            # Only an invocation passing a long flag builds its command's parsers (and imports it).
+            has_flag = words is not None and any(w.startswith("--") for w in words)
+            resolved = _command_chain(words) if has_flag else None
+            if resolved is not None:
+                command, chain, rest = resolved
+                found += [
+                    (lineno, f"specy-road {command}", flag, closest)
+                    for flag, closest in invocation_unknown_flags(rest, chain)
+                ]
+    return found
+
+
+def unknown_flag_advice(command: str, flag: str, closest: str) -> str:
+    """That ``command`` refuses ``flag`` in this version, and the flag it most resembles."""
+    return f"`{command}` has no `{flag}` in specy-road {__version__}; closest: `{closest}`"
+
+
 def warn_unregistered_commands(root: Path) -> None:
+    """``validate``'s agent-file warnings: unregistered commands, then unknown long flags."""
     root = root.resolve()
     checkout = git_root(root) or root
     for path in agent_files(root):
-        rel = path.relative_to(checkout)
-        for lineno, mention in file_unregistered_commands(path):
-            print(
-                f"agents: warning — {rel}:{lineno} tells agents to run `{mention}`, which is not a "
-                f"command in specy-road {__version__}; {stale_command_advice(mention)}.",
-                file=sys.stderr,
-            )
+        _warn_agent_file(path.relative_to(checkout), _lines_outside_block(path))
+
+
+def _warn_agent_file(rel: Path, lines: list[tuple[int, str]]) -> None:
+    for lineno, mention in _occurrences(lines):
+        print(
+            f"agents: warning — {rel}:{lineno} tells agents to run `{mention}`, which is not a "
+            f"command in specy-road {__version__}; {stale_command_advice(mention)}.",
+            file=sys.stderr,
+        )
+    for lineno, command, flag, closest in line_unknown_flags(lines):
+        print(
+            f"agents: warning — {rel}:{lineno}: {unknown_flag_advice(command, flag, closest)}.",
+            file=sys.stderr,
+        )

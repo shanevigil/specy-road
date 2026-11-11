@@ -10,14 +10,17 @@ SPECY_ROAD_PARITY_REGEN=missing pytest -m parity  # write only goldens that do n
 
 | Test file | What it pins | Goldens |
 | --- | --- | --- |
-| `test_command_surface.py` | Every `specy-road`/`specyrd` command and subcommand (from `cli.registered_agent_command_names()` and `--help` output): its subparser path, option strings and passthrough, compared both ways; and each one's `--help` transcript at `COLUMNS=100` | `golden/inventory.json`, `golden/help/` |
+| `test_command_surface.py` | Every `specy-road`/`specyrd` command and subcommand (from `cli.registered_agent_command_names()` and each command's parsers, `cli.command_parsers()`, which its module's `build_parser()` returns): its subparser path, option strings and passthrough, compared both ways; and each one's `--help` transcript at `COLUMNS=100` | `golden/inventory.json`, `golden/help/` |
+| `test_option_table.py` | `--json`, `--ref`, `--model`, `--base` and `--remote` on every parser: action, type, choices, required flag, default, destination, nargs and metavar, recorded before `specy_road/cli_args.py` declared them once; and that nothing else declares them | `golden/option_table.json` |
 | `test_leaf_loop.py` | One leaf from `init project` to `finish-this-task`, `on_complete: merge` and `pr`, offline: exit code, registry rows, leaf status and git state after each step | `golden/leaf_loop/` |
 | `test_generated_outputs.py` | `validate`, `export --check`, `digest --check` and the digest on the dogfood fixture; `upgrade --dry-run` on `fixtures/rc3_consumer/` (`init project --profiles none` from v0.3.1-rc3) | `golden/dogfood/`, `golden/upgrade/` |
 | `process/test_process_corpus.py` | The process corpus (`process/corpus.py`): commands run one after the other from two repo roots, `--repo-root` before and after the command name, a shared parser, the four forwarded commands and the guard, `doctor --fix` with a registry row to prune (and with that prune refused), `mark-implementation-reviewed M2 --yes` with its nested validate, export and digest, usage errors, `--version` and `prompt --channel cli`'s `would run` lines: exit code, stdout and stderr of each step, unbuffered, with commit ids, timestamps and file sizes normalised | `process/golden/` |
 
 Paths, the install prefix and the running version (whole tokens only) are normalised. Help
 transcripts are compared byte for byte, except that a paragraph holding a toolkit docs URL has its
-whitespace collapsed: the URL carries the version's tag, so a version bump reflows it. Digest
+whitespace collapsed (the URL carries the version's tag, so a version bump reflows it), and the
+entries of the options `cli_args` declares are compared by invocation only: their help strings may
+change, their names and metavars may not. Digest
 sections derived from git history are left out.
 
 The command surface changes only through rows of `command_map.yaml` (old invocation, new

@@ -40,7 +40,9 @@ def _specy_road_modules(argv: list[str]) -> set[str]:
 
 
 def test_validate_imports_at_most_half_the_baseline_modules() -> None:
-    assert RECORDED["command"] == "specy-road validate --repo-root tests/fixtures/specy_road_dogfood"
+    assert RECORDED["command"] == (
+        "specy-road validate --repo-root tests/fixtures/specy_road_dogfood"
+    )
     modules = _specy_road_modules(RECORDED["command"].split()[1:])
     limit = RECORDED["specy_road_modules"] // 2
     assert len(modules) <= limit, (

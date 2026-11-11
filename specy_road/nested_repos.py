@@ -58,7 +58,8 @@ def nested_repos(repo_root: Path) -> list[NestedRepo]:
 
 def covers(zones, path: str, prefix: str) -> bool:
     """Any of ``zones`` names the repository at project-relative ``path``, or something inside it."""
-    from specy_road.finish_implementation_check import _clean, zone_matches   # it imports this module
+    # finish_implementation_check imports this module.
+    from specy_road.finish_implementation_check import _clean, zone_matches
 
     for z in filter(None, (_clean(z) for z in zones or [])):
         for form in {z, rebase_to_project(z, prefix) or z}:

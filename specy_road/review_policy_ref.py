@@ -132,7 +132,7 @@ def trusted_integration_ref(
                 f"run `git fetch {remote} {ib}`, or fix integration_branch on the integration branch"
             )
     else:
-        from specy_road.finish_implementation_check import base_ref   # git and the finish gate's helpers
+        from specy_road.finish_implementation_check import base_ref   # the finish gate's helpers
 
         ref = base_ref(repo_root, remote, ib)
         if ref is None:

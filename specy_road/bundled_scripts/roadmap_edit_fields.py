@@ -71,7 +71,8 @@ DECISION_STATUS = frozenset({"pending", "decided"})
 
 
 def _parse_dependency_keys(raw: str, all_node_keys: set[str]) -> list[str]:
-    from specy_road.roadmap_node_keys import NODE_KEY_PATTERN   # an edit only: validate reads this module
+    # An edit only: validate reads this module.
+    from specy_road.roadmap_node_keys import NODE_KEY_PATTERN
 
     parts = re.split(r"[\s,;]+", raw.strip())
     out: list[str] = []

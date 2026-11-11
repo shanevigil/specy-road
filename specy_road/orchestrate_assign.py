@@ -123,7 +123,8 @@ def _launch_models(entry: dict[str, Any], *profiles: Profile | None) -> list[str
     entry's id matches), the id a default command passes (:func:`harness_model`: ``harness_model``, else that
     ``api_id``, else the roster id), and the literal ``--model`` / ``-m`` of ``channels.cli`` / ``cli_resume`` and of
     each copy's ``access.cli`` (read, never run; ``worker delegate`` and ``prompt --channel cli`` run it)."""
-    from specy_road.worker_models import command_model   # the worker stack, only with a roster to read
+    # The worker stack, only with a roster to read.
+    from specy_road.worker_models import command_model
 
     channels = _channels(entry)
     names = [command_model(str(channels[k])) or "" for k in LAUNCH_CHANNELS if channels.get(k)]
@@ -503,7 +504,8 @@ def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, 
     """``prefix``: :func:`project_prefix`, so a strong-review zone written from either root meets the leaf's.
     ``spread_index``: the leaf's position in the plan, for ``--spread``; ``None`` picks the cheapest executor.
     ``flagged``: the areas ``policy.quality_routing`` routes a strong reviewer to (:mod:`specy_road.review_tally`)."""
-    # The review stack, imported only by a plan: validate reaches this module for its roster warnings.
+    # The review stack, imported only by a plan: validate reaches this module for its roster
+    # warnings.
     from specy_road.review_strong import applicable_items, item_label
     from specy_road.review_tally import quality_review
 

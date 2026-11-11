@@ -143,7 +143,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--zone", action="append", required=True, metavar="PATH",
                     help="A touch zone (repeatable); worker reconcile flags changes outside them")
     sp.add_argument("--review", action="store_true", help="Allow `review delegate <slug>`; without it close records unreviewed")
-    add_model_arg(sp, help="Default executor model for `worker delegate <slug>`; may be off the roster")
+    add_model_arg(
+        sp, help="Default executor model for `worker delegate <slug>`; may be off the roster"
+    )
     sp.add_argument("--harness", choices=HARNESSES, help="Where an off-roster model runs")
     sp.add_argument("--worktree", help="Run in this checkout (default: this one)")
     add_json_arg(sp)
