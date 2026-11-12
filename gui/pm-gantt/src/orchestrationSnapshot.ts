@@ -43,8 +43,8 @@ export type SnapshotWorker = {
   /** Schema 2: Claude profile name, or null when not known (M17.1 question 3). */
   account?: string | null;
   last_activity?: string | null | Unknown;
-  /** Schema 2: rendered verbatim (stalled, steering_changed, paused_by_limit, …). */
-  flags?: string[];
+  /** Schema 2: rendered verbatim. `"unknown"` when the worker record could not be read. */
+  flags?: string[] | Unknown;
 };
 
 export type SnapshotWorktree = {
@@ -86,13 +86,16 @@ export type SnapshotHold = {
 };
 
 export type SnapshotLeaf = {
-  claim: SnapshotClaim | null;
+  /** Schema 1. The vocabulary is the same set as a worker's displayed status. */
+  status: WorkerStatus;
+  claim: SnapshotClaim | null | Unknown;
   workers: SnapshotWorker[];
   worktrees: SnapshotWorktree[];
   reviews: SnapshotReview[];
-  ready?: SnapshotReady | null;
-  gate?: SnapshotGate | null;
-  holds?: SnapshotHold[];
+  ready?: SnapshotReady | null | Unknown;
+  gate?: SnapshotGate | null | Unknown;
+  /** `"unknown"` when the hold file or the roadmap could not be read. */
+  holds?: SnapshotHold[] | Unknown;
 };
 
 export type OrchestrationSnapshot = {
@@ -122,6 +125,7 @@ export const requiredKeys: readonly string[] = [
   ...under("leaves.*.worktrees[]", ["path", "branch", "dirty"]),
   "leaves.*.reviews",
   ...under("leaves.*.reviews[]", ["model", "verdict", "commit", "fresh_for_head"]),
+  "leaves.*.status",
   "leafless_workers",
   ...under("leafless_workers[]", WORKER_REQUIRED),
 ];
@@ -233,6 +237,30 @@ function reviewsBlockingFirst(reviews: SnapshotReview[]): SnapshotReview[] {
     .map(({ r }) => r);
 }
 
+function isReady(v: SnapshotLeaf["ready"]): v is SnapshotReady {
+  return typeof v === "object" && v !== null;
+}
+
+function isGate(v: SnapshotLeaf["gate"]): v is SnapshotGate {
+  return typeof v === "object" && v !== null;
+}
+
+function isClaim(v: SnapshotLeaf["claim"]): v is SnapshotClaim {
+  return typeof v === "object" && v !== null;
+}
+
+/** `"unknown"` is one label the drawer can map; a missing list is empty. Never map the string itself. */
+function flagLabels(flags: SnapshotWorker["flags"]): string[] {
+  if (flags === "unknown") return ["unknown"];
+  return flags ?? [];
+}
+
+function holdRows(holds: SnapshotLeaf["holds"]): { source: string; id: string; reason: string }[] {
+  if (holds === "unknown") return [{ source: "unknown", id: "unknown", reason: "unknown" }];
+  if (!Array.isArray(holds)) return [];
+  return holds.map((h) => ({ source: text(h.source), id: text(h.id), reason: text(h.reason) }));
+}
+
 function workerRow(w: SnapshotWorker, now: Date): WorkerRowView {
   return {
     id: w.id,
@@ -243,31 +271,36 @@ function workerRow(w: SnapshotWorker, now: Date): WorkerRowView {
     lastActivity: age(w.last_activity, now),
     started: age(w.started_at, now),
     ended: age(w.ended_at, now),
-    flags: w.flags ?? [],
+    flags: flagLabels(w.flags),
   };
 }
 
 function blockedCount(leaf: SnapshotLeaf): number | null {
   const gate = leaf.gate;
-  if (!gate || (gate.state !== "blocked" && gate.state !== "executor_blocked")) return null;
+  if (!isGate(gate) || (gate.state !== "blocked" && gate.state !== "executor_blocked")) return null;
   if (typeof gate.blocks === "number" && gate.blocks > 0) return gate.blocks;
-  return leaf.ready?.blocked_on?.length ?? 0;
+  const ready = leaf.ready;
+  return isReady(ready) ? (ready.blocked_on?.length ?? 0) : 0;
 }
 
 /** One badge per leaf, the highest of M17.1's precedence that applies. */
 export function leafBadge(leaf: SnapshotLeaf): LeafBadge | null {
   const blocks = blockedCount(leaf);
   if (blocks !== null) return { kind: "blocked", text: blocks > 0 ? `blocked (${blocks})` : "blocked" };
-  const holds = leaf.holds ?? [];
-  if (holds.length > 0) return { kind: "held", text: holds.length > 1 ? `held (${holds.length})` : "held" };
+  const holds = leaf.holds;
+  if (Array.isArray(holds) && holds.length > 0) {
+    return { kind: "held", text: holds.length > 1 ? `held (${holds.length})` : "held" };
+  }
   const ws = leaf.workers;
   if (ws.some((w) => w.status === "exited_failed")) return { kind: "exited_failed", text: "exited_failed" };
-  if (ws.some((w) => w.flags?.includes("stalled"))) return { kind: "stalled", text: "stalled" };
+  if (ws.some((w) => Array.isArray(w.flags) && w.flags.includes("stalled"))) {
+    return { kind: "stalled", text: "stalled" };
+  }
   if (ws.some((w) => w.status === "running")) return { kind: "running", text: "running" };
-  const approved = leaf.gate?.state === "approved";
-  if (leaf.ready && !approved) return { kind: "ready", text: "READY awaiting review" };
+  const approved = isGate(leaf.gate) && leaf.gate.state === "approved";
+  if (isReady(leaf.ready) && !approved) return { kind: "ready", text: "READY awaiting review" };
   if (approved) return { kind: "approved", text: "approved" };
-  if (leaf.claim || ws.some((w) => w.status === "claimed")) return { kind: "claimed", text: "claimed" };
+  if (isClaim(leaf.claim) || ws.some((w) => w.status === "claimed")) return { kind: "claimed", text: "claimed" };
   if (ws.some((w) => w.status === "abandoned")) return { kind: "abandoned", text: "abandoned" };
   if (ws.some((w) => w.status === "unknown")) return { kind: "unknown", text: "unknown" };
   return null;
@@ -291,17 +324,27 @@ function holdPhrase(hold: SnapshotHold): string {
 }
 
 function badgeHover(leaf: SnapshotLeaf, now: Date): string {
-  const claim = leaf.claim
+  const claim = isClaim(leaf.claim)
     ? `${text(leaf.claim.codename)} · ${text(leaf.claim.branch)} · ${age(leaf.claim.registered_at, now)}`
-    : "—";
+    : leaf.claim === "unknown"
+      ? "unknown"
+      : "—";
   const workers =
     leaf.workers.length > 0 ? leaf.workers.map((w) => `${w.id} ${w.status}`).join(", ") : "—";
   const reviews =
     leaf.reviews.length > 0
       ? leaf.reviews.map((r) => `${text(r.model)} ${text(r.verdict)}`).join("; ")
       : "—";
-  const ready = leaf.ready ? shortCommit(text(leaf.ready.commit)) : "—";
-  const holds = leaf.holds?.length ? leaf.holds.map(holdPhrase).join("; ") : "—";
+  const ready = leaf.ready === "unknown"
+    ? "unknown"
+    : isReady(leaf.ready)
+      ? shortCommit(text(leaf.ready.commit))
+      : "—";
+  const holds = leaf.holds === "unknown"
+    ? "unknown"
+    : Array.isArray(leaf.holds) && leaf.holds.length
+      ? leaf.holds.map(holdPhrase).join("; ")
+      : "—";
   return [
     `claim: ${claim}`,
     `workers: ${workers}`,
@@ -341,13 +384,15 @@ function leafGroup(
     displayId: node?.id ?? key,
     title: node?.title ?? MISSING,
     badge: leafBadge(leaf),
-    claim: claim
-      ? {
-          codename: text(claim.codename),
-          branch: text(claim.branch),
-          registered: age(claim.registered_at, now),
-        }
-      : null,
+    claim: claim === "unknown"
+      ? { codename: "unknown", branch: "unknown", registered: "unknown" }
+      : isClaim(claim)
+        ? {
+            codename: text(claim.codename),
+            branch: text(claim.branch),
+            registered: age(claim.registered_at, now),
+          }
+        : null,
     workers: leaf.workers.map((w) => workerRow(w, now)),
     worktrees: leaf.worktrees.map((t) => ({
       path: text(t.path),
@@ -363,27 +408,27 @@ function leafGroup(
       // fresh_for_head only: a commit that differs from READY.commit stays fresh when the snapshot says so.
       fresh: yesNo(r.fresh_for_head, "fresh", "stale"),
     })),
-    ready: ready
-      ? {
-          commit: shortCommit(text(ready.commit)),
-          model: text(ready.model),
-          age: age(ready.at, now),
-          blockedOn: (ready.blocked_on ?? []).map((b) => `${text(b.acceptance)}: ${text(b.reason)}`),
-        }
-      : null,
-    gate: gate
-      ? {
-          state: text(gate.state),
-          approvals: text(gate.approvals),
-          blocks: text(gate.blocks),
-          fresh: yesNo(gate.fresh_for_head, "fresh", "stale"),
-        }
-      : null,
-    holds: (leaf.holds ?? []).map((h) => ({
-      source: text(h.source),
-      id: text(h.id),
-      reason: text(h.reason),
-    })),
+    ready: ready === "unknown"
+      ? { commit: "unknown", model: "unknown", age: "unknown", blockedOn: [] }
+      : isReady(ready)
+        ? {
+            commit: shortCommit(text(ready.commit)),
+            model: text(ready.model),
+            age: age(ready.at, now),
+            blockedOn: (ready.blocked_on ?? []).map((b) => `${text(b.acceptance)}: ${text(b.reason)}`),
+          }
+        : null,
+    gate: gate === "unknown"
+      ? { state: "unknown", approvals: "unknown", blocks: "unknown", fresh: "unknown" }
+      : isGate(gate)
+        ? {
+            state: text(gate.state),
+            approvals: text(gate.approvals),
+            blocks: text(gate.blocks),
+            fresh: yesNo(gate.fresh_for_head, "fresh", "stale"),
+          }
+        : null,
+    holds: holdRows(leaf.holds),
   };
 }
 

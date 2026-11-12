@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -35,6 +38,31 @@ NOT_UTF8 = b"\xff\xfe"
 NOT_MAPPING = b"---\n- not-a-mapping\n---\n"
 READY_INVALID = b"---\nnode_id: M1.1\n---\n"
 REVIEW_INVALID = b"---\nmodel: opus\n---\n"
+_SHA = b"abc1234abc1234abc1234abc1234abc1234abc12"
+READY_BLOCKED_TYPE = (
+    b"---\nnode_id: M1.1\nagent: composer\nbranch: feature/rm-thing\ncommit: '" + _SHA
+    + b"'\nbase: '" + _SHA + b"'\nchanged_paths: [src/a.py]\nblocked_on: waiting\n---\n"
+)
+REVIEW_ACCEPTANCE_LIST = b"""---
+node_id: M1.1
+model: human
+date: '2026-10-26'
+verdict: approve
+commit: abc1234abc1234abc1234abc1234abc1234abc12
+acceptance: []
+findings:
+  correctness: []
+  regression: []
+  boundary: []
+  test_integrity: []
+commands_rerun: []
+required_changes: []
+fresh_session: true
+authored_fix: false
+is_coordinator: false
+---
+notes
+"""
 NODE = "M1.1"
 TS = REPO / "gui" / "pm-gantt" / "src" / "orchestrationSnapshot.ts"
 FIXTURE = REPO / "tests" / "fixtures" / "orchestration_snapshot_v2.json"
@@ -185,7 +213,10 @@ def test_unreadable_ready_is_unknown_and_keeps_a_sibling_review(tmp_path: Path) 
     assert leaf["gate"]["state"] == _handoff_state(repo)
 
 
-@pytest.mark.parametrize("payload", [NOT_UTF8, NOT_MAPPING, REVIEW_INVALID], ids=["utf8", "mapping", "schema"])
+@pytest.mark.parametrize(
+    "payload", [NOT_UTF8, NOT_MAPPING, REVIEW_INVALID, REVIEW_ACCEPTANCE_LIST],
+    ids=["utf8", "mapping", "schema", "acceptance-type"],
+)
 def test_a_malformed_review_is_unknown_and_keeps_its_sibling(payload: bytes, tmp_path: Path) -> None:
     """Each malformed class blanks only that review."""
     repo = make_review_repo(tmp_path, orchestration=ONE)
@@ -197,7 +228,10 @@ def test_a_malformed_review_is_unknown_and_keeps_its_sibling(payload: bytes, tmp
     assert any(row["model"] == "opus" and row["commit"] == commit for row in rows)
 
 
-@pytest.mark.parametrize("payload", [NOT_UTF8, NOT_MAPPING, READY_INVALID], ids=["utf8", "mapping", "schema"])
+@pytest.mark.parametrize(
+    "payload", [NOT_UTF8, NOT_MAPPING, READY_INVALID, READY_BLOCKED_TYPE],
+    ids=["utf8", "mapping", "schema", "blocked-on-type"],
+)
 def test_each_malformed_ready_class_is_unknown(payload: bytes, tmp_path: Path) -> None:
     """A non-UTF-8, non-mapping or schema-invalid READY sets ``ready`` to unknown."""
     repo = make_review_repo(tmp_path, orchestration=ONE)
@@ -229,18 +263,18 @@ def test_worker_flags_activity_and_account_name_a_label_only(tmp_path: Path, mon
 
 
 def test_roster_cli_names_the_profile_when_the_record_does_not(tmp_path: Path) -> None:
-    """``<root>/personal/.claude`` on the roster command is the account ``personal``."""
-    config = "/accounts/hidden-config-dir/personal/.claude"
+    """A quoted ``CLAUDE_CONFIG_DIR`` with spaces names ``work``, and the path stays out of the snapshot."""
+    config = "/Accounts/My Accounts/work/claude"
     roster = ONE.replace(
         "roles: [reviewer]}",
-        "roles: [reviewer], channels: {cli: 'CLAUDE_CONFIG_DIR=" + config + " claude'}}",
+        "roles: [reviewer], channels: {cli: 'CLAUDE_CONFIG_DIR=\"" + config + "\" claude'}}",
         1,
     )
     repo = make_review_repo(tmp_path, orchestration=roster)
     create_record(repo, NODE, "generic", "opus", repo, branch="feature/rm-thing")
     blob = json.dumps(snapshot(repo))
-    assert _leaf(repo)["workers"][0]["account"] == "personal"
-    assert config not in blob
+    assert _leaf(repo)["workers"][0]["account"] == "work"
+    assert config not in blob and "My Accounts" not in blob
 
 
 def test_missing_integration_ref_is_unknown_ahead_and_behind(tmp_path: Path) -> None:
@@ -253,8 +287,10 @@ def test_missing_integration_ref_is_unknown_ahead_and_behind(tmp_path: Path) -> 
     assert after["ahead"] == "unknown" and after["behind"] == "unknown"
 
 
-def test_fsmonitor_in_a_worktree_does_not_run_and_the_main_checkout_stays(tmp_path: Path) -> None:
-    """A worktree fsmonitor script writes no sentinel, and the main checkout's status is unchanged."""
+def test_fsmonitor_in_a_worktree_does_not_run_and_the_main_checkout_stays(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every list-form git call snapshot makes carries the read-only settings, and the main status is unchanged."""
     repo = make_review_repo(tmp_path, orchestration=ONE)
     leaf = tmp_path / "leaf"
     git(repo, "worktree", "add", "-q", "-b", "feature/rm-side", str(leaf), "HEAD")
@@ -262,12 +298,36 @@ def test_fsmonitor_in_a_worktree_does_not_run_and_the_main_checkout_stays(tmp_pa
     script = tmp_path / "fsmon"
     script.write_text(f"#!/bin/sh\necho ran > {sentinel}\n", encoding="utf-8")
     script.chmod(script.stat().st_mode | stat.S_IEXEC)
-    git(repo, "config", "extensions.worktreeConfig", "true")
-    git(leaf, "config", "--worktree", "core.fsmonitor", str(script))
     create_record(repo, NODE, "generic", "opus", leaf, branch="feature/rm-side")
     porcelain = git(repo, "status", "--porcelain", "--untracked-files=all")
+    git(repo, "config", "core.fsmonitor", str(script))
+    git(repo, "config", "extensions.worktreeConfig", "true")
+    git(leaf, "config", "--worktree", "core.fsmonitor", str(script))
+    log = tmp_path / "git-invocations"
+    real = shutil.which("git")
+    wrapper = tmp_path / "git"
+    wrapper.write_text(
+        "#!/bin/sh\n"
+        f"printf '%s\\n' \"LOCKS=${{GIT_OPTIONAL_LOCKS-}}\" >> {shlex.quote(str(log))}\n"
+        f"printf '%s\\n' \"$@\" >> {shlex.quote(str(log))}\n"
+        f"printf '\\n' >> {shlex.quote(str(log))}\n"
+        f"exec {shlex.quote(str(real))} \"$@\"\n",
+        encoding="utf-8",
+    )
+    wrapper.chmod(wrapper.stat().st_mode | stat.S_IEXEC)
+    original_path = os.environ["PATH"]
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{original_path}")
     snapshot(repo)
     assert not sentinel.exists()
+    blocks = [b for b in log.read_text(encoding="utf-8").split("\n\n") if b.strip()]
+    assert blocks
+    for block in blocks:
+        lines = block.splitlines()
+        assert lines[0] == "LOCKS=0"
+        assert "core.fsmonitor=false" in lines and "core.hooksPath=/dev/null" in lines
+    assert any(isinstance(row["ahead"], int) for row in _leaf(repo)["worktrees"])
+    git(repo, "config", "--unset", "core.fsmonitor")
+    monkeypatch.setenv("PATH", original_path)
     assert git(repo, "status", "--porcelain", "--untracked-files=all") == porcelain
 
 

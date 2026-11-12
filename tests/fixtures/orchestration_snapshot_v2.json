@@ -2,6 +2,7 @@
   "schema": 2,
   "leaves": {
     "k-blocked": {
+      "status": "running",
       "claim": { "codename": "alpha", "branch": "feature/rm-alpha", "registered_at": "2026-11-08T09:00:00Z" },
       "workers": [
         {
@@ -22,6 +23,7 @@
       "holds": []
     },
     "k-exec-blocked": {
+      "status": "exited_failed",
       "claim": { "codename": "beta", "branch": "feature/rm-beta", "registered_at": "2026-11-07T12:00:00Z" },
       "workers": [
         {
@@ -42,6 +44,7 @@
       "holds": []
     },
     "k-held-list": {
+      "status": "exited_ok",
       "claim": { "codename": "gamma", "branch": "feature/rm-gamma", "registered_at": "2026-11-06T12:00:00Z" },
       "workers": [
         {
@@ -59,6 +62,7 @@
       "holds": [{ "source": "hold_list", "id": "M9.4", "reason": "waiting on the maintainer" }]
     },
     "k-held-gate": {
+      "status": "abandoned",
       "claim": { "codename": "delta", "branch": "feature/rm-delta", "registered_at": "2026-11-05T12:00:00Z" },
       "workers": [
         {
@@ -71,6 +75,7 @@
       "holds": [{ "source": "gate", "id": "M9.3", "reason": null }]
     },
     "k-unknown": {
+      "status": "unknown",
       "claim": null,
       "workers": [
         {

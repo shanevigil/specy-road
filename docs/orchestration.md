@@ -346,10 +346,10 @@ later commit makes it stale. Under the default human-only roster the agent canno
 `specy_road.orchestration.snapshot(repo_root)` is the one read of orchestration state for any
 consumer outside the orchestration code: the PM GUI's orchestration view (phase M17) reads it, and
 so may a script. It writes nothing: no worker record, registry row, review file, git object or git
-index change. The git calls it makes itself (worktree list, rev-list, status) pass
-`-c core.fsmonitor=false -c core.hooksPath=/dev/null` with `GIT_OPTIONAL_LOCKS=0`. The gate label,
-commit comparison and roadmap load reuse the review package's readers. It runs no stall sweep, ack,
-fetch, check or harness command.
+index change. For the duration of that call, every list-form `git` subprocess it causes —
+its own and the review package's readers — is `git -c core.fsmonitor=false -c core.hooksPath=/dev/null`
+with `GIT_OPTIONAL_LOCKS=0`. A shell-string git command is not rewritten. It runs no stall sweep,
+ack, fetch, check or harness command.
 `worker list` and doctor's claim report read the same state (`specy_road.orchestration.read_state`).
 `orchestrate plan` and every other reader of the session plan take their claimed leaves from its claim
 read (`read_claims`), and refuse a registry it reads as `unknown` rather than plan as if nothing were
@@ -377,7 +377,9 @@ keeps every name, type and value; schema 2 only adds fields. A field is added or
 
 `account` is the Claude profile name when the worker record (its `claude-config-dir` file) or its roster
 entry names the `CLAUDE_CONFIG_DIR` it ran with: that directory's name, or its parent's when the directory
-is named `claude` or `.claude`. Otherwise `null`. It is never a path, credential or environment value.
+is named `claude` or `.claude`. A quoted roster value keeps its spaces (`CLAUDE_CONFIG_DIR="/Accounts/My Accounts/work/claude"`
+is `work`). An unquoted value ends at whitespace. Otherwise `null`. It is never a path, credential or
+environment value.
 `last_activity` is the newer of the last event time and `last_output_at`. `flags` are the record's flags,
 plus `paused_by_limit` while the record's state is `paused_by_limit` (a usage-limit pause is a worker
 flag, not a hold). `ahead` and `behind` are integers against the local integration ref, or `unknown`

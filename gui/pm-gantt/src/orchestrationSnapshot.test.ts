@@ -133,7 +133,7 @@ describe("snapshot key paths", () => {
     const at = segs.map((s) => (typeof s === "number" ? `[${s}]` : `.${s}`)).join("").slice(1);
     const expected =
       segs.length === 2
-        ? ["claim", "workers", "worktrees", "reviews"].map((k) => `${at}.${k}`)
+        ? ["claim", "workers", "worktrees", "reviews", "status"].map((k) => `${at}.${k}`)
         : [at];
     expect(contractProblems(scratch)).toEqual({ unlisted: [], missing: expected });
   });
@@ -157,7 +157,9 @@ const worker = (over: Partial<SnapshotWorker> = {}): SnapshotWorker => ({
   ...over,
 });
 
-const emptyLeaf = (): SnapshotLeaf => ({ claim: null, workers: [], worktrees: [], reviews: [] });
+const emptyLeaf = (): SnapshotLeaf => ({
+  status: "claimed", claim: null, workers: [], worktrees: [], reviews: [],
+});
 
 /** Each badge candidate alone, in M17.1's precedence order. */
 const CANDIDATES: [string, Partial<SnapshotLeaf>, string][] = [
@@ -434,11 +436,39 @@ describe("buildOrchestrationView", () => {
     expect(ex.ready?.blockedOn).toEqual(["A2: needs a path outside the touch zones"]);
   });
 
+  it("renders unknown holds, flags, READY, gate and claim as unknown text, not a map of the string", () => {
+    const snap: OrchestrationSnapshot = {
+      schema: 2,
+      leaves: {
+        k: {
+          status: "unknown",
+          claim: "unknown",
+          workers: [worker({ status: "unknown", flags: "unknown" })],
+          worktrees: [],
+          reviews: [],
+          ready: "unknown",
+          gate: "unknown",
+          holds: "unknown",
+        },
+      },
+      leafless_workers: [],
+    };
+    const [g] = buildOrchestrationView(snap, [outlineNode("M1", "k")], NOW);
+    expect(g.workers[0].flags).toEqual(["unknown"]);
+    expect(g.holds).toEqual([{ source: "unknown", id: "unknown", reason: "unknown" }]);
+    expect(g.ready).toEqual({ commit: "unknown", model: "unknown", age: "unknown", blockedOn: [] });
+    expect(g.gate).toEqual({ state: "unknown", approvals: "unknown", blocks: "unknown", fresh: "unknown" });
+    expect(g.claim).toEqual({ codename: "unknown", branch: "unknown", registered: "unknown" });
+    expect(g.badge).toEqual({ kind: "unknown", text: "unknown" });
+    expect(outlineBadge({ kind: "ok", snapshot: snap }, "k", NOW)?.hover).toContain("holds: unknown");
+  });
+
   it("a schema 1 snapshot (no optional fields) shows — and an empty account, never false, 0 or clean", () => {
     const snap: OrchestrationSnapshot = {
       schema: 1,
       leaves: {
         k: {
+          status: "running",
           claim: { codename: "c", branch: "b", registered_at: "2026-11-08T11:59:30Z" },
           workers: [worker({ status: "running", pid_alive: true })],
           worktrees: [{ path: "p", branch: "b", dirty: false }],

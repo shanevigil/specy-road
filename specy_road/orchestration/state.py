@@ -3,10 +3,10 @@
 :func:`read_state` reads every source once; :func:`snapshot` turns that into the schema-2 document
 (``tests/fixtures/orchestration_snapshot_v2.json``, v1 fields unchanged from
 ``tests/fixtures/orchestration_snapshot_v1.json``). Nothing here writes: no record, registry,
-review file, git object or git index changes. Git calls this module makes itself (worktree list,
-rev-list, status) pass ``-c core.fsmonitor=false -c core.hooksPath=/dev/null`` with
-``GIT_OPTIONAL_LOCKS=0``. The gate label, commit comparison and roadmap load reuse the review
-package's readers.
+review file, git object or git index changes. For the duration of :func:`snapshot`, every
+list-form ``git`` subprocess — including the review package's readers — is invoked as
+``git -c core.fsmonitor=false -c core.hooksPath=/dev/null`` with ``GIT_OPTIONAL_LOCKS=0``.
+A shell-string git command is not rewritten.
 
 Each leaf's status comes from the fixture's truth table, first match wins. The abandoned rule is
 M15.26's, stated once in :func:`specy_road.orphaned_claims.orphaned_claims`; the slot states are
@@ -19,6 +19,9 @@ from __future__ import annotations
 
 import os
 import stat
+import subprocess
+import threading
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +37,7 @@ from specy_road.review_files import ReviewFile, list_ready, list_reviews, latest
 from specy_road.review_target import ReviewTargetError, same_commit
 from specy_road.worker_orphans import SLOT_STATES
 from specy_road.worker_process import wrapper_alive
+from specy_road.worker_schema import schema_errors
 from specy_road.worker_state import WorkerError, WorkerRecord, events_since, load_record, workers_dir
 
 SCHEMA = 2
@@ -42,12 +46,15 @@ _ENDED = frozenset({"completed", "failed", "terminated"})
 _GIT = ("-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null")
 _CLAUDE_DIR = "CLAUDE_CONFIG_DIR"
 _CLAUDE_NAMES = frozenset({"claude", ".claude"})
-_READY_KEPT = ("blocked_on:", "node_id is ", "branch is ")
-_REVIEW_KEPT = ("authored_fix:", "is_coordinator:", "verdict: approve with", "acceptance:")
+_READY_SCHEMA = "handoff.schema.json"
+_REVIEW_SCHEMA = "review-record.schema.json"
 _WORKER_UNKNOWN = (
     "harness", "model", "status", "pid_alive", "started_at", "ended_at",
     "account", "last_activity", "flags",
 )
+_git_lock = threading.Lock()
+_git_depth = 0
+_git_saved: dict[str, Any] = {}
 
 
 @dataclass
@@ -84,17 +91,94 @@ def read_state(repo_root: Path) -> OrchestrationState:
 
 def snapshot(repo_root: Path) -> dict[str, Any]:
     """The schema-2 snapshot: v1 fields plus account, activity, flags, ahead/behind, ready, gate, holds."""
-    state = read_state(repo_root)
-    listed, gates = _hold_sources(repo_root)
-    counts: dict[str | None, tuple[Any, Any]] = {}
-    leafless = [
-        _worker(state.repo_root, r) for r in state.records if load_chore(repo_root, r.node_id) is not None
-    ]
-    leafless += [_unreadable_worker(wid) for wid in state.unreadable_workers]
-    leaves = {
-        nid: _leaf(state, nid, listed, gates, counts) for nid in _leaf_ids(state)
-    }
-    return {"schema": SCHEMA, "leaves": leaves, "leafless_workers": leafless}
+    with _readonly_git():
+        state = read_state(repo_root)
+        listed, gates = _hold_sources(repo_root)
+        counts: dict[str | None, tuple[Any, Any]] = {}
+        leafless = [
+            _worker(state.repo_root, r) for r in state.records if load_chore(repo_root, r.node_id) is not None
+        ]
+        leafless += [_unreadable_worker(wid) for wid in state.unreadable_workers]
+        leaves = {
+            nid: _leaf(state, nid, listed, gates, counts) for nid in _leaf_ids(state)
+        }
+        return {"schema": SCHEMA, "leaves": leaves, "leafless_workers": leafless}
+
+
+@contextmanager
+def _readonly_git():
+    """Give every list-form ``git`` subprocess the read-only settings until the snapshot returns.
+
+    A shell string is left as written: the readers pass an argument list. Another thread's git in
+    this process during the call gets the same settings.
+    """
+    _enter_readonly_git()
+    try:
+        yield
+    finally:
+        _exit_readonly_git()
+
+
+def _enter_readonly_git() -> None:
+    global _git_depth
+    with _git_lock:
+        _git_depth += 1
+        if _git_depth == 1:
+            _git_saved.update(run=subprocess.run, check_call=subprocess.check_call, Popen=subprocess.Popen)
+            subprocess.run = _git_run
+            subprocess.check_call = _git_check_call
+            subprocess.Popen = _git_popen
+
+
+def _exit_readonly_git() -> None:
+    global _git_depth
+    with _git_lock:
+        _git_depth -= 1
+        if _git_depth == 0:
+            subprocess.run = _git_saved["run"]
+            subprocess.check_call = _git_saved["check_call"]
+            subprocess.Popen = _git_saved["Popen"]
+
+
+def _git_run(argv, *args, **kwargs):
+    argv, kwargs = _protect_git(argv, kwargs)
+    return _git_saved["run"](argv, *args, **kwargs)
+
+
+def _git_check_call(argv, *args, **kwargs):
+    argv, kwargs = _protect_git(argv, kwargs)
+    return _git_saved["check_call"](argv, *args, **kwargs)
+
+
+def _git_popen(argv, *args, **kwargs):
+    argv, kwargs = _protect_git(argv, kwargs)
+    return _git_saved["Popen"](argv, *args, **kwargs)
+
+
+def _protect_git(argv, kwargs):
+    """``git -c core.fsmonitor=false -c core.hooksPath=/dev/null`` and ``GIT_OPTIONAL_LOCKS=0``."""
+    rewritten = _git_argv(argv)
+    if rewritten is None:
+        return argv, kwargs
+    env = kwargs.get("env")
+    base = os.environ if env is None else env
+    if env is not None and base.get("GIT_OPTIONAL_LOCKS") == "0":
+        return rewritten, kwargs
+    return rewritten, {**kwargs, "env": {**base, "GIT_OPTIONAL_LOCKS": "0"}}
+
+
+def _git_argv(argv):
+    """The argument list with the read-only ``-c`` pair inserted, or ``None`` when it is not list-form git."""
+    if isinstance(argv, (str, bytes)) or not isinstance(argv, (list, tuple)) or not argv:
+        return None
+    program = argv[0]
+    if not isinstance(program, str) or Path(program).name not in ("git", "git.exe"):
+        return None
+    rest = list(argv[1:])
+    prefix = list(_GIT)
+    if rest[:len(prefix)] != prefix:
+        rest = [*prefix, *rest]
+    return [program, *rest]
 
 
 def leaf_status(state: OrchestrationState, node_id: str) -> str:
@@ -249,11 +333,32 @@ def _roster_config_dir(repo: Path, model: str) -> str | None:
 
 
 def _config_assignment(text: str) -> str | None:
+    """The literal after ``CLAUDE_CONFIG_DIR=``.
+
+    A quoted value runs to the matching quote and may contain spaces. An unquoted value runs to the
+    next whitespace. Backslashes, ``$`` and backticks stay literal: this is not a shell.
+    """
     key = _CLAUDE_DIR + "="
-    for part in text.replace("\n", " ").split():
-        if part.startswith(key):
-            return part[len(key):].strip("\"'")
+    for line in text.splitlines():
+        start = 0
+        while True:
+            i = line.find(key, start)
+            if i < 0:
+                break
+            if i == 0 or line[i - 1].isspace():
+                return _assignment_value(line[i + len(key):])
+            start = i + len(key)
     return None
+
+
+def _assignment_value(rest: str) -> str | None:
+    if not rest:
+        return None
+    if rest[0] in "\"'":
+        end = rest.find(rest[0], 1)
+        return None if end < 0 else rest[1:end]
+    token = rest.split(maxsplit=1)[0]
+    return token or None
 
 
 def _strings(value: Any) -> list[str]:
@@ -365,7 +470,7 @@ def _reviews(repo_root: Path, node_id: str, branch: str | None) -> list[dict[str
 
 
 def _review_row(repo: Path, review: ReviewFile, tip: str | None) -> dict[str, Any]:
-    if _malformed(review, _REVIEW_KEPT):
+    if _schema_invalid(review, _REVIEW_SCHEMA):
         return dict.fromkeys(("model", "verdict", "commit", "fresh_for_head"), UNKNOWN)
     commit = review.data.get("commit")
     return {
@@ -401,7 +506,7 @@ def _unknown_gate() -> dict[str, Any]:
 
 def _ready_field(repo: Path, node_id: str, branch: str | None, commit: str | None) -> Any:
     files = list_ready(repo, node_id, branch)
-    if files and not any(item.ok for item in files) and any(_malformed(item, _READY_KEPT) for item in files):
+    if files and not any(item.ok for item in files) and any(_schema_invalid(item, _READY_SCHEMA) for item in files):
         return UNKNOWN
     ready = latest_ready(repo, node_id, branch)
     if ready is None:
@@ -421,9 +526,17 @@ def _ready_field(repo: Path, node_id: str, branch: str | None, commit: str | Non
     return row
 
 
-def _malformed(review: ReviewFile, kept: tuple[str, ...]) -> bool:
-    """True for a non-UTF-8, non-mapping or schema-invalid file. A later semantic error is kept."""
-    return bool(review.errors) and not all(err.startswith(kept) for err in review.errors)
+def _schema_invalid(review: ReviewFile, schema_name: str) -> bool:
+    """A non-UTF-8, non-mapping or schema-invalid file. A semantic error keeps the record.
+
+    The installed schema decides. An error whose text happens to start like a semantic message
+    (``blocked_on:``, ``acceptance:``) is still schema-invalid when the schema rejects the value.
+    """
+    if not review.errors:
+        return False
+    if not isinstance(review.data, dict) or not review.data:
+        return True
+    return bool(schema_errors(review.data, schema_name))
 
 
 def _mtime_iso(path: Path) -> str:
