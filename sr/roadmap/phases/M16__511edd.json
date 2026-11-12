@@ -196,7 +196,8 @@
         "CHANGELOG.md",
         "specy_road/bundled_scripts/grind_session_args.py",
         "specy_road/orchestration/grind/grind_session_args.py",
-        "docs/git-workflow.md"
+        "docs/git-workflow.md",
+        "specy_road/validate_roadmap_runner.py"
       ],
       "type": "task"
     },

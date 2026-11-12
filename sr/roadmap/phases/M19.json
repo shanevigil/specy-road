@@ -212,7 +212,8 @@
         "specy_road/bundled_scripts/validate_roadmap.py",
         "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/validate_roadmap_runner.py"
       ],
       "type": "task"
     },
@@ -240,7 +241,8 @@
         "specy_road/bundled_scripts/validate_governance_fields.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/validate_roadmap_runner.py"
       ],
       "type": "task"
     },

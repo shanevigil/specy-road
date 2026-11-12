@@ -405,7 +405,7 @@
     },
     {
       "acceptance": [
-        "The eight merges in this sheet's table are applied: validate_notices into validate_roadmap, doctor_env_setup into doctor, refresh_stubs_report into refresh_stubs, upgrade_templates into upgrade, archive_git into archive_plan, search_fallback into search_index, file_limits_jsx into file_limits_js, reconcile_branch into reconcile_branch_cli",
+        "The eight merges in this sheet's table are applied: validate_notices into validate_roadmap_runner (package module), doctor_env_setup into doctor, refresh_stubs_report into refresh_stubs, upgrade_templates into upgrade, archive_git into archive_plan, search_fallback into search_index, file_limits_jsx into file_limits_js, reconcile_branch into reconcile_branch_cli",
         "Each merged file is rewrapped, its width entry lowered, and stays within the 1,000-line cap (not squashed to get under the 750-line warning)",
         "Parity harness and full suite unchanged",
         "Estimated net line change (informational, not a gate): package about -120"
