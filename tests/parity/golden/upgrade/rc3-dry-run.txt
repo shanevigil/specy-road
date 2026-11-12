@@ -10,6 +10,7 @@ copying tracked and untracked files into a temporary directory; ignored files ar
 would write schemas/decisions.schema.json
 would write schemas/git-workflow.schema.json
 would write schemas/orchestration.schema.json
+would write schemas/roadmap.schema.json
 
 == refresh-profiles
 no roster entry in roadmap/orchestration.yaml names a profile this specy-road ships; `specy-road refresh-profiles --profiles all` adds every one
