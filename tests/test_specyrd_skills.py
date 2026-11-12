@@ -74,7 +74,7 @@ def test_a_wrong_link_is_repaired(tmp_path: Path) -> None:
 
 
 def test_refresh_migrates_a_pre_skills_install_and_names_the_old_stubs(tmp_path: Path, capsys) -> None:
-    from specy_road.bundled_scripts.refresh_stubs import _report
+    from specy_road.bundled_scripts.refresh_stubs import report
 
     commands = tmp_path / ".claude" / "commands"
     commands.mkdir(parents=True)
@@ -87,7 +87,7 @@ def test_refresh_migrates_a_pre_skills_install_and_names_the_old_stubs(tmp_path:
     assert str(SKILL) in written and f"{LINK} (created)" in written
     assert orphans == [".claude/commands/specyrd-validate.md"]
     assert (commands / "specyrd-validate.md").read_text(encoding="utf-8") == "old stub\n"
-    _report(written, orphans, dry_run=False)
+    report(written, orphans, dry_run=False)
     out = capsys.readouterr().out
     assert "pre-0.3.0 command stubs" in out and "rm .claude/commands/specyrd-validate.md" in out
     assert "--prune" in out
@@ -95,7 +95,7 @@ def test_refresh_migrates_a_pre_skills_install_and_names_the_old_stubs(tmp_path:
 
 def test_prune_deletes_the_old_stubs_and_their_emptied_directory(tmp_path: Path, capsys) -> None:
     """rc1 feedback: the printed rm was easy to miss and left two /specyrd-… entries."""
-    from specy_road.bundled_scripts.refresh_stubs import _report
+    from specy_road.bundled_scripts.refresh_stubs import report
 
     commands = tmp_path / ".claude" / "commands"
     commands.mkdir(parents=True)
@@ -114,7 +114,7 @@ def test_prune_deletes_the_old_stubs_and_their_emptied_directory(tmp_path: Path,
     assert orphans == [".claude/commands/specyrd-validate.md"]
     assert not commands.exists()
     assert (tmp_path / ".claude" / "settings.json").is_file()
-    _report(written, orphans, dry_run=False, pruned=True)
+    report(written, orphans, dry_run=False, pruned=True)
     assert "removed .claude/commands/specyrd-validate.md" in capsys.readouterr().out
     assert refresh_stubs(tmp_path, prune=True)[1] == []
 

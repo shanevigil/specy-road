@@ -14,7 +14,7 @@ from tests.test_worker_cli import run_worker_cli
 from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import worker_ops_launch
-from specy_road.bundled_scripts import doctor_env_setup as des
+from specy_road.bundled_scripts import doctor as des
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import load_ready, reviews_dir
 from specy_road.runtime_paths import REPO_ROOT_ENV, project_root

@@ -79,8 +79,8 @@
       "PL": 12
     },
     "specy_road/archive_plan.py": {
-      "PL": 6,
-      "D102/D103": 4
+      "PL": 5,
+      "D102/D103": 3
     },
     "specy_road/archive_restore.py": {
       "PL": 6
@@ -306,7 +306,7 @@
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/reconcile_branch_cli.py": {
-      "PL": 1,
+      "PL": 2,
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/reconcile_milestone_status.py": {
@@ -321,12 +321,8 @@
       "D102/D103": 2
     },
     "specy_road/bundled_scripts/refresh_stubs.py": {
-      "PL": 3,
-      "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/refresh_stubs_report.py": {
-      "PL": 1,
-      "D102/D103": 1
+      "PL": 4,
+      "D102/D103": 2
     },
     "specy_road/bundled_scripts/registry_claim_status.py": {
       "D102/D103": 3
@@ -544,7 +540,7 @@
     "specy_road/file_limits_engine.py": {
       "D102/D103": 6
     },
-    "specy_road/file_limits_jsx.py": {
+    "specy_road/file_limits_js.py": {
       "PL": 1
     },
     "specy_road/finish_ancestor_rollup.py": {
@@ -732,9 +728,6 @@
       "PL": 3
     },
     "specy_road/pm_publish.py": {
-      "PL": 1
-    },
-    "specy_road/reconcile_branch.py": {
       "PL": 1
     },
     "specy_road/red_green.py": {
@@ -933,12 +926,8 @@
       "PL": 1,
       "D102/D103": 1
     },
-    "specy_road/search_fallback.py": {
-      "C901": 1,
-      "PL": 1,
-      "D102/D103": 2
-    },
     "specy_road/search_index.py": {
+      "C901": 1,
       "PL": 2,
       "SIM": 1,
       "D102/D103": 1

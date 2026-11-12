@@ -18,7 +18,7 @@ from specy_road.ignore_report import ESTIMATE_HEADER, HIDDEN_NOTE, REAL_HEADER, 
 from specy_road.managed_block import MARKER_END, MARKER_START
 from specy_road.written_entry import Written
 from specy_road.bundled_scripts.refresh_stubs import main
-from specy_road.bundled_scripts.refresh_stubs_report import report
+from specy_road.bundled_scripts.refresh_stubs import report
 from tests.m13_7_ignore_helpers import git, listed, repo_with_prompts, shown, write
 
 NOTE = "(.agents/skills → .claude/skills)"

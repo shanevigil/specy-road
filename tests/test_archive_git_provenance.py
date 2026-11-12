@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.archive_git import capture_provenance, merge_commit_for, nearest_tag
+from specy_road.archive_plan import capture_provenance, merge_commit_for, nearest_tag
 
 _ENV = {
     "GIT_AUTHOR_NAME": "t",
