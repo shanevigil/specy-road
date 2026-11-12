@@ -81,6 +81,8 @@ entries:
       - specy_road/review_files.py
       - specy_road/bundled_scripts/worker_cli.py
       - specy_road/bundled_scripts/orchestrate_cli.py
+      - specy_road/orchestrate_plan.py
+      - specy_road/session_plan_git.py
       - specy_road/bundled_scripts/doctor.py
       - scripts/check_import_layers.py
       - constraints/import-layers-baseline.json
