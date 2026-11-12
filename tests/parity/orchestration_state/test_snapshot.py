@@ -35,16 +35,22 @@ def _files(root: Path) -> dict[str, bytes]:
     }
 
 
+_V2_LEAF = {"ready", "gate", "holds"}
+_V2_WORKER = {"account", "last_activity", "flags"}
+_V2_WORKTREE = {"ahead", "behind"}
+
+
 def _check_shape(snap: dict) -> None:
-    assert snap.keys() == SHAPE.keys() and snap["schema"] == FIXTURE["schema"]
+    """Schema 2 keeps every v1 field and adds the optional ones."""
+    assert snap.keys() == SHAPE.keys() and snap["schema"] == 2
     workers = [*snap["leafless_workers"]]
     for leaf in snap["leaves"].values():
-        assert leaf.keys() == LEAF.keys() and leaf["status"] in FIXTURE["status_vocabulary"]
+        assert set(leaf) == set(LEAF) | _V2_LEAF and leaf["status"] in FIXTURE["status_vocabulary"]
         assert leaf["claim"] in (None, "unknown") or leaf["claim"].keys() == LEAF["claim"].keys()
-        assert all(w.keys() == LEAF["worktrees"][0].keys() for w in leaf["worktrees"])
-        assert all(r.keys() == LEAF["reviews"][0].keys() for r in leaf["reviews"])
+        assert all(set(w) == set(LEAF["worktrees"][0]) | _V2_WORKTREE for w in leaf["worktrees"])
+        assert all(set(r) == set(LEAF["reviews"][0]) for r in leaf["reviews"])
         workers += leaf["workers"]
-    assert all(w.keys() == LEAF["workers"][0].keys() for w in workers)
+    assert all(set(w) == set(LEAF["workers"][0]) | _V2_WORKER for w in workers)
 
 
 @pytest.mark.parametrize("row", ROWS, ids=lambda r: r.name)

@@ -1,0 +1,101 @@
+{
+  "schema": 2,
+  "leaves": {
+    "k-blocked": {
+      "claim": { "codename": "alpha", "branch": "feature/rm-alpha", "registered_at": "2026-11-08T09:00:00Z" },
+      "workers": [
+        {
+          "id": "w-0001", "harness": "claude", "model": "opus", "status": "running", "pid_alive": true,
+          "started_at": "2026-11-08T10:00:00Z", "ended_at": null,
+          "account": null, "last_activity": "2026-11-08T11:30:00Z", "flags": ["stalled", "steering_changed"]
+        }
+      ],
+      "worktrees": [
+        { "path": "work/.worktrees/alpha", "branch": "feature/rm-alpha", "dirty": true, "ahead": 3, "behind": 0 },
+        { "path": "work/.worktrees/alpha-2", "branch": "feature/rm-alpha-2", "dirty": false, "ahead": 0, "behind": 2 }
+      ],
+      "reviews": [
+        { "model": "sol", "verdict": "block", "commit": "abc1234", "fresh_for_head": false }
+      ],
+      "ready": { "commit": "abc1234", "model": "opus", "at": "2026-11-08T11:00:00Z", "blocked_on": [] },
+      "gate": { "state": "blocked", "approvals": 0, "blocks": 1, "fresh_for_head": false },
+      "holds": []
+    },
+    "k-exec-blocked": {
+      "claim": { "codename": "beta", "branch": "feature/rm-beta", "registered_at": "2026-11-07T12:00:00Z" },
+      "workers": [
+        {
+          "id": "w-0002", "harness": "codex", "model": "gpt", "status": "exited_failed", "pid_alive": false,
+          "started_at": "2026-11-08T08:00:00Z", "ended_at": "2026-11-08T09:00:00Z",
+          "account": "work", "last_activity": "2026-11-08T09:00:00Z", "flags": []
+        }
+      ],
+      "worktrees": [
+        { "path": "work/.worktrees/beta", "branch": "feature/rm-beta", "dirty": false, "ahead": 1, "behind": 0 }
+      ],
+      "reviews": [],
+      "ready": {
+        "commit": "def5678", "model": "gpt", "at": "2026-11-08T09:00:00Z",
+        "blocked_on": [{ "acceptance": "A2", "reason": "needs a path outside the touch zones" }]
+      },
+      "gate": { "state": "executor_blocked", "approvals": 0, "blocks": 0, "fresh_for_head": true },
+      "holds": []
+    },
+    "k-held-list": {
+      "claim": { "codename": "gamma", "branch": "feature/rm-gamma", "registered_at": "2026-11-06T12:00:00Z" },
+      "workers": [
+        {
+          "id": "w-0003", "harness": "claude", "model": "sonnet", "status": "exited_ok", "pid_alive": false,
+          "started_at": "2026-11-08T07:00:00Z", "ended_at": "2026-11-08T07:40:00Z",
+          "account": "personal", "last_activity": "2026-11-08T07:40:00Z", "flags": ["paused_by_limit"]
+        }
+      ],
+      "worktrees": [],
+      "reviews": [
+        { "model": "grok", "verdict": "approve", "commit": "0a1b2c3", "fresh_for_head": true }
+      ],
+      "ready": null,
+      "gate": null,
+      "holds": [{ "source": "hold_list", "id": "M9.4", "reason": "waiting on the maintainer" }]
+    },
+    "k-held-gate": {
+      "claim": { "codename": "delta", "branch": "feature/rm-delta", "registered_at": "2026-11-05T12:00:00Z" },
+      "workers": [
+        {
+          "id": "w-0004", "harness": "claude", "model": "opus", "status": "abandoned", "pid_alive": false,
+          "started_at": "2026-11-05T12:00:00Z", "ended_at": null
+        }
+      ],
+      "worktrees": [],
+      "reviews": [],
+      "holds": [{ "source": "gate", "id": "M9.3", "reason": null }]
+    },
+    "k-unknown": {
+      "claim": null,
+      "workers": [
+        {
+          "id": "w-0005", "harness": "unknown", "model": "unknown", "status": "unknown", "pid_alive": "unknown",
+          "started_at": "unknown", "ended_at": "unknown", "last_activity": "unknown"
+        },
+        {
+          "id": "w-0006", "harness": "manual", "model": "unknown", "status": "claimed", "pid_alive": false,
+          "started_at": null, "ended_at": null
+        }
+      ],
+      "worktrees": [
+        { "path": "work/.worktrees/epsilon", "branch": "unknown", "dirty": "unknown", "ahead": "unknown", "behind": "unknown" }
+      ],
+      "reviews": [
+        { "model": "sol", "verdict": "unknown", "commit": "unknown", "fresh_for_head": "unknown" }
+      ],
+      "gate": { "state": "unknown", "approvals": "unknown", "blocks": "unknown", "fresh_for_head": "unknown" }
+    }
+  },
+  "leafless_workers": [
+    {
+      "id": "w-0007", "harness": "claude", "model": "haiku", "status": "running", "pid_alive": true,
+      "started_at": "2026-11-08T11:50:00Z", "ended_at": null,
+      "account": "work", "last_activity": "2026-11-08T11:55:00Z", "flags": []
+    }
+  ]
+}
