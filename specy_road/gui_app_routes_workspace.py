@@ -17,7 +17,8 @@ from specy_road.roadmap_gui_lib import (
 from specy_road.roadmap_gui_remote import test_git_remote, test_llm_connection
 from specy_road.roadmap_gui_settings import with_stored_secrets
 
-from specy_road.bundled_scripts.review_node import ReviewError, run_review
+from specy_road.bundled_scripts.review_node import run_review
+from specy_road.llm_client import ReviewError
 
 from specy_road.gui_app_helpers import (
     assert_under_allowed_root,

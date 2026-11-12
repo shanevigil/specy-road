@@ -40,7 +40,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Complete |
 | `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Complete |
 | `M16.3.3` | Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one | task | Agentic-led | Complete |
-| `M16.3.4` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Not Started |
+| `M16.3.4` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Complete |
 | `M16.3.5` | The brainstorm CLI becomes two modules and the three managed-block writers share one engine | task | Agentic-led | Not Started |
 | `M16.3.6` | Fold the remaining single-importer siblings from the code report's misc list | task | Agentic-led | Not Started |
 | `M16.3.7` | Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed | task | Agentic-led | Not Started |

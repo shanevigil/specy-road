@@ -9,9 +9,10 @@ from pathlib import Path
 
 import pytest
 
+from specy_road import llm_client
 from specy_road.bundled_scripts import review_node
 from specy_road.roadmap_chunk_utils import write_json_chunk
-from tests.helpers import REPO, SCHEMAS
+from tests.helpers import REPO, SCHEMAS, use_fake_llm
 
 
 @pytest.fixture()
@@ -67,21 +68,22 @@ def tiny_repo(tmp_path: Path) -> Path:
 
 def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
+    monkeypatch.delenv("SPECY_ROAD_OPENAI_MODEL", raising=False)
     captured: list[str] = []
+    requests: list[dict] = []
 
-    def fake_complete(
-        _client: object,
-        user_content: str,
-        *,
-        system_prompt: str,
-    ) -> str:
-        captured.append(user_content)
+    def reply(request: dict) -> str:
+        requests.append(request)
+        captured.append(request["messages"][-1]["content"])
         return "## Review\nok"
 
-    monkeypatch.setattr(review_node, "_make_client", lambda: object())
-    monkeypatch.setattr(review_node, "_complete", fake_complete)
+    use_fake_llm(monkeypatch, reply)
     review_node.main(["M99.1", "--repo-root", str(tiny_repo)])
     assert len(captured) == 1
+    # One system turn (the feature-sheet prompt), then the context as one user turn.
+    assert requests[0]["model"] == "gpt-4o-mini"
+    assert [m["role"] for m in requests[0]["messages"]] == ["system", "user"]
+    assert requests[0]["messages"][0]["content"] == review_node.SYSTEM_PROMPT
     msg = captured[0]
     assert "Brief" in msg
     assert "## shared/ index (possible references)" in msg
@@ -117,14 +119,14 @@ def test_normalize_azure_endpoint_strips_path_and_query() -> None:
     raw = (
         "https://myresource.openai.azure.com/openai/responses?api-version=2024-08-01"
     )
-    assert review_node._normalize_azure_endpoint(raw) == (
+    assert llm_client.normalize_azure_endpoint(raw) == (
         "https://myresource.openai.azure.com"
     )
 
 
 def test_normalize_azure_endpoint_adds_https() -> None:
     assert (
-        review_node._normalize_azure_endpoint("myresource.openai.azure.com")
+        llm_client.normalize_azure_endpoint("myresource.openai.azure.com")
         == "https://myresource.openai.azure.com"
     )
 
@@ -140,7 +142,7 @@ def test_azure_settings_prefers_specy_over_azure_aliases(
     monkeypatch.setenv("SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT", "dep-specy")
     monkeypatch.delenv("SPECY_ROAD_OPENAI_API_VERSION", raising=False)
     monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
-    ep, key, dep, ver = review_node._azure_openai_settings_from_env()
+    ep, key, dep, ver = llm_client.azure_openai_settings_from_env()
     assert ep == "https://specy.example.com"
     assert key == "k-specy"
     assert dep == "dep-specy"
@@ -151,8 +153,27 @@ def test_anthropic_max_tokens_requires_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_MAX_TOKENS", raising=False)
-    with pytest.raises(review_node.ReviewError, match="SPECY_ROAD_ANTHROPIC_MAX_TOKENS"):
-        review_node._anthropic_max_completion_tokens()
+    with pytest.raises(llm_client.ReviewError, match="SPECY_ROAD_ANTHROPIC_MAX_TOKENS"):
+        llm_client.anthropic_max_completion_tokens()
+
+
+def test_anthropic_provider_errors_are_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A provider failure is a ReviewError with the key redacted, as on the OpenAI path."""
+    monkeypatch.setenv("SPECY_ROAD_ANTHROPIC_MAX_TOKENS", "100")
+    sent: list[dict] = []
+
+    class Messages:
+        def create(self, **request: object) -> object:
+            sent.append(request)
+            raise RuntimeError("401: api_key=sk-ant-secret0123456789 rejected")
+
+    client_type = type("Anthropic", (), {"__module__": "anthropic.fake", "messages": Messages()})
+    monkeypatch.setattr(llm_client, "make_client", client_type)
+    with pytest.raises(llm_client.ReviewError) as caught:
+        llm_client.complete([{"role": "user", "content": "hi"}], system_prompt="S")
+    assert "secret0123456789" not in str(caught.value)
+    assert sent[0]["system"] == "S"
+    assert sent[0]["max_tokens"] == 100
 
 
 def test_normalize_review_strips_markdown_fence() -> None:
@@ -197,29 +218,18 @@ def test_run_review_planning_body_override(
     monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
     captured: list[str] = []
 
-    def fake_complete(
-        _client: object,
-        user_content: str,
-        *,
-        system_prompt: str,
-    ) -> str:
-        captured.append(user_content)
+    def reply(request: dict) -> str:
+        captured.append(request["messages"][-1]["content"])
         return "## OK\n"
 
-    monkeypatch.setattr(review_node, "_make_client", lambda: object())
-    monkeypatch.setattr(review_node, "_complete", fake_complete)
+    use_fake_llm(monkeypatch, reply)
     review_node.run_review("M99.1", tiny_repo, planning_body="EDITOR_ONLY")
     assert "EDITOR_ONLY" in captured[0]
 
 
 def test_run_review_returns_markdown(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
-    monkeypatch.setattr(review_node, "_make_client", lambda: object())
-    monkeypatch.setattr(
-        review_node,
-        "_complete",
-        lambda _c, _u, *, system_prompt: "## OK\n",
-    )
+    use_fake_llm(monkeypatch, lambda _request: "## OK\n")
     out = review_node.run_review("M99.1", tiny_repo)
     assert out.startswith("## OK")
 
@@ -234,17 +244,11 @@ def test_shared_catalog_sorts_lexicographically(
     monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
     captured: list[str] = []
 
-    def fake_complete(
-        _client: object,
-        user_content: str,
-        *,
-        system_prompt: str,
-    ) -> str:
-        captured.append(user_content)
+    def reply(request: dict) -> str:
+        captured.append(request["messages"][-1]["content"])
         return "## OK\n"
 
-    monkeypatch.setattr(review_node, "_make_client", lambda: object())
-    monkeypatch.setattr(review_node, "_complete", fake_complete)
+    use_fake_llm(monkeypatch, reply)
     review_node.run_review("M99.1", tiny_repo)
     msg = captured[0]
     assert msg.index("`shared/a.md`") < msg.index("`shared/b.md`")

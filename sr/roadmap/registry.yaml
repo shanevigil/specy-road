@@ -99,23 +99,6 @@ entries:
     started: '2026-11-11'
     owner: savigil
     implementation_review: pending
-  - codename: one-llm-client-module-replaces-the-provider-code-inside-review-node
-    node_id: M16.3.4
-    branch: feature/rm-one-llm-client-module-replaces-the-provider-code-inside-review-node
-    touch_zones:
-      - specy_road/bundled_scripts/review_node.py
-      - specy_road/llm_client.py
-      - specy_road/brainstorm_chat.py
-      - specy_road/roadmap_gui_remote.py
-      - specy_road/gui_app_routes_*.py
-      - specy_road/bundled_scripts/llm_throughput.py
-      - constraints/file-limits.yaml
-      - tests/
-      - constraints/clone-baseline.json
-      - sr/constraints/file-limits.yaml
-    started: '2026-11-11'
-    owner: savigil
-    implementation_review: pending
   - codename: gui-api-orchestration
     node_id: M17.7
     branch: feature/rm-gui-api-orchestration

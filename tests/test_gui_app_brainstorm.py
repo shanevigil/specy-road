@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from starlette.testclient import TestClient
 
-from tests.helpers import DOGFOOD, script_subprocess_env
+from tests.helpers import DOGFOOD, script_subprocess_env, use_fake_llm
 from tests.test_brainstorm_chat import REPLY_WITH_IDEAS
 
 RESEARCH_ON = {
@@ -258,8 +258,6 @@ def test_research_settings_round_trip_and_obfuscate_the_key(
 
     import os
 
-    import specy_road.brainstorm_chat as mod
-
     r = api_client.put(
         "/api/settings",
         json={
@@ -291,7 +289,7 @@ def test_research_settings_round_trip_and_obfuscate_the_key(
     # ...and a chat sent with the page's masked settings uses the stored key.
     monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_API_KEY", raising=False)
     used = []
-    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: used.append(
+    use_fake_llm(monkeypatch, lambda *_a, **_k: used.append(
         os.environ.get("SPECY_ROAD_ANTHROPIC_API_KEY")) or "ok")
     slug = _session(api_client)["slug"]
     r = api_client.post("/api/brainstorm/chat", headers=_headers(api_client), json={
@@ -322,9 +320,7 @@ def test_chatting_puts_the_models_ideas_on_the_board(
     api_client: TestClient, monkeypatch
 ) -> None:
     """The panel's whole point: without this, triage and promote stay empty."""
-    import specy_road.brainstorm_chat as mod
-
-    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: REPLY_WITH_IDEAS)
+    use_fake_llm(monkeypatch, lambda *_a, **_k: REPLY_WITH_IDEAS)
     slug = _session(api_client)["slug"]
 
     r = api_client.post(
@@ -348,9 +344,7 @@ def test_chatting_puts_the_models_ideas_on_the_board(
 def test_converging_does_not_quietly_add_ideas(
     api_client: TestClient, monkeypatch
 ) -> None:
-    import specy_road.brainstorm_chat as mod
-
-    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: REPLY_WITH_IDEAS)
+    use_fake_llm(monkeypatch, lambda *_a, **_k: REPLY_WITH_IDEAS)
     slug = _session(api_client, mode="roadmap")["slug"]
 
     r = api_client.post(
@@ -372,8 +366,6 @@ def test_a_chat_turn_keeps_ideas_written_while_the_model_was_thinking(
     api_client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Pre-release review: the chat route saved the session it loaded before the LLM call, dropping a shard's idea."""
-    import specy_road.brainstorm_chat as mod
-
     slug = _session(api_client)["slug"]
 
     def reply(*_a, **_k) -> str:
@@ -381,7 +373,7 @@ def test_a_chat_turn_keeps_ideas_written_while_the_model_was_thinking(
                         "--title", "From a panel shard"], env=script_subprocess_env(), check=True, capture_output=True)
         return "IDEA: From the chat"
 
-    monkeypatch.setattr(mod, "complete_chat", reply)
+    use_fake_llm(monkeypatch, reply)
     r = api_client.post("/api/brainstorm/chat", json={"slug": slug, "messages": [{"role": "user", "content": "go"}],
                                                       "llm": {}}, headers=_headers(api_client))
     assert r.status_code == 200, r.text

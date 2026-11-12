@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from specy_road.bundled_scripts import llm_throughput
-from specy_road.bundled_scripts import review_node
+from specy_road import llm_client
 
 
 @pytest.fixture(autouse=True)
@@ -123,11 +123,11 @@ def test_openai_chat_completions_create_respects_throughput(
     client = MagicMock()
     client.chat = Chat()
 
-    review_node._openai_chat_completions_create(client, model="m", messages=[])
-    review_node._openai_chat_completions_create(client, model="m", messages=[])
+    llm_client.openai_chat_completions_create(client, model="m", messages=[])
+    llm_client.openai_chat_completions_create(client, model="m", messages=[])
     assert calls["n"] == 2
-    with pytest.raises(review_node.ReviewError, match="RPM"):
-        review_node._openai_chat_completions_create(client, model="m", messages=[])
+    with pytest.raises(llm_client.ReviewError, match="RPM"):
+        llm_client.openai_chat_completions_create(client, model="m", messages=[])
 
 
 def test_apply_llm_env_azure_throughput_defaults(

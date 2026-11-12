@@ -365,7 +365,7 @@
       "parent_id": "M16.3",
       "planning_dir": "planning/M16.3.4_one-llm-client-module-replaces-the-provider-code-inside-review-node_3793b31b-d61a-460f-a4b2-23f9af3f1350.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "One LLM client module replaces the provider code inside review_node",
       "touch_zones": [
         "specy_road/bundled_scripts/review_node.py",
