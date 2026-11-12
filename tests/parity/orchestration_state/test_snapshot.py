@@ -62,12 +62,17 @@ def test_snapshot_has_the_v1_fields_and_the_rows_status_and_writes_nothing(
 
 
 #: Registry documents the state model reads as unknown: not YAML, not UTF-8, not a mapping, and a
-#: mapping whose ``entries`` is not a list.
+#: mapping with an ``entries`` key whose value is not a list, falsy values included.
 UNREADABLE_REGISTRIES = {
     "not_yaml": b"entries: [\n",
     "not_utf8": b"entries: [\xff\xfe]\n",
     "list": b"- node_id: M1.1\n  branch: feature/rm-thing\n",
     "entries_not_list": b"entries: M1.1\n",
+    "entries_null": b"entries:\n",
+    "entries_false": b"entries: false\n",
+    "entries_empty_string": b'entries: ""\n',
+    "entries_empty_mapping": b"entries: {}\n",
+    "entries_one": b"entries: 1\n",
 }
 
 

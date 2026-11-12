@@ -18,19 +18,23 @@ from specy_road.registry_yaml import read_registry, registry_path
 
 def read_claims(repo_root: Path) -> dict[str, dict[str, Any]] | None:
     """Registry rows by node id (the first row per node), or ``None`` (unknown) when the file cannot
-    be read or decoded, is not YAML, or is not a mapping whose ``entries`` is a list.
+    be read or decoded, is not YAML, is not a mapping, or has an ``entries`` key whose value is not
+    a list (``null``, ``false``, ``""``, ``{}`` and ``1`` included).
 
-    A row needs only a ``node_id`` to be a claim, as pickup and the readiness rule count claims.
+    An absent ``entries`` key or an empty list means no claims, as an empty registry always has. A
+    row needs only a ``node_id`` to be a claim, as pickup and the readiness rule count claims.
     """
     try:
         doc = read_registry(registry_path(repo_root))
     except (OSError, UnicodeDecodeError, yaml.YAMLError):
         return None
-    entries = doc.get("entries") if isinstance(doc, dict) else None
-    if not isinstance(doc, dict) or not isinstance(entries or [], list):
+    if not isinstance(doc, dict):
+        return None
+    entries = doc.get("entries", [])
+    if not isinstance(entries, list):
         return None
     out: dict[str, dict[str, Any]] = {}
-    for e in entries or []:
+    for e in entries:
         if isinstance(e, dict) and e.get("node_id"):
             out.setdefault(str(e["node_id"]), e)
     return out
