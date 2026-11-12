@@ -93,6 +93,8 @@ entries:
       - scripts/line_width_baseline.json
       - tests/
       - constraints/clone-baseline.json
+      - specy_road/validate_roadmap_runner.py
+      - scripts/ruff_quality_baseline.json
     started: '2026-11-12'
     owner: savigil
     implementation_review: pending

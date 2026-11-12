@@ -442,7 +442,9 @@
         "specy_road/bundled_scripts/reconcile_branch_cli.py",
         "scripts/line_width_baseline.json",
         "tests/",
-        "constraints/clone-baseline.json"
+        "constraints/clone-baseline.json",
+        "specy_road/validate_roadmap_runner.py",
+        "scripts/ruff_quality_baseline.json"
       ],
       "type": "task"
     },
