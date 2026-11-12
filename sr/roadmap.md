@@ -125,6 +125,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M18.25` | A channels.cli reviewer writes its final answer to a file specy-road names, and its transcript is kept beside the run record | task | — | Not Started |
 | `M18.26` | Amending a claimed leaf's touch zones or one acceptance line records the reason, commits on the leaf branch and re-arms its review | task | — | Not Started |
 | `M18.27` | Append-only zone paths such as CHANGELOG.md do not serialize leaves, and finish merges their added lines | task | — | Not Started |
+| `M18.28` | handoff status reports the risk triggers in a leaf's whole candidate diff, report only | task | — | Not Started |
+| `M18.29` | review defer has a coordinator form at the spent fix-round budget, under a person-recorded standing rule bound to deferral, for one bounded follow-up per non-trust leaf | task | — | Not Started |
+| `M18.30` | review followups lists follow-up leaves created by deferrals that are not Complete, and exits 1 while any is open | task | — | Not Started |
+| `M18.31` | An opt-in policy holds the review gate on a leaf's fix-risk triggers until an operator decision names them, and fails closed when the policy is incomplete | task | — | Not Started |
 | `M19` | Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) | phase | — | Not Started |
 | `M19.1` | Configurable code-analysis tools | task | — | Not Started |
 | `M19.2` | Research reminders leave validate | task | — | Not Started |
