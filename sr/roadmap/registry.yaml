@@ -101,7 +101,8 @@ entries:
       - tests/parity/golden/upgrade/rc3-dry-run.txt
     started: '2026-11-11'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-12T09:53:40+00:00'
   - codename: fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list
     node_id: M16.3.6
     branch: feature/rm-fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list
