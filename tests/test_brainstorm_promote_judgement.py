@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from specy_road import brainstorm_promote
-from specy_road.bundled_scripts.brainstorm_close import close_session, closed_dir
+from specy_road.bundled_scripts.brainstorm_cli import close_session, closed_dir
 from specy_road.brainstorm_promote import promote_session
 from specy_road.brainstorm_session import (
     BrainstormSession,

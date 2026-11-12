@@ -41,7 +41,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.3.2` Fold the cap-driven splits in pickup and finish into their parents `fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents` — task — **Complete**
     - `M16.3.3` Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one `nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one` — task — **Complete**
     - `M16.3.4` One LLM client module replaces the provider code inside review_node `one-llm-client-module-replaces-the-provider-code-inside-review-node` — task — **Complete**
-    - `M16.3.5` The brainstorm CLI becomes two modules and the three managed-block writers share one engine `the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` — task — **Not Started**
+    - `M16.3.5` The brainstorm CLI becomes two modules and the three managed-block writers share one engine `the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` — task — **Complete**
     - `M16.3.6` Fold the remaining single-importer siblings from the code report's misc list `fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list` — task — **Not Started**
     - `M16.3.7` Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed `fold-the-pm-ui-server-and-roadmap-crud-splits-after-the-orchestration-snapshot-is-fixed` — task — **Not Started**
   - `M16.4` One command surface and one checks: config (aliases kept for rc5) `one-command-surface-and-one-checks-config-aliases-kept-for-rc5` — milestone — **Not Started**
@@ -339,7 +339,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.3.5` on `feature/rm-the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` since 2026-11-12
+- `M16.3.6` on `feature/rm-fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list` since 2026-11-12
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -354,9 +354,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 3 | 0 | 2.33 | 67% | 18 | 0 |
-| `CHANGELOG.md` **flagged** | 21 | 0 | 2.24 | 57% | 12 | 2 |
+| `CHANGELOG.md` **flagged** | 20 | 0 | 2.20 | 55% | 11 | 2 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 25 | 0 | 2.48 | 64% | 47 | 2 |
+| `docs` **flagged** | 24 | 0 | 2.46 | 62% | 46 | 2 |
 | `planning` **flagged** | 4 | 0 | 2.75 | 75% | 23 | 0 |
 | `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
@@ -367,12 +367,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
-| `constraints` | 11 | 0 | 1.91 | 27% | 49 | 0 |
+| `constraints` | 12 | 0 | 1.83 | 25% | 50 | 0 |
 | `gui` | 8 | 0 | 1.88 | 50% | 2 | 0 |
 | `pyproject.toml` | 2 | 0 | 2.50 | 50% | 20 | 0 |
-| `scripts` | 11 | 0 | 2.36 | 45% | 75 | 0 |
-| `specy_road` | 44 | 0 | 2.16 | 48% | 87 | 2 |
-| `tests` | 46 | 0 | 2.15 | 50% | 99 | 2 |
+| `scripts` | 12 | 0 | 2.25 | 42% | 76 | 0 |
+| `specy_road` | 44 | 0 | 2.11 | 45% | 87 | 2 |
+| `tests` | 46 | 0 | 2.11 | 48% | 99 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

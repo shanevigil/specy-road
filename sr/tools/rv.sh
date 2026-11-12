@@ -35,6 +35,34 @@ if [ -n "$C" ]; then echo "$ID: MERGE CONFLICT with WIP:" $C; exit 3; fi
 $S review-packet "$ID" --ref "$B" >/dev/null 2>&1
 Z=$(grep '^- `.*outside touch zones\*\*' "sr/work/reviews/$ID/PACKET.md" | sed 's/  \*\*.*//')
 if [ -n "$Z" ]; then echo "$ID: OUT OF ZONE: $Z"; exit 4; fi
+# Review rules v2 (operator-approved 2026-11-11): the round (1 = no earlier reviewed commit) and the trust paths in the
+# fix diff (since the first blocked commit; tier.TRUST less the sheet's "Path floor reviewed:" names) go to the reviewers.
+CTX="sr/work/reviews/$ID/rules-v2-context.md"
+"$PY" - "$ID" "sr/work/.worktrees/$WT" "$ROOT" > "$CTX" 2>/dev/null <<'PYEOF' || printf '\n## Rules v2 context\n\nThe round could not be read: treat this as round 2 on and write fix_trust.\n' > "$CTX"
+import re, subprocess, sys
+from pathlib import Path
+leaf, wt, root = sys.argv[1:]
+sys.path.insert(0, f"{root}/sr/tools")
+import tier
+git = lambda *a: subprocess.run(["git", "-C", wt, *a], capture_output=True, text=True, check=True).stdout
+head, d = git("rev-parse", "HEAD").strip(), Path(root, "sr/work/reviews", leaf)
+def field(f, k):
+    m = re.search(rf"^{k}: (\S+)", f.read_text(errors="replace"), re.M)
+    return m.group(1).strip("'\"") if m else ""
+recs = sorted((d / "history").glob("*.md")) + sorted(d.glob("REVIEW-*.md"), key=lambda f: f.stat().st_mtime)
+earlier = [f for f in recs if field(f, "commit") and field(f, "commit") != head]
+print("\n## Rules v2 context\n")
+if not earlier:
+    print("Round 1: no earlier reviewed commit. Add the input-class inventory (review-addendum, rules v2).")
+    sys.exit()
+first = next((field(f, "commit") for f in recs if field(f, "verdict") == "block"), None)
+mine = set(git("diff", "--name-only", git("merge-base", "origin/WIP/improvements-0-3-1", head).strip(), head).split())
+paths = [p for p in git("diff", "--name-only", first, head).split()
+         if p in mine and tier.TRUST.match(p) and not tier.reviewed_covers(leaf, p)] if first else []
+print(f"Round 2 on. Trust paths in the fix diff (since the first blocked commit {str(first)[:8]}): "
+      + (", ".join(paths) + ". Write fix_trust." if paths else "none; fix_trust is not needed."))
+PYEOF
+cat "$CTX" >> "sr/work/reviews/$ID/PACKET.md"
 cd "sr/work/.worktrees/$WT/sr" || exit 2
 review_once "${R1:-cursor-grok-4.6-high}" "$LOG/$ID-r1.log"
 cd "$ROOT"

@@ -39,7 +39,7 @@ Every M16 leaf follows these rules; review checks them.
   3. it is written at the cheapest level that reproduces the bug;
   4. it lives in the module's test file and is named for the behaviour, not the round;
   5. it asserts structured results, not message text.
-- **Round limits.** After a second block of the same class, the planner rescopes or splits the leaf. A leaf past four review rounds is split or rescoped.
+- **Round limits.** After a second block of the same class, the planner rescopes or splits the leaf. A leaf that reaches the round ceiling (six blocked review rounds of any kind) is split, rescoped or sent to research.
 - **What reviewers check.** The acceptance lines and the leaf's parity tables. A new input class goes to the intake.
 
 ## M16 quality rules
