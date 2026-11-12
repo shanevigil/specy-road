@@ -38,7 +38,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.13` The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle `loader-out-of-review-cycle` — task — **Complete**
   - `M16.3` Orchestration state model and the cap-driven folds `orchestration-state-model-and-the-cap-driven-folds` — milestone — **Not Started**
     - `M16.3.1` Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI `orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` — task — **Complete**
-    - `M16.3.2` Fold the cap-driven splits in pickup and finish into their parents `fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents` — task — **Not Started**
+    - `M16.3.2` Fold the cap-driven splits in pickup and finish into their parents `fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents` — task — **Complete**
     - `M16.3.3` Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one `nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one` — task — **Not Started**
     - `M16.3.4` One LLM client module replaces the provider code inside review_node `one-llm-client-module-replaces-the-provider-code-inside-review-node` — task — **Not Started**
     - `M16.3.5` The brainstorm CLI becomes two modules and the three managed-block writers share one engine `the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` — task — **Not Started**
@@ -335,7 +335,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.3.2` on `feature/rm-fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents` since 2026-11-11
 - `M17.6` on `feature/rm-orch-snapshot-schema-2` since 2026-11-11
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -355,7 +354,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `docs` **flagged** | 27 | 0 | 2.30 | 59% | 47 | 2 |
 | `planning` **flagged** | 4 | 0 | 2.75 | 75% | 23 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `tests` **flagged** | 44 | 0 | 2.16 | 52% | 95 | 2 |
+| `tests` **flagged** | 45 | 0 | 2.13 | 51% | 95 | 2 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
@@ -363,13 +362,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
-| `constraints` | 9 | 0 | 2.11 | 33% | 58 | 0 |
-| `gui` | 8 | 0 | 1.62 | 50% | 2 | 0 |
+| `constraints` | 10 | 0 | 2.00 | 30% | 58 | 0 |
+| `gui` | 7 | 0 | 1.57 | 43% | 2 | 0 |
 | `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
-| `scripts` | 10 | 0 | 2.50 | 50% | 86 | 0 |
-| `specy_road` | 42 | 0 | 2.17 | 50% | 83 | 2 |
+| `scripts` | 11 | 0 | 2.36 | 45% | 86 | 0 |
+| `specy_road` | 43 | 0 | 2.14 | 49% | 83 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

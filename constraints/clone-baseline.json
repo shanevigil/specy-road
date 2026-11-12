@@ -5,13 +5,6 @@
   "clones": [
     {
       "modules": [
-        "specy_road.bundled_scripts.abort_task_pickup",
-        "specy_road.bundled_scripts.registry_prune"
-      ],
-      "lines": 12
-    },
-    {
-      "modules": [
         "specy_road.brainstorm_chat",
         "specy_road.bundled_scripts.review_node"
       ],

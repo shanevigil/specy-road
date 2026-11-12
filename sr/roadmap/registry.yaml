@@ -99,28 +99,6 @@ entries:
     started: '2026-11-11'
     owner: savigil
     implementation_review: pending
-  - codename: fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents
-    node_id: M16.3.2
-    branch: feature/rm-fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_task*.py
-      - specy_road/bundled_scripts/registration_pickup_commit.py
-      - specy_road/bundled_scripts/abort_task_pickup*.py
-      - specy_road/bundled_scripts/finish_task*.py
-      - specy_road/finish_task_gates.py
-      - specy_road/finish_land_check.py
-      - specy_road/finish_land_integration.py
-      - scripts/line_width_baseline.json
-      - tests/
-      - specy_road/finish_land_local.py
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-      - constraints/test-private-imports-baseline.txt
-      - constraints/clone-baseline.json
-      - specy_road/review_policy_pin.py
-    started: '2026-11-11'
-    owner: savigil
-    implementation_review: pending
   - codename: orch-snapshot-schema-2
     node_id: M17.6
     branch: feature/rm-orch-snapshot-schema-2

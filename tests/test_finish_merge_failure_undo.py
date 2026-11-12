@@ -37,7 +37,7 @@ _RAISING = """
 import sys
 from pathlib import Path
 from unittest import mock
-from specy_road.finish_land_check import resolve_land_check_cmd, run_land_check
+from specy_road.finish_land_integration import resolve_land_check_cmd, run_land_check
 import specy_road.finish_modes as fm
 
 def boom(repo, *, land_check_cmd, **_kw):
