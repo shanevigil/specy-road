@@ -99,22 +99,6 @@ entries:
     started: '2026-11-11'
     owner: savigil
     implementation_review: pending
-  - codename: orch-snapshot-schema-2
-    node_id: M17.6
-    branch: feature/rm-orch-snapshot-schema-2
-    touch_zones:
-      - specy_road/orchestration/state.py
-      - tests/fixtures/orchestration_snapshot_v2.json
-      - docs/orchestration.md
-      - tests/
-      - gui/pm-gantt/src/orchestrationSnapshot.ts
-      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
-      - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/pm_gantt_static/
-    started: '2026-11-11'
-    owner: savigil
-    implementation_review: pending
   - codename: one-llm-client-module-replaces-the-provider-code-inside-review-node
     node_id: M16.3.4
     branch: feature/rm-one-llm-client-module-replaces-the-provider-code-inside-review-node

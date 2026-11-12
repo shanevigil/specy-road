@@ -2,7 +2,7 @@ $ specy-road (snapshot)
 exit: 0
 --- stdout ---
 {
-  "schema": 1,
+  "schema": 2,
   "leaves": {
     "M1.1": {
       "claim": {
@@ -15,7 +15,9 @@ exit: 0
         {
           "path": "<REPO>",
           "branch": "feature/rm-thing",
-          "dirty": false
+          "dirty": false,
+          "ahead": 4,
+          "behind": 0
         }
       ],
       "reviews": [
@@ -26,7 +28,15 @@ exit: 0
           "fresh_for_head": true
         }
       ],
-      "status": "abandoned"
+      "status": "abandoned",
+      "ready": null,
+      "gate": {
+        "state": "approved",
+        "approvals": 1,
+        "blocks": 0,
+        "fresh_for_head": true
+      },
+      "holds": []
     }
   },
   "leafless_workers": []

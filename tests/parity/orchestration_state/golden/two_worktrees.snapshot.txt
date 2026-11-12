@@ -2,7 +2,7 @@ $ specy-road (snapshot)
 exit: 0
 --- stdout ---
 {
-  "schema": 1,
+  "schema": 2,
   "leaves": {
     "M1.1": {
       "claim": {
@@ -18,7 +18,10 @@ exit: 0
           "status": "terminated",
           "pid_alive": false,
           "started_at": "<TIME>",
-          "ended_at": "<TIME>"
+          "ended_at": "<TIME>",
+          "account": null,
+          "last_activity": "<TIME>",
+          "flags": []
         },
         {
           "id": "w-0002",
@@ -27,23 +30,38 @@ exit: 0
           "status": "running",
           "pid_alive": false,
           "started_at": "<TIME>",
-          "ended_at": null
+          "ended_at": null,
+          "account": null,
+          "last_activity": "<TIME>",
+          "flags": []
         }
       ],
       "worktrees": [
         {
           "path": "<LEAF>",
           "branch": "feature/rm-thing",
-          "dirty": false
+          "dirty": false,
+          "ahead": 4,
+          "behind": 0
         },
         {
           "path": "<SCRATCH>",
           "branch": null,
-          "dirty": true
+          "dirty": true,
+          "ahead": "unknown",
+          "behind": "unknown"
         }
       ],
       "reviews": [],
-      "status": "running"
+      "status": "running",
+      "ready": null,
+      "gate": {
+        "state": "waiting",
+        "approvals": 0,
+        "blocks": 0,
+        "fresh_for_head": true
+      },
+      "holds": []
     }
   },
   "leafless_workers": []

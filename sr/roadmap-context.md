@@ -198,7 +198,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.3` PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags `gui-orch-drawer` — task — **Complete**
   - `M17.4` PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state `gui-orch-leaf-detail` — task — **Complete**
   - `M17.5` PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer `gui-orch-outline-badges` — task — **Complete**
-  - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Not Started**
+  - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Complete**
   - `M17.7` PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together `gui-api-orchestration` — task — **Not Started**
   - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Not Started**
   - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Not Started**
@@ -340,7 +340,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.3.4` on `feature/rm-one-llm-client-module-replaces-the-provider-code-inside-review-node` since 2026-11-11
-- `M17.6` on `feature/rm-orch-snapshot-schema-2` since 2026-11-11
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -354,12 +353,13 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 23 | 0 | 2.17 | 57% | 12 | 2 |
+| `CHANGELOG.md` **flagged** | 22 | 0 | 2.18 | 55% | 12 | 2 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 26 | 0 | 2.35 | 62% | 47 | 2 |
+| `docs` **flagged** | 26 | 0 | 2.42 | 62% | 47 | 2 |
+| `gui` **flagged** | 7 | 0 | 2.00 | 57% | 2 | 0 |
 | `planning` **flagged** | 4 | 0 | 2.75 | 75% | 23 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `tests` **flagged** | 45 | 0 | 2.13 | 51% | 97 | 2 |
+| `tests` **flagged** | 45 | 0 | 2.18 | 51% | 97 | 2 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
@@ -368,12 +368,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `constraints` | 11 | 0 | 1.91 | 27% | 60 | 0 |
-| `gui` | 6 | 0 | 1.67 | 50% | 2 | 0 |
 | `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `scripts` | 12 | 0 | 2.25 | 42% | 88 | 0 |
-| `specy_road` | 43 | 0 | 2.14 | 49% | 85 | 2 |
+| `specy_road` | 43 | 0 | 2.19 | 49% | 85 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
