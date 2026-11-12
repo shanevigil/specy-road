@@ -38,8 +38,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.13` | The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle | task | Agentic-led | Complete |
 | `M16.3` | Orchestration state model and the cap-driven folds | milestone | — | Not Started |
 | `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Complete |
-| `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Not Started |
-| `M16.3.3` | Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one | task | Agentic-led | Not Started |
+| `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Complete |
+| `M16.3.3` | Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one | task | Agentic-led | Complete |
 | `M16.3.4` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Not Started |
 | `M16.3.5` | The brainstorm CLI becomes two modules and the three managed-block writers share one engine | task | Agentic-led | Not Started |
 | `M16.3.6` | Fold the remaining single-importer siblings from the code report's misc list | task | Agentic-led | Not Started |
@@ -255,7 +255,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.67` | A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works | task | Agentic-led | Complete |
 | `M22.68` | grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only | task | Agentic-led | Complete |
 | `M22.69` | A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line | task | Agentic-led | Not Started |
-| `M22.70` | review-packet reads the implementation summary from the leaf's own worktree | task | Agentic-led | Not Started |
+| `M22.70` | review-packet reads the implementation summary from the leaf's own worktree | task | Agentic-led | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |

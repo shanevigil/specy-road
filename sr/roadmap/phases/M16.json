@@ -325,7 +325,7 @@
       "parent_id": "M16.3",
       "planning_dir": "planning/M16.3.2_fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents_d9fbe9b7-3b23-4095-9bf5-a8da923d2075.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Fold the cap-driven splits in pickup and finish into their parents",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task*.py",

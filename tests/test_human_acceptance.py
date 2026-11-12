@@ -14,7 +14,7 @@ import pytest
 
 from specy_road.bundled_scripts import finish_task
 from specy_road.bundled_scripts.role_prompt_rca import reviewer_preamble
-from specy_road.finish_task_gates import human_acceptance_ids, recorded_decisions, undecided_human_items
+from specy_road.bundled_scripts.finish_task import human_acceptance_ids, recorded_decisions, undecided_human_items
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
 
 HUMAN_NODE = {**NODE, "acceptance": ["a.py exists", "human: the maintainer approves the wording"]}

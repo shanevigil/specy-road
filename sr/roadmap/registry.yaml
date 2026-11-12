@@ -70,18 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: packet-reads-leaf-worktree-summary
-    node_id: M22.70
-    branch: feature/rm-packet-reads-leaf-worktree-summary
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/role_prompt_cli.py
-      - tests/
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-    started: '2026-11-11'
-    owner: savigil
-    implementation_review: pending
   - codename: human-criteria-in-ledger
     node_id: M22.69
     branch: feature/rm-human-criteria-in-ledger
@@ -111,28 +99,6 @@ entries:
     started: '2026-11-11'
     owner: savigil
     implementation_review: pending
-  - codename: fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents
-    node_id: M16.3.2
-    branch: feature/rm-fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_task*.py
-      - specy_road/bundled_scripts/registration_pickup_commit.py
-      - specy_road/bundled_scripts/abort_task_pickup*.py
-      - specy_road/bundled_scripts/finish_task*.py
-      - specy_road/finish_task_gates.py
-      - specy_road/finish_land_check.py
-      - specy_road/finish_land_integration.py
-      - scripts/line_width_baseline.json
-      - tests/
-      - specy_road/finish_land_local.py
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-      - constraints/test-private-imports-baseline.txt
-      - constraints/clone-baseline.json
-      - specy_road/review_policy_pin.py
-    started: '2026-11-11'
-    owner: savigil
-    implementation_review: pending
   - codename: orch-snapshot-schema-2
     node_id: M17.6
     branch: feature/rm-orch-snapshot-schema-2
@@ -145,6 +111,24 @@ entries:
       - gui/pm-gantt/src/orchestrationSnapshot.test.ts
       - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
       - specy_road/bundled_scripts/review_cli.py
+      - specy_road/pm_gantt_static/
+    started: '2026-11-11'
+    owner: savigil
+    implementation_review: pending
+  - codename: one-llm-client-module-replaces-the-provider-code-inside-review-node
+    node_id: M16.3.4
+    branch: feature/rm-one-llm-client-module-replaces-the-provider-code-inside-review-node
+    touch_zones:
+      - specy_road/bundled_scripts/review_node.py
+      - specy_road/llm_client.py
+      - specy_road/bundled_scripts/brainstorm_chat.py
+      - specy_road/bundled_scripts/roadmap_gui_remote.py
+      - specy_road/gui_app_routes_*.py
+      - specy_road/bundled_scripts/llm_throughput.py
+      - constraints/file-limits.yaml
+      - tests/
+      - constraints/clone-baseline.json
+      - sr/constraints/file-limits.yaml
     started: '2026-11-11'
     owner: savigil
     implementation_review: pending

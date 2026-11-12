@@ -105,11 +105,8 @@
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/abort_task_pickup.py": {
-      "PL": 3,
+      "PL": 2,
       "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/abort_task_pickup_own_commit.py": {
-      "PL": 1
     },
     "specy_road/bundled_scripts/archive_cli.py": {
       "PL": 2,
@@ -199,8 +196,7 @@
       "PL": 2
     },
     "specy_road/bundled_scripts/do_next_task.py": {
-      "PL": 3,
-      "D102/D103": 1
+      "PL": 3
     },
     "specy_road/bundled_scripts/do_next_task_args.py": {
       "D102/D103": 1
@@ -209,9 +205,6 @@
       "PL": 1,
       "B": 1,
       "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/do_next_task_leaf_guards.py": {
-      "D102/D103": 2
     },
     "specy_road/bundled_scripts/do_next_task_pickup_helpers.py": {
       "PL": 3,
@@ -236,11 +229,9 @@
     },
     "specy_road/bundled_scripts/finish_task.py": {
       "PL": 3,
+      "B": 1,
       "RET": 1,
-      "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/finish_task_args.py": {
-      "D102/D103": 1
+      "D102/D103": 2
     },
     "specy_road/bundled_scripts/generate_brief.py": {
       "PL": 2,
@@ -586,10 +577,6 @@
     "specy_road/finish_pr_merge.py": {
       "PL": 1
     },
-    "specy_road/finish_task_gates.py": {
-      "B": 1,
-      "D102/D103": 1
-    },
     "specy_road/finish_work_artifacts.py": {
       "PL": 1
     },
@@ -695,7 +682,6 @@
       "D102/D103": 4
     },
     "specy_road/milestone_session.py": {
-      "PL": 1,
       "D102/D103": 4
     },
     "specy_road/model_profiles.py": {
@@ -711,7 +697,6 @@
       "B": 1
     },
     "specy_road/on_complete_session.py": {
-      "PL": 1,
       "SIM": 1
     },
     "specy_road/orchestrate_assign.py": {
