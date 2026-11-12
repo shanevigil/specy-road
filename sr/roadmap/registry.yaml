@@ -125,4 +125,5 @@ entries:
       - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
     started: '2026-11-12'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-12T07:59:56+00:00'
