@@ -44,7 +44,8 @@
         "specy_road/finish_land_local.py",
         "specy_road/review_gate.py",
         "specy_road/bundled_scripts/do_next_prompt.py",
-        "specy_road/templates/project/schemas/orchestration.schema.json"
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/validate_roadmap_runner.py"
       ],
       "type": "task"
     },
