@@ -45,6 +45,56 @@
         "tests/parity/command_map.yaml"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "finish-this-task treats a leaf's human: criterion A# as decided only when roadmap/decisions.yaml as committed at the leaf branch HEAD or at the integration branch tip (read with git; the working tree and decisions.local.yaml do not count) holds a closed kind: human-action entry with node the leaf, criterion: A# (new decisions-schema field, pattern ^A[1-9][0-9]*$), decided_by: operator and channel terminal or pm-gui; a planning-sheet A#: line no longer counts. The refusal lists each undecided criterion, says a sheet line no longer counts, and names decisions add <NODE> --kind human-action --criterion A# and the two ways a person closes it. handoff status lists the same undecided ids from the same function (text line and JSON key human_criteria_undecided); the review gate's pass/fail, its exit codes and the reviewers' n/a rule for human: items are unchanged. Test rows: no entry, open entry, closed without channel, other node, other criterion, local ledger only, sheet line only, uncommitted entry, entry committed on the leaf branch, entry committed on the integration branch, entry closed through the PM GUI's answer path",
+        "decisions close <ID> on an entry with criterion refuses, writing nothing, when stdin is not a terminal, when SPECY_ROAD_ORCHESTRATION_ROLE is set to anything but exactly coordinator (review_override.role_refusal), or when git user.name or user.email is unset; there is no --yes or other non-interactive override. Otherwise it prints the node, the criterion's text and the answer, asks y/N, and on y closes the entry with decided_by: operator, channel: terminal (new channel enum value) and an answer ending (recorded by <name> <email>); any other reply writes nothing. The PM GUI's existing answer path closes such an entry unchanged (decided_by: operator, channel: pm-gui). decisions add --criterion A# is accepted only with --kind human-action and a node whose A# starts with human:, and refuses a second open entry for the same node and criterion; any caller may open one. Test rows: not a terminal, each refused role value, unset identity, reply n, reply y",
+        "decisions close closes every other decision and human-action entry in the ledger without a planning-sheet line (close_entry's sheet-line requirement and its refusal are removed; preferences and standing rules are unchanged). grind-session --status does not list a closed pm-gui entry that has criterion under gui_pending, since finish-this-task consumes it; other GUI answers keep today's pending rule. Test rows: close with no sheet line, close of a preference, gui_pending with a criterion entry and with an ordinary answer",
+        "Docs and prompts follow in the same change: docs/roadmap-authoring.md's acceptance row and the exception sentence of 'The executor never writes its own planning sheet' (the A#: case is dropped: a person's decision on a human: criterion is a ledger entry, not a sheet line); the acceptance description in roadmap.schema.json (template, sr/ and dogfood copies) and decisions.schema.json (template and sr/ copy); suggested_prompts/bootstrap-roadmap.md; docs/orchestration.md's decisions CLI paragraph; docs/pm-gui.md and docs/grind-session.md where the GUI answer is described; the decisions add and close help goldens; and a CHANGELOG [Unreleased] entry saying existing sheet A#: lines stop counting, the finish refusal names the replacement, and no migration copies them (a copy would turn an agent-writable line into a person's record)",
+        "docs/roadmap-authoring.md states the honour-system limits beside the acceptance row, in the manner of docs/orchestration-review.md's 'What the gate cannot stop': a process in a pseudo-terminal with the role unset or coordinator, a direct call of the library close function, a hand-edited and committed ledger entry, or a process that can read the PM GUI's code can still record a criterion decision; the channel, the recorder identity and the commit that adds the entry make a forgery visible in review, not impossible",
+        "Estimated net line change (informational, not a gate): package about +60, tests about +90, docs about +15"
+      ],
+      "codename": "human-criteria-in-ledger",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.69",
+      "node_key": "c0db44a6-fda6-4991-94e6-0b5c874f3c2b",
+      "parent_id": "M22",
+      "planned_test_changes": [
+        "removed-test: tests/test_human_acceptance.py::test_finish_refuses_until_the_sheet_records_the_decision",
+        "removed-test: tests/test_human_acceptance.py::test_marker_and_decision_lines",
+        "removed-test: tests/test_decisions.py::test_close_requires_decision_block_record"
+      ],
+      "planning_dir": "planning/M22.69_human-criteria-in-ledger_c0db44a6-fda6-4991-94e6-0b5c874f3c2b.md",
+      "sibling_order": 63,
+      "status": "Not Started",
+      "title": "A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line",
+      "touch_zones": [
+        "specy_road/finish_task_gates.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/decisions.py",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/grind_status.py",
+        "specy_road/templates/project/schemas/decisions.schema.json",
+        "specy_road/templates/project/schemas/roadmap.schema.json",
+        "sr/schemas/decisions.schema.json",
+        "sr/schemas/roadmap.schema.json",
+        "tests/fixtures/specy_road_dogfood/schemas/roadmap.schema.json",
+        "tests/test_human_acceptance.py",
+        "tests/test_decisions.py",
+        "tests/test_grind_status.py",
+        "tests/parity/golden/help/specy-road__decisions__add.txt",
+        "tests/parity/golden/help/specy-road__decisions__close.txt",
+        "docs/roadmap-authoring.md",
+        "docs/orchestration.md",
+        "docs/pm-gui.md",
+        "docs/grind-session.md",
+        "suggested_prompts/bootstrap-roadmap.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

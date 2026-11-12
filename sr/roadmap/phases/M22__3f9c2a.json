@@ -159,7 +159,7 @@
     {
       "acceptance": [
         "On a fresh `git clone --mirror` with the pull-request refs fetched, never a working checkout, the rehearsal first records every source head, tag and pull-request ref with its SHA, and stops before filter-repo while M22.54's public-author entry is the placeholder or absent. git filter-repo then runs with --invert-paths for each prefix in the sheet list that has history, never for a path the WIP tip still tracks (work/.gitkeep and work/README.md stay; omitted prefixes are named in the evidence); --replace-text for home paths and local-list names; --mailmap mapping only the identities on M22.54's untracked local list to the operator-set public identity; and a --message-callback that deletes Claude-Session: lines, rewrites sr/work, sr/planning, sr/roadmap and sr/tools mentions to <private> and removes local-list names",
-        "Using an explicit inventory of all mirror refs, M22.54's applicable rules, with no WIP sr/ exemption, scan every reachable commit's paths and text blobs (each blob once), messages and author and committer identities, not only the tips; a hit at a shipped product path still on the pre-rewrite tip and not inverted is recorded, not failed; any other hit, or a scan or read failure, stops the rehearsal, and a local fixture with a forbidden value added then deleted before the tip fails the scan. The evidence goes to an untracked folder outside every tracked tree and is never committed: the recorded source SHAs, the old-to-new SHA map, the saved refs/pull/* list, the scan output and the operator script; the sheet records the folder as a placeholder path and the sha256 of the script and the scan output",
+        "Using an explicit inventory of all mirror refs, M22.54's applicable rules, with no WIP sr/ exemption, scan every reachable commit's paths and text blobs (each blob once), messages and author and committer identities, not only the tips; a hit at a shipped product path still on the pre-rewrite tip and not inverted is recorded, not failed; any other hit, or a scan or read failure, stops the rehearsal, and a local fixture with a forbidden value added then deleted before the tip fails the scan. The evidence goes to an untracked folder outside every tracked tree and is never committed: the recorded source SHAs, the old-to-new SHA map, the saved refs/pull/* list, the scan output and the operator script; the implementation summary records the folder as a placeholder path and the sha256 of the script and the scan output",
         "The operator script never pushes. It exits non-zero and prints nothing pushable while the public identity is unset or differs from the mailmap target, or when any source ref differs from the recorded inventory (a moved, added or removed head or tag). Otherwise it stops after checking the rewritten mirror and the map, and prints the push commands separately: branch updates for refs/heads/* with expected-old-tip leases; then tag updates under a warning that pushing v* tags runs .github/workflows/release-publish.yml, so the operator disables or guards that workflow first; then the new-repository commands. refs/pull/* are listed for the Support request and never pushed. The agent runs the script only in its refusal and print-only paths and runs no push, visibility change, Support request or TestPyPI step"
       ],
       "codename": "history-rewrite-rehearsal",
@@ -176,9 +176,7 @@
       "sibling_order": 53,
       "status": "Not Started",
       "title": "History-rewrite rehearsal on a mirror: filter-repo run, hygiene gate over every ref, an operator script and the old-to-new SHA map",
-      "touch_zones": [
-        "sr/planning/M22.58_history-rewrite-rehearsal_7e4a19c6-b0d3-4f85-8e2a-61c9d5f3b0a7.md"
-      ],
+      "touch_zones": [],
       "type": "task"
     },
     {

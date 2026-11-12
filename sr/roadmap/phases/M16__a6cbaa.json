@@ -87,8 +87,8 @@
     },
     {
       "acceptance": [
-        "Before the pass, this sheet commits the E1-E8 checklist with each step's commands or routes and its expected result, and records which harness logins the maintainer has. The pass runs from a wheel built from the branch head in a clean virtual environment and covers: install, init project, the M16.1.1 leaf loop with on_complete merge and pr, upgrade on an rc3-shaped and an rc5-shaped repo, worker delegate and review delegate once each on claude-code, codex and cursor (or one sheet line per harness recording that the maintainer has no login for it), grind-session on the dogfood fixture, doctor --prune, the PM GUI server's read-only routes named in the checklist, and validate, export --check and digest --check on sr/ and the dogfood fixture; each step's result is recorded, and a skipped step names its reason and the maintainer's disposition",
-        "Every failure, and every feedback item the maintainer collects in this round, is an intake entry in this sheet with disposition `fix-before-0.3.1` or `after`; this leaf adds no roadmap node: the planner adds each fix leaf and its M16.8.9 dependency afterwards",
+        "The pass follows the E1-E8 checklist the planner wrote in this sheet, with each step's commands or routes and its expected result; sr/work/M16.8.4-e2e-results.md records which harness logins the maintainer has. The pass runs from a wheel built from the branch head in a clean virtual environment and covers: install, init project, the M16.1.1 leaf loop with on_complete merge and pr, upgrade on an rc3-shaped and an rc5-shaped repo, worker delegate and review delegate once each on claude-code, codex and cursor (or one line per harness in sr/work/M16.8.4-e2e-results.md recording that the maintainer has no login for it), grind-session on the dogfood fixture, doctor --prune, the PM GUI server's read-only routes named in the checklist, and validate, export --check and digest --check on sr/ and the dogfood fixture; each step's result is recorded in sr/work/M16.8.4-e2e-results.md, and a skipped step names its reason and the maintainer's disposition",
+        "Every failure, and every feedback item the maintainer collects in this round, is an intake entry in sr/work/M16.8.4-e2e-results.md with disposition `fix-before-0.3.1` or `after`; this leaf adds no roadmap node: the planner adds each fix leaf and its M16.8.9 dependency afterwards",
         "This leaf changes no product code; fixes land in their own leaves",
         "Estimated net line change (informational, not a gate): 0",
         "The checklist has a row: an rc3-era claim still in flight when the new wheel is installed finishes under it",
@@ -114,9 +114,7 @@
       "sibling_order": 1,
       "status": "Not Started",
       "title": "End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1",
-      "touch_zones": [
-        "sr/planning/"
-      ],
+      "touch_zones": [],
       "type": "task"
     },
     {
@@ -423,7 +421,7 @@
     },
     {
       "acceptance": [
-        "Before the switch, a table in this sheet maps every flag and mode of refresh-stubs, refresh-schemas and refresh-profiles (including refresh-profiles' `--only API_ID` and its --check, --render and --capture modes) to an upgrade invocation; `upgrade --only stubs|schemas|profiles` selects a component, and profile selection uses a separate option the table names; each row gives the same files and output as the old invocation; the three commands stay as hidden one-release aliases with one deprecation line and are rows of tests/parity/command_map.yaml, which also lists upgrade's allowed help and report differences",
+        "Before the switch, a table in sr/work/M16.4.2-refresh-map.md maps every flag and mode of refresh-stubs, refresh-schemas and refresh-profiles (including refresh-profiles' `--only API_ID` and its --check, --render and --capture modes) to an upgrade invocation; `upgrade --only stubs|schemas|profiles` selects a component, and profile selection uses a separate option the table names; each row gives the same files and output as the old invocation; the three commands stay as hidden one-release aliases with one deprecation line and are rows of tests/parity/command_map.yaml, which also lists upgrade's allowed help and report differences",
         "`upgrade` prints one report with four fixed sections (files added or changed, schema refreshes, profile refreshes, notices) built only from data the refresh steps compute at pickup; the before and after `upgrade --dry-run` outputs on the rc3-shaped fixture are committed, and the set of reported lines is the same, only headings and grouping differ",
         "`update` (fast-forward a toolkit clone) is renamed `self-update`, with `update` a hidden one-release alias and a map row; the update scenarios (M16.1.10) pass under both names",
         "M13.11's extra report sections are not part of this leaf; docs, templates and suggested_prompts use the new names; goldens differ only for map rows",

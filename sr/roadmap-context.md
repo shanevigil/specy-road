@@ -190,6 +190,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.66` A roster entry matches a model profile by its harness_model when its id matches none `profile-match-reads-harness-model` — task — **Complete**
   - `M22.67` A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works `human-approves-over-block` — task — **Complete**
   - `M22.68` grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only `grind-status` — task — **Complete**
+  - `M22.69` A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line `human-criteria-in-ledger` — task — **Not Started**
   - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**

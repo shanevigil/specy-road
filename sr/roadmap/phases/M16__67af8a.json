@@ -2,7 +2,7 @@
   "nodes": [
     {
       "acceptance": [
-        "Before the move, this sheet lists each moved module's destination under specy_road/orchestration/ (later leaves, including M23.5 and M23.6, resolve their zones through it); roster, model-profile, harness-facts, orchestrate plan and assign, and role-prompt library modules move there with `git mv`; role_prompt_stream folds into role_prompt; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
+        "Before the move, sr/work/M16.5.3-destinations.md lists each moved module's destination under specy_road/orchestration/ (the planner carries it into later leaves' zones, including M23.5 and M23.6); roster, model-profile, harness-facts, orchestrate plan and assign, and role-prompt library modules move there with `git mv`; role_prompt_stream folds into role_prompt; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
         "Their tests pass with only import paths and patch targets edited",
         "Parity harness and decision table unchanged",
         "Estimated net line change (informational, not a gate): package about -30",
@@ -146,9 +146,9 @@
     {
       "acceptance": [
         "A new test tests/test_docs_shipped_commands.py (at the path M16.6.5's tests/support/layout.csv assigns, if that has landed) reuses M16.6.2's invocation extraction (shell fences and single-line code spans beginning with specy-road or specyrd; shlex; stop at a shell operator or a bare --; documented placeholders skipped) over README.md, AGENTS.md, CLAUDE.md, docs/**/*.md, constitution/**/*.md and constraints/README.md, and fails with `<path>: <token>` when a command path or option is not canonical in M16.1.1's parity inventory (a deprecated alias in tests/parity/command_map.yaml is reported as deprecated, not as a failure); it also fails when a code span or YAML key is exactly baseline_cmd, land_check_cmd, verify_cmd, one of the four grind_session_* keys, gui-next or M16.4.5's legacy review-before-finish key, unless the same line names its replacement; prose outside code spans is ignored; table-driven rows cover canonical command, unknown command, unknown option, argument after --, placeholder, removed config token, same-line replacement and prose mention; no network or harness launch; the scanned docs are fixed until it passes",
-        "suggested_prompts/*.md match the real formats at the branch head (templates under specy_road/templates/project/, JSON schemas, validators, docs/roadmap-authoring.md), per CLAUDE.md's adoption-prompt rule; this sheet has one line per suggested_prompts/*.md file at pickup, each `unchanged` or naming the lines edited; command and option tokens in prompts stay covered by M16.6.2's tests/test_suggested_prompts_commands.py",
+        "suggested_prompts/*.md match the real formats at the branch head (templates under specy_road/templates/project/, JSON schemas, validators, docs/roadmap-authoring.md), per CLAUDE.md's adoption-prompt rule; the implementation summary has one line per suggested_prompts/*.md file at pickup, each `unchanged` or naming the lines edited; command and option tokens in prompts stay covered by M16.6.2's tests/test_suggested_prompts_commands.py",
         "CHANGELOG.md's [Unreleased] section is consolidated into one adopter-facing summary (Added, Changed, Deprecated and Removed, Fixed, Upgrading); Deprecated lists each alias and old form that 0.3.1 still accepts, with the release after 0.3.1 as its removal, as old -> replacement: every former tests/parity/command_map.yaml alias, baseline_cmd, land_check_cmd, verify_cmd, M16.4.5's review-before-finish key, the four grind_session_* keys and the `[gui-next]` extra; Upgrading names specy-road upgrade and the checks: block; the diff adds no `## [0.3.1]` or `## [v0.3.1]` heading, does not change project.version and creates no tag (human-owned at promotion)",
-        "validate, export --check and digest --check on sr/ and the dogfood fixture, file-limits, tests/test_docs_links.py and M16.6.1's release-candidate pin scan pass; this sheet lists every doc touched and the promotion steps from docs/release-runbook.md, marking the human-owned ones (version bump, CHANGELOG heading, tag)",
+        "validate, export --check and digest --check on sr/ and the dogfood fixture, file-limits, tests/test_docs_links.py and M16.6.1's release-candidate pin scan pass; the implementation summary lists every doc touched and the promotion steps from docs/release-runbook.md, marking the human-owned ones (version bump, CHANGELOG heading, tag)",
         "Estimated net line change (informational, not a gate): package 0; docs small; one new test about +120",
         "The upgrading notes say that reviews filed by hand no longer count toward the review gate",
         "Governance copies: each of constitution/purpose.md, constitution/principles.md, constraints/README.md and constraints/file-limits.yaml that this leaf changes gets the same change in its sr/ copy in the same commit (sr/constraints/README.md keeps its relative links one level deeper), because the WIP gate reads sr/constraints/file-limits.yaml and agents working in sr/ load the sr/ copies",
@@ -191,7 +191,6 @@
         "constraints/README.md",
         "tests/test_docs_shipped_commands.py",
         "tests/repo/test_docs_shipped_commands.py",
-        "sr/planning/M16.8.8_release-docs-0-3-1_15c488ad-2531-4d82-a3a9-363e626a3872.md",
         "sr/constitution/",
         "sr/constraints/README.md",
         "tests/support/"

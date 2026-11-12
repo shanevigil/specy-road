@@ -229,7 +229,7 @@
     },
     {
       "acceptance": [
-        "No test module imports a module whose name starts with `test_`; no file matches `*_repo_helpers.py`; outside tests/support's roadmap_repo builder and a committed allowlist of intentional malformed or raw-file manifest cases, no test file writes manifest.json via `write_text` or `json.dump`; a grep test fails on any of the three. The helper groups to replace (the report's 53 byte-identical groups) are listed in this sheet with their tests/support destination before edits, and each row is replaced",
+        "No test module imports a module whose name starts with `test_`; no file matches `*_repo_helpers.py`; outside tests/support's roadmap_repo builder and a committed allowlist of intentional malformed or raw-file manifest cases, no test file writes manifest.json via `write_text` or `json.dump`; a grep test fails on any of the three. The helper groups to replace (the report's 53 byte-identical groups) are listed in sr/work/M16.6.4-helper-groups.md with their tests/support destination before edits, and each row is replaced",
         "Collected test ids unchanged apart from moved helpers; covered-arc set unchanged; slow (over 1 s) and repo-consistency tests carry markers",
         "Estimated net line change (informational, not a gate): tests about -1,400"
       ],
@@ -256,7 +256,7 @@
     },
     {
       "acceptance": [
-        "Before edits, this sheet commits the manifest: every test path matching `(?i)(^|[/_])(m\\d+(\\.\\d+)*|round\\d+|slice\\d+|finding[-_]?\\w+)([._/]|$)`, its destination module or flow file, and each test function renamed; those files fold into their destinations; a file is not folded only for having few tests",
+        "Before edits, sr/work/M16.6.6-fold-manifest.md holds the manifest: every test path matching `(?i)(^|[/_])(m\\d+(\\.\\d+)*|round\\d+|slice\\d+|finding[-_]?\\w+)([._/]|$)`, its destination module or flow file, and each test function renamed; those files fold into their destinations; a file is not folded only for having few tests",
         "Only names listed in that manifest are renamed; finding ids survive only as comments or parametrize ids; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the manifest's path mapping",
         "Collected test count and covered-arc set unchanged; renamed test ids equal this leaf's planned_test_changes",
         "Estimated net line change (informational, not a gate): tests about -250"
@@ -338,7 +338,7 @@
         "Applies exactly the rows of tests/support/dedupe/rest.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
         "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
         "Tables this leaf creates assert structured results, not message text",
-        "Refusal cases that rest.csv folds into one table carry a committed remediation substring each (a table in this sheet); existing public-output parity fixtures are unchanged; this leaf adds no other refusal case",
+        "Refusal cases that rest.csv folds into one table carry a committed remediation substring each (a table in sr/work/M16.7.5-remediation.md); existing public-output parity fixtures are unchanged; this leaf adds no other refusal case",
         "Estimated net line change (informational, not a gate): tests about -3,000"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-the-rest",

@@ -3,7 +3,7 @@
     {
       "acceptance": [
         "Before the switch, tests/parity/checks_migration/ records at pickup, for baseline_cmd, land_check_cmd, verify_cmd and the review-before-finish switch, the legacy rows: absent, blank, set, overridden on the CLI (`--verify-cmd`, `--verify`), and disabled on the CLI where an option exists; each records the commands run, their arguments, cwd, added environment, the evidence recorded, and the executor and reviewer prompt text that names the verify command with its appended test paths. A hand-written `checks:` equivalent of each row is committed beside it; after the switch each equivalent gives its row's recorded result, and mixed-form precedence (new form wins, one validate notice) has its own test",
-        "Before the switch, this sheet fixes the `checks:` entry schema: its fields (name, run, when), which are required, their defaults, the order entries run within one `when:` stage, CLI precedence for `--verify-cmd` and `--verify`, and the policy key the review-before-finish switch migrates to; the other lines are checked against it",
+        "Before the switch, sr/work/M16.4.5-checks-schema.md fixes the `checks:` entry schema: its fields (name, run, when), which are required, their defaults, the order entries run within one `when:` stage, CLI precedence for `--verify-cmd` and `--verify`, and the policy key the review-before-finish switch migrates to; the other lines are checked against it",
         "`checks:` in git-workflow.yaml names each command once with `when:` (baseline, ready, land, prompt); one reader replaces the three key readers; every table row gives the same commands, arguments, cwd, environment, evidence and prompt text from either form; with both forms present the new form wins and validate prints one notice",
         "`upgrade` rewrites the old keys and writes the policy equivalent of the review-before-finish switch, so every row's effective requirement is unchanged; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release with one notice for the old form",
         "No zone filter is added to migrated entries; ratchet_paths and ready's failed-command evidence (M15.24) mean what they meant at pickup; the M16.1.2 decision table is unchanged",
@@ -323,7 +323,7 @@
     },
     {
       "acceptance": [
-        "Before edits, this sheet lists each reference in constraints/test-private-imports-baseline.txt with its resolution: a public seam in a named production module, or the test rewritten to a public interface; production code changes only in the modules that list names, and only to add those seams (expected: the runner, the clock (M16.2.2), the LLM client factory (M16.3.4) and the process command-line reader); no test monkeypatches or imports a `_`-prefixed name, and the baseline file is empty",
+        "Before edits, sr/work/M16.7.6-private-refs.md lists each reference in constraints/test-private-imports-baseline.txt with its resolution: a public seam in a named production module, or the test rewritten to a public interface; production code changes only in the modules that list names, and only to add those seams (expected: the runner, the clock (M16.2.2), the LLM client factory (M16.3.4) and the process command-line reader); no test monkeypatches or imports a `_`-prefixed name, and the baseline file is empty",
         "Logical timeout and stall tests use the injectable clock instead of `time.sleep`; real process and race tests synchronise with explicit events or bounded waits; the child-process blocking fixtures that still sleep are listed in a committed allowlist, and a test fails on `time.sleep` in tests/ outside it",
         "Estimated net line change (informational, not a gate): tests about -500; package about +30 (seams)"
       ],
@@ -402,8 +402,7 @@
       "touch_zones": [
         "tests/",
         "pyproject.toml",
-        ".github/workflows/validate.yml",
-        "sr/planning/M16.7.8_tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the_79115c79-0035-4781-9d38-d5a3b117631d.md"
+        ".github/workflows/validate.yml"
       ],
       "type": "task"
     },
