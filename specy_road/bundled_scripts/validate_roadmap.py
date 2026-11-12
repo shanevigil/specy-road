@@ -58,13 +58,6 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
     warn_touch_zones_match_nothing,
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
-from specy_road.bundled_scripts.validate_notices import (
-    add_context_arg,
-    notice_milestone_review_holds,
-    notice_repeated_ignore_patterns,
-    parse_validate_args,
-    report_context_warnings,
-)
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 from specy_road.bundled_scripts.validate_registry_overlap import (
     authoring_overlap_scope,
@@ -72,8 +65,10 @@ from specy_road.bundled_scripts.validate_registry_overlap import (
 )
 from specy_road.validate_roadmap_runner import (
     NO_ORCHESTRATION_NOTICE,
+    add_context_arg,
     generate_orchestration,
     no_orchestration_notice,
+    parse_validate_args,
     validate_at,
     validate_git_workflow_contract,
     validate_orchestration_contract,

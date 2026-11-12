@@ -75,7 +75,6 @@
     "specy_road/bundled_scripts/touch_zone_tracked.py": 1,
     "specy_road/bundled_scripts/upgrade_generated.py": 13,
     "specy_road/bundled_scripts/upgrade_plan.py": 50,
-    "specy_road/bundled_scripts/validate_notices.py": 8,
     "specy_road/bundled_scripts/validate_roadmap.py": 11,
     "specy_road/bundled_scripts/validate_roadmap_checks.py": 3,
     "specy_road/bundled_scripts/validate_self_heal.py": 1,

@@ -15,7 +15,7 @@ import pytest
 
 from specy_road.agent_ignores import GITIGNORE, apply_agent_ignores, apply_and_report
 from specy_road.bundled_scripts.touch_zone_tracked import LISTED_LIMIT, warn_untracked_zones
-from specy_road.bundled_scripts.validate_notices import notice_repeated_ignore_patterns
+from specy_road.validate_roadmap_runner import notice_repeated_ignore_patterns
 from specy_road.context_notice_cache import report_context_warnings
 from specy_road.ignore_report import UNTRACK_HINT
 from specy_road.runtime_paths import project_template_root
@@ -187,7 +187,7 @@ def test_trailing_unescaped_spaces_and_a_crlf_are_what_git_drops(tmp_path: Path,
     assert "block repeats: work/*. They can be removed" in capsys.readouterr().out
 
 
-# The complete rule for reading a .gitignore (validate_notices._patterns), one row per item:
+# The complete rule for reading a .gitignore (validate_roadmap_runner._patterns), one row per item:
 # (bytes above the block, extra lines inside the block, patterns the notice must name).
 GIT_READS = {
     "utf8-bom-dropped": (b"\xef\xbb\xbfwork/*\n", "", ["work/*"]),
