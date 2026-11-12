@@ -1,7 +1,8 @@
 """FastAPI server for the PM Gantt SPA.
 
-Includes roadmap CRUD, planning files, and settings endpoints, and the one orchestration write: a PM decision
-from the status modal (``POST /api/pm-decisions``, M17.15), behind a per-session code printed at startup.
+Includes roadmap CRUD, planning files, and settings endpoints, the read-only orchestration snapshot
+(``GET /api/orchestration``), and the one orchestration write: a PM decision from the status modal
+(``POST /api/pm-decisions``, M17.15), behind a per-session code printed at startup.
 """
 
 from __future__ import annotations
@@ -47,6 +48,26 @@ def _register_read_only_guard(app: FastAPI) -> None:
                 content={"detail": "server is read-only (specy-road gui --read-only)"},
             )
         return await call_next(request)
+
+
+def _main_project_root() -> Path:
+    """The main checkout's project root for the snapshot.
+
+    ``get_repo_root`` follows the working directory into a linked worktree; claims, READY files and
+    worker records live in the main checkout. A project nested under the git root stays that project.
+    """
+    from specy_road.worktree_env import main_project_root
+
+    return main_project_root(get_repo_root())
+
+
+def _register_orchestration_route(app: FastAPI) -> None:
+    @app.get("/api/orchestration")
+    def orchestration() -> JSONResponse:
+        """``orchestration.state.snapshot`` of the main project root, with no added keys."""
+        from specy_road.orchestration import snapshot
+
+        return JSONResponse(snapshot(_main_project_root()))
 
 
 def _register_grind_status_route(app: FastAPI, clock: Callable[[], datetime] | None) -> None:
@@ -235,6 +256,7 @@ def create_app(read_only: bool | None = None, clock: Callable[[], datetime] | No
     app.include_router(workers)
     _register_grind_status_route(app, clock)
     _register_pm_decision_route(app)
+    _register_orchestration_route(app)
 
     # Registered before the SPA fallback so scripts get JSON, not the HTML shell.
     @app.api_route("/api/{rest:path}", methods=_ALL_METHODS, include_in_schema=False)

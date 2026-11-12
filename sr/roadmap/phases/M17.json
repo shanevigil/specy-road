@@ -210,7 +210,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.7_gui-api-orchestration_25c737eb-656b-487b-a238-b8e825a8e6d3.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together",
       "touch_zones": [
         "specy_road/gui_app.py",

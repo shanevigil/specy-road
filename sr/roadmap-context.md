@@ -199,7 +199,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.4` PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state `gui-orch-leaf-detail` — task — **Complete**
   - `M17.5` PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer `gui-orch-outline-badges` — task — **Complete**
   - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Complete**
-  - `M17.7` PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together `gui-api-orchestration` — task — **Not Started**
+  - `M17.7` PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together `gui-api-orchestration` — task — **Complete**
   - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Not Started**
   - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Not Started**
   - `M17.10` Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run `gui-orch-sandbox-use-approved` — gate — **Complete**
@@ -340,7 +340,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.3.5` on `feature/rm-the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` since 2026-11-12
-- `M17.7` on `feature/rm-gui-api-orchestration` since 2026-11-12
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -354,26 +353,26 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
+| `.github` **flagged** | 3 | 0 | 2.33 | 67% | 18 | 0 |
 | `CHANGELOG.md` **flagged** | 21 | 0 | 2.24 | 57% | 12 | 2 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
 | `docs` **flagged** | 25 | 0 | 2.48 | 64% | 47 | 2 |
-| `gui` **flagged** | 7 | 0 | 2.00 | 57% | 2 | 0 |
 | `planning` **flagged** | 4 | 0 | 2.75 | 75% | 23 | 0 |
+| `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
+| `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `tests` **flagged** | 45 | 0 | 2.18 | 51% | 99 | 2 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
-| `.github` | 4 | 0 | 2.00 | 50% | 31 | 0 |
 | `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
-| `constraints` | 12 | 0 | 1.83 | 25% | 62 | 0 |
-| `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
-| `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
-| `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
-| `scripts` | 12 | 0 | 2.25 | 42% | 88 | 0 |
-| `specy_road` | 43 | 0 | 2.19 | 49% | 87 | 2 |
+| `constraints` | 11 | 0 | 1.91 | 27% | 49 | 0 |
+| `gui` | 8 | 0 | 1.88 | 50% | 2 | 0 |
+| `pyproject.toml` | 2 | 0 | 2.50 | 50% | 20 | 0 |
+| `scripts` | 11 | 0 | 2.36 | 45% | 75 | 0 |
+| `specy_road` | 44 | 0 | 2.16 | 48% | 87 | 2 |
+| `tests` | 46 | 0 | 2.15 | 50% | 99 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
