@@ -291,6 +291,8 @@ Worth adding when they apply: an observable **success signal**, and any **forbid
 
 **Do not paraphrase upstream dependencies in this task's planning sheet.** `specy-road brief` carries `## 6. Dependency context (intent of upstream work)` with each effective dependency's `## Intent` block (or the gate equivalent) inlined verbatim. Restating that prose in `## Intent` or `## Approach` here just creates drift. Say *what must exist* (cited by codename or display id) under `## References`, and reserve your sheet's `## Intent` for **this** task's own outcome. Add a one-line clarification under `## Approach` only when something specific to *this* task is not covered by the dep's own intent (an integration seam, a contract version, a sequencing constraint), citing the dep by display id.
 
+**The executor never writes its own planning sheet.** The sheet is the plan the work is judged against; an agent that can edit it can rewrite its own success conditions. So a task records its work, evidence and results under `work/` (its implementation summary, `work/implementation-summary-<ID>.md`, or a named evidence file there), never "in this sheet", and its touch zones never include its own planning sheet. Only the planner or a person changes a sheet. Two cases differ: a leaf whose job is planning edits the sheets it plans, and the `A#:` line that `finish-this-task` requires for a `human:` criterion records a person's decision, not the agent's work.
+
 **Example (JSON node excerpt).** The detail lives in the sheet at `planning_dir`; the node stays small. The dependency is M1.1's `node_key`:
 
 ```json
