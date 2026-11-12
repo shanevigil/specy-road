@@ -511,6 +511,10 @@ A defect class that escaped one review should be checked by every later one. `co
 
 `specy-road lessons add --rule "<one-line rule>" [--example "<text>"] [--from <NODE_ID>]` appends an entry at the end of `## Lessons` (creating the file from the bundled header when it is missing); `--from` records the leaf the defect escaped from. Line breaks in the rule or example are folded into one line. `specy-road lessons list` prints the entries in file order, or says the file does not exist. Commit the file like any other project file: a reviewer reads it from the checkout that builds its prompt.
 
+## Implementation summary in the review packet
+
+The packet's **Implementation summary** section reads `work/implementation-summary-<NODE_ID>.md` in this order: the copy committed at the reviewed commit, then the copy in the leaf's own worktree, then the working tree of the checkout running the command. The leaf worktree is the one `git worktree list` shows with the leaf's `feature/rm-<codename>` branch checked out, the same lookup `prompt --role reviewer` uses. When that worktree is the checkout running the command, the copy is the working-tree one. The section names which copy it used. The committed and working-tree labels are unchanged; the leaf worktree's label includes that file's path. When none of the copies exists, the missing line names every path that was checked. A summary without an `## Added` inventory is noted, not failed. A milestone packet is unchanged: its summary section says each leaf's summary was reviewed with that leaf.
+
 ## Changed paths in the review packet
 
 The packet's **Changed paths** section lists every path the diff changes and marks each one outside the touch zones. Those zones, also named in the header, are the claim row's `touch_zones` plus the node's `touch_zones` as committed at the commit under review, read from git. A zone added to the node on the feature branch therefore counts when the packet is built from a checkout on the integration branch. When the node cannot be read at that commit, the claim row's zones (else the node's in the working tree) are used.

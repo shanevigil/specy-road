@@ -159,7 +159,7 @@ def worktree_problem(root: Path, path: Path, t: ReviewTarget) -> str:
 def leaf_worktree(root: Path, t: ReviewTarget, explicit: Path | None = None) -> tuple[Path | None, str]:
     """``(path, error)``: where a reviewer runs, the worktree with the leaf's claimed branch checked out (``git
     worktree list``), or ``explicit`` (``--worktree``); either must pass :func:`worktree_problem`."""
-    path = explicit.resolve() if explicit is not None else _claimed_worktree(root, (t.entry or {}).get("branch"))
+    path = explicit.resolve() if explicit is not None else claimed_worktree(root, (t.entry or {}).get("branch"))
     if path is None:
         branch, codename = (t.entry or {}).get("branch"), (t.entry or {}).get("codename") or "<codename>"
         return None, (f"no worktree has {branch or f'a claimed branch of {t.node_id}'} checked out, and a reviewer "
@@ -170,7 +170,7 @@ def leaf_worktree(root: Path, t: ReviewTarget, explicit: Path | None = None) -> 
     return (None, f"{'--worktree ' if explicit is not None else ''}{err}") if err else (path, "")
 
 
-def _claimed_worktree(root: Path, branch: str | None) -> Path | None:
+def claimed_worktree(root: Path, branch: str | None) -> Path | None:
     """The worktree ``git worktree list`` shows with ``branch`` checked out, else ``None``."""
     ok, out = git_ok(["worktree", "list", "--porcelain"], root) if branch else (False, "")
     path: Path | None = None

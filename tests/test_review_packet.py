@@ -377,3 +377,51 @@ def test_packet_accepts_a_git_root_path_named_in_a_nested_layout_brief(tmp_path:
     assert "_none_" in _uncommitted_block(text)
     err = capsys.readouterr().err
     assert "src/a.py" not in err and "tests/at-git-root.py" not in err
+
+
+_SUMMARY_REL = "work/implementation-summary-M1.1.md"
+
+
+def _summary_section(text: str) -> str:
+    return text.split("## Implementation summary\n", 1)[1].split("\n## ", 1)[0]
+
+
+@pytest.mark.parametrize("where", ["leaf", "both", "committed", "neither"])
+def test_review_packet_cli_reads_the_leaf_worktree_summary(tmp_path: Path, where: str) -> None:
+    """The public CLI prefers the committed copy, then the leaf worktree, then this checkout."""
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    leaf = tmp_path / "leaf"
+    git(repo, "worktree", "add", "-q", str(leaf), "feature/rm-thing")
+    leaf_file, checkout_file = leaf / _SUMMARY_REL, repo / _SUMMARY_REL
+    if where == "committed":
+        commit_file(leaf, _SUMMARY_REL, "COMMITTED_SUMMARY\n", "summary")
+        leaf_file.write_text("LEAF_SUMMARY\n", encoding="utf-8")
+        checkout_file.parent.mkdir(parents=True, exist_ok=True)
+        checkout_file.write_text("CHECKOUT_SUMMARY\n", encoding="utf-8")
+    elif where == "leaf":
+        leaf_file.parent.mkdir(parents=True, exist_ok=True)
+        leaf_file.write_text("LEAF_SUMMARY\n", encoding="utf-8")
+    elif where == "both":
+        leaf_file.parent.mkdir(parents=True, exist_ok=True)
+        leaf_file.write_text("LEAF_SUMMARY\n", encoding="utf-8")
+        checkout_file.parent.mkdir(parents=True, exist_ok=True)
+        checkout_file.write_text("CHECKOUT_SUMMARY\n", encoding="utf-8")
+    rp.main(["M1.1", "--repo-root", str(repo)])
+    section = _summary_section((reviews_dir(repo, "M1.1") / PACKET_NAME).read_text(encoding="utf-8"))
+    leaf_path, checkout_path = str(leaf_file.resolve()), str(checkout_file.resolve())
+    if where in ("leaf", "both"):
+        assert "LEAF_SUMMARY" in section and leaf_path in section
+        assert "CHECKOUT_SUMMARY" not in section
+        assert rp.ASSERTED not in section and rp.ASSERTED_WORKING_TREE not in section
+    elif where == "committed":
+        assert "COMMITTED_SUMMARY" in section and rp.ASSERTED in section
+        assert "LEAF_SUMMARY" not in section and "CHECKOUT_SUMMARY" not in section
+        assert leaf_path not in section
+    else:
+        commit = git(leaf, "rev-parse", "HEAD")
+        assert rp.SUMMARY_MISSING in section
+        assert f"`{_SUMMARY_REL}` at `{commit}`" in section
+        assert f"`{leaf_path}`" in section and f"`{checkout_path}`" in section
+        assert section.index(leaf_path) < section.index(checkout_path)
+        assert rp.ASSERTED not in section and rp.ASSERTED_WORKING_TREE not in section

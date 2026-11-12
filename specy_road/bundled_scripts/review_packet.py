@@ -4,7 +4,8 @@
 Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in order:
 
 1. the brief (goal, numbered acceptance, planning, contracts);
-2. the implementation summary (``work/implementation-summary-<NODE_ID>.md``);
+2. the implementation summary (``work/implementation-summary-<NODE_ID>.md``),
+   from the reviewed commit, else the leaf's worktree, else this checkout;
 3. a warning when the brief, a planning sheet or the summary names a path not
    in the tree at the reviewed commit;
 4. every changed path since the merge base (with the integration branch, or
@@ -61,7 +62,9 @@ from specy_road.review_target import (
     resolve_target_or_exit, same_commit,
 )
 from specy_road.roadmap_load import load_roadmap
+from specy_road.role_prompt_cli import claimed_worktree
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
+from specy_road.worker_adapter_parsers import project_root_from_worktree
 
 TAIL_LINES = 60
 MAX_DIFF_LINES = 1500
@@ -84,7 +87,8 @@ _POLICY_PATHS = ("roadmap/orchestration.yaml", "roadmap/git-workflow.yaml")
 ASSERTED = "_Asserted by the executor at the reviewed commit; a claim to check, not evidence._"
 ASSERTED_WORKING_TREE = ("_Asserted by the executor; read from the working tree, **not committed at the "
                          "reviewed commit**. A claim to check, not evidence._")
-SUMMARY_MISSING = "_Not provided: no summary at the reviewed commit or in the working tree._"
+SUMMARY_MISSING = ("_Not provided: no summary at the reviewed commit, in the leaf's worktree, "
+                   "or in the working tree._")
 # The executor prompt asks the summary to end with an `## Added` inventory (helpers, guards,
 # mocks, tests, each with a reason). Its absence is noted, never fatal.
 NO_INVENTORY = ("_No `Added` inventory in the summary: helpers, guards, mocks and tests added are not "
@@ -125,16 +129,61 @@ def _header(root: Path, t: ReviewTarget, integration_ref: str | None) -> list[st
     ]
 
 
+def _leaf_label(path: Path) -> str:
+    """Provenance line for a summary read from the leaf worktree's ``path``."""
+    return ("_Asserted by the executor; read from the leaf's worktree "
+            f"`{path}`, **not committed at the reviewed commit**. "
+            "A claim to check, not evidence._")
+
+
+def _other_leaf_root(root: Path, t: ReviewTarget) -> Path | None:
+    """Project root of the worktree with the leaf's branch, when it is not ``root``.
+
+    A milestone has no claim. The checkout running the command keeps the working-tree label.
+    """
+    if t.milestone:
+        return None
+    wt = claimed_worktree(root, (t.entry or {}).get("branch"))
+    if wt is None:
+        return None
+    project = project_root_from_worktree(wt).resolve()
+    return None if project == root.resolve() else project
+
+
+def _read_summary(root: Path, t: ReviewTarget, rel: str) -> tuple[str, str] | None:
+    """``(text, label)`` from the reviewed commit, else the leaf worktree, else this checkout."""
+    text = git_stdout(["show", f"{t.commit}:./{rel}"], root) if t.commit else None   # ./ = project-root relative
+    if text is not None:
+        return text, ASSERTED
+    leaf = _other_leaf_root(root, t)
+    if leaf is not None and (leaf / rel).is_file():
+        path = (leaf / rel).resolve()
+        return path.read_text(encoding="utf-8"), _leaf_label(path)
+    if (root / rel).is_file():
+        return (root / rel).read_text(encoding="utf-8"), ASSERTED_WORKING_TREE
+    return None
+
+
+def _missing_summary(root: Path, t: ReviewTarget, rel: str) -> str:
+    """Every path the summary lookup checked, committed path first."""
+    paths = [f"`{rel}` at `{t.commit}`" if t.commit else f"`{rel}`"]
+    leaf = _other_leaf_root(root, t)
+    if leaf is not None:
+        paths.append(f"`{(leaf / rel).resolve()}`")
+    paths.append(f"`{(root / rel).resolve()}`")
+    return f"_(missing: {', '.join(paths)})_"
+
+
 def _summary(root: Path, t: ReviewTarget) -> list[str]:
-    """The summary as committed at the reviewed commit, else the working tree's; each labelled."""
+    """Committed summary, else the leaf worktree's, else this checkout's; each labelled."""
     rel = f"work/implementation-summary-{t.node_id}.md"
     out = ["## Implementation summary", ""]
-    text = git_stdout(["show", f"{t.commit}:./{rel}"], root) if t.commit else None   # ./ = project-root relative
-    label = ASSERTED
-    if text is None and (root / rel).is_file():
-        text, label = (root / rel).read_text(encoding="utf-8"), ASSERTED_WORKING_TREE
-    if text is None:
-        return out + ([MILESTONE_SUMMARY, ""] if t.milestone else [SUMMARY_MISSING, "", f"_(missing: `{rel}`)_", ""])
+    found = _read_summary(root, t, rel)
+    if found is None:
+        if t.milestone:
+            return out + [MILESTONE_SUMMARY, ""]
+        return out + [SUMMARY_MISSING, "", _missing_summary(root, t, rel), ""]
+    text, label = found
     note = [] if _INVENTORY.search(text) else [NO_INVENTORY, ""]
     return out + [label, "", text.rstrip(), ""] + note
 
