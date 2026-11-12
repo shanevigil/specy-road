@@ -346,8 +346,8 @@ later commit makes it stale. Under the default human-only roster the agent canno
 `specy_road.orchestration.snapshot(repo_root)` is the one read of orchestration state for any
 consumer outside the orchestration code: the PM GUI's orchestration view (phase M17) reads it, and
 so may a script. It writes nothing: no worker record, registry row, review file, git object or git
-index change. For the duration of that call, every list-form `git` subprocess it causes —
-its own and the review package's readers — is `git -c core.fsmonitor=false -c core.hooksPath=/dev/null`
+index change. For the duration of that call, every list-form `git` subprocess on the calling
+thread — its own and the review package's readers — is `git -c core.fsmonitor=false -c core.hooksPath=/dev/null`
 with `GIT_OPTIONAL_LOCKS=0`. A shell-string git command is not rewritten. It runs no stall sweep,
 ack, fetch, check or harness command.
 `worker list` and doctor's claim report read the same state (`specy_road.orchestration.read_state`).

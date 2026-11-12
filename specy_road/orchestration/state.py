@@ -4,9 +4,9 @@
 (``tests/fixtures/orchestration_snapshot_v2.json``, v1 fields unchanged from
 ``tests/fixtures/orchestration_snapshot_v1.json``). Nothing here writes: no record, registry,
 review file, git object or git index changes. For the duration of :func:`snapshot`, every
-list-form ``git`` subprocess — including the review package's readers — is invoked as
-``git -c core.fsmonitor=false -c core.hooksPath=/dev/null`` with ``GIT_OPTIONAL_LOCKS=0``.
-A shell-string git command is not rewritten.
+list-form ``git`` subprocess on the calling thread — including the review package's readers —
+is invoked as ``git -c core.fsmonitor=false -c core.hooksPath=/dev/null`` with
+``GIT_OPTIONAL_LOCKS=0``. A shell-string git command is not rewritten.
 
 Each leaf's status comes from the fixture's truth table, first match wins. The abandoned rule is
 M15.26's, stated once in :func:`specy_road.orphaned_claims.orphaned_claims`; the slot states are
@@ -55,6 +55,7 @@ _WORKER_UNKNOWN = (
 _git_lock = threading.Lock()
 _git_depth = 0
 _git_saved: dict[str, Any] = {}
+_git_thread = threading.local()
 
 
 @dataclass
@@ -107,15 +108,17 @@ def snapshot(repo_root: Path) -> dict[str, Any]:
 
 @contextmanager
 def _readonly_git():
-    """Give every list-form ``git`` subprocess the read-only settings until the snapshot returns.
+    """Give this thread's list-form ``git`` subprocesses the read-only settings until the snapshot returns.
 
-    A shell string is left as written: the readers pass an argument list. Another thread's git in
-    this process during the call gets the same settings.
+    A shell string is left as written: the readers pass an argument list.
     """
     _enter_readonly_git()
+    previous = getattr(_git_thread, "on", False)
+    _git_thread.on = True
     try:
         yield
     finally:
+        _git_thread.on = previous
         _exit_readonly_git()
 
 
@@ -156,7 +159,9 @@ def _git_popen(argv, *args, **kwargs):
 
 
 def _protect_git(argv, kwargs):
-    """``git -c core.fsmonitor=false -c core.hooksPath=/dev/null`` and ``GIT_OPTIONAL_LOCKS=0``."""
+    """On the snapshot's thread: ``-c core.fsmonitor=false -c core.hooksPath=/dev/null`` and ``GIT_OPTIONAL_LOCKS=0``."""
+    if not getattr(_git_thread, "on", False):
+        return argv, kwargs
     rewritten = _git_argv(argv)
     if rewritten is None:
         return argv, kwargs

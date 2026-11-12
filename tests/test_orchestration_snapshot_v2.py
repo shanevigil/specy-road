@@ -10,11 +10,14 @@ import shutil
 import stat
 import subprocess
 import sys
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
+from specy_road.git_subprocess import run as git_run
 from specy_road.orchestration import snapshot
 from specy_road.review_files import reviews_dir
 from specy_road.worker_sandbox import state_home
@@ -329,6 +332,53 @@ def test_fsmonitor_in_a_worktree_does_not_run_and_the_main_checkout_stays(
     git(repo, "config", "--unset", "core.fsmonitor")
     monkeypatch.setenv("PATH", original_path)
     assert git(repo, "status", "--porcelain", "--untracked-files=all") == porcelain
+
+
+def test_another_thread_keeps_its_own_hooks_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """While snapshot() runs, another thread's git keeps the repository's hooks path."""
+    repo = make_review_repo(tmp_path, orchestration=ONE)
+    hooks = tmp_path / "real-hooks"
+    hooks.mkdir()
+    git(repo, "config", "core.hooksPath", str(hooks))
+    entered, release = tmp_path / "entered", tmp_path / "release"
+    real = shutil.which("git")
+    wrapper = tmp_path / "git"
+    wrapper.write_text(
+        "#!/bin/sh\n"
+        "case \" $* \" in\n"
+        "  *\" core.hooksPath=/dev/null \"*)\n"
+        f"    : > {shlex.quote(str(entered))}\n"
+        "    i=0\n"
+        f"    while [ ! -f {shlex.quote(str(release))} ] && [ \"$i\" -lt 500 ]; do\n"
+        "      i=$((i + 1))\n"
+        "      sleep 0.01\n"
+        "    done\n"
+        "    ;;\n"
+        "esac\n"
+        f"exec {shlex.quote(str(real))} \"$@\"\n",
+        encoding="utf-8",
+    )
+    wrapper.chmod(wrapper.stat().st_mode | stat.S_IEXEC)
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
+    seen: dict[str, str | None] = {}
+
+    def other() -> None:
+        deadline = time.monotonic() + 5
+        while not entered.exists():
+            if time.monotonic() > deadline:
+                seen["text"] = None
+                return
+            time.sleep(0.01)
+        seen["text"] = git_run(["config", "--get", "core.hooksPath"], repo).text
+        release.write_text("go\n", encoding="utf-8")
+
+    thread = threading.Thread(target=other)
+    thread.start()
+    snap = snapshot(repo)
+    thread.join(timeout=5)
+    assert not thread.is_alive()
+    assert seen["text"] == str(hooks)
+    assert snap["schema"] == 2
 
 
 def test_snapshot_writes_no_objects_when_the_leaf_is_behind(tmp_path: Path) -> None:
