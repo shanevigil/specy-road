@@ -357,6 +357,7 @@ def add_entry(
     needed_by: str | None = None,
     asked: str | None = None,
     local: bool = False,
+    criterion: str | None = None,
 ) -> dict[str, Any]:
     path = decisions_path(root, local)
     doc = read_decisions(path)
@@ -379,6 +380,8 @@ def add_entry(
     }
     if needed_by:
         entry["needed_by"] = require_iso_date("needed_by", needed_by)
+    if criterion:
+        entry["criterion"] = criterion
     doc.setdefault("entries", []).append(entry)
     write_decisions(path, doc)
     return entry
@@ -429,22 +432,12 @@ def add_preference(
     return entry
 
 
-def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | None,
+def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | None = None,
                 ledger_only: bool = False, local: bool = False, decided_by: str | None = None,
                 channel: str | None = None) -> dict[str, Any]:
-    """Close an open entry. A preference or standing rule (``sheet_text`` None) needs no planning-sheet
-    record: it belongs to the project's sessions, not to one leaf. ``ledger_only`` closes a decision without one
-    for a caller that keeps its own audit trail (``review defer``: the RCA record and its deferral marker; the PM
-    GUI, whose coordinator records the sheet line). ``decided_by`` and ``channel`` are recorded when given."""
-    if sheet_text is not None and not recorded_on_sheet(sheet_text, decision_id, answer):
-        print(
-            f"error: planning sheet decision block has no line `{decision_id}: {answer.strip()}` "
-            "(optional list marker or checkbox in front is fine; other sections and fenced "
-            "examples do not count). Record the answer under `## Decisions and notes`, "
-            "commit it, then run close again.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
+    """Close an open entry; no planning-sheet line is needed (M22.69). ``sheet_text`` and ``ledger_only`` are no
+    longer read: ``review defer`` and the PM GUI still pass them. ``decided_by`` and ``channel`` are recorded
+    when given."""
     path = decisions_path(root, local)
     doc = read_decisions(path)
     entries = doc.get("entries") or []
@@ -452,10 +445,6 @@ def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | 
         if isinstance(e, dict) and e.get("id") == decision_id:
             if e.get("status") != "open":
                 print(f"error: decision {decision_id!r} is not open", file=sys.stderr)
-                raise SystemExit(1)
-            if sheet_text is None and e.get("kind") not in (PREFERENCE, STANDING_RULE) and not ledger_only:
-                print(f"error: decision {decision_id!r} closes only with its planning-sheet record",
-                      file=sys.stderr)
                 raise SystemExit(1)
             e["status"] = "closed"
             e["answer"] = answer.strip()

@@ -411,7 +411,7 @@ def pending(root: Path) -> dict:
 def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv(ROLE_ENV, raising=False)   # the manual coordinator
     lay = gui.layout(tmp_path, monkeypatch)
-    gui.with_questions(lay, gui.question("D1"))
+    gui.with_questions(lay, gui.question("D1"), gui.question("D4", kind="human-action", criterion="A2"))
     git(lay.leaf, "merge", "-q", "--no-edit", "dev")
     gui.block(lay)
     local = lay.run / "roadmap" / "decisions.local.yaml"   # a local-only D2: the approval must not take its id
@@ -419,6 +419,7 @@ def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_pat
     c = gui.client()
     assert gui.answer(c, "D1", "A", "ship A\nnow").status_code == 400   # one line, so the sheet line can match
     assert gui.answer(c, "D1", "A", "ship A").status_code == 200
+    assert gui.answer(c, "D4", "A", "wording approved").status_code == 200   # finish-this-task consumes it
     assert gui.approve(c, gui.leaf_offer(c)).status_code == 200
     git(lay.top, "merge", "-q", "--ff-only", "origin/dev")   # the coordinator pulls
     got = pending(lay.run)

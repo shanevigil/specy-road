@@ -19,6 +19,7 @@ from specy_road.git_workflow_config import (
     should_cleanup_work_artifacts_on_finish,
 )
 from specy_road.steering_gate import zones_or_exit
+from specy_road.finish_implementation_check import base_ref
 from specy_road.finish_task_gates import human_acceptance_or_exit
 from specy_road.planning_scaffold_check import scaffold_planning_or_exit
 from specy_road.review_policy_pin import pin_holds_or_exit
@@ -177,11 +178,11 @@ def _resolve_main_context(root: Path, args: argparse.Namespace, branch: str) -> 
     delete_branch_preflight(on_mode, delete_branch=args.delete_branch, rollup=rollup)
     trial_merge_or_exit(root)
     scaffold_planning_or_exit(root, node, allow=args.allow_scaffold_planning)
-    human_acceptance_or_exit(root, node)
-    _impl_review_or_exit(root, entry, node)
     ib, gw_remote, _gw = resolve_integration_defaults(
         root, explicit_base=None, explicit_remote=None,
     )
+    human_acceptance_or_exit(root, node, base_ref(root, gw_remote, ib))
+    _impl_review_or_exit(root, entry, node)
     zones_or_exit(   # the implementation check, then the steering files (M21.7)
         root, node=node, entry=entry, node_id=node_id,
         remote=gw_remote, integration_branch=ib,

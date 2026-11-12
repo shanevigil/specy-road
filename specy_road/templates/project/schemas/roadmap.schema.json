@@ -92,7 +92,7 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "minItems": 1,
-          "description": "Observable acceptance criteria — what must be true for this node to be considered done. A criterion starting with `human:` is one only a person can satisfy: reviewers mark it n/a (reason: human) and finish-this-task requires a recorded decision for it (a line `A#: <decision>`) on the planning sheet."
+          "description": "Observable acceptance criteria — what must be true for this node to be considered done. A criterion starting with `human:` is one only a person can satisfy: reviewers mark it n/a (reason: human) and finish-this-task requires a person's decision for it: a closed kind human-action entry in roadmap/decisions.yaml with criterion A#, decided_by operator and channel terminal or pm-gui, committed on the leaf or integration branch. A planning-sheet line does not count."
         },
         "planned_test_changes": {
           "type": "array",
