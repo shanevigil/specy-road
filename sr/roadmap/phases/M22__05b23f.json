@@ -68,7 +68,7 @@
       ],
       "planning_dir": "planning/M22.69_human-criteria-in-ledger_c0db44a6-fda6-4991-94e6-0b5c874f3c2b.md",
       "sibling_order": 63,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line",
       "touch_zones": [
         "specy_road/finish_task_gates.py",
