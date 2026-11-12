@@ -18,6 +18,12 @@ Idempotent by construction: applying the same lines twice is a no-op, so
 in an ignore file and an H1 heading in Markdown, which is why the agent-guide
 block uses :data:`HTML_COMMENT` instead. :data:`HASH` stays the default so the
 ignore files keep their existing bytes.
+
+**One write path.** The block writer (:func:`apply_managed_block`, used for the
+ignore files, ``CLAUDE.md`` and the ``AGENTS.md`` stub) and the whole-file writer
+for the files specy-road owns outright (:func:`write_owned_file`, used for
+``.specyrd/AGENTS.md`` and the team addendum) both store text through one
+function, so the symlink check and the write itself are stated once.
 """
 
 from __future__ import annotations
@@ -94,16 +100,18 @@ def refused_link(root: Path, path: Path, *, any_link: bool = True) -> str | None
 
 
 def rule_refusal(outcome: str) -> str | None:
-    """The reason in a ``refused: <why>`` outcome of the :mod:`specy_road.safe_write` rule, else ``None``.
+    """The reason in a :mod:`specy_road.safe_write` refusal (``refused: <why>``), else ``None``.
 
     :data:`REFUSED` (a ``resolves_outside`` writer's link out: ``AGENTS.md``,
     ``CLAUDE.md``) is not one: it stays a report line.
     """
-    return outcome.removeprefix("refused: ") if outcome.startswith("refused: ") and outcome != REFUSED else None
+    if outcome.startswith("refused: ") and outcome != REFUSED:
+        return outcome.removeprefix("refused: ")
+    return None
 
 
 def raise_rule_refusal(written: list[str]) -> None:
-    """Raise ``SafeWriteError`` for the first :func:`rule_refusal` among ``written``'s outcomes, if any.
+    """Raise ``SafeWriteError`` for the first :func:`rule_refusal` among ``written``, if any.
 
     For a command that stops on the rule (``init project``, ``specyrd init``): the
     re-check right before replace refuses a link swapped in after its preflight.
@@ -182,32 +190,63 @@ def apply_managed_block(
 
 
 def _read(path: Path, strict: bool) -> str | None:
-    """``path``'s text, ``None`` when absent; with ``strict`` the safe-write rule is checked before it is read."""
+    """``path``'s text, ``None`` when absent.
+
+    With ``strict`` the safe-write rule is checked before it is read.
+    """
     safe_write.check_all(path.parent, [path] if strict else [])
     return path.read_text(encoding="utf-8") if path.is_file() else None
 
 
-def _plain_write(path: Path, text: str) -> None:
+def _store(path: Path, text: str, *, strict: bool = False) -> None:
+    """Write ``text`` to ``path``: the one write every managed file goes through.
+
+    ``strict`` hands the write to :mod:`specy_road.safe_write` (atomic, every link
+    refused); otherwise the parent is created and the file written in place. The
+    caller has already made its symlink check. Raises ``OSError``.
+    """
+    if strict:
+        safe_write.write(path.parent, path, text)
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
 
 
-def _strict_write(path: Path, text: str) -> None:
-    safe_write.write(path.parent, path, text)
-
-
 def _write(path: Path, text: str, outcome: str, dry_run: bool = False, strict: bool = False) -> str:
-    if not strict and resolves_outside(path.parent, path):   # a managed file sits directly in the root its caller named
+    # A managed block's file sits directly in the root its caller named, so its parent is the root.
+    if not strict and resolves_outside(path.parent, path):
         return REFUSED
     if dry_run:
         return outcome
-    write = _strict_write if strict else _plain_write
-    try:   # strict: a refusal here is the re-check before replace catching a race; it is still the rule's
-        write(path, text)
+    # strict: a refusal here is the re-check before replace catching a race; it is still the rule's.
+    try:
+        _store(path, text, strict=strict)
     except safe_write.SafeWriteError as e:
         return f"refused: {e}"
     except OSError:
         return FAILED
+    return outcome
+
+
+def write_owned_file(
+    root: Path, rel: str, text: str, *, replace: bool, dry_run: bool = False
+) -> str:
+    """Create ``root / rel``, or rewrite it when ``replace`` and it differs. Returns what happened.
+
+    For a file specy-road owns whole (``.specyrd/AGENTS.md``), or creates once and
+    then leaves to the team (``.specyrd/AGENTS.team.md``, ``replace=False``). A
+    path, or a directory above it, that links out of ``root`` is :data:`REFUSED`,
+    not followed. Unlike :func:`apply_managed_block` it raises ``OSError``: a file
+    the command owns cannot be skipped quietly.
+    """
+    path = root / rel
+    if resolves_outside(root, path):
+        return REFUSED
+    if path.is_file() and (not replace or path.read_text(encoding="utf-8") == text):
+        return UNCHANGED
+    outcome = UPDATED if path.is_file() else CREATED
+    if not dry_run:
+        _store(path, text)
     return outcome
 
 

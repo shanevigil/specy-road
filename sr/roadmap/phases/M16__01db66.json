@@ -390,7 +390,7 @@
       "parent_id": "M16.3",
       "planning_dir": "planning/M16.3.5_the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine_9ca08f50-6df0-4f3e-bf0b-8770bc8d260f.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The brainstorm CLI becomes two modules and the three managed-block writers share one engine",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_*.py",

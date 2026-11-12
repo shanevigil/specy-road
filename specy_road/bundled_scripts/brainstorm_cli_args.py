@@ -1,8 +1,9 @@
-"""Argparse surface for ``specy-road brainstorm``.
+"""Argparse surface for ``specy-road brainstorm``: every subcommand's flags, bound by name.
 
-Split from ``brainstorm_cli.py`` for the same reason as
-``do_next_task_args.py``: nine subcommands of option wiring would otherwise
-push the command module past the file cap and bury the handlers.
+The handlers live in ``brainstorm_cli``. This module also turns flags into the
+records they stand for: the sources ``add-evidence`` and ``add-idea --quote``
+build, the ``frame`` answers, and the ``--from-file`` records parsed as the
+single command's own flags.
 """
 
 from __future__ import annotations
@@ -11,7 +12,9 @@ import argparse
 import json
 import sys
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -21,11 +24,16 @@ from specy_road.brainstorm_promote import (
     INHERIT_EXECUTION_MILESTONE,
     PROMOTABLE_TYPES,
 )
-from specy_road.bundled_scripts.brainstorm_cli_args_v2 import (
-    add_from_file,
-    add_start_v2_options,
-    add_v2_subcommands,
+from specy_road.bundled_scripts.brainstorm_fields import (
+    NO_RESULT,
+    REPO,
+    STANCES,
+    no_result_locator,
+    repo_locator,
+    source_record,
 )
+from specy_road.bundled_scripts.brainstorm_lenses import PROFILES
+from specy_road.bundled_scripts.brainstorm_verify import repo_commit
 from specy_road.brainstorm_session import (
     IDEA_KINDS,
     BrainstormError,
@@ -80,7 +88,18 @@ def _add_start(sub) -> None:
         help="Minimum ideas to ask for (default: 20). Raise it to push the "
         "agent past its first, safest set.",
     )
-    add_start_v2_options(p)
+    p.add_argument("--rounds", type=int, default=2, metavar="R",
+                   help="Diverge rounds planned (default: 2). Round 1 plans and generates "
+                        "without the roadmap list or research; `next-round` opens the rest.")
+    p.add_argument("--profile", default=None, choices=sorted(PROFILES),
+                   help="Lens set: product (default) or technical (failure modes, "
+                        "operability, migration, debt, dependency risk, platform).")
+    p.add_argument("--panel", type=int, default=None, metavar="N",
+                   help="Also write N independent shard prompts "
+                        "(work/brainstorm-<slug>-r1-sN-prompt.md) "
+                        "for sub-agents or other harnesses to run without seeing each other; "
+                        "`frame` rewrites them with the frame and each shard's "
+                        "`sN:` allocation cell.")
     _add_slug(p)
 
 
@@ -117,8 +136,9 @@ def _add_add_idea(sub) -> None:
     p.add_argument("--assumption", action="append", default=None, metavar="TEXT",
                    help="Something that must be true for the idea to matter. Repeatable.")
     p.add_argument("--from-gap", action="store_true",
-                   help="Mark the idea as raised in the converge pass (a gap); recommend lists it for a verdict.")
-    add_from_file(p, "ideas")
+                   help="Mark the idea as raised in the converge pass (a gap); "
+                        "recommend lists it for a verdict.")
+    _add_from_file(p, "ideas")
     _add_slug(p)
 
 
@@ -143,7 +163,8 @@ def _add_list(sub) -> None:
     s = sub.add_parser("sessions", help="list every open brainstorm session")
     add_repo_root_arg(s)
 
-    c = sub.add_parser("close", help="move a finished session to work/brainstorm-closed/ so it stops counting as open")
+    c = sub.add_parser("close", help="move a finished session to work/brainstorm-closed/ "
+                                     "so it stops counting as open")
     _add_slug(c)
 
 
@@ -169,8 +190,10 @@ def _add_triage(sub) -> None:
                    help="Display id of an existing node in the merged roadmap.")
     _add_slug(p)
 
-    p = sub.add_parser("revise", help="edit an idea, or record a recommendation (or a file of them)")
-    p.add_argument("idea_id", nargs="?", default=None, metavar="IDEA_ID", help="Required unless --from-file.")
+    p = sub.add_parser("revise",
+                       help="edit an idea, or record a recommendation (or a file of them)")
+    p.add_argument("idea_id", nargs="?", default=None, metavar="IDEA_ID",
+                   help="Required unless --from-file.")
     p.add_argument("--title", default=None, metavar="TEXT")
     p.add_argument("--rationale", default=None, metavar="TEXT")
     p.add_argument("--kind", default=None, choices=IDEA_KINDS)
@@ -189,18 +212,141 @@ def _add_triage(sub) -> None:
         "triage status alone, so accept/reject stays the PM's call.",
     )
     p.add_argument("--why", default=None, metavar="TEXT",
-                   help="Set verdict_why (the stored verdict reasoning; cite a clause, source, or overlap). "
+                   help="Set verdict_why (the stored verdict reasoning; cite a clause, source, or "
+                        "overlap). "
                         "Unlike --rationale it does not edit the idea or mark it revised.")
     p.add_argument("--append-why", default=None, metavar="TEXT",
                    help="Append to verdict_why instead of replacing it.")
-    p.add_argument("--cluster", default=None, metavar="CID", help="Cluster id from the converge pass.")
+    p.add_argument("--cluster", default=None, metavar="CID",
+                   help="Cluster id from the converge pass.")
     p.add_argument("--target-parent", default=None, metavar="NODE_ID",
-                   help="Display id promote lands this idea under instead of the anchor ('' clears it).")
+                   help="Display id promote lands this idea under instead of the anchor "
+                        "('' clears it).")
     p.add_argument("--overlap", action="append", default=None, metavar="NODE_ID:RELATION",
                    help="Existing node this overlaps and how (repeatable).")
     p.add_argument("--critic", action="append", default=None, metavar="ROLE: TEXT",
                    help="A critic's strongest objection, e.g. 'feasibility: ...' (repeatable).")
-    add_from_file(p, "verdicts")
+    _add_from_file(p, "verdicts")
+    _add_slug(p)
+
+
+def _add_from_file(p: argparse.ArgumentParser, key: str) -> None:
+    p.add_argument("--from-file", default=None, metavar="PATH",
+                   help=f"Apply every record in a YAML list (or a mapping with a `{key}:` list), "
+                        "or JSONL "
+                        "(one object per line; `-` reads stdin), as one write: all or none. "
+                        "Keys are this "
+                        "command's flag names without the dashes; repeatable flags take a list.")
+
+
+def frame_answers(ns: argparse.Namespace) -> list[tuple[str, str]]:
+    """``--answer KEY=TEXT`` pairs, or ``--amend KEY`` with its one ``--answer TEXT``."""
+    if ns.amend is None:
+        pairs = [(key.strip(), text.strip())
+                 for key, _sep, text in (a.partition("=") for a in ns.answer)]
+        for item, (key, text) in zip(ns.answer, pairs):
+            if "=" not in item or not key or not text:
+                raise BrainstormError(f"--answer {item!r}: expected KEY=TEXT")
+        return pairs
+    key = ns.amend.strip()
+    if len(ns.answer) != 1:
+        raise BrainstormError(f"--amend {key} takes exactly one --answer TEXT: the new answer")
+    text = ns.answer[0].strip().removeprefix(f"{key}=").strip()   # KEY=TEXT is accepted too
+    if not key or not text:
+        raise BrainstormError("--amend needs a KEY and a non-empty --answer")
+    return [(key, text)]
+
+
+def _evidence_quote(ns: argparse.Namespace) -> str:
+    """The checked ``--quote``: required on a page or a file, absent on a search that
+    found nothing."""
+    given = [f for f, v in (("--url", ns.url), ("--path", ns.path), ("--query", ns.query))
+             if v is not None]
+    if len(given) != 1:
+        raise BrainstormError("add-evidence takes one of --url URL, --path FILE[:LINE], "
+                              "or --query TEXT --no-result"
+                              + (f"; got {', '.join(given)}" if given else ""))
+    if (ns.query is not None) != ns.no_result:
+        raise BrainstormError("--query and --no-result go together: "
+                              "they record a search that found nothing")
+    quote = (ns.quote or "").strip()
+    if ns.no_result:
+        if quote:
+            raise BrainstormError("--no-result takes no --quote: the search found nothing to quote")
+        return quote
+    if not quote:
+        raise BrainstormError("--quote is required: a URL with no quote is not evidence "
+                              "(verify checks the quote)")
+    if len(quote) > 300:
+        raise BrainstormError("--quote must be 300 characters or fewer: quote, do not paraphrase")
+    return quote
+
+
+def evidence_record(ns: argparse.Namespace, root: Path) -> dict[str, Any]:
+    """The source ``add-evidence`` records: a page (``--url``), a file in this repository at
+    ``HEAD``
+    (``--path FILE[:LINE]``), or a search that found nothing (``--query TEXT --no-result``)."""
+    common = dict(quote=_evidence_quote(ns), supports=ns.supports, stance=ns.stance, tool=ns.tool,
+                  retrieved_at=ns.retrieved_at or date.today().isoformat())
+    source_type = ns.source_type.strip()
+    if ns.path is not None:
+        if source_type not in ("", REPO):
+            raise BrainstormError(f"--path cites a file in this repository: "
+                                  f"--source-type {REPO}, or leave it out")
+        path = ns.path.strip()
+        commit = repo_commit(root, path)
+        return source_record(repo_locator(path, commit), source_type=REPO, path=path,
+                             commit=commit, **common)
+    if source_type == REPO:
+        raise BrainstormError(f"--source-type {REPO} needs --path FILE[:LINE]")
+    if ns.no_result:
+        if not ns.query.strip():
+            raise BrainstormError("--query is empty: record the search that found nothing")
+        return source_record(no_result_locator(ns.query.strip()), source_type=source_type,
+                             query=ns.query,
+                             result=NO_RESULT, **common)
+    return source_record(ns.url, source_type=source_type, **common)
+
+
+def quoted_sources(ns: argparse.Namespace) -> list[dict]:
+    """``--quote`` N backs ``--evidence`` N: a source ``verify`` can check, for an idea
+    research produced."""
+    quotes, urls = list(ns.quote or []), list(ns.evidence or [])
+    if len(quotes) > len(urls):
+        raise BrainstormError(f"{len(quotes)} --quote for {len(urls)} --evidence: "
+                              f"each quote backs the URL "
+                              "in the same position")
+    for q in quotes:
+        if not q.strip() or len(q) > 300:
+            raise BrainstormError("each --quote needs verbatim text of 300 characters or fewer")
+    return [source_record(u, quote=q, retrieved_at=date.today().isoformat())
+            for u, q in zip(urls, quotes)]
+
+
+def _add_add_evidence(sub) -> None:
+    p = sub.add_parser("add-evidence", help="record one source on an idea (the agent calls this)")
+    p.add_argument("idea_id", metavar="IDEA_ID")
+    p.add_argument("--url", default=None, help="The page. One of --url, --path or --query.")
+    p.add_argument("--path", default=None, metavar="FILE[:LINE]",
+                   help=f"A file in this repository (source type {REPO}); records the HEAD commit, "
+                        "and "
+                        "verify checks the quote against the file at that commit, locally.")
+    p.add_argument("--query", default=None, metavar="TEXT",
+                   help="With --no-result: a search, e.g. a disconfirming one, that found nothing.")
+    p.add_argument("--no-result", action="store_true",
+                   help="Record --query as a search with no hit; it takes no --quote and "
+                        "verify skips it.")
+    p.add_argument("--quote", default="", metavar="TEXT",
+                   help="Verbatim text from the page or file (≤300 chars); "
+                   "required unless --no-result — a URL alone is not evidence.")
+    p.add_argument("--supports", default="", metavar="TEXT", help="The claim this source bears on.")
+    p.add_argument("--stance", default="for", choices=STANCES)
+    p.add_argument("--tool", default="", metavar="TEXT",
+                   help="How it was retrieved, e.g. 'claude WebFetch'.")
+    p.add_argument("--source-type", default="", metavar="TYPE",
+                   help=f"official-doc, regulation, paper, customer-report, news, competitor; "
+                        f"{REPO} with --path.")
+    p.add_argument("--retrieved-at", default=None, metavar="DATE", help="Default: today.")
     _add_slug(p)
 
 
@@ -254,6 +400,94 @@ def _add_converge(sub) -> None:
     _add_slug(p)
 
 
+def _add_rounds(sub) -> None:
+    """``next-round`` and ``frame``: the diverge rounds and the frame they run under."""
+    p = sub.add_parser("next-round",
+                       help="open the next diverge round: regenerate against the pool")
+    p.add_argument("--count", type=int, default=None, metavar="N",
+                   help="Minimum new ideas to ask for (default: 20).")
+    _add_slug(p)
+
+    p = sub.add_parser("frame", help="record the agreed frame or the allocation grid")
+    p.add_argument("--answer", action="append", default=[], metavar="KEY=TEXT",
+                   help="One agreed answer, e.g. outcome=... (repeatable). "
+                        "A different answer for a "
+                        "recorded key replaces it and keeps the old one in frame_history.")
+    p.add_argument("--amend", default=None, metavar="KEY",
+                   help="Change one recorded answer: give the new text as the one --answer TEXT; "
+                        "the previous answer is kept in frame_history.")
+    state = p.add_mutually_exclusive_group()
+    state.add_argument("--provisional", action="store_true",
+                       help="Mark the frame provisional: later prompts treat it as "
+                            "working assumptions.")
+    state.add_argument("--confirm", action="store_true",
+                       help="Mark the frame confirmed by the PM; later prompts say so.")
+    p.add_argument("--allocation", default=None, metavar="TEXT",
+                   help="The allocation grid as text. With --panel, a line `sN: <cell>` "
+                        "gives shard N its cell.")
+    _add_slug(p)
+
+
+def _add_evidence(sub) -> None:
+    """``evidence``, ``add-evidence`` and ``verify``: sourcing the shortlist and checking
+    its quotes."""
+    p = sub.add_parser("evidence", help="write the evidence prompt for shortlisted ideas")
+    p.add_argument("idea_id", nargs="*", metavar="IDEA_ID",
+                   help="Ideas to source (default: those recommended strong). More than 15 warns.")
+    _add_slug(p)
+
+    _add_add_evidence(sub)
+
+    p = sub.add_parser("verify", help="check that each recorded quote appears on its page "
+                                      "(asks before fetching)")
+    p.add_argument("idea_id", nargs="*", metavar="IDEA_ID",
+                   help="Default: every idea with unverified sources.")
+    p.add_argument("--yes", action="store_true", help="Allow the fetch without asking (scripts).")
+    _add_slug(p)
+
+
+def _add_settle(sub) -> None:
+    """``park``, ``decide``, ``merge`` and ``cluster``: the triage outcomes besides
+    accept and reject."""
+    p = sub.add_parser("park",
+                       help="set ideas aside with a reason and, optionally, a revisit condition")
+    p.add_argument("idea_id", nargs="+", metavar="IDEA_ID")
+    p.add_argument("--reason", required=True, metavar="TEXT",
+                   help="Required; recorded as the decision reason.")
+    p.add_argument("--revisit-when", default="", metavar="TEXT",
+                   help="Optional: what would make the idea worth another look.")
+    _add_slug(p)
+
+    p = sub.add_parser("decide", help="record the decision or policy an idea settled: "
+                                      "status decided; "
+                                      "promote writes it into the anchor's sheet instead of a node")
+    p.add_argument("idea_id", metavar="IDEA_ID")
+    p.add_argument("--decision", required=True, metavar="TEXT",
+                   help="The decision, as it should read under the anchor sheet's "
+                        "`## Decided policies`.")
+    _add_slug(p)
+
+    p = sub.add_parser("merge",
+                       help="fold a duplicate idea into others: status merged, linked both ways")
+    p.add_argument("idea_id", metavar="IDEA_ID")
+    p.add_argument("--into", nargs="+", required=True, metavar="IDEA_ID",
+                   help="The idea(s) it duplicates; each records the merged id in merged_from.")
+    _add_slug(p)
+
+    p = sub.add_parser("cluster",
+                       help="record a converge cluster: its name, best statement and critics")
+    p.add_argument("cluster_id", metavar="CID")
+    p.add_argument("--name", default=None, metavar="TEXT",
+                   help="What the cluster's ideas share ('' clears it).")
+    p.add_argument("--best", default=None, metavar="IDEA_ID",
+                   help="The member that states the bet best; it must already carry this "
+                        "cluster id ('' clears it).")
+    p.add_argument("--critic", action="append", default=None, metavar="ROLE: TEXT",
+                   help="A critic's strongest objection to the cluster "
+                        "(repeatable; same role replaces).")
+    _add_slug(p)
+
+
 def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
     """Parse ``promote --set`` pairs; return :data:`INHERIT_EXECUTION_MILESTONE` when absent."""
     if not pairs:
@@ -291,7 +525,9 @@ def bound_parser(handlers: dict[str, Callable]) -> argparse.ArgumentParser:
     _add_list(sub)
     _add_triage(sub)
     _add_converge(sub)
-    add_v2_subcommands(sub)
+    _add_rounds(sub)
+    _add_evidence(sub)
+    _add_settle(sub)
     for name, fn in handlers.items():
         sub.choices[name].set_defaults(func=fn)
     return p
@@ -302,7 +538,8 @@ _RECORD_BUILDERS = {"add-idea": _add_add_idea, "revise": _add_triage}
 
 
 def record_parser(command: str) -> argparse.ArgumentParser:
-    """``command``'s own parser, for one ``--from-file`` record: exact flag names only, errors raised."""
+    """``command``'s own parser, for one ``--from-file`` record: exact flag names only,
+    errors raised."""
     sub = argparse.ArgumentParser().add_subparsers()
     _RECORD_BUILDERS[command](sub)
     p = sub.choices[command]
@@ -334,7 +571,8 @@ def _read_records(path: str, command: str) -> list:
     key = _FILE_LIST_KEY[command]
     records = raw.get(key) if isinstance(raw, dict) else raw
     if not isinstance(records, list) or not records:
-        raise BrainstormError(f"{where}: expected a non-empty YAML list, a mapping with a `{key}:` list, "
+        raise BrainstormError(f"{where}: expected a non-empty YAML list, a mapping with a "
+                              f"`{key}:` list, "
                               "or JSONL with one object per line")
     return records
 
@@ -364,14 +602,16 @@ def _record_argv(record: dict, command: str) -> list[str]:
 
 
 def file_namespaces(ns: argparse.Namespace, command: str) -> list[argparse.Namespace]:
-    """Every record in ``--from-file`` parsed as ``command``'s own flags; the first bad one raises."""
+    """Every record in ``--from-file`` parsed as ``command``'s own flags; the first bad
+    one raises."""
     out = []
     for n, record in enumerate(_read_records(ns.from_file, command), 1):
         try:
             if not isinstance(record, dict) or not record:
                 raise BrainstormError("expected a mapping of flag names to values")
             rec_ns = record_parser(command).parse_args(_record_argv(record, command))
-            for key, value in record.items():   # false/null values add no argv, so check every key here
+            # false/null values add no argv, so check every key here
+            for key, value in record.items():
                 dest = str(key).replace("-", "_")
                 if dest == "id":
                     continue
