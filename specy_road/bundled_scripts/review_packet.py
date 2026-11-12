@@ -4,8 +4,7 @@
 Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in order:
 
 1. the brief (goal, numbered acceptance, planning, contracts);
-2. the implementation summary (``work/implementation-summary-<NODE_ID>.md``),
-   from the reviewed commit, else the leaf's worktree, else this checkout;
+2. the implementation summary (``work/implementation-summary-<NODE_ID>.md``);
 3. a warning when the brief, a planning sheet or the summary names a path not
    in the tree at the reviewed commit;
 4. every changed path since the merge base (with the integration branch, or
