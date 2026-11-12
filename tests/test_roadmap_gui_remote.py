@@ -255,7 +255,7 @@ def test_test_llm_connection_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_ping() -> None:
         return None
 
-    with patch("specy_road.bundled_scripts.review_node.ping_llm", fake_ping):
+    with patch("specy_road.llm_client.ping_llm", fake_ping):
         ok, msg = rgr.test_llm_connection({"backend": "openai"})
     assert ok is True
     assert "responded" in msg.lower()
@@ -267,7 +267,7 @@ def test_test_llm_connection_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def bad_ping() -> None:
         raise RuntimeError("refused")
 
-    with patch("specy_road.bundled_scripts.review_node.ping_llm", bad_ping):
+    with patch("specy_road.llm_client.ping_llm", bad_ping):
         ok, msg = rgr.test_llm_connection({})
     assert ok is False
     assert "refused" in msg

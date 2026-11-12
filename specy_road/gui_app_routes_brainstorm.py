@@ -35,7 +35,7 @@ from specy_road.brainstorm_session import (
     slugify,
     write_session,
 )
-from specy_road.bundled_scripts.review_node import ReviewError
+from specy_road.llm_client import ReviewError
 from specy_road.roadmap_gui_lib import apply_llm_env_from_settings
 from specy_road.roadmap_gui_settings import with_stored_secrets
 from specy_road.gui_app_helpers import get_repo_root

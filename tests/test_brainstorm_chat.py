@@ -24,6 +24,7 @@ from specy_road.brainstorm_research import (
     search,
     validate_endpoint,
 )
+from tests.helpers import use_fake_llm
 
 RESEARCH_ON = {
     "enabled": True,
@@ -117,9 +118,7 @@ def test_an_unknown_kind_falls_back_rather_than_failing() -> None:
 
 def test_ideas_are_only_captured_when_asked_for(monkeypatch) -> None:
     """The CLI's agent records ideas by running the command, so it opts out."""
-    import specy_road.brainstorm_chat as mod
-
-    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: "IDEA: One")
+    use_fake_llm(monkeypatch, lambda *_a, **_k: "IDEA: One")
 
     without = chat_turn([{"role": "user", "content": "go"}], system_prompt="B")
     with_capture = chat_turn(
@@ -138,11 +137,7 @@ def test_search_requests_are_parsed_and_capped() -> None:
 
 def test_a_reply_with_prose_is_not_a_search_request(monkeypatch) -> None:
     """Only a turn that is *only* SEARCH lines triggers the loop."""
-    import specy_road.brainstorm_chat as mod
-
-    monkeypatch.setattr(
-        mod, "complete_chat", lambda *_a, **_k: "Here is an idea.\nSEARCH: unused"
-    )
+    use_fake_llm(monkeypatch, lambda *_a, **_k: "Here is an idea.\nSEARCH: unused")
 
     result = chat_turn([{"role": "user", "content": "go"}], system_prompt="B",
                        research=RESEARCH_ON)
@@ -155,7 +150,8 @@ def test_the_search_loop_feeds_results_back(monkeypatch) -> None:
     import specy_road.brainstorm_chat as mod
 
     replies = iter(["SEARCH: payments trends", "Two ideas, sourced."])
-    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: next(replies))
+    requests: list[dict] = []
+    use_fake_llm(monkeypatch, lambda request: requests.append(request) or next(replies))
     monkeypatch.setattr(
         mod,
         "search",
@@ -169,6 +165,8 @@ def test_the_search_loop_feeds_results_back(monkeypatch) -> None:
     assert result["sources"] == ["https://u"]
     assert result["reply"] == "Two ideas, sourced."
     assert any("Search results (provider output" in m["content"] for m in result["messages"])
+    # The system prompt leads, then the whole conversation so far.
+    assert [m["role"] for m in requests[1]["messages"]] == ["system", "user", "assistant", "user"]
 
 
 def test_a_failing_search_becomes_text_the_model_can_read(monkeypatch) -> None:
@@ -176,7 +174,7 @@ def test_a_failing_search_becomes_text_the_model_can_read(monkeypatch) -> None:
     import specy_road.brainstorm_chat as mod
 
     replies = iter(["SEARCH: anything", "Answered from memory."])
-    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: next(replies))
+    use_fake_llm(monkeypatch, lambda *_a, **_k: next(replies))
 
     def _boom(_q, _s):
         raise ResearchError("endpoint is down")
@@ -199,7 +197,7 @@ def test_the_search_loop_is_bounded(monkeypatch) -> None:
         calls["n"] += 1
         return "SEARCH: again"
 
-    monkeypatch.setattr(mod, "complete_chat", _always_search)
+    use_fake_llm(monkeypatch, _always_search)
     monkeypatch.setattr(mod, "search", lambda _q, _s: [])
 
     chat_turn([{"role": "user", "content": "go"}], system_prompt="B",
@@ -209,9 +207,7 @@ def test_the_search_loop_is_bounded(monkeypatch) -> None:
 
 
 def test_search_lines_are_ignored_when_research_is_off(monkeypatch) -> None:
-    import specy_road.brainstorm_chat as mod
-
-    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: "SEARCH: nope")
+    use_fake_llm(monkeypatch, lambda *_a, **_k: "SEARCH: nope")
 
     result = chat_turn([{"role": "user", "content": "go"}], system_prompt="B",
                        research=None)
