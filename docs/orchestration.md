@@ -377,7 +377,7 @@ keeps every name, type and value; schema 2 only adds fields. A field is added or
 
 `account` is the Claude profile name when the worker record (its `claude-config-dir` file) or its roster
 entry names the `CLAUDE_CONFIG_DIR` it ran with: that directory's name, or its parent's when the directory
-is named `claude` or `.claude`. A quoted roster value keeps its spaces (`CLAUDE_CONFIG_DIR="/Accounts/My Accounts/work/claude"`
+is named `claude` or `.claude`. A quoted roster value keeps its spaces (`CLAUDE_CONFIG_DIR="<dir with spaces>/work/claude"`
 is `work`). An unquoted value ends at whitespace. Otherwise `null`. It is never a path, credential or
 environment value.
 `last_activity` is the newer of the last event time and `last_output_at`. `flags` are the record's flags,
