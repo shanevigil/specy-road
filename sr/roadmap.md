@@ -37,10 +37,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.12` | Review packets and prompts show a held milestone's rollup as the public loader does | task | Agentic-led | Complete |
 | `M16.2.13` | The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle | task | Agentic-led | Complete |
 | `M16.3` | Orchestration state model and the cap-driven folds | milestone | — | Not Started |
-| `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Not Started |
-| `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Not Started |
-| `M16.3.3` | Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one | task | Agentic-led | Not Started |
-| `M16.3.4` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Not Started |
+| `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Complete |
+| `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Complete |
+| `M16.3.3` | Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one | task | Agentic-led | Complete |
+| `M16.3.4` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Complete |
 | `M16.3.5` | The brainstorm CLI becomes two modules and the three managed-block writers share one engine | task | Agentic-led | Not Started |
 | `M16.3.6` | Fold the remaining single-importer siblings from the code report's misc list | task | Agentic-led | Not Started |
 | `M16.3.7` | Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed | task | Agentic-led | Not Started |
@@ -88,8 +88,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M17.3` | PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags | task | Agentic-led | Complete |
 | `M17.4` | PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state | task | Agentic-led | Complete |
 | `M17.5` | PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer | task | Agentic-led | Complete |
-| `M17.6` | Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) | task | Agentic-led | Not Started |
-| `M17.7` | PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together | task | Agentic-led | Not Started |
+| `M17.6` | Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) | task | Agentic-led | Complete |
+| `M17.7` | PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together | task | Agentic-led | Complete |
 | `M17.8` | PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route | task | Agentic-led | Not Started |
 | `M17.9` | GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results | task | Human-led | Not Started |
 | `M17.10` | Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run | gate | Human-led | Complete |
@@ -125,6 +125,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M18.25` | A channels.cli reviewer writes its final answer to a file specy-road names, and its transcript is kept beside the run record | task | — | Not Started |
 | `M18.26` | Amending a claimed leaf's touch zones or one acceptance line records the reason, commits on the leaf branch and re-arms its review | task | — | Not Started |
 | `M18.27` | Append-only zone paths such as CHANGELOG.md do not serialize leaves, and finish merges their added lines | task | — | Not Started |
+| `M18.28` | handoff status reports the risk triggers in a leaf's whole candidate diff, report only | task | — | Not Started |
+| `M18.29` | review defer has a coordinator form at the spent fix-round budget, under a person-recorded standing rule bound to deferral, for one bounded follow-up per non-trust leaf | task | — | Not Started |
+| `M18.30` | review followups lists follow-up leaves created by deferrals that are not Complete, and exits 1 while any is open | task | — | Not Started |
+| `M18.31` | An opt-in policy holds the review gate on a leaf's fix-risk triggers until an operator decision names them, and fails closed when the policy is incomplete | task | — | Not Started |
 | `M19` | Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) | phase | — | Not Started |
 | `M19.1` | Configurable code-analysis tools | task | — | Not Started |
 | `M19.2` | Research reminders leave validate | task | — | Not Started |
@@ -255,7 +259,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.67` | A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works | task | Agentic-led | Complete |
 | `M22.68` | grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only | task | Agentic-led | Complete |
 | `M22.69` | A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line | task | Agentic-led | Not Started |
-| `M22.70` | review-packet reads the implementation summary from the leaf's own worktree | task | Agentic-led | Not Started |
+| `M22.70` | review-packet reads the implementation summary from the leaf's own worktree | task | Agentic-led | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |

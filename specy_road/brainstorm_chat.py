@@ -1,6 +1,6 @@
 """Multi-turn chat for the PM GUI brainstorm panel.
 
-Reuses ``review_node``'s client layer — the same four backends, the same
+Uses ``specy_road.llm_client`` — the same four backends, the same
 throughput gate, the same error redaction — but sends a conversation instead of
 a single turn.
 
@@ -24,16 +24,7 @@ from specy_road.brainstorm_research import (
     search,
 )
 from specy_road.brainstorm_session import IDEA_KINDS
-from specy_road.bundled_scripts.review_node import (
-    ReviewError,
-    _anthropic_max_completion_tokens,
-    _anthropic_text,
-    _azure_chat_completion_extra_params,
-    _azure_deployment_for_request,
-    _chat_completion_message_content,
-    _make_client,
-    _openai_chat_completions_create,
-)
+from specy_road.llm_client import complete
 
 # `[ \t]` rather than `\s`: `\s` matches the newline too, so a bare `SEARCH:`
 # or `IDEA:` line would reach forward and swallow the line beneath it as its
@@ -96,51 +87,6 @@ NO_RESEARCH_NOTICE = (
     "about the market is from memory rather than a source. Do not invent URLs. "
     "The PM can enable search in Settings → Research."
 )
-
-
-def _complete_anthropic(client: object, messages: list[dict], system: str) -> str:
-    import os
-
-    model = os.environ.get("SPECY_ROAD_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
-    try:
-        resp = client.messages.create(  # type: ignore[union-attr]
-            model=model,
-            max_tokens=_anthropic_max_completion_tokens(),
-            system=system,
-            messages=messages,
-        )
-    except ReviewError:
-        raise
-    except Exception as e:  # noqa: BLE001 — redacted by the caller's handler
-        from specy_road.bundled_scripts.review_node import _openai_safe_error_message
-
-        raise ReviewError(_openai_safe_error_message(e)) from e
-    return _anthropic_text(resp)
-
-
-def complete_chat(messages: list[dict], *, system_prompt: str) -> str:
-    """One model call over a whole conversation. ``messages`` is user/assistant."""
-    import os
-
-    client = _make_client()
-    if type(client).__module__.startswith("anthropic"):
-        return _complete_anthropic(client, messages, system_prompt)
-
-    from openai import AzureOpenAI
-
-    if isinstance(client, AzureOpenAI):
-        model = _azure_deployment_for_request()
-        extra = _azure_chat_completion_extra_params()
-    else:
-        model = os.environ.get("SPECY_ROAD_OPENAI_MODEL", "gpt-4o-mini")
-        extra = {}
-    resp = _openai_chat_completions_create(
-        client,
-        model=model,
-        messages=[{"role": "system", "content": system_prompt}, *messages],
-        **extra,
-    )
-    return _chat_completion_message_content(resp) or ""
 
 
 def extract_queries(reply: str) -> list[str]:
@@ -252,7 +198,7 @@ def chat_turn(
     system = system_prompt_for(system_prompt, research, capture_ideas=capture_ideas)
 
     for _ in range(MAX_SEARCH_ROUNDS):
-        reply = complete_chat(convo, system_prompt=system)
+        reply = complete(convo, system_prompt=system)
         queries = extract_queries(reply) if is_configured(research) else []
         if not _is_search_request(reply, queries):
             return {
@@ -278,7 +224,7 @@ def chat_turn(
             "content": "Search budget reached. Answer now using what you have.",
         }
     )
-    reply = complete_chat(convo, system_prompt=system)
+    reply = complete(convo, system_prompt=system)
     return {
         "reply": reply,
         "messages": convo + [{"role": "assistant", "content": reply}],

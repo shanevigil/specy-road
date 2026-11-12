@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_args import add_json_arg, add_model_arg
-from specy_road.finish_task_gates import TERMINAL, human_criteria
+from specy_road.bundled_scripts.finish_task import TERMINAL, human_criteria
 from specy_road.review_override import OPERATOR, recorder, role_refusal
 from specy_road.roadmap_load import load_roadmap
 from specy_road.decisions import (

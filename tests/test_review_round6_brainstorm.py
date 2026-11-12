@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 from starlette.testclient import TestClient
 
-from tests.helpers import DOGFOOD
+from tests.helpers import DOGFOOD, use_fake_llm
 
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts.brainstorm_fields import parse_overlap, source_record
@@ -128,10 +128,8 @@ def test_gui_converge_is_advisory_and_persists_nothing_structured(
     api_client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The decision: no structured converge protocol in the GUI; docs say advisory."""
-    import specy_road.brainstorm_chat as mod
-
-    monkeypatch.setattr(
-        mod, "complete_chat",
+    use_fake_llm(
+        monkeypatch,
         lambda *_a, **_k: "B1: strong — Principle 3; cluster C1; overlaps M1.1 (adjacent)\nIDEA: sneaky\n",
     )
     headers = {"X-PM-Gui-Fingerprint": str(api_client.get("/api/roadmap").json()["fingerprint"])}

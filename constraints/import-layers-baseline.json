@@ -132,14 +132,6 @@
     {
       "size": 3,
       "modules": [
-        "specy_road.finish_implementation_check",
-        "specy_road.nested_repos",
-        "specy_road.nested_repos_land"
-      ]
-    },
-    {
-      "size": 3,
-      "modules": [
         "specy_road.pm_integration_registry",
         "specy_road.registry_remote_overlay",
         "specy_road.registry_remote_overlay_merge"

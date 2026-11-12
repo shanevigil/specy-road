@@ -37,10 +37,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.2.12` Review packets and prompts show a held milestone's rollup as the public loader does `held-rollup-in-review-packets` — task — **Complete**
     - `M16.2.13` The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle `loader-out-of-review-cycle` — task — **Complete**
   - `M16.3` Orchestration state model and the cap-driven folds `orchestration-state-model-and-the-cap-driven-folds` — milestone — **Not Started**
-    - `M16.3.1` Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI `orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` — task — **Not Started**
-    - `M16.3.2` Fold the cap-driven splits in pickup and finish into their parents `fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents` — task — **Not Started**
-    - `M16.3.3` Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one `nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one` — task — **Not Started**
-    - `M16.3.4` One LLM client module replaces the provider code inside review_node `one-llm-client-module-replaces-the-provider-code-inside-review-node` — task — **Not Started**
+    - `M16.3.1` Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI `orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` — task — **Complete**
+    - `M16.3.2` Fold the cap-driven splits in pickup and finish into their parents `fold-the-cap-driven-splits-in-pickup-and-finish-into-their-parents` — task — **Complete**
+    - `M16.3.3` Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one `nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one` — task — **Complete**
+    - `M16.3.4` One LLM client module replaces the provider code inside review_node `one-llm-client-module-replaces-the-provider-code-inside-review-node` — task — **Complete**
     - `M16.3.5` The brainstorm CLI becomes two modules and the three managed-block writers share one engine `the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` — task — **Not Started**
     - `M16.3.6` Fold the remaining single-importer siblings from the code report's misc list `fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list` — task — **Not Started**
     - `M16.3.7` Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed `fold-the-pm-ui-server-and-roadmap-crud-splits-after-the-orchestration-snapshot-is-fixed` — task — **Not Started**
@@ -191,15 +191,15 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.67` A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works `human-approves-over-block` — task — **Complete**
   - `M22.68` grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only `grind-status` — task — **Complete**
   - `M22.69` A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line `human-criteria-in-ledger` — task — **Not Started**
-  - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Not Started**
+  - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
   - `M17.3` PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags `gui-orch-drawer` — task — **Complete**
   - `M17.4` PM GUI: per-leaf orchestration detail shows worktrees with dirty and ahead/behind, the READY commit, review verdicts with fresh-for-head, and the gate state `gui-orch-leaf-detail` — task — **Complete**
   - `M17.5` PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer `gui-orch-outline-badges` — task — **Complete**
-  - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Not Started**
-  - `M17.7` PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together `gui-api-orchestration` — task — **Not Started**
+  - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Complete**
+  - `M17.7` PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together `gui-api-orchestration` — task — **Complete**
   - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Not Started**
   - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Not Started**
   - `M17.10` Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run `gui-orch-sandbox-use-approved` — gate — **Complete**
@@ -235,6 +235,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M18.25` A channels.cli reviewer writes its final answer to a file specy-road names, and its transcript is kept beside the run record `reviewer-answer-file` — task — **Not Started**
   - `M18.26` Amending a claimed leaf's touch zones or one acceptance line records the reason, commits on the leaf branch and re-arms its review `claimed-leaf-amendments` — task — **Not Started**
   - `M18.27` Append-only zone paths such as CHANGELOG.md do not serialize leaves, and finish merges their added lines `append-only-zone-paths` — task — **Not Started**
+  - `M18.28` handoff status reports the risk triggers in a leaf's whole candidate diff, report only `fix-risk-in-handoff-status` — task — **Not Started**
+  - `M18.29` review defer has a coordinator form at the spent fix-round budget, under a person-recorded standing rule bound to deferral, for one bounded follow-up per non-trust leaf `coordinator-deferral-untouched-lines` — task — **Not Started**
+  - `M18.30` review followups lists follow-up leaves created by deferrals that are not Complete, and exits 1 while any is open `review-followups-open` — task — **Not Started**
+  - `M18.31` An opt-in policy holds the review gate on a leaf's fix-risk triggers until an operator decision names them, and fails closed when the policy is incomplete `fix-risk-hold` — task — **Not Started**
 - `M19` Adopter-project features: upgrade, agent-file layering, planning hygiene, project tooling (after 0.3.1) `adopter-features` — phase — **Not Started**
   - `M19.1` Configurable code-analysis tools `analysis-tools` — task — **Not Started**
   - `M19.2` Research reminders leave validate `research-due-in-doctor` — task — **Not Started**
@@ -335,14 +339,13 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.3.1` on `feature/rm-orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui` since 2026-11-11
+- `M16.3.5` on `feature/rm-the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` since 2026-11-12
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.69` on `feature/rm-human-criteria-in-ledger` since 2026-11-11
-- `M22.70` on `feature/rm-packet-reads-leaf-worktree-summary` since 2026-11-11
 
 ## Quality by area
 
@@ -350,26 +353,26 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 25 | 0 | 2.20 | 60% | 21 | 2 |
+| `.github` **flagged** | 3 | 0 | 2.33 | 67% | 18 | 0 |
+| `CHANGELOG.md` **flagged** | 21 | 0 | 2.24 | 57% | 12 | 2 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 27 | 0 | 2.22 | 63% | 55 | 2 |
-| `gui` **flagged** | 9 | 0 | 1.67 | 56% | 3 | 0 |
+| `docs` **flagged** | 25 | 0 | 2.48 | 64% | 47 | 2 |
 | `planning` **flagged** | 4 | 0 | 2.75 | 75% | 23 | 0 |
+| `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
+| `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 42 | 0 | 2.12 | 52% | 91 | 2 |
-| `tests` **flagged** | 44 | 0 | 2.11 | 55% | 103 | 2 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
-| `.github` | 4 | 0 | 2.00 | 50% | 31 | 0 |
 | `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
-| `constraints` | 8 | 0 | 1.62 | 25% | 57 | 0 |
-| `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
-| `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
-| `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
-| `scripts` | 9 | 0 | 2.11 | 44% | 85 | 0 |
+| `constraints` | 11 | 0 | 1.91 | 27% | 49 | 0 |
+| `gui` | 8 | 0 | 1.88 | 50% | 2 | 0 |
+| `pyproject.toml` | 2 | 0 | 2.50 | 50% | 20 | 0 |
+| `scripts` | 11 | 0 | 2.36 | 45% | 75 | 0 |
+| `specy_road` | 44 | 0 | 2.16 | 48% | 87 | 2 |
+| `tests` | 46 | 0 | 2.15 | 50% | 99 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

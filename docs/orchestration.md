@@ -345,6 +345,69 @@ fresh executor sub-agent, has a **different** fresh sub-agent of a rostered revi
 TTY), then `grind-session --step finish`. Anything that modifies files runs before the review, since a
 later commit makes it stale. Under the default human-only roster the agent cannot close the gate; it stops and asks the human to approve in a terminal.
 
+## Orchestration state: the read-only snapshot
+
+`specy_road.orchestration.snapshot(repo_root)` is the one read of orchestration state for any
+consumer outside the orchestration code: the PM GUI's orchestration view (phase M17) reads it, and
+so may a script. It writes nothing: no worker record, registry row, review file, git object or git
+index change. For the duration of that call, every list-form `git` subprocess on the calling
+thread — its own and the review package's readers — is `git -c core.fsmonitor=false -c core.hooksPath=/dev/null`
+with `GIT_OPTIONAL_LOCKS=0`. A shell-string git command is not rewritten. It runs no stall sweep,
+ack, fetch, check or harness command.
+`worker list` and doctor's claim report read the same state (`specy_road.orchestration.read_state`).
+`orchestrate plan` and every other reader of the session plan take their claimed leaves from its claim
+read (`read_claims`), and refuse a registry it reads as `unknown` rather than plan as if nothing were
+claimed.
+Writes stay in the modules that make them (`worker`, `pickup`, `finish`, `review record`). Import
+from `specy_road.orchestration` only; `scripts/check_import_layers.py` lists any gate, CLI or
+`gui_app` module that imports a module inside it.
+
+The fields are fixed by [`tests/fixtures/orchestration_snapshot_v2.json`](../tests/fixtures/orchestration_snapshot_v2.json)
+(`schema: 2`). Schema 1 ([`tests/fixtures/orchestration_snapshot_v1.json`](../tests/fixtures/orchestration_snapshot_v1.json))
+keeps every name, type and value; schema 2 only adds fields. A field is added or renamed only under a new schema number.
+
+| Field | What it holds |
+| --- | --- |
+| `schema` | `2` |
+| `leaves.<node id>.claim` | The registry row: `codename`, `branch`, `registered_at` (its `started` date or `null`); `null` for a leaf with workers and no claim |
+| `leaves.<node id>.workers[]` | `id`, `harness`, `model`, `status` (the record's state), `pid_alive` (its wrapper is running), `started_at`, `ended_at` (`null` until completed, failed or terminated); schema 2 also `account`, `last_activity`, `flags` |
+| `leaves.<node id>.worktrees[]` | `path`, `branch` (`null` when detached), `dirty`: every worktree on the claim's branch and every one a worker of the leaf names; schema 2 also `ahead`, `behind` |
+| `leaves.<node id>.reviews[]` | Each `REVIEW-*.md`: `model`, `verdict`, `commit`, `fresh_for_head` (the commit is the branch tip) |
+| `leaves.<node id>.status` | `claimed`, `running`, `exited_ok`, `exited_failed`, `abandoned` or `unknown` |
+| `leaves.<node id>.ready` | The READY `latest_ready` selects for the registered branch: `commit`, `model` (its `agent`), `at` (the file's mtime, ISO UTC), and `blocked_on` while that READY is current at the commit under review (`null` when there is no READY) |
+| `leaves.<node id>.gate` | `state` (the label `handoff status` reports, from the review gate's public `review_state`, without a trial merge), `approvals` and `blocks` (counted records), `fresh_for_head` (the commit under review is the branch tip) |
+| `leaves.<node id>.holds` | `{source: "hold_list", id, reason}` when the leaf is listed in the main checkout's `work/grind-hold.txt` (one id per line, `#` starts a reason), plus `{source: "gate", id, reason}` for each open gate the leaf depends on, as `list-gates` reports |
+| `leafless_workers[]` | Workers on a chore, and each worker record that cannot be read |
+
+`account` is the Claude profile name when the worker record (its `claude-config-dir` file) or its roster
+entry names the `CLAUDE_CONFIG_DIR` it ran with: that directory's name, or its parent's when the directory
+is named `claude` or `.claude`. A quoted roster value keeps its spaces (`CLAUDE_CONFIG_DIR="<dir with spaces>/work/claude"`
+is `work`). An unquoted value ends at whitespace. Otherwise `null`. It is never a path, credential or
+environment value.
+`last_activity` is the newer of the last event time and `last_output_at`. `flags` are the record's flags,
+plus `paused_by_limit` while the record's state is `paused_by_limit` (a usage-limit pause is a worker
+flag, not a hold). `ahead` and `behind` are integers against the local integration ref, or `unknown`
+when that ref or the worktree's branch cannot be read. A non-UTF-8, non-mapping or schema-invalid READY,
+review or worker record sets only that source's fields to `unknown`. An unreadable registry leaves
+`ready` and `gate` `unknown` as well as `claim`. An unreadable `grind-hold.txt` (it is read only as a
+regular file), or a roadmap that cannot be loaded, sets `holds` to `unknown`.
+
+A leaf's status is the first rule that holds:
+
+1. a worker on the leaf is `starting`, `running`, `idle` or `paused_by_limit` (one is enough when there are several): `running`;
+2. the registry cannot be read: `unknown`;
+3. the claim has no live worker, no live `session` on its branch and no valid READY at the branch tip: `abandoned`, the claims doctor reports under "Claims with no live worker" (a fresh manual claim included);
+4. the latest worker (highest attempt) is `completed`: `exited_ok`;
+5. the latest worker is `failed` or `terminated`: `exited_failed`;
+6. otherwise (a claim kept by a live session or a READY at its tip): `claimed`.
+
+A source that cannot be read sets only its own fields to `unknown`: an unreadable worker record is
+listed under `leafless_workers` with its id and every other field `unknown`, and statuses are judged
+from the readable records; a registry is known only when it is absent, or is UTF-8 YAML whose top level is empty or a mapping
+whose `entries`, if present, is a list (absent, empty and `entries: []` mean no claims); any other
+registry makes each `claim` `unknown`; a worker record that is not UTF-8 is unreadable like one that
+is not YAML; a worktree git cannot read has `dirty: unknown`.
+
 ## Presence: `specy-road session`
 
 The registry shows claimed leaves; work that is not a claim — a design note, a

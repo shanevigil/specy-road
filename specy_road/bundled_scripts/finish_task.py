@@ -4,27 +4,32 @@
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
 
-from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-from specy_road.bundled_scripts.finish_task_args import build_parser, parse_finish_args
+from specy_road.brief_acceptance import acceptance_ids
+from specy_road.cli_args import add_remote_arg
 from specy_road.cli_entry import run_reporting
-from specy_road.git_subprocess import git_run
-from specy_road.git_workflow_config import (
-    merge_request_requires_manual_approval,
-    resolve_integration_defaults,
-    resolve_on_complete,
-    should_cleanup_work_artifacts_on_finish,
+from specy_road.decisions import DECISIONS_REL
+from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
+from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
+from specy_road.finish_bookkeeping_undo import bookkeeping_guard, merge_undo_snapshot
+from specy_road.finish_milestone_rollout import (
+    rollup_session_applies,
+    try_milestone_rollup_finish,
 )
-from specy_road.steering_gate import zones_or_exit
 from specy_road.finish_implementation_check import base_ref
-from specy_road.finish_task_gates import human_acceptance_or_exit
-from specy_road.planning_scaffold_check import scaffold_planning_or_exit
-from specy_road.review_policy_pin import pin_holds_or_exit
-from specy_road.review_gate import gate_holds_at_head_or_exit, review_required, trial_merge_or_exit
+from specy_road.finish_modes import (
+    apply_on_complete_mode,
+    close_merged_checkout,
+    delete_branch_preflight,
+    merge_landing_preflight,
+)
+from specy_road.finish_on_complete_override import on_complete_override_or_exit
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
+from specy_road.finish_pr_merge import pr_merge_integration_or_exit
 from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
     cleanup_work_artifacts,
@@ -32,37 +37,169 @@ from specy_road.finish_work_artifacts import (
     warn_if_pr_body_tracked,
     worker_logs_to_stage,
 )
-from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
-from specy_road.finish_milestone_rollout import (
-    rollup_session_applies,
-    try_milestone_rollup_finish,
-)
-from specy_road.milestone_session import milestone_session_path, read_milestone_session
-from specy_road.finish_modes import (
-    apply_on_complete_mode,
-    close_merged_checkout,
-    delete_branch_preflight,
-    merge_landing_preflight,
-)
-from specy_road.finish_pr_merge import pr_merge_integration_or_exit
-from specy_road.finish_bookkeeping_undo import bookkeeping_guard, merge_undo_snapshot
-from specy_road.finish_on_complete_override import on_complete_override_or_exit
-from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
     gitignore_resolution_hint,
     unstageable_generated_files,
 )
-from specy_road.registry_yaml import registry_path, write_registry
+from specy_road.git_subprocess import git_run
+from specy_road.git_workflow_config import (
+    ON_COMPLETE_MODES,
+    merge_request_requires_manual_approval,
+    resolve_integration_defaults,
+    resolve_on_complete,
+    should_cleanup_work_artifacts_on_finish,
+)
+from specy_road.milestone_session import milestone_session_path, read_milestone_session
 from specy_road.on_complete_session import (
     on_complete_session_path,
     read_on_complete_session,
 )
-from specy_road.runtime_paths import resolve_repo_root
-from specy_road.repo_ops import current_branch
+from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.planning_scaffold_check import scaffold_planning_or_exit
+from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.repo_lock import pickup_finish_lock
+from specy_road.repo_ops import current_branch
+from specy_road.review_gate import gate_holds_at_head_or_exit, review_required, trial_merge_or_exit
+from specy_road.review_override import OPERATOR, PM_GUI
+from specy_road.review_policy_pin import pin_holds_or_exit
+from specy_road.review_policy_ref import committed_yaml
+from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.steering_gate import zones_or_exit
 from specy_road.worker_orphans import end_finished_workers
 from specy_road.worker_state import WorkerError
+
+# ---------------------------------------------------------------------------
+# Argument parser
+# ---------------------------------------------------------------------------
+
+_DESCRIPTION = (
+    "Mark the current roadmap task complete, validate, export, digest, commit.\n"
+    "\n"
+    "Finishing the last open leaf under a parent also flips that parent "
+    "to Complete, in the same bookkeeping commit, walking up as far as "
+    "the rollup reaches. Nothing is printed when there is nothing to "
+    "close, so a run that leaves other leaves open looks the same as "
+    "one with no parents to close.\n"
+    "\n"
+    "The exception is a node carrying a milestone_execution block "
+    "(written by start-milestone-session): its status belongs to the "
+    "milestone-rollup state machine, which closes it only once the "
+    "rollup branch is proven merged. Use "
+    "specy-road reconcile-milestone-status for those.\n"
+    "\n"
+    "--on-complete merge (and auto when merge succeeds) lands on the "
+    "integration branch and pushes it. --push only pushes the feature "
+    "branch; it does not open the PR. The printed gh/glab command is pasteable."
+)
+
+
+def _add_landing_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--push",
+        action="store_true",
+        help=(
+            "After the bookkeeping commit, run git push -u <remote> <branch>. "
+            "Does not open the PR — the gh/glab line is printed for you."
+        ),
+    )
+    add_remote_arg(p, help="Remote for --push (default: origin).", default="origin")
+    p.add_argument(
+        "--on-complete",
+        choices=sorted(ON_COMPLETE_MODES),
+        default=None,
+        metavar="MODE",
+        help=(
+            "Override completion workflow: pr, merge, or auto. "
+            "merge lands on the integration branch and pushes it. "
+            "Default: session file from do-next-available-task, then "
+            "SPECY_ROAD_ON_COMPLETE / roadmap/git-workflow.yaml. A value other "
+            "than pr that differs from that default is refused unless "
+            "--override-on-complete is also passed."
+        ),
+    )
+    p.add_argument(
+        "--override-on-complete",
+        action="store_true",
+        help=(
+            "Acknowledge that --on-complete changes the repository's configured "
+            "landing mode. A person's choice: agents do not pass it on their own."
+        ),
+    )
+    p.add_argument(
+        "--delete-branch",
+        action="store_true",
+        help=(
+            "Once the merge lands on the integration branch (merge, or auto "
+            "when its merge succeeds), delete the feature branch locally and "
+            "on the remote. Refused under pr: there the branch is the only "
+            "copy of the work until the PR merges."
+        ),
+    )
+    p.add_argument(
+        "--land-check-cmd",
+        default=None,
+        metavar="CMD",
+        help=(
+            "Shell command run at the project root of a detached worktree of "
+            "the local merge commit, before merge mode pushes it; a non-zero "
+            "exit pushes nothing and resets the integration branch. An empty "
+            "value skips the check for this run. Default: land_check_cmd in "
+            "roadmap/git-workflow.yaml. pr mode never runs it."
+        ),
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road finish-this-task`` parser."""
+    p = argparse.ArgumentParser(
+        description=_DESCRIPTION,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    _add_landing_args(p)
+    add_repo_root_arg(p)
+    p.add_argument(
+        "--no-cleanup-work",
+        action="store_true",
+        help=(
+            "Keep work/brief-, work/prompt-, and work/implementation-summary- for this node "
+            "(default: delete after successful validate/export/digest)."
+        ),
+    )
+    p.add_argument(
+        "--allow-empty-implementation",
+        action="store_true",
+        help=(
+            "Finish even though the branch changes no file under the node's "
+            "declared touch zones. For a leaf that genuinely needs no code "
+            "change; otherwise fix the zones or abort the pickup."
+        ),
+    )
+    p.add_argument(
+        "--allow-scaffold-planning",
+        action="store_true",
+        help=(
+            "Finish even though the node's planning sheet still has the "
+            "scaffold-planning or brainstorm promote placeholder text. "
+            "Otherwise write the sheet and commit it on this branch."
+        ),
+    )
+    p.add_argument(
+        "--no-milestone-rollup",
+        action="store_true",
+        help=(
+            "Skip milestone dual-land (cherry-pick bookkeeping to integration + merge "
+            "leaf into rollup) when work/.milestone-session.yaml exists; use normal "
+            "on_complete instead."
+        ),
+    )
+    return p
+
+
+def parse_finish_args(argv: list[str] | None) -> argparse.Namespace:
+    return build_parser().parse_args(argv)
+
 
 # ---------------------------------------------------------------------------
 # Git helpers
@@ -132,9 +269,85 @@ def _validate_export_digest(root: Path) -> None:
         )
 
 
+# ---------------------------------------------------------------------------
+# Acceptance items only a person can satisfy
+# ---------------------------------------------------------------------------
+#
+# A criterion such as *a named person approves the wording* or *a link only a
+# person can supply* cannot be judged from a diff. Marked ``human:``, it is
+# ``n/a`` for reviewers (:func:`role_prompt_rca.reviewer_preamble` says so and
+# ``review_semantic_errors`` never counts ``n/a`` as a fail), and
+# ``finish-this-task`` instead requires a person's decision for it in the
+# decisions ledger (M22.69): a closed ``kind: human-action`` entry with ``node``
+# the leaf, ``criterion: A#``, ``decided_by: operator`` and ``channel``
+# ``terminal`` (``decisions close`` at an interactive terminal) or ``pm-gui``
+# (the PM GUI's answer). Only ``roadmap/decisions.yaml`` as committed at the leaf
+# branch's HEAD or at the integration branch tip counts; the working tree,
+# ``decisions.local.yaml`` and a planning-sheet ``A#:`` line do not, since any
+# agent can write those.
+
+HUMAN_PREFIX = "human:"
+TERMINAL = "terminal"   # the ``channel`` of a criterion decision confirmed at a person's terminal
+PERSON_CHANNELS = (TERMINAL, PM_GUI)
+
+
+def is_human_item(text: str) -> bool:
+    return text.strip().lower().startswith(HUMAN_PREFIX)
+
+
+def human_criteria(node: dict) -> dict[str, str]:
+    """``A#`` -> text of ``node``'s criteria that start with ``human:``."""
+    items = [a for a in node.get("acceptance") or [] if isinstance(a, str) and a.strip()]
+    return {aid: text for aid, text in zip(acceptance_ids(node), items) if is_human_item(text)}
+
+
+def human_acceptance_ids(node: dict) -> list[str]:
+    """The ``A#`` ids of ``node``'s criteria that start with ``human:``."""
+    return list(human_criteria(node))
+
+
+def undecided_human_items(root: Path, node: dict, integration_ref: str | None, head: str = "HEAD") -> list[str]:
+    """The ``human:`` ids with no person's closed ledger entry at ``head`` or at ``integration_ref``."""
+    human = human_acceptance_ids(node)
+    if not human:
+        return []
+    decided: set[str] = set()
+    for ref in (head, integration_ref):
+        if not ref:
+            continue
+        for e in committed_yaml(root, ref, DECISIONS_REL.as_posix()).get("entries") or []:
+            if isinstance(e, dict) and e.get("kind") == "human-action" and e.get("node") == node["id"] \
+                    and e.get("status") == "closed" and e.get("decided_by") == OPERATOR \
+                    and e.get("channel") in PERSON_CHANNELS:
+                decided.add(str(e.get("criterion")))
+    return [aid for aid in human if aid not in decided]
+
+
+def human_acceptance_or_exit(root: Path, node: dict, integration_ref: str | None) -> None:
+    """Stop ``finish-this-task`` while a ``human:`` item has no person's decision in the committed ledger."""
+    missing = undecided_human_items(root, node, integration_ref)
+    if not missing:
+        return
+    nid, first = node["id"], missing[0]
+    where = "this branch or the integration branch" if integration_ref else "this branch"
+    print(
+        f"error: {nid} has human acceptance item(s) with no person's decision: {', '.join(missing)}.\n"
+        "  Reviewers mark a `human:` item n/a; the person it names decides it in roadmap/decisions.yaml.\n"
+        "  A planning-sheet `A#:` line no longer counts.\n"
+        f"  Open one entry per item: specy-road decisions add {nid} --kind human-action --criterion {first} "
+        "--summary ... --why ... --option ... --recommendation ... --recommendation-reason ... --default ...\n"
+        "  A person then closes it: `specy-road decisions close <ID> --answer ...` in their own terminal, or the\n"
+        f"  answer in the PM GUI's Status window. The closed entry must be committed on {where}; then run\n"
+        "  finish-this-task again.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
 def _impl_review_or_exit(root: Path, entry: dict, node: dict) -> None:
     node_id = node["id"]
-    pin_holds_or_exit(root, node)   # before the switch: turning it off after the claim is a policy change too
+    # Before the switch: turning it off after the claim is a policy change too.
+    pin_holds_or_exit(root, node)
     if not review_required(root):
         return
     if entry.get("implementation_review") == "approved":
@@ -183,7 +396,7 @@ def _resolve_main_context(root: Path, args: argparse.Namespace, branch: str) -> 
     )
     human_acceptance_or_exit(root, node, base_ref(root, gw_remote, ib))
     _impl_review_or_exit(root, entry, node)
-    zones_or_exit(   # the implementation check, then the steering files (M21.7)
+    zones_or_exit(   # the implementation check, then the steering files
         root, node=node, entry=entry, node_id=node_id,
         remote=gw_remote, integration_branch=ib,
         allow_empty=args.allow_empty_implementation,
@@ -231,9 +444,9 @@ def _stageable_generated_files(root: Path) -> list[str]:
     Only an ignored *untracked* path aborts the whole ``git add``, and dropping
     more than that would be worse than the problem: a file that is ignored but
     already tracked stages fine, and skipping it would leave the regenerated
-    copy out of every commit for good.     The resolution is the same one ``validate``, ``export --check`` and
-    ``digest --check`` print, because leaving the file out of this commit is
-    what makes those two gates fail later.
+    copy out of every commit for good. The resolution is the same one
+    ``validate``, ``export --check`` and ``digest --check`` print, because
+    leaving the file out of this commit is what makes those two gates fail later.
     """
     refused = set(unstageable_generated_files(root))
     for name in refused:
@@ -297,15 +510,20 @@ def _bookkeeping_commit_phase(
     git_run(root, "commit", "-m", f"chore(rm-{codename}): complete, deregister")
     print("\n[ok] bookkeeping committed")
     if pr_integration is not None:
-        pr_merge_integration_or_exit(root, branch=branch, ib=pr_integration[0], remote=pr_integration[1])
+        pr_merge_integration_or_exit(
+            root, branch=branch, ib=pr_integration[0], remote=pr_integration[1],
+        )
     if args.push:
         print(f"-> git push -u {args.remote} {branch}")
         git_run(root, "push", "-u", args.remote, branch)
 
 
 def _end_leaf_workers(root: Path, node_id: str) -> None:
-    """The finished leaf's idle and completed workers can get no fix round now: terminate them (each records a
-    ``terminated`` event) so their ``max_workers`` slots free. Best effort: a failure here never fails the finish."""
+    """The finished leaf's idle and completed workers can get no fix round now: terminate them.
+
+    Each records a ``terminated`` event, so their ``max_workers`` slots free. Best effort: a
+    failure here never fails the finish.
+    """
     try:
         ended = end_finished_workers(root, node_id)
     except (WorkerError, OSError) as e:
@@ -348,7 +566,7 @@ def _finish_locked(root: Path, args) -> None:
     work_dir, sess_path, on_mode = ctx["work_dir"], ctx["sess_path"], ctx["on_mode"]
     ib, gw_remote = ctx["ib"], ctx["gw_remote"]
 
-    # M21.28: validate first; a failure before the bookkeeping commit puts every path back.
+    # Validate first; a failure before the bookkeeping commit puts every path back.
     with bookkeeping_guard(root, node_id, sess_path):
         # F-015: snapshot the work-packet brief + impl-summary into a PR body
         # markdown BEFORE the cleanup pass deletes the source files. Only when
@@ -358,7 +576,7 @@ def _finish_locked(root: Path, args) -> None:
             codename=codename, branch=branch, integration_branch=ib,
         )
 
-        undo = merge_undo_snapshot(root, branch, ctx)   # M15.40: a failed merge landing restores this
+        undo = merge_undo_snapshot(root, branch, ctx)   # a failed merge landing restores this
         _bookkeeping_commit_phase(
             root, args, codename, node_id, branch, reg,
             pr_body_path=pr_body_path, sess_path=sess_path,
@@ -366,7 +584,9 @@ def _finish_locked(root: Path, args) -> None:
         )
     _end_leaf_workers(root, node_id)
     mr_manual = merge_request_requires_manual_approval(root)
-    cleanup = should_cleanup_work_artifacts_on_finish(root, no_cleanup_work_cli=args.no_cleanup_work)
+    cleanup = should_cleanup_work_artifacts_on_finish(
+        root, no_cleanup_work_cli=args.no_cleanup_work,
+    )
 
     if try_milestone_rollup_finish(
         root,

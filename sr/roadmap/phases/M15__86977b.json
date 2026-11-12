@@ -138,6 +138,33 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A1: specy-road review followups reads the closed review-defer decisions in roadmap/decisions.yaml (human and coordinator forms) and prints one line per follow-up leaf that is not Complete: leaf id, title, source leaf and decision id; --json prints the same as a list. It writes nothing.",
+        "A2: Exit 0 when no follow-up is open, 1 when any is open, 2 when the ledger or the roadmap cannot be read (the message names which). A follow-up leaf removed from the roadmap is listed as missing, never skipped.",
+        "A3: A closed decision whose answer starts Deferred by but names no follow-up leaf, names one that is neither a node key nor a display id, or cannot be parsed is listed as malformed with its decision id and makes the exit 2; it is never skipped or read as no follow-ups.",
+        "A4: Public-CLI tests in the existing suites cover none open, one open, one Complete, one missing, each malformed case in A3, the coordinator-form answer wording, and an unreadable ledger; docs/orchestration-review.md describes the command, docs/release-runbook.md adds it as a pre-tag check, and CHANGELOG [Unreleased] names it."
+      ],
+      "codename": "review-followups-open",
+      "dependencies": [],
+      "id": "M18.30",
+      "node_key": "0bf54449-55cd-4892-bd9c-5dbef718b339",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.30_review-followups-open_0bf54449-55cd-4892-bd9c-5dbef718b339.md",
+      "sibling_order": 29,
+      "status": "Not Started",
+      "title": "review followups lists follow-up leaves created by deferrals that are not Complete, and exits 1 while any is open",
+      "touch_zones": [
+        "specy_road/review_followups.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "docs/orchestration-review.md",
+        "docs/release-runbook.md",
+        "CHANGELOG.md",
+        "tests/test_review_defer.py",
+        "tests/decisions_repo_helpers.py"
+      ],
+      "type": "task"
     }
   ]
 }

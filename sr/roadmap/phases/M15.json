@@ -98,6 +98,111 @@
         "specy_road/review_target_chore.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A1: When the commit under review differs from its merge base with the integration branch, handoff status <NODE_ID> --json carries fix_risk: the integration and candidate commits compared and each trigger with its paths, over the whole candidate diff (merge base to commit, leaving out files changed only by merging the integration branch): test_weakened (removed tests, removed asserts or new skip or xfail markers as specy-road integrity reports them, less the node's planned_test_changes as committed on the integration branch), plan_change (the node's acceptance, touch_zones, dependencies or planning-sheet Tier differ between the candidate commit and the integration branch), risk_path (a changed path matching policy.fix_risk_paths) and declared_file (a changed path matching policy.fix_risk_declared_files). Each trigger names the first reviewed commit that carried it, or first-pass when it predates the first review. Text output prints one line per trigger.",
+        "A2: Report only: no trigger changes handoff status exit codes or the gate outcome. test_weakened and plan_change are reported with neither policy list set; risk_path and declared_file only when their list is set; with no trigger the output is unchanged.",
+        "A3: When a trigger cannot be computed (the merge base does not resolve, the diff or integrity read fails, or planned_test_changes cannot be read from the integration branch), fix_risk carries unknown with the reason instead of an empty list and the text output says the triggers are unknown; it never reports no triggers in that case.",
+        "A4: Public-CLI tests in the existing suites cover each trigger; the merge-only exclusion; a first-pass removed test; a trigger first carried in round 2 still reported at round 4; a planned_test_changes entry present only on the leaf branch, which exempts nothing; each unknown cause in A3; and both policy lists unset. docs/orchestration-review.md and CHANGELOG [Unreleased] describe the field."
+      ],
+      "codename": "fix-risk-in-handoff-status",
+      "dependencies": [],
+      "id": "M18.28",
+      "node_key": "73514756-0462-4003-b285-0c58ead0b3d6",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.28_fix-risk-in-handoff-status_73514756-0462-4003-b285-0c58ead0b3d6.md",
+      "sibling_order": 27,
+      "status": "Not Started",
+      "title": "handoff status reports the risk triggers in a leaf's whole candidate diff, report only",
+      "touch_zones": [
+        "specy_road/review_fix_risk.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "specy_road/templates/project/roadmap/orchestration.yaml",
+        "sr/schemas/orchestration.schema.json",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md",
+        "tests/test_review_cli.py",
+        "tests/test_orchestration_config.py",
+        "tests/integrity_repo_helpers.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A1: review defer <NODE_ID> --rca <file> --rule <id> runs without a terminal only when SPECY_ROAD_ORCHESTRATION_ROLE is exactly coordinator and <id> is an active kind: standing-rule entry with action: review-defer whose scope names this node or an ancestor, recorded by a person (decided_by: operator, channel terminal or pm-gui). decisions add --kind standing-rule gains --action and --scope; an entry with an action is recorded only through the person-only path M22.69 adds (terminal y/N, role refusal, git identity). Any other role, kind, action, scope or recorder refuses and writes nothing; without --rule the human form is unchanged.",
+        "A2: The coordinator form refuses, naming the item and the failed test and writing nothing, unless handoff status reports fix_round_budget_spent for the leaf, the leaf's planning sheet on the integration branch has a Tier other than trust boundary, and policy.fix_risk_paths is set and non-empty. It also refuses when any item: has category regression or test_integrity; has a risk other than none (new required RCA item field: none, security, data_loss or gate_integrity); has no locations (new required item field, path:line list); has a location matching policy.fix_risk_paths or inside the hunks (3 lines of context) of the diff from the leaf's previous reviewed commit to the blocked commit. It refuses an RCA record naming more than one distinct follow-up title and a leaf that already has a coordinator-form deferral. The human form's protections (earlier input class, earlier-passed acceptance, one-to-one binding) apply unchanged.",
+        "A3: On success it adds exactly one Not Started follow-up leaf whose first acceptance line is fixed (state one bounded rule covering the deferred findings, test its clauses and document its limits; complete coverage of the input class is out of scope), then one line per deferred finding; the decision records decided_by: coordinator, the rule id and the RCA file. deferral_in_effect honours the marker only while those fields and the follow-up's first acceptance line match.",
+        "A4: Public-CLI tests in the existing suites cover an accepted deferral; each refusal in A1 (role, kind, action, scope, a rule recorded without the person-only path, an expired rule) and in A2 (budget not spent, trust-boundary or missing Tier, fix_risk_paths unset, regression, test_integrity, risk security, no location, a fix-risk path, a touched line, two follow-up titles, a second deferral, an earlier-passed acceptance id); and the gate counting the block again after the marker or the follow-up's first acceptance line is edited. docs/orchestration-review.md and CHANGELOG [Unreleased] describe the form and its limits."
+      ],
+      "codename": "coordinator-deferral-untouched-lines",
+      "dependencies": [
+        "73514756-0462-4003-b285-0c58ead0b3d6",
+        "0bf54449-55cd-4892-bd9c-5dbef718b339",
+        "c0db44a6-fda6-4991-94e6-0b5c874f3c2b"
+      ],
+      "id": "M18.29",
+      "node_key": "5cbe80fb-c763-4d00-a9b6-a74be4b7d89d",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.29_coordinator-deferral-untouched-lines_5cbe80fb-c763-4d00-a9b6-a74be4b7d89d.md",
+      "sibling_order": 28,
+      "status": "Not Started",
+      "title": "review defer has a coordinator form at the spent fix-round budget, under a person-recorded standing rule bound to deferral, for one bounded follow-up per non-trust leaf",
+      "touch_zones": [
+        "specy_road/review_defer.py",
+        "specy_road/review_deferral.py",
+        "specy_road/review_rca.py",
+        "specy_road/decisions.py",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/templates/project/schemas/decisions.schema.json",
+        "sr/schemas/decisions.schema.json",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md",
+        "tests/test_review_defer.py",
+        "tests/test_review_defer_rounds.py",
+        "tests/test_decisions.py",
+        "tests/decisions_repo_helpers.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A1: With policy.fix_risk_gate: true, while the commit under review carries any M18.28 trigger or an unknown one, handoff status reports fix_risk_hold (exit 1, next step naming review operator-decision), the review gate is not met, and mark-implementation-reviewed refuses for that reason.",
+        "A2: The hold clears only through a review operator-decision recorded with the operator's words (decided_by: operator) at that exact commit, whose answer names fix_risk and each trigger kind it settles. A coordinator-form decision under a standing rule never clears it, a decision at an earlier commit does not carry to a later one, and a trigger kind the answer does not name still holds.",
+        "A3: Fail closed: with fix_risk_gate: true and policy.fix_risk_paths or policy.fix_risk_declared_files unset or empty, every leaf in review reports fix_risk_policy_incomplete (exit 1, gate not met) naming the missing key. With fix_risk_gate unset or false, output, exit codes and the gate are unchanged.",
+        "A4: Public-CLI tests in the existing suites cover the hold for each trigger kind, for unknown, for a trigger first carried in round 2 at round 4 and for a first-pass removed test; clearing by an operator decision; no clearing by a coordinator-form decision, by a decision at an older commit or by one that does not name the trigger kind; policy incomplete; and policy off. docs/orchestration-review.md and CHANGELOG [Unreleased] describe the hold."
+      ],
+      "codename": "fix-risk-hold",
+      "dependencies": [
+        "73514756-0462-4003-b285-0c58ead0b3d6"
+      ],
+      "id": "M18.31",
+      "node_key": "7fc828a1-7744-43b5-ada8-65304c2c3164",
+      "parent_id": "M18",
+      "planning_dir": "planning/M18.31_fix-risk-hold_7fc828a1-7744-43b5-ada8-65304c2c3164.md",
+      "sibling_order": 30,
+      "status": "Not Started",
+      "title": "An opt-in policy holds the review gate on a leaf's fix-risk triggers until an operator decision names them, and fails closed when the policy is incomplete",
+      "touch_zones": [
+        "specy_road/review_fix_risk.py",
+        "specy_road/review_gate.py",
+        "specy_road/review_override.py",
+        "specy_road/review_next_step.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/orchestration.schema.json",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md",
+        "tests/test_review_gate.py",
+        "tests/test_review_override.py",
+        "tests/test_orchestration_config.py"
+      ],
+      "type": "task"
     }
   ]
 }

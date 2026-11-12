@@ -38,7 +38,7 @@ from typing import Any
 
 import yaml
 
-from specy_road.finish_task_gates import undecided_human_items
+from specy_road.bundled_scripts.finish_task import undecided_human_items
 from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
 from specy_road.cli_entry import run_cli
 from specy_road.clock import utc_now_iso

@@ -18,7 +18,7 @@ import yaml
 from specy_road.bundled_scripts import decisions_cli, finish_task, review_cli
 from specy_road.bundled_scripts.role_prompt_rca import reviewer_preamble
 from specy_road.decisions import read_decisions
-from specy_road.finish_task_gates import human_acceptance_ids, undecided_human_items
+from specy_road.bundled_scripts.finish_task import human_acceptance_ids, undecided_human_items
 from specy_road.orchestration_role_env import ROLE_ENV
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
 from tests import test_gui_app_pm_decisions as gui

@@ -184,6 +184,8 @@ def load_record(repo_root: Path, worker_id: str) -> WorkerRecord:
         raw = yaml.safe_load(_read_regular(path))
     except OSError as e:
         raise WorkerError(f"{worker_id}: no record ({e})") from None
+    except UnicodeDecodeError as e:   # unreadable like bad YAML: listing skips it, not a traceback
+        raise WorkerError(f"{worker_id}: record is not UTF-8: {e}") from None
     except yaml.YAMLError as e:
         raise WorkerError(f"{worker_id}: record is not valid YAML: {e}") from None
     if not isinstance(raw, dict):

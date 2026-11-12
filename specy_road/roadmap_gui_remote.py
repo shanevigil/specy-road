@@ -17,7 +17,7 @@ from specy_road.bundled_scripts.roadmap_gui_pr_pickers import github_pulls_for_b
 def test_llm_connection(llm: dict[str, Any]) -> tuple[bool, str]:
     apply_llm_env_from_settings(llm)
     try:
-        from specy_road.bundled_scripts.review_node import ping_llm
+        from specy_road.llm_client import ping_llm
 
         ping_llm()
         return True, "LLM endpoint responded."

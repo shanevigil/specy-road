@@ -177,7 +177,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.6_orch-snapshot-schema-2_4c5fb003-1a29-4442-820e-f700f4e2d71f.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf)",
       "touch_zones": [
         "specy_road/orchestration/state.py",
@@ -187,7 +187,8 @@
         "gui/pm-gantt/src/orchestrationSnapshot.ts",
         "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
         "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json",
-        "specy_road/bundled_scripts/review_cli.py"
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/pm_gantt_static/"
       ],
       "type": "task"
     },
@@ -209,7 +210,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.7_gui-api-orchestration_25c737eb-656b-487b-a238-b8e825a8e6d3.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together",
       "touch_zones": [
         "specy_road/gui_app.py",

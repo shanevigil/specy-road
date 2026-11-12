@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-import yaml
+from specy_road.session_file_io import read_session_file, write_session_file
 
 SESSION_VERSION = 1
 SESSION_PREFIX = ".on-complete-"
@@ -26,15 +25,11 @@ def write_on_complete_session(
     on_complete: str,
 ) -> None:
     """Write session file; parent ``work_dir`` must exist."""
-    doc: dict[str, Any] = {
-        "version": SESSION_VERSION,
+    write_session_file(path, SESSION_VERSION, {
         "node_id": node_id,
         "codename": codename,
         "on_complete": on_complete,
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    })
 
 
 def read_on_complete_session(
@@ -47,15 +42,8 @@ def read_on_complete_session(
     Return ``on_complete`` if file exists and matches ``node_id`` and ``codename``.
     Otherwise return None (stale or missing).
     """
-    if not path.is_file():
-        return None
-    try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError):
-        return None
-    if not isinstance(raw, dict):
-        return None
-    if raw.get("version") != SESSION_VERSION:
+    raw = read_session_file(path, SESSION_VERSION)
+    if raw is None:
         return None
     if raw.get("node_id") != node_id or raw.get("codename") != codename:
         return None

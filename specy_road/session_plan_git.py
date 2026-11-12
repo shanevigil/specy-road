@@ -22,7 +22,9 @@ from specy_road.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan import SessionPlan, compute_session_plan, _parallel_batches
 from specy_road.git_workflow_config import resolve_integration_defaults, resolve_prefer_agentic
 from specy_road.nested_repos import unpushed_branches
-from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.orchestration.claims import read_claims
+from specy_road.errors import SpecyError
+from specy_road.registry_yaml import REGISTRY_REL, read_registry, registry_path
 from specy_road.shared_zones import resolve_shared_zones
 
 
@@ -88,6 +90,10 @@ def gather_session_plan(
 ) -> tuple[list[dict], dict, SessionPlan]:
     """Load roadmap/registry and return a git-enriched session plan.
 
+    Claimed leaves are the orchestration state model's claims (``read_claims``, the read
+    ``specy_road.orchestration.read_state`` makes);
+    a leaf In Progress with no claim stays active through the readiness rule.
+
     Leaves pickup would skip as unauthored are listed as not ready instead of
     ready. ``allow_unauthored`` drops only the no-acceptance placeholder set
     (same as pickup ``--allow-unauthored``); a leaf with acceptance and an
@@ -96,7 +102,13 @@ def gather_session_plan(
     ``ready`` keeps pickup's order.
     """
     nodes = load_roadmap(repo_root)["nodes"]
-    reg = read_registry(registry_path(repo_root))
+    reg = read_registry(registry_path(repo_root))   # an unreadable file raises here, as always
+    claims = read_claims(repo_root)   # the state model's claim read (read_state's claims)
+    if claims is None:   # unknown is never "no claims", which would offer claimed leaves as ready
+        raise SpecyError(
+            f"{REGISTRY_REL} is not a mapping with a list of entries; fix it, then plan", 1
+        )
+    claimed = {"entries": list(claims.values())}
     skipped = unauthored_leaves(repo_root, nodes)
     if allow_unauthored:
         skipped = {
@@ -104,7 +116,7 @@ def gather_session_plan(
             if nid not in placeholder_unauthored_leaves(repo_root, nodes)
         }
     plan = compute_session_plan(
-        nodes, reg, under=under, unauthored=skipped,
+        nodes, claimed, under=under, unauthored=skipped,
         prefer_agentic=resolve_prefer_agentic(repo_root, cli=prefer_agentic),
         shared_zones=resolve_shared_zones(repo_root),
     )

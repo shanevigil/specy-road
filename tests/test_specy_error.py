@@ -10,7 +10,7 @@ import pytest
 
 from specy_road.brainstorm_research import ResearchError
 from specy_road.brainstorm_session import BrainstormError
-from specy_road.bundled_scripts.review_node import ReviewError
+from specy_road.llm_client import ReviewError
 from specy_road.cli_entry import run_handler
 from specy_road.constitution_scaffold import ConstitutionExistsError
 from specy_road.errors import SpecyError

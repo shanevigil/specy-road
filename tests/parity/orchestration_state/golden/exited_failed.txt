@@ -1,0 +1,118 @@
+$ specy-road worker list --all
+exit: 0
+--- stdout ---
+w-0001  M1.1       generic/x                      failed  worktree=<REPO>  lease=broker epoch=0
+--- stderr ---
+
+$ specy-road worker list --all --json
+exit: 0
+--- stdout ---
+{
+  "workers": [
+    {
+      "worker_id": "w-0001",
+      "node_id": "M1.1",
+      "harness": "generic",
+      "model": "x",
+      "worktree": "<REPO>",
+      "state": "failed",
+      "lease": {
+        "holder": "broker",
+        "since": "<TIME>"
+      },
+      "instruction_epoch": 0,
+      "attempt": 1,
+      "last_event_seq": 1,
+      "created": "<TIME>",
+      "updated": "<TIME>",
+      "provider_session_id": null,
+      "branch": "feature/rm-thing",
+      "pid": null,
+      "flags": [],
+      "contract_hash": null,
+      "checkpoint": null,
+      "billing_route": null,
+      "started_head": "<SHA>",
+      "wrapper_token": null,
+      "pgid": null,
+      "harness_pid": null,
+      "harness_start": null,
+      "last_output_at": null,
+      "descendants_unchecked": null,
+      "queued_message": null,
+      "limit_reset_at": null,
+      "recoveries": null,
+      "toolkit_version": "<VERSION>",
+      "alive": false,
+      "orphaned": null
+    }
+  ]
+}
+--- stderr ---
+
+$ specy-road orchestrate plan --json
+exit: 0
+--- stdout ---
+{
+  "under": null,
+  "policy": {
+    "reviewers_required": 1,
+    "reviewers_distinct_families": false,
+    "reviewer_fresh_session": true,
+    "signed_reviews": false,
+    "count_human_filed_reviews": false,
+    "reviewer_reruns_required": false,
+    "max_workers": 2,
+    "escalate_same_acceptance_blocks": 3,
+    "escalate_review_rounds": 5,
+    "escalate_when_converging": false,
+    "stall_after_seconds": 600,
+    "milestone_full_review": true,
+    "delta_review": true,
+    "reviewer_resumed_delta": false,
+    "quality_window": 50,
+    "quality_area_depth": 1,
+    "quality_threshold": 0.5,
+    "quality_routing": false
+  },
+  "ok": true,
+  "roster_ref": "origin/dev",
+  "roster_drift": null,
+  "batches": [],
+  "blocked": [],
+  "active": [
+    "M1.1"
+  ],
+  "unauthored": [],
+  "preferences_not_applied": [],
+  "preferences_error": null,
+  "local_roster": [],
+  "reviewer_auth_notices": [],
+  "cursor_force_warnings": []
+}
+--- stderr ---
+
+$ specy-road doctor
+exit: 0
+--- stdout ---
+Install: specy-road <VERSION> running from <PREFIX>
+- no specy-road or specyrd on PATH
+Nothing to tidy: no stale branch, worktree, registry row or toolkit stash.
+Claims with no live worker (report only; --fix does not release them):
+  M1.1 (feature/rm-thing, <AGE>): `specy-road worker delegate M1.1` to resume work, or `specy-road abort-task-pickup` to release it
+--- stderr ---
+
+$ specy-road (eligibility)
+exit: 0
+--- stdout ---
+{
+  "orphaned_workers": {},
+  "holding_slots": [],
+  "orphaned_claims": [
+    {
+      "node_id": "M1.1",
+      "branch": "feature/rm-thing"
+    }
+  ]
+}
+--- stderr ---

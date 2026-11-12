@@ -352,7 +352,7 @@
       "parent_id": "M16.3",
       "planning_dir": "planning/M16.3.3_nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one_b89bc064-4355-4957-85d6-31504463269f.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one",
       "touch_zones": [
         "specy_road/nested_repos.py",
