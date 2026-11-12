@@ -187,7 +187,8 @@
         "gui/pm-gantt/src/orchestrationSnapshot.ts",
         "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
         "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json",
-        "specy_road/bundled_scripts/review_cli.py"
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/pm_gantt_static/"
       ],
       "type": "task"
     },
