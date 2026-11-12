@@ -40,13 +40,6 @@
     },
     {
       "modules": [
-        "specy_road.milestone_session",
-        "specy_road.on_complete_session"
-      ],
-      "lines": 26
-    },
-    {
-      "modules": [
         "specy_road.model_profiles",
         "specy_road.review_files"
       ],

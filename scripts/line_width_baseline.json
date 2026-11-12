@@ -141,8 +141,6 @@
     "specy_road/milestone_subtree.py": 1,
     "specy_road/model_names.py": 26,
     "specy_road/model_profiles.py": 31,
-    "specy_road/nested_repos.py": 34,
-    "specy_road/nested_repos_land.py": 24,
     "specy_road/orchestrate_assign.py": 81,
     "specy_road/orchestrate_plan.py": 17,
     "specy_road/orchestration_config.py": 14,
