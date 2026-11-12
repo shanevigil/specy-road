@@ -449,7 +449,35 @@ def _snippet(body: str, terms: list[str]) -> str:
     return f"{prefix}{window}{suffix}"
 
 
-def _search_in_memory(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
+def _in_memory_score(chunk: Chunk, terms: list[str], query: str) -> float:
+    """A chunk's weighted term count, with the node-id bonus and the archived penalty.
+
+    0 when nothing matches.
+    """
+    score = 0.0
+    for term in terms:
+        score += _W_CONTEXT * _count(chunk.context, term)
+        score += _W_HEADING * _count(chunk.heading, term)
+        score += _W_BODY * _count(chunk.body, term)
+    if chunk.node_id.lower() == query.strip().lower():
+        score += 50.0  # the query names this node outright
+    if score <= 0:
+        return 0.0
+    return score * _ARCHIVED_WEIGHT if chunk.scope != "live" else score
+
+
+def _chunk_passes(
+    chunk: Chunk, scopes: set[str] | None, kinds: set[str] | None, node_id: str | None
+) -> bool:
+    """Whether ``chunk`` passes :func:`search`'s scope, kind and node filters."""
+    return (
+        not (scopes and chunk.scope not in scopes)
+        and not (kinds and chunk.kind not in kinds)
+        and not (node_id and chunk.node_id != node_id)
+    )
+
+
+def _search_in_memory(
     root: Path,
     query: str,
     *,
@@ -462,32 +490,14 @@ def _search_in_memory(  # noqa: C901 — baseline 2026-10-28; simplify, then dro
     terms = _terms(query)
     if not terms:
         return []
-    scored: list[tuple[float, Chunk]] = []
-    for chunk in _all_chunks(root):
-        score = 0.0
-        for term in terms:
-            score += _W_CONTEXT * _count(chunk.context, term)
-            score += _W_HEADING * _count(chunk.heading, term)
-            score += _W_BODY * _count(chunk.body, term)
-        if chunk.node_id.lower() == query.strip().lower():
-            score += 50.0  # the query names this node outright
-        if score <= 0:
-            continue
-        if chunk.scope != "live":
-            score *= _ARCHIVED_WEIGHT
-        scored.append((score, chunk))
+    scored = [(score, chunk) for chunk in _all_chunks(root)
+              if (score := _in_memory_score(chunk, terms, query)) > 0]
 
     scored.sort(key=lambda pair: (-pair[0], pair[1].doc_path, pair[1].heading))
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
     for score, chunk in scored:
-        if scopes and chunk.scope not in scopes:
-            continue
-        if kinds and chunk.kind not in kinds:
-            continue
-        if node_id and chunk.node_id != node_id:
-            continue
-        if chunk.content_hash in seen:
+        if not _chunk_passes(chunk, scopes, kinds, node_id) or chunk.content_hash in seen:
             continue
         seen.add(chunk.content_hash)
         out.append(
