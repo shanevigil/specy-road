@@ -480,7 +480,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.70_packet-reads-leaf-worktree-summary_adeb1f7f-b862-4f0e-ace4-b69f0054a875.md",
       "sibling_order": 64,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review-packet reads the implementation summary from the leaf's own worktree",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",
