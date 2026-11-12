@@ -346,8 +346,10 @@ later commit makes it stale. Under the default human-only roster the agent canno
 `specy_road.orchestration.snapshot(repo_root)` is the one read of orchestration state for any
 consumer outside the orchestration code: the PM GUI's orchestration view (phase M17) reads it, and
 so may a script. It writes nothing: no worker record, registry row, review file, git object or git
-index change. Every git call passes `-c core.fsmonitor=false -c core.hooksPath=/dev/null` with
-`GIT_OPTIONAL_LOCKS=0`, and it runs no stall sweep, ack, fetch, check or harness command.
+index change. The git calls it makes itself (worktree list, rev-list, status) pass
+`-c core.fsmonitor=false -c core.hooksPath=/dev/null` with `GIT_OPTIONAL_LOCKS=0`. The gate label,
+commit comparison and roadmap load reuse the review package's readers. It runs no stall sweep, ack,
+fetch, check or harness command.
 `worker list` and doctor's claim report read the same state (`specy_road.orchestration.read_state`).
 `orchestrate plan` and every other reader of the session plan take their claimed leaves from its claim
 read (`read_claims`), and refuse a registry it reads as `unknown` rather than plan as if nothing were

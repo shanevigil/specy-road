@@ -3,8 +3,10 @@
 :func:`read_state` reads every source once; :func:`snapshot` turns that into the schema-2 document
 (``tests/fixtures/orchestration_snapshot_v2.json``, v1 fields unchanged from
 ``tests/fixtures/orchestration_snapshot_v1.json``). Nothing here writes: no record, registry,
-review file, git object or git index changes. Every git call passes ``-c core.fsmonitor=false
--c core.hooksPath=/dev/null`` with ``GIT_OPTIONAL_LOCKS=0``.
+review file, git object or git index changes. Git calls this module makes itself (worktree list,
+rev-list, status) pass ``-c core.fsmonitor=false -c core.hooksPath=/dev/null`` with
+``GIT_OPTIONAL_LOCKS=0``. The gate label, commit comparison and roadmap load reuse the review
+package's readers.
 
 Each leaf's status comes from the fixture's truth table, first match wins. The abandoned rule is
 M15.26's, stated once in :func:`specy_road.orphaned_claims.orphaned_claims`; the slot states are
