@@ -8,17 +8,17 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import upgrade
-from specy_road.bundled_scripts.upgrade import run_upgrade
-from specy_road.runtime_paths import specy_road_package_dir
-from specy_road.upgrade_templates import (
+from specy_road.bundled_scripts.upgrade import (
     UPGRADE_STEP_LABELS,
     bundled_work_template_names,
     copy_missing_work_templates,
     readme_upgrade_step_labels,
     referenced_work_template_names,
+    run_upgrade,
     upgrade_help_step_labels,
     work_template_skip_message,
 )
+from specy_road.runtime_paths import specy_road_package_dir
 from tests.upgrade_repo_helpers import old_repo
 
 _README = (

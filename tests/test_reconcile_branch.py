@@ -17,7 +17,7 @@ from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 from specy_road.digest import render_digest
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_deterministic import merge_feature_deterministically
-from specy_road.reconcile_branch import reconcile_branch
+from specy_road.bundled_scripts.reconcile_branch_cli import reconcile_branch
 from specy_road.registry_yaml import registry_path, write_registry
 
 LEAVES = (("M1.1", "one", "11111111-1111-5111-8111-111111111111"),

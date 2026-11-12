@@ -13,7 +13,8 @@ Four kinds, each its own section:
   --delete-branch`` leaves a delegate worktree) or is merged, whether or not the branch itself is
   listed (a claimed branch whose leaf is not Complete stays), and every other detached worktree
   (a review recipe's). ``--fix`` leaves a detached one with uncommitted changes, with commits
-  no branch holds, or in a temporary directory another command may be using (:data:`TEMP_WORKTREES`).
+  no branch holds, or in a temporary directory another command may be using
+  (:data:`TEMP_WORKTREES`).
 - registry rows on the integration branch whose branch is in neither this clone nor the remote
   and whose leaf is not Complete (advisory: another clone's claim looks the same until its branch
   is pushed; ``--fix`` leaves the row and names ``specy-road registry-prune --remove <CODENAME>``),
@@ -33,6 +34,16 @@ Nothing changes without ``--fix``, and ``--fix`` asks once per kind. A registry 
 branch is listed and left unless its leaf is Complete; removing a row ``--fix`` leaves is
 ``specy-road registry-prune --remove <CODENAME>``.
 
+Before the listing doctor checks the checkout (:func:`report_checkout`):
+
+- the review gate and the orchestration policy agree (:mod:`specy_road.review_gate_agreement`): an
+  error.
+- ``env_setup`` (:mod:`specy_road.worktree_env`), when configured: its copy and link sources exist
+  in the main checkout and its command succeeds there; either failing is an error.
+- each linked worktree's ``.venv`` runs the same Python (major.minor) as the main checkout's: a
+  warning, since a pin file such as ``.python-version`` is usually ignored and so missing from a
+  new worktree.
+
 With no such git remote there is nothing to compare against, which is not a failure: doctor says
 so in one line and lists only the stashes. A remote that is configured but cannot be fetched still
 fails.
@@ -49,14 +60,16 @@ from functools import partial
 from pathlib import Path
 
 from specy_road.cli_args import add_base_arg, add_remote_arg
-from specy_road.bundled_scripts.branches_cli import feature_branches, fetch_integration, live_branches
+from specy_road.bundled_scripts.branches_cli import (
+    feature_branches, fetch_integration, live_branches,
+)
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
-from specy_road.bundled_scripts.doctor_env_setup import report_checkout
 from specy_road.cli import run_captured
 from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
-from specy_road.doctor_worktrees import (  # noqa: F401 — SAME_PATCH, TEMP_WORKTREES re-exported for callers
-    NO_EVIDENCE, SAME_PATCH, TEMP_WORKTREES, Finding, classify, containment, evidence_kind, live_holders,
-    merged_how, worktree_findings,
+# SAME_PATCH, TEMP_WORKTREES re-exported for callers
+from specy_road.doctor_worktrees import (  # noqa: F401
+    NO_EVIDENCE, SAME_PATCH, TEMP_WORKTREES, Finding, classify, containment, evidence_kind,
+    live_holders, merged_how, worktree_findings,
 )
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
@@ -66,11 +79,16 @@ from specy_road.orchestration import read_state
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.orphaned_claims import report_lines
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
-from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.review_gate_agreement import report_gate_mismatch
+from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
 from specy_road.version_skew import print_install_report, warn_if_running_version_older
 from specy_road.worker_adapter_cursor import force_warnings
 from specy_road.worker_lock import workers_dir
 from specy_road.worker_ops_slots import stall_lines, stalled_workers
+from specy_road.worktree_env import (
+    EnvSetupError, bounded_path, copy_pairs, copy_source, env_setup_config, git_top, link_paths,
+    run_setup_cmd,
+)
 
 TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
 
@@ -83,13 +101,15 @@ class _Ctx:
     base: str
     live: set[str]
     complete: dict[str, str]   # codename -> node id of a Complete leaf
-    held: dict[str, tuple[str, str]]        # branch -> (live source, "live: …"): doctor_worktrees.live_holders
+    # branch -> (live source, "live: …"): doctor_worktrees.live_holders
+    held: dict[str, tuple[str, str]]
     held_paths: dict[str, tuple[str, str]]  # resolved worktree path -> (live source, "live: …")
 
 
 def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
     parents = {n.get("parent_id") for n in nodes}
-    return {n["codename"]: n["id"] for n in nodes if n.get("codename") and n.get("id") not in parents
+    return {n["codename"]: n["id"] for n in nodes
+            if n.get("codename") and n.get("id") not in parents
             and (n.get("status") or "").lower() == "complete"}
 
 
@@ -107,7 +127,8 @@ def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None, kind: 
         ahead = git_checked(["rev-list", "--count", f"{ctx.target}..{ref}"], ctx.root)
         return f"{why}, not merged: {ahead} commit(s) {ctx.target} lacks{row}", label, fix, inputs
     reason = {"live": live_why, "no commits yet": f"{why}, no commits yet{row}",
-              "merged, no evidence": f"merged{leaf}{row}; {NO_EVIDENCE}"}.get(label, f"{how}{leaf}{row}")
+              "merged, no evidence": f"merged{leaf}{row}; {NO_EVIDENCE}"}.get(
+                  label, f"{how}{leaf}{row}")
     return reason, label, fix, inputs
 
 
@@ -120,12 +141,14 @@ def _delete_local(root: Path, branch: str, sha: str | None) -> str | None:
 
 def _delete_remote(root: Path, branch: str, sha: str | None, remote: str) -> str | None:
     # Leased to the tip that was listed: a push since then is refused.
-    code, out = git_code(["push", remote, f"--force-with-lease=refs/heads/{branch}:{sha}", "--delete", branch], root)
+    code, out = git_code(
+        ["push", remote, f"--force-with-lease=refs/heads/{branch}:{sha}", "--delete", branch], root)
     return f"left on {remote}. {out}" if code else None
 
 
 def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], dict[str, tuple[str, str]]]:
-    """Complete or unclaimed branches, and the classification inputs of every local ``feature/rm-*``.
+    """Complete or unclaimed branches, and the classification inputs of every local
+    ``feature/rm-*``.
 
     Those inputs feed the worktree section, which judges a worktree on a branch even when the
     branch itself is not listed. A claimed branch is in-progress work and is not listed; any other
@@ -144,13 +167,15 @@ def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], dict[str, tuple[str, str
             if ctx.held.get(b, ("none",))[0] == "claim":
                 continue
             if not fix:
-                found.append(Finding("branch", f"{where:<9} {b}", f"{reason}, so --fix leaves it", None, ""))
+                found.append(Finding("branch", f"{where:<9} {b}", f"{reason}, so --fix leaves it",
+                                     None, ""))
                 continue
             sha = git_text(["rev-parse", prefix + b], ctx.root)
             if where == "local":
                 remove, done = partial(_delete_local, ctx.root, b, sha), f"deleted local branch {b}"
             else:
-                remove, done = partial(_delete_remote, ctx.root, b, sha, ctx.remote), f"deleted {b} on {ctx.remote}"
+                remove = partial(_delete_remote, ctx.root, b, sha, ctx.remote)
+                done = f"deleted {b} on {ctx.remote}"
             found.append(Finding("branch", f"{where:<9} {b}", reason, remove, done))
     return found, local
 
@@ -180,7 +205,8 @@ def _registry_findings(ctx: _Ctx) -> list[Finding]:
     clone or on the remote. Any other row with no branch is advisory and ``--fix`` leaves it.
     """
     reg = read_registry_at_ref(ctx.root, ctx.target, DEFAULT_TIMEOUT) or {}
-    stale = {e["codename"] for e in detect_stale_claims(repo_root=ctx.root, reg=reg, remote=ctx.remote)}
+    stale = {e["codename"]
+             for e in detect_stale_claims(repo_root=ctx.root, reg=reg, remote=ctx.remote)}
     found = []
     for e in reg.get("entries") or []:
         codename = e["codename"]
@@ -225,7 +251,8 @@ def _stash_findings(root: Path) -> list[Finding]:
 
 
 def _stash_section(root: Path) -> tuple[str, str, list[Finding]]:
-    return ("stash", "Stashes specy-road left behind (git stash show -p --include-untracked <sha>):",
+    return ("stash",
+            "Stashes specy-road left behind (git stash show -p --include-untracked <sha>):",
             _stash_findings(root))
 
 
@@ -233,7 +260,8 @@ def _sections(ctx: _Ctx) -> list[tuple[str, str, list[Finding]]]:
     """(kind, heading, findings) in report order."""
     branches, merged_local = _branch_findings(ctx)
     return [
-        ("branch", f"feature/rm-* branches whose leaf is Complete or that nothing claims (against {ctx.target}):", branches),
+        ("branch", ("feature/rm-* branches whose leaf is Complete or that nothing claims "
+                    f"(against {ctx.target}):"), branches),
         ("worktree", "Worktrees whose branch is gone or merged, and detached worktrees:",
          worktree_findings(ctx, merged_local)),
         ("registry", (f"Registry rows on {ctx.target} with no branch (advisory: another clone's "
@@ -270,7 +298,8 @@ def _fix(sections: list[tuple[str, str, list[Finding]]], yes: bool) -> int:
             continue
         ok = True if yes else _confirm(kind, len(found))
         if ok is None:
-            print("\nNo answer on stdin; pass --yes to remove without asking. Stopped.", file=sys.stderr)
+            print("\nNo answer on stdin; pass --yes to remove without asking. Stopped.",
+                  file=sys.stderr)
             return 1
         if not ok:
             print(f"Skipped the {kind} item(s).")
@@ -285,11 +314,16 @@ def _fix(sections: list[tuple[str, str, list[Finding]]], yes: bool) -> int:
     return 1 if failures else 0
 
 
-def _no_remote_sections(root: Path, ns: argparse.Namespace) -> list[tuple[str, str, list[Finding]]] | None:
-    """Only the stash section when the remote :func:`fetch_integration` would fetch is not configured, else ``None``."""
-    _base, remote, warns = resolve_integration_defaults(root, explicit_base=ns.base, explicit_remote=ns.remote)
-    if git_code(["remote", "get-url", remote], root)[0] == 0 or git_code(["rev-parse", "--git-dir"], root)[0]:
-        return None   # configured, or not a repository: fetch_integration resolves it again and reports either
+def _no_remote_sections(root: Path, ns: argparse.Namespace
+                        ) -> list[tuple[str, str, list[Finding]]] | None:
+    """Only the stash section when the remote :func:`fetch_integration` would fetch is not
+    configured, else ``None``."""
+    _base, remote, warns = resolve_integration_defaults(
+        root, explicit_base=ns.base, explicit_remote=ns.remote)
+    if (git_code(["remote", "get-url", remote], root)[0] == 0
+            or git_code(["rev-parse", "--git-dir"], root)[0]):
+        # configured, or not a repository: fetch_integration resolves it again and reports either
+        return None
     for w in warns:
         print(f"warning: {w}", file=sys.stderr)
     print(f"doctor: no git remote named {remote!r} is configured; "
@@ -307,10 +341,109 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
     nodes = load_roadmap_nodes_at_ref(root, target)
     live = live_branches(root, target)
     if nodes is None or live is None:
-        print(f"error: could not read the roadmap at {target}. Not listing anything.", file=sys.stderr)
+        print(f"error: could not read the roadmap at {target}. Not listing anything.",
+              file=sys.stderr)
         return None
     complete = _complete_leaves(nodes)
-    return _Ctx(root, target, remote, base, live, complete, *live_holders(root, target, nodes, complete))
+    return _Ctx(root, target, remote, base, live, complete,
+                *live_holders(root, target, nodes, complete))
+
+
+# --- Checkout checks, printed before the listing ----------------------------
+
+
+def _worktree_tops(root: Path) -> list[Path]:
+    """Every worktree's top directory, the main checkout's first (``git worktree list``)."""
+    out = git_text(["worktree", "list", "--porcelain"], root) or ""
+    return [Path(line.removeprefix("worktree ")) for line in out.splitlines()
+            if line.startswith("worktree ")]
+
+
+def env_python(project_root: Path, top: Path) -> str | None:
+    """The Python version in ``.venv/pyvenv.cfg`` at ``project_root``, else at the git root
+    ``top``."""
+    for cfg in (project_root / ".venv" / "pyvenv.cfg", top / ".venv" / "pyvenv.cfg"):
+        if cfg.is_file():
+            for line in cfg.read_text(encoding="utf-8", errors="replace").splitlines():
+                key, _, value = line.partition("=")
+                if key.strip() in ("version_info", "version"):   # uv and virtualenv; venv
+                    return value.strip()
+            return None
+    return None
+
+
+def _minor(version: str) -> str:
+    return ".".join(version.split(".")[:2])
+
+
+def _missing_sources(main: Path, conf: dict) -> list[str]:
+    """Each copy or link source that is missing from the main checkout or climbs past its git
+    root."""
+    missing = []
+    for src, _dest in copy_pairs(conf):
+        try:
+            if not copy_source(main, src).is_file():
+                missing.append(f"env_setup copies {src}, which is not a file in the main checkout "
+                               f"({main / src})")
+        except EnvSetupError as e:   # climbs past the git root: the pickup would refuse it
+            missing.append(str(e))
+    for rel in link_paths(conf):
+        try:
+            if not bounded_path(main, rel, git_top(main), f"from {rel!r}", "the main checkout",
+                                "link").exists():
+                missing.append(f"env_setup links {rel}, which does not exist in the main checkout "
+                               f"({main / rel})")
+        except EnvSetupError as e:
+            missing.append(str(e))
+    return missing
+
+
+def report_env_setup(main: Path) -> bool:
+    """Say what ``env_setup`` does and run it in the main checkout's project root ``main``;
+    whether it failed."""
+    conf = env_setup_config(main)
+    if not conf:
+        return False
+    copies = ", ".join(src if src == dest else f"{src} -> {dest}" for src, dest in copy_pairs(conf))
+    links = f"; link {', '.join(link_paths(conf))}" if link_paths(conf) else ""
+    print(f"env_setup: copy {copies or 'nothing'}{links}; cmd {conf.get('cmd') or 'none'}")
+    missing = _missing_sources(main, conf)
+    for problem in missing:
+        print(f"error: {problem}", file=sys.stderr)
+    if not conf.get("cmd"):
+        return bool(missing)
+    code, out = run_setup_cmd(conf["cmd"], main)
+    if code:
+        print(f"error: env_setup fails in the main checkout {main} (exit {code}): "
+              f"{conf['cmd']}\n{out.rstrip()}",
+              file=sys.stderr)
+        return True
+    print(f"env_setup: succeeds in the main checkout {main}")
+    return bool(missing)
+
+
+def report_python_mismatch(tops: list[Path], prefix: str) -> None:
+    """Warn for each linked worktree whose ``.venv`` Python differs from the main checkout's."""
+    want = env_python(tops[0] / prefix, tops[0]) if tops else None
+    if want is None:
+        return
+    for top in tops[1:]:
+        have = env_python(top / prefix, top)
+        if have and _minor(have) != _minor(want):
+            print(f"warning: worktree {top} has a Python {have} environment; "
+                  f"the main checkout's is {want}. "
+                  "Pin the version for env_setup (for example copy .python-version), "
+                  "then rebuild it there.",
+                  file=sys.stderr)
+
+
+def report_checkout(root: Path) -> bool:
+    """The checkout checks; True when one is an error (doctor exits 1 after the listing)."""
+    tops, prefix = _worktree_tops(root), project_prefix(root)
+    bad = report_gate_mismatch(root)
+    bad = report_env_setup(tops[0] / prefix if tops else root) or bad
+    report_python_mismatch(tops, prefix)
+    return bad
 
 
 def _print_orphaned_claims(root: Path) -> None:
@@ -327,19 +460,23 @@ def _print_orphaned_claims(root: Path) -> None:
 
 
 def _print_stalled(root: Path) -> None:
-    """Report-only: each stalled worker and how long it has been silent (M22.39); ``worker recover`` acts on it."""
-    lines = stall_lines(stalled_workers(root)) if workers_dir(root).is_dir() else []   # none launched: no sweep
+    """Report-only: each stalled worker and how long it has been silent; ``worker recover`` acts
+    on it."""
+    # none launched: no sweep
+    lines = stall_lines(stalled_workers(root)) if workers_dir(root).is_dir() else []
     if lines:
         print("Stalled workers (report only; --fix does not recover them):")
         print("\n".join(f"  {line}" for line in lines))
 
 
 def _print_cursor_force(root: Path) -> None:
-    """Advisory: one line per roster ``cursor`` entry that launches with ``--force`` (the roster launches read).
+    """Advisory: one line per roster ``cursor`` entry that launches with ``--force`` (the roster
+    launches read).
     An unreadable roster is left to ``validate`` and ``orchestrate plan``."""
     config, err = pinned_config(root)
-    # M21.44: then each excluded or opted-in guidance-bypass model
-    for line in ([] if err else force_warnings(config.get("roster") or [])) + guidance_bypass_lines(root):
+    # then each excluded or opted-in guidance-bypass model
+    for line in (([] if err else force_warnings(config.get("roster") or []))
+                 + guidance_bypass_lines(root)):
         print(line, file=sys.stderr)
 
 
@@ -347,7 +484,8 @@ def cmd_doctor(ns: argparse.Namespace) -> int:
     print_install_report()
     root = resolve_repo_root(ns)
     warn_if_running_version_older(root)
-    bad_config = report_checkout(root)   # gate mismatch, env_setup failure: exit 1 after the listing
+    # gate mismatch, env_setup failure: exit 1 after the listing
+    bad_config = report_checkout(root)
     report_unpushed(root)   # advisory: nested-repo commits no remote has
     _print_cursor_force(root)   # advisory: cursor workers that run without the sandbox
     sections = _no_remote_sections(root, ns)
@@ -370,7 +508,8 @@ def cmd_doctor(ns: argparse.Namespace) -> int:
             print("Nothing removed. Re-run with --fix to remove them (it asks per kind).")
         else:
             bad_config = _fix(sections, ns.yes) or bad_config
-    _print_orphaned_claims(root)   # after the branch section, so it is not read as one of those rows
+    # after the branch section, so it is not read as one of those rows
+    _print_orphaned_claims(root)
     _print_stalled(root)
     return int(bad_config)
 
@@ -380,7 +519,11 @@ def build_parser() -> argparse.ArgumentParser:
         prog="specy-road doctor",
         description=(
             "After git fetch --prune, list feature/rm-* branches (local and remote) whose leaf is "
-            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, or claim gone — worktrees whose branch is gone or merged, other detached worktrees, registry rows with no branch (listed; --fix leaves a non-Complete one for registry-prune --remove) or a Complete leaf, and stashes specy-road pushed; also nested-repo branches with commits no remote has. Dry-run unless --fix."
+            "Complete or that nothing claims — merged by ancestry or patch content, leaf "
+            "Complete, or claim gone — worktrees whose branch is gone or merged, other detached "
+            "worktrees, registry rows with no branch (listed; --fix leaves a non-Complete one for "
+            "registry-prune --remove) or a Complete leaf, and stashes specy-road pushed; also "
+            "nested-repo branches with commits no remote has. Dry-run unless --fix."
         ),
     )
     p.add_argument(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import shutil
 import sys
 from datetime import date
@@ -15,12 +16,8 @@ from specy_road.agents_md_block import (
     warn_missing_load_order_paths,
 )
 from specy_road.chore_garden_due import warn_garden_due
+from specy_road.context_notice_cache import fold_next_report, report_context_warnings
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
-from specy_road.bundled_scripts.validate_notices import (
-    notice_milestone_review_holds,
-    notice_repeated_ignore_patterns,
-    report_context_warnings,
-)
 from specy_road.bundled_scripts.validate_registry_overlap import current_authoring_overlap_scope
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     load_schema,
@@ -29,8 +26,15 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
 )
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 from specy_road.generated_files import warn_if_generated_files_ignored
+from specy_road.git_subprocess import git_root
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.orchestration_config import harness_model_warnings, load_orchestration_config, orchestration_yaml_path
+from specy_road.orchestration_config import (
+    harness_model_warnings,
+    load_orchestration_config,
+    orchestration_yaml_path,
+)
+from specy_road.managed_block import MARKER_END, MARKER_START
+from specy_road.milestone_review_hold import held_milestones, milestone_review_hold_notice
 from specy_road.orchestration_pinned import roster_report
 from specy_road.planning_artifacts import split_frontmatter
 from specy_road.refresh_stubs_staleness import warn_if_stubs_stale
@@ -53,7 +57,8 @@ def _register_entry_problems(root: Path, data: dict, today: date) -> list[str]:
     elif not (root / prompt).is_file():
         problems.append(f"prompt file {prompt} does not exist")
     elif not (root / prompt).resolve().is_relative_to((root / "research").resolve()):
-        problems.append(f"prompt file {prompt} is not under research/; move it there so it is tracked")
+        problems.append(f"prompt file {prompt} is not under research/; "
+                        "move it there so it is tracked")
     cadence, last = data.get("cadence_days"), data.get("last_run")
     if type(cadence) is not int or cadence < 1:
         problems.append(f"`cadence_days` is not a whole number of days: {cadence!r}")
@@ -118,7 +123,8 @@ def validate_orchestration_contract(root: Path) -> None:
     it means the default review policy (one reviewer, any family), the
     scaffolded starter's policy, which ``--generate-orchestration`` writes as an editable file.
     A roster routing does not read (edited, added or deleted in the working tree without a commit,
-    or added, deleted or changed on an unpushed local integration branch) is, as ``orchestrate plan`` says.
+    or added, deleted or changed on an unpushed local integration branch) is, as
+    ``orchestrate plan`` says.
     """
     data, err = load_orchestration_config(root)
     if err:
@@ -132,7 +138,8 @@ def validate_orchestration_contract(root: Path) -> None:
 
 
 def no_orchestration_notice(root: Path) -> str | None:
-    """:data:`NO_ORCHESTRATION_NOTICE`, plus where the roster is read from when routing finds none there either.
+    """:data:`NO_ORCHESTRATION_NOTICE`, plus where the roster is read from when routing finds
+    none there either.
 
     ``None`` when the integration ref has a roster: routing uses it, not the default policy, and the
     working-tree deletion is the warning :func:`validate_orchestration_contract` printed.
@@ -144,8 +151,9 @@ def no_orchestration_notice(root: Path) -> str | None:
 
 
 NO_ORCHESTRATION_NOTICE = (
-    "notice: no roadmap/orchestration.yaml, so the default policy applies: one reviewer, any family, and a "
-    "roster of one human (`specy-road validate --generate-orchestration` writes an editable starter)"
+    "notice: no roadmap/orchestration.yaml, so the default policy applies: one reviewer, "
+    "any family, and a roster of one human (`specy-road validate --generate-orchestration` "
+    "writes an editable starter)"
 )
 
 
@@ -158,6 +166,98 @@ def generate_orchestration(root: Path) -> None:
     shutil.copyfile(project_template_root() / "roadmap" / "orchestration.yaml", dest)
     print(f"wrote {dest}: a starter roster (human plus one executor) and the default policy; "
           "edit it, then commit it to the integration branch")
+
+
+# --- Non-fatal notices validate prints after the graph checks pass ----------
+#
+# Notices go to stdout, so ``validate --strict`` does not count them as warnings.
+
+
+def notice_milestone_review_holds(root: Path, nodes: list[dict]) -> None:
+    """One notice per milestone ``policy.milestone_full_review`` holds, with the ways out.
+
+    Without it the only symptom of a hold was ``export --check`` / ``digest
+    --check`` drift; ``upgrade`` shows these because it runs ``validate_at``.
+    """
+    for nid, why in held_milestones(root, nodes).items():
+        print(milestone_review_hold_notice(nid, why))
+
+
+def add_context_arg(parser: argparse.ArgumentParser) -> None:
+    """``validate``'s ``--context``."""
+    parser.add_argument("--context", action="store_true",
+                        help="Print the context: warnings in full even when unchanged since "
+                             "the last validate.")
+
+
+def parse_validate_args(
+    parser: argparse.ArgumentParser, argv: list[str] | None = None
+) -> argparse.Namespace:
+    """The ``validate`` CLI's arguments.
+
+    Folds this run's unchanged ``context:`` warnings unless ``--context`` is given.
+    """
+    args = parser.parse_args(argv)
+    fold_next_report(not args.context)
+    return args
+
+
+def _trim_trailing_spaces(line: str) -> str:
+    """``line`` without its trailing unescaped spaces, as git's ``trim_trailing_spaces`` reads it.
+
+    A backslash escapes the character after it, so ``"a\\ "`` keeps its space.
+    """
+    end, i = None, 0
+    while i < len(line):
+        if line[i] == " ":
+            end = i if end is None else end
+        else:
+            end = None
+            i += line[i] == "\\"   # skip the escaped character
+        i += 1
+    return line if end is None else line[:end]
+
+
+def _patterns(text: str) -> list[str]:
+    """The ignore patterns in ``text``, each exactly as git reads a ``.gitignore``.
+
+    The complete rule (git's ``add_patterns_from_buffer``):
+
+    1. a leading UTF-8 BOM is dropped;
+    2. lines split on ``\\n`` only, and one trailing ``\\r`` is dropped, so CRLF and LF read
+       the same;
+    3. a line starting with ``#`` is a comment (``\\#`` is a pattern);
+    4. trailing unescaped spaces are trimmed (``\\ `` keeps its space);
+    5. a line left empty is skipped;
+    6. nothing else changes: a leading space, ``!``, ``\\!`` and every other escape stay as written.
+
+    So two lines compare equal only when git reads the same pattern.
+    """
+    lines = (ln[:-1] if ln.endswith("\r") else ln for ln in text.removeprefix("\ufeff").split("\n"))
+    return [p for ln in lines if not ln.startswith("#") and (p := _trim_trailing_spaces(ln))]
+
+
+def notice_repeated_ignore_patterns(root: Path) -> None:
+    """One notice naming the managed ``.gitignore`` patterns the file already lists above the
+    markers.
+
+    Report only: the lines above the block belong to the project, so validate never edits them.
+    """
+    try:
+        raw = ((git_root(root) or root) / ".gitignore").read_bytes()
+        text = raw.decode("utf-8", errors="replace")
+    except OSError:
+        return
+    start = text.find(MARKER_START)
+    if start < 0:
+        return
+    end = text.find(MARKER_END, start)
+    managed = set(_patterns(text[start:end if end >= 0 else len(text)]))
+    repeated = list(dict.fromkeys(p for p in _patterns(text[:start]) if p in managed))
+    if repeated:
+        print(f"gitignore: notice — .gitignore lists {len(repeated)} pattern(s) above the "
+              f"specy-road managed block that the block repeats: {', '.join(repeated)}. "
+              "They can be removed from above the markers (validate never edits the file).")
 
 
 def validate_at(
@@ -186,8 +286,9 @@ def validate_at(
     discover_manifest_path(root)
     validate_git_workflow_contract(root)
     validate_orchestration_contract(root)
-    for warn in (warn_if_pin_differs, warn_if_schemas_stale, warn_if_stubs_stale, warn_if_skills_mirrored,
-                 warn_if_agents_md_block_stale, warn_missing_load_order_paths, warn_unregistered_commands,
+    for warn in (warn_if_pin_differs, warn_if_schemas_stale, warn_if_stubs_stale,
+                 warn_if_skills_mirrored, warn_if_agents_md_block_stale,
+                 warn_missing_load_order_paths, warn_unregistered_commands,
                  lambda r: report_context_warnings(r, warn_if_context_over_limits),
                  warn_if_generated_files_ignored, warn_research_register, warn_garden_due,
                  warn_unconfigured_sibling_repos):

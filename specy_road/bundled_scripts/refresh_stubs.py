@@ -43,19 +43,18 @@ from pathlib import Path
 
 from specy_road import __version__, safe_write
 from specy_road.agent_guide_block import AGENT_GUIDE, apply_agent_guide_block
-from specy_road.agents_md_block import AGENTS_FILES, agents_block_mode, apply_agents_and_report, apply_agents_files, print_migration
-from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE, GITIGNORE, apply_agent_ignores, apply_and_report
+from specy_road.agents_md_block import (
+    AGENTS_FILES, agents_block_mode, apply_agents_and_report, apply_agents_files, print_migration,
+)
+from specy_road.agent_ignores import (
+    CURSOR_INDEXING_IGNORE, GITIGNORE, apply_agent_ignores, apply_and_report,
+)
 from specy_road.git_subprocess import git_root
 from specy_road.runtime_paths import (
     add_repo_root_arg,
     prefix_within,
     project_root,
     recorded_project_root,
-)
-from specy_road.bundled_scripts.refresh_stubs_report import (  # noqa: F401 — _old_command_stub, NEXT_STEP re-exported
-    NEXT_STEP,
-    old_command_stub as _old_command_stub,
-    report as _report,
 )
 from specy_road.written_entry import Written
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, rule_refusal
@@ -76,6 +75,7 @@ from specy_road.specyrd_init import (
 from specy_road.refresh_stubs_staleness import MANIFEST_REL, stubs_are_stale, warn_if_stubs_stale
 
 README_REL = ".specyrd/README.md"
+NEXT_STEP = "Next: specy-road validate (specy-road upgrade runs the whole sequence)."
 
 
 def _stub_set(role: str | None) -> tuple[str, ...]:
@@ -119,7 +119,8 @@ def _write_if_changed(
     refused one is reported ``refused: <why>`` and is not the pack's.
     """
     if is_link_path(rel):
-        outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run, repair=owned, owned=owned)
+        outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run,
+                              repair=owned, owned=owned)
         if outcome == SKIPPED or rule_refusal(outcome):
             written.append(Written(rel, outcome))
             return False
@@ -146,7 +147,8 @@ def _write_if_changed(
 
 
 def _refresh_pack(
-    repo_root: Path, agent: str, current: list[str], all_recorded: set[str], *, dry_run: bool, written: list[str],
+    repo_root: Path, agent: str, current: list[str], all_recorded: set[str], *, dry_run: bool,
+    written: list[str],
 ) -> list[str]:
     """Rewrite one pack's managed paths; return the ones that are the kit's afterwards.
 
@@ -161,7 +163,8 @@ def _refresh_pack(
             written.append(Written(rel, SKIPPED))
             continue
         owned = rel in all_recorded or rel.startswith(".specyrd/")
-        if _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent, owned=owned):
+        if _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent,
+                             owned=owned):
             ours.append(rel)
         else:
             declined.add(rel)
@@ -179,7 +182,8 @@ def _orphans(recorded: list[str], current: list[str], repo_root: Path) -> list[s
 
 
 def _on_disk(path: Path) -> bool:
-    """A file, a directory, or a symlink — dangling included: a skill link whose target went is still an orphan."""
+    """A file, a directory, or a symlink — dangling included: a skill link whose target went is
+    still an orphan."""
     return path.is_file() or path.is_dir() or path.is_symlink()
 
 
@@ -234,9 +238,11 @@ def refresh_stubs(
         rel_dest = _dest_dir(agent, recorded)
         if rel_dest is None:
             continue
-        current = _refresh_pack(repo_root, agent, managed_paths(rel_dest, _stub_set(role), agent=agent),
+        current = _refresh_pack(repo_root, agent,
+                                managed_paths(rel_dest, _stub_set(role), agent=agent),
                                 all_recorded, dry_run=dry_run, written=written)
-        all_recorded.update(current)   # what this pack just wrote is the kit's for the packs after it
+        # what this pack just wrote is the kit's for the packs after it
+        all_recorded.update(current)
         orphans.extend(_orphans(recorded, current, repo_root))
         if not dry_run:
             agents[agent] = current
@@ -248,16 +254,19 @@ def refresh_stubs(
         if outcome != UNCHANGED:
             written.append(Written(AGENT_GUIDE, outcome))
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
-    apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run, prefix=prefix)
+    apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run,
+                            prefix=prefix)
 
     if agents and not dry_run:
         manifest["agents"] = agents
         _save_manifest(repo_root, manifest)
-    # .cursor/.codex copies of an installed skill load it twice; only verbatim ones are ours to prune.
+    # .cursor/.codex copies of an installed skill load it twice; only verbatim ones are ours to
+    # prune.
     orphans = sorted(set(orphans) | set(mirrored_copies(repo_root, COMMAND_FILES, all_recorded)[0]))
     if prune and not dry_run:
         _prune(repo_root, orphans)
-    return list(dict.fromkeys(written)), orphans   # a dry run writes nothing: each pack sharing a skill reports it
+    # a dry run writes nothing: each pack sharing a skill reports it
+    return list(dict.fromkeys(written)), orphans
 
 
 def _resolve_root(explicit: Path | None) -> Path:
@@ -275,7 +284,8 @@ def _resolve_root(explicit: Path | None) -> Path:
 
 
 def _block_previews(repo_root: Path, prefix: str, tmp: Path) -> dict[str, tuple[str, str]]:
-    """``{report line: (path, text)}`` for each managed-block file as a refresh would leave it; built under ``tmp``."""
+    """``{report line: (path, text)}`` for each managed-block file as a refresh would leave it;
+    built under ``tmp``."""
     rels = [AGENT_GUIDE, CURSOR_INDEXING_IGNORE, GITIGNORE, *(f"{prefix}{r}" for r in AGENTS_FILES)]
     for rel in (r for r in rels if (repo_root / r).is_file()):
         (tmp / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -283,28 +293,162 @@ def _block_previews(repo_root: Path, prefix: str, tmp: Path) -> dict[str, tuple[
     (tmp / prefix).mkdir(parents=True, exist_ok=True)
     apply_agent_guide_block(tmp, prefix)
     apply_agent_ignores(tmp, prefix)
-    apply_agents_files(tmp / prefix, mode=agents_block_mode(repo_root / prefix))   # the setting is not copied to tmp
+    # the setting is not copied to tmp
+    apply_agents_files(tmp / prefix, mode=agents_block_mode(repo_root / prefix))
     return {f"{rel} ({o})": (rel, (tmp / rel).read_text(encoding="utf-8"))
             for rel in rels if (tmp / rel).is_file() for o in (CREATED, UPDATED)}
 
 
 def _print_diffs(repo_root: Path, written: list[str], prefix: str) -> list[str]:
-    """Print a unified diff per file a refresh would write; return the entries with no text to diff (links, skips)."""
+    """Print a unified diff per file a refresh would write; return the entries with no text to
+    diff (links, skips)."""
     rest: list[str] = []
     with tempfile.TemporaryDirectory() as tmp:
         blocks = _block_previews(repo_root, prefix, Path(tmp))
         for entry in written:
-            rel, new = blocks.get(entry, (None, None))   # matched whole: a path is never parsed out of a line
+            # matched whole: a path is never parsed out of a line
+            rel, new = blocks.get(entry, (None, None))
             if rel is None and isinstance(entry, Written) and not entry.outcome:
                 rel, new = entry.path, _content_for(entry.path)
             if rel is None or new is None:
                 rest.append(entry)
                 continue
-            old = (repo_root / rel).read_text(encoding="utf-8") if (repo_root / rel).is_file() else None
+            old = ((repo_root / rel).read_text(encoding="utf-8") if (repo_root / rel).is_file()
+                   else None)
             sys.stdout.writelines(difflib.unified_diff(
                 (old or "").splitlines(keepends=True), new.splitlines(keepends=True),
                 fromfile="/dev/null" if old is None else f"a/{rel}", tofile=f"b/{rel}"))
     return rest
+
+
+# --- What refresh-stubs (and upgrade) print after a refresh ------------------
+#
+# A stub directory that is a symlink (say ``.agents/skills`` → ``.claude/skills``)
+# makes one file reachable under two names; the report names its real path once
+# and notes the link, rather than listing the same skills twice.
+
+
+def old_command_stub(rel: str) -> bool:
+    """A pre-0.3.0 harness command stub (not a `generic` pack's own commands dir)."""
+    return rel.startswith((".cursor/commands/", ".claude/commands/"))
+
+
+def _linked_dir(repo_root: Path, rel: Path) -> Path | None:
+    """The shallowest directory above ``rel`` that is a symlink, if any."""
+    for i in range(1, len(rel.parts)):
+        if (repo_root / Path(*rel.parts[:i])).is_symlink():
+            return Path(*rel.parts[:i])
+    return None
+
+
+def _refused(repo_root: Path, rel: str) -> bool:
+    """Whether the skills-link rule refuses ``rel`` (any final kind)."""
+    try:
+        skill_path(repo_root, rel, None)
+    except safe_write.SafeWriteError:
+        return True
+    return False
+
+
+def resolve_linked(written: list[str], repo_root: Path | None) -> list[str]:
+    """``written`` with each entry under a symlinked directory named by its real path, once.
+
+    Only a :class:`~specy_road.written_entry.Written` entry is resolved: its path
+    and outcome are fields, never parsed back out of the display line, so a path
+    containing `` (`` survives whole. Any other string is printed as it is. Two
+    entries whose parent directories resolve to the same place are one file: it
+    is listed under its real path with ``(<link> → <target>)`` appended. A
+    skill-folder entry that *is* the real directory of a listed file is that same
+    skill and is dropped, in either direction (``.agents/skills`` →
+    ``.claude/skills`` or the reverse): a real run reports it unchanged, so the
+    dry run reports the same lines. An entry whose path the skills-link rule
+    (:func:`~specy_road.specyrd_skills.skill_path`) refuses is printed as it is,
+    never resolved: it wrote nothing, and its path may run through a symlink loop.
+    """
+    if repo_root is None:
+        return list(written)
+    root = repo_root.resolve()
+    entries = []
+    for entry in written:
+        if not isinstance(entry, Written) or _refused(repo_root, entry.path):
+            entries.append((entry, None, None))
+            continue
+        link = _linked_dir(repo_root, Path(entry.path))
+        entries.append(
+            (entry, (repo_root / entry.path).parent.resolve() / Path(entry.path).name, link))
+    parents = {real.parent for _, real, _ in entries if real is not None}
+    linked_parents = {real.parent for _, real, link in entries if link is not None}
+    # A directory entry that is the real folder of a listed file is that file's
+    # skill, whichever way the symlink points. A real run never lists it.
+    folded = {real for _, real, link in entries
+              if real in parents and (link is not None or real in linked_parents)}
+    lines: dict[object, list[str]] = {}
+    for entry, real, link in entries:
+        if real is None:
+            lines.setdefault(entry, [entry, ""])
+        elif real in folded:
+            continue
+        elif link is None or not real.is_relative_to(root):
+            lines.setdefault(real, [entry, ""])
+        else:
+            shown = Written(real.relative_to(root).as_posix(), entry.outcome)
+            lines.setdefault(real, [shown, ""])[1] = _link_note(repo_root, link)
+    return [base + note for base, note in lines.values()]
+
+
+def _link_note(repo_root: Path, link: Path) -> str:
+    """`` (<link> → <target>)``; the target is absolute when it lies outside the repository."""
+    root, target = repo_root.resolve(), (repo_root / link).resolve()
+    shown = (target.relative_to(root).as_posix() if target.is_relative_to(root)
+             else target.as_posix())
+    return f" ({link.as_posix()} → {shown})"
+
+
+def report_orphans(orphans: list[str], *, dry_run: bool, pruned: bool) -> None:
+    if pruned:
+        verb = "would remove" if dry_run else "removed"
+        print("")
+        for rel in orphans:
+            print(f"{verb} {rel} (no longer installed)")
+        return
+    print("\nNo longer installed for this role (or a .cursor/.codex copy of a skill), "
+          "left on disk for you to remove:")
+    for rel in orphans:
+        print(f"  {rel}")
+    if any(old_command_stub(rel) for rel in orphans):
+        print(
+            "\nThe */commands/ files are the pre-0.3.0 command stubs. The same commands are now\n"
+            "skills under .agents/skills/ (one file read by Cursor, Codex, and Claude Code), so\n"
+            "delete the old stubs to avoid two /specyrd-… entries:\n  rm "
+            + " ".join(rel for rel in orphans if old_command_stub(rel))
+        )
+    print("Rerun with --prune to delete every path listed above.")
+
+
+def report(written: list[str], orphans: list[str], *, dry_run: bool, pruned: bool = False,
+           footer: bool = True, repo_root: Path | None = None) -> None:
+    """Print a refresh's outcome; ``repo_root`` resolves symlinked stub directories (see
+    :func:`resolve_linked`)."""
+    verb = "would write" if dry_run else "wrote"
+    old_stubs = [rel for rel in orphans if old_command_stub(rel)]
+    if dry_run and old_stubs:
+        skills = len({Path(rel).stem for rel in old_stubs})
+        print(f"migration: {len(old_stubs)} command stubs (*/commands/) become {skills} skills "
+              "under .agents/skills/")
+    for rel in resolve_linked(written, repo_root):
+        print(f"{verb} {rel}")
+    if orphans:
+        report_orphans(orphans, dry_run=dry_run, pruned=pruned)
+    if not footer:
+        return
+    if dry_run:
+        print("\n(dry-run; no files written)")
+        return
+    print(
+        "\nStubs and managed blocks only. Your roadmap, planning sheets and "
+        "anything outside a managed block were not touched."
+        f"\n{NEXT_STEP}"
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -312,10 +456,12 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="specy-road refresh-stubs", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     add_repo_root_arg(p)
-    p.add_argument("--dry-run", action="store_true", help="Print what would be written; do not modify files.")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Print what would be written; do not modify files.")
     p.add_argument("--prune", action="store_true",
                    help="Delete stubs the manifest recorded that this version no longer installs "
-                   "(e.g. the pre-0.3.0 .cursor/commands/specyrd-*.md) and verbatim .cursor/.codex copies of the skills; with --dry-run, list them.")
+                   "(e.g. the pre-0.3.0 .cursor/commands/specyrd-*.md) and verbatim .cursor/.codex "
+                   "copies of the skills; with --dry-run, list them.")
     p.add_argument("--diff", action="store_true", help="Print a unified diff of every stub, skill "
                    "and managed block that would change; implies --dry-run.")
     return p
@@ -330,7 +476,8 @@ def main(argv: list[str] | None = None) -> None:
     try:
         with safe_write.exit_on_refusal():
             print_migration(root / prefix, prefix)
-            written, orphans = refresh_stubs(root, dry_run=dry_run, project=project_root(args.repo_root),
+            written, orphans = refresh_stubs(root, dry_run=dry_run,
+                                             project=project_root(args.repo_root),
                                              prune=args.prune)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
@@ -346,12 +493,13 @@ def main(argv: list[str] | None = None) -> None:
         return
     if args.diff:
         written = _print_diffs(root, written, prefix)
-    _report(written, orphans, dry_run=dry_run, pruned=args.prune, repo_root=root)
+    report(written, orphans, dry_run=dry_run, pruned=args.prune, repo_root=root)
     _exit_on_rule_refusals(written)
 
 
 def _exit_on_rule_refusals(written: list[str]) -> None:
-    """``error: <why>`` on stderr for each path the safe-write rule refused, then exit 1 if there was one.
+    """``error: <why>`` on stderr for each path the safe-write rule refused, then exit 1 if there
+    was one.
 
     ``REFUSED`` (``AGENTS.md`` or ``CLAUDE.md`` linked out) stays a report line.
     """

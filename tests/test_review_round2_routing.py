@@ -141,8 +141,8 @@ def test_a_users_own_skill_directory_is_reported_skipped(tmp_path: Path, capsys)
 
 
 def test_the_commands_hint_is_only_for_old_harness_stubs() -> None:
-    assert rs._old_command_stub(".cursor/commands/specyrd-x.md")
-    assert not rs._old_command_stub("docs/commands/specyrd-x.md")
+    assert rs.old_command_stub(".cursor/commands/specyrd-x.md")
+    assert not rs.old_command_stub("docs/commands/specyrd-x.md")
 
 
 def _bs(repo: Path, *args: str) -> int:
