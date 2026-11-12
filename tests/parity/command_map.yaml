@@ -1,4 +1,8 @@
 # The only way a later leaf may change the command surface or a golden --help transcript.
+# Add a row only when your leaf's plan (its acceptance or sheet) names that command change: the planner
+# identifies map changes. If you think a row is needed and your plan does not name it, do not add it:
+# record it in your implementation summary (or as blocked_on in READY when an acceptance item depends on it);
+# the coordinator checks it for goal-post moving and asks a planner for a follow-up leaf.
 # Each row is applied to the golden inventory as a declared delta (tests/parity/command_map.py):
 # an old invocation's options may be lost, an old command without options may be gone, a new
 # invocation's options may be gained, a new command is added. Any other difference fails. Fields:
