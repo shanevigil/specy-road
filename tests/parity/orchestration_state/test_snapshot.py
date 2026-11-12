@@ -11,8 +11,8 @@ import pytest
 from specy_road.orchestration import snapshot
 from tests.helpers import REPO
 from tests.parity.orchestration_state.rows import ROWS, Row, build, snapshot_golden
-from tests.parity.process.corpus import step_transcript
-from tests.parity.support import check_golden
+from tests.parity.process.corpus import corpus_env, step_transcript
+from tests.parity.support import check_golden, run_cli
 
 pytestmark = pytest.mark.parity
 
@@ -61,18 +61,35 @@ def test_snapshot_has_the_v1_fields_and_the_rows_status_and_writes_nothing(
     check_golden(snapshot_golden(row), snapshot_text(repo, dirs))
 
 
+#: Registry documents the state model reads as unknown: not YAML, not UTF-8, not a mapping, and a
+#: mapping whose ``entries`` is not a list.
+UNREADABLE_REGISTRIES = {
+    "not_yaml": b"entries: [\n",
+    "not_utf8": b"entries: [\xff\xfe]\n",
+    "list": b"- node_id: M1.1\n  branch: feature/rm-thing\n",
+    "entries_not_list": b"entries: M1.1\n",
+}
+
+
+@pytest.mark.parametrize("registry", UNREADABLE_REGISTRIES, ids=str)
 @pytest.mark.parametrize(
     "row_name, status", [("fresh_manual_claim", None), ("live_worker", "running")]
 )
-def test_an_unreadable_registry_sets_the_claim_unknown_and_keeps_the_workers(
-    row_name: str, status: str | None, tmp_path: Path
+def test_an_unreadable_registry_is_unknown_and_plan_refuses_it(
+    row_name: str, status: str | None, registry: str, tmp_path: Path
 ) -> None:
-    """A registry that is not YAML: no claimed leaf is invented, and a worker's leaf stays."""
+    """The snapshot invents no claimed leaf and keeps a worker's leaf, worktrees and reviews;
+    ``worker list`` still lists; ``orchestrate plan`` fails and offers no leaf as ready."""
     repo, _dirs = build(next(r for r in ROWS if r.name == row_name), tmp_path)
-    (repo / "roadmap" / "registry.yaml").write_text("entries: [\n", encoding="utf-8")
+    (repo / "roadmap" / "registry.yaml").write_bytes(UNREADABLE_REGISTRIES[registry])
     leaves = snapshot(repo)["leaves"]
     if status is None:
         assert leaves == {}
     else:
-        assert leaves["M1.1"]["claim"] == "unknown" and leaves["M1.1"]["status"] == status
-        assert [w["id"] for w in leaves["M1.1"]["workers"]] == ["w-0001"]
+        leaf = leaves["M1.1"]
+        assert leaf["claim"] == "unknown" and leaf["status"] == status
+        assert [w["id"] for w in leaf["workers"]] == ["w-0001"] and leaf["worktrees"]
+    listed = run_cli("specy_road.cli", ["worker", "list", "--all"], cwd=repo, env=corpus_env())
+    assert listed.returncode == 0, listed.stderr
+    plan = run_cli("specy_road.cli", ["orchestrate", "plan", "--json"], cwd=repo, env=corpus_env())
+    assert plan.returncode == 1 and plan.stdout == ""

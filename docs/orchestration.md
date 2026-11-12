@@ -347,6 +347,9 @@ later commit makes it stale. Under the default human-only roster the agent canno
 consumer outside the orchestration code: the PM GUI's orchestration view (phase M17) reads it, and
 so may a script. It writes nothing: no worker record, registry row, review file or git index changes.
 `worker list` and doctor's claim report read the same state (`specy_road.orchestration.read_state`).
+`orchestrate plan` and every other reader of the session plan take their claimed leaves from its claim
+read (`read_claims`), and refuse a registry it reads as `unknown` rather than plan as if nothing were
+claimed.
 Writes stay in the modules that make them (`worker`, `pickup`, `finish`, `review record`). Import
 from `specy_road.orchestration` only; `scripts/check_import_layers.py` lists any gate, CLI or
 `gui_app` module that imports a module inside it.
@@ -375,7 +378,8 @@ A leaf's status is the first rule that holds:
 
 A source that cannot be read sets only its own fields to `unknown`: an unreadable worker record is
 listed under `leafless_workers` with its id and every other field `unknown`, and statuses are judged
-from the readable records; an unreadable registry makes each `claim` `unknown`; a worktree git cannot
+from the readable records; a registry that cannot be read or decoded, is not YAML, or is not a mapping with a list of `entries`
+makes each `claim` `unknown`; a worktree git cannot
 read has `dirty: unknown`.
 
 ## Presence: `specy-road session`

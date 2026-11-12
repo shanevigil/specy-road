@@ -18,12 +18,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
 
 from specy_road.chore_records import load_chore
 from specy_road.git_subprocess import git_text, run
+from specy_road.orchestration.claims import read_claims
 from specy_road.orphaned_claims import orphaned_claims
-from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_files import list_reviews
 from specy_road.review_target import same_commit
 from specy_road.worker_orphans import SLOT_STATES
@@ -52,9 +51,15 @@ class OrchestrationState:
 
 
 def read_state(repo_root: Path) -> OrchestrationState:
-    """Read worker records, registry claims, the M15.26 claim report and the git worktrees, once."""
+    """Read worker records, registry claims, the M15.26 claim report and the git worktrees, once.
+
+    The M15.26 report (:func:`orphaned_claims`) reads the registry itself, so it runs only when
+    :func:`read_claims` found a readable registry: an unknown registry has no abandoned claims and
+    never reaches that second read. Limit: a registry rewritten between the two reads is judged
+    from both versions.
+    """
     records, unreadable = _records(repo_root)
-    claims = _claims(repo_root)
+    claims = read_claims(repo_root)
     abandoned = orphaned_claims(repo_root) if claims is not None else []
     return OrchestrationState(
         repo_root, records, unreadable, claims, abandoned, _git_worktrees(repo_root)
@@ -106,19 +111,6 @@ def _records(repo_root: Path) -> tuple[list[WorkerRecord], list[str]]:
     return readable, unreadable
 
 
-def _claims(repo_root: Path) -> dict[str, dict[str, Any]] | None:
-    """Registry rows by node id (the first row per node); ``None`` when the file is not readable."""
-    try:
-        doc = read_registry(registry_path(repo_root))
-    except (OSError, yaml.YAMLError):
-        return None
-    out: dict[str, dict[str, Any]] = {}
-    for e in (doc.get("entries") or []) if isinstance(doc, dict) else []:
-        if isinstance(e, dict) and e.get("node_id") and e.get("branch"):
-            out.setdefault(str(e["node_id"]), e)
-    return out
-
-
 def _git_worktrees(repo_root: Path) -> dict[str, str | None]:
     """Resolved worktree path -> its branch's short name, or ``None`` when detached."""
     out: dict[str, str | None] = {}
@@ -139,7 +131,7 @@ def _leaf_ids(state: OrchestrationState) -> list[str]:
 
 def _leaf(state: OrchestrationState, node_id: str) -> dict[str, Any]:
     entry = None if state.claims is None else state.claims.get(node_id)
-    branch = str(entry["branch"]) if entry else None
+    branch = str(entry["branch"]) if entry and entry.get("branch") else None
     mine = [r for r in state.records if r.node_id == node_id]
     return {
         "claim": UNKNOWN

@@ -4,12 +4,15 @@ Callers outside this package import from ``specy_road.orchestration`` only, neve
 inside it (``scripts/check_import_layers.py`` lists any that do). :func:`snapshot` is the
 read-only state model, schema 1 (``tests/fixtures/orchestration_snapshot_v1.json``,
 ``docs/orchestration.md``); :func:`read_state` is the same read for readers that need the worker
-records themselves (``worker list``, doctor's claim report). Writes stay in the modules that make
+records themselves (``worker list``, doctor's claim report); :func:`read_claims` is its claim
+read alone, which the readiness rule takes (``specy_road.orchestration.claims``, so the planner
+does not import the worker modules). Writes stay in the modules that make
 them today.
 """
 
 from __future__ import annotations
 
+from specy_road.orchestration.claims import read_claims
 from specy_road.orchestration.state import OrchestrationState, read_state, snapshot
 
-__all__ = ["OrchestrationState", "read_state", "snapshot"]
+__all__ = ["OrchestrationState", "read_claims", "read_state", "snapshot"]
