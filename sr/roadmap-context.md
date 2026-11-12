@@ -191,7 +191,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.67` A person at a terminal approves a leaf over a reviewer block in one mark-implementation-reviewed run, and handoff status prints the command that works `human-approves-over-block` — task — **Complete**
   - `M22.68` grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only `grind-status` — task — **Complete**
   - `M22.69` A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line `human-criteria-in-ledger` — task — **Not Started**
-  - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Not Started**
+  - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -343,7 +343,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.69` on `feature/rm-human-criteria-in-ledger` since 2026-11-11
-- `M22.70` on `feature/rm-packet-reads-leaf-worktree-summary` since 2026-11-11
 
 ## Quality by area
 
@@ -351,14 +350,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 24 | 0 | 2.12 | 58% | 13 | 2 |
+| `CHANGELOG.md` **flagged** | 24 | 0 | 2.12 | 54% | 12 | 2 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 27 | 0 | 2.30 | 63% | 48 | 2 |
-| `gui` **flagged** | 9 | 0 | 1.67 | 56% | 3 | 0 |
+| `docs` **flagged** | 27 | 0 | 2.30 | 59% | 47 | 2 |
 | `planning` **flagged** | 4 | 0 | 2.75 | 75% | 23 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `specy_road` **flagged** | 42 | 0 | 2.17 | 52% | 84 | 2 |
-| `tests` **flagged** | 44 | 0 | 2.16 | 55% | 96 | 2 |
+| `tests` **flagged** | 44 | 0 | 2.16 | 52% | 95 | 2 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
@@ -367,10 +364,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `constraints` | 9 | 0 | 2.11 | 33% | 58 | 0 |
+| `gui` | 8 | 0 | 1.62 | 50% | 2 | 0 |
 | `pyproject.toml` | 3 | 0 | 2.00 | 33% | 33 | 0 |
 | `requirements-ci.in` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `requirements-ci.txt` | 2 | 0 | 2.50 | 50% | 29 | 0 |
 | `scripts` | 10 | 0 | 2.50 | 50% | 86 | 0 |
+| `specy_road` | 42 | 0 | 2.17 | 50% | 83 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
