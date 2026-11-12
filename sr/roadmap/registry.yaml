@@ -102,3 +102,29 @@ entries:
     started: '2026-11-11'
     owner: savigil
     implementation_review: pending
+  - codename: fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list
+    node_id: M16.3.6
+    branch: feature/rm-fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list
+    touch_zones:
+      - specy_road/bundled_scripts/validate_notices.py
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - specy_road/bundled_scripts/doctor_env_setup.py
+      - specy_road/bundled_scripts/doctor.py
+      - specy_road/bundled_scripts/refresh_stubs_report.py
+      - specy_road/bundled_scripts/refresh_stubs.py
+      - specy_road/upgrade_templates.py
+      - specy_road/bundled_scripts/upgrade.py
+      - specy_road/archive_git.py
+      - specy_road/archive_plan.py
+      - specy_road/search_fallback.py
+      - specy_road/search_index.py
+      - specy_road/file_limits_jsx.py
+      - specy_road/file_limits_js.py
+      - specy_road/reconcile_branch.py
+      - specy_road/bundled_scripts/reconcile_branch_cli.py
+      - scripts/line_width_baseline.json
+      - tests/
+      - constraints/clone-baseline.json
+    started: '2026-11-12'
+    owner: savigil
+    implementation_review: pending
