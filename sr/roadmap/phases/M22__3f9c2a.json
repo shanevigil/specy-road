@@ -464,6 +464,32 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the reviewed commit has no committed work/implementation-summary-<ID>.md, review-packet reads it from the leaf's own worktree (the worktree git worktree list shows with the leaf's feature/rm-<codename> branch checked out, resolved as prompt --role reviewer resolves it, reusing that code) before the working tree of the checkout running the command, and labels the section with which copy it used and its path",
+        "With no leaf worktree, or no summary in it, the section falls back to the running checkout's working tree as today; when neither has one, the missing message names every path it checked. The Added-inventory note and milestone packets are unchanged",
+        "One parametrized test through review-packet's public CLI covers: summary only in the leaf worktree (included, labelled with that path), in both the leaf worktree and the running checkout (the leaf worktree copy is used), committed at the reviewed commit (the committed copy wins), and in neither (the missing message lists the paths)",
+        "docs/orchestration-review.md's packet description and a CHANGELOG [Unreleased] line state the lookup order. Out of scope: evidence files other than the summary, where executors write the summary, and the grind scripts"
+      ],
+      "codename": "packet-reads-leaf-worktree-summary",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.70",
+      "node_key": "adeb1f7f-b862-4f0e-ace4-b69f0054a875",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.70_packet-reads-leaf-worktree-summary_adeb1f7f-b862-4f0e-ace4-b69f0054a875.md",
+      "sibling_order": 64,
+      "status": "Not Started",
+      "title": "review-packet reads the implementation summary from the leaf's own worktree",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/role_prompt_cli.py",
+        "tests/",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
