@@ -282,7 +282,7 @@ def test_failure_names_the_rerun_with_the_flag(capsys: pytest.CaptureFixture[str
 
 
 def test_parser_accepts_the_flag() -> None:
-    from specy_road.bundled_scripts.finish_task_args import parse_finish_args
+    from specy_road.bundled_scripts.finish_task import parse_finish_args
 
     assert parse_finish_args([]).land_check_cmd is None
     assert parse_finish_args(["--land-check-cmd", ""]).land_check_cmd == ""

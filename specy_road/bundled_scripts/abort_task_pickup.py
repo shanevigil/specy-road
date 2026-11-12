@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Undo do-next-available-task pickup: deregister on integration branch, drop feature branch, clean work/."""
+"""Undo a do-next-available-task pickup.
+
+Deregister on the integration branch, drop the feature branch and clean work/.
+"""
 
 from __future__ import annotations
 
@@ -10,20 +13,22 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_args import add_base_arg, add_remote_arg
+from specy_road.cli_entry import integration_defaults
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_integration import integration_worktree
 from specy_road.finish_work_artifacts import remove_main_checkout_pickup_files
+from specy_road.generated_files import GENERATED_COMMITTED
 from specy_road.git_subprocess import git_capture, git_root, git_run
-from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     remove_on_complete_session,
 )
-from specy_road.cli_entry import integration_defaults
-from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.abort_task_pickup_own_commit import only_own_registration_ahead
-from specy_road.repo_ops import current_branch
+from specy_road.registration_pickup_commit import registration_commit_message
+from specy_road.registry_remote_overlay_merge import read_registry_at_ref
+from specy_road.registry_yaml import REGISTRY_REL, read_registry, registry_path, write_registry
 from specy_road.repo_lock import pickup_finish_lock
+from specy_road.repo_ops import current_branch
+from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
 
 #: Why a tracked change blocks, by porcelain status letter (index, then worktree).
 _STAGED = {"M": "staged edit", "A": "staged new file", "D": "staged deletion",
@@ -61,20 +66,24 @@ def _assert_no_tracked_changes(root: Path, base: str) -> None:
           "carry them there or discard them.", file=sys.stderr)
     for entry in blocking:
         print(f"  {entry}", file=sys.stderr)
-    print("  Commit or discard them, then retry; untracked files never block (they survive the checkout).",
-          file=sys.stderr)
+    print("  Commit or discard them, then retry; untracked files never block "
+          "(they survive the checkout).", file=sys.stderr)
     raise SystemExit(1)
 
 
 def _git_keeping_untracked(
     root: Path, what: str, *args: str, retry: str = "retry abort-task-pickup"
 ) -> None:
-    """Run a git step that refuses rather than overwrite an untracked file; exit 1 cleanly if it does."""
+    """Run a git step that refuses rather than overwrite an untracked file.
+
+    Exits 1 cleanly if it does.
+    """
     try:
         git_run(root, *args)
     except subprocess.CalledProcessError:
         print(f"error: could not {what}; git's message above names the paths.", file=sys.stderr)
-        print(f"  An untracked file there would be overwritten: move it aside, then {retry}.", file=sys.stderr)
+        print(f"  An untracked file there would be overwritten: move it aside, then {retry}.",
+              file=sys.stderr)
         raise SystemExit(1) from None
 
 
@@ -232,8 +241,10 @@ def _drop_local_registration(root: Path, remote: str, base: str, branch: str) ->
     _checkout_base(root, base)
     # --keep, not --hard: --hard silently overwrites an untracked file at a path
     # the advanced remote base now tracks. The tree has no tracked changes here.
-    _git_keeping_untracked(root, f"reset '{base}' to {remote}/{base}", "reset", "--keep",
-                           f"{remote}/{base}", retry=f"`git checkout {branch}` and retry abort-task-pickup")
+    _git_keeping_untracked(
+        root, f"reset '{base}' to {remote}/{base}", "reset", "--keep", f"{remote}/{base}",
+        retry=f"`git checkout {branch}` and retry abort-task-pickup",
+    )
     print(
         f"[ok] the claim was never pushed (--local pickup): dropped its registration "
         f"commit from local {base}; nothing pushed"
@@ -276,13 +287,67 @@ def _exit_if_base_checked_out_elsewhere(root: Path, base: str, branch: str, node
     if holder is None:
         return
     wt = shlex.quote(str(git_root(root) or root))
-    print(f"error: '{base}' is checked out in {holder}, and abort-task-pickup needs it here.", file=sys.stderr)
-    print("  For a delegated leaf: `specy-road worker terminate <W>`; then, in that checkout:", file=sys.stderr)
-    print(f"  `git -C {wt} status --short` lists what removing this worktree discards: pickup's untracked "
-          f"work/brief-{node_id}.md, and --force discards any other untracked file there too.", file=sys.stderr)
-    print(f"  `git worktree remove --force {wt}`, `git checkout {branch}`, and `specy-road abort-task-pickup`.",
+    print(f"error: '{base}' is checked out in {holder}, and abort-task-pickup needs it here.",
           file=sys.stderr)
+    print("  For a delegated leaf: `specy-road worker terminate <W>`; then, in that checkout:",
+          file=sys.stderr)
+    print(f"  `git -C {wt} status --short` lists what removing this worktree discards: "
+          f"pickup's untracked work/brief-{node_id}.md, and --force discards any other "
+          "untracked file there too.", file=sys.stderr)
+    print(f"  `git worktree remove --force {wt}`, `git checkout {branch}`, "
+          "and `specy-road abort-task-pickup`.", file=sys.stderr)
     raise SystemExit(1)
+
+
+# ---------------------------------------------------------------------------
+# Whether the commit ahead of the remote integration branch is pickup's own registration
+# ---------------------------------------------------------------------------
+#
+# A ``--local`` pickup never pushes its claim, so abort drops that one commit
+# instead of deregistering on the remote. The commit must look exactly like
+# pickup's: the registration subject, the registry changed only by adding this
+# claim's row, and otherwise at most the two generated files pickup renders
+# again in the same commit (:mod:`specy_road.bundled_scripts.do_next_task_register`),
+# so abort never resets away a commit amended to carry other work.
+
+
+def registers_only(root: Path, commit: str, codename: str) -> bool:
+    """True when ``commit``'s registry is its parent's plus this claim's row, nothing else.
+
+    Compared parsed: pickup rewrites the file, dropping comments and restyling.
+    """
+    empty = {"version": 1, "entries": []}
+    after = read_registry_at_ref(root, commit, 30.0) or empty
+    before = read_registry_at_ref(root, f"{commit}^", 30.0) or empty
+    entries = after.get("entries") or []
+    rest = [e for e in entries if not (isinstance(e, dict) and e.get("codename") == codename)]
+    return len(entries) - len(rest) == 1 and (
+        {**after, "entries": rest} == {**before, "entries": before.get("entries") or []}
+    )
+
+
+def only_own_registration_ahead(
+    root: Path, remote: str, base: str, codename: str, ref: str
+) -> bool:
+    """True when the one commit on ``ref`` missing from ``remote/base`` is this claim's
+    registration."""
+    ahead = git_capture(root, "rev-list", f"{remote}/{base}..{ref}").split()
+    if len(ahead) != 1:
+        return False
+    subject = git_capture(root, "log", "-1", "--format=%s", ahead[0])
+    paths = git_capture(
+        root, "diff-tree", "--no-commit-id", "--name-only", "-r", ahead[0]
+    ).splitlines()
+    prefix = project_prefix(root)   # diff-tree names paths from the repository root
+    registry = prefix + REGISTRY_REL.as_posix()
+    generated = {prefix + n for n in GENERATED_COMMITTED}
+    own = registration_commit_message(codename, include_ci_skip=False)
+    return (
+        subject.startswith(own)
+        and registry in paths
+        and set(paths) <= {registry, *generated}
+        and registers_only(root, ahead[0], codename)
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -308,7 +373,7 @@ def _abort_locked(root: Path, args) -> None:
 
     git_run(root, "fetch", remote)
     local_claim = all(
-        only_own_registration_ahead(root, remote, base, codename, ref, capture=git_capture)
+        only_own_registration_ahead(root, remote, base, codename, ref)
         for ref in ("HEAD", base)
     )
     if local_claim:

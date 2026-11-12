@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.finish_land_check import resolve_land_check_cmd, run_land_check
 from specy_road.finish_land_deterministic import merge_feature_deterministically
 from specy_road.finish_land_integration import (
     _checkout_feature_after_landing,
@@ -24,6 +23,8 @@ from specy_road.finish_land_integration import (
     integration_worktree_problem,
     land_merge_feature_into_integration,
     print_merge_push_notice,
+    resolve_land_check_cmd,
+    run_land_check,
     tracking_ref_snapshot,
 )
 from specy_road.git_subprocess import git_code, git_ok
