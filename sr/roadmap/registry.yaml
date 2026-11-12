@@ -114,7 +114,8 @@ entries:
       - specy_road/pm_gantt_static/
     started: '2026-11-11'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-12T07:22:09+00:00'
   - codename: one-llm-client-module-replaces-the-provider-code-inside-review-node
     node_id: M16.3.4
     branch: feature/rm-one-llm-client-module-replaces-the-provider-code-inside-review-node
