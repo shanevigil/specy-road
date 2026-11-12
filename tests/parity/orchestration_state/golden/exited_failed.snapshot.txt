@@ -1,0 +1,37 @@
+$ specy-road (snapshot)
+exit: 0
+--- stdout ---
+{
+  "schema": 1,
+  "leaves": {
+    "M1.1": {
+      "claim": {
+        "codename": "thing",
+        "branch": "feature/rm-thing",
+        "registered_at": null
+      },
+      "workers": [
+        {
+          "id": "w-0001",
+          "harness": "generic",
+          "model": "x",
+          "status": "failed",
+          "pid_alive": false,
+          "started_at": "<TIME>",
+          "ended_at": "<TIME>"
+        }
+      ],
+      "worktrees": [
+        {
+          "path": "<REPO>",
+          "branch": "feature/rm-thing",
+          "dirty": false
+        }
+      ],
+      "reviews": [],
+      "status": "abandoned"
+    }
+  },
+  "leafless_workers": []
+}
+--- stderr ---

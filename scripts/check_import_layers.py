@@ -13,6 +13,12 @@ this script prints members added and removed, components merged or split, and
 entry-point edges added and removed, then exits 0. It does not fail when a
 cycle grows.
 
+The report also lists, every run, each import by the review gate
+(``review_gate*``), a CLI entry point (``specy_road.cli`` and the entry points
+below) or a ``gui_app*`` module of a module inside ``specy_road.orchestration``:
+those callers use the package's public interface, ``specy_road.orchestration``
+itself. It is a listing, not a gate.
+
 An entry point is a ``bundled_scripts`` module with a module-level ``main``,
 plus ``grind_session_cleanup`` (the grind-session command's cleanup module;
 ``grind_session.py`` owns ``main``, and package modules import the cleanup
@@ -196,16 +202,46 @@ def entry_point_edges(
     return sorted(edges)
 
 
+#: The subpackage whose members the gate, the CLI and the GUI reach only through its ``__init__``.
+ORCHESTRATION = "specy_road.orchestration"
+#: Module-name prefixes of the review gate and the PM GUI server.
+INTERFACE_CALLER_PREFIXES = ("specy_road.review_gate", "specy_road.gui_app")
+
+
+def orchestration_internal_imports(
+    graph: dict[str, set[str]], points: set[str]
+) -> list[tuple[str, str]]:
+    """Imports of an orchestration member by the review gate, CLI entry points and gui_app."""
+    callers = {
+        module
+        for module in graph
+        if module in points
+        or module == "specy_road.cli"
+        or module.startswith(INTERFACE_CALLER_PREFIXES)
+    }
+    return sorted(
+        (source, target)
+        for source in callers
+        for target in graph[source]
+        if target.startswith(f"{ORCHESTRATION}.")
+    )
+
+
 def build_report(package: Path) -> dict:
     """The committed-report document for ``package``."""
     graph = scan_imports(package)
     components = strongly_connected(graph)
-    edges = entry_point_edges(graph, entry_point_names(package))
+    points = entry_point_names(package)
+    edges = entry_point_edges(graph, points)
+    internal = orchestration_internal_imports(graph, points)
     return {
         "generated": date.today().isoformat(),
         "tool": "ast import scan (nested imports included)",
         "components": [{"size": len(component), "modules": component} for component in components],
         "entry_point_edges": [{"from": source, "to": target} for source, target in edges],
+        "orchestration_internal_imports": [
+            {"from": source, "to": target} for source, target in internal
+        ],
     }
 
 
@@ -292,6 +328,13 @@ def render_difference(current: dict, baseline: dict) -> str:
         _section("components split", splits),
         _section("entry-point edges added", [f"{src} -> {dst}" for src, dst in added_edges]),
         _section("entry-point edges removed", [f"{src} -> {dst}" for src, dst in removed_edges]),
+        _section(
+            "orchestration internals imported by the gate, CLI or GUI",
+            [
+                f"{edge['from']} -> {edge['to']}"
+                for edge in current.get("orchestration_internal_imports", [])
+            ],
+        ),
     ]
     if not any((added, removed, merges, splits, added_edges, removed_edges)):
         lines.append("no difference from the committed report")

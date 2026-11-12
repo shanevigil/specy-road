@@ -19,6 +19,7 @@ from specy_road.bundled_scripts.worker_cli_args import FixRound
 from specy_road.worker_cli_render import (_line, _row, timeline, timeline_lines, usage,
                                                        usage_json_payload, usage_lines)
 from specy_road.worker_cli_sync import add_sync_parser, cmd_sync as _cmd_sync
+from specy_road.orchestration import read_state
 from specy_road.orphaned_claims import append_claim_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
@@ -112,7 +113,8 @@ def _with_stalls(data: dict[str, Any], lines: list[str], stalls: list[dict]) -> 
 def cmd_list(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     stalls = slots.stalled_workers(root)   # sweeps first, so the flags listed below are current
-    recs = list_records(root, active_only=not ns.all)
+    state = read_state(root)
+    recs = state.records if ns.all else state.active_records()
     if not recs:   # a pending recovery on a failed worker is still listed
         return _emit(ns, *_with_stalls({"workers": []}, ["No workers under work/.workers/."], stalls))
     return _emit(ns, *_with_stalls(*list_view(root, recs, _row, _line), stalls))   # orphaned: held, leaf over

@@ -70,31 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui
-    node_id: M16.3.1
-    branch: feature/rm-orchestration-subpackage-with-one-public-interface-and-one-state-model-for-the-gate-the-cli-and-the-pm-gui
-    touch_zones:
-      - specy_road/orchestration/
-      - specy_road/orchestration_config.py
-      - specy_road/orchestration_pinned.py
-      - specy_road/worker_state.py
-      - specy_road/review_files.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/session_plan_git.py
-      - specy_road/bundled_scripts/doctor.py
-      - scripts/check_import_layers.py
-      - constraints/import-layers-baseline.json
-      - docs/orchestration.md
-      - tests/fixtures/orchestration_snapshot_v1.json
-      - tests/parity/orchestration_state/
-      - tests/
-      - constraints/file-limits.yaml
-      - sr/constraints/file-limits.yaml
-    started: '2026-11-11'
-    owner: savigil
-    implementation_review: pending
   - codename: packet-reads-leaf-worktree-summary
     node_id: M22.70
     branch: feature/rm-packet-reads-leaf-worktree-summary

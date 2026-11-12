@@ -37,7 +37,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.12` | Review packets and prompts show a held milestone's rollup as the public loader does | task | Agentic-led | Complete |
 | `M16.2.13` | The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle | task | Agentic-led | Complete |
 | `M16.3` | Orchestration state model and the cap-driven folds | milestone | — | Not Started |
-| `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Not Started |
+| `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Complete |
 | `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Not Started |
 | `M16.3.3` | Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one | task | Agentic-led | Not Started |
 | `M16.3.4` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Not Started |

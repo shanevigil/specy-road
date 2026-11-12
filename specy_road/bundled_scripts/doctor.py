@@ -62,8 +62,9 @@ from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, gi
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.nested_repos import report_unpushed
 from specy_road.orchestrate_assign import guidance_bypass_lines
+from specy_road.orchestration import read_state
 from specy_road.orchestration_pinned import pinned_config
-from specy_road.orphaned_claims import orphaned_claims, report_lines
+from specy_road.orphaned_claims import report_lines
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.version_skew import print_install_report, warn_if_running_version_older
@@ -313,8 +314,11 @@ def _context(ns: argparse.Namespace) -> _Ctx | None:
 
 
 def _print_orphaned_claims(root: Path) -> None:
-    """Report-only: ``--fix`` does not release these (they are not in :data:`FIX_ORDER`)."""
-    lines = report_lines(orphaned_claims(root))
+    """Report-only: ``--fix`` does not release these (they are not in :data:`FIX_ORDER`).
+
+    The claims are the state model's abandoned ones (:func:`specy_road.orchestration.read_state`).
+    """
+    lines = report_lines(read_state(root).abandoned)
     if not lines:
         return
     print("Claims with no live worker (report only; --fix does not release them):")

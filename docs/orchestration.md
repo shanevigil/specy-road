@@ -341,6 +341,48 @@ fresh executor sub-agent, has a **different** fresh sub-agent of a rostered revi
 TTY), then `grind-session --step finish`. Anything that modifies files runs before the review, since a
 later commit makes it stale. Under the default human-only roster the agent cannot close the gate; it stops and asks the human to approve in a terminal.
 
+## Orchestration state: the read-only snapshot
+
+`specy_road.orchestration.snapshot(repo_root)` is the one read of orchestration state for any
+consumer outside the orchestration code: the PM GUI's orchestration view (phase M17) reads it, and
+so may a script. It writes nothing: no worker record, registry row, review file or git index changes.
+`worker list` and doctor's claim report read the same state (`specy_road.orchestration.read_state`).
+`orchestrate plan` and every other reader of the session plan take their claimed leaves from its claim
+read (`read_claims`), and refuse a registry it reads as `unknown` rather than plan as if nothing were
+claimed.
+Writes stay in the modules that make them (`worker`, `pickup`, `finish`, `review record`). Import
+from `specy_road.orchestration` only; `scripts/check_import_layers.py` lists any gate, CLI or
+`gui_app` module that imports a module inside it.
+
+The fields are fixed by [`tests/fixtures/orchestration_snapshot_v1.json`](../tests/fixtures/orchestration_snapshot_v1.json)
+(`schema: 1`); a field is added or renamed only under a new schema number.
+
+| Field | What it holds |
+| --- | --- |
+| `schema` | `1` |
+| `leaves.<node id>.claim` | The registry row: `codename`, `branch`, `registered_at` (its `started` date or `null`); `null` for a leaf with workers and no claim |
+| `leaves.<node id>.workers[]` | `id`, `harness`, `model`, `status` (the record's state), `pid_alive` (its wrapper is running), `started_at`, `ended_at` (`null` until completed, failed or terminated) |
+| `leaves.<node id>.worktrees[]` | `path`, `branch` (`null` when detached), `dirty`: every worktree on the claim's branch and every one a worker of the leaf names |
+| `leaves.<node id>.reviews[]` | Each `REVIEW-*.md`: `model`, `verdict`, `commit`, `fresh_for_head` (the commit is the branch tip) |
+| `leaves.<node id>.status` | `claimed`, `running`, `exited_ok`, `exited_failed`, `abandoned` or `unknown` |
+| `leafless_workers[]` | Workers on a chore, and each worker record that cannot be read |
+
+A leaf's status is the first rule that holds:
+
+1. a worker on the leaf is `starting`, `running`, `idle` or `paused_by_limit` (one is enough when there are several): `running`;
+2. the registry cannot be read: `unknown`;
+3. the claim has no live worker, no live `session` on its branch and no valid READY at the branch tip: `abandoned`, the claims doctor reports under "Claims with no live worker" (a fresh manual claim included);
+4. the latest worker (highest attempt) is `completed`: `exited_ok`;
+5. the latest worker is `failed` or `terminated`: `exited_failed`;
+6. otherwise (a claim kept by a live session or a READY at its tip): `claimed`.
+
+A source that cannot be read sets only its own fields to `unknown`: an unreadable worker record is
+listed under `leafless_workers` with its id and every other field `unknown`, and statuses are judged
+from the readable records; a registry is known only when it is absent, or is UTF-8 YAML whose top level is empty or a mapping
+whose `entries`, if present, is a list (absent, empty and `entries: []` mean no claims); any other
+registry makes each `claim` `unknown`; a worker record that is not UTF-8 is unreadable like one that
+is not YAML; a worktree git cannot read has `dirty: unknown`.
+
 ## Presence: `specy-road session`
 
 The registry shows claimed leaves; work that is not a claim — a design note, a
