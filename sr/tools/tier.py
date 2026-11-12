@@ -24,6 +24,10 @@ TRUST = re.compile(r"^specy_road/(?:[^/]+/)*(review|finish|worker_(sandbox|runne
                    r"resume|harness_launch|secret|net|[^/]*signing|[^/]*policy_pin|mark_implementation_reviewed|"
                    r"orchestration_pinned|[^/]*tool_call_guard|[^/]*role_guard|guard|nested_repos_land|"
                    r"[^/]*gui_settings_tokens|gui_app_routes_publish|llm_client)")
+# Gate code, for classification only (review rules v2, operator-approved 2026-11-11): the shadow replay records
+# `gate` when a trust path in the fix diff matches this, `other` otherwise. It never changes a tier; TRUST decides.
+GATE = re.compile(r"^specy_road/(?:[^/]+/)*(review|orchestration_pinned|mark_implementation_reviewed|finish|"
+                  r"[^/]*policy_pin|[^/]*signing|guard|[^/]*role_guard|[^/]*tool_call_guard)")
 REVIEWED = re.compile(r"^Path floor reviewed:", re.M)
 
 
