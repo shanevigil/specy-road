@@ -378,9 +378,10 @@ A leaf's status is the first rule that holds:
 
 A source that cannot be read sets only its own fields to `unknown`: an unreadable worker record is
 listed under `leafless_workers` with its id and every other field `unknown`, and statuses are judged
-from the readable records; a registry that cannot be read or decoded, is not YAML, or is not a mapping with a list of `entries`
-makes each `claim` `unknown`; a worktree git cannot
-read has `dirty: unknown`.
+from the readable records; a registry is known only when it is absent, or is UTF-8 YAML whose top level is empty or a mapping
+whose `entries`, if present, is a list (absent, empty and `entries: []` mean no claims); any other
+registry makes each `claim` `unknown`; a worker record that is not UTF-8 is unreadable like one that
+is not YAML; a worktree git cannot read has `dirty: unknown`.
 
 ## Presence: `specy-road session`
 
