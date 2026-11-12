@@ -212,6 +212,8 @@ approved`; next: `specy-road mark-implementation-reviewed --yes` on that branch,
 this clone has no `OPERATOR-<commit>.yaml` marker, "process it from the clone that ran the GUI". An answer is
 listed while the planning sheet on the local integration branch has no `<ID>: <answer>` line in its decision block
 (a line only on a leaf branch does not count); next: commit that line on the integration branch, then act on it.
+An answer on an entry with a `criterion` (a leaf's `human:` acceptance criterion) is never listed:
+`finish-this-task` reads it from the ledger.
 The GUI pushes to the integration branch, so a coordinator pulls it (`git pull --ff-only`) before each status
 check. Each claimed leaf whose review was evaluated also carries `commit`, `can_approve_over_block` and `settles`
 (what an approval over its blocks would name), which the GUI reads.

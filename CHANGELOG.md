@@ -80,6 +80,8 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- A `human:` acceptance criterion is met only by a person's closed entry in `roadmap/decisions.yaml`: a `kind: human-action` entry with the new optional `criterion: A#`, `decided_by: operator` and `channel: terminal` (new value) or `pm-gui`, committed on the leaf or integration branch. Existing planning-sheet `A#:` lines stop counting: `finish-this-task` refuses with the undecided ids, says a sheet line no longer counts, and names `decisions add <NODE> --kind human-action --criterion A#` and the two ways a person closes it (`decisions close` at their own interactive terminal, with a `y/N` prompt and no `--yes`, or the PM GUI's answer). No migration copies sheet lines into the ledger: a copy would turn an agent-writable line into a person's record. `handoff status` lists the undecided criteria (`human_criteria_undecided` in `--json`); the review gate is unchanged. `decisions close` no longer needs a planning-sheet line for any other entry, and `grind-session --status` does not list a GUI answer on a criterion entry. Refresh copied schemas with `specy-road refresh-schemas`. See `docs/roadmap-authoring.md` (the `acceptance` row).
+
 - The managed `.gitignore` block now ignores all of `work/` (`work/*`, child directories included) in place of
   its per-path `work/` lines, and re-includes the scaffold: `work/README.md`, `work/.gitkeep` and the top-level
   `work/*.template.md` files. Chore records (`work/chores/<slug>.json`, `.md`) and other run files no longer show

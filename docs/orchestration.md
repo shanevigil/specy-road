@@ -175,14 +175,18 @@ Each **open** entry carries:
 
 **CLI:** `specy-road decisions add|list|close`. Schema validation runs before `add` writes the file
 and before `list` prints it. `list` prints every open entry, those with `needed_by` first in ascending
-date order and those without a deadline last. `close` records the answer and the closed time only
-after the same line appears in the planning-sheet **decision block** (optional list marker or
-checkbox in front). That block is the first level-2 section whose heading normalises to
-`decisions and notes` or `decisions`, chosen only after CommonMark fences (a backtick or tilde run of
-at least 3, closed by a later run of the same character at least that long) are removed from the
-whole sheet. A heading or matching line that exists only inside a fence does not count, and neither
-does a matching line in another section. Indented code, HTML comments, and blockquotes are left as
-written. `asked` and `needed_by` are calendar dates `YYYY-MM-DD`; `add` rejects any other string
+date order and those without a deadline last. `close <ID> --answer ...` records the answer and the
+closed time in the ledger; no planning-sheet line is needed. A person's decision on a leaf's `human:`
+acceptance criterion is a `human-action` entry opened with `add <NODE> --kind human-action --criterion
+A#` (any caller may open it; `add` refuses another kind, an `A#` that is not a `human:` criterion of
+the node, and a second open entry for the same node and criterion). Only a person closes it: `close`
+on such an entry refuses, writing nothing, when stdin is not a terminal, when
+`SPECY_ROAD_ORCHESTRATION_ROLE` is set to anything but exactly `coordinator`, or when git `user.name`
+or `user.email` is unset, and there is no `--yes`; otherwise it shows the node, the criterion and the
+answer and asks `y/N`, and `y` closes it with `decided_by: operator`, `channel: terminal` and the
+answer ending `(recorded by <name> <email>)`. The PM GUI's answer closes it too (`channel: pm-gui`).
+`finish-this-task` reads it ([roadmap-authoring.md](roadmap-authoring.md), the `acceptance` row).
+`asked` and `needed_by` are calendar dates `YYYY-MM-DD`; `add` rejects any other string
 before writing, and `list` rejects a file whose date is not a real calendar day (for example
 `2026-99-99` or `2026-02-30`). Datetimes are out of scope for those two fields.
 
@@ -201,7 +205,7 @@ agent's context, so they survive a context reset, an account switch or a differe
 They are **not roster config**: availability and pauses come only from the roster (`available`,
 `paused_until`), and `orchestrate plan` flags a preferred model the roster lacks or marks unavailable.
 `list` shows active preferences first and drops expired ones. `--supersedes <id>` closes the old rule as
-it records the new; `close <id> --answer "<why>"` needs no sheet record. `orchestrate plan` never
+it records the new; `close <id> --answer "<why>"` drops it. `orchestrate plan` never
 applies them: it prints them (JSON `preferences_not_applied`); the coordinator reads them each session
 and before each delegate or review launch. A project with its own `schemas/decisions.schema.json` runs
 `refresh-schemas` first.

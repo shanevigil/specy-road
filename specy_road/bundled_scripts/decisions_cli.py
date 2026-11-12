@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_args import add_json_arg, add_model_arg
-from specy_road.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.bundled_scripts.finish_task import TERMINAL, human_criteria
+from specy_road.review_override import OPERATOR, recorder, role_refusal
 from specy_road.roadmap_load import load_roadmap
 from specy_road.decisions import (
     PREFERENCE,
@@ -40,22 +41,25 @@ def _parse_option(raw: str) -> dict[str, str]:
     return {"label": label, "effect": effect}
 
 
-def _sheet_for_node(root: Path, node_id: str) -> tuple[str, str]:
-    by_id = {n["id"]: n for n in load_roadmap(root)["nodes"]}
-    node = by_id.get(node_id)
-    if not node:
-        print(f"error: unknown node {node_id!r}", file=sys.stderr)
-        raise SystemExit(1)
-    rel = normalize_planning_dir(node.get("planning_dir") or "")
-    if not rel:
-        print(f"error: node {node_id} has no planning_dir", file=sys.stderr)
-        raise SystemExit(1)
-    path = resolve_planning_path(root, rel)
-    try:
-        return rel, path.read_text(encoding="utf-8")
-    except OSError as e:
-        print(f"error: could not read {rel}: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+def _criterion_text(root: Path, node_id: str | None, criterion: str) -> str | None:
+    """The ``human:`` text of ``node_id``'s criterion ``criterion``, or ``None`` when it is not one."""
+    node = next((n for n in load_roadmap(root)["nodes"] if n["id"] == node_id), None)
+    return human_criteria(node).get(criterion) if node else None
+
+
+def _criterion_error(root: Path, ns: argparse.Namespace) -> str | None:
+    """``--criterion`` needs a human-action entry for a ``human:`` criterion of the node, at most one open in the
+    merged ledger; a ledger that does not read or fails the schema refuses, since no open entry can be ruled out."""
+    if ns.kind != "human-action":
+        return "--criterion applies only to --kind human-action"
+    if _criterion_text(root, ns.node, ns.criterion) is None:
+        return f"{ns.criterion} is not a `human:` acceptance criterion of {ns.node}"
+    doc, _local_ids, errs = load_merged(root)
+    if errs:
+        return f"{errs[0]}; fix it first: an open entry for {ns.node} {ns.criterion} cannot be ruled out"
+    if any(e.get("node") == ns.node and e.get("criterion") == ns.criterion for e in open_questions(doc)):
+        return f"{ns.node} {ns.criterion} already has an open entry; a person closes that one"
+    return None
 
 
 _QUESTION_FLAGS = (("node", "NODE"), ("why", "--why"), ("option", "--option"),
@@ -103,7 +107,7 @@ def _add_preference(root: Path, ns: argparse.Namespace) -> int:
 
 def cmd_add(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
-    if err := _kind_flag_error(ns):
+    if err := _kind_flag_error(ns) or (ns.criterion and _criterion_error(root, ns)):
         print(f"error: {err}", file=sys.stderr)
         return 1
     # One id sequence across both ledgers: a new entry must not shadow, or be shadowed by, the other's.
@@ -126,6 +130,7 @@ def cmd_add(ns: argparse.Namespace) -> int:
             needed_by=ns.needed_by,
             asked=ns.asked,
             local=ns.local,
+            criterion=ns.criterion,
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
@@ -167,9 +172,36 @@ def cmd_close(ns: argparse.Namespace) -> int:
         print(f"error: no decision {ns.decision_id!r} in roadmap/decisions.yaml or roadmap/decisions.local.yaml",
               file=sys.stderr)
         return 1
-    sheet = None if target.get("kind") in (PREFERENCE, STANDING_RULE) else _sheet_for_node(root, target["node"])[1]
-    close_entry(root, ns.decision_id, ns.answer, sheet_text=sheet, local=ns.decision_id in local_ids)
+    if target.get("criterion"):
+        return _close_criterion(root, ns, target, local=ns.decision_id in local_ids)
+    close_entry(root, ns.decision_id, ns.answer, local=ns.decision_id in local_ids)
     print(f"closed {ns.decision_id!r}")
+    return 0
+
+
+def _close_criterion(root: Path, ns: argparse.Namespace, target: dict, *, local: bool) -> int:
+    """A person's decision on a ``human:`` criterion: an interactive terminal, not a launched worker, a git
+    identity, and a ``y`` to the prompt; there is no non-interactive override (M22.69)."""
+    if not sys.stdin.isatty():
+        print(f"error: {ns.decision_id} decides {target['node']} {target['criterion']}, which only a person "
+              "records: run decisions close yourself in an interactive terminal (there is no --yes), or answer "
+              "it in the PM GUI's Status window", file=sys.stderr)
+        return 1
+    if why := role_refusal():
+        print(f"error: {why}", file=sys.stderr)
+        return 1
+    who = recorder(root)
+    if not who:
+        print("error: set git user.name and user.email: the entry names who recorded the decision", file=sys.stderr)
+        return 1
+    text = _criterion_text(root, target["node"], target["criterion"]) or "(not a `human:` criterion of the node)"
+    print(f"node: {target['node']}\n{target['criterion']}: {text}\nanswer: {ns.answer.strip()}")
+    if input("Record this as your decision? [y/N] ").strip().lower() != "y":
+        print(f"nothing recorded; {ns.decision_id} stays open", file=sys.stderr)
+        return 1
+    close_entry(root, ns.decision_id, f"{ns.answer.strip()} (recorded by {who})", local=local,
+                decided_by=OPERATOR, channel=TERMINAL)
+    print(f"closed {ns.decision_id!r} as your decision (channel terminal)")
     return 0
 
 
@@ -195,6 +227,9 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--id", dest="id", help="Entry id (default: next D#; P# for a preference, R# for a "
                                              "standing rule)")
     add.add_argument("--needed-by", help="ISO date by which an answer is needed")
+    add.add_argument("--criterion", metavar="A#",
+                     help="human-action only: the node's `human:` acceptance criterion this asks a person to "
+                          "decide; finish-this-task counts it once a person closes the entry")
     add.add_argument("--asked", help="ISO date when asked or stated (default: today)")
     add.add_argument("--role", choices=ROLES, help="Preference: the role the rule routes")
     add_model_arg(add, append=True,
@@ -216,10 +251,12 @@ def build_parser() -> argparse.ArgumentParser:
     add_repo_root_arg(lst)
     lst.set_defaults(func=cmd_list)
 
-    close = dsub.add_parser("close", help="Close an entry after its answer is on the planning sheet "
-                                          "(a preference closes with --answer alone)")
+    close = dsub.add_parser("close", help="Close an entry with its answer; an entry with a criterion closes only "
+                                          "at a person's interactive terminal, after a y/N prompt")
     close.add_argument("decision_id", metavar="ID")
-    close.add_argument("--answer", required=True)
+    close.add_argument("--answer", required=True,
+                       help="The answer; for an entry with a criterion, shown to you with the criterion for y/N, "
+                            "then recorded with your git identity")
     add_repo_root_arg(close)
     close.set_defaults(func=cmd_close)
     return p

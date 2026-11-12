@@ -310,14 +310,15 @@ def _approval_processed(root: Path, node: dict) -> bool:
 def gui_pending(root: Path, index: RoadmapIndex) -> list[dict[str, Any]]:
     """Closed ``channel: pm-gui`` entries no coordinator has processed yet, judged from local refs and files (no
     fetch), each with its next step (M17.15). An approval over a block is pending until :func:`_approval_processed`;
-    an answer until the planning sheet on the local integration branch has its ``<ID>: <answer>`` line."""
+    an answer until the planning sheet on the local integration branch has its ``<ID>: <answer>`` line. An answer
+    on a ``human:`` criterion (``criterion`` set) is never listed."""
     doc = load_merged(root)[0]   # ledger() reports an unreadable ledger under missing
     ref = policy_source(root)[0]
     ib = integration(ref)[1] if ref else None
     out = []
     for e in doc.get("entries") or []:
-        if not isinstance(e, dict) or e.get("channel") != PM_GUI or e.get("status") != "closed":
-            continue
+        if not isinstance(e, dict) or e.get("channel") != PM_GUI or e.get("status") != "closed" or e.get("criterion"):
+            continue   # a criterion entry's consumer is finish-this-task, not a coordinator (M22.69)
         nid, answer = e.get("node"), str(e.get("answer") or "")
         node = index.by_id.get(nid) or {"id": nid}
         item = {"id": e["id"], "node": nid, "answer": answer}

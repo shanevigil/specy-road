@@ -48,8 +48,13 @@
         },
         "channel": {
           "type": "string",
-          "enum": ["pm-gui"],
-          "description": "Closed decision and human-action entries only: where the decision was made. pm-gui: the PM recorded it from the PM GUI's status modal, and a coordinator processes it (grind-session --status lists it under decisions.gui_pending)"
+          "enum": ["pm-gui", "terminal"],
+          "description": "Closed decision and human-action entries only: where the decision was made. pm-gui: the PM recorded it from the PM GUI's status modal, and a coordinator processes it (grind-session --status lists it under decisions.gui_pending, unless the entry has criterion: finish-this-task consumes that one). terminal: a person confirmed it at an interactive terminal with decisions close, which records it only for an entry with criterion"
+        },
+        "criterion": {
+          "type": "string",
+          "pattern": "^A[1-9][0-9]*$",
+          "description": "human-action only: the node's human: acceptance criterion (A1, A2, ...) this entry asks a person to decide. finish-this-task counts the criterion decided only when such an entry is closed with decided_by operator and channel terminal or pm-gui, committed on the leaf branch or the integration branch; a planning-sheet A#: line does not count"
         },
         "summary": {
           "type": "string",
@@ -167,6 +172,10 @@
               ]
             }
           }
+        },
+        {
+          "if": { "properties": { "kind": { "not": { "const": "human-action" } } }, "required": ["kind"] },
+          "then": { "not": { "required": ["criterion"] } }
         },
         {
           "if": { "properties": { "status": { "const": "closed" } }, "required": ["status"] },

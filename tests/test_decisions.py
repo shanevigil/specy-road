@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.decisions import read_decisions, schema_errors, write_decisions
+from specy_road.decisions import read_decisions, recorded_on_sheet, schema_errors, write_decisions
 from specy_road.runtime_paths import specy_road_package_dir
 from tests.helpers import DOGFOOD
 from tests.decisions_repo_helpers import SHEET, add_args, decisions_repo, run_decisions
@@ -53,59 +53,29 @@ def test_list_orders_by_needed_by(tmp_path: Path, capsys) -> None:
     assert out.index("Dsoon") < out.index("Dlate") < out.index("Dnone")
 
 
-def test_close_requires_decision_block_record(tmp_path: Path, capsys) -> None:
+def test_close_needs_no_planning_sheet_line(tmp_path: Path, capsys) -> None:
+    """M22.69: a decision closes in the ledger alone; the committed sheet is not read or changed."""
     repo = decisions_repo(tmp_path)
     assert run_decisions(add_args(repo, "--id", "D1", "--summary", "Pick color")) == 0
-    capsys.readouterr()
-
-    (repo / SHEET).write_text(
-        "# M1.1 Thing\n\n## Intent\n\nD1: blue\n\n## Decisions and notes\n\n",
-        encoding="utf-8",
-    )
-    assert run_decisions(["decisions", "close", "D1", "--answer", "blue", "--repo-root", str(repo)]) == 1
-    assert "planning sheet decision block has no line" in capsys.readouterr().err
-    assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
-
-    (repo / SHEET).write_text(
-        "# M1.1 Thing\n\n## Intent\n\nDo the thing.\n\n## Decisions and notes\n\n"
-        "```\nD1: blue\n```\n",
-        encoding="utf-8",
-    )
-    assert run_decisions(["decisions", "close", "D1", "--answer", "blue", "--repo-root", str(repo)]) == 1
-    assert "planning sheet decision block has no line" in capsys.readouterr().err
-    assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
-
-    (repo / SHEET).write_text(
-        "# M1.1 Thing\n\n## Decisions and notes\n\n~~~text\nD1: blue\n~~~\n",
-        encoding="utf-8",
-    )
-    assert run_decisions(["decisions", "close", "D1", "--answer", "blue", "--repo-root", str(repo)]) == 1
-    assert "planning sheet decision block has no line" in capsys.readouterr().err
-    assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
-
-    (repo / SHEET).write_text(
-        "# M1.1 Thing\n\n## Decisions and notes\n\n````\nD1: blue\n```\nD1: blue\n````\n",
-        encoding="utf-8",
-    )
-    assert run_decisions(["decisions", "close", "D1", "--answer", "blue", "--repo-root", str(repo)]) == 1
-    assert "planning sheet decision block has no line" in capsys.readouterr().err
-    assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
-
-    (repo / SHEET).write_text(
-        "# M1.1 Thing\n\n```markdown\n## Decisions and notes\n\nD1: blue\n```\n",
-        encoding="utf-8",
-    )
-    assert run_decisions(["decisions", "close", "D1", "--answer", "blue", "--repo-root", str(repo)]) == 1
-    assert "planning sheet decision block has no line" in capsys.readouterr().err
-    assert read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]["status"] == "open"
-
-    (repo / SHEET).write_text(
-        "# M1.1 Thing\n\n## Intent\n\nD1: blue\n\n## Decisions and notes\n\n- D1: blue\n",
-        encoding="utf-8",
-    )
+    sheet_before = (repo / SHEET).read_bytes()
     assert run_decisions(["decisions", "close", "D1", "--answer", "blue", "--repo-root", str(repo)]) == 0
     closed = read_decisions(repo / "roadmap" / "decisions.yaml")["entries"][0]
     assert closed["status"] == "closed" and closed["answer"] == "blue" and closed.get("closed")
+    assert "decided_by" not in closed and "channel" not in closed
+    assert (repo / SHEET).read_bytes() == sheet_before
+
+
+@pytest.mark.parametrize("sheet, recorded", [
+    ("# M1.1 Thing\n\n## Intent\n\nD1: blue\n\n## Decisions and notes\n\n", False),
+    ("# M1.1 Thing\n\n## Intent\n\nDo the thing.\n\n## Decisions and notes\n\n```\nD1: blue\n```\n", False),
+    ("# M1.1 Thing\n\n## Decisions and notes\n\n~~~text\nD1: blue\n~~~\n", False),
+    ("# M1.1 Thing\n\n## Decisions and notes\n\n````\nD1: blue\n```\nD1: blue\n````\n", False),
+    ("# M1.1 Thing\n\n```markdown\n## Decisions and notes\n\nD1: blue\n```\n", False),
+    ("# M1.1 Thing\n\n## Intent\n\nD1: blue\n\n## Decisions and notes\n\n- D1: blue\n", True),
+])
+def test_recorded_on_sheet_reads_only_the_unfenced_decision_block(sheet: str, recorded: bool) -> None:
+    """The line ``grind-session --status`` looks for to call an ordinary GUI answer processed."""
+    assert recorded_on_sheet(sheet, "D1", "blue") is recorded
 
 
 @pytest.mark.parametrize(

@@ -6,9 +6,10 @@ usage: specy-road decisions add [-h] --kind {decision,human-action,preference,st
                                 [--recommendation RECOMMENDATION]
                                 [--recommendation-reason RECOMMENDATION_REASON]
                                 [--default DEFAULT] [--id ID] [--needed-by NEEDED_BY]
-                                [--asked ASKED] [--role {coordinator,executor,reviewer}]
-                                [--model ROSTER_ID] [--applies-to LEAF_KIND] [--expires EXPIRES]
-                                [--supersedes ID] [--local] [--repo-root DIR]
+                                [--criterion A#] [--asked ASKED]
+                                [--role {coordinator,executor,reviewer}] [--model ROSTER_ID]
+                                [--applies-to LEAF_KIND] [--expires EXPIRES] [--supersedes ID]
+                                [--local] [--repo-root DIR]
                                 [NODE]
 
 positional arguments:
@@ -29,6 +30,9 @@ options:
   --id ID               Entry id (default: next D#; P# for a preference, R# for a standing rule)
   --needed-by NEEDED_BY
                         ISO date by which an answer is needed
+  --criterion A#        human-action only: the node's `human:` acceptance criterion this asks a
+                        person to decide; finish-this-task counts it once a person closes the
+                        entry
   --asked ASKED         ISO date when asked or stated (default: today)
   --role {coordinator,executor,reviewer}
                         Preference: the role the rule routes

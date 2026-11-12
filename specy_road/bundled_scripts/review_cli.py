@@ -38,6 +38,7 @@ from typing import Any
 
 import yaml
 
+from specy_road.bundled_scripts.finish_task import undecided_human_items
 from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
 from specy_road.cli_entry import run_cli
 from specy_road.clock import utc_now_iso
@@ -178,6 +179,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         "refused": refused_by_model(root, node_id, gate.commit),
         "refused_unreadable": unreadable_rejected_lines(reviews_dir(root, node_id)),
         "policy_met": gate.passed,
+        "human_criteria_undecided": undecided_human_items(root, t.node, t.base_ref, t.ref),
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
         **({"fix_round_budget": budget} if budget else {}),
@@ -203,6 +205,9 @@ def _render(st: dict[str, Any]) -> list[str]:
     lines += [f"  {line}" for line in run_lines(st.get("review_runs") or [])]
     extend_handoff_refused(st, lines)
     lines += [f"  {x}" for x in [st["review_rounds"]["line"], *(st.get("findings_trend") or {}).get("lines", [])]]
+    if st.get("human_criteria_undecided"):   # an unclaimed node's status has none
+        lines.append(f"  human criteria undecided: {', '.join(st['human_criteria_undecided'])} (a person closes each "
+                     "one's entry in roadmap/decisions.yaml before finish-this-task)")
     lines += [f"  policy: {st['policy']}"] + eligibility_lines(st)   # who can still approve, when not met
     if tm := st.get("trial_merge"):
         kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"

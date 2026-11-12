@@ -12,6 +12,7 @@ from pathlib import Path
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.cli_args import add_remote_arg
 from specy_road.cli_entry import run_reporting
+from specy_road.decisions import DECISIONS_REL
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_bookkeeping_undo import bookkeeping_guard, merge_undo_snapshot
@@ -19,6 +20,7 @@ from specy_road.finish_milestone_rollout import (
     rollup_session_applies,
     try_milestone_rollup_finish,
 )
+from specy_road.finish_implementation_check import base_ref
 from specy_road.finish_modes import (
     apply_on_complete_mode,
     close_merged_checkout,
@@ -59,7 +61,9 @@ from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.repo_lock import pickup_finish_lock
 from specy_road.repo_ops import current_branch
 from specy_road.review_gate import gate_holds_at_head_or_exit, review_required, trial_merge_or_exit
+from specy_road.review_override import OPERATOR, PM_GUI
 from specy_road.review_policy_pin import pin_holds_or_exit
+from specy_road.review_policy_ref import committed_yaml
 from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.steering_gate import zones_or_exit
@@ -273,63 +277,68 @@ def _validate_export_digest(root: Path) -> None:
 # person can supply* cannot be judged from a diff. Marked ``human:``, it is
 # ``n/a`` for reviewers (:func:`role_prompt_rca.reviewer_preamble` says so and
 # ``review_semantic_errors`` never counts ``n/a`` as a fail), and
-# ``finish-this-task`` instead requires a recorded decision for it on the
-# planning sheet: a line, in any section, of the form ``A2: <decision>`` (an
-# optional list marker or checkbox in front is fine).
+# ``finish-this-task`` instead requires a person's decision for it in the
+# decisions ledger (M22.69): a closed ``kind: human-action`` entry with ``node``
+# the leaf, ``criterion: A#``, ``decided_by: operator`` and ``channel``
+# ``terminal`` (``decisions close`` at an interactive terminal) or ``pm-gui``
+# (the PM GUI's answer). Only ``roadmap/decisions.yaml`` as committed at the leaf
+# branch's HEAD or at the integration branch tip counts; the working tree,
+# ``decisions.local.yaml`` and a planning-sheet ``A#:`` line do not, since any
+# agent can write those.
 
 HUMAN_PREFIX = "human:"
-_DECISION = re.compile(r"^\s*(?:[-*+]\s*(?:\[[ xX]\]\s*)?)?(A[1-9][0-9]*)\s*:\s*(\S.*)$")
+TERMINAL = "terminal"   # the ``channel`` of a criterion decision confirmed at a person's terminal
+PERSON_CHANNELS = (TERMINAL, PM_GUI)
 
 
 def is_human_item(text: str) -> bool:
     return text.strip().lower().startswith(HUMAN_PREFIX)
 
 
+def human_criteria(node: dict) -> dict[str, str]:
+    """``A#`` -> text of ``node``'s criteria that start with ``human:``."""
+    items = [a for a in node.get("acceptance") or [] if isinstance(a, str) and a.strip()]
+    return {aid: text for aid, text in zip(acceptance_ids(node), items) if is_human_item(text)}
+
+
 def human_acceptance_ids(node: dict) -> list[str]:
     """The ``A#`` ids of ``node``'s criteria that start with ``human:``."""
-    items = [a for a in node.get("acceptance") or [] if isinstance(a, str) and a.strip()]
-    return [aid for aid, text in zip(acceptance_ids(node), items) if is_human_item(text)]
+    return list(human_criteria(node))
 
 
-def recorded_decisions(sheet_text: str) -> dict[str, str]:
-    """``A#`` -> decision text for every ``A#: <decision>`` line in a planning sheet."""
-    out: dict[str, str] = {}
-    for line in sheet_text.splitlines():
-        m = _DECISION.match(line)
-        if m and m.group(1) not in out:
-            out[m.group(1)] = m.group(2).strip()
-    return out
-
-
-def undecided_human_items(root: Path, node: dict) -> list[str]:
-    """The human-marked ids with no decision on the sheet.
-
-    A missing sheet leaves them all undecided.
-    """
+def undecided_human_items(root: Path, node: dict, integration_ref: str | None, head: str = "HEAD") -> list[str]:
+    """The ``human:`` ids with no person's closed ledger entry at ``head`` or at ``integration_ref``."""
     human = human_acceptance_ids(node)
     if not human:
         return []
-    try:
-        rel = normalize_planning_dir(node.get("planning_dir") or "")
-        text = resolve_planning_path(root, rel).read_text(encoding="utf-8")
-    except (OSError, ValueError):
-        text = ""
-    decided = recorded_decisions(text)
+    decided: set[str] = set()
+    for ref in (head, integration_ref):
+        if not ref:
+            continue
+        for e in committed_yaml(root, ref, DECISIONS_REL.as_posix()).get("entries") or []:
+            if isinstance(e, dict) and e.get("kind") == "human-action" and e.get("node") == node["id"] \
+                    and e.get("status") == "closed" and e.get("decided_by") == OPERATOR \
+                    and e.get("channel") in PERSON_CHANNELS:
+                decided.add(str(e.get("criterion")))
     return [aid for aid in human if aid not in decided]
 
 
-def human_acceptance_or_exit(root: Path, node: dict) -> None:
-    """Stop ``finish-this-task`` while a ``human:`` item has no recorded decision on the sheet."""
-    missing = undecided_human_items(root, node)
+def human_acceptance_or_exit(root: Path, node: dict, integration_ref: str | None) -> None:
+    """Stop ``finish-this-task`` while a ``human:`` item has no person's decision in the committed ledger."""
+    missing = undecided_human_items(root, node, integration_ref)
     if not missing:
         return
-    sheet = node.get("planning_dir") or "its planning sheet"
-    ids = ", ".join(missing)
+    nid, first = node["id"], missing[0]
+    where = "this branch or the integration branch" if integration_ref else "this branch"
     print(
-        f"error: {node['id']} has human acceptance item(s) with no recorded decision: {ids}.\n"
-        "  Reviewers mark a `human:` item n/a; the person it names decides it instead.\n"
-        f"  Record each decision as a line `- {missing[0]}: <decision, who and when>` in {sheet}\n"
-        "  (any section), commit the sheet on this branch, then run finish-this-task again.",
+        f"error: {nid} has human acceptance item(s) with no person's decision: {', '.join(missing)}.\n"
+        "  Reviewers mark a `human:` item n/a; the person it names decides it in roadmap/decisions.yaml.\n"
+        "  A planning-sheet `A#:` line no longer counts.\n"
+        f"  Open one entry per item: specy-road decisions add {nid} --kind human-action --criterion {first} "
+        "--summary ... --why ... --option ... --recommendation ... --recommendation-reason ... --default ...\n"
+        "  A person then closes it: `specy-road decisions close <ID> --answer ...` in their own terminal, or the\n"
+        f"  answer in the PM GUI's Status window. The closed entry must be committed on {where}; then run\n"
+        "  finish-this-task again.",
         file=sys.stderr,
     )
     raise SystemExit(1)
@@ -382,11 +391,11 @@ def _resolve_main_context(root: Path, args: argparse.Namespace, branch: str) -> 
     delete_branch_preflight(on_mode, delete_branch=args.delete_branch, rollup=rollup)
     trial_merge_or_exit(root)
     scaffold_planning_or_exit(root, node, allow=args.allow_scaffold_planning)
-    human_acceptance_or_exit(root, node)
-    _impl_review_or_exit(root, entry, node)
     ib, gw_remote, _gw = resolve_integration_defaults(
         root, explicit_base=None, explicit_remote=None,
     )
+    human_acceptance_or_exit(root, node, base_ref(root, gw_remote, ib))
+    _impl_review_or_exit(root, entry, node)
     zones_or_exit(   # the implementation check, then the steering files
         root, node=node, entry=entry, node_id=node_id,
         remote=gw_remote, integration_branch=ib,
