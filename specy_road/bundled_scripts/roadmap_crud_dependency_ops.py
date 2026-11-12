@@ -335,7 +335,7 @@ def _scratch_root(root: Path) -> Iterator[Path]:
     copy (:func:`_rebase_graph_symlinks`), so no rehearsal reads or writes a
     live file and every rehearsal sees the layout a real run writes.
     """
-    from specy_road.bundled_scripts.roadmap_crud_delete import _rebase_graph_symlinks
+    from specy_road.roadmap_crud_ops import _rebase_graph_symlinks
 
     copied = {p.name for p in _batch_paths(root)}
     with tempfile.TemporaryDirectory(prefix="specy-road-apply-") as tmp:

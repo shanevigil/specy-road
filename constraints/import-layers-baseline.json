@@ -75,7 +75,7 @@
       ]
     },
     {
-      "size": 18,
+      "size": 17,
       "modules": [
         "specy_road.archive_ops",
         "specy_road.archive_restore",
@@ -85,7 +85,6 @@
         "specy_road.bundled_scripts.roadmap_chunk_router",
         "specy_road.bundled_scripts.roadmap_crud_argparse",
         "specy_road.bundled_scripts.roadmap_crud_chunk_report",
-        "specy_road.bundled_scripts.roadmap_crud_delete",
         "specy_road.bundled_scripts.roadmap_crud_dependency_ops",
         "specy_road.bundled_scripts.roadmap_crud_prepare",
         "specy_road.bundled_scripts.roadmap_id_rewrite_staging",

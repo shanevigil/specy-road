@@ -4,14 +4,36 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-
-from specy_road.git_workflow_config import git_branch_tip_author
 from urllib.parse import quote
 
 import requests
 
-from specy_road.roadmap_gui_lib import apply_llm_env_from_settings  # noqa: E402
-from specy_road.bundled_scripts.roadmap_gui_pr_pickers import github_pulls_for_branch, gitlab_mrs_for_branch, pick_latest_github_pr, pick_latest_gitlab_mr  # noqa: E402
+from specy_road.git_workflow_config import git_branch_tip_author
+from specy_road.roadmap_gui_lib import apply_llm_env_from_settings
+
+
+def github_pulls_for_branch(pulls: list[dict[str, Any]], branch_name: str) -> list[dict[str, Any]]:
+    """Prefer PRs whose head matches `branch_name`; if none, keep full list (API oddities)."""
+    br = branch_name.strip()
+    matched = [p for p in pulls if (p.get("head") or {}).get("ref") == br]
+    return matched if matched else pulls
+
+
+def pick_latest_github_pr(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    """The most recently updated PR row when the API returns several."""
+    return max(candidates, key=lambda p: str(p.get("updated_at") or ""))
+
+
+def gitlab_mrs_for_branch(mrs: list[dict[str, Any]], branch_name: str) -> list[dict[str, Any]]:
+    """Prefer MRs whose source_branch matches; if none, use full list."""
+    br = branch_name.strip()
+    matched = [m for m in mrs if (m.get("source_branch") or "") == br]
+    return matched if matched else mrs
+
+
+def pick_latest_gitlab_mr(mrs: list[dict[str, Any]]) -> dict[str, Any]:
+    """The most recently updated MR row when the API returns several."""
+    return max(mrs, key=lambda m: str(m.get("updated_at") or ""))
 
 
 def test_llm_connection(llm: dict[str, Any]) -> tuple[bool, str]:
@@ -160,7 +182,9 @@ def _gitlab_dict_from_mr(
     }
 
 
-def _gitlab_mr_detail(gr: dict[str, Any], repo: str, branch_name: str, token: str) -> dict[str, Any] | None:
+def _gitlab_mr_detail(
+    gr: dict[str, Any], repo: str, branch_name: str, token: str
+) -> dict[str, Any] | None:
     raw_base = (gr.get("base_url") or "").strip().rstrip("/")
     host = raw_base or "https://gitlab.com"
     enc = quote(repo, safe="")
@@ -248,7 +272,10 @@ def fetch_branch_enrichment(gr: dict[str, Any], branch_name: str) -> dict[str, A
 
 
 def enrichment_is_mr_rejected(entry: dict[str, Any] | None) -> bool:
-    """True when Git enrichment indicates a closed PR/MR without merge (same rules as the PM GUI)."""
+    """True when Git enrichment indicates a closed PR/MR without merge.
+
+    Same rules as the PM GUI.
+    """
     if not entry:
         return False
     kind = str(entry.get("kind") or "")
@@ -269,7 +296,10 @@ def build_registry_enrichment(
     repo_root: Path | None = None,
     remote: str = "origin",
 ) -> dict[str, dict[str, Any]]:
-    """Per node_id: PR/MR lifecycle detail when a forge token is set, else remote tip or registry hint."""
+    """Per node_id: PR/MR lifecycle detail when a forge token is set.
+
+    Otherwise the remote tip, or the registry hint.
+    """
     out: dict[str, dict[str, Any]] = {}
     rm = (remote or "").strip() or "origin"
     for nid, entry in by_reg.items():

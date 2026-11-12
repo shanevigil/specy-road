@@ -374,10 +374,6 @@
       "PL": 11,
       "D102/D103": 6
     },
-    "specy_road/bundled_scripts/roadmap_crud_delete.py": {
-      "PL": 5,
-      "D102/D103": 2
-    },
     "specy_road/bundled_scripts/roadmap_crud_dependency_ops.py": {
       "PL": 6,
       "D102/D103": 6
@@ -389,9 +385,6 @@
       "C901": 1,
       "PL": 4,
       "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/roadmap_gui_pr_pickers.py": {
-      "D102/D103": 2
     },
     "specy_road/bundled_scripts/roadmap_gui_settings_scope.py": {
       "PL": 3,
@@ -596,9 +589,6 @@
     },
     "specy_road/gui_app.py": {
       "PL": 2,
-      "D102/D103": 2
-    },
-    "specy_road/gui_app_api.py": {
       "D102/D103": 1
     },
     "specy_road/gui_app_routes_archive.py": {
@@ -617,12 +607,6 @@
     "specy_road/gui_app_routes_planning.py": {
       "B": 3,
       "D102/D103": 6
-    },
-    "specy_road/gui_app_routes_publish.py": {
-      "D102/D103": 1
-    },
-    "specy_road/gui_app_routes_workers.py": {
-      "D102/D103": 1
     },
     "specy_road/gui_app_routes_workspace.py": {
       "B": 1,
@@ -870,9 +854,9 @@
       "D102/D103": 1
     },
     "specy_road/roadmap_crud_ops.py": {
-      "PL": 8,
+      "PL": 10,
       "SIM": 1,
-      "D102/D103": 7
+      "D102/D103": 9
     },
     "specy_road/roadmap_gui_lib.py": {
       "C901": 1,
