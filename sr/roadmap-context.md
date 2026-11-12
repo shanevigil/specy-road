@@ -339,6 +339,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
+- `M16.3.5` on `feature/rm-the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` since 2026-11-12
 - `M17.7` on `feature/rm-gui-api-orchestration` since 2026-11-12
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
