@@ -1,21 +1,30 @@
 """The marked-block editor for files specy-road does not own.
 
-`.gitignore` and `.cursorindexingignore` belong to the consumer. The contract is
-absolute: everything outside the markers survives untouched, and applying the
-same block twice changes nothing.
+`.gitignore`, `.cursorindexingignore`, `CLAUDE.md` and `AGENTS.md` belong to the
+consumer. The contract is absolute: everything outside the markers survives
+untouched, and applying the same block twice changes nothing.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
+import pytest
+
+from specy_road.agent_guide_block import apply_agent_guide_block
+from specy_road.agent_ignores import apply_agent_ignores
+from specy_road.agents_md_block import apply_agents_md_block
 from specy_road.managed_block import (
     CREATED,
     FAILED,
+    HASH,
+    HTML_COMMENT,
     MARKER_END,
     MARKER_START,
     UNCHANGED,
     UPDATED,
+    MarkerStyle,
     apply_managed_block,
     render_block,
 )
@@ -45,14 +54,35 @@ def test_existing_content_is_preserved_when_the_block_is_added(tmp_path: Path) -
     assert ".specyrd/cache/" in text
 
 
-def test_applying_the_same_block_twice_changes_nothing(tmp_path: Path) -> None:
-    path = tmp_path / ".gitignore"
-    path.write_text(USER_CONTENT, encoding="utf-8")
-    apply_managed_block(path, [".specyrd/cache/"])
-    first = path.read_text(encoding="utf-8")
+#: The three block kinds, each through its own public writer: ``(file, marker style, write it)``.
+BLOCK_KINDS = [
+    pytest.param(
+        ".gitignore", HASH, lambda root: apply_agent_ignores(root)[".gitignore"], id="ignore"
+    ),
+    pytest.param("CLAUDE.md", HTML_COMMENT, apply_agent_guide_block, id="claude-guide"),
+    pytest.param("AGENTS.md", HTML_COMMENT, apply_agents_md_block, id="agents-stub"),
+]
+BEFORE = "# Our own notes\n\nkeep-before/\n\n"
+AFTER = "## Added after the block\nkeep-after/\n"
 
-    assert apply_managed_block(path, [".specyrd/cache/"]) == UNCHANGED
+
+@pytest.mark.parametrize(("name", "style", "write"), BLOCK_KINDS)
+def test_replacing_a_block_twice_gives_the_same_file_and_keeps_the_rest(
+    tmp_path: Path, name: str, style: MarkerStyle, write: Callable[[Path], str]
+) -> None:
+    """A stale block is replaced once; the second run is a no-op; outside text is byte-identical."""
+    path = tmp_path / name
+    path.write_text(BEFORE + render_block(["stale/"], style=style) + "\n" + AFTER, encoding="utf-8")
+
+    assert write(tmp_path) == UPDATED
+    first = path.read_text(encoding="utf-8")
+    assert write(tmp_path) == UNCHANGED
     assert path.read_text(encoding="utf-8") == first
+
+    assert first.startswith(BEFORE + style.start)
+    assert first.endswith(style.end + "\n\n" + AFTER)
+    assert first.count(style.start) == 1 and first.count(style.end) == 1
+    assert "stale/" not in first
 
 
 def test_a_changed_recommendation_replaces_the_old_one(tmp_path: Path) -> None:

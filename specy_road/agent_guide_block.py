@@ -45,19 +45,25 @@ PROVENANCE = re.compile(r"<!-- prevents: [^|]+ \| enforced: [^|]+ \| ref: [^|]+ 
 
 def strip_provenance(text: str) -> str:
     """``text`` without its provenance lines, so agents never pay for them in context."""
-    return "".join(ln for ln in text.splitlines(keepends=True) if not PROVENANCE.fullmatch(ln.rstrip("\n")))
+    lines = text.splitlines(keepends=True)
+    return "".join(ln for ln in lines if not PROVENANCE.fullmatch(ln.rstrip("\n")))
 
 
-def _read_block_template() -> str:
-    pkg_dir = Path(__file__).resolve().parent / "templates" / "specyrd"
-    path = pkg_dir / _TEMPLATE_NAME
+def block_template(name: str) -> str:
+    """The ``templates/specyrd`` file ``name``: provenance lines stripped, version filled in.
+
+    The one reader for every agent-file template: the ``CLAUDE.md`` block here,
+    and the ``AGENTS.md`` stub and rules file in :mod:`specy_road.agents_md_block`.
+    """
+    path = Path(__file__).resolve().parent / "templates" / "specyrd" / name
     if path.is_file():
-        return path.read_text(encoding="utf-8")
-    return (
-        resources.files("specy_road")
-        .joinpath("templates", "specyrd", _TEMPLATE_NAME)
-        .read_text(encoding="utf-8")
-    )
+        text = path.read_text(encoding="utf-8")
+    else:
+        text = (
+            resources.files("specy_road").joinpath("templates", "specyrd", name)
+            .read_text(encoding="utf-8")
+        )
+    return strip_provenance(text).replace("{{SPECYRD_VERSION}}", __version__)
 
 
 def render_guide_lines(project_prefix: str = "") -> list[str]:
@@ -69,9 +75,7 @@ def render_guide_lines(project_prefix: str = "") -> list[str]:
     embedded layout — so without this a nested repo got a guide in which every
     pointer was wrong.
     """
-    text = strip_provenance(_read_block_template())
-    text = text.replace("{{SPECYRD_VERSION}}", __version__)
-    text = text.replace("{{PROJECT_PREFIX}}", project_prefix)
+    text = block_template(_TEMPLATE_NAME).replace("{{PROJECT_PREFIX}}", project_prefix)
     return text.rstrip("\n").splitlines()
 
 
