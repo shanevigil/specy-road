@@ -682,7 +682,6 @@
       "D102/D103": 4
     },
     "specy_road/milestone_session.py": {
-      "PL": 1,
       "D102/D103": 4
     },
     "specy_road/model_profiles.py": {
@@ -698,7 +697,6 @@
       "B": 1
     },
     "specy_road/on_complete_session.py": {
-      "PL": 1,
       "SIM": 1
     },
     "specy_road/orchestrate_assign.py": {

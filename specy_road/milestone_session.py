@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
-import yaml
+from specy_road.session_file_io import read_session_file, write_session_file
 
 SESSION_VERSION = 1
 MILESTONE_SESSION_BASENAME = ".milestone-session.yaml"
@@ -37,29 +36,18 @@ def write_milestone_session(
     integration_branch: str,
     remote: str,
 ) -> None:
-    doc: dict[str, Any] = {
-        "version": SESSION_VERSION,
+    write_session_file(path, SESSION_VERSION, {
         "parent_node_id": parent_node_id,
         "parent_codename": parent_codename,
         "rollup_branch": rollup_branch_for_codename(parent_codename),
         "integration_branch": integration_branch,
         "remote": remote,
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    })
 
 
 def read_milestone_session(path: Path) -> MilestoneSession | None:
-    if not path.is_file():
-        return None
-    try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError):
-        return None
-    if not isinstance(raw, dict):
-        return None
-    if raw.get("version") != SESSION_VERSION:
+    raw = read_session_file(path, SESSION_VERSION)
+    if raw is None:
         return None
     pid = raw.get("parent_node_id")
     pc = raw.get("parent_codename")

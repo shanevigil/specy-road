@@ -114,22 +114,3 @@ entries:
     started: '2026-11-11'
     owner: savigil
     implementation_review: pending
-  - codename: nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one
-    node_id: M16.3.3
-    branch: feature/rm-nested-repo-landing-folds-into-nested-repos-breaking-its-cycle-and-the-two-session-file-readers-become-one
-    touch_zones:
-      - specy_road/nested_repos.py
-      - specy_road/nested_repos_land.py
-      - specy_road/finish_implementation_check.py
-      - specy_road/milestone_session.py
-      - specy_road/on_complete_session.py
-      - scripts/line_width_baseline.json
-      - tests/
-      - specy_road/session_file_io.py
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-      - constraints/test-private-imports-baseline.txt
-      - constraints/clone-baseline.json
-    started: '2026-11-11'
-    owner: savigil
-    implementation_review: pending
