@@ -48,12 +48,15 @@ def _criterion_text(root: Path, node_id: str | None, criterion: str) -> str | No
 
 
 def _criterion_error(root: Path, ns: argparse.Namespace) -> str | None:
-    """``--criterion`` needs a human-action entry for a ``human:`` criterion of the node, at most one open."""
+    """``--criterion`` needs a human-action entry for a ``human:`` criterion of the node, at most one open in the
+    merged ledger; a ledger that does not read or fails the schema refuses, since no open entry can be ruled out."""
     if ns.kind != "human-action":
         return "--criterion applies only to --kind human-action"
     if _criterion_text(root, ns.node, ns.criterion) is None:
         return f"{ns.criterion} is not a `human:` acceptance criterion of {ns.node}"
-    doc = load_merged(root)[0]
+    doc, _local_ids, errs = load_merged(root)
+    if errs:
+        return f"{errs[0]}; fix it first: an open entry for {ns.node} {ns.criterion} cannot be ruled out"
     if any(e.get("node") == ns.node and e.get("criterion") == ns.criterion for e in open_questions(doc)):
         return f"{ns.node} {ns.criterion} already has an open entry; a person closes that one"
     return None

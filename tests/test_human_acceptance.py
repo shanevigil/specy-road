@@ -166,9 +166,17 @@ def _criterion_repo(tmp_path: Path) -> Path:
     return repo
 
 
-@pytest.mark.parametrize("kind, criterion", [("decision", "A2"), ("human-action", "A1"), ("human-action", "A2")])
-def test_add_criterion_refusals_write_nothing(tmp_path: Path, capsys, kind: str, criterion: str) -> None:
-    repo = _criterion_repo(tmp_path)   # an open A2 entry already: the third row is the second open one
+@pytest.mark.parametrize("kind, criterion, local", [
+    ("decision", "A2", None), ("human-action", "A1", None),
+    ("human-action", "A2", None),                                   # the second open A2
+    ("human-action", "A2", "version: 1\nentries:\n- {id: P1, kind: preference, summary: s, status: open}\n"),
+])
+def test_add_criterion_refusals_write_nothing(tmp_path: Path, capsys, kind: str, criterion: str,
+                                              local: str | None) -> None:
+    """The last row: a schema-invalid local ledger (``asked`` missing) hides nothing; the add still refuses."""
+    repo = _criterion_repo(tmp_path)   # an open A2 entry already
+    if local:
+        (repo / "roadmap" / "decisions.local.yaml").write_text(local)
     before = (repo / LEDGER).read_bytes()
     assert _add(repo, kind=kind, criterion=criterion) == 1
     assert (repo / LEDGER).read_bytes() == before
