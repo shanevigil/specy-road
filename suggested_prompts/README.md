@@ -26,6 +26,6 @@ specy-road does not ship prompts for these. Your coding harness already has
 built-in skills for code review, simplification, security review and similar
 passes (for example Claude Code's review and security-review commands, or the
 Cursor and Codex equivalents); use those. What specy-road owns is the
-roadmap-specific review contract — `specy-road review-packet`,
+roadmap-specific review contract — `specy-road review packet`,
 `specy-road review record`, and the review gate — documented in
 [`docs/orchestration.md`](../docs/orchestration.md).

@@ -20,7 +20,7 @@ from tests.milestone_repo_helpers import make_milestone_repo, set_status
 from tests.test_milestone_full_review import POLICY_OFF
 
 WAYS_OUT = [
-    "  1. Review it: specy-road review-packet M2; each reviewer: specy-road review record M2 --model <id> "
+    "  1. Review it: specy-road review packet M2; each reviewer: specy-road review record M2 --model <id> "
     "--verdict approve|block --file <notes.md>; then specy-road mark-implementation-reviewed M2",
     "  2. Record it Complete: specy-road edit-node M2 --set status=Complete",
     "  3. Turn the hold off: set policy.milestone_full_review: false in roadmap/orchestration.yaml",

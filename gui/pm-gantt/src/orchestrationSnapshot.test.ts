@@ -638,9 +638,9 @@ describe("copyCommand", () => {
   it.each([
     ["worker status", "w-0001", "specy-road worker status w-0001"],
     ["worker open", "w_1.2", "specy-road worker open w_1.2"],
-    ["handoff status", "M17.3", "specy-road handoff status M17.3"],
+    ["review status", "M17.3", "specy-road review status M17.3"],
     ["worker status", "it's a $(rm -rf ~)", `specy-road worker status 'it'\\''s a $(rm -rf ~)'`],
-    ["handoff status", "M1;ls", "specy-road handoff status 'M1;ls'"],
+    ["review status", "M1;ls", "specy-road review status 'M1;ls'"],
   ] as const)("%s %s", (kind, id, expected) => {
     expect(copyCommand(kind, id)).toBe(expected);
   });

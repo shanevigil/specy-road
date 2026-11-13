@@ -31,7 +31,7 @@ Review policy: 0/1 approvals, 0 block(s): not met (commit <SHA>)
 
 --- stderr ---
 error: the review gate is not met, so the implementation cannot be marked reviewed.
-  Inspect: specy-road handoff status M2
-  Reviewers read: specy-road review-packet M2
+  Inspect: specy-road review status M2
+  Reviewers read: specy-road review packet M2
   Record each review: specy-road review record M2 --model <id> --verdict approve|block --file <notes.md>
   --yes only commits an approval the recorded reviews already earned.

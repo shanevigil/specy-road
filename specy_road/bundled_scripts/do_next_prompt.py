@@ -286,7 +286,7 @@ def _finish_instruction_lines(
                 "deleting, skipping or weakening an existing test, or by raising a baseline "
                 "or cap, stop and write READY from `work/handoff-ready.template.md` with "
                 "`blocked_on` naming the criterion instead of making that change. Reviewers read "
-                f"`specy-road review-packet {node_id}` and file verdicts with "
+                f"`specy-road review packet {node_id}` and file verdicts with "
                 "`specy-road review record` (from `work/review-record.template.md`); "
                 "then the developer runs "
                 "`specy-road mark-implementation-reviewed` and "

@@ -115,6 +115,16 @@ body. Keep section bodies focused; link to PRs for detail.
   drift until `upgrade --only profiles --render` rewrites it.
 - `schemas/harness-facts.schema.json` describes `upgrade --only profiles` (and `--capture`) instead of
   `refresh-profiles`. Only descriptions changed, so validation is unchanged; `upgrade` rewrites a project's copy once.
+- `specy-road review status [NODE_ID] [--ref] [--json]` is the one review read: what `handoff status` and
+  `review list` printed, with `handoff status`'s exit codes (0 met or `complete_no_claim`, 1 not met, 2
+  undeterminable). For one node it adds each filed record's verdict, commit and family, stale and invalid records,
+  RCA records and the gate line under the report, and `--json` adds `review list`'s payload as `records`.
+  `review packet` writes the reviewer's packet, and `decisions add|list --kind lesson` reads and writes the review
+  lessons. Next-step rows, RCA and coordinator prompts, docs, templates, skills and suggested prompts name the new
+  forms.
+- `schemas/orchestration.schema.json` and `schemas/git-workflow.schema.json` name `review status` and `review
+  packet` in their descriptions. Only descriptions changed, so validation is unchanged; `upgrade` rewrites a
+  project's copy once.
 
 ### Deprecated
 
@@ -134,6 +144,12 @@ release after 0.3.1:
   `specy-road upgrade --only profiles --profile API_ID`.
 - `specy-road update` -> `specy-road self-update` (renamed: it fast-forwards a git clone of the toolkit, and was
   easily confused with `upgrade`).
+- `specy-road handoff status` -> `specy-road review status`.
+- `specy-road review list <NODE_ID>` -> `specy-road review status <NODE_ID>`.
+- `specy-road review-packet` -> `specy-road review packet` (same flags and output).
+- `specy-road lessons add --rule R [--example E] [--from N]` -> `specy-road decisions add [N] --kind lesson
+  --summary R [--example E]`; `specy-road lessons list` -> `specy-road decisions list --kind lesson` (same
+  `constraints/review-lessons.md` and format).
 
 ### Fixed
 

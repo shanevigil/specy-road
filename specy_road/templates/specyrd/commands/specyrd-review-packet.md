@@ -4,7 +4,7 @@ description: "Use when a leaf's READY hand-off is in and reviewers are needed: a
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
-specy-road review-packet <NODE_ID>
+specy-road review packet <NODE_ID>
 ```
 
 It reads the node's registered feature branch — local, else `origin/<branch>` after `git fetch` — without checking it out, so a coordinator in a shared checkout can run it from any branch.

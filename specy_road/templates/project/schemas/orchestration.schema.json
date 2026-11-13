@@ -114,12 +114,12 @@
         },
         "escalate_when_converging": {
           "type": "boolean",
-          "description": "When false (the default), a converging loop (over the last escalate_same_acceptance_blocks rounds the blocking-finding count never rose and fell at least once, and the latest round fails no acceptance id) is not escalated by the same_family or review_rounds rule; `handoff status` says 'converging; escalation deferred'. same_acceptance, forced analyses and max_fix_rounds still apply. True restores the earlier behaviour, which escalated regardless of trend; projects that relied on it must set true. Default false."
+          "description": "When false (the default), a converging loop (over the last escalate_same_acceptance_blocks rounds the blocking-finding count never rose and fell at least once, and the latest round fails no acceptance id) is not escalated by the same_family or review_rounds rule; `review status` says 'converging; escalation deferred'. same_acceptance, forced analyses and max_fix_rounds still apply. True restores the earlier behaviour, which escalated regardless of trend; projects that relied on it must set true. Default false."
         },
         "max_fix_rounds": {
           "type": "integer",
           "minimum": 1,
-          "description": "Fix-round budget: after this many blocking review rounds on one leaf, `handoff status` reports fix_round_budget_spent and names the command that resolves it (a root-cause analysis, then `specy-road review defer` for a defer_findings record). Unset (the default): no budget."
+          "description": "Fix-round budget: after this many blocking review rounds on one leaf, `review status` reports fix_round_budget_spent and names the command that resolves it (a root-cause analysis, then `specy-road review defer` for a defer_findings record). Unset (the default): no budget."
         },
         "stall_after_seconds": {
           "type": "integer",
@@ -128,7 +128,7 @@
         },
         "milestone_full_review": {
           "type": "boolean",
-          "description": "When true, a milestone (a node with leaf children) is not set to Complete when its last leaf finishes until a full review of its combined change (the first leaf's branch point to the integration tip) passes the review gate at that tip; `review-packet <MILESTONE_ID>` builds the packet and `mark-implementation-reviewed <MILESTONE_ID>` closes it. Default true."
+          "description": "When true, a milestone (a node with leaf children) is not set to Complete when its last leaf finishes until a full review of its combined change (the first leaf's branch point to the integration tip) passes the review gate at that tip; `review packet <MILESTONE_ID>` builds the packet and `mark-implementation-reviewed <MILESTONE_ID>` closes it. Default true."
         },
         "integrity_gate": {
           "type": "boolean",
@@ -136,7 +136,7 @@
         },
         "delta_review": {
           "type": "boolean",
-          "description": "When true, a fix round after a reviewer's approval may be reviewed from a delta packet (`work/reviews/<NODE_ID>/PACKET-<model>.md`: the diff since the last commit that reviewer approved, plus its notes on that commit) when every path in that delta is a documentation or test file inside the leaf's touch zones (the leaf's own implementation summary counts as inside), it touches at most three files, and its integrity report has no findings; otherwise the round gets the full packet. An approval naming delta_from counts only for the model whose counting approval of that commit is on file, and only while the delta still qualifies. `review-packet --full` skips delta packets; false forces full review. Default true."
+          "description": "When true, a fix round after a reviewer's approval may be reviewed from a delta packet (`work/reviews/<NODE_ID>/PACKET-<model>.md`: the diff since the last commit that reviewer approved, plus its notes on that commit) when every path in that delta is a documentation or test file inside the leaf's touch zones (the leaf's own implementation summary counts as inside), it touches at most three files, and its integrity report has no findings; otherwise the round gets the full packet. An approval naming delta_from counts only for the model whose counting approval of that commit is on file, and only while the delta still qualifies. `review packet --full` skips delta packets; false forces full review. Default true."
         },
         "reviewer_resumed_delta": {
           "type": "boolean",
@@ -180,7 +180,7 @@
         "strong_review": {
           "type": "array",
           "items": { "$ref": "#/$defs/strongReview" },
-          "description": "High-risk zones that need a stronger reviewer. When one of a leaf's touch zones meets an item's zones (the same path, one a directory prefix of the other, or a glob matching the other), the review gate, handoff status and mark-implementation-reviewed require at least one counting approval at the commit under review from a model the item lists in require_one_of, on top of reviewers_required, and name the unmet item when they refuse; orchestrate plan shows the items each ready leaf meets. Read from the integration branch. Default empty."
+          "description": "High-risk zones that need a stronger reviewer. When one of a leaf's touch zones meets an item's zones (the same path, one a directory prefix of the other, or a glob matching the other), the review gate, review status and mark-implementation-reviewed require at least one counting approval at the commit under review from a model the item lists in require_one_of, on top of reviewers_required, and name the unmet item when they refuse; orchestrate plan shows the items each ready leaf meets. Read from the integration branch. Default empty."
         }
       }
     },

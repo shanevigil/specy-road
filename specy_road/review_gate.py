@@ -1,6 +1,6 @@
 """Decide whether a node's implementation has the reviews its policy requires.
 
-The rule ``mark-implementation-reviewed`` enforces, and ``handoff status``
+The rule ``mark-implementation-reviewed`` enforces, and ``review status``
 reports. A review record counts only when all of these hold:
 
 * it validates (schema plus :func:`review_files.review_semantic_errors`,
@@ -88,7 +88,7 @@ from specy_road.runtime_paths import project_prefix, rebase_to_project
 DELTA_MAX_FILES = 3
 _DOC_SUFFIXES = (".md", ".rst", ".txt", ".adoc")
 _TEST_DIRS = frozenset({"tests", "test", "__tests__"})
-#: ``review-packet --full`` stamps ``PACKET.md``; while that is the commit's packet, no delta counts.
+#: ``review packet --full`` stamps ``PACKET.md``; while that is the commit's packet, no delta counts.
 FULL_MARK = "- **Delta review:** off (`--full`): every reviewer reads this full packet"
 #: A planning sheet's ``## Tier`` word, read as ``sr/tools/tier.py`` reads it (``trust boundary`` is two words).
 _TIER = re.compile(r"^## Tier\s*\n+\s*([A-Za-z]+(?: boundary)?)", re.M)
@@ -247,7 +247,7 @@ def delta_problem(repo_root: Path, node: dict[str, Any], approved: str, commit: 
     packet = reviews_dir(repo_root, node["id"]) / PACKET_NAME   # commit-bound: a new commit lifts it
     if FULL_MARK in (text := packet.read_text(encoding="utf-8") if packet.is_file() else "") and \
             f"**Commit under review:** `{full_sha(repo_root, commit)}`" in text:
-        return f"`review-packet --full` forces a full review of {commit}"
+        return f"`review packet --full` forces a full review of {commit}"
     paths = diff_paths(repo_root, f"{approved}..{commit}")
     if paths is None or len(paths) > DELTA_MAX_FILES:
         return f"the delta touches {'?' if paths is None else len(paths)} files (at most {DELTA_MAX_FILES})"
@@ -392,7 +392,7 @@ def fix_carry_problem(repo_root: Path, node: dict[str, Any], fix: FixOf, ref: st
     It carries only when the blocker's latest record there is that commit's only block, the blocked commit is
     the fix's sole parent, every changed path is in the zones the leaf had at the blocked commit (or is this
     leaf's summary or review files), the integration branch's sheet names a tier that may carry, and neither
-    ``policy.delta_review: false``, a current ``review-packet --full`` stamp nor an integrity finding applies.
+    ``policy.delta_review: false``, a current ``review packet --full`` stamp nor an integrity finding applies.
     """
     short = fix.blocked[:12]
     if fix.block is None:
@@ -406,7 +406,7 @@ def fix_carry_problem(repo_root: Path, node: dict[str, Any], fix: FixOf, ref: st
     packet = reviews_dir(repo_root, node["id"]) / PACKET_NAME
     if FULL_MARK in (text := packet.read_text(encoding="utf-8") if packet.is_file() else "") and \
             f"**Commit under review:** `{fix.fix}`" in text:
-        return f"`review-packet --full` forces a full review of {fix.fix[:12]}"
+        return f"`review packet --full` forces a full review of {fix.fix[:12]}"
     findings = compare_integrity(repo_root, fix.blocked, fix.fix)
     return f"the fix's integrity report has findings ({findings[0].line()})" if findings else None
 
@@ -559,5 +559,5 @@ def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
     for problem in gate.problems():
         print(f"  - {problem}", file=sys.stderr)
     print(f"  Re-review, then run specy-road mark-implementation-reviewed again "
-          f"(specy-road handoff status {node['id']}).", file=sys.stderr)
+          f"(specy-road review status {node['id']}).", file=sys.stderr)
     raise SystemExit(1)

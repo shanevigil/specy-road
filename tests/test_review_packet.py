@@ -183,7 +183,7 @@ def test_an_empty_merge_base_diff_is_explained_and_base_sets_the_range(tmp_path:
     before = git(repo, "rev-parse", "dev")
     git(repo, "update-ref", "refs/heads/dev", "feature/rm-thing")   # the leaf is already merged
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
-    assert "_(the diff is empty: `" in text and "`review-packet --base <ref>` sets the diff range" in text
+    assert "_(the diff is empty: `" in text and "`review packet --base <ref>` sets the diff range" in text
     assert "warning: the diff is empty" in capsys.readouterr().err
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], base=before)
     assert f"**Base:** `{before}` (merge base with `{before}`)" in text and "+print('a')" in text

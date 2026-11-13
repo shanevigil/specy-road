@@ -116,8 +116,8 @@ def test_rollup_is_held_until_the_milestone_full_review_passes(tmp_path: Path, c
     assert _statuses(root)["M2"] == "Not Started"
     out = capsys.readouterr().out
     assert "[hold] M2 rolled up to Complete but its full review is not approved at refs/heads/dev" in out
-    assert "specy-road review-packet M2" in out and "specy-road mark-implementation-reviewed M2" in out
-    assert reviews_dir(root, "M2").is_dir()   # so handoff status lists the milestone
+    assert "specy-road review packet M2" in out and "specy-road mark-implementation-reviewed M2" in out
+    assert reviews_dir(root, "M2").is_dir()   # so review status lists the milestone
     _review(root)
     assert complete_rolled_up_ancestors(root, "M2.2") == ["roadmap/phases/M2.json"]
     assert _statuses(root)["M2"] == "Complete"
@@ -165,9 +165,9 @@ def test_handoff_status_and_review_list_show_a_milestone_awaiting_its_full_revie
     assert _cli(["handoff", "status", "M2", "--repo-root", str(root)]) == 1
     out = capsys.readouterr().out
     assert "M2: awaiting_full_review — refs/heads/dev @" in out
-    assert "milestone full review pending (policy.milestone_full_review): specy-road review-packet M2" in out
+    assert "milestone full review pending (policy.milestone_full_review): specy-road review packet M2" in out
     assert _cli(["review", "list", "M2", "--repo-root", str(root)]) == 0
-    assert "specy-road review-packet M2" in capsys.readouterr().out
+    assert "specy-road review packet M2" in capsys.readouterr().out
     _review(root)
     assert _cli(["handoff", "status", "--repo-root", str(root)]) == 0   # the sweep lists it too
     out = capsys.readouterr().out

@@ -360,7 +360,7 @@ def _impl_review_or_exit(root: Path, entry: dict, node: dict) -> None:
         "  Run: specy-road mark-implementation-reviewed "
         "(after work/implementation-summary-"
         f"{node_id}.md is written and a review is recorded — "
-        f"see specy-road handoff status {node_id}).",
+        f"see specy-road review status {node_id}).",
         file=sys.stderr,
     )
     raise SystemExit(1)

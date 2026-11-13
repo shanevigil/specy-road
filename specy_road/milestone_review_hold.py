@@ -71,7 +71,7 @@ def demote_pending_milestone_rollups(repo_root: Path, nodes: list[dict]) -> None
 
 def _review_commands(node_id: str) -> str:
     return (
-        f"specy-road review-packet {node_id}; each reviewer: "
+        f"specy-road review packet {node_id}; each reviewer: "
         f"specy-road review record {node_id} --model <id> --verdict approve|block --file <notes.md>; "
         f"then specy-road mark-implementation-reviewed {node_id}"
     )

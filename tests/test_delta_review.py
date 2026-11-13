@@ -156,7 +156,7 @@ def test_the_gate_refuses_a_delta_approval_while_review_packet_full_is_current(t
     _file(repo, "opus", head, delta_from=approved)
     assert [a.model for a in _gate(repo).approvals] == ["opus"]
     rp.main(["M1.1", "--full", "--repo-root", str(repo)])
-    assert f"`review-packet --full` forces a full review of {head}" in _why(repo, "opus")
+    assert f"`review packet --full` forces a full review of {head}" in _why(repo, "opus")
     assert not _gate(repo).approvals
     rp.main(["M1.1", "--repo-root", str(repo)])   # the override is the current packet's, not sticky
     assert [a.model for a in _gate(repo).approvals] == ["opus"]
@@ -416,7 +416,7 @@ def _sibling(repo: Path) -> None:
 
 @pytest.mark.parametrize(("policy", "fix", "after", "why"), [
     (", delta_review: false", None, None, "policy.delta_review is off"),
-    ("", None, lambda r: rp.main(["M1.1", "--full", "--repo-root", str(r)]), "`review-packet --full` forces"),
+    ("", None, lambda r: rp.main(["M1.1", "--full", "--repo-root", str(r)]), "`review packet --full` forces"),
     ("", lambda r: commit_file(r, TEST_FILE, "def test_a():\n    pass\n", "no assert"), None, "integrity report"),
     ("", None, _sibling, "sibling repositories"),
 ])

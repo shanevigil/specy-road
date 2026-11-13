@@ -1,7 +1,7 @@
 """The fix-round budget's next step, as an explicit state machine.
 
 ``policy.max_fix_rounds`` (unset: no budget) caps the blocking review rounds one leaf may spend. Once spent
-while any counted review blocks, ``handoff status`` reports ``fix_round_budget_spent`` and the step this
+while any counted review blocks, ``review status`` reports ``fix_round_budget_spent`` and the step this
 module picks. :func:`facts` reads what the step depends on; :data:`STATES` is an ordered table of rows, the
 first whose ``when`` holds is the state; its ``step`` yields exactly one :class:`Step`:
 
@@ -117,7 +117,7 @@ STATES: list[State] = [
     State("spent_rca_executor", lambda f: f.action in EXECUTOR_ACTIONS and f.executor is not None,
           lambda f: _executor(f, _rca_why(f))),
     State("spent_rca_packet", lambda f: f.action == "change_or_reprompt_reviewer" and f.reviewer and not f.packet,
-          lambda f: Step("command", f"specy-road review-packet {f.node_id}",
+          lambda f: Step("command", f"specy-road review packet {f.node_id}",
                          f"{_rca_why(f)}; the reviewer prompt needs the packet first")),
     State("spent_rca_reviewer", lambda f: f.action == "change_or_reprompt_reviewer" and f.reviewer is not None,
           lambda f: Step("command", f"specy-road prompt {f.node_id} --role reviewer --model "

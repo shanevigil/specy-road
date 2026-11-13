@@ -122,7 +122,7 @@ def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "", for
         missing = (f"`{prefix}work/brief-{node_id}.md` does not exist, or the branch "
                    f"`{branch or 'feature/rm-<codename>'}` is not checked out")
     elif role == "rca" and not forced:
-        missing = f"`specy-road handoff status {node_id}` does not report `escalated`"
+        missing = f"`specy-road review status {node_id}` does not report `escalated`"
     else:
         missing = f"the registry claim for `{node_id}` does not exist"
     return [
@@ -279,8 +279,8 @@ def coordinator_preamble(node_id: str) -> list[str]:
     return [
         "## Your role: coordinator",
         "",
-        f"You coordinate leaf `{node_id}`: pick it up, assemble `specy-road review-packet {node_id}`, dispatch "
-        "one fresh executor and the reviewers the policy needs, poll `specy-road handoff status`, and close the gate "
+        f"You coordinate leaf `{node_id}`: pick it up, assemble `specy-road review packet {node_id}`, dispatch "
+        "one fresh executor and the reviewers the policy needs, poll `specy-road review status`, and close the gate "
         "with `specy-road mark-implementation-reviewed --yes` once recorded reviews satisfy "
         "`roadmap/orchestration.yaml`; then `specy-road finish-this-task`.",
         "",

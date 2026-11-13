@@ -8,14 +8,14 @@
 **Must know without reading on:**
 - The executor never reviews its own leaf, and the coordinator's own session is never a reviewer; every review record attests this and the gate checks it. The one exception is the default interactive human approval in `mark-implementation-reviewed`, which writes `REVIEW-human.md` with `is_coordinator: true` by design.
 - A review is a file under `work/reviews/<NODE_ID>/` bound to one commit; any later commit (other than one touching only `roadmap/registry.yaml`) makes it stale.
-- Order: `specy-road review-packet <NODE_ID>` → `specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file notes.md` → `specy-road mark-implementation-reviewed` (`--yes` never creates a review). The packet header and `handoff status` report a trial merge (`git merge-tree`, nothing checked out) of the integration branch into the leaf's branch: a conflict on any path outside `work/`, `roadmap/`, `planning/`, `roadmap.md` and `roadmap-context.md` means the executor merges and resolves before reviewers run, and `mark-implementation-reviewed` and `finish-this-task` refuse, before any bookkeeping commit, until it is resolved. The integration ref is the remote-tracking one as last fetched, else the local branch.
+- Order: `specy-road review packet <NODE_ID>` → `specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file notes.md` → `specy-road mark-implementation-reviewed` (`--yes` never creates a review). The packet header and `review status` report a trial merge (`git merge-tree`, nothing checked out) of the integration branch into the leaf's branch: a conflict on any path outside `work/`, `roadmap/`, `planning/`, `roadmap.md` and `roadmap-context.md` means the executor merges and resolves before reviewers run, and `mark-implementation-reviewed` and `finish-this-task` refuse, before any bookkeeping commit, until it is resolved. The integration ref is the remote-tracking one as last fetched, else the local branch.
 - The policy is `roadmap/orchestration.yaml` as read from the integration branch; a feature branch cannot lower its own bar.
 
 **Read further for:**
 - the step sequence from pickup to finish → "The flow"
 - roster, policy keys, substitutions, model choice → "`roadmap/orchestration.yaml`", "Choosing and prompting models"
 - READY, PACKET and REVIEW file shapes and what `review record` rejects → "Hand-off files: `work/reviews/<NODE_ID>/`"
-- what counts, `Reviewed-by` trailers, signed reviews, `handoff status` → [orchestration-review.md](orchestration-review.md)
+- what counts, `Reviewed-by` trailers, signed reviews, `review status` → [orchestration-review.md](orchestration-review.md)
 - grind-session hooks and step mode → "Unattended loops"
 - `session start|guard`, the harness hook adapters, several agents in one tree, migrating → "Presence: `specy-road session`", "Working in one shared checkout", "Upgrading from 0.2.x"
 
@@ -34,9 +34,9 @@ between them — not **which** agent, IDE or vendor fills a role; a human, Claud
 coordinator  do-next-available-task            → work/brief-<ID>.md, feature/rm-<codename>
 executor     implement, commit, commit summary → work/implementation-summary-<ID>.md
 executor     write READY-<agent>.md            → work/reviews/<ID>/READY-<agent>.md
-coordinator  specy-road review-packet <ID>     → work/reviews/<ID>/PACKET.md
+coordinator  specy-road review packet <ID>     → work/reviews/<ID>/PACKET.md
 reviewer(s)  read PACKET.md, write notes       → specy-road review record <ID> …
-coordinator  specy-road handoff status <ID>    → approved?
+coordinator  specy-road review status <ID>     → approved?
 coordinator  specy-road mark-implementation-reviewed
 coordinator  specy-road finish-this-task
 ```
@@ -216,7 +216,7 @@ Plain files work across every harness, including IDE chats that cannot see each 
 The directory always resolves to the **main** worktree: an executor in a linked worktree writes its hand-off there by absolute path, and every command — including the gate run from that worktree — reads the same files. Executors write READY with `specy-road ready <NODE_ID> --model <id> --run '<cmd>'`, which runs each verifier and records its exit and output `tail` ([orchestration-review.md](orchestration-review.md)); new scaffolds also ship `work/handoff-ready.template.md` (for `blocked_on`) and `work/review-record.template.md`.
 
 Records are read from the working tree and are untracked by design (`work/reviews/` is gitignored), so they never travel with a push; the review policy, by contrast, comes from `roadmap/orchestration.yaml` on the integration branch. What persists is the outcome: the gate writes one `Reviewed-by:` trailer per approval into git history.
-A repository that never pushes claims still sees its records: `handoff status <NODE_ID>` on a leaf with no claim lists the READY and REVIEW files with their verdicts, `--ref <branch>` checks them against that branch's commit, and `do-next-available-task --local` claims the leaf in this checkout only. Every read-only review command takes the same `--ref <branch or commit>` in place of a claim: `review-packet`, `prompt` (so a second-family reviewer prompt for a Complete node needs no claim; the prompt passes the `--ref` on to the reviewer's `review record`), `handoff status`, and `review list <NODE_ID>`, which prints each filed record's verdict, model, family and commit, then the gate evaluation, and writes nothing.
+A repository that never pushes claims still sees its records: `review status <NODE_ID>` on a leaf with no claim lists the READY and REVIEW files with their verdicts, `--ref <branch>` checks them against that branch's commit, and `do-next-available-task --local` claims the leaf in this checkout only. Every read-only review command takes the same `--ref <branch or commit>` in place of a claim: `review packet`, `prompt` (so a second-family reviewer prompt for a Complete node needs no claim; the prompt passes the `--ref` on to the reviewer's `review record`), and `review status`, which for one `<NODE_ID>` also prints each filed record's verdict, model, family and commit, then the gate evaluation, and writes nothing.
 
 ### `READY-<agent>.md` — the executor's hand-off
 
@@ -238,12 +238,12 @@ Quote SHAs: `commit` and `base` are read exactly as written, so YAML cannot turn
 `0123456` into an octal number here, but quoting keeps other tools reading the file from doing so.
 
 A non-zero `exit`, or no `verify` entry at all, is listed as a problem by
-`handoff status` and marked in the packet; a reviewer, not the gate, judges it.
+`review status` and marked in the packet; a reviewer, not the gate, judges it.
 A READY naming another node or branch is misfiled: listed as invalid, never read by the packet or a worker.
 
 ### `PACKET.md` — what a reviewer reads
 
-`specy-road review-packet <NODE_ID>` assembles:
+`specy-road review packet <NODE_ID>` assembles:
 
 1. the brief, with the node's goal and acceptance criteria numbered `A1..An`;
 2. the implementation summary;
@@ -312,13 +312,13 @@ specy-road review record M1.2 --model claude-opus-5-5 --verdict block --file not
   `mark-implementation-reviewed`, so an agent cannot file one.
 
 It sets `family` from the roster; a `family` written in the file is ignored. When policy
-requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive. It overwrites `REVIEW-<model>.md` each round and keeps a copy of every record it files under `history/`, the round history escalation counts from. A filing (`review record`, and the human approval of `mark-implementation-reviewed`) takes the leaf's review lock: it waits up to 10 seconds for another filing, and while a `review delegate` or `prompt --channel cli --run` on the same leaf holds the lock it exits 1, writing nothing, so it never voids that reviewer's run; file again when the run ends (`review list <ID>`).
+requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive. It overwrites `REVIEW-<model>.md` each round and keeps a copy of every record it files under `history/`, the round history escalation counts from. A filing (`review record`, and the human approval of `mark-implementation-reviewed`) takes the leaf's review lock: it waits up to 10 seconds for another filing, and while a `review delegate` or `prompt --channel cli --run` on the same leaf holds the lock it exits 1, writing nothing, so it never voids that reviewer's run; file again when the run ends (`review status <ID>`).
 
-`handoff status` and `review list` report, per leaf, its review rounds (distinct reviewed commits) and the time from its first review to the latest (`n/a` with a single review). Two or more review rounds per leaf are normal under a two-family policy: the second family often blocks on something the first passed, and each fix is a new commit to review. Escalation (`escalate_review_rounds`, default 5) is what marks a loop that is not converging.
+`review status` reports, per leaf, its review rounds (distinct reviewed commits) and the time from its first review to the latest (`n/a` with a single review). Two or more review rounds per leaf are normal under a two-family policy: the second family often blocks on something the first passed, and each fix is a new commit to review. Escalation (`escalate_review_rounds`, default 5) is what marks a loop that is not converging.
 
 ## The review gate
 
-How records count, `Reviewed-by` trailers, signed reviews, `handoff status`, and review-loop escalation: [orchestration-review.md](orchestration-review.md). The gate never counts a record, approval or block, signed or not, from a model id that filed a valid `READY-<agent>.md` on the leaf (the executor or a fix author), and `review delegate` refuses that model before it writes anything. Another model of the same family still counts, judged against the other reviewers by `reviewers_distinct_families`. A READY is an unsigned file its writer creates, so this check is cooperative attestation, not enforcement, unless signing keys are out of the executor's reach.
+How records count, `Reviewed-by` trailers, signed reviews, `review status`, and review-loop escalation: [orchestration-review.md](orchestration-review.md). The gate never counts a record, approval or block, signed or not, from a model id that filed a valid `READY-<agent>.md` on the leaf (the executor or a fix author), and `review delegate` refuses that model before it writes anything. Another model of the same family still counts, judged against the other reviewers by `reviewers_distinct_families`. A READY is an unsigned file its writer creates, so this check is cooperative attestation, not enforcement, unless signing keys are out of the executor's reach.
 
 ## Unattended loops
 
@@ -328,10 +328,10 @@ loop has to record an independent review each cycle. One way is a pre-finish hoo
 ```bash
 specy-road grind-session --on-complete merge --implement-mode hook \
   --implement-cmd 'executor-cli "$SPECY_ROAD_PROMPT"' \
-  --pre-finish-cmd 'ID="$SPECY_ROAD_NODE_ID"; specy-road review-packet "$ID" &&
+  --pre-finish-cmd 'ID="$SPECY_ROAD_NODE_ID"; specy-road review packet "$ID" &&
     specy-road prompt "$ID" --role reviewer --model <reviewer-id> --channel paste &&
     reviewer-cli "$(cat work/prompt-"$ID"-reviewer-<reviewer-id>.md)" &&
-    specy-road handoff status "$ID" &&
+    specy-road review status "$ID" &&
     specy-road mark-implementation-reviewed --yes'
 ```
 
@@ -375,7 +375,7 @@ keeps every name, type and value; schema 2 only adds fields. A field is added or
 | `leaves.<node id>.reviews[]` | Each `REVIEW-*.md`: `model`, `verdict`, `commit`, `fresh_for_head` (the commit is the branch tip) |
 | `leaves.<node id>.status` | `claimed`, `running`, `exited_ok`, `exited_failed`, `abandoned` or `unknown` |
 | `leaves.<node id>.ready` | The READY `latest_ready` selects for the registered branch: `commit`, `model` (its `agent`), `at` (the file's mtime, ISO UTC), and `blocked_on` while that READY is current at the commit under review (`null` when there is no READY) |
-| `leaves.<node id>.gate` | `state` (the label `handoff status` reports, from the review gate's public `review_state`, without a trial merge), `approvals` and `blocks` (counted records), `fresh_for_head` (the commit under review is the branch tip) |
+| `leaves.<node id>.gate` | `state` (the label `review status` reports, from the review gate's public `review_state`, without a trial merge), `approvals` and `blocks` (counted records), `fresh_for_head` (the commit under review is the branch tip) |
 | `leaves.<node id>.holds` | `{source: "hold_list", id, reason}` when the leaf is listed in the main checkout's `work/grind-hold.txt` (one id per line, `#` starts a reason), plus `{source: "gate", id, reason}` for each open gate the leaf depends on, as `list-gates` reports |
 | `leafless_workers[]` | Workers on a chore, and each worker record that cannot be read |
 
@@ -442,7 +442,7 @@ decision (Claude Code gets context only; Codex nothing), so the harness's own pr
 Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry. The id is
 `$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one terminal or harness process, so
 `start`, `touch`, `end` and the hook name one record; `--agent` names it; `touch` keeps the paths. A crashed record ages
-out; one that will not load counts as live to the guard until fixed or deleted. `session end` removes only the caller's own record (`$SPECY_ROAD_AGENT_ID`, else the derived id) or an expired one: `<id>` and `--agent` pick the target, never the caller. Another agent's live record is refused (it is kept, exit 1) unless a human passes `--force` from a terminal (stdin a TTY), so a closed terminal's record counts as a live peer to the guard until it expires; with no record for the caller's id, `end` names the id `session start` printed and ends nothing. A record keeps the `$USER` that started it, and one another user started is always refused. `handoff status` lists live sessions first,
+out; one that will not load counts as live to the guard until fixed or deleted. `session end` removes only the caller's own record (`$SPECY_ROAD_AGENT_ID`, else the derived id) or an expired one: `<id>` and `--agent` pick the target, never the caller. Another agent's live record is refused (it is kept, exit 1) unless a human passes `--force` from a terminal (stdin a TTY), so a closed terminal's record counts as a live peer to the guard until it expires; with no record for the caller's id, `end` names the id `session start` printed and ends nothing. A record keeps the `$USER` that started it, and one another user started is always refused. `review status` lists live sessions first,
 `do-next-available-task` warns on touch-zone overlap, `grind-session --plan` and `orchestrate plan` never put two ready leaves sharing a zone in one parallel batch, and `session check` refuses a commit on another live session's paths.
 
 ## Working in one shared checkout

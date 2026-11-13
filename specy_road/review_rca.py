@@ -257,7 +257,7 @@ def rca_trigger(repo_root: Path, node_id: str, model: str, loop: LoopState,
                           "there is nothing to analyse")
     if esc is None:
         return None, (f"{node_id}'s review loop is not escalated; no root-cause analysis is due "
-                      f"(`specy-road handoff status {node_id}`); a coordinator can start one anyway "
+                      f"(`specy-road review status {node_id}`); a coordinator can start one anyway "
                       "with `--force --reason '<why>'`")
     if model in rca_parties(repo_root, node_id, loop):
         return None, (f"{model!r} implemented or reviewed {node_id}; the root-cause analyst must be "
@@ -338,7 +338,7 @@ def rca_preamble(repo_root: Path, node_id: str, model: str, esc: Escalation) -> 
         "anything else stays a must-fix in this leaf.",
         f"5. Write the record to `{out}` (gitignored; open the absolute path) in this shape, validated against "
         "specy-road's `rca-record` schema, then run "
-        f"`specy-road handoff status {node_id}`: a valid record clears the escalation (a forced one restarts "
+        f"`specy-road review status {node_id}`: a valid record clears the escalation (a forced one restarts "
         "the round count), and an invalid one is "
         "listed as a problem. Stop.",
         "",

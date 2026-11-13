@@ -78,7 +78,7 @@ def test_r3_a_later_record_is_not_earlier_evidence(tmp_path: Path, capsys, human
 
 @pytest.mark.parametrize("action,expected", [
     ("continue_with_class_fix", "specy-road prompt M1.1 --role executor --model composer"),
-    ("change_or_reprompt_reviewer", "specy-road review-packet M1.1"),   # no packet yet; the prompt needs one
+    ("change_or_reprompt_reviewer", "specy-road review packet M1.1"),   # no packet yet; the prompt needs one
     ("escalate_human", "specy-road decisions add M1.1 --kind decision --summary"),
 ])
 def test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action(tmp_path: Path, capsys, monkeypatch,
@@ -267,7 +267,7 @@ def test_round3_every_next_step_runs_or_is_absent(tmp_path: Path, capsys, human)
         b = _status(repo, capsys)[1]["fix_round_budget"]
         assert (role is None) == b["next"].startswith("specy-road decisions add"), b["next"]
         if role == "reviewer":   # no packet yet: build it, and the reviewer prompt is next
-            assert b["next"] == "specy-road review-packet M1.1" and _runs(repo, b["next"]) == 0
+            assert b["next"] == "specy-road review packet M1.1" and _runs(repo, b["next"]) == 0
             b = _status(repo, capsys)[1]["fix_round_budget"]
             assert b["next"] == "specy-road prompt M1.1 --role reviewer --model opus"
         assert _runs(repo, b["next"]) == 0, b["next"]
