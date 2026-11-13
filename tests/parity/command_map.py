@@ -110,25 +110,21 @@ def apply_rows(
     return expected, covered, errors
 
 
-def retired_top_level_names(rows: list[dict], current: dict[str, dict]) -> set[str]:
+def retired_top_level_names(rows: list[dict]) -> set[str]:
     """``specy-road`` top-level names the rows retire, for the canonical command count.
 
-    A row retires its ``old`` command when ``old`` has no options and ``new`` is neither that
-    command nor under it. A top-level name is retired when a row retires it, or when rows retire
-    every subcommand it has (``branches prune``, ``handoff status``); one with a subcommand left
-    (``review``, after ``review list``) is not, nor is a name a flag row changes.
+    Only a top-level row counts: its ``old`` is ``specy-road NAME`` with no options and its ``new``
+    is neither that command nor under it. A subcommand row (``review list`` -> ``review status``)
+    or a flag row (``doctor --fix``) retires no top-level name, even when it leaves the name with
+    no other subcommand: such a name needs its own top-level row to count.
     """
-    gone = set()
+    names = set()
     for row in rows:
         old, options = split_invocation(row.get("old"))
         new = split_invocation(row.get("new"))[0]
-        if old.startswith("specy-road ") and not options and not _under(old, [new]):
-            gone.add(old)
-    names = set()
-    for key in gone:
-        top = " ".join(key.split()[:2])
-        if key == top or all(f"{top} {s}" in gone for s in current[top]["subcommands"]):
-            names.add(top.split()[1])
+        words = old.split()
+        if len(words) == 2 and words[0] == "specy-road" and not options and not _under(old, [new]):
+            names.add(words[1])
     return names
 
 

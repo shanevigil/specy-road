@@ -157,3 +157,9 @@ rows:
   - old: specy-road
     new: specy-road
     allowed: "M16.4.4: top-level help lists milestone start|status|pr, planning scaffold|approach and archive --hard-remove in place of the six old names"
+  - old: specy-road branches
+    new: specy-road doctor --prune --kind
+    allowed: "M16.4.4 (A3): `branches` is a retired top-level name: its one subcommand, `prune`, is the deprecated alias of `doctor --prune --kind branches` (M16.4.1 row); no other change"
+  - old: specy-road handoff
+    new: specy-road review status
+    allowed: "M16.4.4 (A3): `handoff` is a retired top-level name: its one subcommand, `status`, is the deprecated alias of `review status` (M16.4.3 row); no other change"

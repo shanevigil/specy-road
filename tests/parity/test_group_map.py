@@ -24,7 +24,6 @@ from specy_road.milestone_session import milestone_session_path, write_milestone
 from tests.milestone_repo_helpers import make_milestone_repo
 from tests.move_node_helpers import base_fixture
 from tests.parity.command_map import command_map_rows, retired_top_level_names
-from tests.parity.help_surface import crawl
 from tests.scenarios.milestone.repos import (
     INTEGRATION,
     PARENT,
@@ -168,23 +167,41 @@ def test_hard_remove_refuses_an_archive_option_or_a_missing_node(
     assert _files(root, tmp_path) == before
 
 
-#: The top-level names command_map.yaml retires: M16.4.1-M16.4.4's fourteen and ``update``.
+#: A3's retired names: M16.4.1-M16.4.4's fourteen, and ``update`` (renamed, net zero).
 RETIRED = {
     "registry-prune", "branches", "refresh-stubs", "refresh-schemas", "refresh-profiles",
     "update", "handoff", "review-packet", "lessons", "start-milestone-session",
     "reconcile-milestone-status", "open-milestone-pr", "scaffold-planning", "author-approach",
     "archive-node",
 }
-#: The 74 names registered when this bound was set, plus milestone and planning, minus RETIRED.
-CANONICAL_BOUND = 61
+NEW_GROUPS = {"milestone", "planning"}
+#: A3's formula on the coordinator's recount (2026-11-07: the bound is the current count minus
+#: this leaf's removals): the names registered before this leaf, not A3's planning-time 68.
+REGISTERED_BEFORE_THIS_LEAF = 74
+CANONICAL_BOUND = REGISTERED_BEFORE_THIS_LEAF + len(NEW_GROUPS) - len(RETIRED)
+
+
+@pytest.mark.parametrize(
+    ("row", "retired"),
+    [
+        ({"old": "specy-road a", "new": "specy-road b c"}, {"a"}),  # a top-level row
+        ({"old": "specy-road a x", "new": "specy-road b"}, set()),  # a subcommand row
+        ({"old": "specy-road a --j", "new": "specy-road b"}, set()),  # a flag row
+        ({"old": "specy-road a", "new": "specy-road a x"}, set()),  # moved under itself
+        ({"old": "", "new": "specy-road a"}, set()),  # an addition
+    ],
+)
+def test_only_a_top_level_row_retires_a_name(row: dict, retired: set[str]) -> None:
+    """A name counts as retired only when a row with no options moves it outside itself."""
+    assert retired_top_level_names([row]) == retired
 
 
 def test_canonical_command_count_is_at_most_its_bound() -> None:
-    """The retired names are the expected ones and the canonical names, printed, fit the bound."""
-    inventory = {key: entry["inventory"] for key, entry in crawl().items()}
+    """The map retires A3's names; the canonical names, printed, fit A3's formula."""
     registered = cli.registered_agent_command_names()["specy-road"] - {"version"}
-    retired = retired_top_level_names(command_map_rows(), inventory)
+    retired = retired_top_level_names(command_map_rows())
     canonical = sorted(registered - retired)
     print(f"canonical commands ({len(canonical)}): {' '.join(canonical)}")
     assert retired == RETIRED
+    assert NEW_GROUPS <= registered
     assert len(canonical) <= CANONICAL_BOUND, canonical
