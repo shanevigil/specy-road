@@ -103,6 +103,7 @@ entries:
       - specy_road/harness_facts.py
       - docs/orchestration-review.md
       - docs/orchestration-workers.md
+      - docs/pm-gui.md
     started: '2026-11-12'
     owner: savigil
     implementation_review: pending
