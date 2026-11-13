@@ -2,7 +2,7 @@
   "nodes": [
     {
       "acceptance": [
-        "Before the move, sr/work/M16.5.3-destinations.md lists each moved module's destination under specy_road/orchestration/ (the planner carries it into later leaves' zones, including M23.5 and M23.6); roster, model-profile, harness-facts, orchestrate plan and assign, and role-prompt library modules move there with `git mv`; role_prompt_stream folds into role_prompt; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
+        "Before the move, specy_road/orchestration/DESTINATIONS.md (tracked, committed in this leaf before any `git mv`) lists each moved module's destination under specy_road/orchestration/ (the planner carries it into later leaves' zones, including M23.5 and M23.6); roster, model-profile, harness-facts, orchestrate plan and assign, and role-prompt library modules move there with `git mv`; role_prompt_stream folds into role_prompt; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
         "Their tests pass with only import paths and patch targets edited",
         "Parity harness and decision table unchanged",
         "Estimated net line change (informational, not a gate): package about -30",
@@ -290,9 +290,10 @@
     },
     {
       "acceptance": [
-        "The worker modules (adapters, runner, lease, lock, state, reconcile, ops, outbox, process, sessions, usage, witness, exit, schema) move under specy_road/orchestration/workers/ with `git mv`; code outside imports them through specy_road.orchestration; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
+        "Every `specy_road/worker_*.py` module except worker_hook moves under specy_road/orchestration/workers/ with `git mv` and keeps its module name (worker_adapter_base, worker_adapter_claude, worker_adapter_codex, worker_adapter_cursor, worker_adapter_parsers, worker_adapters, worker_cli_render, worker_cli_sync, worker_exit, worker_lease, worker_lock, worker_models, worker_ops, worker_ops_launch, worker_ops_lifecycle, worker_ops_message, worker_ops_slots, worker_orphans, worker_outbox, worker_process, worker_reconcile, worker_runner, worker_runner_ready, worker_sandbox, worker_schema, worker_sessions, worker_state, worker_turn_check, worker_usage_delta, worker_usage_plausibility, worker_witness); worker_hook (folded into worker_cli by M16.5.2) and specy_road/bundled_scripts/worker_cli*.py stay where they are; code outside imports them through specy_road.orchestration; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
         "The worker test files pass with only import paths, patch targets and recorded fixture-path relocations edited (the summary shows that every changed test line is one of those); no assertion changes; real subprocess, lease-race and crash-recovery tests are kept as they are",
         "Parity harness, decision table and the M16.3.1 state table unchanged",
+        "A wrapper launched as `-m specy_road.worker_runner` before the move is still seen as live (test)",
         "Estimated net line change (informational, not a gate): package about -50"
       ],
       "codename": "worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only",
@@ -321,7 +322,8 @@
         "constraints/import-layers-baseline.json",
         "constraints/test-private-imports-baseline.txt",
         "constraints/clone-baseline.json",
-        "specy_road/worker_hook.py"
+        "specy_road/worker_hook.py",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     },

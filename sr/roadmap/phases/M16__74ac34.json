@@ -101,7 +101,7 @@
     },
     {
       "acceptance": [
-        "tool_call_guard and its shapes, the role guard, role env and session presence move under specy_road/orchestration/guard/; orchestration_guard_adapters and orchestration_role_guard fold into orchestration_guard_cli and session_overlap into session_cli (Appendix A); a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string (expected callers: do_next_prompt, review_cli, doctor_worktrees, orphaned_claims and worker_cli); classifier logic is unchanged (the rule-table rewrite is deferred to after 0.3.1, M23.8)",
+        "tool_call_guard and its adapters and its shapes, the role guard, role env and session presence move under specy_road/orchestration/guard/; orchestration_guard_adapters and orchestration_role_guard fold into orchestration_guard_cli and session_overlap into session_cli (Appendix A); a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string (expected callers: every importer of the moved modules, import-path edits only); classifier logic is unchanged (the rule-table rewrite is deferred to after 0.3.1, M23.8)",
         "The guard tests pass with only import paths and patch targets edited, so the guard CLI and the three harness hook adapters give the same verdicts and output",
         "Parity harness unchanged",
         "Estimated net line change (informational, not a gate): package about -80"
