@@ -290,6 +290,10 @@ specy-road upgrade --only profiles --check    # report drift (exit 1); a README 
 specy-road upgrade --only profiles --render   # rewrite the rendered regions; --dry-run lists them
 ```
 
+The README block is found by the start of its first marker, `<!-- >>> harness facts:`, so a block
+whose marker names the older `refresh-profiles --render` is still that block: `--check` reports it
+as drift once, and `--render` rewrites the marker and the block.
+
 `--render` rewrites only the shipped layout: a block-style `access:` whose
 children are one-line keys indented two spaces. It puts a removed `access.cli`
 back under `access:`. It writes a profile only when the result parses to the

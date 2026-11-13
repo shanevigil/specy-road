@@ -109,6 +109,10 @@ body. Keep section bodies focused; link to PRs for detail.
   stubs|schemas|profiles` runs one refresh on its own, with the options the old command took: `--prune` and
   `--diff` for stubs; `--force`, `--profile API_ID`, `--profiles`, `--check`, `--render`, `--capture`, `--from`
   and `--accept` for profiles. An option given to the wrong component is a usage error (exit 2).
+- The harness block that `upgrade --only profiles --render` writes into `model-profiles/README.md` now names
+  `upgrade --only profiles` in its start marker and text. A README rendered by an earlier version keeps working:
+  the block is found by the marker's unchanged start (`<!-- >>> harness facts:`). `--check` reports that block as
+  drift until `upgrade --only profiles --render` rewrites it.
 
 ### Deprecated
 

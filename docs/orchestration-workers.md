@@ -392,7 +392,7 @@ root, the worker id, a token and the path of a mode-0600 launch file under
 `work/.workers/` (argv and the stdin prompt), which the wrapper reads once
 and deletes; a brief of any size reaches a stdin-reading harness.
 
-Flags match the accepted `--version`/`--help` captures under `model-profiles/harness-captures/` (Claude Code 2.1.312, codex-cli 0.166.0, Cursor agent 2026.10.22-27dcf5f, all captured 2026-11-02) and will drift; `refresh-profiles --capture <harness>` classifies a newer capture, and
+Flags match the accepted `--version`/`--help` captures under `model-profiles/harness-captures/` (Claude Code 2.1.312, codex-cli 0.166.0, Cursor agent 2026.10.22-27dcf5f, all captured 2026-11-02) and will drift; `upgrade --only profiles --capture <harness>` classifies a newer capture, and
 `tests/test_worker_adapters.py` and `tests/test_worker_turn_check.py` pin the command shapes. The long-lived protocols (Codex app-server, Cursor ACP, Claude Agent SDK) are what would add interrupt and steer; they are later adapters behind the same
 interface, not emulated here.
 

@@ -132,6 +132,24 @@ def test_a_readme_without_the_block_is_behind_not_drift(tmp_path: Path, capsys) 
     assert readme.read_text(encoding="utf-8") == text
 
 
+OLDER_START = ("<!-- >>> harness facts: rendered by `specy-road refresh-profiles --render` from "
+               "harness-facts.yaml; do not edit inside <<< -->")
+
+
+def test_a_block_under_an_older_start_marker_is_one_block_that_render_brings_current(
+        tmp_path: Path, capsys) -> None:
+    readme = _repo(tmp_path) / "model-profiles" / hf.README_NAME
+    repo = readme.parent.parent
+    text = readme.read_text(encoding="utf-8")
+    readme.write_text(text.replace(hf.BLOCK_START, OLDER_START), encoding="utf-8")
+    assert run_main("--check", "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert "drift: model-profiles/README.md: the harness block differs" in err
+    assert "markers are" not in err
+    assert run_main("--render", "--repo-root", str(repo)) == 0
+    assert readme.read_text(encoding="utf-8") == text
+
+
 @pytest.mark.parametrize("damage", [
     lambda text: text.replace(hf.BLOCK_START + "\n", ""),
     lambda text: text.replace(hf.BLOCK_END + "\n", ""),

@@ -1,4 +1,4 @@
-"""The harness facts fixture: one record per harness, from which ``refresh-profiles`` renders.
+"""The harness facts fixture: one record per harness; ``upgrade --only profiles`` renders from it.
 
 ``model-profiles/harness-facts.yaml`` (shipped under ``templates/project``) holds what
 specy-road knows about each harness a roster can name — version, headless command,
@@ -10,7 +10,10 @@ actions and their switches, model families, quota behaviour — each fact labell
 Two parts of ``model-profiles/`` are *rendered* from it, and a hand edit to either is
 drift: each profile's ``access.cli`` (the executor command template of the harness whose
 ``executor_template.renders_cli_for`` names the profile's ``family``) and the README's
-harness block between :data:`BLOCK_START` and :data:`BLOCK_END`.
+harness block between :data:`BLOCK_START` and :data:`BLOCK_END`. The block is found by
+:data:`BLOCK_START_PREFIX`, the part of the start marker that never changes, so a README whose
+marker names an older command (``refresh-profiles --render``) is still one block; a render
+writes :data:`BLOCK_START`.
 
 The version-bump check compares a new capture of a harness's ``--version`` and ``--help``
 output (and any inventory listing) with the accepted one under
@@ -39,7 +42,10 @@ FACTS_NAME = "harness-facts.yaml"
 CAPTURES_DIRNAME = "harness-captures"
 SCHEMA_NAME = "harness-facts.schema.json"
 README_NAME = "README.md"
-BLOCK_START = "<!-- >>> harness facts: rendered by `specy-road refresh-profiles --render` from harness-facts.yaml; do not edit inside <<< -->"
+BLOCK_START = ("<!-- >>> harness facts: rendered by `specy-road upgrade --only profiles --render` "
+               "from harness-facts.yaml; do not edit inside <<< -->")
+#: What every start marker, this one and an older one, begins with; the block is found by it.
+BLOCK_START_PREFIX = "<!-- >>> harness facts:"
 BLOCK_END = "<!-- >>> end harness facts <<< -->"
 #: The README block goes before this heading when the README has no block yet.
 BLOCK_ANCHOR = "## Keeping this current"
@@ -146,7 +152,7 @@ def render_block(facts: dict[str, Any]) -> str:
            "Rendered from `harness-facts.yaml`. Each fact carries its label: `documented` (a vendor page or",
            "repository doc), `runtime` (observed by running the binary) or `unverified`. The `access.cli` of",
            "every profile whose `family` a harness's executor template names is rendered from it too;",
-           "`refresh-profiles --check` reports a hand edit to either as drift.", ""]
+           "`upgrade --only profiles --check` reports a hand edit to either as drift.", ""]
     for rec in facts["harnesses"]:
         out += [f"#### {rec['name']} (`{rec['id']}`, binary `{rec['binary']}`)", ""]
         inst = rec["instruction_files"]
@@ -171,10 +177,11 @@ def render_block(facts: dict[str, Any]) -> str:
 
 
 def _block_span(text: str) -> tuple[int, int] | None:
-    """The block's ``(start, end)``: exactly one start marker, then exactly one end marker."""
-    if text.count(BLOCK_START) != 1 or text.count(BLOCK_END) != 1:
+    """The block's ``(start, end)``: exactly one start marker (:data:`BLOCK_START_PREFIX`), then
+    exactly one end marker."""
+    if text.count(BLOCK_START_PREFIX) != 1 or text.count(BLOCK_END) != 1:
         return None
-    start, end = text.find(BLOCK_START), text.find(BLOCK_END)
+    start, end = text.find(BLOCK_START_PREFIX), text.find(BLOCK_END)
     if end < start:
         return None
     end += len(BLOCK_END)
@@ -183,7 +190,7 @@ def _block_span(text: str) -> tuple[int, int] | None:
 
 def _markers_malformed(text: str) -> bool:
     """Some marker is present but they do not make one block: one is missing, repeated, or out of order."""
-    return (BLOCK_START in text or BLOCK_END in text) and _block_span(text) is None
+    return (BLOCK_START_PREFIX in text or BLOCK_END in text) and _block_span(text) is None
 
 
 def render_readme(text: str, facts: dict[str, Any]) -> str:
@@ -365,7 +372,8 @@ def classify_capture(facts: dict[str, Any], harness_id: str, old: dict[str, str]
 def unlisted_overrides(overrides: Sequence[str], capture: dict[str, str]) -> list[str]:
     """The ``-c`` keys in ``overrides`` whose feature the captured ``codex features list`` does not list:
     ``features.<name>`` names the feature, any other key the feature its table is named for
-    (``memories.use_memories``). Such a key would be passed and ignored, so ``refresh-profiles --check`` fails on it."""
+    (``memories.use_memories``). Such a key would be passed and ignored, so
+    ``upgrade --only profiles --check`` fails on it."""
     listed = identifiers(CODEX_FEATURES_FILE, capture.get(CODEX_FEATURES_FILE, ""))
     keys = [b.split("=", 1)[0] for a, b in zip(overrides, overrides[1:]) if a == "-c"]
     return [k for k in keys if k.removeprefix("features.").split(".")[0] not in listed]
