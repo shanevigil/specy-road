@@ -88,6 +88,18 @@ entries:
       - CHANGELOG.md
       - specy_road/bundled_scripts/refresh_schemas.py
       - specy_road/bundled_scripts/refresh_profiles.py
+      - specy_road/cli_usage.py
+      - specy_road/templates/specyrd/dot-specyrd/README.md
+      - docs/orchestration-models.md
+      - docs/orchestration-roster.md
+      - docs/agentic-sandbox-runbook.md
+      - docs/optional-ai-tooling-patterns.md
+      - docs/pm-workflow.md
+      - docs/orchestration.md
+      - docs/git-workflow.md
+      - docs/contributor-guide.md
+      - docs/release-runbook.md
+      - playground/README.md
     started: '2026-11-12'
     owner: savigil
     implementation_review: pending
