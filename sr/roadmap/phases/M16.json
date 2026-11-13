@@ -422,7 +422,23 @@
         "CHANGELOG.md",
         "specy_road/review_next_step.py",
         "specy_road/review_rca.py",
-        "specy_road/bundled_scripts/role_prompt_rca.py"
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "README.md",
+        "specy_road/behaviour_changes.py",
+        "specy_road/bundled_scripts/do_next_prompt.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/milestone_review_hold.py",
+        "specy_road/on_complete_pickup.py",
+        "specy_road/review_defer.py",
+        "specy_road/review_gate.py",
+        "specy_road/review_target.py",
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "gui/pm-gantt/src/components/LeafOrchestrationDetail.tsx",
+        "gui/pm-gantt/src/components/OrchestrationDrawer.tsx",
+        "specy_road/pm_gantt_static/"
       ],
       "type": "task"
     },
@@ -447,7 +463,8 @@
       "title": "Tests: apply the dedupe worklist for pickup and finish",
       "touch_zones": [
         "tests/",
-        "tests/support/dedupe/pickup-finish.csv"
+        "tests/support/dedupe/pickup-finish.csv",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     }

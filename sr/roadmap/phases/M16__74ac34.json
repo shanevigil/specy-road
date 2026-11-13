@@ -45,7 +45,13 @@
         "specy_road/review_gate.py",
         "specy_road/bundled_scripts/do_next_prompt.py",
         "specy_road/templates/project/schemas/orchestration.schema.json",
-        "specy_road/validate_roadmap_runner.py"
+        "specy_road/validate_roadmap_runner.py",
+        "specy_road/brief_generation.py",
+        "specy_road/review_policy_ref.py",
+        "specy_road/review_gate_agreement.py",
+        "specy_road/review_policy_pin.py",
+        "specy_road/orchestration_config.py",
+        "scripts/line_width_baseline.json"
       ],
       "type": "task"
     },
@@ -222,7 +228,6 @@
         "specy_road/review_*.py",
         "specy_road/rework_rca.py",
         "specy_road/bundled_scripts/review_cli.py",
-        "specy_road/bundled_scripts/review_defer*.py",
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "docs/orchestration-review.md",
         "docs/orchestration.md",
@@ -233,7 +238,8 @@
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
         "constraints/test-private-imports-baseline.txt",
-        "constraints/clone-baseline.json"
+        "constraints/clone-baseline.json",
+        "specy_road/review_defer*.py"
       ],
       "type": "task"
     },
@@ -293,7 +299,10 @@
         "tests/",
         "scripts/line_width_baseline.json",
         "scripts/ruff_quality_baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "docs/context-regressions.yaml",
+        "constraints/file-limits.yaml",
+        "sr/constraints/file-limits.yaml"
       ],
       "type": "task"
     },

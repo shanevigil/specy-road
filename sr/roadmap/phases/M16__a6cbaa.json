@@ -471,7 +471,10 @@
         "playground/README.md",
         "specy_road/harness_facts.py",
         "docs/orchestration-review.md",
-        "docs/orchestration-workers.md"
+        "docs/orchestration-workers.md",
+        "docs/pm-gui.md",
+        "docs/orchestration-chores.md",
+        "docs/file-limits.md"
       ],
       "type": "task"
     }

@@ -36,7 +36,8 @@
         "specy_road/templates/specyrd/",
         "tests/parity/",
         "tests/",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "playground/README.md"
       ],
       "type": "task"
     },
@@ -99,7 +100,15 @@
         "scripts/line_width_baseline.json",
         "tests/parity/workers/",
         "tests/",
-        "constraints/clone-baseline.json"
+        "constraints/clone-baseline.json",
+        "specy_road/worker_hook.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/bundled_scripts/grind_session.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/orchestration/state.py",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/import-layers-baseline.json",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
@@ -197,7 +206,9 @@
         "specy_road/bundled_scripts/grind_session_args.py",
         "specy_road/orchestration/grind/grind_session_args.py",
         "docs/git-workflow.md",
-        "specy_road/validate_roadmap_runner.py"
+        "specy_road/validate_roadmap_runner.py",
+        "specy_road/bundled_scripts/grind_session_limits.py",
+        "specy_road/orchestration/grind/grind_session.py"
       ],
       "type": "task"
     },
@@ -224,7 +235,9 @@
         "specy_road/review_packet*.py",
         "scripts/line_width_baseline.json",
         "tests/",
-        "constraints/clone-baseline.json"
+        "constraints/clone-baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/import-layers-baseline.json"
       ],
       "type": "task"
     },
@@ -278,7 +291,8 @@
         "tests/",
         "scripts/line_width_baseline.json",
         "scripts/ruff_quality_baseline.json",
-        "constraints/test-private-imports-baseline.txt"
+        "constraints/test-private-imports-baseline.txt",
+        "docs/context-regressions.yaml"
       ],
       "type": "task"
     },
@@ -305,7 +319,8 @@
       "touch_zones": [
         "tests/",
         "tests/review_repo_helpers.py",
-        "tests/support/dedupe/review-gate.csv"
+        "tests/support/dedupe/review-gate.csv",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
@@ -330,7 +345,8 @@
       "title": "Tests: apply the dedupe worklist for worker",
       "touch_zones": [
         "tests/",
-        "tests/support/dedupe/worker.csv"
+        "tests/support/dedupe/worker.csv",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
@@ -356,7 +372,8 @@
       "title": "Tests: apply the dedupe worklist for the rest",
       "touch_zones": [
         "tests/",
-        "tests/support/dedupe/rest.csv"
+        "tests/support/dedupe/rest.csv",
+        "constraints/test-private-imports-baseline.txt"
       ],
       "type": "task"
     },
