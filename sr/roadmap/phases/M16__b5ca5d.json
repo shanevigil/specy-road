@@ -20,7 +20,7 @@
       "parent_id": "M16.4",
       "planning_dir": "planning/M16.4.1_doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases_b5ca5d95-58a9-472c-9f90-0004d0fbd46f.md",
       "sibling_order": 0,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",
