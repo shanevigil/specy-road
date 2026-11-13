@@ -36,14 +36,14 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.2.11` | One SpecyError base for the 15 error classes, printed and turned into an exit code once | task | Agentic-led | Complete |
 | `M16.2.12` | Review packets and prompts show a held milestone's rollup as the public loader does | task | Agentic-led | Complete |
 | `M16.2.13` | The review stack stops importing the graph loader: roadmap_load and review_gate leave the shared import cycle | task | Agentic-led | Complete |
-| `M16.3` | Orchestration state model and the cap-driven folds | milestone | — | Not Started |
+| `M16.3` | Orchestration state model and the cap-driven folds | milestone | — | In Progress |
 | `M16.3.1` | Orchestration subpackage with one public interface and one state model for the gate, the CLI and the PM GUI | task | Agentic-led | Complete |
 | `M16.3.2` | Fold the cap-driven splits in pickup and finish into their parents | task | Agentic-led | Complete |
 | `M16.3.3` | Nested-repo landing folds into nested_repos, breaking its cycle, and the two session-file readers become one | task | Agentic-led | Complete |
 | `M16.3.4` | One LLM client module replaces the provider code inside review_node | task | Agentic-led | Complete |
 | `M16.3.5` | The brainstorm CLI becomes two modules and the three managed-block writers share one engine | task | Agentic-led | Complete |
 | `M16.3.6` | Fold the remaining single-importer siblings from the code report's misc list | task | Agentic-led | Complete |
-| `M16.3.7` | Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed | task | Agentic-led | Not Started |
+| `M16.3.7` | Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed | task | Agentic-led | Complete |
 | `M16.4` | One command surface and one checks: config (aliases kept for rc5) | milestone | — | Not Started |
 | `M16.4.1` | doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases | task | Agentic-led | Not Started |
 | `M16.4.2` | upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update | task | Agentic-led | Not Started |
