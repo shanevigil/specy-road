@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road.checks_config import check_commands
 from specy_road.finish_land_deterministic import merge_feature_deterministically
 from specy_road.finish_land_integration import (
     _checkout_feature_after_landing,
@@ -23,8 +24,7 @@ from specy_road.finish_land_integration import (
     integration_worktree_problem,
     land_merge_feature_into_integration,
     print_merge_push_notice,
-    resolve_land_check_cmd,
-    run_land_check,
+    run_land_checks,
     tracking_ref_snapshot,
 )
 from specy_road.git_subprocess import git_code, git_ok
@@ -32,13 +32,13 @@ from specy_road.nested_repos import land_nested_branches
 from specy_road.workflow_prefs import LAND_LOCAL, root_land
 
 
-def _merge_here(tree: Path, ib: str, feature_branch: str, check: str | None) -> tuple[bool, str]:
+def _merge_here(tree: Path, ib: str, feature_branch: str, checks: list[str]) -> tuple[bool, str]:
     """Merge into ``ib`` (checked out in ``tree``) and land-check it; a failed check puts ``ib`` back."""
     _ok, pre = git_ok(["rev-parse", "HEAD"], tree)
     ok, out = merge_feature_deterministically(tree, integration_branch=ib, feature_branch=feature_branch)
     if not ok:
         return False, out
-    problem = run_land_check(tree, check) if check else None
+    problem = run_land_checks(tree, checks)
     if problem is not None:
         return False, f"{problem}\n  {_reset_integration(tree, ib, pre)}"
     return True, ""
@@ -64,14 +64,14 @@ def land_root_locally(
     ok, err = land_nested_branches(repo, feature_branch)
     if not ok:
         return False, err
-    check = resolve_land_check_cmd(repo, cli=land_check_cmd)
+    checks = check_commands(repo, "land", cli=land_check_cmd)
     holder = integration_worktree(repo, ib)
     if holder is not None:
-        return _merge_here(holder_project_root(repo, holder), ib, feature_branch, check)
+        return _merge_here(holder_project_root(repo, holder), ib, feature_branch, checks)
     code, out = git_code(["checkout", ib], repo)
     if code != 0:
         return False, f"git checkout {ib} failed: {out}"
-    ok, err = _merge_here(repo, ib, feature_branch, check)
+    ok, err = _merge_here(repo, ib, feature_branch, checks)
     return _checkout_feature_after_landing(repo, feature_branch, ok, err)
 
 

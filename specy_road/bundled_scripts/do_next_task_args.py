@@ -102,8 +102,9 @@ def _add_baseline_args(p: argparse.ArgumentParser) -> None:
         help=(
             "Shell command run on the integration branch after the sync and before "
             "claiming a leaf (e.g. 'make test'). A non-zero exit refuses the pickup, "
-            "so a red base is fixed before a leaf inherits it. Default: baseline_cmd "
-            "in roadmap/git-workflow.yaml; an empty value turns that off for this run."
+            "so a red base is fixed before a leaf inherits it. Default: the checks: "
+            "entries with when: baseline in roadmap/git-workflow.yaml; an empty value "
+            "turns them off for this run."
         ),
     )
     p.add_argument(

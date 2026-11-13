@@ -14,6 +14,7 @@ from typing import Any
 from specy_road.cli_args import add_model_arg
 from specy_road import review_lock
 from specy_road.brief_acceptance import acceptance_ids
+from specy_road.checks_config import check_commands
 from specy_road.finish_implementation_check import base_ref, in_zones
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import (
@@ -394,13 +395,14 @@ def _live_run_rows(runs: list[str], argv_runs: list[list[str]]) -> tuple[list[di
 def cmd_ready(ns: argparse.Namespace) -> int:
     """Write ``READY-<model>.md`` for ``HEAD``, validated by the loader ``handoff status`` uses; exit 1 on refusal.
 
-    ``--run`` commands run last, after every cheap refusal, so a wrong branch never costs a test run.
+    ``--run`` commands run last, after every cheap refusal, so a wrong branch never costs a test run;
+    the ``checks:`` entries with ``when: ready`` run first among them, in the same way.
     A leaf with no committed in-zone change, or with uncommitted in-zone changes, is refused before
     those commands and again after them; a command that moves ``HEAD`` is refused too, and an
     existing READY file is left as it was.
     """
     root = resolve_repo_root(ns)
-    raw_runs = getattr(ns, "run", None) or []
+    raw_runs = check_commands(root, "ready") + (getattr(ns, "run", None) or [])
     run_argv_specs = getattr(ns, "run_argv", None) or []
     try:
         verify = [{"cmd": cmd, "exit": code} for cmd, code in (parse_check(s) for s in ns.verify)]

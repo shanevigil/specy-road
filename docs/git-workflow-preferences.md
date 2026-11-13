@@ -86,7 +86,7 @@ same for its repository (M14.4.1).
   then stops. Nothing is fetched or pushed. The rest of the landing is the same
   as `push`: nested repositories land first, bookkeeping conflicts in the
   registry and generated files are resolved deterministically, and
-  `land_check_cmd` runs on the merge commit (a failure puts the local branch
+  the land check (`checks:` entries with `when: land`) runs on the merge commit (a failure puts the local branch
   back). Where another worktree has the integration branch checked out, the
   merge runs there, and only while that worktree is clean. Finish says before
   and after that nothing was pushed. Push the integration branch yourself when

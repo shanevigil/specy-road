@@ -22,8 +22,9 @@ inlines all the context an implementer needs (no separate file-opening):
   this task's own planning sheet — see ``brief_dependency_context``; one
   line instead while that ``## Intent`` is still a placeholder)
 * an explicit touch-zone instruction for the implementing agent, then how to
-  run the leaf's tests (``verify_cmd``, :mod:`specy_road.verify_cmd_config`); the
-  header states the brief's size and largest sections (``brief_acceptance``)
+  run the leaf's tests (the ``checks:`` entry with ``when: prompt``,
+  :mod:`specy_road.checks_config`); the header states the brief's size and
+  largest sections (``brief_acceptance``)
 
 Determinism: same chunks + same planning files + same shared/*.md set =>
 byte-identical output. No timestamps, no host info.
@@ -58,7 +59,7 @@ from specy_road.roadmap_node_keys import build_key_to_node
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix
-from specy_road.verify_cmd_config import verify_cmd_lines
+from specy_road.checks_config import verify_cmd_lines
 
 
 def load_nodes(root: Path | None = None) -> list[dict]:

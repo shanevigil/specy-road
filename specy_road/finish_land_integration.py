@@ -30,11 +30,11 @@ Each leaf passes its own review, yet the combined tree that lands on the
 integration branch is one nobody ran: two leaves can each be green and red
 together, and a clean merge at finish lands a tree no reviewer saw. In merge
 mode finish builds that merge commit locally and only then pushes, so the
-project's gate (``land_check_cmd`` in ``roadmap/git-workflow.yaml``, or
-``--land-check-cmd``) runs here, on exactly the commit that would become the
-new tip, in a detached temporary worktree so neither checkout is touched.
-Off when neither is set; pr mode never gets here, because there CI owns the
-merge result.
+project's gate (the ``checks:`` entries with ``when: land`` in
+``roadmap/git-workflow.yaml``, or ``--land-check-cmd``) runs here, on
+exactly the commit that would become the new tip, in a detached temporary
+worktree so neither checkout is touched. Off when neither is set; pr mode
+never gets here, because there CI owns the merge result.
 """
 
 from __future__ import annotations
@@ -46,11 +46,11 @@ import tempfile
 from collections import deque
 from pathlib import Path
 
+from specy_road.checks_config import check_commands
 from specy_road.finish_land_deterministic import (
     merge_feature_deterministically,
 )
 from specy_road.git_subprocess import git_code, git_ok, git_root
-from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.nested_repos import land_nested_branches
 from specy_road.runtime_paths import project_prefix
 
@@ -189,19 +189,6 @@ def _restore_tracking(tree: Path, remote: str, integration_branch: str, before: 
 # ---------------------------------------------------------------------------
 
 
-def resolve_land_check_cmd(repo_root: Path, *, cli: str | None) -> str | None:
-    """Land check command, or ``None`` when no check runs.
-
-    CLI ``--land-check-cmd`` wins, and an empty one turns a configured check
-    off for that run; then ``land_check_cmd`` in ``roadmap/git-workflow.yaml``.
-    """
-    cmd = cli
-    if cmd is None:
-        data, err = load_git_workflow_config(repo_root)
-        cmd = (data or {}).get("land_check_cmd") if not err else None
-    return (cmd or "").strip() or None
-
-
 def _run_streaming(cmd: str, cwd: Path) -> tuple[int, list[str]]:
     """Run ``cmd`` through the shell, echoing its output; return (exit, last lines)."""
     tail: deque[str] = deque(maxlen=TAIL_LINES)
@@ -250,9 +237,20 @@ def run_land_check(tree: Path, cmd: str) -> str | None:
     )
 
 
+def run_land_checks(tree: Path, cmds: list[str]) -> str | None:
+    """Run each land check in order (:func:`run_land_check`).
+
+    Returns the first failure's error, or ``None`` when every one passed.
+    """
+    for cmd in cmds:
+        if (problem := run_land_check(tree, cmd)) is not None:
+            return problem
+    return None
+
+
 def _merge_and_push(
     tree: Path, *, remote: str, integration_branch: str, feature_branch: str,
-    land_check_cmd: str | None = None, tracking_before: str = "",
+    land_checks: list[str], tracking_before: str = "",
 ) -> tuple[bool, str]:
     """Fast-forward, merge, land-check and push ``integration_branch``, checked out in ``tree``.
 
@@ -280,13 +278,11 @@ def _merge_and_push(
     )
     if not ok:
         return False, out
-    if land_check_cmd:
-        problem = run_land_check(tree, land_check_cmd)
-        if problem is not None:
-            return False, (
-                f"{problem}\n  {_reset_integration(tree, integration_branch, pre)} "
-                f"{_restore_tracking(tree, remote, integration_branch, tracking_before)}"
-            )
+    if (problem := run_land_checks(tree, land_checks)) is not None:
+        return False, (
+            f"{problem}\n  {_reset_integration(tree, integration_branch, pre)} "
+            f"{_restore_tracking(tree, remote, integration_branch, tracking_before)}"
+        )
     code, out = git_code(["push", remote, integration_branch], tree)
     if code != 0:
         return (
@@ -410,8 +406,8 @@ def land_merge_feature_into_integration(
     it has uncommitted changes) and leave this checkout alone.
 
     ``land_check_cmd`` is the ``--land-check-cmd`` value: ``None`` falls back
-    to ``land_check_cmd`` in ``roadmap/git-workflow.yaml``, ``""`` skips the
-    check (:func:`resolve_land_check_cmd`). ``tracking_before`` is the
+    to the ``checks:`` entries with ``when: land``, ``""`` skips the land check
+    (:func:`specy_road.checks_config.check_commands`). ``tracking_before`` is the
     :func:`tracking_ref_snapshot` the caller took before its own first fetch;
     ``None`` takes it here, before this function's fetch.
 
@@ -452,13 +448,13 @@ def land_merge_feature_into_integration(
     ok, err = land_nested_branches(repo, feature_branch)
     if not ok:
         return False, err
-    check = resolve_land_check_cmd(repo, cli=land_check_cmd)
+    checks = check_commands(repo, "land", cli=land_check_cmd)
     holder = integration_worktree(repo, integration_branch)
     if holder is not None:
         return _merge_and_push(
             holder_project_root(repo, holder), remote=remote,
             integration_branch=integration_branch, feature_branch=feature_branch,
-            land_check_cmd=check, tracking_before=tracking_before,
+            land_checks=checks, tracking_before=tracking_before,
         )
 
     code, out = git_code(["checkout", integration_branch], repo)
@@ -467,6 +463,6 @@ def land_merge_feature_into_integration(
     ok, err = _merge_and_push(
         repo, remote=remote,
         integration_branch=integration_branch, feature_branch=feature_branch,
-        land_check_cmd=check, tracking_before=tracking_before,
+        land_checks=checks, tracking_before=tracking_before,
     )
     return _checkout_feature_after_landing(repo, feature_branch, ok, err)

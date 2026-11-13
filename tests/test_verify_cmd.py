@@ -10,7 +10,7 @@ from tests.test_models_and_prompt import make_profile_repo
 from specy_road.bundled_scripts import role_prompt
 from specy_road.git_workflow_config import validate_git_workflow_dict
 from specy_road.review_files import PACKET_NAME, reviews_dir
-from specy_road.verify_cmd_config import resolve_verify_cmd
+from specy_road.checks_config import check_commands
 
 CMD = "python -m pytest -n 4 -p no:cacheprovider"
 CAP = "cap parallel test workers"
@@ -36,11 +36,11 @@ def test_schema_accepts_verify_cmd() -> None:
 
 
 def test_unset_or_blank_verify_cmd_resolves_to_none(tmp_path: Path) -> None:
-    assert resolve_verify_cmd(tmp_path) is None
+    assert check_commands(tmp_path, "prompt") == []
     (tmp_path / "roadmap").mkdir()
     (tmp_path / "roadmap" / "git-workflow.yaml").write_text(
         "version: 1\nintegration_branch: main\nremote: origin\nverify_cmd: '  '\n", encoding="utf-8")
-    assert resolve_verify_cmd(tmp_path) is None
+    assert check_commands(tmp_path, "prompt") == []
 
 
 def test_prompts_without_verify_cmd_say_to_cap_test_workers(tmp_path: Path) -> None:

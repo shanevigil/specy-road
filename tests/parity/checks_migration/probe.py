@@ -10,5 +10,6 @@ import os
 import sys
 
 with open(os.environ["CHECKS_PROBE_LOG"], "a", encoding="utf-8") as log:
-    log.write(json.dumps({"argv": sys.argv[1:], "cwd": os.getcwd(), "env": sorted(os.environ)}) + "\n")
+    run = {"argv": sys.argv[1:], "cwd": os.getcwd(), "env": sorted(os.environ)}
+    log.write(json.dumps(run) + "\n")
 sys.exit(1 if "fail" in sys.argv[1:] else 0)

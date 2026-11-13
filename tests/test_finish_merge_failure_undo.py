@@ -37,12 +37,13 @@ _RAISING = """
 import sys
 from pathlib import Path
 from unittest import mock
-from specy_road.finish_land_integration import resolve_land_check_cmd, run_land_check
+from specy_road.checks_config import check_commands
+from specy_road.finish_land_integration import run_land_checks
 import specy_road.finish_modes as fm
 
 def boom(repo, *, land_check_cmd, **_kw):
-    cmd = resolve_land_check_cmd(Path(repo), cli=land_check_cmd)
-    assert run_land_check(Path(repo), cmd) is None
+    cmds = check_commands(Path(repo), "land", cli=land_check_cmd)
+    assert run_land_checks(Path(repo), cmds) is None
     raise OSError("simulated landing crash")
 
 with mock.patch.object(fm, "land_on_integration", boom):

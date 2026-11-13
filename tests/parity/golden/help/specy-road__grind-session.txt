@@ -90,8 +90,8 @@ options:
                         tier (default: prefer_agentic_pick_order in roadmap/git-workflow.yaml);
                         applies to --plan and is passed through to pickup.
   --baseline-cmd CMD    Passed through to pickup: run on the integration branch before each claim;
-                        a non-zero exit refuses the pickup (exit 5). Default: baseline_cmd in
-                        roadmap/git-workflow.yaml.
+                        a non-zero exit refuses the pickup (exit 5). Default: the checks: entries
+                        with when: baseline in roadmap/git-workflow.yaml.
   --baseline-warn       Passed through to pickup: a failing baseline only warns.
   --push                Pass --push through to finish-this-task.
   --delete-merged-branches

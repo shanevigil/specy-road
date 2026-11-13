@@ -63,6 +63,7 @@ from specy_road.bundled_scripts.validate_registry_overlap import (
     authoring_overlap_scope,
     current_authoring_overlap_scope,
 )
+from specy_road.checks_config import legacy_notice
 from specy_road.validate_roadmap_runner import (
     NO_ORCHESTRATION_NOTICE,
     add_context_arg,
@@ -155,6 +156,8 @@ def main(argv: list[str] | None = None) -> None:
             generate_orchestration(root)
         elif not orchestration_yaml_path(root).is_file() and (notice := no_orchestration_notice(root)):
             print(notice)   # stdout: a notice, which --strict does not count
+        if notice := legacy_notice(load_git_workflow_config(root)[0]):
+            print(notice)
         print_injected_context(root)
     if (args.strict or args.strict_authoring) and stderr.lines:
         sys.stdout.flush()  # the OK line first, then why it does not count

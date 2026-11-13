@@ -163,3 +163,15 @@ rows:
   - old: specy-road handoff
     new: specy-road review status
     allowed: "M16.4.4 (A3): `handoff` is a retired top-level name: its one subcommand, `status`, is the deprecated alias of `review status` (M16.4.3 row); no other change"
+  - old: specy-road brief
+    new: specy-road brief
+    allowed: "M16.4.5: `brief --help` says the leaf test command is the checks: entry with when: prompt (specy_road.checks_config) instead of verify_cmd"
+  - old: specy-road do-next-available-task
+    new: specy-road do-next-available-task
+    allowed: "M16.4.5: `--baseline-cmd` help names the checks: entries with when: baseline as its default instead of baseline_cmd"
+  - old: specy-road finish-this-task
+    new: specy-road finish-this-task
+    allowed: "M16.4.5: `--land-check-cmd` help names the checks: entries with when: land as its default instead of land_check_cmd"
+  - old: specy-road grind-session
+    new: specy-road grind-session
+    allowed: "M16.4.5: `--baseline-cmd` help names the checks: entries with when: baseline as its default instead of baseline_cmd"

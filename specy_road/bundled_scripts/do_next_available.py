@@ -23,7 +23,7 @@ from specy_road.roadmap_gui_remote import build_registry_enrichment, enrichment_
 from specy_road.repo_ops import working_tree_clean
 from specy_road.roadmap_index import RoadmapIndex
 from specy_road.git_subprocess import git_ok
-from specy_road.git_workflow_config import resolve_baseline_cmd
+from specy_road.checks_config import check_commands
 from specy_road.node_kinds import is_pickable
 from specy_road.planning_scaffold_check import pickup_unauthored_leaves as unauthored_leaves
 
@@ -49,16 +49,25 @@ def _git_state(repo_root: Path) -> dict[str, str]:
 
 
 def run_baseline_gate(repo_root: Path, base: str, *, cli: str | None, warn_only: bool) -> None:
-    """Run the baseline command on ``base`` before a leaf is claimed from it.
+    """Run the baseline commands on ``base`` before a leaf is claimed from it.
 
     A red integration branch is inherited by every leaf picked from it, and the
-    agent implementing that leaf then "fixes" failures it did not cause. Exit 1
-    when the command fails, unless ``warn_only``; exit 1 either way when it moved
-    HEAD, switched branch or changed files: pickup registers from what it leaves.
+    agent implementing that leaf then "fixes" failures it did not cause. The
+    commands are the ``checks:`` entries with ``when: baseline``, or ``--baseline-cmd``
+    (:func:`specy_road.checks_config.check_commands`), run in order until one fails.
     """
-    cmd = resolve_baseline_cmd(repo_root, cli=cli)
-    if not cmd:
-        return
+    for cmd in check_commands(repo_root, "baseline", cli=cli):
+        if not _baseline_passed(repo_root, base, cmd, warn_only=warn_only):
+            return
+
+
+def _baseline_passed(repo_root: Path, base: str, cmd: str, *, warn_only: bool) -> bool:
+    """Run one baseline command; whether it passed.
+
+    Exit 1 when the command fails, unless ``warn_only`` (then ``False``); exit 1
+    either way when it moved HEAD, switched branch or changed files: pickup
+    registers from what it leaves.
+    """
     print(f"baseline on {base}: {cmd}")
     before = _git_state(repo_root)
     rc = subprocess.run(cmd, shell=True, cwd=repo_root).returncode
@@ -70,11 +79,11 @@ def run_baseline_gate(repo_root: Path, base: str, *, cli: str | None, warn_only:
               "the command read-only with respect to git.", file=sys.stderr)
         raise SystemExit(1)
     if rc == 0:
-        return
+        return True
     if warn_only:
         print(f"warning: baseline failed on {base!r} (exit {rc}); picking up anyway "
               "(--baseline-warn). The leaf starts from a red base.", file=sys.stderr)
-        return
+        return False
     print(f"error: baseline failed on {base!r} (exit {rc}); no leaf was claimed.\n"
           f"  Fix {base!r} first, so the next leaf does not inherit the failure, "
           "or pass --baseline-warn to pick up anyway.", file=sys.stderr)
