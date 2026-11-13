@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 
-from specy_road.bundled_scripts.roadmap_gui_pr_pickers import (
+from specy_road.roadmap_gui_remote import (
     github_pulls_for_branch,
     gitlab_mrs_for_branch,
     pick_latest_github_pr,

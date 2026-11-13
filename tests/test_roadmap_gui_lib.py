@@ -85,21 +85,29 @@ def test_apply_llm_env_anthropic_max_output_tokens_refreshes(
     assert os.environ["SPECY_ROAD_ANTHROPIC_MAX_TOKENS"] == "2000"
 
 
-def test_save_settings_obfuscates_anthropic_key(
+@pytest.mark.parametrize(("block", "key"), [
+    ("llm", "openai_api_key"),
+    ("llm", "azure_api_key"),
+    ("llm", "anthropic_api_key"),
+    ("git_remote", "token"),
+    ("research", "api_key"),
+])
+def test_save_settings_obfuscates_each_credential(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    block: str,
+    key: str,
 ) -> None:
+    """The bytes ``gui-settings.json`` holds for a credential are pinned, and read back as typed."""
     monkeypatch.setattr(st, "SETTINGS_DIR", tmp_path / ".specy-road")
     monkeypatch.setattr(st, "SETTINGS_PATH", tmp_path / ".specy-road" / "gui-settings.json")
     data = m.default_settings()
-    data["llm"]["anthropic_api_key"] = "secret-ant"
+    data[block][key] = "secret-ant"
     m.save_settings(data)
     raw = json.loads(st.SETTINGS_PATH.read_text(encoding="utf-8"))
-    stored = raw["global"]["llm"]["anthropic_api_key"]
-    assert isinstance(stored, str)
-    assert stored.startswith("__b64__:")
-    assert "secret-ant" not in stored
+    assert raw["global"][block][key] == "__b64__:c2VjcmV0LWFudA=="
     assert raw.get("version") == st.SETTINGS_FILE_VERSION
+    assert m.load_settings()[block][key] == "secret-ant"
 
 
 def test_v1_flat_file_migrates_to_v2(
