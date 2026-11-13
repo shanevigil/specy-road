@@ -23,7 +23,6 @@ from tests.parity.support import (
 pytestmark = pytest.mark.parity
 
 RC3_CONSUMER = PARITY / "fixtures" / "rc3_consumer"
-PROJECT_TEMPLATE = REPO / "specy_road" / "templates" / "project"
 
 #: Digest sections built from git history (``specy_road.digest``); they change with the branch.
 HISTORY_SECTIONS = ("Dependencies that were removed", "Quality by area")
@@ -85,31 +84,25 @@ def _reported_lines(golden: Path) -> list[str]:
     return sorted(line for line in lines if line.strip() and not line.startswith("== "))
 
 
-def _schema_writes(lines: list[str]) -> set[str]:
-    return {line for line in lines if line.startswith("would write schemas/")}
+#: Lines the after report may add to the before's (A2 as amended): each a ``would write`` of a
+#: bundled file whose text M16.4.2 changes under A4, mapped to that file. Nothing else may differ.
+ALLOWED_ADDED = {
+    "would write schemas/harness-facts.schema.json":
+        "specy_road/templates/project/schemas/harness-facts.schema.json",
+}
 
 
 def test_the_one_upgrade_report_keeps_the_lines_it_reported_before() -> None:
     """The four-section report (M16.4.2) groups the same lines under new headings, nothing else.
 
-    ``rc3-dry-run-before.txt`` is frozen at the commit before the report changed. One kind of line
-    follows the bundled data instead of the report: ``would write schemas/<name>``, written for
-    each bundled schema whose bytes differ from the fixture's copy. A later edit to a bundled
-    schema adds its line (M16.4.2 renamed refresh-profiles in harness-facts.schema.json). So
-    those lines must be exactly the schemas that differ today, and keep every one recorded before;
-    every other line must equal the before's.
+    ``rc3-dry-run-before.txt`` is frozen at the commit before the report changed. The after report
+    holds exactly its lines plus :data:`ALLOWED_ADDED`, each caused by a file M16.4.2 edits; any
+    other added or dropped line fails.
     """
     before = _reported_lines(GOLDEN / "upgrade" / "rc3-dry-run-before.txt")
     after = _reported_lines(GOLDEN / "upgrade" / "rc3-dry-run.txt")
-    differing = {
-        f"would write schemas/{src.name}"
-        for src in (PROJECT_TEMPLATE / "schemas").glob("*.json")
-        if (RC3_CONSUMER / "schemas" / src.name).is_file()
-        and src.read_bytes() != (RC3_CONSUMER / "schemas" / src.name).read_bytes()
-    }
-    assert _schema_writes(after) == differing
-    assert _schema_writes(before) <= _schema_writes(after)
-    assert [x for x in after if x not in differing] == [x for x in before if x not in differing]
+    assert after == sorted([*before, *ALLOWED_ADDED])
+    assert all((REPO / cause).is_file() for cause in ALLOWED_ADDED.values())
 
 
 def test_history_sections_are_left_out_of_the_digest_golden() -> None:
