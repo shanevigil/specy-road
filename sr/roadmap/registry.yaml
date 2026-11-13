@@ -70,27 +70,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node
-    node_id: M16.4.4
-    branch: feature/rm-milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node
-    touch_zones:
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/bundled_scripts/start_milestone_session.py
-      - specy_road/bundled_scripts/reconcile_milestone_status.py
-      - specy_road/bundled_scripts/open_milestone_pr.py
-      - specy_road/bundled_scripts/scaffold_planning.py
-      - specy_road/bundled_scripts/author_approach.py
-      - specy_road/bundled_scripts/archive_cli.py
-      - docs/
-      - suggested_prompts/
-      - specy_road/templates/project/
-      - specy_road/templates/specyrd/
-      - tests/parity/
-      - tests/
-      - CHANGELOG.md
-      - playground/README.md
-    started: '2026-11-13'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-13T18:05:55+00:00'

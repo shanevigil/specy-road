@@ -19,7 +19,7 @@
       "parent_id": "M16.4",
       "planning_dir": "planning/M16.4.4_milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node_511edd44-2972-41b1-8639-3e686acdf63a.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "milestone and planning command groups, and archive --hard-remove replaces archive-node",
       "touch_zones": [
         "specy_road/cli.py",
