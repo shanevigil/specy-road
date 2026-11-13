@@ -67,7 +67,7 @@ Optional field **`nested_repos`** (list): separately versioned git repositories 
 
 Optional field **`env_setup`** (`{cmd, copy}`): what a new leaf worktree gets when `do-next-available-task --worktree` or `worker delegate` creates it — ignored files copied from the main checkout, then a command run there. See "Worktree environment" below.
 
-Optional field **`baseline_cmd`** (string): a check command, such as `make test`, that `do-next-available-task` and `grind-session` run on the integration branch after the sync and before a leaf is claimed. A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it; the command must only check (pickup also refuses when it moves `HEAD`, switches branch or changes files). `--baseline-cmd CMD` overrides it for one run (an empty value turns it off) and `--baseline-warn` downgrades a failure to a warning. See [`dev-workflow.md`](dev-workflow.md) (Baseline gate).
+Optional field **`checks`** (list): the commands pickup, `ready`, landing and the prompts run or name, each named once with `when:`. See "Checks" below.
 
 Optional field **`prefer_agentic_pick_order`** (boolean, default **false**): when **true**, `do-next-available-task` and `grind-session` order each pickup tier (Blocked, MR-rejected, the rest) by `execution_milestone` — `Agentic-led`, then `Mixed`, then unset, then `Human-led` — and by outline order within each. It only reorders; eligibility is unchanged. `--prefer-agentic` / `--no-prefer-agentic` override it for one run.
 
@@ -107,8 +107,8 @@ who holds it (pid and operation) and waits, with a timeout. A holder whose
 process has exited is cleared automatically so a killed pickup or finish does
 not block the queue forever.
 
-**Land check on the merge commit.** Optional field **`land_check_cmd`** (string):
-a shell command `merge` (and `auto`) runs on the local merge commit before it
+**Land check on the merge commit.** A `checks:` entry with `when: land` (below)
+is a shell command `merge` (and `auto`) runs on the local merge commit before it
 pushes, e.g. the project's full test and lint gate. Each leaf is reviewed on its
 own branch, but the tree that lands is the merge of it with everything that
 landed since, and nobody ran that. finish therefore creates the merge commit,
@@ -116,7 +116,7 @@ runs the command once at the project root of a detached temporary worktree of
 that commit (`<worktree>/sr` in the nested layout), and pushes only if it exits
 0, so the pushed tip is exactly the commit the check ran on. The command's
 working directory is that **project root**, not the git root: a nested layout
-whose tests live next to the git root must point `land_check_cmd` at those
+whose tests live next to the git root must point the land entry at those
 tests (for example
 `python -m pytest -n auto -p no:cacheprovider ../tests`), or pytest collects
 nothing and finish never pushes. A non-zero exit
@@ -125,8 +125,9 @@ finish ran, and prints the command, its exit code and the last 20 lines of its
 output. A rejected push resets the local branch the same way; the re-run the
 error names merges onto the remote's new tip and checks that commit, so the push
 itself is the compare-and-swap. The temporary worktree is always removed.
-**`--land-check-cmd CMD`** overrides the field for one run and
-**`--land-check-cmd ''`** skips it. `pr` never runs it: there CI owns the merge
+`land: local` runs the same entries on its local merge commit.
+**`--land-check-cmd CMD`** replaces the land entries for one run and
+**`--land-check-cmd ''`** skips them. `pr` never runs them: there CI owns the merge
 result.
 
 For projects whose pytest suite is **parallel-safe**, prefer a parallel land
@@ -136,47 +137,92 @@ temp directories, avoids shared mutable module-level state and implicit
 ordering between tests, and does not depend on another test having run first.
 When order or shared state slips in, fix the test rather than marking it to
 run serially under xdist. Install **`pytest-xdist`** in development
-dependencies and point **`land_check_cmd`** at a parallel command that
+dependencies and point the land entry at a parallel command that
 collects the suite from the project root (the same suite CI runs, but from
 that cwd). When tests live at the project root:
 
 ```yaml
-land_check_cmd: pytest -n auto
+checks:
+  - {name: suite, run: pytest -n auto, when: land}
 ```
 
 When they live at the git root in a nested layout (`project_root: sr`):
 
 ```yaml
-land_check_cmd: python -m pytest -n auto -p no:cacheprovider ../tests
+checks:
+  - {name: suite, run: python -m pytest -n auto -p no:cacheprovider ../tests, when: land}
 ```
 
-When CI also enforces a linter, put it in the same command ahead of the tests.
+When CI also enforces a linter, add it as an entry ahead of the tests.
 Reviewers lint only the leaf's own files, so two leaves that each pass can still
 land a tree CI rejects on promotion; the land check is the one place the merged
 tree is checked before it is pushed:
 
 ```yaml
-land_check_cmd: python -m ruff check ../src ../tests && python -m pytest -n auto -p no:cacheprovider ../tests
+checks:
+  - {name: lint, run: python -m ruff check ../src ../tests, when: land}
+  - {name: suite, run: python -m pytest -n auto -p no:cacheprovider ../tests, when: land}
 ```
 
 Run the suite once with **`pytest -n auto`** and once serially (**`pytest`**
 with no **`-n`**) before adopting that gate; if both pass, the tree is a
 reasonable candidate for a parallel land check.
 
-**Leaf test command.** Optional field **`verify_cmd`** (string): the command
+**Leaf test command.** A `checks:` entry with `when: prompt` is the command
 executor briefs and reviewer prompts give for running the leaf's tests, with the
-test paths appended. It is separate from `land_check_cmd`: the land check runs
+test paths appended. It is separate from the land entries: the land check runs
 the full suite once per landing, while executors and reviewers run their leaf's
 tests while other workers may share the machine, and each full parallel suite
 starts one test worker per core. Keep its worker count small:
 
 ```yaml
-verify_cmd: python -m pytest -n 4 -p no:cacheprovider
+checks:
+  - {name: leaf tests, run: python -m pytest -n 4 -p no:cacheprovider, when: prompt}
 ```
 
-When it is unset, the brief and the reviewer prompt say to cap parallel test
+When there is none, the brief and the reviewer prompt say to cap parallel test
 workers when other workers share the machine. See
 [orchestration-workers.md](orchestration-workers.md) (Parallel tests).
+
+### Checks (`checks:`)
+
+`checks:` in `roadmap/git-workflow.yaml` is a list of entries, each a command named once with the
+points it is used at:
+
+```yaml
+checks:
+  - {name: baseline, run: make test, when: baseline}
+  - {name: suite, run: python -m pytest -n auto -p no:cacheprovider, when: [ready, land]}
+  - {name: leaf tests, run: python -m pytest -n 4 -p no:cacheprovider, when: prompt}
+```
+
+| Field | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `name` | yes | none | A label for the entry; `upgrade` writes `baseline`, `land check` and `verify`. |
+| `run` | yes | none | The shell command; it must not be blank. |
+| `when` | yes | none | One stage, or a list of stages, from `baseline`, `ready`, `land` and `prompt`. |
+
+No other field is accepted. The stages:
+
+- **`baseline`**: `do-next-available-task` and `grind-session` run the command at the project root, on the integration branch after the sync and before a leaf is claimed. A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it; the command must only check (pickup also refuses when it moves `HEAD`, switches branch or changes files). `--baseline-warn` downgrades a failure to a warning. See [`dev-workflow.md`](dev-workflow.md) (Baseline gate).
+- **`ready`**: `specy-road ready` runs the command from the current directory, before its `--run` commands and in the same way: it records the exit and the last lines of its output in `verify`, and a non-zero exit is refused.
+- **`land`**: the land check on the merge commit, under `land: push` and `land: local` (above).
+- **`prompt`**: the command executor briefs and reviewer prompts give for the leaf's tests, with the test paths appended (above). Only the first `prompt` entry is named.
+
+Entries of one stage run in file order. At `baseline` and `land` the first failure stops the
+stage, and the entries after it do not run; at `ready` the first failure refuses the hand-off.
+
+CLI precedence: **`--baseline-cmd CMD`** (pickup, `grind-session`) replaces every `baseline` entry
+for that run, and an empty value runs none; **`--land-check-cmd CMD`** (`finish-this-task`) does
+the same for the `land` entries. `review packet --verify-cmd` and `ready --verify` / `--run`
+record evidence only: they never replace or turn off an entry, and an entry does not change what
+they record.
+
+The legacy keys **`baseline_cmd`**, **`land_check_cmd`** and **`verify_cmd`** (strings) are read
+until the release after 0.3.1, each as one entry with `when: baseline`, `land` and `prompt`
+respectively; a blank one is no entry. `specy-road validate` prints one notice for them, and
+`specy-road upgrade` rewrites them into `checks:`. When `checks:` is present the legacy keys are
+ignored, and the notice says so.
 
 ### What `pr` leaves behind (read this before re-running pickup)
 
@@ -303,7 +349,7 @@ nested_repos:
 
 - **Layout.** `do-next-available-task --worktree` and `worker delegate` create, inside the leaf's worktree, a worktree of each repository at the same path (`work/.worktrees/<codename>/services/api`, under `sr/` in the nested layout). A repository the leaf's touch zones cover (a zone naming it or a path inside it, such as `services/api/src`) gets the leaf's branch, `feature/rm-<codename>`, created at its integration tip (the remote-tracking ref as it stands; nothing is fetched) or checked out when it already exists. Any other one is **detached** at that tip: present so the code builds and reads, read-only in practice. A worktree already there in that state (a worktree of that repository, on the leaf's branch or detached as above) is left alone, so `worker delegate` adds only what is missing, including after a pickup that warned it could not create one; anything else at that path, such as an ordinary directory or a worktree on another branch, is refused (a warning in pickup, whose claim is already pushed) until you remove it. A configured path that is not the top of a git repository in the main checkout is refused the same way. So is a repository with neither `<remote>/<integration_branch>` nor a local `<integration_branch>`: its `HEAD` is never used in place of the tip. When `worker delegate` runs the worker in the main checkout itself (already on the claim's branch, no leaf worktree), the nested repositories there are the ones the worker edits, so delegate puts each in the same state: a covered one on the leaf's branch (created at the tip when missing), any other detached at the tip. It switches only a checkout with no tracked or untracked changes; a dirty one in the wrong state, or one git cannot switch (the branch checked out elsewhere), refuses the delegation. Keep each repository's directory in the main repository's `.gitignore`; either way, delegate's uncommitted-work check and reconcile do not count it as an untracked file of the main repository. Delegate checks each nested repository under the worker's tree on its own instead, and launches nothing while any of them has tracked or untracked changes.
 - **`worker reconcile`** diffs each nested repository in the worker's tree from its merge base with its integration branch, committed or not, and reports those paths (`nested_changed`, git-root-relative) under the same touch-zone check as the main repository's: an edit in a detached repository, or outside the zones, sets `needs_reconcile`. Untracked files there count as warnings, as in the main repository.
-- **`finish-this-task`.** The implementation gate (`require_implementation_before_finish`) counts the branch's in-zone changes in nested repositories, so a leaf whose work lives only there can finish. In `merge` (and `auto`) mode, every nested repository holding the leaf's branch is landed **before** the main repository; with the default `land: push` it is merged and pushed: the merge is made in a detached temporary worktree at `<remote>/<integration_branch>` and pushed straight to the remote, so no checkout of that repository moves (pull the main checkout's copy afterwards). A conflict or a rejected push there, or a configured path that is not a git repository (whether it held the leaf's work cannot be told), stops the landing before the main repository moves; a repository without the leaf's branch has nothing to land and is skipped; a re-run skips the repositories already landed. The land check (`land_check_cmd`) runs on the main repository's merge commit only. `pr` mode does not touch nested repositories: push each nested branch and open its PR/MR there yourself.
+- **`finish-this-task`.** The implementation gate (`require_implementation_before_finish`) counts the branch's in-zone changes in nested repositories, so a leaf whose work lives only there can finish. In `merge` (and `auto`) mode, every nested repository holding the leaf's branch is landed **before** the main repository; with the default `land: push` it is merged and pushed: the merge is made in a detached temporary worktree at `<remote>/<integration_branch>` and pushed straight to the remote, so no checkout of that repository moves (pull the main checkout's copy afterwards). A conflict or a rejected push there, or a configured path that is not a git repository (whether it held the leaf's work cannot be told), stops the landing before the main repository moves; a repository without the leaf's branch has nothing to land and is skipped; a re-run skips the repositories already landed. The land check (`checks:` entries with `when: land`) runs on the main repository's merge commit only. `pr` mode does not touch nested repositories: push each nested branch and open its PR/MR there yourself.
 - **`review packet`** adds a **Nested repositories** section: each repository's changed paths, with those outside the touch zones called out, and its diff from the merge base with its integration branch to the leaf's branch (local, else remote-tracking). A diff past `--max-diff-lines` or `--max-diff-bytes` is written to `work/reviews/<NODE_ID>/DIFF-nested-<path>.patch` instead, with each `/` of the path written `+` (`DIFF-nested-services+api.patch`), which no configured path contains, so two repositories never share a file.
 - **Removing the leaf's worktree** by hand leaves each nested repository's worktree registration behind; `git -C <repository> worktree prune` drops it, after which that repository's branch can be deleted. `specy-road worktree prune <ID>` removes them with the leaf's worktree, after checking each (see "Retiring a leaf's worktree").
 
