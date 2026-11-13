@@ -176,9 +176,9 @@
     },
     {
       "acceptance": [
-        "The four `grind_session_*` keys (max_limit_waits, max_limit_wait_hours, limit_wait_grace_seconds, max_empty_retries) move under `grind:`; a migration table (absent, old form only, new form only, both) gives the same effective values, with the new form winning when both are present",
-        "`upgrade` rewrites them; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release and prints one notice for the old form",
-        "Grind table (M16.5.9) and parity harness unchanged",
+        "The five `grind_session_*` keys (max_limit_waits, max_limit_wait_hours, limit_wait_grace_seconds, max_empty_retries, status_interval_minutes) move under `grind:`; a migration table (absent, old form only, new form only, both, and an existing `grind:` block kept and merged) gives the same effective values, with the new form winning when both are present",
+        "`upgrade` rewrites them, reusing M16.4.5's checks migration and notice helper for the `grind:` rewrite; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release and prints one notice for the old form",
+        "Grind table (M16.5.9) and parity harness unchanged except the grind-session help golden's yaml key names",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the release after 0.3.1 (maintainer, 2026-11-08)); no version heading is written",
         "Estimated net line change (informational, not a gate): package about 0 (migration code offsets the per-key readers)"
       ],
@@ -190,6 +190,9 @@
       "id": "M16.5.11",
       "node_key": "6434cf7b-842b-4532-96e3-1821655a5fb5",
       "parent_id": "M16.5",
+      "planned_test_changes": [
+        "changed-golden: tests/parity/golden/help/specy-road__grind-session.txt (the help prints the grind yaml key names, which move under grind:)"
+      ],
       "planning_dir": "planning/M16.5.11_grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade_6434cf7b-842b-4532-96e3-1821655a5fb5.md",
       "sibling_order": 6,
       "status": "Not Started",
@@ -208,14 +211,18 @@
         "docs/git-workflow.md",
         "specy_road/validate_roadmap_runner.py",
         "specy_road/bundled_scripts/grind_session_limits.py",
-        "specy_road/orchestration/grind/grind_session.py"
+        "specy_road/orchestration/grind/grind_session.py",
+        "specy_road/grind_status.py",
+        "specy_road/templates/specyrd/commands/specyrd-grind-session.md",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "specy_road/orchestration/grind/grind_session_implement.py"
       ],
       "type": "task"
     },
     {
       "acceptance": [
         "review_packet_observed, review_packet_nested and review_packet_uncommitted_refs fold into review_packet, which stays within the 1,000-line cap (not squashed to get under the 750-line warning), is rewrapped and has its width entry lowered",
-        "PACKET.md on the parity fixtures is byte-identical; parity harness and decision table unchanged",
+        "Before the fold, PACKET.md goldens with a nested-repo section and an over-budget truncation are committed under `tests/parity/golden/packet/`; after the fold they are byte-identical; parity harness and decision table unchanged",
         "Estimated net line change (informational, not a gate): package about -100"
       ],
       "codename": "the-review-packet-fragments-fold-into-review-packet",
@@ -232,7 +239,6 @@
       "title": "The review packet fragments fold into review_packet",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet*.py",
-        "specy_road/review_packet*.py",
         "scripts/line_width_baseline.json",
         "tests/",
         "constraints/clone-baseline.json",

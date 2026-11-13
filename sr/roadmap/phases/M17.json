@@ -221,7 +221,7 @@
     },
     {
       "acceptance": [
-        "docs/pm-gui.md gains an \"Orchestration drawer\" entry under What ships (panels, each field's meaning, the unknown / \"—\" rule, badge precedence, read-only) and a `/orchestration` row in the read-only JSON API table; docs/pm-workflow.md gains one paragraph on reading it; tests/test_docs_links.py passes",
+        "docs/pm-gui.md gains an \"Orchestration drawer\" entry under What ships (panels, each field's meaning, the unknown / \"—\" rule, badge precedence, read-only) and a `/orchestration` row in the read-only JSON API table; docs/pm-workflow.md gains one paragraph on reading it; tests/test_doc_links.py passes",
         "CHANGELOG.md's [Unreleased] Added lists the drawer, the leaf detail, the outline badge and `GET /api/orchestration`; no version heading, no project.version change, no tag",
         "Against `specy-road gui` on a fixture repo with live orchestration state the drawer shows the server's snapshot, not the mock; a test (or a grep of the production build output) shows the production bundle cannot render the mock",
         "`cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` passes; validate, export --check and file-limits pass",

@@ -51,7 +51,7 @@
       "acceptance": [
         "orchestration-workers, orchestration-roster and orchestration-chores merge into one workers reference; architecture folds into roadmap-authoring and install-release-candidates into install-and-usage; pm-gui-brainstorm and pm-llm-review are appended to pm-gui.md as new sections (its existing sections belong to the PM GUI work in phase M17); optional-ai-tooling-patterns becomes a short pointer",
         "A test fails when README.md or a file under docs/ matches `\\d+\\.\\d+\\.\\d+rc\\d+`, except the install section of docs/install-and-usage.md and docs/release-runbook.md (worked release examples); CHANGELOG.md and pyproject.toml are not scanned; README's setup steps describe skills, not slash-command stubs; templates cite no doc an adopter cannot open",
-        "The `[gui-next]` extra stays as an alias of `[gui]` for one release with a note (project.version untouched); every moved doc's inbound links resolve, checked by tests/test_docs_links.py; a test that opens a moved doc's path (test_review_rca, test_review_record_write, test_roster_generate, test_docs_install_extras, and any other the sheet's disposition table lists) changes only that path",
+        "The `[gui-next]` extra stays as an alias of `[gui]` for one release with a note (project.version untouched); every moved doc's inbound links resolve, checked by tests/test_doc_links.py; a test that opens a moved doc's path (test_review_rca, test_review_record_write, test_roster_generate, test_docs_install_extras, and any other the sheet's disposition table lists) changes only that path",
         "The roster part of the workers reference (from today's orchestration-roster.md) documents today's flat roster entry as it ships in 0.3.1; it describes no core/`run:` split and names no roster form as deprecated",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the release after 0.3.1 (maintainer, 2026-11-08)); no version heading is written",
         "Estimated net line change (informational, not a gate): docs about -1,500 in docs/ (archived text excluded)",
@@ -90,7 +90,6 @@
         "CHANGELOG.md",
         "sr/roadmap/phases/",
         "sr/planning/",
-        "tests/test_docs_links.py",
         "tests/test_review_rca.py",
         "tests/test_review_record_write.py",
         "tests/test_roster_generate.py",
@@ -121,7 +120,8 @@
         "specy_road/llm_client.py",
         "tests/test_cli.py",
         "tests/test_cli_init.py",
-        "scripts/post_release_readme_cleanup.py"
+        "scripts/post_release_readme_cleanup.py",
+        "tests/test_doc_links.py"
       ],
       "type": "task"
     }
