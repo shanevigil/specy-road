@@ -103,6 +103,19 @@ entries:
       - specy_road/review_policy_pin.py
       - specy_road/orchestration_config.py
       - scripts/line_width_baseline.json
+      - docs/dev-workflow.md
+      - docs/git-workflow-preferences.md
+      - docs/grind-session.md
+      - docs/orchestration-workers.md
+      - scripts/ruff_quality_baseline.json
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - specy_road/bundled_scripts/grind_session_args.py
+      - specy_road/feature_rm_registry.py
+      - tests/parity/golden/help/specy-road__brief.txt
+      - tests/parity/golden/help/specy-road__do-next-available-task.txt
+      - tests/parity/golden/help/specy-road__finish-this-task.txt
+      - tests/parity/golden/help/specy-road__grind-session.txt
+      - specy_road/bundled_scripts/finish_task.py
     started: '2026-11-13'
     owner: savigil
     implementation_review: pending

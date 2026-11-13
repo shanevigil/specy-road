@@ -2,10 +2,10 @@
   "nodes": [
     {
       "acceptance": [
-        "Before the switch, tests/parity/checks_migration/ records at pickup, for baseline_cmd, land_check_cmd, verify_cmd and the review-before-finish switch, the legacy rows: absent, blank, set, overridden on the CLI (`--verify-cmd`, `--verify`), and disabled on the CLI where an option exists; each records the commands run, their arguments, cwd, added environment, the evidence recorded, and the executor and reviewer prompt text that names the verify command with its appended test paths. A hand-written `checks:` equivalent of each row is committed beside it; after the switch each equivalent gives its row's recorded result, and mixed-form precedence (new form wins, one validate notice) has its own test",
-        "Before the switch, sr/work/M16.4.5-checks-schema.md fixes the `checks:` entry schema: its fields (name, run, when), which are required, their defaults, the order entries run within one `when:` stage, CLI precedence for `--verify-cmd` and `--verify`, and the policy key the review-before-finish switch migrates to; the other lines are checked against it",
-        "`checks:` in git-workflow.yaml names each command once with `when:` (baseline, ready, land, prompt); one reader replaces the three key readers; every table row gives the same commands, arguments, cwd, environment, evidence and prompt text from either form; with both forms present the new form wins and validate prints one notice",
-        "`upgrade` rewrites the old keys and writes the policy equivalent of the review-before-finish switch, so every row's effective requirement is unchanged; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release with one notice for the old form",
+        "Before the switch, tests/parity/checks_migration/ records at pickup, for baseline_cmd, land_check_cmd and verify_cmd, the legacy rows: absent, blank, set, overridden on the CLI (`--baseline-cmd`, `--land-check-cmd`), and disabled on the CLI by an empty `--baseline-cmd` or `--land-check-cmd` value; each records the commands run, their arguments, cwd, added environment, the evidence recorded (`review packet --verify-cmd` and `ready --verify` evidence included), and the executor and reviewer prompt text that names the verify command with its appended test paths. A hand-written `checks:` equivalent of each row is committed beside it; after the switch each equivalent gives its row's recorded result, and mixed-form precedence (new form wins, one validate notice) has its own test",
+        "Before the switch, a `checks:` section of docs/git-workflow.md fixes the `checks:` entry schema: its fields (name, run, when), which are required, their defaults, the order entries run within one `when:` stage, and CLI precedence for the overrides `--baseline-cmd` and `--land-check-cmd` (an empty value disables) and for `review packet --verify-cmd` and `ready --verify` evidence; the other lines are checked against it",
+        "`checks:` in git-workflow.yaml names each command once with `when:` (baseline, ready, land, prompt); one reader replaces the three key readers; every table row gives the same commands, arguments, cwd, environment, evidence and prompt text from either form; with both forms present the new form wins and validate prints one notice; the help text that names the old keys names `checks:` instead, so these help goldens change, each through a tests/parity/command_map.yaml row: tests/parity/golden/help/specy-road__brief.txt, tests/parity/golden/help/specy-road__do-next-available-task.txt, tests/parity/golden/help/specy-road__finish-this-task.txt and tests/parity/golden/help/specy-road__grind-session.txt",
+        "`upgrade` rewrites the old keys (baseline_cmd, land_check_cmd, verify_cmd) into `checks:`, so every row's effective commands are unchanged, and leaves `require_implementation_review_before_finish` in git-workflow.yaml as it is; applying twice gives the same file; `--dry-run` writes nothing; validate accepts both forms for one release with one notice for the old form; the dogfood fixture keeps the old key form",
         "No zone filter is added to migrated entries; ratchet_paths and ready's failed-command evidence (M15.24) mean what they meant at pickup; the M16.1.2 decision table is unchanged",
         "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the release after 0.3.1 (maintainer, 2026-11-08)); no version heading is written",
         "Estimated net line change (informational, not a gate): package about -100 (three readers become one)"
@@ -18,6 +18,11 @@
       "id": "M16.4.5",
       "node_key": "74ac34a2-084a-4dd3-84ec-ac37b20dd983",
       "parent_id": "M16.4",
+      "planned_test_changes": [
+        "changed-golden: tests/parity/golden/dogfood/validate.txt (reason: the dogfood fixture keeps the old key form, so validate may print the one old-form notice)",
+        "changed-golden: tests/parity/golden/upgrade/rc3-dry-run.txt (reason: upgrade's checks: migration may add a line to the rc3_consumer dry-run report)",
+        "changed-frozen-set: tests/parity/test_generated_outputs.py::ALLOWED_ADDED (reason: lists each line the checks: migration adds to rc3-dry-run.txt, mapped to the file this leaf edits that causes it)"
+      ],
       "planning_dir": "planning/M16.4.5_one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points_74ac34a2-084a-4dd3-84ec-ac37b20dd983.md",
       "sibling_order": 4,
       "status": "Not Started",
@@ -51,7 +56,20 @@
         "specy_road/review_gate_agreement.py",
         "specy_road/review_policy_pin.py",
         "specy_road/orchestration_config.py",
-        "scripts/line_width_baseline.json"
+        "scripts/line_width_baseline.json",
+        "docs/dev-workflow.md",
+        "docs/git-workflow-preferences.md",
+        "docs/grind-session.md",
+        "docs/orchestration-workers.md",
+        "scripts/ruff_quality_baseline.json",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "specy_road/bundled_scripts/grind_session_args.py",
+        "specy_road/feature_rm_registry.py",
+        "tests/parity/golden/help/specy-road__brief.txt",
+        "tests/parity/golden/help/specy-road__do-next-available-task.txt",
+        "tests/parity/golden/help/specy-road__finish-this-task.txt",
+        "tests/parity/golden/help/specy-road__grind-session.txt",
+        "specy_road/bundled_scripts/finish_task.py"
       ],
       "type": "task"
     },
