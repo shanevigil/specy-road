@@ -91,6 +91,10 @@ entries:
       - CHANGELOG.md
       - specy_road/bundled_scripts/grind_session_args.py
       - specy_road/bundled_scripts/grind_session.py
+      - specy_road/cli_usage.py
+      - specy_road/grind_session_cleanup.py
+      - specy_road/templates/specyrd/commands/specyrd-finish.md
+      - specy_road/templates/specyrd/commands/specyrd-grind-session.md
     started: '2026-11-12'
     owner: savigil
     implementation_review: pending
