@@ -55,3 +55,48 @@ rows:
   - old: specy-road
     new: specy-road
     allowed: "M16.4.1: top-level help drops `branches prune`, `registry-prune` and `--delete-merged-branches`, and names `doctor --prune --kind`"
+  - old: specy-road refresh-stubs
+    new: specy-road upgrade --only stubs
+    allowed: "M16.4.2: `refresh-stubs` is a hidden deprecated alias of `upgrade --only stubs` (same files and output, one deprecation line on stderr)"
+  - old: specy-road refresh-schemas
+    new: specy-road upgrade --only schemas
+    allowed: "M16.4.2: `refresh-schemas` is a hidden deprecated alias of `upgrade --only schemas` (same files and output, one deprecation line on stderr)"
+  - old: specy-road refresh-profiles
+    new: specy-road upgrade --only profiles
+    allowed: "M16.4.2: `refresh-profiles` is a hidden deprecated alias of `upgrade --only profiles`; its `--only API_ID` is `upgrade --only profiles --profile API_ID`"
+  - old: specy-road upgrade
+    new: specy-road upgrade --diff
+    allowed: "M16.4.2: `upgrade --only stubs --diff` (refresh-stubs --diff)"
+  - old: specy-road upgrade
+    new: specy-road upgrade --force
+    allowed: "M16.4.2: `upgrade --only profiles --force PATH` (refresh-profiles --force)"
+  - old: specy-road upgrade
+    new: specy-road upgrade --profile
+    allowed: "M16.4.2: `upgrade --only profiles --profile API_ID` (refresh-profiles --only API_ID)"
+  - old: specy-road upgrade
+    new: specy-road upgrade --profiles
+    allowed: "M16.4.2: `upgrade --only profiles --profiles roster|all` (refresh-profiles --profiles)"
+  - old: specy-road upgrade
+    new: specy-road upgrade --check
+    allowed: "M16.4.2: `upgrade --only profiles --check` (refresh-profiles --check)"
+  - old: specy-road upgrade
+    new: specy-road upgrade --render
+    allowed: "M16.4.2: `upgrade --only profiles --render` (refresh-profiles --render)"
+  - old: specy-road upgrade
+    new: specy-road upgrade --capture
+    allowed: "M16.4.2: `upgrade --only profiles --capture HARNESS` (refresh-profiles --capture)"
+  - old: specy-road upgrade
+    new: specy-road upgrade --from
+    allowed: "M16.4.2: `upgrade --only profiles --capture HARNESS --from DIR` (refresh-profiles --from)"
+  - old: specy-road upgrade
+    new: specy-road upgrade --accept
+    allowed: "M16.4.2: `upgrade --only profiles --capture HARNESS --accept` (refresh-profiles --accept)"
+  - old: specy-road upgrade
+    new: specy-road upgrade
+    allowed: "M16.4.2: upgrade --help names the --only components, their options and the one four-section report; the report groups the same lines under the headings files added or changed, schema refreshes, profile refreshes and notices"
+  - old: specy-road update
+    new: specy-road self-update
+    allowed: "M16.4.2: `update` is renamed `self-update`; `update` is a hidden deprecated alias (one deprecation line on stderr)"
+  - old: specy-road
+    new: specy-road
+    allowed: "M16.4.2: top-level help drops refresh-schemas, refresh-profiles and refresh-stubs, names upgrade --only, and lists update as self-update"

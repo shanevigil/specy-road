@@ -122,6 +122,10 @@ SCHEMA_RUNNERS = {
     "refresh-schemas": lambda repo: refresh_schemas.main(["--repo-root", str(repo)]),
     "upgrade": lambda repo: upgrade.main(["--repo-root", str(repo)]),
     "upgrade --dry-run": lambda repo: upgrade.main(["--repo-root", str(repo), "--dry-run"]),
+    "upgrade --only schemas": lambda repo: upgrade.main(
+        ["--repo-root", str(repo), "--only", "schemas"]),
+    "upgrade --only schemas --dry-run": lambda repo: upgrade.main(
+        ["--repo-root", str(repo), "--only", "schemas", "--dry-run"]),
 }
 
 
@@ -343,6 +347,10 @@ SKILLS_RUNNERS = {
     "refresh-stubs": lambda repo: refresh_stubs.main(["--repo-root", str(repo)]),
     "upgrade": lambda repo: upgrade.main(["--repo-root", str(repo)]),
     "upgrade --dry-run": lambda repo: upgrade.main(["--repo-root", str(repo), "--dry-run"]),
+    "upgrade --only stubs": lambda repo: upgrade.main(
+        ["--repo-root", str(repo), "--only", "stubs"]),
+    "upgrade --only stubs --dry-run": lambda repo: upgrade.main(
+        ["--repo-root", str(repo), "--only", "stubs", "--dry-run"]),
 }
 
 
@@ -351,7 +359,8 @@ SKILLS_RUNNERS = {
 @pytest.mark.parametrize("shape", list(SKILLS_LINK_SHAPES))
 def test_every_entry_point_gives_the_same_skills_link_verdict(
         tmp_path: Path, capsys, shape: str, skills: str, runner: str) -> None:
-    """refresh-stubs, upgrade and upgrade --dry-run: the same verdict and line for the same link, the upgrade's
+    """refresh-stubs, upgrade (--only stubs) and their dry runs: the same verdict and line for the
+    same link, the upgrade's
     mirror keeping the link's own text; only ``../.agents/skills`` or ``../.claude/skills`` (the other one) is allowed."""
     repo, outside = _inited(tmp_path)
     run_init(target=repo, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None)
@@ -383,7 +392,7 @@ def test_every_entry_point_gives_the_same_skills_link_verdict(
         assert _tree(*watched) == before and os.readlink(repo / skills) == text
         return
     assert code in (None, 0), err
-    if runner != "upgrade --dry-run":
+    if not runner.endswith("--dry-run"):
         assert canonical.read_text(encoding="utf-8") != "stale\n"
         skill_dirs = sorted((repo / ".claude" / "skills").iterdir())
         assert skill_dirs and all(d.resolve() == (repo / ".agents" / "skills" / d.name).resolve()
@@ -423,7 +432,9 @@ def test_a_symlink_loop_on_a_managed_path_is_refused_without_a_traceback(
     _refused(lambda: LOOP_RUNNERS[runner](repo), capsys, repo / rel, *watched, outside)
 
 
-@pytest.mark.parametrize("runner", list(LOOP_RUNNERS))
+# A stub dry run writes nothing in place, so no write is there for a racer to swap.
+@pytest.mark.parametrize("runner",
+                         [r for r in LOOP_RUNNERS if r != "upgrade --only stubs --dry-run"])
 def test_an_ignore_file_linked_right_before_replace_is_an_error(
         tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, runner: str) -> None:
     """The re-check before replace refuses a ``.gitignore`` a racer linked out: ``error:``, exit 1, no write out."""

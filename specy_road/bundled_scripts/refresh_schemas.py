@@ -153,8 +153,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    p = build_parser()
-    args = p.parse_args(argv if argv is not None else sys.argv[1:])
+    run(build_parser().parse_args(argv if argv is not None else sys.argv[1:]))
+
+
+def run(args: argparse.Namespace) -> None:
+    """The schema refresh for parsed ``args`` (``repo_root``, ``dry_run``); also
+    ``specy-road upgrade --only schemas``."""
     root = (args.repo_root or default_user_repo_root()).resolve()
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(root)}
     try:

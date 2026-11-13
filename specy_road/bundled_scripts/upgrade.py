@@ -3,22 +3,33 @@
 
 After ``pip install -U specy-road``, ``pipx upgrade specy-road`` or
 ``uv tool upgrade specy-road`` the repo still carries what older versions
-copied into it. Four commands fix that, and adopters of 0.3.1rc1 ran them from
+copied into it. Adopters of 0.3.1rc1 ran the separate refresh commands from
 memory, in different orders, and stopped at different points: one kept
 duplicate ``/specyrd-…`` commands because the ``rm`` was buried in output,
-another never got the ``AGENTS.md`` block. This runs the same commands, in
-order, and nothing else:
+another never got the ``AGENTS.md`` block. This runs every refresh, in order,
+and nothing else:
 
-1. ``refresh-schemas``  — ``schemas/``
-2. ``refresh-profiles`` — missing ``model-profiles/`` files, never overwriting
+1. ``--only schemas``  — ``schemas/``
+2. ``--only profiles`` — missing ``model-profiles/`` files, never overwriting
 3. shipped docs and templates — missing ``docs/`` files the ``.specyrd/AGENTS.md`` load order names
    and missing ``work/*.template.md`` files prompts reference (never overwriting)
-4. ``refresh-stubs``    — IDE skills and the managed blocks (``--prune`` deletes
+4. ``--only stubs``    — IDE skills and the managed blocks (``--prune`` deletes
    the stubs this version no longer installs, and ``.cursor``/``.codex`` copies
    of the skills that are links or verbatim stubs)
 5. ``validate``, then ``digest --check``; in between, when validate passes, it
    writes ``roadmap-context.md`` (``specy-road digest``) when missing or drifted
    and ``roadmap.md`` (``specy-road export``) when tracked and drifted
+
+The refreshes print one report in four fixed sections: files added or changed,
+schema refreshes, profile refreshes, and notices.
+
+``--only stubs|schemas|profiles`` runs that one refresh on its own, in the
+checkout, with no mirror, validate or report: the step ``refresh-stubs``,
+``refresh-schemas`` and ``refresh-profiles`` ran, which are deprecated aliases
+of it. ``--diff`` belongs to ``--only stubs``; ``--force``, ``--profile``,
+``--profiles``, ``--check``, ``--render``, ``--capture``, ``--from`` and
+``--accept`` to ``--only profiles`` (``--profile API_ID`` is
+``refresh-profiles --only API_ID``).
 
 It first prints the running version, its ``sys.prefix`` and every
 ``specy-road``/``specyrd`` on PATH. After writing it names each file its own
@@ -74,8 +85,12 @@ from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE
 from specy_road.agents_md_block import AGENTS_FILES, load_order_paths, print_migration, render_rules
 from specy_road.bundled_scripts.digest_cli import cmd_digest
-from specy_road.bundled_scripts.refresh_profiles import refresh_profiles, selection_notice
-from specy_road.bundled_scripts.refresh_profiles import bundled_profiles_dir
+from specy_road.bundled_scripts import refresh_profiles as refresh_profiles_cli
+from specy_road.bundled_scripts import refresh_schemas as refresh_schemas_cli
+from specy_road.bundled_scripts import refresh_stubs as refresh_stubs_cli
+from specy_road.bundled_scripts.refresh_profiles import (
+    add_profile_options, bundled_profiles_dir, refresh_profiles, selection_notice,
+)
 from specy_road.bundled_scripts.refresh_schemas import (
     SCHEMAS_DIRNAME, bundled_schemas_dir, missing_schema_names, refresh_schemas,
 )
@@ -110,6 +125,7 @@ from specy_road.runtime_paths import (
 )
 from specy_road.specyrd_init import COMMAND_FILES
 from specy_road.specyrd_skills import LINK_DEST, MIRROR_DIRS, link_rel, skill_rel, stem
+from specy_road.upgrade_report import FILES, NOTICES, PROFILES, SCHEMAS, Report
 from specy_road.version_skew import print_install_report
 
 CHECKLIST = (
@@ -167,10 +183,10 @@ _README_SECTION = re.compile(
 
 # Kept in sync with this module's docstring and ``.specyrd/README.md``.
 UPGRADE_STEP_LABELS: tuple[str, ...] = (
-    "refresh-schemas",
-    "refresh-profiles",
+    "--only schemas",
+    "--only profiles",
     "shipped docs and templates",
-    "refresh-stubs",
+    "--only stubs",
     "validate",
     "digest --check",
 )
@@ -306,54 +322,56 @@ def copy_missing_work_templates(
 _DECLINED = {"refused": "refuse", "skipped": "skip", "failed": "fail"}
 
 
-def _report_schemas(project: Path, verb: str) -> None:
-    _section("refresh-schemas")
+def _report_schemas(project: Path, verb: str, out: Report) -> None:
     new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(project)}
     schemas = refresh_schemas(project)
     for rel in schemas:
-        print(f"{verb} {rel}" + (" (new in this version)" if rel in new else ""))
+        out.add(SCHEMAS, f"{verb} {rel}" + (" (new in this version)" if rel in new else ""))
     if not schemas:
-        print("schemas/ already current")
+        out.add(SCHEMAS, "schemas/ already current")
 
 
-def _report_profiles(project: Path, verb: str) -> None:
-    _section("refresh-profiles")
+def _report_profiles(project: Path, verb: str, out: Report) -> None:
     profiles, kept = refresh_profiles(project)
     for rel in profiles:
-        print(f"{verb} {rel}")
+        out.add(PROFILES, f"{verb} {rel}")
     notice = selection_notice(profiles, kept, roster=True)
     if notice:
-        print(notice)
+        out.add(PROFILES, notice)
 
 
-def _report_shipped_docs(project: Path, verb: str, existence_root: Path) -> list[str]:
-    _section("shipped docs")
+def _report_shipped_docs(
+    project: Path, verb: str, existence_root: Path, out: Report,
+) -> list[str]:
     declined_docs: list[str] = []
-    docs = copy_missing_docs(project, declined=declined_docs)
+    with out.capture(NOTICES):   # a doc the rule refuses prints its ``skipped`` line
+        docs = copy_missing_docs(project, declined=declined_docs)
     to_copy, refused = work_template_ship_plan(existence_root)
     for rel in docs:
-        print(f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
+        out.add(FILES, f"{verb} {rel} (named in the .specyrd/AGENTS.md load order)")
     for rel in to_copy:
-        print(f"{verb} {rel} (work template referenced by prompts)")
+        out.add(FILES, f"{verb} {rel} (work template referenced by prompts)")
     for rel in refused:
-        print(work_template_skip_message(rel))
+        out.add(NOTICES, work_template_skip_message(rel))
     if not docs:
-        print("every shipped doc the load order names is present")
+        out.add(FILES, "every shipped doc the load order names is present")
     if not to_copy and not refused:
-        print("every work template prompts reference is present")
+        out.add(FILES, "every work template prompts reference is present")
     return declined_docs
 
 
 def _report_stubs_declined(
     project: Path, checkout: Path, *, preview: bool, prune: bool, declined_docs: list[str],
+    out: Report,
 ) -> dict[str, str]:
-    _section("refresh-stubs")
-    print_migration(project, _prefix(checkout, project))
-    written, orphans = refresh_stubs(checkout, project=project, prune=prune)
-    if written or orphans:
-        report(written, orphans, dry_run=preview, pruned=prune, footer=False)
-    else:
-        print("stubs and managed blocks already current")
+    with out.capture(NOTICES):   # the AGENTS.md migration, the ignore note
+        print_migration(project, _prefix(checkout, project))
+        written, orphans = refresh_stubs(checkout, project=project, prune=prune)
+    with out.capture(FILES):
+        if written or orphans:
+            report(written, orphans, dry_run=preview, pruned=prune, footer=False)
+        else:
+            print("stubs and managed blocks already current")
     prefix = _prefix(checkout, project)
     declined = {f"{prefix}{rel}": "refuse" for rel in declined_docs}
     for entry in written:
@@ -379,19 +397,21 @@ def _refresh(
     prune: bool,
     existence_project: Path | None = None,
 ) -> dict[str, str]:
-    """Run the refreshes for real on ``checkout`` (the plan's mirror); ``preview`` changes only the
-    wording.
+    """Run the refreshes for real on ``checkout`` (the plan's mirror) and print their one report;
+    ``preview`` changes only the wording.
 
     Returns ``{checkout-relative path: refuse | error | skip | fail}`` for each path they left as it
     was.
     """
     verb = "would write" if preview else "wrote"
-    _report_schemas(project, verb)
-    _report_profiles(project, verb)
-    declined_docs = _report_shipped_docs(project, verb, existence_project or project)
+    out = Report()
+    _report_schemas(project, verb, out)
+    _report_profiles(project, verb, out)
+    declined_docs = _report_shipped_docs(project, verb, existence_project or project, out)
     declined = _report_stubs_declined(project, checkout, preview=preview, prune=prune,
-                                      declined_docs=declined_docs)
-    _report_file_limits_default(existence_project or project)
+                                      declined_docs=declined_docs, out=out)
+    _report_file_limits_default(existence_project or project, out)
+    out.print()
     return declined
 
 
@@ -463,7 +483,7 @@ def _file_cap(cfg: dict) -> tuple[object, object]:
     return cfg.get("max_lines_per_file"), warn
 
 
-def _report_file_limits_default(project: Path) -> None:
+def _report_file_limits_default(project: Path, out: Report) -> None:
     """One notice when the project's file cap differs from the template's; never a rewrite."""
     cfg = _file_limits_config(project)
     default = _file_limits_config(project_template_root())
@@ -471,10 +491,9 @@ def _report_file_limits_default(project: Path) -> None:
         return
     (cap, warn), (new_cap, new_warn) = _file_cap(cfg), _file_cap(default)
     warning = "no warning" if warn is None else f"a warning at {warn}"
-    _section("file-limits default")
-    print(f"{FILE_LIMITS} caps files at {cap} lines with {warning}; the template default"
-          f" is now {new_cap} lines with a warning at {new_warn}. upgrade leaves this file"
-          " as it is; edit it to adopt the default.")
+    out.add(NOTICES, f"{FILE_LIMITS} caps files at {cap} lines with {warning}; the template"
+            f" default is now {new_cap} lines with a warning at {new_warn}. upgrade leaves this"
+            " file as it is; edit it to adopt the default.")
 
 
 def _capped_lines(project: Path) -> dict[str, tuple[int, int]]:
@@ -792,12 +811,58 @@ def build_parser() -> argparse.ArgumentParser:
         "(e.g. pre-0.3.0 .cursor/commands/specyrd-*.md) "
         "and .cursor/.codex copies of the skills in .agents/skills.",
     )
+    p.add_argument("--only", dest="component", choices=tuple(c for c in COMPONENT_OPTIONS if c),
+                   help="Run this one refresh on its own, in the checkout (no validate, no "
+                   "report).")
+    p.add_argument("--diff", action="store_true",
+                   help="With --only stubs: print a unified diff of every stub, skill and managed "
+                   "block that would change; implies --dry-run.")
+    add_profile_options(p, only_flag="--profile")
     return p
+
+
+#: The options each ``--only`` component reads, by destination; ``None`` is the whole upgrade.
+COMPONENT_OPTIONS: dict[str | None, frozenset[str]] = {
+    None: frozenset({"prune"}),
+    "stubs": frozenset({"prune", "diff"}),
+    "schemas": frozenset(),
+    "profiles": frozenset({"force", "only", "profiles", "check", "render", "capture",
+                           "from_dir", "accept"}),
+}
+_FLAGS = {"prune": "--prune", "diff": "--diff", "force": "--force", "only": "--profile",
+          "profiles": "--profiles", "check": "--check", "render": "--render",
+          "capture": "--capture", "from_dir": "--from", "accept": "--accept"}
+
+
+def _refuse_other_components_options(p: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """``p.error`` (exit 2) for an option given that the chosen component does not read."""
+    where = f"--only {args.component}" if args.component else "the whole upgrade"
+    for dest, flag in _FLAGS.items():
+        if dest in COMPONENT_OPTIONS[args.component] or getattr(args, dest) == p.get_default(dest):
+            continue
+        owners = " or ".join(f"--only {c}" for c, opts in COMPONENT_OPTIONS.items()
+                             if c and dest in opts)
+        p.error(f"{flag} does not apply to {where}; it needs {owners}")
+
+
+def _run_component(p: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """``upgrade --only <component>``: the refresh step the old ``refresh-<component>`` ran."""
+    if args.component == "stubs":
+        refresh_stubs_cli.run(args)
+    elif args.component == "schemas":
+        refresh_schemas_cli.run(args)
+    else:
+        refresh_profiles_cli.check_args(p, args, only_flag="--profile")
+        refresh_profiles_cli.run(args)
 
 
 def main(argv: list[str] | None = None) -> None:
     p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
+    _refuse_other_components_options(p, args)
+    if args.component:
+        _run_component(p, args)
+        return
     try:
         with safe_write.exit_on_refusal():   # a refusal, or a symlink loop met before the rule
             code = run_upgrade(args.repo_root, dry_run=args.dry_run, prune=args.prune)

@@ -15,8 +15,10 @@ from pathlib import Path
 
 import pytest
 
-from tests.helpers import DOGFOOD
-from tests.parity.support import GOLDEN, PARITY, check_golden, cli_env, run_cli, transcript
+from tests.helpers import DOGFOOD, REPO
+from tests.parity.support import (
+    GOLDEN, PARITY, check_golden, cli_env, repo_copy, run_cli, transcript,
+)
 
 pytestmark = pytest.mark.parity
 
@@ -24,25 +26,6 @@ RC3_CONSUMER = PARITY / "fixtures" / "rc3_consumer"
 
 #: Digest sections built from git history (``specy_road.digest``); they change with the branch.
 HISTORY_SECTIONS = ("Dependencies that were removed", "Quality by area")
-
-
-def _repo_copy(src: Path, dest: Path) -> Path:
-    shutil.copytree(src, dest)
-    for args in (
-        ["init", "-q", "-b", "main"],
-        ["add", "-A"],
-        [
-            "-c",
-            "user.email=parity@example.com",
-            "-c",
-            "user.name=Parity",
-            "commit",
-            "-qm",
-            "fixture",
-        ],
-    ):
-        subprocess.run(["git", *args], cwd=dest, check=True, capture_output=True)
-    return dest
 
 
 def without_history_sections(digest: str) -> str:
@@ -60,7 +43,7 @@ DOGFOOD_COMMANDS = {
 
 @pytest.mark.parametrize("name", sorted(DOGFOOD_COMMANDS))
 def test_dogfood_command_matches_golden(tmp_path: Path, name: str) -> None:
-    root = _repo_copy(DOGFOOD, tmp_path / "dogfood")
+    root = repo_copy(DOGFOOD, tmp_path / "dogfood")
     argv = [*DOGFOOD_COMMANDS[name], "--repo-root", str(root)]
     result = run_cli("specy_road.cli", argv, cwd=root)
     check_golden(
@@ -70,7 +53,7 @@ def test_dogfood_command_matches_golden(tmp_path: Path, name: str) -> None:
 
 
 def test_dogfood_digest_matches_golden(tmp_path: Path) -> None:
-    root = _repo_copy(DOGFOOD, tmp_path / "dogfood")
+    root = repo_copy(DOGFOOD, tmp_path / "dogfood")
     result = run_cli("specy_road.cli", ["digest", "-o", "-", "--repo-root", str(root)], cwd=root)
     assert result.returncode == 0, result.stderr
     check_golden(GOLDEN / "dogfood" / "digest.md", without_history_sections(result.stdout))
@@ -82,7 +65,7 @@ def test_rc3_consumer_upgrade_dry_run_matches_golden(tmp_path: Path) -> None:
     PATH holds only git's directory, so the install report lists no ``specy-road`` on PATH on any
     machine; the install prefix is normalised.
     """
-    root = _repo_copy(RC3_CONSUMER, tmp_path / "app")
+    root = repo_copy(RC3_CONSUMER, tmp_path / "app")
     env = cli_env(PATH=os.path.dirname(shutil.which("git") or "/usr/bin/git"))
     argv = ["upgrade", "--dry-run", "--repo-root", str(root)]
     result = run_cli("specy_road.cli", argv, cwd=root, env=env)
@@ -93,6 +76,33 @@ def test_rc3_consumer_upgrade_dry_run_matches_golden(tmp_path: Path) -> None:
     assert not subprocess.run(
         ["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True
     ).stdout
+
+
+def _reported_lines(golden: Path) -> list[str]:
+    """The golden's lines, without blank lines and ``== `` section headings, sorted."""
+    lines = golden.read_text(encoding="utf-8").splitlines()
+    return sorted(line for line in lines if line.strip() and not line.startswith("== "))
+
+
+#: Lines the after report may add to the before's (A2 as amended): each a ``would write`` of a
+#: bundled file whose text M16.4.2 changes under A4, mapped to that file. Nothing else may differ.
+ALLOWED_ADDED = {
+    "would write schemas/harness-facts.schema.json":
+        "specy_road/templates/project/schemas/harness-facts.schema.json",
+}
+
+
+def test_the_one_upgrade_report_keeps_the_lines_it_reported_before() -> None:
+    """The four-section report (M16.4.2) groups the same lines under new headings, nothing else.
+
+    ``rc3-dry-run-before.txt`` is frozen at the commit before the report changed. The after report
+    holds exactly its lines plus :data:`ALLOWED_ADDED`, each caused by a file M16.4.2 edits; any
+    other added or dropped line fails.
+    """
+    before = _reported_lines(GOLDEN / "upgrade" / "rc3-dry-run-before.txt")
+    after = _reported_lines(GOLDEN / "upgrade" / "rc3-dry-run.txt")
+    assert after == sorted([*before, *ALLOWED_ADDED])
+    assert all((REPO / cause).is_file() for cause in ALLOWED_ADDED.values())
 
 
 def test_history_sections_are_left_out_of_the_digest_golden() -> None:

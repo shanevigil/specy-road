@@ -529,6 +529,16 @@
   "nargs": 0,
   "metavar": null
  },
+ "specy-road self-update --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": "origin",
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
  "specy-road session list --json": {
   "action": "_StoreTrueAction",
   "type": null,

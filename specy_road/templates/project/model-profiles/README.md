@@ -154,14 +154,14 @@ not checked it.
 Muse Wonder has no known headless command. For every model, the two runs'
 flags differ; see *Watch out for: conflicting reports* in the research notes.
 
-<!-- >>> harness facts: rendered by `specy-road refresh-profiles --render` from harness-facts.yaml; do not edit inside <<< -->
+<!-- >>> harness facts: rendered by `specy-road upgrade --only profiles --render` from harness-facts.yaml; do not edit inside <<< -->
 
 ### Harness facts
 
 Rendered from `harness-facts.yaml`. Each fact carries its label: `documented` (a vendor page or
 repository doc), `runtime` (observed by running the binary) or `unverified`. The `access.cli` of
 every profile whose `family` a harness's executor template names is rendered from it too;
-`refresh-profiles --check` reports a hand edit to either as drift.
+`upgrade --only profiles --check` reports a hand edit to either as drift.
 
 #### Claude Code (`claude-code`, binary `claude`)
 

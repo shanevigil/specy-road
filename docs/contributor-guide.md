@@ -294,13 +294,14 @@ server from `gui/pm-gantt/` (port 5173) alongside a separate
 ## Updating an editable clone
 
 ```bash
-specy-road update --install-gui-stack          # fast-forward + reinstall
-specy-road update --dry-run --install-gui-stack
+specy-road self-update --install-gui-stack          # fast-forward + reinstall
+specy-road self-update --dry-run --install-gui-stack
 ```
 
 Use `--reset-to-origin` only when you intentionally want your tree to
 match the server (it discards local commits and uncommitted changes; see
-warning in `specy-road update --help`).
+warning in `specy-road self-update --help`). `specy-road update` is its deprecated
+alias until the release after 0.3.1.
 
 ---
 

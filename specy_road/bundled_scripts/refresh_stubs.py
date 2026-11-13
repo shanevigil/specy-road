@@ -468,8 +468,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    p = build_parser()
-    args = p.parse_args(argv if argv is not None else sys.argv[1:])
+    run(build_parser().parse_args(argv if argv is not None else sys.argv[1:]))
+
+
+def run(args: argparse.Namespace) -> None:
+    """The stub refresh for parsed ``args`` (``repo_root``, ``dry_run``, ``prune``, ``diff``); also
+    ``specy-road upgrade --only stubs``."""
     root = _resolve_root(args.repo_root)
     dry_run = args.dry_run or args.diff
     prefix = _prefix(root, project_root(args.repo_root))

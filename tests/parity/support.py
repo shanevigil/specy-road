@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable
@@ -46,6 +47,19 @@ def run_cli(
         text=True,
         check=False,
     )
+
+
+def repo_copy(src: Path, dest: Path) -> Path:
+    """``src`` copied to ``dest`` as a git repo with one commit, so output depends on it alone."""
+    shutil.copytree(src, dest)
+    for args in (
+        ["init", "-q", "-b", "main"],
+        ["add", "-A"],
+        ["-c", "user.email=parity@example.com", "-c", "user.name=Parity",
+         "commit", "-qm", "fixture"],
+    ):
+        subprocess.run(["git", *args], cwd=dest, check=True, capture_output=True)
+    return dest
 
 
 def _version_patterns() -> list[tuple[re.Pattern[str], str]]:

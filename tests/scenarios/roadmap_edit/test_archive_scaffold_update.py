@@ -1,9 +1,9 @@
 """Public scenarios for archive --auto, restore errors, scaffold and update.
 
 Archive goes through ``archive_cli.main``. Scaffold goes through
-``scaffold_planning.main`` (it reads ``sys.argv``). Update goes through
-``update_specy_road.main``, which is where the fast-forward and the dirty-tree
-refusal run.
+``scaffold_planning.main`` (it reads ``sys.argv``). Update goes through the CLI under
+``self-update`` and its deprecated alias ``update``; both run ``update_specy_road.main``,
+which is where the fast-forward and the dirty-tree refusal run.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.archive_index import load_archive_index
+from specy_road import cli
 from specy_road.bundled_scripts import archive_cli, scaffold_planning, update_specy_road
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.roadmap_load import load_roadmap
@@ -200,28 +201,44 @@ def clone_behind_origin(tmp_path: Path) -> Path:
     return work
 
 
+UPDATE_NAMES = ("self-update", "update")
+
+
+def _deprecation(name: str, err: str) -> bool:
+    """The alias prints its deprecation line; the new name prints none."""
+    if name == "update":
+        return "`specy-road update` is deprecated" in err
+    return "deprecated" not in err
+
+
+@pytest.mark.parametrize("name", UPDATE_NAMES)
 def test_update_fast_forwards_a_clean_clone(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], name: str
 ) -> None:
     monkeypatch.setattr(update_specy_road, "is_canonical_specy_road_remote", lambda _url: True)
     work = clone_behind_origin(tmp_path)
 
-    update_specy_road.main(["--path", str(work)])
+    cli.main([name, "--path", str(work)])
 
     assert (work / "README.md").read_text(encoding="utf-8") == "v2\n"
-    assert "fast-forwarded" in capsys.readouterr().out
+    out, err = capsys.readouterr()
+    assert "fast-forwarded" in out
+    assert _deprecation(name, err)
 
 
+@pytest.mark.parametrize("name", UPDATE_NAMES)
 def test_update_refuses_a_dirty_tree(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], name: str
 ) -> None:
     monkeypatch.setattr(update_specy_road, "is_canonical_specy_road_remote", lambda _url: True)
     work = clone_behind_origin(tmp_path)
     (work / "README.md").write_text("dirty\n", encoding="utf-8")
 
     with pytest.raises(SystemExit) as exc:
-        update_specy_road.main(["--path", str(work)])
+        cli.main([name, "--path", str(work)])
 
     assert exc.value.code == 1
-    assert "working tree is not clean" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "working tree is not clean" in err
+    assert _deprecation(name, err)
     assert (work / "README.md").read_text(encoding="utf-8") == "dirty\n"

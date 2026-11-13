@@ -1,6 +1,6 @@
 # Harness facts: one record per harness a roster can name (schemas/harness-facts.schema.json).
 #
-# `specy-road refresh-profiles` renders from this file: every profile's `access.cli` whose
+# `specy-road upgrade --only profiles` renders from this file: every profile's `access.cli` whose
 # `family` an `executor_template.renders_cli_for` lists, and the README's harness block.
 # `--check` reports a hand edit to either as drift; `--render` rewrites them.
 #
@@ -14,7 +14,7 @@
 # use, avoid, duplicate, complement, gap, neutral. A version bump's new identifier that
 # contains plan, memory, task, todo, worktree, branch, commit, push, pr, background,
 # delegate, cloud, schedule, review, resume, fork, autopilot, goal, loop, queue, persist,
-# gist, fleet, teleport, remote or spawn fails `refresh-profiles --capture` until it is
+# gist, fleet, teleport, remote or spawn fails `upgrade --only profiles --capture` until it is
 # listed here. Rows F1-F22 of the 2026-11-02 triage are recorded in the toolkit
 # maintainers' triage notes, which are not published.
 version: 1

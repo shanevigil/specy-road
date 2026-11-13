@@ -6,25 +6,24 @@ Install: specy-road <VERSION> running from <PREFIX>
 - no specy-road or specyrd on PATH
 copying tracked and untracked files into a temporary directory; ignored files are not copied
 
-== refresh-schemas
-would write schemas/decisions.schema.json
-would write schemas/git-workflow.schema.json
-would write schemas/orchestration.schema.json
-would write schemas/roadmap.schema.json
-
-== refresh-profiles
-no roster entry in roadmap/orchestration.yaml names a profile this specy-road ships; `specy-road refresh-profiles --profiles all` adds every one
-
-== shipped docs
+== files added or changed
 every shipped doc the load order names is present
 every work template prompts reference is present
-
-== refresh-stubs
 would write .gitignore (updated)
 would write AGENTS.md (updated)
 would write .specyrd/AGENTS.md (updated)
 
-== file-limits default
+== schema refreshes
+would write schemas/decisions.schema.json
+would write schemas/git-workflow.schema.json
+would write schemas/harness-facts.schema.json
+would write schemas/orchestration.schema.json
+would write schemas/roadmap.schema.json
+
+== profile refreshes
+no roster entry in roadmap/orchestration.yaml names a profile this specy-road ships; `specy-road refresh-profiles --profiles all` adds every one
+
+== notices
 constraints/file-limits.yaml caps files at 400 lines with no warning; the template default is now 1000 lines with a warning at 750. upgrade leaves this file as it is; edit it to adopt the default.
 
 == applying the refreshes to a temporary copy, then validating it

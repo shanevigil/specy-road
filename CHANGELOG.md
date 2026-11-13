@@ -102,6 +102,19 @@ body. Keep section bodies focused; link to PRs for detail.
   unmerged branch when you confirmed; it is now listed with its commit count and left, so no replacement deletes
   more than `branches prune` or the grind cleanup did. `worktree prune <ID>` reads the same live rule, so it
   refuses a leaf whose branch is still claimed (a fresh claim looked merged). See `docs/git-workflow.md` ("Finding leftovers: `doctor`").
+- `specy-road upgrade` prints one report of what its refreshes changed, in four fixed sections: `== files added
+  or changed`, `== schema refreshes`, `== profile refreshes` and `== notices`, in place of one heading per step
+  (`== refresh-schemas`, `== refresh-profiles`, `== shipped docs`, `== refresh-stubs`, `== file-limits default`).
+  The report holds the same lines as before; only the headings and grouping changed. `upgrade --only
+  stubs|schemas|profiles` runs one refresh on its own, with the options the old command took: `--prune` and
+  `--diff` for stubs; `--force`, `--profile API_ID`, `--profiles`, `--check`, `--render`, `--capture`, `--from`
+  and `--accept` for profiles. An option given to the wrong component is a usage error (exit 2).
+- The harness block that `upgrade --only profiles --render` writes into `model-profiles/README.md` now names
+  `upgrade --only profiles` in its start marker and text. A README rendered by an earlier version keeps working:
+  the block is found by the marker's unchanged start (`<!-- >>> harness facts:`). `--check` reports that block as
+  drift until `upgrade --only profiles --render` rewrites it.
+- `schemas/harness-facts.schema.json` describes `upgrade --only profiles` (and `--capture`) instead of
+  `refresh-profiles`. Only descriptions changed, so validation is unchanged; `upgrade` rewrites a project's copy once.
 
 ### Deprecated
 
@@ -115,6 +128,12 @@ release after 0.3.1:
 - `specy-road registry-prune` -> `specy-road doctor --prune --kind registry`.
 - `specy-road grind-session --delete-merged-branches` -> `specy-road doctor --prune --kind branches`. Until then
   it also leaves a finished branch the live rule holds.
+- `specy-road refresh-stubs` -> `specy-road upgrade --only stubs`.
+- `specy-road refresh-schemas` -> `specy-road upgrade --only schemas`.
+- `specy-road refresh-profiles` -> `specy-road upgrade --only profiles`; its `--only API_ID` is
+  `specy-road upgrade --only profiles --profile API_ID`.
+- `specy-road update` -> `specy-road self-update` (renamed: it fast-forwards a git clone of the toolkit, and was
+  easily confused with `upgrade`).
 
 ### Fixed
 

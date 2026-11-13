@@ -177,6 +177,12 @@ def _without(*keys: str) -> dict:
             {**_GOLDEN_A, "specy-road a": _entry(["a"], ("x", "y"), ("-h", "--j", "--k"))},
             None,
         ),
+        # a word after an option is its value, not an option
+        (
+            [{"old": "specy-road a y", "new": "specy-road a --k y"}],
+            {**_GOLDEN_A, "specy-road a": _entry(["a"], ("x", "y"), ("-h", "--j", "--k"))},
+            None,
+        ),
         # a row naming nothing in the golden is an error
         ([{"old": "specy-road b"}], _GOLDEN_A, "not in the golden inventory"),
         ([{"old": "specy-road a --nope"}], _GOLDEN_A, "['--nope'] not in the golden"),

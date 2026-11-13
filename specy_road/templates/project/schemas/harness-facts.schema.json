@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specy-road.local/schemas/harness-facts.schema.json",
   "title": "specy-road harness facts",
-  "description": "model-profiles/harness-facts.yaml: one record per harness a roster can name. refresh-profiles renders each profile's access.cli and the model-profiles README's harness block from it, and classifies a version bump's --version/--help diff against the relationships it assigns.",
+  "description": "model-profiles/harness-facts.yaml: one record per harness a roster can name. upgrade --only profiles renders each profile's access.cli and the model-profiles README's harness block from it, and classifies a version bump's --version/--help diff against the relationships it assigns.",
   "type": "object",
   "required": ["version", "harnesses"],
   "additionalProperties": false,
@@ -106,7 +106,7 @@
         "quota": { "$ref": "#/$defs/textFact" },
         "capture_commands": {
           "type": "object",
-          "description": "argv per capture file (version.txt, help.txt, inventory-*.txt, ...) that refresh-profiles --capture runs. Absent for a harness with no binary of its own (generic): --capture then needs --from.",
+          "description": "argv per capture file (version.txt, help.txt, inventory-*.txt, ...) that upgrade --only profiles --capture runs. Absent for a harness with no binary of its own (generic): --capture then needs --from.",
           "required": ["version.txt"],
           "propertyNames": { "pattern": "^[a-z][a-z0-9.-]*\\.txt$" },
           "additionalProperties": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }

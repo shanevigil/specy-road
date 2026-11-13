@@ -7,7 +7,7 @@
 
 **Must know without reading on:**
 - Nothing here is part of the specy-road contract; the canonical invocations are `specy-road validate|brief|export|file-limits`, and tracked docs win over any harness memory or rule.
-- `specyrd init [PATH] --ai cursor|claude-code|codex|generic` installs one skill per command under `.agents/skills/<name>/SKILL.md` plus managed blocks in `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`; `specy-road init project` keeps the specy-road section of `AGENTS.md`, now a short stub that points at `.specyrd/AGENTS.md`, where the full rules live. Upgrade with `specy-road refresh-stubs`, not `init --force`.
+- `specyrd init [PATH] --ai cursor|claude-code|codex|generic` installs one skill per command under `.agents/skills/<name>/SKILL.md` plus managed blocks in `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`; `specy-road init project` keeps the specy-road section of `AGENTS.md`, now a short stub that points at `.specyrd/AGENTS.md`, where the full rules live. Upgrade with `specy-road upgrade` (`--only stubs` for the stubs alone), not `init --force`.
 - Hooks are not installed for you: `specy-road session guard --format claude-code|codex|cursor --print-config` prints the shared-checkout guard snippet, `specy-road worker hook --format … --print-config` the intervention witness.
 - specy-road ships no MCP server; agents reach it through the skills and the CLI.
 
@@ -33,7 +33,7 @@ The **`specyrd`** CLI (installed with this package) lays down **thin** markdown 
 - **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits`.
 - **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. **specy-road** uses flat **`planning/*.md`** feature sheets per node — not that tool.
 - **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value.
-- **After upgrading specy-road:** Run **`specy-road upgrade`** (or just **`specy-road refresh-stubs`**), not `init --force`. It rewrites exactly the paths `.specyrd/manifest.json` records, adds stubs that shipped since you initialized, and leaves everything else alone. See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade).
+- **After upgrading specy-road:** Run **`specy-road upgrade`** (or just **`specy-road upgrade --only stubs`**), not `init --force`. It rewrites exactly the paths `.specyrd/manifest.json` records, adds stubs that shipped since you initialized, and leaves everything else alone. See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade).
 - **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|codex|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root. Running it again for a second harness adds only that harness's links; the skill files are shared.
 
 ### What `--force` may touch
@@ -90,7 +90,7 @@ specy-road keeps its agent rules in files it owns, and only a short marked stub 
 
 | File | Whose | Written by |
 | ---- | ----- | ---------- |
-| `.specyrd/AGENTS.md` | specy-road's: the full rules (load order, task loop, review, lean changes) | `init project`, rewritten whole by every `upgrade` / `refresh-stubs` |
+| `.specyrd/AGENTS.md` | specy-road's: the full rules (load order, task loop, review, lean changes) | `init project`, rewritten whole by every `upgrade` / `upgrade --only stubs` |
 | `AGENTS.md` | yours, except one managed block: a pointer to `.specyrd/AGENTS.md` and seven core rules | `init project`; `upgrade` rewrites only the block |
 | `CLAUDE.md` | yours, except one managed block: `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md` imports | `specyrd init --ai claude-code` (the only command that creates the file); `upgrade` inserts or rewrites only the block in an existing file, whichever stub packs are installed |
 | `.specyrd/AGENTS.team.md` | yours (tracked): this repository's specy-road instructions from devs and PMs | created once when missing; never rewritten, not in `.specyrd/manifest.json` |

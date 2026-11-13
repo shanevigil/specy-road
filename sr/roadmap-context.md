@@ -46,7 +46,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.3.7` Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed `fold-the-pm-ui-server-and-roadmap-crud-splits-after-the-orchestration-snapshot-is-fixed` — task — **Complete**
   - `M16.4` One command surface and one checks: config (aliases kept for rc5) `one-command-surface-and-one-checks-config-aliases-kept-for-rc5` — milestone — **Not Started**
     - `M16.4.1` doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases `doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases` — task — **Complete**
-    - `M16.4.2` upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update `upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update` — task — **Not Started**
+    - `M16.4.2` upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update `upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update` — task — **Complete**
     - `M16.4.3` review status, review packet, and decisions --kind lesson replace handoff status, review list, review-packet and lessons `review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session` — task — **Not Started**
     - `M16.4.4` milestone and planning command groups, and archive --hard-remove replaces archive-node `milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node` — task — **Not Started**
     - `M16.4.5` One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points `one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points` — task — **Not Started**
@@ -339,7 +339,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.4.2` on `feature/rm-upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update` since 2026-11-12
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -353,14 +352,16 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 3 | 0 | 2.33 | 67% | 18 | 0 |
-| `CHANGELOG.md` **flagged** | 20 | 0 | 2.30 | 60% | 13 | 2 |
+| `CHANGELOG.md` **flagged** | 20 | 0 | 2.45 | 65% | 13 | 2 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 24 | 0 | 2.54 | 67% | 48 | 2 |
+| `docs` **flagged** | 25 | 0 | 2.60 | 68% | 48 | 2 |
+| `gui` **flagged** | 7 | 0 | 2.00 | 57% | 2 | 0 |
 | `planning` **flagged** | 3 | 0 | 3.00 | 67% | 23 | 0 |
+| `playground` **flagged** | 1 | 0 | 4.00 | 100% | 0 | 0 |
 | `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `schemas` **flagged** | 2 | 0 | 2.00 | 100% | 4 | 0 |
-| `suggested_prompts` **flagged** | 2 | 0 | 2.50 | 100% | 4 | 0 |
+| `suggested_prompts` **flagged** | 3 | 0 | 3.00 | 100% | 4 | 0 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
@@ -368,11 +369,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `constraints` | 14 | 0 | 1.71 | 21% | 53 | 0 |
-| `gui` | 8 | 0 | 1.88 | 50% | 2 | 0 |
 | `pyproject.toml` | 2 | 0 | 2.50 | 50% | 20 | 0 |
 | `scripts` | 14 | 0 | 2.07 | 36% | 79 | 0 |
-| `specy_road` | 46 | 0 | 2.11 | 46% | 92 | 2 |
-| `tests` | 46 | 0 | 2.15 | 48% | 104 | 2 |
+| `specy_road` | 46 | 0 | 2.17 | 48% | 92 | 2 |
+| `tests` | 47 | 0 | 2.19 | 49% | 104 | 2 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

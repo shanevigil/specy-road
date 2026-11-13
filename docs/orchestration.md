@@ -145,7 +145,7 @@ a `senior` executor.
 ## Human decisions ledger (`roadmap/decisions.yaml`)
 
 Open questions for a person live in **`roadmap/decisions.yaml`** beside `registry.yaml`. The file is
-schema-validated (`schemas/decisions.schema.json`, copied by `init project` / `specy-road refresh-schemas`).
+schema-validated (`schemas/decisions.schema.json`, copied by `init project` / `specy-road upgrade --only schemas`).
 An id-changing move rewrites `node` here for every entry whose `node` is an old id (any kind and
 status, one lookup of the node it had when loaded, so a chain, a swap, or a YAML alias of the
 same entry stays correct), in the same transaction as the chunks,
@@ -208,7 +208,7 @@ They are **not roster config**: availability and pauses come only from the roste
 it records the new; `close <id> --answer "<why>"` drops it. `orchestrate plan` never
 applies them: it prints them (JSON `preferences_not_applied`); the coordinator reads them each session
 and before each delegate or review launch. A project with its own `schemas/decisions.schema.json` runs
-`refresh-schemas` first.
+`specy-road upgrade --only schemas` first.
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
