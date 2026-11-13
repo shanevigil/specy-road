@@ -438,7 +438,8 @@
         "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
         "gui/pm-gantt/src/components/LeafOrchestrationDetail.tsx",
         "gui/pm-gantt/src/components/OrchestrationDrawer.tsx",
-        "specy_road/pm_gantt_static/"
+        "specy_road/pm_gantt_static/",
+        "specy_road/agent_rule_provenance.md"
       ],
       "type": "task"
     },
