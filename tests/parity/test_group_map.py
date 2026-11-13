@@ -4,8 +4,8 @@
 and ``open-milestone-pr`` ran; ``planning scaffold|approach`` what ``scaffold-planning`` and
 ``author-approach`` ran; ``archive --hard-remove NODE_ID`` what ``archive-node NODE_ID
 --hard-remove`` ran. Each side runs on its own repo built the same way: the same exit, stdout and
-files (the repo's path and its parent written as placeholders); the old form, a deprecated alias,
-adds only its one deprecation line on stderr.
+files (the repo's path, its parent and wall-clock times written as placeholders); the old form, a
+deprecated alias, adds only its one deprecation line on stderr.
 
 The canonical command count (registered top-level names minus the ones command_map.yaml retires)
 is printed and held to its bound.
@@ -13,6 +13,7 @@ is printed and held to its bound.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -105,8 +106,15 @@ NEW_NAME = {
 }
 
 
+#: A wall-clock time a command writes (``opened_at`` on a milestone): the two sides run seconds
+#: apart, so it is compared as a placeholder.
+_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?")
+
+
 def _placeholders(text: str, root: Path, tmp: Path) -> str:
-    return text.replace(str(root), "<ROOT>").replace(str(tmp), "<TMP>")
+    """``text`` with the repo's path, its parent and every ISO-8601 time written as placeholders."""
+    text = text.replace(str(root), "<ROOT>").replace(str(tmp), "<TMP>")
+    return _TIMESTAMP.sub("<TIME>", text)
 
 
 def _files(root: Path, tmp: Path) -> dict[str, str]:
