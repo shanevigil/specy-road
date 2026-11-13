@@ -221,7 +221,10 @@ they record.
 The legacy keys **`baseline_cmd`**, **`land_check_cmd`** and **`verify_cmd`** (strings) are read
 until the release after 0.3.1, each as one entry with `when: baseline`, `land` and `prompt`
 respectively; a blank one is no entry. `specy-road validate` prints one notice for them, and
-`specy-road upgrade` rewrites them into `checks:`. When `checks:` is present the legacy keys are
+`specy-road upgrade` rewrites them into `checks:`, keeping every other key and value. It keeps
+the file's comments and layout when removing the key lines and appending a block `checks:` gives
+exactly that mapping; for any other layout (a flow mapping, an indented mapping, a `...` document
+end, a quoted key) it writes the mapping again in block style, without its comments, and says so. When `checks:` is present the legacy keys are
 ignored, and the notice says so.
 
 ### What `pr` leaves behind (read this before re-running pickup)

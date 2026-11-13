@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import yaml
 
@@ -105,13 +105,33 @@ def _without_keys(text: str, keys: list[str]) -> str:
     return "".join(out)
 
 
-def migrate_text(text: str) -> str | None:
+class Migration(NamedTuple):
+    """``upgrade``'s rewrite: the new text, and whether every other line was kept as written."""
+
+    text: str
+    layout_kept: bool
+
+
+def _loads_to(text: str, expected: dict[str, Any]) -> bool:
+    try:
+        return yaml.safe_load(text) == expected
+    except yaml.YAMLError:
+        return False
+
+
+def migrate_text(text: str) -> Migration | None:
     """``upgrade``'s rewrite of ``git-workflow.yaml``: legacy keys become ``checks:`` entries.
 
     Each non-blank key becomes one entry of its stage, appended in :data:`LEGACY_KEYS` order; with
-    ``checks:`` already present the keys are only removed, since they were ignored. Every other line
-    is kept as written. ``None`` when there is nothing to rewrite, so a second run changes nothing,
-    or when the text is not YAML (validate reports that).
+    ``checks:`` already present the keys are only removed, since they were ignored. ``None`` when
+    there is nothing to rewrite, so a second run changes nothing, or when the text is not YAML
+    (validate reports that).
+
+    One rule decides the layout: the result must load to exactly the old mapping minus the legacy
+    keys plus the entries. The line edit (drop each key's top-level lines, append a block
+    ``checks:``) is used when its text does; for any other layout (a flow mapping, an indented
+    mapping, a ``...`` document end, a quoted key) the mapping is written again in block style,
+    which keeps every key and value but not the file's comments or layout (``layout_kept`` false).
     """
     try:
         data = yaml.safe_load(text)
@@ -123,9 +143,16 @@ def migrate_text(text: str) -> str | None:
     entries = [] if "checks" in data else [
         {"name": LEGACY_KEYS[k][1], "run": str(data[k]).strip(), "when": LEGACY_KEYS[k][0]}
         for k in keys if str(data[k] or "").strip()]
+    expected = {k: v for k, v in data.items() if k not in keys}
     out = _without_keys(text, keys)
     if entries:
-        block = yaml.safe_dump({"checks": entries}, sort_keys=False, default_flow_style=False,
-                               width=1000)
-        out = out.rstrip("\n") + "\n" + block
-    return out
+        expected["checks"] = entries
+        out = out.rstrip("\n") + "\n" + _dump({"checks": entries})
+    if _loads_to(out, expected):
+        return Migration(out, layout_kept=True)
+    return Migration(_dump(expected), layout_kept=False)
+
+
+def _dump(data: dict[str, Any]) -> str:
+    return yaml.safe_dump(data, sort_keys=False, default_flow_style=False, width=1000,
+                          allow_unicode=True)

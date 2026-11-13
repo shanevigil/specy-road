@@ -469,16 +469,18 @@ _DIGEST_STEP = ("Run specy-road digest (and specy-road export if roadmap.md is t
 def _migrate_checks(project: Path, verb: str, out: Report) -> None:
     """Rewrite ``baseline_cmd``, ``land_check_cmd`` and ``verify_cmd`` as ``checks:`` entries.
 
-    Every other line of ``roadmap/git-workflow.yaml``,
-    ``require_implementation_review_before_finish`` among them, is left as written
+    Every other key of ``roadmap/git-workflow.yaml``,
+    ``require_implementation_review_before_finish`` among them, keeps its value; the report says
+    when the file's comments and layout could not be kept
     (:func:`specy_road.checks_config.migrate_text`).
     """
     path = project / GIT_WORKFLOW_REL
-    if not path.is_file() or (text := migrate_text(path.read_text(encoding="utf-8"))) is None:
+    if not path.is_file() or (done := migrate_text(path.read_text(encoding="utf-8"))) is None:
         return
-    safe_write.write(project, GIT_WORKFLOW_REL, text)
+    safe_write.write(project, GIT_WORKFLOW_REL, done.text)
+    layout = "" if done.layout_kept else "; written again in block style, without its comments"
     out.add(FILES, f"{verb} {GIT_WORKFLOW_REL.as_posix()} (baseline_cmd, land_check_cmd and"
-            " verify_cmd become checks: entries)")
+            f" verify_cmd become checks: entries{layout})")
 
 
 FILE_LIMITS = "constraints/file-limits.yaml"

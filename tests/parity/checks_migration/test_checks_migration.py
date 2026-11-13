@@ -38,7 +38,8 @@ from tests.test_models_and_prompt import make_profile_repo
 
 from specy_road.bundled_scripts import review_cli, review_packet, role_prompt, validate_roadmap
 from specy_road.bundled_scripts.upgrade import run_upgrade
-from specy_road.checks_config import migrate_text
+from specy_road.checks_config import migrate_text, stage_commands
+from specy_road.git_workflow_config import validate_git_workflow_dict
 from specy_road.bundled_scripts.do_next_available import run_baseline_gate
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.finish_land_local import land_root_locally
@@ -201,8 +202,10 @@ def test_row_gives_its_recorded_result(row: dict, form: str, tmp_path: Path, mon
 def test_upgraded_row_gives_its_recorded_result(row: dict, tmp_path: Path, monkeypatch,
                                                 capsys) -> None:
     """A4: the row's legacy config after ``upgrade``'s rewrite gives the recorded result, once."""
-    upgraded = migrate_text(_GW + _sub(row["legacy"]))
-    assert upgraded is not None and migrate_text(upgraded) is None   # a second run changes nothing
+    done = migrate_text(_GW + _sub(row["legacy"]))
+    assert done is not None and done.layout_kept
+    upgraded = done.text
+    assert migrate_text(upgraded) is None   # a second run changes nothing
     monkeypatch.setenv("CHECKS_PROBE_LOG", str(tmp_path / "probe.log"))
     row = {**row, "cli": None if row["cli"] is None else _sub(row["cli"])}
     config = upgraded.removeprefix(_GW)
@@ -282,3 +285,54 @@ def test_upgrade_rewrites_the_keys_once_and_leaves_the_review_switch(tmp_path: P
 def test_upgrade_leaves_a_file_that_is_not_yaml_to_validate() -> None:
     """A file that is not YAML is left as it is, for validate to report."""
     assert migrate_text("baseline_cmd: [make test\n") is None
+
+
+#: Layouts of one valid config: block (comments kept), then forms the line edit cannot keep.
+_SWITCH = "require_implementation_review_before_finish"
+LAYOUTS = {
+    "block": (f"{_GW}{_SWITCH}: true\n# trunk gate\nbaseline_cmd: make test\n"
+              "land_check_cmd: |\n  make lint &&\n  make all\nverify_cmd: pytest -n 4\n", True),
+    "flow mapping": ("{version: 1, integration_branch: main, remote: origin, "
+                     f"{_SWITCH}: true, baseline_cmd: make test, land_check_cmd: make all, "
+                     "verify_cmd: pytest -n 4}\n", False),
+    "indented mapping": ("".join(f"  {line}\n" for line in _GW.splitlines())
+                         + f"  {_SWITCH}: true\n  baseline_cmd: make test\n"
+                         "  land_check_cmd: make all\n  verify_cmd: pytest -n 4\n", False),
+    "document end": (f"{_GW}{_SWITCH}: true\nbaseline_cmd: make test\nland_check_cmd: make all\n"
+                     "verify_cmd: pytest -n 4\n...\n", False),
+    "quoted keys": (f'{_GW}{_SWITCH}: true\n"baseline_cmd": make test\n'
+                    "'land_check_cmd': make all\nverify_cmd: pytest -n 4\n", False),
+}
+
+
+@pytest.mark.parametrize("layout", LAYOUTS)
+def test_upgrade_keeps_every_value_in_any_layout(layout: str) -> None:
+    """A4: in every layout the result loads, validates, keeps every other key and runs the same
+    commands at each stage; only the block layout keeps its comments."""
+    text, kept = LAYOUTS[layout]
+    before = yaml.safe_load(text)
+    done = migrate_text(text)
+    assert done is not None and done.layout_kept is kept
+    after = yaml.safe_load(done.text)
+    assert validate_git_workflow_dict(after) is None and after[_SWITCH] is True
+    legacy = ("baseline_cmd", "land_check_cmd", "verify_cmd")
+    assert {k: v for k, v in after.items() if k != "checks"} == {
+        k: v for k, v in before.items() if k not in legacy}
+    for stage in ("baseline", "ready", "land", "prompt"):
+        assert stage_commands(after, stage) == stage_commands(before, stage)
+    assert ("# trunk gate" in done.text) is kept
+    assert migrate_text(done.text) is None
+
+
+def test_upgrade_writes_a_flow_mapping_again_and_says_so(tmp_path: Path, capsys) -> None:
+    """A4: the file upgrade writes for a layout the line edit cannot keep validates, and the
+    report names the lost comments and layout."""
+    root = old_repo(tmp_path / "repo")
+    gw = root / "roadmap" / "git-workflow.yaml"
+    gw.write_text(LAYOUTS["flow mapping"][0], encoding="utf-8")
+    assert run_upgrade(root) == 0   # validate passed on the written file
+    assert "verify_cmd become checks: entries; written again in block style, without its comments" \
+        in capsys.readouterr().out
+    data = yaml.safe_load(gw.read_text(encoding="utf-8"))
+    assert [e["run"] for e in data["checks"]] == ["make test", "make all", "pytest -n 4"]
+    assert data[_SWITCH] is True
