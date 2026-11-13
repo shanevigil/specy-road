@@ -19,7 +19,7 @@ from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """The ``specy-road reconcile-milestone-status`` parser."""
+    """The ``specy-road milestone status`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Milestone delivery: default is MR-first (rollup branch merged into "
@@ -117,7 +117,7 @@ def _plan_open_state(
         out.append(
             f"pending: {pid!r}: rollup complete but {rollup_branch!r} not merged "
             f"into {integration_branch!r} on {remote!r} "
-            "(open MR via `specy-road open-milestone-pr`, merge, then re-run; "
+            "(open MR via `specy-road milestone pr`, merge, then re-run; "
             "or use --fallback-head-delivery if appropriate)."
         )
     elif merged is None and rollup_ok and not fallback_head_delivery:
@@ -172,7 +172,7 @@ def _emit_planned(planned: list[str], *, apply: bool) -> None:
         print("\n(dry-run: re-run with --apply to write changes)")
     else:
         print(
-            "\n[ok] reconcile-milestone-status: applied changes "
+            "\n[ok] milestone status: applied changes "
             "(each step re-validated)."
         )
 

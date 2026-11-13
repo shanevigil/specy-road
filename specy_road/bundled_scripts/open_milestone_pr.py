@@ -19,7 +19,7 @@ from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """The ``specy-road open-milestone-pr`` parser."""
+    """The ``specy-road milestone pr`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Show commands to open a single PR/MR from "
@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None) -> None:
     if not ms:
         print(
             "error: work/.milestone-session.yaml not found — run "
-            "`specy-road start-milestone-session <PARENT_NODE_ID>` first.",
+            "`specy-road milestone start <PARENT_NODE_ID>` first.",
             file=sys.stderr,
         )
         raise SystemExit(1)

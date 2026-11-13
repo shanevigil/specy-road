@@ -279,6 +279,26 @@
   "nargs": 0,
   "metavar": null
  },
+ "specy-road milestone start --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "BRANCH"
+ },
+ "specy-road milestone start --remote": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "remote",
+  "nargs": null,
+  "metavar": "NAME"
+ },
  "specy-road models list --json": {
   "action": "_StoreTrueAction",
   "type": null,

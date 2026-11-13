@@ -37,7 +37,7 @@ independent work safely and skip waves whose dependencies are not met yet.
 | One agent grinds many leaves autonomously | `grind-session --implement-mode hook --implement-cmd …` |
 | An IDE agent session (Claude Code, Cursor) drives the loop itself | `grind-session --step pickup`, implement, `grind-session --step finish` |
 | A human drives the loop, implementing between cycles | `grind-session` (manual mode, default) |
-| One integration PR for a whole milestone subtree | `start-milestone-session` + `--milestone-subtree` (see dev-workflow.md) |
+| One integration PR for a whole milestone subtree | `milestone start` + `--milestone-subtree` (see dev-workflow.md) |
 
 The loop lands each finished leaf on the integration branch, so run it with
 **`--on-complete merge`** (or `auto`). `pr` mode does not merge between cycles,
@@ -71,7 +71,7 @@ names the valid ones, and `--fields` is accepted only with `--plan --json`.
   `waiting_on` (the blocking node **display ids**) and a `reason`:
   `dependency` (waiting on other work) or `gate` (waiting on a human `type: gate`).
 - **`unauthored`** — leaves pickup skips (with a `reason`): the planning sheet still has
-  scaffold-planning's or brainstorm promote's placeholder text and the node has no
+  planning scaffold's or brainstorm promote's placeholder text and the node has no
   `acceptance`. `--allow-unauthored` (on `--plan`, the loop and `--step`) makes them ready.
 - **`active`** — leaves already claimed in the registry or marked *In Progress*
   (in flight; do **not** re-dispatch).
@@ -570,7 +570,7 @@ through `specy-road` (do not hand-edit) so the indentation stays consistent.
 
 - **`grind-session`** drives the *per-leaf* loop (each leaf lands on integration
   via `on_complete`), and `--plan` helps you parallelize across leaves.
-- **`start-milestone-session` + `--milestone-subtree`** collects a whole subtree
+- **`milestone start` + `--milestone-subtree`** collects a whole subtree
   onto one rollup branch for a *single* integration PR. Use that when you want one
   PR per milestone instead of per leaf. `grind-session --milestone-subtree` passes
   the flag through to pickup. See [dev-workflow.md](dev-workflow.md#milestone-scoped-execution-rollup-branch).

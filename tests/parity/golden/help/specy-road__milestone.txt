@@ -1,0 +1,16 @@
+$ specy-road milestone --help
+exit: 0
+--- stdout ---
+usage: specy-road milestone [-h] {start,status,pr} ...
+
+Milestone sessions: one rollup branch for a parent's whole subtree.
+
+positional arguments:
+  {start,status,pr}
+    start            Sync the integration branch, ensure the rollup branch, write the session.
+    status           Reconcile milestone delivery with git (dry run unless --apply).
+    pr               Print the one PR/MR command from the rollup branch to integration.
+
+options:
+  -h, --help         show this help message and exit
+--- stderr ---

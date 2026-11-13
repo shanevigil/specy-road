@@ -98,7 +98,7 @@ def _run_scaffold_folder(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """The ``specy-road scaffold-planning`` parser."""
+    """The ``specy-road planning scaffold`` parser."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "node_id",

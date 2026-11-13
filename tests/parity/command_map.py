@@ -110,6 +110,28 @@ def apply_rows(
     return expected, covered, errors
 
 
+def retired_top_level_names(rows: list[dict], current: dict[str, dict]) -> set[str]:
+    """``specy-road`` top-level names the rows retire, for the canonical command count.
+
+    A row retires its ``old`` command when ``old`` has no options and ``new`` is neither that
+    command nor under it. A top-level name is retired when a row retires it, or when rows retire
+    every subcommand it has (``branches prune``, ``handoff status``); one with a subcommand left
+    (``review``, after ``review list``) is not, nor is a name a flag row changes.
+    """
+    gone = set()
+    for row in rows:
+        old, options = split_invocation(row.get("old"))
+        new = split_invocation(row.get("new"))[0]
+        if old.startswith("specy-road ") and not options and not _under(old, [new]):
+            gone.add(old)
+    names = set()
+    for key in gone:
+        top = " ".join(key.split()[:2])
+        if key == top or all(f"{top} {s}" in gone for s in current[top]["subcommands"]):
+            names.add(top.split()[1])
+    return names
+
+
 def inventory_differences(expected: dict[str, dict], current: dict[str, dict]) -> list[str]:
     """Each difference between the expected and the current inventory, naming its command."""
     problems = []

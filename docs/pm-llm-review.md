@@ -41,7 +41,7 @@ For **where credentials live** (Settings file, global vs per-repo, environment v
 
 ## Before you can use it
 
-1. **A planning sheet must exist** for that node — the button sits in the planning area when `planning/` is set up. If you see “Create planning file,” run **`specy-road scaffold-planning <NODE_ID>`** (or use the on-screen scaffold action) first.
+1. **A planning sheet must exist** for that node — the button sits in the planning area when `planning/` is set up. If you see “Create planning file,” run **`specy-road planning scaffold <NODE_ID>`** (or use the on-screen scaffold action) first.
 2. **LLM settings must be complete** for the backend you chose in **Settings → LLM** (gear in the sidebar). The UI enables **LLM Review** only when the saved form looks sufficient for that backend (same rules as **Test LLM**). Use **Test LLM** once after changing keys or models so you catch connection errors early.
 3. **Anthropic only:** the Anthropic **Messages** API requires a **maximum completion token** budget. Set **Max output tokens** in Settings (saved into the same mechanism as other LLM fields) **or** export **`SPECY_ROAD_ANTHROPIC_MAX_TOKENS`** in the environment before starting the GUI. There is **no hidden default** in the reviewer for that value.
 4. **Read-only planning** — If this task’s **registered development branch** matches your **current git checkout**, the dashboard treats the title and planning sheet as **read-only** (so in-flight dev work is not overwritten from the PM UI). **LLM Review** is disabled in that state as well.
@@ -55,7 +55,7 @@ Supported backends in the reviewer match the docs: **OpenAI**, **Azure OpenAI**,
 1. The app takes a **snapshot** of the **current editor text** (what you see in the planning Markdown editor), even if you have not saved to disk yet.
 2. It sends your **saved LLM settings** for this repository to the **local FastAPI server**, which temporarily copies the relevant values into **process environment variables** the reviewer reads (same names as the CLI — see [pm-workflow.md](pm-workflow.md)).
 3. The server builds a **structured prompt**: fixed **instructions** (system message) plus a **single user message** made of labeled sections (brief, shared index, constraints, cited files, your sheet, expected headings). Details are in the next section.
-4. The model returns **Markdown** only — intended as a **replacement planning sheet** with the same canonical `##` sections as `specy-road scaffold-planning` for that node type (**feature sheet**: Intent, Approach, Tasks / checklist, References; **gate**: Why this gate exists, Criteria to clear, Decisions and notes, Resolution, References).
+4. The model returns **Markdown** only — intended as a **replacement planning sheet** with the same canonical `##` sections as `specy-road planning scaffold` for that node type (**feature sheet**: Intent, Approach, Tasks / checklist, References; **gate**: Why this gate exists, Criteria to clear, Decisions and notes, Resolution, References).
 5. The UI shows that result in **review mode**: a **diff** view by default, with extra actions described below.
 
 If the request fails (network, auth, quota, invalid Anthropic max tokens, etc.), you see an **error string** in the planning toolbar area; your sheet is left unchanged.

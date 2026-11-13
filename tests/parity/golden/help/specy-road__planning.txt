@@ -1,0 +1,15 @@
+$ specy-road planning --help
+exit: 0
+--- stdout ---
+usage: specy-road planning [-h] {scaffold,approach} ...
+
+Planning sheets.
+
+positional arguments:
+  {scaffold,approach}
+    scaffold           Create a node's planning sheet and set its planning_dir.
+    approach           Print the prompt that writes a leaf's placeholder ## Approach.
+
+options:
+  -h, --help           show this help message and exit
+--- stderr ---

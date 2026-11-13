@@ -50,7 +50,7 @@ specy-road export --check --repo-root playground
 specy-road brief M1.1 -o playground/work/brief-M1.1.md --repo-root playground
 ```
 
-Add other subcommands the same way (`sync`, `scaffold-planning`, registry-aware flows, etc.). If you omit `--repo-root`, the default is the **git worktree root** (the specy-road clone), which is usually wrong for this workflow.
+Add other subcommands the same way (`sync`, `planning scaffold`, registry-aware flows, etc.). If you omit `--repo-root`, the default is the **git worktree root** (the specy-road clone), which is usually wrong for this workflow.
 
 ---
 

@@ -94,7 +94,7 @@ def _ensure_rollup_branch(root: Path, rollup: str, base: str, remote: str) -> No
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """The ``specy-road start-milestone-session`` parser."""
+    """The ``specy-road milestone start`` parser."""
     p = argparse.ArgumentParser(
         description=(
             "Sync integration branch, ensure rollup branch feature/rm-<parent-codename>, "
@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> None:
         print(
             "error: parent already has milestone_execution in "
             f"{existing.get('state')!r} — close it with "
-            "`specy-road reconcile-milestone-status --apply` after delivery, "
+            "`specy-road milestone status --apply` after delivery, "
             "or clear milestone_execution manually before restarting.",
             file=sys.stderr,
         )
@@ -141,7 +141,7 @@ def main(argv: list[str] | None = None) -> None:
         root,
         base,
         remote,
-        retry_hint="retry start-milestone-session",
+        retry_hint="retry milestone start",
     )
     _ensure_rollup_branch(root, rollup, base, remote)
 
