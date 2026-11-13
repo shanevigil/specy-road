@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""CLI for `specy-road handoff status`, `specy-road review record|list|delegate` and `specy-road ready`.
+"""CLI for `specy-road review status|packet|record|delegate` and `specy-road ready`.
 
-``handoff status`` is what a coordinator polls: for each node with a
+``review status`` is what a coordinator polls: for each node with a
 ``work/reviews/<NODE_ID>/`` directory it reports the READY hand-off, every
 review record, and whether the review policy is met at the commit under
-review. Records with no registry claim are listed without a commit unless
+review. Given one node it also prints what ``review list`` printed that the report above does not (each record's
+commit, stale and invalid records, RCA records, the gate line), and ``--json`` adds that node's ``records``. Records with no registry claim are listed without a commit unless
 ``--ref`` names one. Given one node it exits 0 when the gate is met or the node
 is Complete, 1 when it is not met, and 2 when it cannot be determined. A leaf
 whose review loop is not converging and has no root-cause analysis for it is
@@ -20,9 +21,11 @@ roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``. It refuses an approve whose
 findings or notes name a defect with neither a ``required_changes`` entry nor a ``not a defect because`` line
 (:mod:`specy_road.review_record_rules`).
-``review list`` prints the filed records, any RCA records, the escalation and the gate evaluation, and writes nothing.
-Both commands report the leaf's review rounds (distinct reviewed commits), the time from its first review to the latest,
+It reports the leaf's review rounds (distinct reviewed commits), the time from its first review to the latest,
 and each ``review delegate`` run with its commit; an older commit's record never reads as the current verdict.
+``review packet`` writes the reviewer's packet (:mod:`review_packet`).
+``handoff status`` (the report without the records) and ``review list`` (the records and the gate alone) are
+deprecated aliases of ``review status``, each printing one deprecation line first.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import getpass
+import io
 import json
 import sys
 from dataclasses import dataclass
@@ -40,6 +44,7 @@ import yaml
 
 from specy_road.bundled_scripts.finish_task import undecided_human_items
 from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
+from specy_road.cli import ALIASES_REMOVED_IN, warn_deprecated
 from specy_road.cli_entry import run_cli
 from specy_road.clock import utc_now_iso
 from specy_road.decisions import DECISIONS_REL
@@ -106,7 +111,7 @@ def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | No
 
 @dataclass
 class ReviewState:
-    """One claimed node's review state without the trial merge: what ``handoff status`` and
+    """One claimed node's review state without the trial merge: what ``review status`` and
     ``grind-session --status`` (M22.68) share, so the state names keep one definition."""
 
     target: ReviewTarget
@@ -225,7 +230,7 @@ def _render(st: dict[str, Any]) -> list[str]:
 
 
 def rca_command(node_id: str) -> str:
-    """The root-cause analysis an escalated leaf needs next (``handoff status``, ``grind-session --status``)."""
+    """The root-cause analysis an escalated leaf needs next (``review status``, ``grind-session --status``)."""
     return f"specy-road prompt {node_id} --role rca --model <reviewer that has not reviewed it>"
 
 
@@ -290,7 +295,8 @@ def _status_or_error(root: Path, nid: str, ref: str | None = None) -> dict[str, 
         return {"node_id": nid, "state": "error", "error": msg}
 
 
-def cmd_handoff_status(ns: argparse.Namespace) -> int:
+def _status_report(ns: argparse.Namespace, *, records: bool) -> int:
+    """The hand-off report; with ``records`` and one node, ``review list``'s lines and payload too."""
     root = resolve_repo_root(ns)
     if ns.ref and not ns.node_id:
         return _fail("--ref names one node's branch or commit; give the node id too", 2)
@@ -299,21 +305,45 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
     sessions = list_sessions(root)
     workers = list_records(root, active_only=True)
     if ns.json:
-        print(json.dumps({"sessions": [s.to_dict() for s in sessions],
-                          "workers": [w.to_dict() for w in workers], "nodes": out, "orphaned_claims": orphaned_claims(root)}, indent=2))
+        payload = {"sessions": [s.to_dict() for s in sessions], "workers": [w.to_dict() for w in workers],
+                   "nodes": out, "orphaned_claims": orphaned_claims(root)}
+        if records and ns.node_id:
+            payload["records"] = review_list_payload(root, ns.node_id, ns.ref)
+        print(json.dumps(payload, indent=2))
     else:
-        if sessions:
-            print("Live sessions: " + ", ".join(f"{s.agent} ({s.branch or '-'}: {', '.join(s.paths) or 'no paths'})" for s in sessions))
-        if workers:
-            print("Workers: " + ", ".join(f"{w.worker_id} ({w.node_id} {w.harness} {w.state}, lease {w.lease.get('holder')})" for w in workers))
-        any(map(print, report_lines(orphaned_claims(root))))
-        if not out:
-            print(f"No hand-offs under {reviews_root(root)}.")
-        else:
-            print("\n".join(line for st in out for line in _render(st)))
+        lines = _handoff_lines(root, out, sessions, workers)
+        if records and ns.node_id:
+            seen = {line.strip() for line in lines}
+            lines += [line for line in _review_list_lines(root, ns.node_id, ns.ref) if line.strip() not in seen]
+        print("\n".join(lines))
     # A sweep only reports. For one named node a polling script reads the exit:
     # 0 gate met (or Complete), 1 not met, 2 undeterminable; `state` says which.
     return _EXIT.get(out[0]["state"], 1) if ns.node_id else 0
+
+
+def _handoff_lines(root: Path, out: list[dict[str, Any]], sessions: list[Any], workers: list[Any]) -> list[str]:
+    lines = []
+    if sessions:
+        lines.append("Live sessions: " + ", ".join(f"{s.agent} ({s.branch or '-'}: {', '.join(s.paths) or 'no paths'})"
+                                                   for s in sessions))
+    if workers:
+        lines.append("Workers: " + ", ".join(f"{w.worker_id} ({w.node_id} {w.harness} {w.state}, lease "
+                                             f"{w.lease.get('holder')})" for w in workers))
+    lines += report_lines(orphaned_claims(root))
+    if not out:
+        return [*lines, f"No hand-offs under {reviews_root(root)}."]
+    return lines + [line for st in out for line in _render(st)]
+
+
+def cmd_review_status(ns: argparse.Namespace) -> int:
+    """``review status``: the hand-off report, and for one node its records and gate line too; reads only."""
+    return _status_report(ns, records=True)
+
+
+def cmd_handoff_status(ns: argparse.Namespace) -> int:
+    """``handoff status``, the deprecated alias: the report without ``review list``'s lines."""
+    warn_deprecated("handoff status", "review status")
+    return _status_report(ns, records=False)
 
 
 _EXIT = {"approved": 0, "complete_no_claim": 0, "unclaimed": 2, "error": 2, "executor_blocked": 1}
@@ -354,15 +384,15 @@ def cmd_review_record_locked(ns: argparse.Namespace) -> int:
         with review_lock.review_run_lock(reviews_dir(root, ns.node_id), wait=review_lock.FILING_WAIT):
             return cmd_review_record(ns)
     except ReviewRunBusy:
-        return _fail(f"{filing_busy(ns.node_id)} — file again when it ends (review list {ns.node_id})")
+        return _fail(f"{filing_busy(ns.node_id)} — file again when it ends (review status {ns.node_id})")
     except safe_write.SafeWriteError as e:   # a symlink at the hand-off directory or the lock
         return _fail(str(e))
 
 
-def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget | None) -> int:
-    reviews = list_reviews(root, ns.node_id)
+def _print_review_list_text(root: Path, node_id: str, t: ReviewTarget | None) -> int:
+    reviews = list_reviews(root, node_id)
     if not reviews:
-        print(f"No review records for {ns.node_id}.")
+        print(f"No review records for {node_id}.")
     for r in reviews:
         d = r.data
         stale = t is not None and r.ok and not same_commit(root, d.get("commit"), t.commit)
@@ -370,12 +400,12 @@ def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget 
               f"at {str(d.get('commit') or '?')[:12]}{' [signed]' if d.get('signature') else ''}"
               + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}") + (" — stale: not the commit under review" if stale else ""))
     if t:
-        print_refused_list(root, ns.node_id, t.commit)
-    for line in unreadable_rejected_lines(reviews_dir(root, ns.node_id)):
+        print_refused_list(root, node_id, t.commit)
+    for line in unreadable_rejected_lines(reviews_dir(root, node_id)):
         print(line)
-    print("\n".join(run_lines(run_states(root, ns.node_id, t.commit if t else None))) or "No delegated review runs.")
-    print(round_span(root, ns.node_id)["line"])
-    loop = loop_state(root, ns.node_id)
+    print("\n".join(run_lines(run_states(root, node_id, t.commit if t else None))) or "No delegated review runs.")
+    print(round_span(root, node_id)["line"])
+    loop = loop_state(root, node_id)
     _print_rcas(loop)
     gate = None
     if t is None:
@@ -389,12 +419,36 @@ def _print_review_list_text(root: Path, ns: argparse.Namespace, t: ReviewTarget 
         for line in milestone_status(t, "approved" if gate.passed else "waiting")[1]:
             print(line)
     if loop.escalation and (t is None or not gate.passed):
-        print(_escalation_line(ns.node_id, loop.escalation.describe()).strip())
+        print(_escalation_line(node_id, loop.escalation.describe()).strip())
     return 0
 
 
+def _review_target(root: Path, node_id: str, ref: str | None) -> ReviewTarget | None:
+    """The commit under review; ``None`` with no claim. Raises :class:`ReviewTargetError` for any other failure."""
+    try:
+        return resolve_target(root, node_id, ref)
+    except ReviewTargetError as e:
+        if not str(e).startswith("no registry claim"):
+            raise
+        return None
+
+
+def _review_list_lines(root: Path, node_id: str, ref: str | None) -> list[str]:
+    """What ``review list`` printed for ``node_id``; none when the target does not resolve (it exited 1)."""
+    try:
+        t = _review_target(root, node_id, ref)
+    except ReviewTargetError:
+        return []
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        _print_review_list_text(root, node_id, t)
+    return buf.getvalue().splitlines()
+
+
 def cmd_review_list(ns: argparse.Namespace) -> int:
-    """Filed records and RCA records, the gate at the commit under review, then any escalation; reads only."""
+    """``review list``, the deprecated alias: filed records and RCA records, the gate at the commit under
+    review, then any escalation; reads only."""
+    warn_deprecated("review list", "review status")
     root = resolve_repo_root(ns)
     if ns.json:
         payload = review_list_payload(root, ns.node_id, ns.ref)
@@ -403,12 +457,10 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
             return _fail(payload["error"])
         return 0
     try:
-        t = resolve_target(root, ns.node_id, ns.ref)
+        t = _review_target(root, ns.node_id, ns.ref)
     except ReviewTargetError as e:
-        if not str(e).startswith("no registry claim"):
-            return _fail(str(e))
-        t = None
-    return _print_review_list_text(root, ns, t)
+        return _fail(str(e))
+    return _print_review_list_text(root, ns.node_id, t)
 
 
 def _user(root: Path) -> str:
@@ -613,7 +665,7 @@ def cmd_operator_decision(ns: argparse.Namespace) -> int:
     marker = write_operator_marker(root, entry, sha, ns.session)
     print(f"[ok] decision {entry['id']} closed (decided_by: {entry['decided_by']}) for {ns.node_id} at {sha[:12]}: "
           f"{'; '.join(settles) or 'nothing to settle'}; wrote {marker}")
-    print(f"  Commit {DECISIONS_REL.as_posix()} on the integration branch, then `specy-road handoff status "
+    print(f"  Commit {DECISIONS_REL.as_posix()} on the integration branch, then `specy-road review status "
           f"{ns.node_id}`. A later commit on the leaf beyond its sheet or review bookkeeping ends the decision.")
     return 0
 
@@ -637,21 +689,49 @@ def add_operator_decision_parser(rsub: Any) -> None:
     sp.set_defaults(func=cmd_operator_decision)
 
 
-def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="specy-road")
-    sub = p.add_subparsers(dest="cmd", required=True)
-
-    handoff = sub.add_parser("handoff", help="READY / review hand-off files under work/reviews/")
-    hsub = handoff.add_subparsers(dest="handoff_cmd", required=True)
-    st = hsub.add_parser("status", help="Report hand-offs, reviews, and whether review policy is met")
+def _add_status_parser(subparsers: Any, about: str, func: Any) -> None:
+    """``review status`` and its deprecated alias ``handoff status``: one node or every node, ``--json``, ``--ref``."""
+    st = subparsers.add_parser("status", help=about)
     st.add_argument("node_id", nargs="?", help="One node (default: every node under work/reviews/)")
     add_json_arg(st, help="Machine-readable output for polling")
     add_ref_arg(st)
     add_repo_root_arg(st)
-    st.set_defaults(func=cmd_handoff_status)
+    st.set_defaults(func=func)
+
+
+def _add_packet_parser(subparsers: Any) -> None:
+    """``review packet``: the flags of :func:`review_packet.build_parser`, which ``review-packet`` also reads."""
+    from specy_road.bundled_scripts import review_packet
+
+    packet = review_packet.build_parser()
+    sp = subparsers.add_parser("packet", parents=[packet], add_help=False, description=packet.description,
+                               formatter_class=packet.formatter_class,
+                               help="Write work/reviews/<NODE_ID>/PACKET.md, the verification packet reviewers read")
+    sp.set_defaults(func=cmd_review_packet)
+
+
+def cmd_review_packet(ns: argparse.Namespace) -> int:
+    """``review packet``: write the packet, as ``review-packet`` does."""
+    from specy_road.bundled_scripts.review_packet import write_packet
+
+    write_packet(ns)
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="specy-road")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    handoff = sub.add_parser("handoff", help=f"Deprecated: use review status (removed in {ALIASES_REMOVED_IN})")
+    hsub = handoff.add_subparsers(dest="handoff_cmd", required=True)
+    _add_status_parser(hsub, f"Deprecated: use review status (removed in {ALIASES_REMOVED_IN}). Report "
+                             "hand-offs, reviews, and whether review policy is met", cmd_handoff_status)
 
     review = sub.add_parser("review", help="Review records")
     rsub = review.add_subparsers(dest="review_cmd", required=True)
+    _add_status_parser(rsub, "Report hand-offs, review records (verdict, commit, family), and whether review "
+                             "policy is met; reads only", cmd_review_status)
+    _add_packet_parser(rsub)
     rec = rsub.add_parser("record", help="Validate a reviewer's notes and file them as a review record")
     rec.add_argument("node_id")
     add_model_arg(rec, help="Reviewer model id from the roster (not human)", required=True)
@@ -666,7 +746,9 @@ def build_parser() -> argparse.ArgumentParser:
                           "policy.count_human_filed_reviews")
     add_repo_root_arg(rec)
     rec.set_defaults(func=cmd_review_record_locked)
-    for name, about, fn in (("list", "Print a node's filed review records and the gate evaluation; writes nothing", cmd_review_list),
+    for name, about, fn in (("list", f"Deprecated: use review status (removed in {ALIASES_REMOVED_IN}). Print a "
+                                     "node's filed review records and the gate evaluation; writes nothing",
+                             cmd_review_list),
                             ("check-pre-existing", "Re-run claimed pre-existing verifier failures twice on the integration tip",
                              cmd_check_pre_existing),
                             ("red-green", "Run the tests a leaf adds or changes at its merge base and at head", cmd_red_green)):

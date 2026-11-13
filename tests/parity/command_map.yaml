@@ -100,3 +100,33 @@ rows:
   - old: specy-road
     new: specy-road
     allowed: "M16.4.2: top-level help drops refresh-schemas, refresh-profiles and refresh-stubs, names upgrade --only, and lists update as self-update"
+  - old: specy-road handoff status
+    new: specy-road review status
+    allowed: "M16.4.3: `handoff status` is a hidden deprecated alias of `review status` (same output, one deprecation line on stderr); its help says so"
+  - old: specy-road review list
+    new: specy-road review status
+    allowed: "M16.4.3: `review list` is a hidden deprecated alias of `review status` (same output, one deprecation line on stderr); its help says so"
+  - old: specy-road review-packet
+    new: specy-road review packet
+    allowed: "M16.4.3: `review-packet` is a hidden deprecated alias of `review packet` (same flags and output, one deprecation line on stderr); its description names `review packet`"
+  - old: specy-road lessons
+    new: specy-road decisions add --kind lesson
+    allowed: "M16.4.3: `lessons add|list` is a hidden deprecated alias of `decisions add|list --kind lesson` (same file and format); A3's `specy-road decisions --kind lesson`, written as the subcommand that carries --kind"
+  - old: specy-road decisions add
+    new: specy-road decisions add --example
+    allowed: "M16.4.3: `decisions add --kind lesson` (with --example; --summary is the rule and NODE the leaf it escaped from)"
+  - old: specy-road decisions list
+    new: specy-road decisions list --kind
+    allowed: "M16.4.3: `decisions list --kind lesson` prints the review lessons"
+  - old: specy-road decisions
+    new: specy-road decisions
+    allowed: "M16.4.3: `decisions --help` says --kind lesson covers review lessons and lists add's lesson help"
+  - old: specy-road review
+    new: specy-road review
+    allowed: "M16.4.3: `review --help` lists the new status and packet subcommands and marks list deprecated"
+  - old: specy-road handoff
+    new: specy-road handoff
+    allowed: "M16.4.3: `handoff --help` marks status deprecated"
+  - old: specy-road
+    new: specy-road
+    allowed: "M16.4.3: top-level help lists review packet, review status and decisions --kind lesson in place of review-packet, handoff status and review list"

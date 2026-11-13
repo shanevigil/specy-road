@@ -143,7 +143,7 @@ def cmd_review_defer(ns: argparse.Namespace) -> int:
         return _fail(f"could not apply {rca.path.name}; nothing was written: {e}")
     print(f"[ok] added {', '.join(sorted(set(ids.values())))}; decision {entry['id']} closed; wrote {marker}")
     print("  Commit roadmap/ (the follow-up leaf and decisions.yaml), then "
-          f"`specy-road handoff status {ns.node_id}`.")
+          f"`specy-road review status {ns.node_id}`.")
     return 0
 
 

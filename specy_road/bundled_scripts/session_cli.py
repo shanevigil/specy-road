@@ -7,7 +7,7 @@ caller's own record (``SPECY_ROAD_AGENT_ID``, else the derived id) or an
 expired one; ``<id>`` and ``--agent`` pick the target, never the caller.
 Another agent's live record is ended only with ``--force`` from a terminal
 (stdin a TTY). ``list`` is what the
-others read; ``handoff status`` shows the same. ``check`` is the commit guard:
+others read; ``review status`` shows the same. ``check`` is the commit guard:
 exit 1 when the staged paths (or ``--path`` ones) overlap another live
 session's, so a pre-commit hook can refuse a commit that would land on
 someone else's work. All of it is advisory past that one exit code.

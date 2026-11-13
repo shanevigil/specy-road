@@ -233,7 +233,7 @@ Separate worktrees give isolated working trees while sharing history. Pair with 
 - **Atomic tasks** — One clear scope per request; mirrors roadmap discipline.
 - **Curated context** — Prefer briefs and cited docs over pasting entire trees.
 - **Tests as guardrails** — Test or contract sketches before large implementations often reduce rework (especially for generated code).
-- **Review, cleanup and security passes** — Use your harness's built-in skills for these; specy-road's own review contract (`review-packet`, `review record`, the review gate) is in [orchestration.md](orchestration.md).
+- **Review, cleanup and security passes** — Use your harness's built-in skills for these; specy-road's own review contract (`review packet`, `review record`, the review gate) is in [orchestration.md](orchestration.md).
 
 ---
 

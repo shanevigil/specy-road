@@ -108,7 +108,7 @@
     },
     "nested_repos": {
       "type": "array",
-      "description": "Separately versioned git repositories under the project root, each a project-relative path or {path, integration_branch, remote, land, base, refuse_behind_remote} (integration_branch and remote default to this file's; land push, base remote). worker delegate and do-next-available-task --worktree give each one a worktree at the same path inside the leaf's worktree: on the leaf's branch when the leaf's touch zones cover it, detached at its integration tip otherwise. worker reconcile diffs them, finish-this-task in merge (and auto) mode lands each leaf branch (per land) before the main repository, and review-packet includes their diffs. See docs/git-workflow.md.",
+      "description": "Separately versioned git repositories under the project root, each a project-relative path or {path, integration_branch, remote, land, base, refuse_behind_remote} (integration_branch and remote default to this file's; land push, base remote). worker delegate and do-next-available-task --worktree give each one a worktree at the same path inside the leaf's worktree: on the leaf's branch when the leaf's touch zones cover it, detached at its integration tip otherwise. worker reconcile diffs them, finish-this-task in merge (and auto) mode lands each leaf branch (per land) before the main repository, and review packet includes their diffs. See docs/git-workflow.md.",
       "uniqueItems": true,
       "items": {
         "oneOf": [

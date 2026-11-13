@@ -1,7 +1,7 @@
 """Resolve what a review is about: node, branch, commit under review, and base.
 
-Shared by ``review-packet``, ``prompt``, ``handoff status``, ``review record``,
-``review list``, and the ``mark-implementation-reviewed`` gate so all of them
+Shared by ``review packet``, ``prompt``, ``review status``, ``review record``
+and the ``mark-implementation-reviewed`` gate so all of them
 agree on which commit a review binds to.
 
 The commit under review is the tip of the node's registered feature branch —
@@ -105,7 +105,7 @@ def default_ref(repo_root: Path, entry: dict[str, Any] | None, remote: str) -> s
         node = (entry or {}).get("node_id", "this node")
         raise ReviewTargetError(
             f"no registry claim for {node}; pick it up first (`specy-road do-next-available-task --under {node}`)"
-            " — review-packet, review record, review list and prompt also take --ref <branch or commit>"
+            " — review packet, review record, review status and prompt also take --ref <branch or commit>"
         )
     if local_branch_exists(repo_root, branch):
         return branch
@@ -301,7 +301,7 @@ MILESTONE_SUMMARY = "_A milestone has no implementation summary: each leaf's was
 
 
 def milestone_status(t: ReviewTarget, state: str) -> tuple[str, list[str]]:
-    """``(state, next-step lines)`` for ``handoff status`` and ``review list``; unchanged for a leaf.
+    """``(state, next-step lines)`` for ``review status``; unchanged for a leaf.
 
     A finished milestone whose gate is not met is ``awaiting_full_review``; a
     Complete one is ``complete_no_claim``, like a leaf whose claim is released.
@@ -316,7 +316,7 @@ def milestone_status(t: ReviewTarget, state: str) -> tuple[str, list[str]]:
         state = "awaiting_full_review"
     if state == "approved":
         return state, [f"milestone full review met: specy-road mark-implementation-reviewed {t.node_id} sets it Complete"]
-    return state, [f"milestone full review pending (policy.milestone_full_review): specy-road review-packet {t.node_id}; "
+    return state, [f"milestone full review pending (policy.milestone_full_review): specy-road review packet {t.node_id}; "
                    f"approval releases the rollup with specy-road mark-implementation-reviewed {t.node_id}"]
 
 
@@ -339,7 +339,7 @@ def milestone_open_problem(t: ReviewTarget) -> str | None:
 
 
 def milestone_packet_or_exit(t: ReviewTarget) -> None:
-    """``review-packet`` needs every leaf landed and the milestone's start (a leaf registration, or ``--base``)."""
+    """``review packet`` needs every leaf landed and the milestone's start (a leaf registration, or ``--base``)."""
     why = milestone_open_problem(t)
     if why is None and t.milestone and not t.base:
         why = (f"no 'register as in-progress' commit of a leaf under {t.node_id} is reachable from {t.ref}, "

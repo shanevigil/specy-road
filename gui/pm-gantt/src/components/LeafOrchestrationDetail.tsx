@@ -81,10 +81,10 @@ export function LeafOrchestrationDetail({
     <div className="worker-detail">
       <button
         type="button"
-        title={copyCommand("handoff status", group.displayId)}
-        onClick={() => onCopy("handoff status", group.displayId)}
+        title={copyCommand("review status", group.displayId)}
+        onClick={() => onCopy("review status", group.displayId)}
       >
-        Copy handoff status
+        Copy review status
       </button>
       {claim ? (
         <p className="outline-meta">

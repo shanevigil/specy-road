@@ -72,7 +72,7 @@ export type SnapshotReady = {
 };
 
 export type SnapshotGate = {
-  /** A `specy-road handoff status` label (approved, blocked, executor_blocked, …). */
+  /** A `specy-road review status` label (approved, blocked, executor_blocked, …). */
   state: string | Unknown;
   approvals: number | Unknown;
   blocks: number | Unknown;
@@ -520,7 +520,7 @@ export function pollOrchestration(load: () => void): () => void {
   return () => clearInterval(timer);
 }
 
-export type CopyKind = "worker status" | "worker open" | "handoff status";
+export type CopyKind = "worker status" | "worker open" | "review status";
 
 /** `specy-road <kind> <id>`, the id single-quoted for a POSIX shell unless it is [A-Za-z0-9._-]+. */
 export function copyCommand(kind: CopyKind, id: string): string {

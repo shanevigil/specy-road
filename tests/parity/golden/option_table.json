@@ -459,6 +459,26 @@
   "nargs": null,
   "metavar": null
  },
+ "specy-road review packet --base": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "base",
+  "nargs": null,
+  "metavar": "REF"
+ },
+ "specy-road review packet --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
  "specy-road review record --model": {
   "action": "_StoreAction",
   "type": null,
@@ -480,6 +500,26 @@
   "metavar": null
  },
  "specy-road review red-green --ref": {
+  "action": "_StoreAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": null,
+  "dest": "ref",
+  "nargs": null,
+  "metavar": null
+ },
+ "specy-road review status --json": {
+  "action": "_StoreTrueAction",
+  "type": null,
+  "choices": null,
+  "required": false,
+  "default": false,
+  "dest": "json",
+  "nargs": 0,
+  "metavar": null
+ },
+ "specy-road review status --ref": {
   "action": "_StoreAction",
   "type": null,
   "choices": null,

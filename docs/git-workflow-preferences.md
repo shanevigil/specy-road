@@ -49,7 +49,7 @@ schema, so `validate` reports it; it is never read as "no footer". Likewise an
 - `commit` (the default): executor prompts (pickup's `work/prompt-<ID>.md` and
   `prompt --role executor`) say to commit `work/implementation-summary-<ID>.md`
   on the feature branch.
-- `local`: the prompts say to leave the summary uncommitted. `review-packet`
+- `local`: the prompts say to leave the summary uncommitted. `review packet`
   reads it from the worktree and labels it as working-tree text.
 
 New projects set `local`: the managed `.gitignore` block ignores `work/*`,

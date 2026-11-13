@@ -44,7 +44,7 @@ Step mode is the in-pane path: this session is the coordinator, and each
    it **now, before review**. After review, any commit touching more than
    `roadmap/registry.yaml`, and any merge (including `-s ours`), makes the
    reviews stale. A `--pre-finish-cmd` must therefore only check, never commit.
-4. **Review.** Run `specy-road review-packet <ID>`. Dispatch a **different**
+4. **Review.** Run `specy-road review packet <ID>`. Dispatch a **different**
    fresh sub-agent, not the executor and not this session, whose model id is
    rostered as a `reviewer` in `roadmap/orchestration.yaml` **as committed on
    the integration branch**. It reads only `work/reviews/<ID>/PACKET.md`, fills

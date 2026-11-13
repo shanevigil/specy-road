@@ -299,8 +299,8 @@ def _refuse_unmet(args: argparse.Namespace, node: dict, gate: GateResult, block_
     """Exit 1 naming what can still close the gate; ``block_branch``: a leaf's branch while a counted block stands."""
     print(
         "error: the review gate is not met, so the implementation cannot be marked reviewed.\n"
-        f"  Inspect: specy-road handoff status {node['id']}\n"
-        f"  Reviewers read: specy-road review-packet {node['id']}\n"
+        f"  Inspect: specy-road review status {node['id']}\n"
+        f"  Reviewers read: specy-road review packet {node['id']}\n"
         f"  Record each review: specy-road review record {node['id']} --model <id> "
         "--verdict approve|block --file <notes.md>",
         file=sys.stderr,

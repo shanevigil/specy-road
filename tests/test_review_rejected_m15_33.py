@@ -146,7 +146,7 @@ def test_review_list_json_exits_nonzero_on_target_resolution_errors(tmp_path: Pa
     assert run_review_cli("review", "list", "M1.1", "--ref", "not-a-valid-ref", "--json",
                           "--repo-root", str(repo)) == 1
     out = capsys.readouterr()
-    assert out.err.startswith("error:")
+    assert out.err.splitlines()[1].startswith("error:")   # after the alias's deprecation line
     assert json.loads(out.out)["error"]
 
 

@@ -232,7 +232,7 @@ fields say so:
 
 Under `policy.reviewers_distinct_families`, an approval from a `dynamic` entry that is not `pinned` does not
 count; a block from it still does, and with distinct families off its approval counts as any other.
-`handoff status` and `review list` name each approval this keeps out (`does not count — '<model>' runs on
+`review status` names each approval this keeps out (`does not count — '<model>' runs on
 a harness that routes models dynamically …`). A harness's internal critic, however it reports, is
 supporting evidence for a reviewer, never a gate approval: only a review record filed by a rostered
 reviewer counts.

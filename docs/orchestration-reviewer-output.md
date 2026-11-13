@@ -170,7 +170,7 @@ after normalising case, separators and display names (`Claude Opus 5.5` is
 profile's other names when `harness_model` selects a different model. Any reported model that differs is a mismatch, so a line
 the model printed can add one but never hide one. The filed record carries
 `harness_model`; on a real mismatch it also carries `model_mismatch: true`, and the gate does not count
-it (`harness ran a different model`), which `handoff status` lists under who
+it (`harness ran a different model`), which `review status` lists under who
 can still approve. A harness that reports no model (Codex, plain-text
 commands) is a warning only.
 

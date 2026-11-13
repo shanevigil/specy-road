@@ -79,7 +79,7 @@ CATALOGUE: tuple[BehaviourChange, ...] = (
             r"(?:\brefuse\w*|refuses)[^.!?]{0,20}`?--yes`?|`?--yes`?\s+refuses|"
             r"on\s+your\s+own\s+work|"
             r"interactive human approval and `--yes` behave|"
-            r"review-packet[\s\S]{0,400}handoff\s+status[\s\S]{0,200}mark-implementation-reviewed|"
+            r"review[- ]packet[\s\S]{0,400}(?:handoff|review)\s+status[\s\S]{0,200}mark-implementation-reviewed|"
             r"mark-implementation-reviewed.{0,60}--yes.{0,60}closes\s+the\s+gate|"
             r"has no `--yes`|no `--yes`|"
             r"mark-implementation-reviewed --yes[^.]{0,40}finish-this-task[^.]{0,20}refuse|"

@@ -130,6 +130,7 @@ DEPRECATED_COMMANDS = {
     "refresh-schemas": "upgrade --only schemas",
     "refresh-profiles": "upgrade --only profiles",
     "update": "self-update",
+    "review-packet": "review packet",
 }
 #: The release the deprecated aliases are removed in.
 ALIASES_REMOVED_IN = "the release after 0.3.1"

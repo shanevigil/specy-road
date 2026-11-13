@@ -169,13 +169,13 @@ def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
                     ref: str | None = None) -> tuple[str | None, str]:
     """``(packet text, error)``. ``model``'s own delta packet, written now to ``PACKET-<model>.md``, when
     ``policy.delta_review`` lets its fix round be reviewed from one (``review_gate.delta_basis``, which
-    also honours ``review-packet --full``); else ``PACKET.md``, the full packet."""
+    also honours ``review packet --full``); else ``PACKET.md``, the full packet."""
     packet, own = reviews_dir(root, node_id) / PACKET_NAME, reviews_dir(root, node_id) / f"PACKET-{model}.md"
     own.unlink(missing_ok=True)   # a stale delta packet never stands in for this round's
     if not packet.is_file():
-        return None, f"no review packet at {packet}; run `specy-road review-packet {node_id}` first"
+        return None, f"no review packet at {packet}; run `specy-road review packet {node_id}` first"
     text = packet.read_text(encoding="utf-8")
-    prior = delta_basis(root, t.node, model, t.commit)[0]   # None under `review-packet --full`
+    prior = delta_basis(root, t.node, model, t.commit)[0]   # None under `review packet --full`
     if prior is None:
         return text, ""
     text = build_packet(root, node_id, ref=ref, verify_cmds=[], max_diff_lines=0, max_diff_bytes=0, prior=prior)
@@ -280,7 +280,7 @@ def _role_lines(root: Path, node_id: str, role: str, model: str, entry: dict, t,
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,
                  ref: str | None = None, context_feedback: bool = False, read_back: bool = True,
                  force_reason: str | None = None) -> tuple[str, Profile | None, str | None]:
-    """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review-packet --ref``;
+    """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review packet --ref``;
     ``context_feedback`` adds the pilot's three-line block to an executor prompt; ``read_back``: :func:`reviewer_lines`;
     ``force_reason`` starts an ``rca`` prompt although the loop is not escalated (:func:`review_rca.rca_trigger`)."""
     config, entry, err = role_check(root, node_id, role, model)

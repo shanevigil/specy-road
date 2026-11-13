@@ -45,13 +45,13 @@ or if you want independent review before work lands. The review gate is a
 
 ### Review gate and hand-offs
 
-An executor writes a READY hand-off; `review-packet` assembles the brief,
+An executor writes a READY hand-off; `review packet` assembles the brief,
 diff and verifier output; reviewers in fresh sessions record verdicts; the
 gate counts them against `roadmap/orchestration.yaml` as committed on the
 integration branch, so a feature branch cannot lower its own bar. Reviews
 can be SSH-signed.
 
-    specy-road review-packet M1.2 && specy-road handoff status M1.2
+    specy-road review packet M1.2 && specy-road review status M1.2
 
 ### Workers
 

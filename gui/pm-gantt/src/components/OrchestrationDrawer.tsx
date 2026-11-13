@@ -96,7 +96,7 @@ function GroupView({
         {g.key === null ? null : (
           <>
             {" "}
-            <CopyButton kind="handoff status" id={g.displayId} label="Copy handoff status" onCopy={onCopy} />{" "}
+            <CopyButton kind="review status" id={g.displayId} label="Copy review status" onCopy={onCopy} />{" "}
             <button type="button" aria-expanded={detailOpen} onClick={onToggleDetail}>
               {detailOpen ? "Hide detail" : "Detail"}
             </button>

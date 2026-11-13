@@ -10,7 +10,7 @@
 - New project: `specy-road init project` (it also writes `roadmap.md` and `roadmap-context.md`) prints the next steps: set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, commit the scaffold, then `specy-road validate`.
 - After `pip install -U specy-road`: `specy-road upgrade --prune` (refreshes `schemas/`, `model-profiles/`, missing load-order docs and the stubs, prints one report of what changed, then runs `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
-- Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
+- Dev loop: `specy-road do-next-available-task` → implement → `review packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
 
 **Read further for:**
 - prerequisites, PyPI, pipx and uv tool, TestPyPI RCs, `uv pip`, source checkout → "Requirements", "Install", "Install a release candidate (TestPyPI)", "Install from source (toolkit contributors)"
@@ -298,7 +298,7 @@ $EDITOR work/implementation-summary-<NODE_ID>.md
 # Review gate before finish: reviewers read the packet and record verdicts
 # (docs/orchestration.md); under the default policy one interactive human
 # approval here is enough.
-specy-road review-packet <NODE_ID>
+specy-road review packet <NODE_ID>
 specy-road mark-implementation-reviewed
 
 # Coordinating from a chat: hand a claimed leaf to a session on another

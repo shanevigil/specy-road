@@ -103,14 +103,14 @@ has no host to open that PR on.
 1. `do-next-available-task` claims a leaf; commit a change inside its touch
    zones; write and commit `work/implementation-summary-<ID>.md`; write
    `work/reviews/<ID>/READY-<agent>.md`.
-2. `review-packet <ID>` writes `PACKET.md` with the brief's `A1..An`, the
+2. `review packet <ID>` writes `PACKET.md` with the brief's `A1..An`, the
    diff, and the verify tails.
 3. In a **fresh** session of another harness, record a review:
    `review record <ID> --model <roster id> --verdict approve --file …`.
-   `handoff status` shows the policy met.
+   `review status` shows the policy met.
 4. `mark-implementation-reviewed --yes` closes the gate; the registry commit
    carries a `Reviewed-by:` trailer.
-5. Commit again on the branch: `handoff status` shows the review stale and
+5. Commit again on the branch: `review status` shows the review stale and
    `finish-this-task` refuses. Re-review, then finish.
 6. Signed: generate an ed25519 key, put its public line on the reviewer's
    roster entry, set `policy.signed_reviews: true` on the integration
@@ -127,7 +127,7 @@ has no host to open that PR on.
    For each harness's executor (here and in §5), record whether its
    implementation summary ends with `## Added` listing each helper, guard,
    mock and test with a reason. Delete that section from one summary:
-   `review-packet` still writes the packet and exits 0, with a one-line
+   `review packet` still writes the packet and exits 0, with a one-line
    note in `PACKET.md` (nothing on the terminal).
 9. **Reviewer restraint.** Make the leaf's change include one boundary check
    with a reachable trigger and a test (for example, reject an empty title
@@ -272,7 +272,7 @@ checkout: the second is `do-next-available-task --allow-second-claim`
     coordinator's checkout, and both trees are clean afterwards. First, with
     an uncommitted edit to a tracked file in the coordinator's checkout,
     finish must refuse before its bookkeeping commit and name that checkout.
-    `worker terminate` the idle worker; `handoff status` no longer lists it.
+    `worker terminate` the idle worker; `review status` no longer lists it.
 
 Pass: 1, 3, 5, 7, 8, 9, 9b (ii), 10 exactly; 2, 4, 6, 9b (i) with their
 notes recorded.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble the verification packet a reviewer reads: ``specy-road review-packet``.
+"""Assemble the verification packet a reviewer reads: ``specy-road review packet``.
 
 Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in order:
 
@@ -234,7 +234,7 @@ def tests_at_risk_section(root: Path, t: ReviewTarget) -> list[str]:
 
 def _empty_diff_reason(t: ReviewTarget) -> str:
     return (f"the diff is empty: `{t.commit}` adds nothing past its merge base with `{t.base_ref}`, as when the "
-            "branch is already merged there; `review-packet --base <ref>` sets the diff range (e.g. the commit "
+            "branch is already merged there; `review packet --base <ref>` sets the diff range (e.g. the commit "
             "before the leaf)")
 
 
@@ -411,7 +411,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """The ``specy-road review-packet`` parser."""
+    """The ``specy-road review packet`` parser (``review-packet``, its deprecated alias, reads it too)."""
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("node_id", help="Roadmap node id, e.g. M1.2")
     add_ref_arg(p, help="Branch or commit to review (default: the node's registered branch, "
@@ -439,11 +439,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     """Write the review packet. A command error is printed once and becomes its exit code."""
-    run_reporting(lambda: _write_packet(argv))
+    run_reporting(lambda: write_packet(build_parser().parse_args(argv)))
 
 
-def _write_packet(argv: list[str] | None) -> None:
-    args = build_parser().parse_args(argv)
+def write_packet(args: argparse.Namespace) -> None:
+    """Write ``PACKET.md`` (and ``-o``'s path) for parsed :func:`build_parser` arguments."""
     root = (args.repo_root or default_user_repo_root()).resolve()
     text = build_packet(root, args.node_id, ref=args.ref, verify_cmds=args.verify_cmd, base=args.base,
                         max_diff_lines=args.max_diff_lines, max_diff_bytes=args.max_diff_bytes, full=args.full)

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""CLI for ``specy-road decisions add|list|close`` (M11.34; preferences M11.58; standing rules M22.51)."""
+"""CLI for ``specy-road decisions add|list|close`` (M11.34; preferences M11.58; standing rules M22.51).
+
+``--kind lesson`` reads and writes project review lessons in ``constraints/review-lessons.md``
+(:mod:`specy_road.review_lessons`), which ``lessons add|list``, its deprecated alias, also run.
+"""
 
 from __future__ import annotations
 
@@ -26,6 +30,7 @@ from specy_road.decisions import (
 )
 from specy_road.decisions_local import LOCAL, SHARED, load_merged, next_free_id
 from specy_road.model_profiles import ROLES
+from specy_road.review_lessons import LESSONS_REL, add_lesson, format_lesson, lessons_path, read_lessons
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
@@ -62,6 +67,8 @@ def _criterion_error(root: Path, ns: argparse.Namespace) -> str | None:
     return None
 
 
+LESSON = "lesson"
+
 _QUESTION_FLAGS = (("node", "NODE"), ("why", "--why"), ("option", "--option"),
                    ("recommendation", "--recommendation"),
                    ("recommendation_reason", "--recommendation-reason"), ("default", "--default"))
@@ -70,6 +77,10 @@ _QUESTION_ONLY = (("option", "--option"), ("recommendation", "--recommendation")
                   ("needed_by", "--needed-by"))
 _PREFERENCE_ONLY = (("role", "--role"), ("model", "--model"), ("applies_to", "--applies-to"),
                     ("expires", "--expires"), ("supersedes", "--supersedes"))
+
+
+_LESSON_REFUSED = _QUESTION_ONLY + _PREFERENCE_ONLY + (
+    ("why", "--why"), ("id", "--id"), ("criterion", "--criterion"), ("asked", "--asked"), ("local", "--local"))
 
 
 def _kind_flag_error(ns: argparse.Namespace) -> str | None:
@@ -105,6 +116,37 @@ def _add_preference(root: Path, ns: argparse.Namespace) -> int:
     return 0
 
 
+def add_lesson_entry(root: Path, *, rule: str, example: str | None, from_node: str | None) -> int:
+    """Append one review lesson (``decisions add --kind lesson``, and ``lessons add``)."""
+    try:
+        add_lesson(root, rule=rule, example=example, from_node=from_node)
+    except (ValueError, OSError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    print(f"added lesson → {lessons_path(root)}")
+    return 0
+
+
+def list_lessons(root: Path) -> int:
+    """Print every review lesson in file order (``decisions list --kind lesson``, and ``lessons list``)."""
+    path = lessons_path(root)
+    try:
+        entries = read_lessons(path)
+    except OSError as e:
+        print(f"error: could not read {LESSONS_REL.as_posix()}: {e}", file=sys.stderr)
+        return 1
+    if not path.is_file():
+        print(f"No review lessons: {LESSONS_REL.as_posix()} does not exist; "
+              "`specy-road decisions add --kind lesson` creates it.")
+        return 0
+    if not entries:
+        print(f"No review lessons in {LESSONS_REL.as_posix()}.")
+        return 0
+    for e in entries:
+        print(format_lesson(e))
+    return 0
+
+
 def cmd_add(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     if err := _kind_flag_error(ns) or (ns.criterion and _criterion_error(root, ns)):
@@ -137,6 +179,35 @@ def cmd_add(ns: argparse.Namespace) -> int:
         return 1
     print(f"added {entry['id']} (open) → {decisions_path(root, ns.local)}")
     return 0
+
+
+def cmd_add_any(ns: argparse.Namespace) -> int:
+    """``decisions add``: a lesson goes to ``constraints/review-lessons.md``, any other kind to the ledger."""
+    if ns.kind == LESSON:
+        return _cmd_add_lesson(ns)
+    if ns.example:
+        print("error: --example applies only to --kind lesson", file=sys.stderr)
+        return 1
+    return cmd_add(ns)
+
+
+def _cmd_add_lesson(ns: argparse.Namespace) -> int:
+    """``decisions add --kind lesson``: ``--summary`` is the rule and ``NODE`` the leaf it escaped from."""
+    bad = [flag for attr, flag in _LESSON_REFUSED if getattr(ns, attr)]
+    if bad:
+        print(f"error: --kind lesson does not take {', '.join(bad)}", file=sys.stderr)
+        return 1
+    return add_lesson_entry(resolve_repo_root(ns), rule=ns.summary, example=ns.example, from_node=ns.node)
+
+
+def cmd_list_any(ns: argparse.Namespace) -> int:
+    """``decisions list``: ``--kind lesson`` prints the review lessons, otherwise the ledger's open entries."""
+    if ns.kind != LESSON:
+        return cmd_list(ns)
+    if ns.json:
+        print("error: --kind lesson has no --json output", file=sys.stderr)
+        return 1
+    return list_lessons(resolve_repo_root(ns))
 
 
 def cmd_list(ns: argparse.Namespace) -> int:
@@ -208,15 +279,20 @@ def _close_criterion(root: Path, ns: argparse.Namespace, target: dict, *, local:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="specy-road")
     sub = p.add_subparsers(dest="cmd", required=True)
-    dec = sub.add_parser("decisions", help="Tracked open human decisions in roadmap/decisions.yaml")
+    dec = sub.add_parser("decisions", help="Tracked open human decisions in roadmap/decisions.yaml; "
+                                           "--kind lesson: review lessons in constraints/review-lessons.md")
     dsub = dec.add_subparsers(dest="decisions_cmd", required=True)
 
-    add = dsub.add_parser("add", help="Open a self-contained human decision, or record a routing preference")
+    add = dsub.add_parser("add", help="Open a self-contained human decision, record a routing preference, or "
+                                      "append a review lesson")
     add.add_argument("node", metavar="NODE", nargs="?",
-                     help="Roadmap node id this entry belongs to (optional for a preference or standing rule)")
-    add.add_argument("--kind", required=True, choices=["decision", "human-action", PREFERENCE, STANDING_RULE])
+                     help="Roadmap node id this entry belongs to (optional for a preference or standing rule); "
+                          "for a lesson, the leaf the defect escaped from")
+    add.add_argument("--kind", required=True, choices=["decision", "human-action", PREFERENCE, STANDING_RULE, LESSON])
     add.add_argument("--summary", required=True, help="Plain-words summary; for a preference or standing rule, "
-                                                      "the rule")
+                                                      "the rule; for a lesson, the defect class as a one-line "
+                                                      "rule for reviewers")
+    add.add_argument("--example", help="Lesson only: one line showing the defect, such as where it escaped")
     add.add_argument("--why", help="Why now and what it blocks (decision); the human's reason (preference); "
                                    "the operator's words, quoted (standing-rule, required)")
     add.add_argument("--option", action="append", metavar="LABEL|EFFECT",
@@ -244,12 +320,14 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Write the gitignored roadmap/decisions.local.yaml (this clone only, no commit needed) "
                           "instead of roadmap/decisions.yaml; readers merge it over the tracked ledger, local wins")
     add_repo_root_arg(add)
-    add.set_defaults(func=cmd_add)
+    add.set_defaults(func=cmd_add_any)
 
     lst = dsub.add_parser("list", help="List active preferences, then open entries ordered by needed-by")
+    lst.add_argument("--kind", choices=[LESSON],
+                     help="lesson: print every review lesson in constraints/review-lessons.md, in file order")
     add_json_arg(lst)
     add_repo_root_arg(lst)
-    lst.set_defaults(func=cmd_list)
+    lst.set_defaults(func=cmd_list_any)
 
     close = dsub.add_parser("close", help="Close an entry with its answer; an entry with a criterion closes only "
                                           "at a person's interactive terminal, after a y/N prompt")

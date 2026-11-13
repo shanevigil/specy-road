@@ -130,7 +130,7 @@ def test_spent_rca_executor(tmp_path: Path, capsys) -> None:
 def test_spent_rca_packet_then_reviewer(tmp_path: Path, capsys) -> None:
     repo, _ = _spent(tmp_path)
     _write_rca(repo, _record(2, None, action="change_or_reprompt_reviewer"))
-    assert _row(repo, capsys, "spent_rca_packet", "command")["next"] == "specy-road review-packet M1.1"
+    assert _row(repo, capsys, "spent_rca_packet", "command")["next"] == "specy-road review packet M1.1"
     assert _row(repo, capsys, "spent_rca_reviewer", "command")["next"].endswith("--role reviewer --model opus")
 
 

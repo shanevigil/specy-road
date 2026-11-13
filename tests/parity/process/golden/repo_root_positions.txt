@@ -93,7 +93,7 @@ exit: 0
 --- stdout ---
 OK: roadmap and registry validate.
 milestone review: notice — M2 is held at In Progress: every leaf is Complete but its full review is not approved at refs/heads/dev (0/1 approvals, 0 block(s): not met) (policy.milestone_full_review). Ways out:
-  1. Review it: specy-road review-packet M2; each reviewer: specy-road review record M2 --model <id> --verdict approve|block --file <notes.md>; then specy-road mark-implementation-reviewed M2
+  1. Review it: specy-road review packet M2; each reviewer: specy-road review record M2 --model <id> --verdict approve|block --file <notes.md>; then specy-road mark-implementation-reviewed M2
   2. Record it Complete: specy-road edit-node M2 --set status=Complete
   3. Turn the hold off: set policy.milestone_full_review: false in roadmap/orchestration.yaml
 notice: no roadmap/orchestration.yaml, so the default policy applies: one reviewer, any family, and a roster of one human (`specy-road validate --generate-orchestration` writes an editable starter)
