@@ -102,8 +102,9 @@ LISTED_LOCAL = {
     "feature/rm-done": "merged",
     "feature/rm-squash": doctor.SAME_PATCH,
     "feature/rm-rebased": doctor.SAME_PATCH,
-    "feature/rm-finished": "leaf M1.2 Complete, not merged: 1 commit(s) origin/dev lacks",
-    "feature/rm-open": "claim gone, not merged: 1 commit(s) origin/dev lacks",
+    "feature/rm-finished": ("leaf M1.2 Complete, not merged: 1 commit(s) origin/dev lacks, "
+                            "so --prune leaves it"),
+    "feature/rm-open": "claim gone, not merged: 1 commit(s) origin/dev lacks, so --prune leaves it",
     "feature/rm-settled": "merged; leaf M1.4 Complete; registry row remains",
 }
 KEPT = ("feature/rm-thing", "feature/rm-roll")
@@ -128,19 +129,19 @@ def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> No
                and line.endswith(doctor.SAME_PATCH) for line in out.splitlines())
     assert "wt-missing  — directory missing" in out
     assert "wt-settled  — branch feature/rm-settled is merged" in out
-    assert "wt-thing  — branch feature/rm-thing live: claimed by M1.1, so --fix leaves it" in out   # A1
+    assert "wt-thing  — branch feature/rm-thing live: claimed by M1.1, so --prune leaves it" in out   # A1
     assert "wt-locked" not in out
-    assert "wt-wip  — detached at" in out and "uncommitted changes, so --fix leaves it" in out
+    assert "wt-wip  — detached at" in out and "uncommitted changes, so --prune leaves it" in out
     ghost = next(line for line in out.splitlines() if "ghost  —" in line)
     assert ghost.startswith("  ghost  — node M1.3: feature/rm-ghost is in neither this clone nor origin")
     assert "advisory: another clone's claim looks the same until it pushes its branch" in ghost
     assert "confirm that clone no longer holds the claim" in ghost
-    assert "specy-road registry-prune --remove ghost" in ghost and ghost.endswith("so --fix leaves it")
+    assert "specy-road registry-prune --remove ghost" in ghost and ghost.endswith("so --prune leaves it")
     assert "registry-prune --remove <CODENAME>" in out
     assert "settled  — node M1.4: leaf Complete; feature/rm-settled is listed above" in out
     assert TOOLKIT_STASH in out
     assert ": mine" not in out
-    assert "Nothing removed. Re-run with --fix" in out
+    assert "Nothing removed. Re-run with --prune" in out
     assert "Claims with no live worker" in out and "abort-task-pickup" in out
     assert _has(repo, "refs/heads/feature/rm-open")
     assert _has(bare, "refs/heads/feature/rm-gone")
@@ -169,7 +170,11 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
     assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
 
     out = capsys.readouterr().out
-    for branch in [*LISTED_LOCAL, "feature/rm-gone"]:
+    unmerged = ("feature/rm-finished", "feature/rm-open")   # merged-only: listed and left
+    for branch in unmerged:
+        assert f"[kept] local {branch}: " in out
+        assert _has(repo, f"refs/heads/{branch}") and _has(bare, f"refs/heads/{branch}")
+    for branch in [b for b in [*LISTED_LOCAL, "feature/rm-gone"] if b not in unmerged]:
         if branch != "feature/rm-gone":
             assert f"[ok] deleted local branch {branch}" in out
             assert not _has(repo, f"refs/heads/{branch}")
@@ -192,7 +197,7 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
     assert any(
         line.startswith("[kept] ghost:") and "specy-road registry-prune --remove ghost" in line
         and "confirm that clone no longer holds the claim" in line
-        and line.endswith("so --fix leaves it")
+        and line.endswith("so --prune leaves it")
         for line in out.splitlines()
     )
     assert "ghost" in registry
@@ -206,7 +211,9 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
     assert _exit(["--repo-root", str(repo)]) == 0
     out = capsys.readouterr().out
     listed = [line for line in out.split("Claims with no live worker")[0].splitlines() if line.startswith("  ")]
-    assert len(listed) == 3   # only what --fix leaves: two worktrees and the no-branch registry row
+    # only what --prune leaves: the two unmerged branches (local and origin), two worktrees and the
+    # no-branch registry row
+    assert len(listed) == 7
     assert any("wt-wip  — detached at" in line for line in listed)
     assert any("wt-thing  — branch feature/rm-thing live: claimed by M1.1" in line for line in listed)
     assert any("ghost  —" in line and "specy-road registry-prune --remove ghost" in line for line in listed)
@@ -254,7 +261,7 @@ def test_detached_worktrees_are_listed_and_fix_removes_only_clean_ones(doctor_re
     out = capsys.readouterr().out
     head = git(repo, "rev-parse", "feature/rm-finished")[:12]
     assert any(line.endswith(f"wt-review  — detached at {head}") for line in out.splitlines())
-    assert "wt-orphan  — detached at" in out and "commits no branch holds, so --fix leaves it" in out
+    assert "wt-orphan  — detached at" in out and "commits no branch holds, so --prune leaves it" in out
 
     assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
     out = capsys.readouterr().out
@@ -303,13 +310,13 @@ def test_fix_leaves_what_changed_after_listing(doctor_repo, capsys, monkeypatch)
     """Another session moves a branch (here and on the remote) and drops the stash mid-fix."""
     repo, bare = doctor_repo
     stash = git(repo, "rev-parse", "stash@{1}")   # the toolkit's; "mine" is on top
-    moved_to = git(repo, "rev-parse", "feature/rm-done")
+    moved_to = git(repo, "rev-parse", "feature/rm-open")
 
     def answer(prompt: str) -> str:
         kind = prompt.split()[4]
         if kind == "branch":
-            git(repo, "branch", "-f", "feature/rm-open", "feature/rm-done")
-            git(repo, "push", "-q", "-f", "origin", "feature/rm-done:feature/rm-open")
+            git(repo, "branch", "-f", "feature/rm-done", "feature/rm-open")
+            git(repo, "push", "-q", "-f", "origin", "feature/rm-open:feature/rm-done")
         if kind == "stash":
             git(repo, "stash", "drop", "-q", "stash@{1}")
         return "y"
@@ -319,12 +326,12 @@ def test_fix_leaves_what_changed_after_listing(doctor_repo, capsys, monkeypatch)
     assert _exit(["--fix", "--repo-root", str(repo)]) == 1
 
     out, err = capsys.readouterr()
-    assert "[warn] local feature/rm-open: moved since it was listed; left alone" in err
-    assert "[warn] origin feature/rm-open: left on origin." in err
+    assert "[warn] local feature/rm-done: moved since it was listed; left alone" in err
+    assert "[warn] origin feature/rm-done: left on origin." in err
     assert f"[warn] {stash[:12]}: no longer on the stash stack" in err
-    assert git(repo, "rev-parse", "feature/rm-open") == moved_to
-    assert git(bare, "rev-parse", "feature/rm-open") == moved_to
-    assert "[ok] deleted local branch feature/rm-finished" in out
+    assert git(repo, "rev-parse", "feature/rm-done") == moved_to
+    assert git(bare, "rev-parse", "feature/rm-done") == moved_to
+    assert "[ok] deleted local branch feature/rm-rebased" in out
 
 
 def test_doctor_never_lists_the_worktree_it_runs_in(doctor_repo, capsys) -> None:
@@ -429,7 +436,7 @@ def test_fix_keeps_a_landed_patch_whose_commit_no_ref_holds(doctor_repo, capsys)
     out = capsys.readouterr().out
     assert any(line.startswith("[kept] ") and line.endswith(
         f"wt-landed: branch gone: detached at {head[:12]}, {doctor.SAME_PATCH}; "
-        "commits no branch holds, so --fix leaves it") for line in out.splitlines())
+        "commits no branch holds, so --prune leaves it") for line in out.splitlines())
     assert "wt-landed" in git(repo, "worktree", "list")
     assert git(wt, "rev-parse", "HEAD") == head
 
@@ -446,6 +453,6 @@ def test_fix_leaves_a_temporary_worktree_another_command_is_using(doctor_repo, c
 
     out = capsys.readouterr().out
     assert any(line.startswith("[kept] ") and line.endswith(
-        "a temporary worktree a running specy-road check may be using, so --fix leaves it")
+        "a temporary worktree a running specy-road check may be using, so --prune leaves it")
         for line in out.splitlines())
     assert str(wt) in git(repo, "worktree", "list") and wt.is_dir()

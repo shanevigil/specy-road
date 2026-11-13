@@ -136,8 +136,8 @@ exit: 0
 Install: specy-road <VERSION> running from <PREFIX>
 - no specy-road or specyrd on PATH
 Worktrees whose branch is gone or merged, and detached worktrees:
-  <SCRATCH>  — detached at <SHA>; uncommitted changes, so --fix leaves it
-Nothing removed. Re-run with --fix to remove them (it asks per kind).
+  <SCRATCH>  — detached at <SHA>; uncommitted changes, so --prune leaves it
+Nothing removed. Re-run with --prune to remove them (it asks per kind).
 --- stderr ---
 
 $ specy-road (eligibility)

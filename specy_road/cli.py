@@ -121,6 +121,34 @@ REPLACED_COMMANDS = {
 }
 
 
+# Commands kept as hidden aliases for one release (tests/parity/command_map.yaml rows): the form
+# that replaces each. ``_dispatch`` prints the deprecation line, so a command that runs one of them
+# as a step (doctor removing a registry row) does not.
+DEPRECATED_COMMANDS = {"registry-prune": "doctor --prune --kind registry"}
+#: The release the deprecated cleanup aliases are removed in.
+ALIASES_REMOVED_IN = "the release after 0.3.1"
+
+
+def warn_deprecated(old: str, new: str) -> None:
+    """The one deprecation line an alias prints, on stderr."""
+    print(f"warning: `specy-road {old}` is deprecated and is removed in {ALIASES_REMOVED_IN}; "
+          f"use `specy-road {new}`.", file=sys.stderr)
+
+
+class DeprecatedFlag(argparse.Action):
+    """A hidden flag kept for one release: sets ``dest`` like ``store_true`` and prints the
+    deprecation line naming ``new`` (``warn_deprecated``) when given."""
+
+    def __init__(self, option_strings, dest, *, command: str, new: str, **kwargs) -> None:
+        super().__init__(option_strings, dest, nargs=0, default=False, help=argparse.SUPPRESS,
+                         **kwargs)
+        self.command, self.new = command, new
+
+    def __call__(self, parser, namespace, values, option_string=None) -> None:
+        warn_deprecated(f"{self.command} {option_string}", self.new)
+        setattr(namespace, self.dest, True)
+
+
 def _known_commands() -> list[str]:
     return sorted(
         {*_SCRIPTS, *_FORWARDED, *_CRUD_COMMANDS, *_ARCHIVE_COMMANDS, *_FUNCTIONS}
@@ -494,6 +522,13 @@ def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
     warn_if_running_version_older(project_root(_repo_root_from_argv(rest)))
 
 
+def _warn_before_running(cmd: str, rest: list[str]) -> None:
+    """A deprecated alias's line, then the older-running-version warning."""
+    if cmd in DEPRECATED_COMMANDS:
+        warn_deprecated(cmd, DEPRECATED_COMMANDS[cmd])
+    _maybe_warn_running_version_older(cmd, rest)
+
+
 def main(argv: list[str] | None = None) -> None:
     """Dispatch ``argv``. A command error is printed once and becomes its exit code."""
     try:
@@ -516,7 +551,7 @@ def _dispatch(argv: list[str] | None = None) -> None:
         print(f"specy-road {running_toolkit_version()}")
         raise SystemExit(0)
     cmd, *rest = argv
-    _maybe_warn_running_version_older(cmd, rest)
+    _warn_before_running(cmd, rest)
     if cmd in _SCRIPTS:
         _run(_SCRIPTS[cmd], rest, prog=f"specy-road {cmd}")
     elif cmd in _CRUD_COMMANDS:

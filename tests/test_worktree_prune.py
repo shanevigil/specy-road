@@ -106,6 +106,28 @@ def test_a_peer_push_outside_the_fetch_refspec_refuses(tmp_path: Path) -> None:
     assert wt.is_dir()
 
 
+@pytest.mark.parametrize("tracking", ["stale", "outside the fetch refspec"])
+def test_a_claim_pushed_since_the_last_fetch_refuses(tmp_path: Path, tracking: str) -> None:
+    """The live rule reads claims at the integration tip the remote has now, not origin/main."""
+    root, wt = _leaf(tmp_path)
+    _land(root, wt)
+    peer = tmp_path / "peer"
+    git(tmp_path, "clone", "-q", "-b", "main", str(tmp_path / "origin.git"), str(peer))
+    git(peer, "config", "user.email", "p@e.com")
+    git(peer, "config", "user.name", "P")
+    commit_file(peer, "roadmap/registry.yaml",
+                f"version: 1\nentries:\n- codename: leaf-one\n  node_id: M1\n  branch: {FEATURE}\n"
+                "  touch_zones: [src]\n", "another clone claims the leaf")
+    git(peer, "push", "-q", "origin", "main")   # this checkout's origin/main does not have it
+    if tracking != "stale":
+        git(root, "config", "remote.origin.fetch", f"+refs/heads/{FEATURE}:refs/remotes/origin/{FEATURE}")
+        git(root, "update-ref", "-d", "refs/remotes/origin/main")
+    out = run_specy_road(root, "worktree", "prune", "M1", "--yes")
+    assert out.returncode == 1
+    assert f"{FEATURE} live: claimed by M1; finish or release it first" in out.stderr
+    assert wt.is_dir()
+
+
 def test_an_unreachable_remote_refuses(tmp_path: Path) -> None:
     root, wt = _leaf(tmp_path)
     _land(root, wt)

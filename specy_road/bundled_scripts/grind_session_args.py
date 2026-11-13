@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from specy_road.cli import DeprecatedFlag
 from specy_road.cli_args import add_base_arg, add_json_arg, add_remote_arg
 from specy_road.bundled_scripts.session_plan_render import PLAN_FIELDS
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
@@ -169,12 +170,8 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
                    help="Passed through to pickup: a failing baseline only warns.")
     p.add_argument("--push", action="store_true",
                    help="Pass --push through to finish-this-task.")
-    p.add_argument("--delete-merged-branches", action="store_true",
-                   help="When the session ends cleanly, delete the feature/rm-* "
-                        "branches it finished: locally with 'git branch -d', and "
-                        "on the remote too when --push was given. Only branches "
-                        "the integration branch already contains are touched. "
-                        "Off by default; the loop prints the command instead.")
+    p.add_argument("--delete-merged-branches", action=DeprecatedFlag, command="grind-session",
+                   new="doctor --prune --kind branches")
     add_json_arg(p, help="Emit one JSON event per line (picked/finished/blocked/stopped/...). "
                       "stdout carries only JSON; sub-command output goes to stderr.")
     p.add_argument("--fields", default=None, metavar="KEY,...",

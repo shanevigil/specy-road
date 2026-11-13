@@ -5,8 +5,13 @@ The leaf's worktree is ``work/.worktrees/<codename>`` in the main checkout, on
 that branch (local, remote-tracking, and on the remote itself, wherever each
 exists) are merged into the remote's actual integration tip, and the worktree has
 no uncommitted changes, no untracked files git does not ignore, and no stash
-that could be its own (see below). Ignored files are deleted
-with it, so they are listed first.
+that could be its own (see below). The cleanup planner's live rule must not hold it
+either (:func:`specy_road.cleanup_plan.held_branches`, the rule ``doctor --prune``
+reads): no open claim or rollup on its branch, no worker or session on that branch
+or in it. Claims and rollups are read at the integration commit the remote has now,
+the one the merged check reads, never at a remote-tracking ref, which may be stale
+or outside the fetch refspec. Ignored files are deleted with it, so they are
+listed first.
 
 Each ``nested_repos`` repository inside the worktree is checked too. A linked
 worktree of the main checkout's copy shares its branches and stash, so only a
@@ -41,6 +46,7 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from specy_road.cleanup_plan import held_branches
 from specy_road.errors import SpecyError, inherited_init
 from specy_road.merged_branch import merged_into
 from specy_road.roadmap_load import load_roadmap
@@ -201,6 +207,14 @@ def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[st
     return tips, None
 
 
+def _live_refusals(main: Path, target: str, branch: str, wt: Path) -> list[str]:
+    """The planner's live reason for the leaf's branch or worktree, as a refusal (none when not
+    live), judged at ``target``: the integration commit just read from the remote."""
+    by_branch, by_path = held_branches(main, target)
+    live = by_branch.get(branch) or by_path.get(str(wt.resolve()))
+    return [f"{branch} {live[1]}; finish or release it first"] if live else []
+
+
 def plan_prune(root: Path, node_id: str) -> PrunePlan:
     """What removing ``node_id``'s worktree would delete, and every reason it must not; :class:`PruneError` if absent."""
     main, wt, branch = leaf_worktree(root, node_id)
@@ -222,6 +236,8 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.refusals.append(f"{remote} has no {base} to judge merged against")
     else:
         target = f"{remote}'s {base} ({tips[base][:12]})"
+        # the fetched tip, not a remote-tracking ref that may be stale
+        plan.refusals += _live_refusals(main, tips[base], branch, wt)
         # Every leaf ref that exists, local, remote-tracking and on the remote: any may hold work the
         # others lack, and with none (the branch deleted after landing) the worktree's HEAD alone is checked.
         heads = [("the worktree's HEAD", git_out(["rev-parse", "HEAD"], wt) or "HEAD")]

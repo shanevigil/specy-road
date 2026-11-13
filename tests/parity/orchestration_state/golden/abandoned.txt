@@ -98,7 +98,7 @@ exit: 0
 Install: specy-road <VERSION> running from <PREFIX>
 - no specy-road or specyrd on PATH
 Nothing to tidy: no stale branch, worktree, registry row or toolkit stash.
-Claims with no live worker (report only; --fix does not release them):
+Claims with no live worker (report only; --prune does not release them):
   M1.1 (feature/rm-thing, <AGE>): `specy-road worker delegate M1.1` to resume work, or `specy-road abort-task-pickup` to release it
 --- stderr ---
 

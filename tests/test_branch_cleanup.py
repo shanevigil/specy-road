@@ -202,7 +202,8 @@ def test_prune_delete_removes_only_the_listed_branches(prune_repo, capsys) -> No
 
 def test_prune_delete_reports_a_refused_delete_and_exits_1(prune_repo, capsys) -> None:
     repo, bare = prune_repo
-    git(repo, "checkout", "-q", "feature/rm-done")   # git branch -d refuses the checked-out branch
+    # git cannot lock the ref, so the delete is refused (a checked-out branch is no longer listed)
+    (repo / ".git" / "refs" / "heads" / "feature" / "rm-done.lock").write_text("", encoding="utf-8")
 
     code = _exit(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)])
 

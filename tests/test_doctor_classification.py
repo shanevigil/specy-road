@@ -24,7 +24,7 @@ ROWS = [   # (row index, an input it matches first, expected verdict)
     (8, ("none", "finish-merge", "yes", "local"), ("merged", True)),
     (9, ("none", "none", "yes", "remote"), ("merged, no evidence", False)),
     (10, ("none", "none", "same-patch", "local"), ("same patch", True)),
-    (11, ("none", "commit", "no", "local"), ("not merged", True)),
+    (11, ("none", "commit", "no", "local"), ("not merged", False)),
 ]
 
 
