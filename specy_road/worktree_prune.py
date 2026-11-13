@@ -5,8 +5,13 @@ The leaf's worktree is ``work/.worktrees/<codename>`` in the main checkout, on
 that branch (local, remote-tracking, and on the remote itself, wherever each
 exists) are merged into the remote's actual integration tip, and the worktree has
 no uncommitted changes, no untracked files git does not ignore, and no stash
-that could be its own (see below). Ignored files are deleted
-with it, so they are listed first.
+that could be its own (see below). The cleanup planner's live rule must not hold it
+either (:func:`specy_road.cleanup_plan.held_branches`, the rule ``doctor --prune``
+reads): no open claim or rollup on its branch, no worker or session on that branch
+or in it. Claims and rollups are read at the integration commit the remote has now,
+the one the merged check reads, never at a remote-tracking ref, which may be stale
+or outside the fetch refspec. Ignored files are deleted with it, so they are
+listed first.
 
 Each ``nested_repos`` repository inside the worktree is checked too. A linked
 worktree of the main checkout's copy shares its branches and stash, so only a
@@ -204,7 +209,7 @@ def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[st
 
 def _live_refusals(main: Path, target: str, branch: str, wt: Path) -> list[str]:
     """The planner's live reason for the leaf's branch or worktree, as a refusal (none when not
-    live)."""
+    live), judged at ``target``: the integration commit just read from the remote."""
     by_branch, by_path = held_branches(main, target)
     live = by_branch.get(branch) or by_path.get(str(wt.resolve()))
     return [f"{branch} {live[1]}; finish or release it first"] if live else []
@@ -222,7 +227,6 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.refusals.append(f"{cfg_err}; fix it, then re-run: without it the nested repositories cannot be checked")
         return plan
     base, remote, _warns = resolve_integration_defaults(main, explicit_base=None, explicit_remote=None)
-    plan.refusals += _live_refusals(main, f"{remote}/{base}", branch, wt)
     # The remote's own tips, not remote-tracking refs as they last stood: a peer may have pushed to the
     # leaf branch since they were merged, and the fetch refspec may not cover it.
     tips, why = _remote_heads(main, remote, [base, branch])
@@ -232,6 +236,8 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.refusals.append(f"{remote} has no {base} to judge merged against")
     else:
         target = f"{remote}'s {base} ({tips[base][:12]})"
+        # the fetched tip, not a remote-tracking ref that may be stale
+        plan.refusals += _live_refusals(main, tips[base], branch, wt)
         # Every leaf ref that exists, local, remote-tracking and on the remote: any may hold work the
         # others lack, and with none (the branch deleted after landing) the worktree's HEAD alone is checked.
         heads = [("the worktree's HEAD", git_out(["rev-parse", "HEAD"], wt) or "HEAD")]
