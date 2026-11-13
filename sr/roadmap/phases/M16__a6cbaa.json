@@ -468,7 +468,10 @@
         "docs/git-workflow.md",
         "docs/contributor-guide.md",
         "docs/release-runbook.md",
-        "playground/README.md"
+        "playground/README.md",
+        "specy_road/harness_facts.py",
+        "docs/orchestration-review.md",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     }
