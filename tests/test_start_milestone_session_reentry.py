@@ -113,7 +113,7 @@ def test_start_milestone_session_refuses_when_already_active(tmp_path: Path) -> 
     )
     err = r.stderr
     assert "milestone_execution" in err
-    # Documented hint must point at reconcile-milestone-status.
-    assert "reconcile-milestone-status" in err
+    # Documented hint must point at milestone status.
+    assert "milestone status --apply" in err
     # No traceback should leak — the script must surface a clean error.
     assert "Traceback" not in err

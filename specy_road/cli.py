@@ -126,6 +126,12 @@ REPLACED_COMMANDS = {
 # as a step (doctor removing a registry row) does not.
 DEPRECATED_COMMANDS = {
     "registry-prune": "doctor --prune --kind registry",
+    "start-milestone-session": "milestone start",
+    "reconcile-milestone-status": "milestone status",
+    "open-milestone-pr": "milestone pr",
+    "scaffold-planning": "planning scaffold",
+    "author-approach": "planning approach",
+    "archive-node": "archive --hard-remove",
     "refresh-stubs": "upgrade --only stubs",
     "refresh-schemas": "upgrade --only schemas",
     "refresh-profiles": "upgrade --only profiles",
@@ -158,7 +164,7 @@ class DeprecatedFlag(argparse.Action):
 
 def _known_commands() -> list[str]:
     return sorted(
-        {*_SCRIPTS, *_FORWARDED, *_CRUD_COMMANDS, *_ARCHIVE_COMMANDS, *_FUNCTIONS}
+        {*_SCRIPTS, *_FORWARDED, *_CRUD_COMMANDS, *_ARCHIVE_COMMANDS, *_FUNCTIONS, *_GROUPS}
     )
 
 
@@ -182,6 +188,8 @@ def command_parsers(name: str) -> list[argparse.ArgumentParser]:
     """
     if name in _PARSERS:
         return [_PARSERS[name]()]
+    if name in _GROUPS:
+        return [_group_parser(name)]
     if name in _SCRIPTS:
         return [_module(_SCRIPTS[name]).build_parser()]
     if name in _CRUD_COMMANDS:
@@ -483,6 +491,51 @@ def _orchestration_parser() -> argparse.ArgumentParser:
     return p
 
 
+# Command groups: ``specy-road <group> <word>`` runs that word's bundled_scripts module with the
+# words after it, as the module's own top-level command (now a deprecated alias) did.
+_GROUPS = {
+    "milestone": {
+        "start": "start_milestone_session",
+        "status": "reconcile_milestone_status",
+        "pr": "open_milestone_pr",
+    },
+    "planning": {"scaffold": "scaffold_planning", "approach": "author_approach"},
+}
+# Each group's description, then the one-line help of each word in its listing.
+_GROUP_HELP = {
+    "milestone": "Milestone sessions: one rollup branch for a parent's whole subtree.",
+    "milestone start": "Sync the integration branch, ensure the rollup branch, write the session.",
+    "milestone status": "Reconcile milestone delivery with git (dry run unless --apply).",
+    "milestone pr": "Print the one PR/MR command from the rollup branch to integration.",
+    "planning": "Planning sheets.",
+    "planning scaffold": "Create a node's planning sheet and set its planning_dir.",
+    "planning approach": "Print the prompt that writes a leaf's placeholder ## Approach.",
+}
+
+
+def _group_parser(group: str) -> argparse.ArgumentParser:
+    """``group``'s surface: one subcommand per word, each with its module's own options.
+
+    :func:`_cmd_group` runs a word's module itself; this parser answers ``--help`` and a missing or
+    unknown word, and is what the inventory and the flag scan read.
+    """
+    p = argparse.ArgumentParser(prog=f"specy-road {group}", description=_GROUP_HELP[group])
+    sub = p.add_subparsers(dest="command", required=True)
+    for word, module in _GROUPS[group].items():
+        parser = _module(module).build_parser()
+        sub.add_parser(word, parents=[parser], add_help=False, description=parser.description,
+                       formatter_class=parser.formatter_class, help=_GROUP_HELP[f"{group} {word}"])
+    return p
+
+
+def _cmd_group(group: str, rest: list[str]) -> None:
+    """Run the module of ``rest``'s first word with the words after it, as its old command did."""
+    if rest[:1] and rest[0] in _GROUPS[group]:
+        _run(_GROUPS[group][rest[0]], rest[1:], prog=f"specy-road {group} {rest[0]}")
+        return
+    _group_parser(group).parse_args(rest)  # help exits 0; a missing or unknown word exits 2
+
+
 # Commands implemented here rather than by a bundled_scripts module.
 _FUNCTIONS = {
     "scaffold-constitution": _cmd_scaffold_constitution,
@@ -580,6 +633,8 @@ def _dispatch(argv: list[str] | None = None) -> None:
         _run(_FORWARDED[cmd], [cmd, *rest])
     elif cmd in _FUNCTIONS:
         _FUNCTIONS[cmd](rest)
+    elif cmd in _GROUPS:
+        _cmd_group(cmd, rest)
     else:
         _unknown_command(cmd)
 

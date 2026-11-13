@@ -14,6 +14,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road milestone start|status|pr` and `specy-road planning scaffold|approach` group the milestone-session and
+  planning commands, with the old commands' flags and output, and `specy-road archive --hard-remove NODE_ID`
+  deletes a node outright as `archive-node NODE_ID --hard-remove` did (it refuses `--auto`, `--deep`,
+  `--dry-run` and `--force` beside it). The old names are deprecated aliases (see Deprecated).
+
 - PM GUI: the PM can answer an open ledger question or approve a claimed leaf over reviewer blocks from the Status window (`POST /api/pm-decisions`), recorded as an operator decision with the new optional `channel: pm-gui` (refresh copied schemas with `specy-road refresh-schemas`) and committed alone on the integration branch, never in the GUI's checkout. It needs the code `specy-road gui` prints once at startup (memory only; none under `--read-only`) and a review step before **Record decision**. `grind-session --status` lists these under **Decided in the GUI, not yet processed** (`decisions.gui_pending`) until a coordinator processes them, and each evaluated claimed leaf gains `commit`, `can_approve_over_block` and `settles`; the orchestrate skill pulls before each status check and processes them. An approval is usable only in the clone that ran the GUI. See `docs/pm-gui.md` (PM decisions in the Status window).
 
 - PM GUI: a **Status** button opens a read-only modal with the grind status, served unchanged by the new `GET /api/grind-status?until=&under=` (`400` with the CLI's message where `grind-session --status` exits 2). It shows **Last updated** with the report's age, refreshes on an interval (Off, 30 s, 60 s by default, 2 min, 5 min) only while open, and has a **Refresh now** icon; the scope fields and the interval are per-repo browser preferences. `docs/pm-workflow.md` gains "Which checkout to run the GUI from". See `docs/pm-gui.md` (Status modal).
@@ -150,6 +155,12 @@ release after 0.3.1:
 - `specy-road lessons add --rule R [--example E] [--from N]` -> `specy-road decisions add [N] --kind lesson
   --summary R [--example E]`; `specy-road lessons list` -> `specy-road decisions list --kind lesson` (same
   `constraints/review-lessons.md` and format).
+- `specy-road start-milestone-session` -> `specy-road milestone start`.
+- `specy-road reconcile-milestone-status` -> `specy-road milestone status`.
+- `specy-road open-milestone-pr` -> `specy-road milestone pr`.
+- `specy-road scaffold-planning` -> `specy-road planning scaffold`.
+- `specy-road author-approach` -> `specy-road planning approach`.
+- `specy-road archive-node NODE_ID --hard-remove` -> `specy-road archive --hard-remove NODE_ID`.
 
 ### Fixed
 

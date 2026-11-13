@@ -130,3 +130,36 @@ rows:
   - old: specy-road
     new: specy-road
     allowed: "M16.4.3: top-level help lists review packet, review status and decisions --kind lesson in place of review-packet, handoff status and review list"
+  - old: ""
+    new: specy-road milestone
+    allowed: "M16.4.4: new `milestone` group with start, status and pr (the three milestone-session commands, same flags)"
+  - old: specy-road start-milestone-session
+    new: specy-road milestone start
+    allowed: "M16.4.4: `start-milestone-session` is a hidden deprecated alias of `milestone start` (same flags and output, one deprecation line on stderr)"
+  - old: specy-road reconcile-milestone-status
+    new: specy-road milestone status
+    allowed: "M16.4.4: `reconcile-milestone-status` is a hidden deprecated alias of `milestone status` (same flags and output, one deprecation line on stderr)"
+  - old: specy-road open-milestone-pr
+    new: specy-road milestone pr
+    allowed: "M16.4.4: `open-milestone-pr` is a hidden deprecated alias of `milestone pr` (same flags and output, one deprecation line on stderr)"
+  - old: ""
+    new: specy-road planning
+    allowed: "M16.4.4: new `planning` group with scaffold and approach (scaffold-planning and author-approach, same flags)"
+  - old: specy-road scaffold-planning
+    new: specy-road planning scaffold
+    allowed: "M16.4.4: `scaffold-planning` is a hidden deprecated alias of `planning scaffold` (same flags and output, one deprecation line on stderr)"
+  - old: specy-road author-approach
+    new: specy-road planning approach
+    allowed: "M16.4.4: `author-approach` is a hidden deprecated alias of `planning approach` (same flags and output, one deprecation line on stderr)"
+  - old: specy-road archive-node
+    new: specy-road archive --hard-remove
+    allowed: "M16.4.4: `archive --hard-remove NODE_ID` runs `archive-node NODE_ID --hard-remove`, now a hidden deprecated alias (one deprecation line on stderr)"
+  - old: specy-road
+    new: specy-road
+    allowed: "M16.4.4: top-level help lists milestone start|status|pr, planning scaffold|approach and archive --hard-remove in place of the six old names"
+  - old: specy-road branches
+    new: specy-road doctor --prune --kind
+    allowed: "M16.4.4 (A3): `branches` is a retired top-level name: its one subcommand, `prune`, is the deprecated alias of `doctor --prune --kind branches` (M16.4.1 row); no other change"
+  - old: specy-road handoff
+    new: specy-road review status
+    allowed: "M16.4.4 (A3): `handoff` is a retired top-level name: its one subcommand, `status`, is the deprecated alias of `review status` (M16.4.3 row); no other change"

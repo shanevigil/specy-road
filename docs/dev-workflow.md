@@ -27,7 +27,7 @@ Canonical model: **execute leaves, contextualize with ancestors, roll up progres
 
 **Selection order** among eligible leaves: **`status: Blocked` first**, then **MR-rejected**, then everything else in **outline (tree) order** (`specy-road do-next-available-task -h` spells this out). A `Blocked` leaf is *promoted*, not skipped — it is the one most worth unblocking, and pickup prints `status: Blocked` when it hands you one. **`execution_milestone` is advisory**: `Human-led` documents intent but does not gate pickup. An unattended loop that should take agent work first can opt into **`--prefer-agentic`** (or `prefer_agentic_pick_order: true` in `roadmap/git-workflow.yaml`; `--no-prefer-agentic` overrides the file): each tier above is then ordered `Agentic-led`, `Mixed`, unset, `Human-led`, outline order within each. It reorders only — the tiers and which leaves are eligible stay the same — and `grind-session` uses the same setting, so `--plan`'s **Next auto-pick** (printed with its execution milestone) is still the leaf pickup claims. For either “keep this out of the queue” case, a `type: gate` dependency is the only enforcing mechanism. Outline order is **delivery** order, not the order you would choose to *design* in: to cut a seam first, pick by number with **`--interactive`** or scope with **`--under <NODE_ID>`**. `grind-session --plan` reports dependency **waves**, which is what can run in parallel — not the order auto-pick will walk.
 
-**Unauthored leaves are skipped.** A leaf whose planning sheet still carries the text `scaffold-planning` or `brainstorm promote` wrote (an unedited `## Intent` / `## Approach`, or promote's "Rewrite this section once the slice is properly scoped.") **and** whose node has no `acceptance` gives an agent nothing to build from, so pickup skips it and prints why. Write the sheet (setting `acceptance` with `specy-road edit-node <ID> --set acceptance=...` alone moves it to the next case), or pass **`--allow-unauthored`** to pick it anyway. `specy-road validate` lists every such open leaf in one block (first ten; **`validate --all`** for all of them), and `grind-session --plan` reports them as `unauthored`.
+**Unauthored leaves are skipped.** A leaf whose planning sheet still carries the text `planning scaffold` or `brainstorm promote` wrote (an unedited `## Intent` / `## Approach`, or promote's "Rewrite this section once the slice is properly scoped.") **and** whose node has no `acceptance` gives an agent nothing to build from, so pickup skips it and prints why. Write the sheet (setting `acceptance` with `specy-road edit-node <ID> --set acceptance=...` alone moves it to the next case), or pass **`--allow-unauthored`** to pick it anyway. `specy-road validate` lists every such open leaf in one block (first ten; **`validate --all`** for all of them), and `grind-session --plan` reports them as `unauthored`.
 
 **A scaffold sheet still has to be written.** `acceptance` alone does not get such a leaf picked: pickup skips a leaf whose `## Intent` or `## Approach` still carries the placeholder and prints `skipping <ID>: …`, even when the node has `acceptance`; **`--allow-scaffold-planning`** picks it anyway, with a `warning: picked <ID>, but <sheet> still has … placeholder` line. **`finish-this-task` refuses** to close any leaf whose sheet still has that placeholder text, naming the sheet. Write `## Intent` and `## Approach` and commit the sheet on the feature branch, or pass **`--allow-scaffold-planning`** to finish anyway. `specy-road validate` prints one `notice:` on stdout (not a warning, so `--strict` ignores it) counting `Complete` leaves whose sheet is still the scaffold; **`validate --all`** lists them.
 
@@ -53,10 +53,10 @@ specy-road do-next-available-task --no-ci-skip-in-message   # registration commi
 specy-road abort-task-pickup --force   # abandon pickup when the feature branch has local-only commits (destructive)
 
 # Milestone rollup (one PR to integration after many leaves under a parent):
-specy-road start-milestone-session <PARENT_NODE_ID>   # requires parent `codename`; ensures feature/rm-<parent-codename>
+specy-road milestone start <PARENT_NODE_ID>   # requires parent `codename`; ensures feature/rm-<parent-codename>
 specy-road do-next-available-task --milestone-subtree # or: --under <PARENT_NODE_ID>
 specy-road finish-this-task          # with session: lands bookkeeping on integration, merges leaf into rollup branch
-specy-road open-milestone-pr         # print gh/glab one-liner (rollup head → integration base)
+specy-road milestone pr              # print gh/glab one-liner (rollup head → integration base)
 
 # Agent-driven loop (orchestrate pickup→implement→finish over many leaves):
 specy-road grind-session --plan --json        # read-only: ready/blocked/waves (plan sub-agents)
@@ -125,7 +125,7 @@ Open the generated `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, co
 Use this when you want **one integration PR** for **all leaf work under a parent milestone** (e.g. `M7`), instead of opening a PR per leaf.
 
 1. **Parent must have a `codename`** in the roadmap JSON (kebab-case, same pattern as leaf codenames). Phases/milestones without a codename cannot start a rollup session until the PM sets one.
-2. **`specy-road start-milestone-session <PARENT_NODE_ID>`** — syncs the integration branch, creates or fast-forwards **`feature/rm-<parent-codename>`** from the remote integration tip, writes **`work/.milestone-session.yaml`**, and records **`milestone_execution`** on the parent roadmap node (commit that chunk change with the session so the PM UI can enforce the subtree lock).
+2. **`specy-road milestone start <PARENT_NODE_ID>`** — syncs the integration branch, creates or fast-forwards **`feature/rm-<parent-codename>`** from the remote integration tip, writes **`work/.milestone-session.yaml`**, and records **`milestone_execution`** on the parent roadmap node (commit that chunk change with the session so the PM UI can enforce the subtree lock).
 3. **Pick work** — from a clean tree on the integration branch:
    - **`specy-road do-next-available-task --milestone-subtree`** (uses the session file), or
    - **`specy-road do-next-available-task --under <NODE_ID>`** (one-shot filter; must match the session file if one exists). `--under` accepts a **parent** — scoping to its whole subtree — or a **single leaf id**, which targets exactly that leaf. The latter is how you pick work out of outline order by hand.
@@ -135,9 +135,9 @@ Use this when you want **one integration PR** for **all leaf work under a parent
    - **cherry-picks** the bookkeeping commit onto the integration branch (so `registry.yaml` and roadmap status stay visible on **`remote/<integration-branch>`** without merging implementation files there);
    - **merges** the full leaf branch into **`feature/rm-<parent-codename>`** and pushes the rollup branch.
    Normal **`on_complete`** (`pr` / `merge` / `auto`) is **not** used for that leaf when this path runs. Use **`specy-road finish-this-task --no-milestone-rollup`** to force the standard finish behavior instead.
-5. **Final PR** — when the subtree is done, open **one** PR/MR: **base** = integration branch, **head** = **`feature/rm-<parent-codename>`**. **`specy-road open-milestone-pr`** prints a ready-made `gh pr create` line (and notes for GitLab).
+5. **Final PR** — when the subtree is done, open **one** PR/MR: **base** = integration branch, **head** = **`feature/rm-<parent-codename>`**. **`specy-road milestone pr`** prints a ready-made `gh pr create` line (and notes for GitLab).
 
-6. **After the PR merges** — run **`specy-road reconcile-milestone-status`** (dry-run) then **`--apply`** so `milestone_execution` becomes **`closed`** and the parent `status` matches delivery. If your team landed leaf merges on integration **without** that rollup PR, use **`--fallback-head-delivery`** only when you accept HEAD as the source of truth.
+6. **After the PR merges** — run **`specy-road milestone status`** (dry-run) then **`--apply`** so `milestone_execution` becomes **`closed`** and the parent `status` matches delivery. If your team landed leaf merges on integration **without** that rollup PR, use **`--fallback-head-delivery`** only when you accept HEAD as the source of truth.
 
 Do **not** rely on editing the parent milestone’s JSON `status` to “Complete” until the subtree is actually done; the PM Gantt already derives **In Progress** from children. Optional: set the parent to **Complete** once all descendant leaves are **Complete** (same as any other manual status edit).
 
@@ -226,7 +226,7 @@ specy-road finish-this-task
 #          specy-road finish-this-task --no-cleanup-work   # keep work/brief-, prompt-, implementation-summary-
 ```
 
-**Parents close themselves.** Finishing the *last* open leaf under a parent also flips that parent to **Complete** in the same bookkeeping commit, walking up as far as the rollup reaches, so nothing downstream stays blocked on a phase whose work is done. It prints a line per ancestor it closes and nothing at all when there is none to close — so a run that leaves other leaves open looks exactly like a run with no parent to close. The one exception is a node carrying **`milestone_execution`** (written by `start-milestone-session`): its status belongs to the milestone-rollup state machine, which closes it only once the rollup branch is **proven merged** — use **`specy-road reconcile-milestone-status`** there. `specy-road validate` warns whenever a node's own status disagrees with its rollup.
+**Parents close themselves.** Finishing the *last* open leaf under a parent also flips that parent to **Complete** in the same bookkeeping commit, walking up as far as the rollup reaches, so nothing downstream stays blocked on a phase whose work is done. It prints a line per ancestor it closes and nothing at all when there is none to close — so a run that leaves other leaves open looks exactly like a run with no parent to close. The one exception is a node carrying **`milestone_execution`** (written by `milestone start`): its status belongs to the milestone-rollup state machine, which closes it only once the rollup branch is **proven merged** — use **`specy-road milestone status`** there. `specy-road validate` warns whenever a node's own status disagrees with its rollup.
 **`--push` does not open the PR.** It pushes the branch; the printed `gh pr create` / `glab mr create` line already references `work/pr-body-<NODE_ID>.md` via `--body-file`, so it is pasteable as-is.
 
 **IDE slash commands:**
@@ -309,7 +309,7 @@ over silently rolling status backward, unless your team explicitly uses rollback
 whose leaf descendants are now all `Complete`, in the same bookkeeping commit
 (`[ok] M9 status -> Complete (all leaf descendants complete)`). Ancestors carrying a
 `milestone_execution` block are left alone — that state machine closes those only once the
-rollup branch is proven merged (`specy-road reconcile-milestone-status`). If a stored
+rollup branch is proven merged (`specy-road milestone status`). If a stored
 `status` drifts from its rollup anyway, `specy-road validate` warns and prints the
 `edit-node` command; it never fails, because the rollup is what every reader *and*
 dependency satisfaction use. `--no-phase-status-warn` is deprecated and ignored.

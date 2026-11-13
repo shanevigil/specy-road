@@ -58,7 +58,7 @@ def test_top_level_help_names_canonical_commands(tmp_path) -> None:
         "specy-road init gui --install-gui",
         "pip install 'specy-road[gui-next]'",
         "specy-road add-node -h",
-        "specy-road scaffold-planning -h",
+        "specy-road planning scaffold -h",
     ):
         assert want in out
     assert "specy-road init --install-gui" not in out
