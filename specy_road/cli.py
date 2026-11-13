@@ -522,8 +522,19 @@ def _repo_root_from_argv(args: list[str]) -> Path | None:
     return None
 
 
+def _reports_install_itself(cmd: str, rest: list[str]) -> bool:
+    """``doctor`` and the whole ``upgrade`` print the install report, which says what the
+    older-running-version warning would; ``upgrade --only <component>`` runs one refresh, as its
+    deprecated ``refresh-*`` alias does, and warns like it. ``--only`` is matched as argparse
+    reads it: the whole option or an abbreviation of it (``--o`` up), alone or as ``--only=X``."""
+    if cmd == "upgrade":
+        return not any(a.startswith("--o") and "--only".startswith(a.split("=", 1)[0])
+                       for a in rest)
+    return cmd == "doctor"
+
+
 def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
-    if cmd in ("doctor", "upgrade") or cmd not in _known_commands():
+    if _reports_install_itself(cmd, rest) or cmd not in _known_commands():
         return
     warn_if_running_version_older(project_root(_repo_root_from_argv(rest)))
 

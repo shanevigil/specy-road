@@ -3,9 +3,10 @@
 One row per flag and mode of ``refresh-stubs``, ``refresh-schemas`` and ``refresh-profiles``
 (the map in M16.4.2's work notes). Both invocations run on their own copy of the rc3 fixture: the
 exit code, stdout and every file under the repo afterwards must match. The old one is a deprecated
-alias and adds exactly its one deprecation line on stderr; it also prints the version-skew warnings
-(``specy-road: warning — …``), which the CLI never prints before upgrade. ``--capture --accept``
-without ``--dry-run`` writes into the installed package, so it is run only as a dry run.
+alias and adds exactly its one deprecation line on stderr; every other stderr line, the
+version-skew warnings included, must match. ``--only`` is also given as ``--only=X`` and
+abbreviated, the forms argparse reads. ``--capture --accept`` without ``--dry-run`` writes into the
+installed package, so it is run only as a dry run.
 """
 
 from __future__ import annotations
@@ -31,6 +32,8 @@ ROWS = [
     (["refresh-stubs", "--diff"], ["upgrade", "--only", "stubs", "--diff"]),
     (["refresh-schemas"], ["upgrade", "--only", "schemas"]),
     (["refresh-schemas", "--dry-run"], ["upgrade", "--only", "schemas", "--dry-run"]),
+    (["refresh-schemas", "--dry-run"], ["upgrade", "--only=schemas", "--dry-run"]),
+    (["refresh-stubs", "--dry-run"], ["upgrade", "--onl", "stubs", "--dry-run"]),
     (["refresh-profiles"], ["upgrade", "--only", "profiles"]),
     (["refresh-profiles", "--dry-run"], ["upgrade", "--only", "profiles", "--dry-run"]),
     (["refresh-profiles", "--profiles", "all"],
@@ -72,15 +75,11 @@ def test_old_and_new_invocation_give_the_same_files_and_output(
     old_code, old_out, old_err, old_files = _run(old, tmp_path / "old")
     new_code, new_out, new_err, new_files = _run(new, tmp_path / "new")
     assert (new_code, new_out, new_files) == (old_code, old_out, old_files)
+    component = old[0].removeprefix("refresh-")
     deprecation = (f"warning: `specy-road {old[0]}` is deprecated and is removed in the release"
-                   f" after 0.3.1; use `specy-road upgrade --only {new[2]}`.")
+                   f" after 0.3.1; use `specy-road upgrade --only {component}`.")
     assert old_err[0] == deprecation
     if new_code == 2:   # a usage error: the same rule; the usage lines name each command's options
         assert new_err[-1].replace("upgrade", old[0]) == old_err[-1]
-    else:   # upgrade never prints the version-skew warning that tells you to run upgrade
-        assert new_err == [line for line in old_err[1:] if not _skew_warning(line)]
-
-
-def _skew_warning(line: str) -> bool:
-    """A line ``version_skew`` prints before a command other than upgrade runs."""
-    return line.startswith("specy-road: warning — ")
+    else:
+        assert new_err == old_err[1:]
