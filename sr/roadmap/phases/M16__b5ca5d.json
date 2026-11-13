@@ -1,0 +1,51 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "Before the switch, tests/parity/cleanup/ holds one fixture repo with: a merged feature branch, an unmerged one, a branch whose leaf is Complete, a claimed branch, a live worktree, a merged clean worktree, a merged dirty worktree, a registry row with no branch, a registry row for a Complete leaf, a specy-road stash and a foreign stash; it records the dry-run action list of `doctor`, `branches prune`, `registry-prune`, `worktree prune <ID>` and `grind-session --delete-merged-branches` on that fixture",
+        "Before the switch, a reconciliation table in sr/work/M16.4.1-reconciliation.md fixes the action and reason for each fixture item under each old command and under `doctor --prune --kind` branches, registry, worktrees or stashes; one planner with one merged rule and one live rule (live read from the M16.3.1 snapshot) selects exactly the table's rows for the new form and for each alias; a safety-driven reduction from an old command's selection is a decided row of that table; applying removes exactly the planned items",
+        "`worktree prune <ID>` stays as the single-leaf path on the same planner; `branches prune`, `registry-prune` and `grind-session --delete-merged-branches` still work for one release, print one deprecation line naming the new form, are hidden from top-level help and are rows of tests/parity/command_map.yaml",
+        "Docs, templates and suggested_prompts name the new form in the same change; the stale-command check passes; goldens differ only for map rows",
+        "CHANGELOG.md's [Unreleased] section records each deprecation or rename this leaf makes: old name -> new name and the release it is removed in (the release after 0.3.1 (maintainer, 2026-11-08)); no version heading is written",
+        "Estimated net line change (informational, not a gate): package about -300"
+      ],
+      "codename": "doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases",
+      "dependencies": [
+        "af6d3c1a-cccf-481d-ab9f-503e834b47d7",
+        "01db66ad-a91c-48e3-953e-4083f5f14a13"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.4.1",
+      "node_key": "b5ca5d95-58a9-472c-9f90-0004d0fbd46f",
+      "parent_id": "M16.4",
+      "planning_dir": "planning/M16.4.1_doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases_b5ca5d95-58a9-472c-9f90-0004d0fbd46f.md",
+      "sibling_order": 0,
+      "status": "Not Started",
+      "title": "doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/doctor_worktrees.py",
+        "specy_road/bundled_scripts/branches_cli.py",
+        "specy_road/bundled_scripts/registry_prune.py",
+        "specy_road/bundled_scripts/grind_session_cleanup.py",
+        "specy_road/worktree_prune.py",
+        "specy_road/cleanup_plan.py",
+        "specy_road/cli.py",
+        "docs/",
+        "suggested_prompts/",
+        "specy_road/templates/project/",
+        "tests/parity/cleanup/",
+        "tests/parity/command_map.yaml",
+        "tests/",
+        "CHANGELOG.md",
+        "specy_road/bundled_scripts/grind_session_args.py",
+        "specy_road/bundled_scripts/grind_session.py",
+        "specy_road/cli_usage.py",
+        "specy_road/grind_session_cleanup.py",
+        "specy_road/templates/specyrd/commands/specyrd-finish.md",
+        "specy_road/templates/specyrd/commands/specyrd-grind-session.md"
+      ],
+      "type": "task"
+    }
+  ]
+}
