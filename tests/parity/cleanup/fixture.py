@@ -4,11 +4,12 @@
 | --- | --- |
 | ``merged-branch`` | ``feature/rm-merged`` (M1.2): own commit, merged with ``--no-ff``, pushed |
 | ``unmerged-branch`` | ``feature/rm-unmerged`` (M1.4): own commit, not merged, pushed |
-| ``complete-branch`` | ``feature/rm-done`` (M1.5, Complete): own commit, merged, pushed, no registry row |
-| ``claimed-branch`` | ``feature/rm-thing`` (M1.1): a fresh claim, its tip the integration tip, pushed |
+| ``complete-branch`` | ``feature/rm-done`` (M1.5, Complete): own commit, merged, pushed, no row |
+| ``claimed-branch`` | ``feature/rm-thing`` (M1.1): a fresh claim at the integration tip, pushed |
 | ``live-worktree`` | ``work/.worktrees/thing`` on the claimed branch |
 | ``merged-clean-worktree`` | ``work/.worktrees/merged`` on ``feature/rm-merged``, clean |
-| ``merged-dirty-worktree`` | ``work/.worktrees/dirty`` on ``feature/rm-dirty`` (M1.3, merged, pushed), with an edit |
+| ``merged-dirty-worktree`` | ``work/.worktrees/dirty`` on ``feature/rm-dirty`` (M1.3, merged, |
+| | pushed), with an uncommitted edit |
 | ``row-no-branch`` | registry row ``ghost`` (M1.7, In Progress), its branch nowhere |
 | ``row-complete`` | registry row ``settled`` (M1.6, Complete), its branch nowhere |
 | ``toolkit-stash`` | a stash whose subject starts ``specy-road:`` |
@@ -87,7 +88,7 @@ def _branch(repo: Path, codename: str) -> None:
 
 
 def build(tmp_path: Path) -> Path:
-    """The fixture repo under ``tmp_path`` (its bare ``origin`` beside it); the main checkout on dev."""
+    """The fixture repo under ``tmp_path`` (its bare ``origin`` beside it), checked out on dev."""
     repo = make_review_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
     commit_file(repo, ".gitignore", "work/\n", "ignore work/")
@@ -107,7 +108,8 @@ def build(tmp_path: Path) -> Path:
     for item, codename in WORKTREE_ITEMS.items():
         git(repo, "worktree", "add", "-q", str(repo / "work" / ".worktrees" / codename),
             f"feature/rm-{codename}")
-    (repo / "work" / ".worktrees" / "dirty" / "src" / "dirty.py").write_text("edit\n", encoding="utf-8")
+    edited = repo / "work" / ".worktrees" / "dirty" / "src" / "dirty.py"
+    edited.write_text("edit\n", encoding="utf-8")
     for message in (TOOLKIT_STASH, FOREIGN_STASH):
         (repo / "notes.md").write_text(f"{message}\n", encoding="utf-8")
         git(repo, "stash", "push", "-q", "-m", message)

@@ -55,7 +55,7 @@ def test_a_claimed_worktree_on_a_fresh_branch_is_live_and_fix_leaves_it(doctor_r
 
     assert run_doctor(repo) == 0
     out = capsys.readouterr().out
-    assert "wt-fresh  — branch feature/rm-fresh live: claimed by M1.5, so --fix leaves it" in out
+    assert "wt-fresh  — branch feature/rm-fresh live: claimed by M1.5, so --prune leaves it" in out
     assert "feature/rm-fresh is merged" not in out
 
     assert run_doctor(repo, "--fix", "--yes") == 0
@@ -72,7 +72,7 @@ def test_f1_a_claimed_worktree_whose_directory_moved_is_live_not_missing(doctor_
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert kept(out, "wt-thing: branch feature/rm-thing live: claimed by M1.1, so --fix leaves it")
+    assert kept(out, "wt-thing: branch feature/rm-thing live: claimed by M1.1, so --prune leaves it")
     assert "wt-thing: directory missing" not in out and not out.rstrip().endswith("wt-thing")
     assert "wt-thing" in git(repo, "worktree", "list")
     assert git(moved, "branch", "--show-current") == "feature/rm-thing"   # its admin dir is intact
@@ -85,8 +85,8 @@ def test_an_unclaimed_branch_with_no_commits_is_never_merged(doctor_repo, capsys
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert "[kept] local feature/rm-empty: claim gone, no commits yet, so --fix leaves it" in out
-    assert kept(out, "wt-empty: branch feature/rm-empty has no commits yet, so --fix leaves it")
+    assert "[kept] local feature/rm-empty: claim gone, no commits yet, so --prune leaves it" in out
+    assert kept(out, "wt-empty: branch feature/rm-empty has no commits yet, so --prune leaves it")
     assert has_ref(repo, "refs/heads/feature/rm-empty") and wt.is_dir()
     assert "[ok] deleted local branch feature/rm-done" in out   # merged with commits, unclaimed: unchanged
 
@@ -101,8 +101,8 @@ def test_f2_a_fresh_branch_renamed_before_its_first_commit_has_no_commits(doctor
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert "[kept] local feature/rm-renamed: claim gone, no commits yet, so --fix leaves it" in out
-    assert kept(out, "wt-renamed: branch feature/rm-renamed has no commits yet, so --fix leaves it")
+    assert "[kept] local feature/rm-renamed: claim gone, no commits yet, so --prune leaves it" in out
+    assert kept(out, "wt-renamed: branch feature/rm-renamed has no commits yet, so --prune leaves it")
     assert has_ref(repo, "refs/heads/feature/rm-renamed") and wt.is_dir()
 
 
@@ -119,7 +119,7 @@ def test_f3_a_fresh_remote_branch_does_not_borrow_its_local_namesakes_commits(do
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert f"[kept] origin feature/rm-pushed: merged; {NO_EVIDENCE}, so --fix leaves it" in out
+    assert f"[kept] origin feature/rm-pushed: merged; {NO_EVIDENCE}, so --prune leaves it" in out
     assert "deleted feature/rm-pushed on origin" not in out
     assert git(bare, "rev-parse", "feature/rm-pushed") == fresh
 
@@ -143,8 +143,8 @@ def test_f4_a_fast_forwarded_commit_with_an_expired_reflog_is_merged_but_left(do
     git(repo, "reflog", "expire", "--expire=all", "refs/heads/feature/rm-ff")
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert f"[kept] local feature/rm-ff: merged; {NO_EVIDENCE}, so --fix leaves it" in out
-    assert f"[kept] origin feature/rm-ff: merged; {NO_EVIDENCE}, so --fix leaves it" in out
+    assert f"[kept] local feature/rm-ff: merged; {NO_EVIDENCE}, so --prune leaves it" in out
+    assert f"[kept] origin feature/rm-ff: merged; {NO_EVIDENCE}, so --prune leaves it" in out
     assert "no commits yet" not in out.split("[kept] local feature/rm-ff")[1].splitlines()[0]
     assert git(repo, "rev-parse", "feature/rm-ff") == tip == git(bare, "rev-parse", "feature/rm-ff")
 
@@ -155,7 +155,7 @@ def test_f4_a_fast_forwarded_commit_with_no_local_branch_is_merged_but_left(doct
     git(repo, "branch", "-q", "-D", "feature/rm-ff")
 
     assert run_doctor(repo) == 0
-    assert f"origin    feature/rm-ff  — merged; {NO_EVIDENCE}, so --fix leaves it" in capsys.readouterr().out
+    assert f"origin    feature/rm-ff  — merged; {NO_EVIDENCE}, so --prune leaves it" in capsys.readouterr().out
     assert run_doctor(repo, "--fix", "--yes") == 0
     assert kept(capsys.readouterr().out, f"origin feature/rm-ff: merged; {NO_EVIDENCE}")
     assert git(bare, "rev-parse", "feature/rm-ff") == tip
@@ -172,7 +172,7 @@ def test_a_worker_held_branch_is_live_until_the_worker_is_terminal(doctor_repo, 
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    live = f"live: worker {rec.worker_id} (running), so --fix leaves it"
+    live = f"live: worker {rec.worker_id} (running), so --prune leaves it"
     assert f"[kept] local feature/rm-done: {live}" in out
     assert f"[kept] origin feature/rm-done: {live}" in out
     assert kept(out, f"wt-done: branch feature/rm-done {live}")
@@ -193,7 +193,7 @@ def test_r1_a_reused_branch_name_with_a_creation_only_reflog_has_no_commits(doct
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert "[kept] local feature/rm-gone: claim gone, no commits yet, so --fix leaves it" in out
+    assert "[kept] local feature/rm-gone: claim gone, no commits yet, so --prune leaves it" in out
     assert "deleted local branch feature/rm-gone" not in out
     assert has_ref(repo, "refs/heads/feature/rm-gone")
 
@@ -204,7 +204,7 @@ def test_r3_a_fresh_branch_at_another_branchs_unlanded_tip_has_no_commits(doctor
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert "[kept] local feature/rm-borrowed: claim gone, no commits yet, so --fix leaves it" in out
+    assert "[kept] local feature/rm-borrowed: claim gone, no commits yet, so --prune leaves it" in out
     assert has_ref(repo, "refs/heads/feature/rm-borrowed")
     assert "[ok] deleted local branch feature/rm-open" in out   # unmerged with commits: policy unchanged
 
@@ -220,10 +220,10 @@ def test_r4_a_claim_beats_a_session_and_a_session_alone_still_protects(doctor_re
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert kept(out, "wt-thing: branch feature/rm-thing live: claimed by M1.1, so --fix leaves it")
+    assert kept(out, "wt-thing: branch feature/rm-thing live: claimed by M1.1, so --prune leaves it")
     assert "live: session claim-session" not in out
-    assert kept(out, "wt-empty: branch feature/rm-empty live: session lone-session, so --fix leaves it")
-    assert "[kept] local feature/rm-empty: live: session lone-session, so --fix leaves it" in out
+    assert kept(out, "wt-empty: branch feature/rm-empty live: session lone-session, so --prune leaves it")
+    assert "[kept] local feature/rm-empty: live: session lone-session, so --prune leaves it" in out
     assert empty.is_dir() and (repo.parent / "wt-thing").is_dir()
 
 
@@ -234,7 +234,7 @@ def test_r5_f1_a_copy_of_a_merged_branch_has_no_commits_of_its_own(doctor_repo, 
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert "[kept] local feature/rm-copied: claim gone, no commits yet, so --fix leaves it" in out
+    assert "[kept] local feature/rm-copied: claim gone, no commits yet, so --prune leaves it" in out
     assert "deleted local branch feature/rm-copied" not in out
     assert has_ref(repo, "refs/heads/feature/rm-copied")
     assert "[ok] deleted local branch feature/rm-done" in out   # the source keeps its evidence
@@ -248,7 +248,7 @@ def test_r5_f2_a_local_namesake_at_the_remote_tip_keeps_the_remotes_finish_merge
     assert run_doctor(repo) == 0
     out = capsys.readouterr().out
     assert "origin    feature/rm-gone  — merged\n" in out
-    assert "local     feature/rm-gone  — claim gone, no commits yet, so --fix leaves it" in out
+    assert "local     feature/rm-gone  — claim gone, no commits yet, so --prune leaves it" in out
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
@@ -269,7 +269,7 @@ def test_r5_f2_a_local_namesake_never_disproves_a_fast_forwarded_remote(doctor_r
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
     assert kept(out, f"origin feature/rm-ff: merged; {NO_EVIDENCE}")
-    assert "[kept] local feature/rm-ff: claim gone, no commits yet, so --fix leaves it" in out
+    assert "[kept] local feature/rm-ff: claim gone, no commits yet, so --prune leaves it" in out
     assert git(bare, "rev-parse", "feature/rm-ff") == tip
 
 
@@ -280,5 +280,5 @@ def test_r6_a_renamed_branch_starts_at_its_rename(doctor_repo, capsys) -> None:
 
     assert run_doctor(repo, "--fix", "--yes") == 0
     out = capsys.readouterr().out
-    assert "[kept] local feature/rm-moved: claim gone, no commits yet, so --fix leaves it" in out
+    assert "[kept] local feature/rm-moved: claim gone, no commits yet, so --prune leaves it" in out
     assert has_ref(repo, "refs/heads/feature/rm-moved")

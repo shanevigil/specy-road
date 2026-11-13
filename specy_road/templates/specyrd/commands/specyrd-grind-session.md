@@ -76,8 +76,8 @@ and dispatch a fresh executor. Cursor and Codex have no auto-continue: re-run
 inside a live session and are blocked by the same limit, so they cannot restart
 a session; use them only to poll, for example while a human reviews.
 
-Step mode does not take `--implement-mode hook`, `--implement-cmd`, `--plan`,
-or `--delete-merged-branches`. `--max-leaves` and `--max-cycles` do not apply;
+Step mode does not take `--implement-mode hook`, `--implement-cmd` or `--plan`.
+`--max-leaves` and `--max-cycles` do not apply;
 stopping is your call.
 
 ### Hook mode (terminal only)
@@ -106,10 +106,10 @@ Human-in-the-loop (manual mode: implement, then `touch work/.session-ready`):
 specy-road grind-session --max-leaves 1 --on-complete merge
 ```
 
-A hook or manual loop that ends on its own terms checks out the **integration branch**; add
-**`--delete-merged-branches`** to also delete the `feature/rm-*` branches it
-merged (locally, and on the remote when `--push` was given). Without the flag it
-prints the command. With `--json`, stdout is JSONL only — sub-command output goes
+A hook or manual loop that ends on its own terms checks out the **integration branch** and
+prints the command that deletes the `feature/rm-*` branches it merged; afterwards
+**`specy-road doctor --prune --kind branches`** removes them (`--delete-merged-branches`
+is a deprecated alias). With `--json`, stdout is JSONL only — sub-command output goes
 to stderr.
 
 Stop conditions: `--until NODE`, `--under PARENT`, `--max-leaves N`, or default

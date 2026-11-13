@@ -128,19 +128,19 @@ def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> No
                and line.endswith(doctor.SAME_PATCH) for line in out.splitlines())
     assert "wt-missing  — directory missing" in out
     assert "wt-settled  — branch feature/rm-settled is merged" in out
-    assert "wt-thing  — branch feature/rm-thing live: claimed by M1.1, so --fix leaves it" in out   # A1
+    assert "wt-thing  — branch feature/rm-thing live: claimed by M1.1, so --prune leaves it" in out   # A1
     assert "wt-locked" not in out
-    assert "wt-wip  — detached at" in out and "uncommitted changes, so --fix leaves it" in out
+    assert "wt-wip  — detached at" in out and "uncommitted changes, so --prune leaves it" in out
     ghost = next(line for line in out.splitlines() if "ghost  —" in line)
     assert ghost.startswith("  ghost  — node M1.3: feature/rm-ghost is in neither this clone nor origin")
     assert "advisory: another clone's claim looks the same until it pushes its branch" in ghost
     assert "confirm that clone no longer holds the claim" in ghost
-    assert "specy-road registry-prune --remove ghost" in ghost and ghost.endswith("so --fix leaves it")
+    assert "specy-road registry-prune --remove ghost" in ghost and ghost.endswith("so --prune leaves it")
     assert "registry-prune --remove <CODENAME>" in out
     assert "settled  — node M1.4: leaf Complete; feature/rm-settled is listed above" in out
     assert TOOLKIT_STASH in out
     assert ": mine" not in out
-    assert "Nothing removed. Re-run with --fix" in out
+    assert "Nothing removed. Re-run with --prune" in out
     assert "Claims with no live worker" in out and "abort-task-pickup" in out
     assert _has(repo, "refs/heads/feature/rm-open")
     assert _has(bare, "refs/heads/feature/rm-gone")
@@ -192,7 +192,7 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
     assert any(
         line.startswith("[kept] ghost:") and "specy-road registry-prune --remove ghost" in line
         and "confirm that clone no longer holds the claim" in line
-        and line.endswith("so --fix leaves it")
+        and line.endswith("so --prune leaves it")
         for line in out.splitlines()
     )
     assert "ghost" in registry
@@ -254,7 +254,7 @@ def test_detached_worktrees_are_listed_and_fix_removes_only_clean_ones(doctor_re
     out = capsys.readouterr().out
     head = git(repo, "rev-parse", "feature/rm-finished")[:12]
     assert any(line.endswith(f"wt-review  — detached at {head}") for line in out.splitlines())
-    assert "wt-orphan  — detached at" in out and "commits no branch holds, so --fix leaves it" in out
+    assert "wt-orphan  — detached at" in out and "commits no branch holds, so --prune leaves it" in out
 
     assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
     out = capsys.readouterr().out
@@ -429,7 +429,7 @@ def test_fix_keeps_a_landed_patch_whose_commit_no_ref_holds(doctor_repo, capsys)
     out = capsys.readouterr().out
     assert any(line.startswith("[kept] ") and line.endswith(
         f"wt-landed: branch gone: detached at {head[:12]}, {doctor.SAME_PATCH}; "
-        "commits no branch holds, so --fix leaves it") for line in out.splitlines())
+        "commits no branch holds, so --prune leaves it") for line in out.splitlines())
     assert "wt-landed" in git(repo, "worktree", "list")
     assert git(wt, "rev-parse", "HEAD") == head
 
@@ -446,6 +446,6 @@ def test_fix_leaves_a_temporary_worktree_another_command_is_using(doctor_repo, c
 
     out = capsys.readouterr().out
     assert any(line.startswith("[kept] ") and line.endswith(
-        "a temporary worktree a running specy-road check may be using, so --fix leaves it")
+        "a temporary worktree a running specy-road check may be using, so --prune leaves it")
         for line in out.splitlines())
     assert str(wt) in git(repo, "worktree", "list") and wt.is_dir()

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Report registry claims with no branch in this clone, and remove named ones.
 
+Deprecated alias (``specy-road`` prints the line naming ``doctor --prune --kind
+registry``): the planner lists the same rows and removes a Complete leaf's row
+itself; it calls this module's ``--remove`` to do it, without the deprecation line.
+
 ``abort-task-pickup`` is the right tool while you still hold the branch: it
 knows the node, deletes the branch and cleans ``work/``. It cannot help once
 the branch is gone — it refuses to run anywhere but ``feature/rm-*`` — and the
@@ -122,9 +126,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="specy-road registry-prune",
         description=(
-            "Report registry claims whose feature/rm-* branch is missing from "
-            "this clone, and remove ones you name. Removal commits on the "
-            "integration branch and pushes it."
+            "Deprecated: use specy-road doctor --prune --kind registry (this "
+            "alias is removed in the release after 0.3.1). Report registry "
+            "claims whose feature/rm-* branch is missing from this clone, and "
+            "remove ones you name. Removal commits on the integration branch "
+            "and pushes it."
         ),
     )
     add_repo_root_arg(p)

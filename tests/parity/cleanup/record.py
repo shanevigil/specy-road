@@ -2,9 +2,10 @@
 
 ``python -m tests.parity.cleanup.record`` rewrites ``golden/old_selections.json`` from the commands
 as this checkout has them; the committed file was written on the commit before the cleanup planner
-(M16.4.1) and is the "old" column of ``reconciliation.yaml``. An action is ``remove`` (selected for
-removal), ``keep`` (listed and left, with the reason) or ``list`` (reported, never removed by this
-command); a row a command does not name is not in its list.
+(M16.4.1) and is the "old" column of ``reconciliation.yaml``. :func:`selections` also reads the
+new forms (:data:`NEW_FORMS`), which ``test_reconciliation.py`` holds to that table. An action
+is ``remove`` (selected for removal), ``keep`` (listed and left, with the reason) or ``list``
+(reported, never removed by this command); a row a command does not name is not in its list.
 
 The dry-run commands run on a fresh fixture each. ``grind-session --delete-merged-branches`` has no
 dry run: its end-of-session cleanup runs on a fresh fixture as if the session had finished every
@@ -37,13 +38,22 @@ DRY_RUNS = {
 }
 
 
+#: ``doctor --prune`` and each ``--kind``, read from their dry run (the plan ``--prune`` applies).
+NEW_FORMS = {
+    "doctor --prune": ["doctor"],
+    **{f"doctor --prune --kind {kind}": ["doctor", "--kind", kind]
+       for kind in ("branches", "worktrees", "registry", "stashes")},
+}
+
+
 def _run(argv: list[str], repo: Path) -> tuple[int, str, str]:
     result = run_cli("specy_road.cli", [*argv, "--repo-root", str(repo)], cwd=repo, env=cli_env())
     return result.returncode, result.stdout, result.stderr
 
 
 def _listing(out: str, *, keep_marks: tuple[str, ...]) -> list[dict]:
-    """``  name  — reason`` rows: ``keep`` when the reason ends with a keep mark, else ``remove``."""
+    """``  name  — reason`` rows: ``keep`` when the reason ends with a keep mark, else
+    ``remove``."""
     actions = []
     for line in out.splitlines():
         m = _ENTRY.match(line)
@@ -75,7 +85,8 @@ def worktree_prune_actions(leaf: str, code: int, err: str) -> list[dict]:
     row = next(item for item, node_id in fixture.WORKTREE_LEAVES.items() if node_id == leaf)
     if code == 0:
         return [{"row": row, "action": "remove", "reason": "merged and holds no unsaved work"}]
-    reasons = [line.strip().removeprefix("- ") for line in err.splitlines() if line.startswith("  - ")]
+    reasons = [line.strip().removeprefix("- ") for line in err.splitlines()
+               if line.startswith("  - ")]
     return [{"row": row, "action": "keep", "reason": "; ".join(reasons)}]
 
 
@@ -112,7 +123,7 @@ def _dry_run_actions(name: str, argv: list[str], tmp: Path) -> list[dict]:
     repo = fixture.build(tmp)
     code, out, err = _run(argv, repo)
     out, err = normalise(out, {repo: "<REPO>"}), normalise(err, {repo: "<REPO>"})
-    if name == "doctor":
+    if name == "doctor" or name.startswith("doctor "):
         return doctor_actions(out)
     if name == "branches prune":
         return branches_prune_actions(out)
@@ -121,10 +132,10 @@ def _dry_run_actions(name: str, argv: list[str], tmp: Path) -> list[dict]:
     return worktree_prune_actions(argv[-1], code, err)
 
 
-def selections() -> dict[str, list[dict]]:
-    """Every command's actions on the fixture, each on its own fresh copy."""
+def selections(*, new_forms: bool = False) -> dict[str, list[dict]]:
+    """Every old command's actions on the fixture (and the new forms'), each on a fresh copy."""
     found: dict[str, list[dict]] = {}
-    for name, argv in DRY_RUNS.items():
+    for name, argv in {**DRY_RUNS, **(NEW_FORMS if new_forms else {})}.items():
         with tempfile.TemporaryDirectory() as tmp:
             found[name] = _dry_run_actions(name, argv, Path(tmp))
     with tempfile.TemporaryDirectory() as tmp:

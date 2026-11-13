@@ -455,8 +455,12 @@ merged a dozen.
 `--delete-merged-branches` also deletes the `feature/rm-*` branches the session
 finished: locally with `git branch -d`, and on the remote too when `--push` was
 given. A branch is deleted only if the integration branch already contains it, so a
-leaf that fell back to a PR keeps its branch. Without the flag the loop prints the
-exact command instead.
+leaf that fell back to a PR keeps its branch, and never while the cleanup planner's
+live rule holds it (an open claim or rollup, a running worker, a live session).
+Without the flag the loop prints the exact command instead. The flag is a hidden,
+deprecated alias, removed in the release after 0.3.1: it prints one line naming
+`specy-road doctor --prune --kind branches`, which removes merged branches after any
+session (see [git-workflow.md](git-workflow.md#finding-leftovers-doctor)).
 
 Nothing here changes the exit code, and none of it runs after a failed cycle — a
 failure leaves the feature branch exactly as it was so you can fix and resume.

@@ -17,8 +17,9 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
-from specy_road import session_presence, worker_state
+from specy_road import session_presence
 from specy_road.merged_branch import merged_into
+from specy_road.orchestration import read_state
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_root, git_text
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import read_registry, registry_path
@@ -43,8 +44,11 @@ class Finding:
     kind: str
     name: str
     reason: str
-    remove: Callable[[], str | None] | None   # the failure message, or None; None: --fix leaves it
+    # the failure message, or None; None: --prune leaves it
+    remove: Callable[[], str | None] | None
     done: str
+    label: str = ""   # a branch's classify() label
+    branch: str = ""   # a branch finding's branch name
 
 
 def _all_upstream(root: Path, target: str, ref: str) -> bool:
@@ -157,7 +161,8 @@ def live_holders(root: Path, target: str, nodes: list[dict[str, Any]], complete:
                  ) -> tuple[dict[str, tuple[str, str]], dict[str, tuple[str, str]]]:
     """(source, ``live: …``) by branch and by resolved worktree path, claim before worker before session.
 
-    Claims are open registry rows (leaf not Complete) and open milestone rollups.
+    Claims are open registry rows (leaf not Complete) and open milestone rollups; workers are the
+    orchestration state's active records (:func:`specy_road.orchestration.read_state`).
     """
     held: dict[str, tuple[str, str]] = {}
     paths: dict[str, tuple[str, str]] = {}
@@ -170,7 +175,7 @@ def live_holders(root: Path, target: str, nodes: list[dict[str, Any]], complete:
         if isinstance(me, dict) and me.get("state") != "closed" and me.get("rollup_branch"):
             held.setdefault(me["rollup_branch"], ("claim", f"live: open rollup of {n.get('id')}"))
     running = [("worker", f"live: worker {r.worker_id} ({r.state})", r.branch, r.worktree)
-               for r in worker_state.list_records(root, active_only=True)]
+               for r in read_state(root).active_records()]
     running += [("session", f"live: session {s.agent}", s.branch, s.worktree)
                 for s in session_presence.list_sessions(root)]
     for source, why, branch, worktree in running:
@@ -179,6 +184,12 @@ def live_holders(root: Path, target: str, nodes: list[dict[str, Any]], complete:
         if worktree:
             paths.setdefault(str(Path(worktree).resolve()), (source, why))
     return held, paths
+
+
+def worktree_branches(root: Path) -> list[tuple[str, str]]:
+    """(path, branch short name) of every worktree on a branch, the main checkout's included."""
+    return [(wt["worktree"], wt["branch"].removeprefix("refs/heads/"))
+            for wt in _worktrees(root) if wt.get("branch")]
 
 
 def _worktrees(root: Path) -> list[dict[str, str]]:
@@ -208,7 +219,8 @@ def _live(ctx: Any, wt: dict[str, str], branch: str) -> tuple[str, str]:
 
 
 def _worktree_reason(ctx: Any, wt: dict[str, str], local: dict[str, tuple[str, str]]) -> tuple[str | None, bool]:
-    """The reason to list it, and whether ``--fix`` may remove it (a detached one is judged after).
+    """The reason to list it, and whether ``--prune`` may remove it (a detached one is judged
+    after).
 
     Liveness comes first, before a missing directory: a live worktree is reported with its live
     reason and never removed. It is listed only when it would be listed were it not live.
@@ -244,8 +256,16 @@ def _ignored_note(path: Path) -> str:
     return f"; removing it deletes ignored {', '.join(ignored)}" if ignored else ""
 
 
+def _keep_dirty(wt: dict[str, str]) -> str | None:
+    """Why ``--prune`` leaves a worktree on a branch: ``git worktree remove`` refuses uncommitted
+    changes."""
+    dirty = git_text(["status", "--porcelain"], Path(wt["worktree"]))
+    return "uncommitted changes" if dirty else None
+
+
 def _keep_detached(ctx: Any, wt: dict[str, str]) -> str | None:
-    """Why ``--fix`` leaves a detached worktree: another command's, uncommitted changes, or a HEAD no ref holds."""
+    """Why ``--prune`` leaves a detached worktree: another command's, uncommitted changes, or a
+    HEAD no ref holds."""
     if Path(wt["worktree"]).parent.name.startswith(TEMP_WORKTREES):
         return "a temporary worktree a running specy-road check may be using"
     if git_text(["status", "--porcelain"], Path(wt["worktree"])):
@@ -273,12 +293,13 @@ def worktree_findings(ctx: Any, local: dict[str, tuple[str, str]]) -> list[Findi
         if not reason:
             continue
         if not fixable:
-            found.append(Finding("worktree", path, f"{reason}, so --fix leaves it", None, ""))
+            found.append(Finding("worktree", path, f"{reason}, so --prune leaves it", None, ""))
             continue
-        keep = None if "branch" in wt else _keep_detached(ctx, wt)
+        keep = _keep_dirty(wt) if "branch" in wt else _keep_detached(ctx, wt)
         found.append(Finding(
             "worktree", path,
-            reason + _ignored_note(Path(path)) + (f"; {keep}, so --fix leaves it" if keep else ""),
+            reason + _ignored_note(Path(path))
+            + (f"; {keep}, so --prune leaves it" if keep else ""),
             None if keep else partial(_remove_worktree, ctx.root, path), f"removed worktree {path}",
         ))
     return found

@@ -93,6 +93,26 @@ body. Keep section bodies focused; link to PRs for detail.
   sets `implementation_summary: local`. A reviewer in another clone does not see the summary; the review packet
   reads it from the leaf's worktree. An existing project on the `commit` default gets `validate`'s notice, which
   names the fix.
+- `specy-road doctor --prune` is the one cleanup path: one planner lists branches, worktrees, registry rows and
+  toolkit stashes with one merged rule and one live rule (an open claim or rollup, or a worker or session the
+  orchestration state reads), and `--prune` removes exactly what it listed. `--kind branches|worktrees|registry|stashes`
+  (repeatable) narrows the listing and the removal. Two rows the old `--fix` listed and then failed to remove are
+  now listed as left: a worktree with uncommitted changes, and a local branch a worktree this run does not remove
+  has checked out. `worktree prune <ID>` reads the same live rule, so it refuses a leaf whose branch is still
+  claimed (a fresh claim looked merged). See `docs/git-workflow.md` ("Finding leftovers: `doctor`").
+
+### Deprecated
+
+Each alias below prints one line naming its replacement, is hidden from `specy-road --help`, and is removed in the
+release after 0.3.1:
+
+- `specy-road doctor --fix` -> `specy-road doctor --prune`.
+- `specy-road branches prune [--delete]` -> `specy-road doctor --prune --kind branches`. Until then it selects, from
+  the same plan, the branches merged by ancestry with no registry row and no open rollup, and no longer one a
+  worktree has checked out.
+- `specy-road registry-prune` -> `specy-road doctor --prune --kind registry`.
+- `specy-road grind-session --delete-merged-branches` -> `specy-road doctor --prune --kind branches`. Until then
+  it also leaves a finished branch the live rule holds.
 
 ### Fixed
 

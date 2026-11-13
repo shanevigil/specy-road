@@ -40,3 +40,18 @@ rows:
   - old: specy-road decisions
     new: specy-road decisions
     allowed: "M22.69: `decisions --help`'s close line says an entry with a criterion closes only at a person's terminal"
+  - old: specy-road doctor --fix
+    new: specy-road doctor --prune --kind
+    allowed: "M16.4.1: `doctor --prune` (with `--kind branches|worktrees|registry|stashes`) is the one cleanup path; `--fix` is a hidden deprecated alias of `--prune`"
+  - old: specy-road branches prune
+    new: specy-road doctor --prune --kind
+    allowed: "M16.4.1: `branches prune` is a hidden deprecated alias of `doctor --prune --kind branches`; its help says so"
+  - old: specy-road registry-prune
+    new: specy-road doctor --prune --kind
+    allowed: "M16.4.1: `registry-prune` is a hidden deprecated alias of `doctor --prune --kind registry`; its help says so"
+  - old: specy-road grind-session --delete-merged-branches
+    new: specy-road doctor --prune --kind
+    allowed: "M16.4.1: `grind-session --delete-merged-branches` is a hidden deprecated alias of `doctor --prune --kind branches`"
+  - old: specy-road
+    new: specy-road
+    allowed: "M16.4.1: top-level help drops `branches prune`, `registry-prune` and `--delete-merged-branches`, and names `doctor --prune --kind`"

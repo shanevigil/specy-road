@@ -6,13 +6,14 @@ Install: specy-road <VERSION> running from <PREFIX>
 feature/rm-* branches whose leaf is Complete or that nothing claims (against origin/dev):
   local     feature/rm-thing  — merged
   origin    feature/rm-thing  — merged
-Registry rows on origin/dev with no branch (advisory: another clone's claim looks the same until it pushes its branch; --fix leaves them — specy-road registry-prune --remove <CODENAME>) or whose leaf is Complete:
+Registry rows on origin/dev with no branch (advisory: another clone's claim looks the same until it pushes its branch; --prune leaves them — specy-road registry-prune --remove <CODENAME>) or whose leaf is Complete:
   settled  — node M1.4: leaf Complete
 [ok] deleted local branch feature/rm-thing
 [ok] deleted feature/rm-thing on origin
-Claims with no live worker (report only; --fix does not release them):
+Claims with no live worker (report only; --prune does not release them):
   M1.4 (feature/rm-settled, unknown): `specy-road worker delegate M1.4` to resume work, or `specy-road abort-task-pickup` to release it
 --- stderr ---
+warning: `specy-road doctor --fix` is deprecated and is removed in the release after 0.3.1; use `specy-road doctor --prune`.
 [warn] settled: error: working tree is not clean (commit, stash, or discard changes first).
   Removing a registry claim commits on the integration branch.
    M src/a.py

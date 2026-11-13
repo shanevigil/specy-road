@@ -41,6 +41,7 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from specy_road.cleanup_plan import held_branches
 from specy_road.errors import SpecyError, inherited_init
 from specy_road.merged_branch import merged_into
 from specy_road.roadmap_load import load_roadmap
@@ -201,6 +202,14 @@ def _remote_heads(main: Path, remote: str, branches: list[str]) -> tuple[dict[st
     return tips, None
 
 
+def _live_refusals(main: Path, target: str, branch: str, wt: Path) -> list[str]:
+    """The planner's live reason for the leaf's branch or worktree, as a refusal (none when not
+    live)."""
+    by_branch, by_path = held_branches(main, target)
+    live = by_branch.get(branch) or by_path.get(str(wt.resolve()))
+    return [f"{branch} {live[1]}; finish or release it first"] if live else []
+
+
 def plan_prune(root: Path, node_id: str) -> PrunePlan:
     """What removing ``node_id``'s worktree would delete, and every reason it must not; :class:`PruneError` if absent."""
     main, wt, branch = leaf_worktree(root, node_id)
@@ -213,6 +222,7 @@ def plan_prune(root: Path, node_id: str) -> PrunePlan:
         plan.refusals.append(f"{cfg_err}; fix it, then re-run: without it the nested repositories cannot be checked")
         return plan
     base, remote, _warns = resolve_integration_defaults(main, explicit_base=None, explicit_remote=None)
+    plan.refusals += _live_refusals(main, f"{remote}/{base}", branch, wt)
     # The remote's own tips, not remote-tracking refs as they last stood: a peer may have pushed to the
     # leaf branch since they were merged, and the fetch refspec may not cover it.
     tips, why = _remote_heads(main, remote, [base, branch])
