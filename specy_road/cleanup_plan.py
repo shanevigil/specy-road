@@ -6,8 +6,9 @@ Four kinds, each its own section (:data:`KINDS`):
   branch (registry row or not), or that nothing claims: no registry row (in this checkout or on
   the integration branch) and not an open milestone rollup. Each row says why: merged, its leaf
   Complete, or only that its claim is gone; an unmerged one also says how many commits the
-  integration branch lacks. A local branch checked out in a worktree this run does not remove
-  (the main checkout included) is left: git cannot delete it.
+  integration branch lacks, and is listed and left (the merged-only rule below). A local
+  branch checked out in a worktree this run does not remove (the main checkout included) is
+  left: git cannot delete it.
 - linked worktrees whose directory is missing, whose branch is gone (detached at a commit the
   integration branch contains or whose patch it has, the same test as a branch: how ``finish
   --delete-branch`` leaves a delegate worktree) or is merged, whether or not the branch itself is
@@ -26,7 +27,10 @@ Four kinds, each its own section (:data:`KINDS`):
 One merged rule and one live rule decide every branch and worktree
 (:func:`specy_road.doctor_worktrees.classify`): merged is ancestry first, then patch content
 (every commit upstream, ``git cherry``: a rebase; or the branch's whole diff: a squash). A branch
-with no commit of its own is "no commits yet", never merged. Live is an open claim or rollup, or a
+with no commit of its own is "no commits yet", never merged. **Merged-only rule:** a branch is
+removed only when it is merged (ancestry, or the same patch) with evidence of its own commits;
+every other branch is listed and left, so no form of the cleanup path, alias or not, ever
+deletes work the integration branch lacks. Live is an open claim or rollup, or a
 worker or session the orchestration state reads (:func:`~specy_road.doctor_worktrees.live_holders`).
 
 Planning changes nothing. :func:`apply` removes exactly the findings that carry a removal, in

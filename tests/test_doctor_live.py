@@ -206,7 +206,8 @@ def test_r3_a_fresh_branch_at_another_branchs_unlanded_tip_has_no_commits(doctor
     out = capsys.readouterr().out
     assert "[kept] local feature/rm-borrowed: claim gone, no commits yet, so --prune leaves it" in out
     assert has_ref(repo, "refs/heads/feature/rm-borrowed")
-    assert "[ok] deleted local branch feature/rm-open" in out   # unmerged with commits: policy unchanged
+    assert "[kept] local feature/rm-open: claim gone, not merged" in out   # merged-only rule
+    assert has_ref(repo, "refs/heads/feature/rm-open")
 
 
 def test_r4_a_claim_beats_a_session_and_a_session_alone_still_protects(doctor_repo, capsys) -> None:

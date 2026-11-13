@@ -3,7 +3,10 @@
 # golden/old_selections.json (recorded before the planner); `rows` is what the command selects now,
 # from the one planner (specy_road/cleanup_plan.py); `decided` explains every row whose action
 # differs from the old column, and each is a reduction (never a new removal). A row a command does
-# not name is not in its `rows`. test_reconciliation.py holds the commands to this table.
+# not name is not in its `rows`. `replaces` maps each new form to the old commands it stands in for
+# (its deprecation pointer): the new form removes no row that old command did not remove, unless the
+# row is listed there with the old command that did remove it (old doctor removed a Complete leaf's
+# registry row; registry-prune only reports). test_reconciliation.py holds the commands to this table.
 commands:
   branches prune:
     old: branches prune
@@ -60,6 +63,30 @@ commands:
       merged-dirty-worktree:
         action: keep
         reason: 'uncommitted or untracked: src/dirty.py'
+  grind-session --delete-merged-branches:
+    old: grind-session --delete-merged-branches
+    rows:
+      claimed-branch:local:
+        action: keep
+        reason: live
+      complete-branch:local:
+        action: remove
+        reason: deleted
+      complete-branch:origin:
+        action: remove
+        reason: deleted
+      merged-branch:local:
+        action: keep
+        reason: branch_d
+      merged-dirty-worktree:local:
+        action: keep
+        reason: branch_d
+      unmerged-branch:local:
+        action: keep
+        reason: merge_base
+    notes:
+      claimed-branch:local: 'Same action; the reason is now the live rule (live: claimed by M1.1) instead
+        of git branch -d refusing a checked-out branch.'
   doctor --prune:
     old: doctor
     rows:
@@ -102,11 +129,11 @@ commands:
         action: remove
         reason: 'On dev: specy-road: temp stash work/ around pickup'
       unmerged-branch:local:
-        action: remove
-        reason: 'claim gone, not merged: 1 commit(s) origin/dev lacks'
+        action: keep
+        reason: 'claim gone, not merged: 1 commit(s) origin/dev lacks, so --prune leaves it'
       unmerged-branch:origin:
-        action: remove
-        reason: 'claim gone, not merged: 1 commit(s) origin/dev lacks'
+        action: keep
+        reason: 'claim gone, not merged: 1 commit(s) origin/dev lacks, so --prune leaves it'
     decided:
       merged-dirty-worktree: 'Old doctor planned it, but git worktree remove refuses uncommitted changes,
         so --fix failed on it. The planner keeps a worktree with uncommitted changes (worktree prune M1.3
@@ -114,8 +141,18 @@ commands:
       merged-dirty-worktree:local: 'Old doctor planned it, but git branch -D refuses a branch a worktree
         has checked out, so --fix failed on it; the planner keeps a local branch that a worktree this
         run does not remove has checked out: git refuses to delete it. Safety: selects less.'
+      unmerged-branch:local: 'Old doctor --fix deleted an unclaimed unmerged branch when you confirmed.
+        Merged-only rule: the planner never removes work the integration branch lacks, so it is listed
+        and left, and no replacement deletes more than branches prune or the grind cleanup. Safety: selects
+        less.'
+      unmerged-branch:origin: 'Old doctor --fix deleted an unclaimed unmerged branch when you confirmed.
+        Merged-only rule: the planner never removes work the integration branch lacks, so it is listed
+        and left, and no replacement deletes more than branches prune or the grind cleanup. Safety: selects
+        less.'
+    replaces:
+      doctor: {}
   doctor --prune --kind branches:
-    old: null
+    old: branches prune
     rows:
       complete-branch:local:
         action: remove
@@ -136,17 +173,27 @@ commands:
         action: remove
         reason: merged
       unmerged-branch:local:
-        action: remove
-        reason: 'claim gone, not merged: 1 commit(s) origin/dev lacks'
+        action: keep
+        reason: 'claim gone, not merged: 1 commit(s) origin/dev lacks, so --prune leaves it'
       unmerged-branch:origin:
-        action: remove
-        reason: 'claim gone, not merged: 1 commit(s) origin/dev lacks'
-    notes:
-      merged-branch:local: Under --kind branches alone the worktree on it is not removed, so the branch
-        stays; doctor --prune (every kind) removes the worktree first, then the branch.
-      unmerged-branch:local: 'Unchanged from doctor --fix: an unclaimed branch with commits of its own
-        is offered whether or not it is merged. branches prune and the grind cleanup never select it (their
-        scope is merged by ancestry).'
+        action: keep
+        reason: 'claim gone, not merged: 1 commit(s) origin/dev lacks, so --prune leaves it'
+    decided:
+      merged-branch:local: 'branches prune listed it too; with --delete git refused it (checked out in
+        a worktree). Under --kind branches alone no worktree is removed, so the planner lists it as left.
+        Safety: selects less.'
+      merged-dirty-worktree:local: 'branches prune listed it too; with --delete git refused it (checked
+        out in a worktree). Under --kind branches alone no worktree is removed, so the planner lists it
+        as left. Safety: selects less.'
+      unmerged-branch:local: branches prune never named it (not merged). Listed and left under the merged-only
+        rule; never removed.
+      unmerged-branch:origin: Same as unmerged-branch:local.
+    replaces:
+      doctor: {}
+      branches prune: {}
+      grind-session --delete-merged-branches:
+        merged-branch:origin: branches prune
+        merged-dirty-worktree:origin: branches prune
   doctor --prune --kind worktrees:
     old: null
     rows:
@@ -159,6 +206,8 @@ commands:
       merged-dirty-worktree:
         action: keep
         reason: branch feature/rm-dirty is merged; uncommitted changes, so --prune leaves it
+    replaces:
+      doctor: {}
   doctor --prune --kind registry:
     old: null
     rows:
@@ -170,33 +219,15 @@ commands:
         reason: 'node M1.7: feature/rm-ghost is in neither this clone nor origin (advisory: another clone''s
           claim looks the same until it pushes its branch; confirm that clone no longer holds the claim,
           then specy-road registry-prune --remove ghost), so --prune leaves it'
+    replaces:
+      doctor: {}
+      registry-prune:
+        row-complete: doctor
   doctor --prune --kind stashes:
     old: null
     rows:
       toolkit-stash:
         action: remove
         reason: 'On dev: specy-road: temp stash work/ around pickup'
-  grind-session --delete-merged-branches:
-    old: grind-session --delete-merged-branches
-    rows:
-      claimed-branch:local:
-        action: keep
-        reason: live
-      complete-branch:local:
-        action: remove
-        reason: deleted
-      complete-branch:origin:
-        action: remove
-        reason: deleted
-      merged-branch:local:
-        action: keep
-        reason: branch_d
-      merged-dirty-worktree:local:
-        action: keep
-        reason: branch_d
-      unmerged-branch:local:
-        action: keep
-        reason: merge_base
-    notes:
-      claimed-branch:local: 'Same action; the reason is now the live rule (live: claimed by M1.1) instead
-        of git branch -d refusing a checked-out branch.'
+    replaces:
+      doctor: {}

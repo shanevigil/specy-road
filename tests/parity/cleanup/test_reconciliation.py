@@ -47,6 +47,25 @@ def test_every_change_from_the_old_selection_is_a_decided_reduction(name: str) -
     assert not [row for row in changed if new.get(row) == "remove"], "a removal the old lacked"
 
 
+def _removed(actions: dict[str, dict]) -> set[str]:
+    return {row for row, a in actions.items() if a["action"] == "remove"}
+
+
+def test_every_new_form_names_the_old_commands_it_replaces() -> None:
+    assert all(c.get("replaces") for n, c in COMMANDS.items() if n.startswith("doctor --prune"))
+
+
+@pytest.mark.parametrize(("name", "old"), sorted(
+    (n, o) for n, c in COMMANDS.items() for o in c.get("replaces") or {}))
+def test_a_new_form_removes_nothing_the_command_it_replaces_kept(name: str, old: str) -> None:
+    """A deprecation pointer never leads to more removals than its old command made, unless the
+    table names another old command that removed that row."""
+    beyond = _removed(COMMANDS[name]["rows"]) - _removed(_actions(OLD[old]))
+    allowed = COMMANDS[name]["replaces"][old]
+    assert beyond == set(allowed)
+    assert all(row in _removed(_actions(OLD[by])) for row, by in allowed.items())
+
+
 def _applied(argv: list[str]) -> tuple[dict[str, bool], bool, str]:
     with tempfile.TemporaryDirectory() as tmp:
         repo = fixture.build(Path(tmp))

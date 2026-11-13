@@ -102,8 +102,9 @@ LISTED_LOCAL = {
     "feature/rm-done": "merged",
     "feature/rm-squash": doctor.SAME_PATCH,
     "feature/rm-rebased": doctor.SAME_PATCH,
-    "feature/rm-finished": "leaf M1.2 Complete, not merged: 1 commit(s) origin/dev lacks",
-    "feature/rm-open": "claim gone, not merged: 1 commit(s) origin/dev lacks",
+    "feature/rm-finished": ("leaf M1.2 Complete, not merged: 1 commit(s) origin/dev lacks, "
+                            "so --prune leaves it"),
+    "feature/rm-open": "claim gone, not merged: 1 commit(s) origin/dev lacks, so --prune leaves it",
     "feature/rm-settled": "merged; leaf M1.4 Complete; registry row remains",
 }
 KEPT = ("feature/rm-thing", "feature/rm-roll")
@@ -169,7 +170,11 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
     assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
 
     out = capsys.readouterr().out
-    for branch in [*LISTED_LOCAL, "feature/rm-gone"]:
+    unmerged = ("feature/rm-finished", "feature/rm-open")   # merged-only: listed and left
+    for branch in unmerged:
+        assert f"[kept] local {branch}: " in out
+        assert _has(repo, f"refs/heads/{branch}") and _has(bare, f"refs/heads/{branch}")
+    for branch in [b for b in [*LISTED_LOCAL, "feature/rm-gone"] if b not in unmerged]:
         if branch != "feature/rm-gone":
             assert f"[ok] deleted local branch {branch}" in out
             assert not _has(repo, f"refs/heads/{branch}")
@@ -206,7 +211,9 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
     assert _exit(["--repo-root", str(repo)]) == 0
     out = capsys.readouterr().out
     listed = [line for line in out.split("Claims with no live worker")[0].splitlines() if line.startswith("  ")]
-    assert len(listed) == 3   # only what --fix leaves: two worktrees and the no-branch registry row
+    # only what --prune leaves: the two unmerged branches (local and origin), two worktrees and the
+    # no-branch registry row
+    assert len(listed) == 7
     assert any("wt-wip  — detached at" in line for line in listed)
     assert any("wt-thing  — branch feature/rm-thing live: claimed by M1.1" in line for line in listed)
     assert any("ghost  —" in line and "specy-road registry-prune --remove ghost" in line for line in listed)
@@ -303,13 +310,13 @@ def test_fix_leaves_what_changed_after_listing(doctor_repo, capsys, monkeypatch)
     """Another session moves a branch (here and on the remote) and drops the stash mid-fix."""
     repo, bare = doctor_repo
     stash = git(repo, "rev-parse", "stash@{1}")   # the toolkit's; "mine" is on top
-    moved_to = git(repo, "rev-parse", "feature/rm-done")
+    moved_to = git(repo, "rev-parse", "feature/rm-open")
 
     def answer(prompt: str) -> str:
         kind = prompt.split()[4]
         if kind == "branch":
-            git(repo, "branch", "-f", "feature/rm-open", "feature/rm-done")
-            git(repo, "push", "-q", "-f", "origin", "feature/rm-done:feature/rm-open")
+            git(repo, "branch", "-f", "feature/rm-done", "feature/rm-open")
+            git(repo, "push", "-q", "-f", "origin", "feature/rm-open:feature/rm-done")
         if kind == "stash":
             git(repo, "stash", "drop", "-q", "stash@{1}")
         return "y"
@@ -319,12 +326,12 @@ def test_fix_leaves_what_changed_after_listing(doctor_repo, capsys, monkeypatch)
     assert _exit(["--fix", "--repo-root", str(repo)]) == 1
 
     out, err = capsys.readouterr()
-    assert "[warn] local feature/rm-open: moved since it was listed; left alone" in err
-    assert "[warn] origin feature/rm-open: left on origin." in err
+    assert "[warn] local feature/rm-done: moved since it was listed; left alone" in err
+    assert "[warn] origin feature/rm-done: left on origin." in err
     assert f"[warn] {stash[:12]}: no longer on the stash stack" in err
-    assert git(repo, "rev-parse", "feature/rm-open") == moved_to
-    assert git(bare, "rev-parse", "feature/rm-open") == moved_to
-    assert "[ok] deleted local branch feature/rm-finished" in out
+    assert git(repo, "rev-parse", "feature/rm-done") == moved_to
+    assert git(bare, "rev-parse", "feature/rm-done") == moved_to
+    assert "[ok] deleted local branch feature/rm-rebased" in out
 
 
 def test_doctor_never_lists_the_worktree_it_runs_in(doctor_repo, capsys) -> None:

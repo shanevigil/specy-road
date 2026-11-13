@@ -242,7 +242,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--prune", action="store_true",
         help="Remove what is listed, asking once per kind, and report each action. "
-             "Leaves a registry row whose branch is in neither this clone nor the remote, "
+             "Leaves a branch the integration branch does not contain, and a registry row "
+             "whose branch is in neither this clone nor the remote, "
              "unless its leaf is Complete.",
     )
     p.add_argument("--fix", dest="prune", action=DeprecatedFlag, command="doctor",

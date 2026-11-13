@@ -141,7 +141,7 @@ CLASSIFICATION: tuple[tuple[tuple[str, str, str, str], tuple[str, bool]], ...] =
     (("none", "finish-merge", "yes", "local"), ("merged", True)),
     (("none", "none", "yes", "*"), ("merged, no evidence", False)),   # A3's deliberate change
     (("none", "*", "same-patch", "*"), ("same patch", True)),   # a tip outside target: commits by construction
-    (("none", "*", "no", "*"), ("not merged", True)),   # unchanged: an unclaimed unmerged branch with commits
+    (("none", "*", "no", "*"), ("not merged", False)),   # only merged work is ever removed
 )
 
 

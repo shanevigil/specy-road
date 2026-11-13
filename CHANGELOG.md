@@ -98,8 +98,10 @@ body. Keep section bodies focused; link to PRs for detail.
   orchestration state reads), and `--prune` removes exactly what it listed. `--kind branches|worktrees|registry|stashes`
   (repeatable) narrows the listing and the removal. Two rows the old `--fix` listed and then failed to remove are
   now listed as left: a worktree with uncommitted changes, and a local branch a worktree this run does not remove
-  has checked out. `worktree prune <ID>` reads the same live rule, so it refuses a leaf whose branch is still
-  claimed (a fresh claim looked merged). See `docs/git-workflow.md` ("Finding leftovers: `doctor`").
+  has checked out. It never removes a branch the integration branch lacks: the old `--fix` deleted an unclaimed
+  unmerged branch when you confirmed; it is now listed with its commit count and left, so no replacement deletes
+  more than `branches prune` or the grind cleanup did. `worktree prune <ID>` reads the same live rule, so it
+  refuses a leaf whose branch is still claimed (a fresh claim looked merged). See `docs/git-workflow.md` ("Finding leftovers: `doctor`").
 
 ### Deprecated
 
