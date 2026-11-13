@@ -403,7 +403,7 @@
       "parent_id": "M16.4",
       "planning_dir": "planning/M16.4.3_review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session_ca41116c-978b-4215-a69e-2f52400009fa.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review status, review packet, and decisions --kind lesson replace handoff status, review list, review-packet and lessons",
       "touch_zones": [
         "specy_road/cli.py",
