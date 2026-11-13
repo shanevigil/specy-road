@@ -6,7 +6,7 @@ The TS/JS scan is a best-effort bracket heuristic (`specy_road/file_limits_js.py
 
 ## Template default
 
-`specy-road init project` writes `constraints/file-limits.yaml` with a 1,000-line file cap and a warning at 750 lines (`hard_alerts.max_lines_per_file`), the values the toolkit uses for itself. `specy-road upgrade` never rewrites an existing project's file: when its `max_lines_per_file` or `hard_alerts.max_lines_per_file` differs from that default, upgrade prints one notice under `== file-limits default` naming the default, and the file stays as it is. Edit it yourself to adopt the default.
+`specy-road init project` writes `constraints/file-limits.yaml` with a 1,000-line file cap and a warning at 750 lines (`hard_alerts.max_lines_per_file`), the values the toolkit uses for itself. `specy-road upgrade` never rewrites an existing project's file: when its `max_lines_per_file` or `hard_alerts.max_lines_per_file` differs from that default, upgrade prints one notice under `== notices` naming the default, and the file stays as it is. Edit it yourself to adopt the default.
 
 ## Skipped before measurement
 

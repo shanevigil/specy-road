@@ -113,6 +113,8 @@ body. Keep section bodies focused; link to PRs for detail.
   `upgrade --only profiles` in its start marker and text. A README rendered by an earlier version keeps working:
   the block is found by the marker's unchanged start (`<!-- >>> harness facts:`). `--check` reports that block as
   drift until `upgrade --only profiles --render` rewrites it.
+- `schemas/harness-facts.schema.json` describes `upgrade --only profiles` (and `--capture`) instead of
+  `refresh-profiles`. Only descriptions changed, so validation is unchanged; `upgrade` rewrites a project's copy once.
 
 ### Deprecated
 
