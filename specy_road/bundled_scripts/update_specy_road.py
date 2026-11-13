@@ -98,7 +98,7 @@ def _default_kit_root(remote: str) -> Path:
         "  If you use a PyPI install only, upgrade with:\n"
         "    pip install --upgrade specy-road\n"
         "  If the kit is a clone or submodule, pass:\n"
-        "    specy-road update --path <DIR>",
+        "    specy-road self-update --path <DIR>",
         file=sys.stderr,
     )
     raise SystemExit(2)
@@ -234,7 +234,7 @@ def _run_update(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """The ``specy-road update`` parser."""
+    """The ``specy-road self-update`` parser (``specy-road update`` is its deprecated alias)."""
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,

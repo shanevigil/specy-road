@@ -37,5 +37,5 @@ def test_upgrade_names_the_new_default_and_leaves_the_file(
 
     out = capsys.readouterr().out
     assert (NOTICE in out.splitlines()) is notice
-    assert out.count("== file-limits default") == int(notice)
+    assert out.splitlines().count(NOTICE) == int(notice)
     assert (limits.read_bytes() if limits.exists() else None) == before

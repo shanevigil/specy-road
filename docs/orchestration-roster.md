@@ -107,7 +107,8 @@ With `--write` they are added to the end of the `roster:` block of
 left alone. Run `specy-road validate --generate-orchestration` first when the
 file does not exist. An unknown profile id is refused with the nearest ids. When
 the repo lacks a profile file the entry points at, the command says to run
-`specy-road refresh-profiles --only <id>`. Commit the roster (and the profiles)
+`specy-road refresh-profiles --only <id>`, the deprecated alias of
+`specy-road upgrade --only profiles --profile <id>`. Commit the roster (and the profiles)
 to the integration branch: routing reads the committed copy.
 
 ## `profile:` is checked locally

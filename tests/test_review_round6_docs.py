@@ -111,7 +111,7 @@ def test_block_says_pickup_and_finish_change_the_registry() -> None:
 def test_bootstrap_prompt_merges_the_block_verbatim_and_names_every_command_and_env_var() -> None:
     block = BLOCK.read_text(encoding="utf-8")
     prompt = PROMPT.read_text(encoding="utf-8")
-    assert "Merge the managed block verbatim" in prompt and "refresh-stubs" in prompt
+    assert "Merge the managed block verbatim" in prompt and "upgrade --only stubs" in prompt
     commands = set(re.findall(r"`specy-road ([a-z][a-z-]+)", block))
     env_vars = set(re.findall(r"\bSPECY_ROAD_[A-Z_]+", block))
     assert commands and env_vars

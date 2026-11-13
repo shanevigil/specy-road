@@ -74,17 +74,17 @@ In the Notes app:
    `specyrd-do-next-task` by name (Claude `/name`, Codex `$name`, Cursor
    `/name` or `@name`). Pass: the skill text is loaded (the agent quotes a
    line from it), not a lookalike community skill.
-4. Edit a stub, run `specy-road refresh-stubs`: only managed files change;
+4. Edit a stub, run `specy-road upgrade --only stubs`: only managed files change;
    a pre-0.3 `.claude/commands/*.md` that `.specyrd/manifest.json` records
    is named for removal, not deleted. It is named on the first refresh only
    (the refresh drops it from the manifest); an unrecorded one is never named.
 5. **Upgrade from the last release.** In a scratch repo, scaffold with
    `specy-road==0.2.3` from PyPI in its own venv (`init project`, `specyrd
    init --ai claude-code`), commit, then switch to the candidate venv:
-   `refresh-stubs` gives a managed `AGENTS.md` stub and a `.specyrd/AGENTS.md` with a
+   `upgrade --only stubs` gives a managed `AGENTS.md` stub and a `.specyrd/AGENTS.md` with a
    `## Lean changes and tests` section, and leaves every line outside the markers unchanged;
-   `refresh-schemas` and `refresh-profiles` add what is missing;
-   `refresh-profiles --force <path>` brings a profile's `## Code and test
+   `upgrade --only schemas` and `upgrade --only profiles` add what is missing;
+   `upgrade --only profiles --force <path>` brings a profile's `## Code and test
    tendencies`; `validate` exits 0 (with or without the CHANGELOG's
    `.gitignore` lines, which it does not check). No refresh command creates
    `roadmap/orchestration.yaml`; without it the default policy applies

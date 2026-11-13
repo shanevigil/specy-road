@@ -8,7 +8,7 @@
 **Must know without reading on:**
 - Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui]`, `[gui-next]`, `[review]`); pipx and uv tool work too. An RC is one exact wheel from TestPyPI, sha256-checked, with dependencies from PyPI only; TestPyPI is never an index ([`install-release-candidates.md`](install-release-candidates.md)).
 - New project: `specy-road init project` (it also writes `roadmap.md` and `roadmap-context.md`) prints the next steps: set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, commit the scaffold, then `specy-road validate`.
-- After `pip install -U specy-road`: `specy-road upgrade --prune` (runs `refresh-schemas`, `refresh-profiles`, copies missing load-order docs, `refresh-stubs`, then `validate`; `--dry-run` first); never `init project --force` for that.
+- After `pip install -U specy-road`: `specy-road upgrade --prune` (refreshes `schemas/`, `model-profiles/`, missing load-order docs and the stubs, prints one report of what changed, then runs `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
 - Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
 
@@ -132,9 +132,11 @@ specy-road upgrade --dry-run      # what each refresh would write
 specy-road upgrade --prune        # write, delete stubs this version dropped, validate
 ```
 
-`upgrade` runs `refresh-schemas`, `refresh-profiles`, a copy of each shipped doc
-the `.specyrd/AGENTS.md` load order names that you lack, and `refresh-stubs`, in that
-order, then `validate` and `digest --check`, and ends with what is left for you:
+`upgrade` refreshes `schemas/`, `model-profiles/`, each shipped doc the
+`.specyrd/AGENTS.md` load order names that you lack, and the stubs and managed
+blocks, in that order, and prints one report of what they changed in four fixed
+sections: files added or changed, schema refreshes, profile refreshes, and
+notices. Then it runs `validate` and `digest --check`, and ends with what is left for you:
 review the diff and commit the new untracked files. When `validate` passes it
 first writes `roadmap-context.md` if it is missing or out of date and
 `roadmap.md` if it is tracked and out of date, one `wrote` line each (`would
@@ -149,7 +151,7 @@ passes, when a write is refused: before its first write, `upgrade` checks every
 path it would change, and one that leads out of the checkout, or a schema, stub
 directory or other path with any symlink on it, prints `error: <path> is a
 symlink (to <target>), not <kind>` and writes nothing (`--dry-run` included).
-`init project`, `refresh-schemas`, `refresh-stubs`, `specyrd init`, `export` and
+`init project`, `upgrade --only schemas`, `upgrade --only stubs`, `specyrd init`, `export` and
 `digest` refuse the same way and exit 1 (`specyrd init` also for the files
 `--install-guard-hooks` and `--install-pre-push` write, checked before its first write):
 any symlink on the path they write,
@@ -164,17 +166,20 @@ dangling one, or one leaving the repository. Replace such a link with one of the
 two values above or a real directory. Any other link on a stub's path is refused
 too; the skill links made under
 `.claude/skills/` are made on purpose. A stub, skill file, skill link or ignore
-file refused this way prints `error:` and makes `refresh-stubs`, `upgrade` and
-`upgrade --dry-run` exit 1; that path is left as it is and everything else is
+file refused this way prints `error:` and makes `upgrade --only stubs`, `upgrade` and
+their `--dry-run` exit 1; that path is left as it is and everything else is
 still written. These stay report lines (`refused`, `skipped`) and do not change
 the exit code: `AGENTS.md` or `CLAUDE.md` linked out of the repository (the two
 may still link to each other), a shipped doc, a work template, and a model
 profile. An explicit absolute
-`digest -o` outside the checkout is written as given. Each refresh is also a command of its own; all three are
+`digest -o` outside the checkout is written as given. `upgrade --only stubs|schemas|profiles`
+runs one refresh on its own, in the checkout, with no validate and no report; all three are
 idempotent, take `--dry-run`, and never touch the roadmap, planning sheets, or
-anything outside a managed block.
+anything outside a managed block. `refresh-schemas`, `refresh-profiles` and
+`refresh-stubs` are deprecated aliases of these (one warning line each) and are removed in
+the release after 0.3.1.
 
-**`refresh-schemas` — `schemas/`.** `init project` copies the JSON schemas in
+**`upgrade --only schemas` — `schemas/`.** `init project` copies the JSON schemas in
 once, so a repo scaffolded against an older version can reject output the
 current CLI legitimately produces (for example `type: gate` nodes, or the
 `implementation_review` fields that `mark-implementation-reviewed` writes).
@@ -182,13 +187,13 @@ current CLI legitimately produces (for example `type: gate` nodes, or the
 is reported as such, because it is an untracked file to add. The command
 touches `schemas/` and nothing else.
 
-**`refresh-profiles` — `model-profiles/`.** By default copies the missing
+**`upgrade --only profiles` — `model-profiles/`.** By default copies the missing
 profiles that a roster entry in `roadmap/orchestration.yaml` names;
-`--profiles all` copies every missing profile this version ships, and `--only`
-adds one. It never overwrites one you have (`--force PATH` takes the toolkit's
+`--profiles all` copies every missing profile this version ships, and `--profile API_ID`
+adds one (`refresh-profiles --only API_ID` before). It never overwrites one you have (`--force PATH` takes the toolkit's
 copy of one profile).
 
-**`refresh-stubs` — the skills from `specyrd init`, and the managed blocks.**
+**`upgrade --only stubs` — the skills from `specyrd init`, and the managed blocks.**
 One skill per command under `.agents/skills/<name>/SKILL.md`, read natively by
 Cursor and Codex and through a symlink per skill under `.claude/skills/` by
 Claude Code (or a flat directory for `--ai generic`), plus `.specyrd/README.md`.
@@ -214,8 +219,8 @@ Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any war
   and `.claude/commands/specyrd-*.md`; 0.3 installs one skill per command under
   `.agents/skills/`, which Cursor, Codex and Claude Code all read. Until the old
   files are gone each `/specyrd-…` command appears twice: `upgrade --prune`
-  (or `refresh-stubs --prune`) removes them; `--dry-run` counts them first.
-- **`AGENTS.md` has a managed block.** `refresh-stubs` inserts it, with or
+  (or `upgrade --only stubs --prune`) removes them; `--dry-run` counts them first.
+- **`AGENTS.md` has a managed block.** `upgrade` inserts it, with or
   without a stub pack; your own text outside the markers stays. If your
   `AGENTS.md` repeats a load order of its own, trim it to what is specific to
   your project: the block carries the toolkit's. `validate` names any file its
@@ -225,13 +230,13 @@ Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any war
 - **Text outside the managed blocks** (your `CLAUDE.md`, docs pinning a version
   or naming `.cursor/commands/`) is yours: search it for the old version.
 - **`AGENTS.md` keeps only a stub now.** The rules move to `.specyrd/AGENTS.md`; `upgrade` prints a `migration:` line and does it once ([what changes](optional-ai-tooling-patterns.md#agent-rules-agentsmd-and-specyrd)).
-- **A pointer-only `AGENTS.md` section; your own copy of the rules; context totals.** The default section (`"agents_block": "full"`) repeats the seven floor rules of `.specyrd/AGENTS.md`, so an agent that reads only `AGENTS.md` (Codex) still has them; set `"agents_block": "minimal"` in the git root's `.specyrd/manifest.json` and `refresh-stubs` and `upgrade` write a 3-line section instead (one line between the markers) that only points at `.specyrd/AGENTS.md` and the two addenda. When either command first creates `.specyrd/AGENTS.md`, it prints that file's headings and a `rules:` line for each heading in your `AGENTS.md`, outside the specy-road section, that matches one (case and spacing ignored; a hint: ATX headings indented up to three spaces, outside fenced code and HTML comments, and no setext or other CommonMark forms), then says to compare them and drop the copy that is stale; it edits nothing outside the section. Each `context:` line of `validate` ends with that harness's total lines and bytes; a file Claude Code reaches twice (loaded directly or `@`-imported by two of its files, such as `.specyrd/AGENTS.team.md` imported by both `CLAUDE.md` and `.specyrd/AGENTS.md`) is counted once and named: `(… imported twice, counted once)`.
+- **A pointer-only `AGENTS.md` section; your own copy of the rules; context totals.** The default section (`"agents_block": "full"`) repeats the seven floor rules of `.specyrd/AGENTS.md`, so an agent that reads only `AGENTS.md` (Codex) still has them; set `"agents_block": "minimal"` in the git root's `.specyrd/manifest.json` and `upgrade` (and `upgrade --only stubs`) writes a 3-line section instead (one line between the markers) that only points at `.specyrd/AGENTS.md` and the two addenda. When either command first creates `.specyrd/AGENTS.md`, it prints that file's headings and a `rules:` line for each heading in your `AGENTS.md`, outside the specy-road section, that matches one (case and spacing ignored; a hint: ATX headings indented up to three spaces, outside fenced code and HTML comments, and no setext or other CommonMark forms), then says to compare them and drop the copy that is stale; it edits nothing outside the section. Each `context:` line of `validate` ends with that harness's total lines and bytes; a file Claude Code reaches twice (loaded directly or `@`-imported by two of its files, such as `.specyrd/AGENTS.team.md` imported by both `CLAUDE.md` and `.specyrd/AGENTS.md`) is counted once and named: `(… imported twice, counted once)`.
 
 **Neither `--force` is the tool for this.** `init project --force` overwrites
 every scaffold file, including `roadmap/manifest.json` and your phase chunks
 (only `.gitignore` and `AGENTS.md` keep your content).
 `specyrd init --force` overwrites the stubs the manifest records; it is fine,
-but `refresh-stubs` is narrower and needs no flag. Neither one will touch
+but `upgrade --only stubs` is narrower and needs no flag. Neither one will touch
 anything outside a `>>> specy-road managed block <<<` in a file you own.
 
 The managed `.gitignore` block ignores everything under `work/` (`work/*`):

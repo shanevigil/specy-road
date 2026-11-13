@@ -224,21 +224,15 @@ def run_capture(harness_id: str, from_dir: Path | None, *, accept: bool, dry_run
     return 0
 
 
-def build_parser() -> argparse.ArgumentParser:
-    """The ``specy-road refresh-profiles`` parser."""
-    p = argparse.ArgumentParser(
-        prog="specy-road refresh-profiles",
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    add_repo_root_arg(p)
-    p.add_argument("--dry-run", action="store_true", help="Print what would be written; do not modify files.")
+def add_profile_options(p: argparse.ArgumentParser, *, only_flag: str) -> None:
+    """The profile options of ``refresh-profiles`` and ``upgrade --only profiles``; ``only_flag``
+    selects profiles by api_id (``--only`` there, ``--profile`` under upgrade)."""
     p.add_argument(
         "--force", action="append", default=[], metavar="PATH",
         help="Overwrite this profile (repo-relative, e.g. model-profiles/openai-gpt/gpt-6.1-sol.md); repeatable.",
     )
     p.add_argument(
-        "--only",
+        only_flag, dest="only",
         metavar="API_ID",
         help="Add missing profile(s) whose front-matter api_id or file stem matches, whatever --profiles says.",
     )
@@ -258,6 +252,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--from", dest="from_dir", type=Path, metavar="DIR",
                    help="With --capture: read the capture's *.txt files from DIR instead of running the harness.")
     p.add_argument("--accept", action="store_true", help="With --capture: store a passing capture as the accepted one.")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """The ``specy-road refresh-profiles`` parser."""
+    p = argparse.ArgumentParser(
+        prog="specy-road refresh-profiles",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_repo_root_arg(p)
+    p.add_argument("--dry-run", action="store_true", help="Print what would be written; do not modify files.")
+    add_profile_options(p, only_flag="--only")
     return p
 
 
@@ -293,10 +299,23 @@ def _copy_missing(root: Path, args: argparse.Namespace) -> None:
 def main(argv: list[str] | None = None) -> None:
     p = build_parser()
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
+    check_args(p, args, only_flag="--only")
+    run(args)
+
+
+def check_args(p: argparse.ArgumentParser, args: argparse.Namespace, *, only_flag: str) -> None:
+    """``p.error`` on an option combination the modes do not take. ``only_flag`` is the option
+    that sets ``args.only`` (``--profile`` under ``specy-road upgrade --only profiles``)."""
     if (args.from_dir or args.accept) and not args.capture:
         p.error("--from and --accept need --capture")
     if (args.only or args.profiles != "roster") and (args.capture or args.check or args.render):
-        p.error("--only and --profiles add missing profiles; do not combine with --check, --render or --capture")
+        p.error(f"{only_flag} and --profiles add missing profiles; do not combine with --check, "
+                "--render or --capture")
+
+
+def run(args: argparse.Namespace) -> None:
+    """Copy, check, render or capture profiles for parsed ``args``; also
+    ``specy-road upgrade --only profiles``."""
     root = (args.repo_root or default_user_repo_root()).resolve()
     try:
         if args.capture:

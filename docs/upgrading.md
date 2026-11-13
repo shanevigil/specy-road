@@ -46,13 +46,13 @@ sha256sum /tmp/sr-preview/rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal
 rm -rf /tmp/sr-preview
 ```
 
-Call the venv's `specy-road` by its full path: a bare `specy-road` runs whichever launcher is first on `PATH`, which is your usual install, not the preview. `--dry-run` writes nothing to the repo. It prints one line before copying the checkout into a temporary directory, and it builds that copy once. The copy, like the one a real upgrade uses to decide what to write, holds tracked files, untracked files git does not ignore, and files the refreshes read. Gitignored paths such as `.env` files, virtualenvs, `node_modules` and nested repositories are not copied, and a symlink to one of them does not copy it either. A directory that cannot be searched is left out, so the upgrade does not stop on it. A global excludes file applies to that choice on a dry run the same way it does on a real run. An ignored `roadmap-context.md` that is already current is still read, so the preview does not report a rewrite the real run skips.
+Call the venv's `specy-road` by its full path: a bare `specy-road` runs whichever launcher is first on `PATH`, which is your usual install, not the preview. `--dry-run` writes nothing to the repo. It prints one line before copying the checkout into a temporary directory, and it builds that copy once. The copy, like the one a real upgrade uses to decide what to write, holds tracked files, untracked files git does not ignore, and files the refreshes read. Gitignored paths such as `.env` files, virtualenvs, `node_modules` and nested repositories are not copied, and a symlink to one of them does not copy it either. A directory that cannot be searched is left out, so the upgrade does not stop on it. A global excludes file applies to that choice on a dry run the same way it does on a real run. The refreshes print one report in four fixed sections, `== files added or changed`, `== schema refreshes`, `== profile refreshes` and `== notices`, then the copy is validated. An ignored `roadmap-context.md` that is already current is still read, so the preview does not report a rewrite the real run skips.
 
 ---
 
 ## Your file-limits values stay
 
-`upgrade` never rewrites `constraints/file-limits.yaml`. New projects get a 1,000-line file cap with a warning at 750 lines; when your file's `max_lines_per_file` or `hard_alerts.max_lines_per_file` differs, `upgrade` prints one notice under `== file-limits default` naming that default and leaves the file as it is. Edit it yourself to adopt the default ([file limits](file-limits.md#template-default)).
+`upgrade` never rewrites `constraints/file-limits.yaml`. New projects get a 1,000-line file cap with a warning at 750 lines; when your file's `max_lines_per_file` or `hard_alerts.max_lines_per_file` differs, `upgrade` prints one notice under `== notices` naming that default and leaves the file as it is. Edit it yourself to adopt the default ([file limits](file-limits.md#template-default)).
 
 ---
 

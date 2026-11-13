@@ -1,7 +1,8 @@
 """command_map.yaml rows applied to the golden inventory as declared deltas.
 
 A row is ``{old: <invocation>, new: <invocation>, allowed: <one line>}``. An invocation is command
-words optionally followed by option strings (``specy-road doctor --prune``). One rule per side:
+words optionally followed by option strings and their values (``specy-road doctor --prune``,
+``specy-road upgrade --only stubs``). One rule per side:
 
 * ``old`` with options: those options may be gone from that command.
 * ``old`` without options: that command and the commands under it may be gone from the CLI; one
@@ -34,10 +35,14 @@ def command_map_rows() -> list[dict]:
 
 
 def split_invocation(text: str | None) -> tuple[str, set[str]]:
-    """``"specy-road doctor --prune"`` -> ``("specy-road doctor", {"--prune"})``."""
+    """``"specy-road doctor --prune"`` -> ``("specy-road doctor", {"--prune"})``.
+
+    A word after the first option that does not start with ``-`` is that option's value
+    (``specy-road upgrade --only stubs`` -> ``{"--only"}``), not an option.
+    """
     words = str(text or "").split()
     command = list(itertools.takewhile(lambda w: not w.startswith("-"), words))
-    return " ".join(command), set(words[len(command) :])
+    return " ".join(command), {w for w in words[len(command) :] if w.startswith("-")}
 
 
 def _under(command: str, keys: Iterable[str]) -> list[str]:

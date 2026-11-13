@@ -35,7 +35,7 @@ _SCRIPTS = {
     "validate": "validate_roadmap",
     "brief": "generate_brief",
     "export": "export_roadmap_md",
-    "update": "update_specy_road",
+    "self-update": "update_specy_road", "update": "update_specy_road",
     "file-limits": "validate_file_limits",
     "do-next-available-task": "do_next_task",
     "abort-task-pickup": "abort_task_pickup",
@@ -124,8 +124,14 @@ REPLACED_COMMANDS = {
 # Commands kept as hidden aliases for one release (tests/parity/command_map.yaml rows): the form
 # that replaces each. ``_dispatch`` prints the deprecation line, so a command that runs one of them
 # as a step (doctor removing a registry row) does not.
-DEPRECATED_COMMANDS = {"registry-prune": "doctor --prune --kind registry"}
-#: The release the deprecated cleanup aliases are removed in.
+DEPRECATED_COMMANDS = {
+    "registry-prune": "doctor --prune --kind registry",
+    "refresh-stubs": "upgrade --only stubs",
+    "refresh-schemas": "upgrade --only schemas",
+    "refresh-profiles": "upgrade --only profiles",
+    "update": "self-update",
+}
+#: The release the deprecated aliases are removed in.
 ALIASES_REMOVED_IN = "the release after 0.3.1"
 
 

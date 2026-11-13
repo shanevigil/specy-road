@@ -1,5 +1,5 @@
 # The paths specy-road writes at run time are ignored by the managed block
-# below, which `specy-road init project` writes and `specy-road refresh-stubs`
+# below, which `specy-road init project` writes and `specy-road upgrade`
 # keeps current. Add your own rules outside the block; the block is rewritten.
 # The comments here explain what the block ignores, and what it deliberately
 # leaves tracked.

@@ -407,7 +407,7 @@ the CHANGELOG. Each section, in order:
   do, and a link to its doc.
 - One `###` per feature area: why it matters and one command that runs.
 - `### Upgrading from 0.1.x`: breaking changes and removals first, each
-  with its fix, then adopter commands (`refresh-stubs`, …).
+  with its fix, then adopter commands (`upgrade`, `upgrade --only stubs`, …).
 - A closing link to the release's CHANGELOG heading. About 150 lines in all.
 
 The README carries one line under its tagline (add it if missing,
