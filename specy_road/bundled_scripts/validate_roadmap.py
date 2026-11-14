@@ -34,7 +34,7 @@ from specy_road.validate_stale_commands import unregistered_commands, warn_unreg
 from specy_road.version_pin import pinned_version, warn_if_pin_differs
 from specy_road.orchestration import warn_garden_due
 from specy_road.generated_files import warn_if_generated_files_ignored
-from specy_road.git_workflow_config import load_git_workflow_config
+from specy_road.git_workflow_config import grind_legacy_notice, load_git_workflow_config
 from specy_road.orchestration_config import harness_model_warnings, load_orchestration_config, orchestration_yaml_path
 from specy_road.orchestration_pinned import roster_report
 from specy_road.planning_scaffold_check import notice_complete_scaffold
@@ -156,8 +156,10 @@ def main(argv: list[str] | None = None) -> None:
             generate_orchestration(root)
         elif not orchestration_yaml_path(root).is_file() and (notice := no_orchestration_notice(root)):
             print(notice)   # stdout: a notice, which --strict does not count
-        if notice := legacy_notice(load_git_workflow_config(root)[0]):
-            print(notice)
+        workflow = load_git_workflow_config(root)[0]
+        for notice in (legacy_notice(workflow), grind_legacy_notice(workflow)):
+            if notice:
+                print(notice)
         print_injected_context(root)
     if (args.strict or args.strict_authoring) and stderr.lines:
         sys.stdout.flush()  # the OK line first, then why it does not count

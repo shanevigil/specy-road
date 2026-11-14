@@ -187,6 +187,17 @@ them wins:
 - `land_check_cmd: CMD` -> `checks: [{name: land check, run: CMD, when: land}]`.
 - `verify_cmd: CMD` -> `checks: [{name: verify, run: CMD, when: prompt}]`.
 
+These top-level `roadmap/git-workflow.yaml` keys moved under `grind:` and keep their values; the old names are read
+until the release after 0.3.1, which removes them. `specy-road validate` prints one notice while one is present,
+`specy-road upgrade` moves them (adding them to an existing `grind:` block), and the `grind:` value wins where both
+are set:
+
+- `grind_session_max_limit_waits` -> `grind.max_limit_waits`.
+- `grind_session_max_limit_wait_hours` -> `grind.max_limit_wait_hours`.
+- `grind_session_limit_wait_grace_seconds` -> `grind.limit_wait_grace_seconds`.
+- `grind_session_max_empty_retries` -> `grind.max_empty_retries`.
+- `grind_session_status_interval_minutes` -> `grind.status_interval_minutes`.
+
 ### Fixed
 
 - `specy-road review-packet` reads `work/implementation-summary-<NODE_ID>.md` from the reviewed commit, then from the leaf's own worktree (the worktree `git worktree list` shows with that leaf's `feature/rm-<codename>` branch checked out), then from the working tree of the checkout running the command. The section names which copy it used; the leaf worktree's label includes that file's path. When none has the file, the missing line names every path checked. A milestone packet still says each leaf's summary was reviewed with that leaf. See `docs/orchestration-review.md` (Implementation summary in the review packet).

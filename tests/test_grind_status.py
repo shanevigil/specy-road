@@ -614,7 +614,7 @@ class FakeSleep:
 
 
 @pytest.mark.parametrize("watch, yaml_line, seconds", [
-    (["--watch", "15"], "", 900), (["--watch"], f"{gst.INTERVAL_KEY}: 5\n", 300), (["--watch"], "", 1800),
+    (["--watch", "15"], "", 900), (["--watch"], f"grind:\n  {gst.INTERVAL_KEY}: 5\n", 300), (["--watch"], "", 1800),
 ])
 @pytest.mark.parametrize("as_json", [False, True])
 def test_watch_repeats_the_report_on_the_interval_until_ctrl_c(
@@ -639,7 +639,7 @@ def test_a_bad_interval_exits_2_naming_the_flag_or_key(tmp_path: Path, capsys) -
     assert e.value.code == 2 and "--watch" in capsys.readouterr().err
     repo = make_repo(tmp_path, SCOPE_GRAPH)
     wf = repo / "roadmap" / "git-workflow.yaml"
-    wf.write_text(wf.read_text() + f"{gst.INTERVAL_KEY}: soon\n")
+    wf.write_text(wf.read_text() + f"grind:\n  {gst.INTERVAL_KEY}: soon\n")
     assert run(repo, "--until", "M1.1", "--watch", sleep=FakeSleep()) == 2
     assert gst.INTERVAL_KEY in capsys.readouterr().err
 

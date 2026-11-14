@@ -230,8 +230,8 @@ starts with `specy-road session start --note 'planner: <topic>'` so its note say
 
 **Watch.** `--status --watch [MINUTES]` prints the report again after each interval, each after a separator line
 with its `last updated` time, until Ctrl+C (exit 0); with `--json` each report is one line. The interval is
-MINUTES, else `grind_session_status_interval_minutes` in `roadmap/git-workflow.yaml`, else 30; a value below 1
-exits 2. `--watch` is for a person's terminal: a coordinator in a chat runs `--status` once per interval instead
+MINUTES, else `grind.status_interval_minutes` in `roadmap/git-workflow.yaml`, else 30; a value below 1 exits
+2. `--watch` is for a person's terminal: a coordinator in a chat runs `--status` once per interval instead
 (the bundled orchestrate and grind-session skills say how).
 
 ## The loop
@@ -422,15 +422,15 @@ behind the executable and copies the rest of your command byte for byte, so a
 prompt file is still on disk, because `finish-this-task` has not run. It never
 adds `--dangerously-skip-permissions`.
 
-Bounds — CLI flag wins over `roadmap/git-workflow.yaml`, which wins over the
-default:
+Bounds — CLI flag wins over `roadmap/git-workflow.yaml` (under `grind:`), which
+wins over the default:
 
 | Bound | CLI flag | `roadmap/git-workflow.yaml` | Default |
 | --- | --- | --- | --- |
-| waits per leaf | `--max-limit-waits N` | `grind_session_max_limit_waits` | 3 |
-| ceiling on any one wait | `--max-limit-wait-hours H` | `grind_session_max_limit_wait_hours` | 6 |
-| grace after the stated reset | `--limit-wait-grace-seconds S` | `grind_session_limit_wait_grace_seconds` | 120 |
-| re-runs when it dies silently | `--max-empty-retries N` | `grind_session_max_empty_retries` | 2 |
+| waits per leaf | `--max-limit-waits N` | `grind.max_limit_waits` | 3 |
+| ceiling on any one wait | `--max-limit-wait-hours H` | `grind.max_limit_wait_hours` | 6 |
+| grace after the stated reset | `--limit-wait-grace-seconds S` | `grind.limit_wait_grace_seconds` | 120 |
+| re-runs when it dies silently | `--max-empty-retries N` | `grind.max_empty_retries` | 2 |
 
 If your plan's limit resets on an **8-hour** cadence, the 6h default ceiling
 stops the run rather than waiting the extra two hours. Pass

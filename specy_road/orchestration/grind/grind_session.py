@@ -57,7 +57,11 @@ from specy_road.orchestration.grind.session_plan import SessionPlan, session_pla
 from specy_road.orchestration.grind.session_plan_git import gather_session_plan as gather_plan
 from specy_road.orchestration.grind.session_plan_render import render_session_plan_text
 from specy_road.registry_yaml import read_registry, registry_path
-from specy_road.git_workflow_config import load_git_workflow_config, resolve_on_complete
+from specy_road.git_workflow_config import (
+    grind_setting,
+    load_git_workflow_config,
+    resolve_on_complete,
+)
 from specy_road.runtime_paths import default_user_repo_root
 from specy_road.repo_ops import current_branch
 from specy_road.orchestration import recover_stalled
@@ -191,17 +195,18 @@ def _resolve_picked(repo_root: Path, branch: str, fallback_id: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-#: ``git-workflow.yaml`` key -> :class:`ImplementLimits` field.
+#: ``grind:`` key in ``git-workflow.yaml`` -> :class:`ImplementLimits` field.
 _YAML_LIMIT_KEYS = {
-    "grind_session_max_limit_waits": "max_resumes",
-    "grind_session_max_limit_wait_hours": "max_wait_seconds",
-    "grind_session_limit_wait_grace_seconds": "grace_seconds",
-    "grind_session_max_empty_retries": "max_empty_retries",
+    "max_limit_waits": "max_resumes",
+    "max_limit_wait_hours": "max_wait_seconds",
+    "limit_wait_grace_seconds": "grace_seconds",
+    "max_empty_retries": "max_empty_retries",
 }
 
 
 def _limits_from_git_workflow(repo_root: Path) -> dict[str, int]:
-    """Bounds set in ``roadmap/git-workflow.yaml``, if any.
+    """Bounds set in ``roadmap/git-workflow.yaml``, if any (``grind:``, else the old top-level
+    ``grind_session_*`` keys: :func:`specy_road.git_workflow_config.grind_setting`).
 
     An unreadable or schema-invalid file yields nothing, exactly as the
     boolean settings behave. grind-session cannot reach this step with a broken
@@ -213,7 +218,7 @@ def _limits_from_git_workflow(repo_root: Path) -> dict[str, int]:
         return {}
     out: dict[str, int] = {}
     for key, field in _YAML_LIMIT_KEYS.items():
-        value = data.get(key)
+        value = grind_setting(data, key)
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             continue
         out[field] = int(value * 3600) if field == "max_wait_seconds" else int(value)

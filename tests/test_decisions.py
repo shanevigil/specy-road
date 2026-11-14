@@ -152,7 +152,7 @@ def test_skills_post_the_grind_status_on_the_interval(name: str) -> None:
     """M22.68 A8: the coordinator posts `grind-session --status` at the start and every interval, not `--watch`."""
     text = (SKILL.parent / name).read_text(encoding="utf-8")
     para = next(p for p in text.split("\n\n") if p.startswith("**Status reports during a grind.**"))
-    for phrase in ("specy-road grind-session --status", "grind_session_status_interval_minutes", "default 30",
+    for phrase in ("specy-road grind-session --status", "grind.status_interval_minutes", "default 30",
                    "At the start of a grind", "post its text output to the chat unchanged",
                    "scheduler or wake-up", "the first turn after the interval", "Do not use `--watch` here",
                    "a person's terminal"):
