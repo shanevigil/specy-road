@@ -16,8 +16,10 @@ from typing import Any
 import yaml
 
 from specy_road.errors import SpecyError, inherited_init
-from specy_road.harness_facts import load_facts
-from specy_road.model_profiles import Profile, bundled_profiles_root, list_profiles
+from specy_road.orchestration.harness.harness_facts import load_facts
+from specy_road.orchestration.model_profiles import (
+    Profile, bundled_profiles_root, list_profiles,
+)
 from specy_road.orchestration_config import ORCHESTRATION_REL
 
 #: Profile ``family`` → roster ``family`` (model-profiles/README.md): the gate counts families by these.

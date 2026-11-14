@@ -18,7 +18,7 @@ from typing import Any, Callable
 
 import yaml
 
-from specy_road.model_profiles import Profile
+from specy_road.orchestration.model_profiles import Profile
 from specy_road.orchestration_config import (
     ORCHESTRATION_LOCAL_REL,
     _dates_to_iso,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 
-from specy_road import harness_facts as hf
+from specy_road.orchestration.harness import harness_facts as hf
 from tests.test_harness_facts import run_main
 
 

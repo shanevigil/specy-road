@@ -33,7 +33,7 @@
     },
     {
       "modules": [
-        "specy_road.model_profiles",
+        "specy_road.orchestration.model_profiles",
         "specy_road.review_files"
       ],
       "lines": 19

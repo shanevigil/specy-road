@@ -1,9 +1,10 @@
 """Pick the coordinator, executor and reviewers for one leaf (:func:`assign_leaf`).
 
-Moved out of :mod:`specy_road.orchestrate_plan`, which re-exports these names and documents the
-rules in the order they apply. ``spread_index`` (``orchestrate plan --spread``) picks the executor
-round-robin among the capable, available entries by the leaf's position in the plan instead of the
-cheapest; with no rostered coordinator the session that runs the plan coordinates.
+Moved out of :mod:`specy_road.orchestration.orchestrate_plan`, which re-exports these names
+and documents the rules in the order they apply. ``spread_index`` (``orchestrate plan --spread``)
+picks the executor round-robin among the capable, available entries by the leaf's position in the
+plan instead of the cheapest; with no rostered coordinator the session that runs the plan
+coordinates.
 """
 
 from __future__ import annotations
@@ -14,12 +15,12 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from specy_road.model_profiles import Profile
+from specy_road.orchestration.model_profiles import Profile
 from specy_road.orchestration_config import active_substitutions, harness_model
 from specy_road.orchestration_pinned import (
     GuidanceSource, bundled_flags, flags_of, guidance_source, pinned_config, pinned_profile_for_entry,
 )
-from specy_road.roster_local import GUIDANCE_OPT_IN
+from specy_road.orchestration.roster_local import GUIDANCE_OPT_IN
 
 DEFAULT_SENSITIVITY = "public"
 ANY = "any"
@@ -194,9 +195,10 @@ class _Hit(NamedTuple):
 
 
 def _flagged(names: list[str], flags: dict[str, dict[str, Any]]) -> tuple[str, dict[str, Any]] | None:
-    """The first name with a flag, exactly or after :func:`~specy_road.model_names.same_model` (case, separators,
-    Cursor's ``cursor-`` prefix), and the matched key's record."""
-    from specy_road.model_names import same_model
+    """The first name with a flag, exactly or after
+    :func:`~specy_road.orchestration.model_names.same_model` (case, separators, Cursor's
+    ``cursor-`` prefix), and the matched key's record."""
+    from specy_road.orchestration.model_names import same_model
 
     for n in names:
         key = n if n in flags else next((k for k in flags if same_model(n, k)), None)

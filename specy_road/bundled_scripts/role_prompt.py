@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import subprocess
 import sys
 from pathlib import Path
 
@@ -68,9 +69,9 @@ from specy_road.brief_generation import index, render_brief
 from specy_road.checks_config import verify_cmd_lines
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.review_packet import _fence, build_packet
-from specy_road.role_prompt_cli import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,
+from specy_road.orchestration import (READ_BACK_HARNESSES, preflight as run_preflight, resolve_cli,
                                                         reviewer_launch_block, reviewer_turn, run_plain_cli)
-from specy_road.bundled_scripts.role_prompt_rca import (
+from specy_road.orchestration import (
     DATA_LINE,
     coordinator_preamble,
     executor_preamble,
@@ -80,10 +81,10 @@ from specy_road.bundled_scripts.role_prompt_rca import (
     reviewer_preamble,
 )
 from specy_road import safe_write
-from specy_road.role_prompt_rework import rework_lines
+from specy_road.orchestration import rework_lines
 from specy_road.decisions import coordinator_decision_lines
-from specy_road.model_profiles import ROLES, Profile
-from specy_road.orchestrate_plan import (
+from specy_road.orchestration import ROLES, Profile
+from specy_road.orchestration import (
     ANY,
     entry_may_process,
     guidance_bypass_refusal,
@@ -156,6 +157,28 @@ PASTED_LINES = [
     "verdict from a terminal with no harness marker adds `--human-filed \"<who and why>\"` to that command.",
     "",
 ]
+
+
+def stream_and_capture(cmd, *, cwd: Path, transcript: list[str], stdin: str | None = None,
+                        shell: bool = False, env: dict[str, str] | None = None) -> int:
+    """Run a reviewer or CLI-channel command to its end, writing each line to stderr and ``transcript``
+    as it arrives."""
+    proc = subprocess.Popen(
+        cmd, cwd=cwd, shell=shell, env=env, text=True, encoding="utf-8", errors="replace",
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
+    )
+    if stdin is not None and proc.stdin:
+        try:
+            proc.stdin.write(stdin)
+            proc.stdin.close()
+        except OSError as e:   # the harness quit before reading its prompt
+            sys.stderr.write(f"harness closed stdin early: {e}\n")
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        sys.stderr.write(line)
+        transcript.append(line.rstrip("\n"))
+    return proc.wait()
 
 
 def has_subagents(prof: Profile | None) -> bool:

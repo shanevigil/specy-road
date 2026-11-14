@@ -30,7 +30,7 @@ from specy_road.nested_repos import (
     NestedRepoError, add_nested_worktrees, align_nested_checkouts, in_nested, nested_prefixes,
     nested_worktree_dirs,
 )
-from specy_road.orchestrate_plan import (
+from specy_road.orchestration.orchestrate_plan import (
     ANY, guidance_bypass_refusal, guidance_bypass_warning, is_available, may_handle,
     node_eligibility, node_sensitivity, unavailability_reason,
 )
@@ -66,7 +66,9 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.reviewer_auth import claude_worker_refusal
-from specy_road.role_prompt_rework import CLASS_AUDIT_LINES, _review_lines, blocking_reviews
+from specy_road.orchestration.role_prompt_rework import (
+    CLASS_AUDIT_LINES, _review_lines, blocking_reviews,
+)
 from specy_road.roadmap_load import load_roadmap
 from specy_road.runtime_paths import REPO_ROOT_ENV, project_prefix
 from specy_road.session_presence import current_user, end_session, list_sessions

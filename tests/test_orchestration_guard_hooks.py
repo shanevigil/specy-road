@@ -244,7 +244,7 @@ def _avoid_list_gaps(rel: str, text: str, family: str) -> list[str]:
 
 
 def test_every_shipped_profile_lists_orchestration_avoid() -> None:
-    from specy_road.model_profiles import list_profiles
+    from specy_road.orchestration.model_profiles import list_profiles
 
     root = REPO / "specy_road" / "templates" / "project"
     missing = []

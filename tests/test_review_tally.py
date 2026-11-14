@@ -10,7 +10,7 @@ import pytest
 from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
 from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
 
-from specy_road import orchestrate_plan as op
+from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, write_human_approval

@@ -7,8 +7,8 @@ import pytest
 
 from tests.test_models_and_prompt import OPUS
 
-from specy_road.role_prompt_cli import model_problem
-from specy_road.model_profiles import load_profile
+from specy_road.orchestration.role_prompt_cli import model_problem
+from specy_road.orchestration.model_profiles import load_profile
 from specy_road.review_model_check import check, resolve_effective_model
 
 

@@ -241,7 +241,7 @@ class Adapter:
         """``argv[0]`` of the default command: the binary the roster's ``harness_bin`` names, else the one on
         ``PATH`` or in the harness's install directories. The one place every default command (launch, resume,
         reviewer, a custom command's resume fallback) gets its program, so no caller can skip ``harness_bin``."""
-        from specy_road.harness_binary import resolve  # noqa: PLC0415 — harness_binary imports this module
+        from specy_road.orchestration.harness.harness_binary import resolve  # noqa: PLC0415 — harness_binary imports this module
         return resolve(self.harness, harness_bin)
 
     def effort_flag(self, level: str | None) -> list[str]:

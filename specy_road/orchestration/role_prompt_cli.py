@@ -24,10 +24,9 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.clock import utc_now_iso
-from specy_road.bundled_scripts.role_prompt_stream import stream_and_capture
 from specy_road.git_subprocess import git_ok, git_text, is_worktree_root
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.model_profiles import Profile
+from specy_road.orchestration.model_profiles import Profile
 from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_record_write import (Outcome, answer_scratch, close_review_run, replace_file, run_and_file,
                                             write_schema)
@@ -397,6 +396,8 @@ def run_plain_cli(cli: str, prompt_path: Path, root: Path, effort: list[str],
             return 1
         if transcript is None:
             return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
+        # Imported here: role_prompt imports this module at load time.
+        from specy_road.bundled_scripts.role_prompt import stream_and_capture  # noqa: PLC0415
         return stream_and_capture(cmd, cwd=root, transcript=transcript, shell=True)
     except OSError as e:   # E2BIG: "<prompt>" puts the whole text on the command line
         print(f"error: could not launch the cli: {e.strerror}; if the prompt is too long for a command line, "

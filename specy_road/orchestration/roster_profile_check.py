@@ -13,7 +13,7 @@ import sys
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from specy_road.model_profiles import (
+from specy_road.orchestration.model_profiles import (
     PROFILES_REL,
     bundled_profiles_root,
     list_profiles,
@@ -87,7 +87,7 @@ def report_roster_profiles(repo_root: Path) -> None:
     """``validate``'s roster-profile output: unmatched ids (a stdout notice when nothing can launch the
     entry, which ``--strict`` does not count), unresolved ``profile:`` values (warnings), and, under
     ``signed_reviews``, each executor or reviewer entry whose model records guidance bypass (M21.44)."""
-    from specy_road.orchestrate_assign import guidance_bypass_lines   # noqa: PLC0415 — via orchestration_pinned, it imports this module
+    from specy_road.orchestration.orchestrate_assign import guidance_bypass_lines   # noqa: PLC0415 — via orchestration_pinned, it imports this module
     for launchable, msg in roster_profile_gaps(repo_root):
         print(f"{'warning' if launchable else 'notice'}: {msg}", file=sys.stderr if launchable else sys.stdout)
     for line in [f"warning: {msg}" for msg in roster_profile_problems(repo_root)] + guidance_bypass_lines(repo_root):

@@ -167,7 +167,7 @@ from datetime import date, timedelta  # noqa: E402
 from specy_road.agent_guide_block import PROVENANCE  # noqa: E402
 from specy_road.agent_ignores import apply_agent_ignores  # noqa: E402
 from specy_road.bundled_scripts import chore_garden  # noqa: E402
-from specy_road.bundled_scripts.role_prompt_rca import dirty_check  # noqa: E402
+from specy_road.orchestration.role_prompt_rca import dirty_check  # noqa: E402
 from specy_road.roadmap_load import load_roadmap  # noqa: E402
 
 _RULES = ("# Rules\n\nRead the docs.\n<!-- prevents: drift | enforced: advisory | ref: x -->\n"

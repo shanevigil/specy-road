@@ -16,7 +16,7 @@ import pytest
 import yaml
 
 from specy_road.bundled_scripts import decisions_cli, finish_task, review_cli
-from specy_road.bundled_scripts.role_prompt_rca import reviewer_preamble
+from specy_road.orchestration.role_prompt_rca import reviewer_preamble
 from specy_road.decisions import read_decisions
 from specy_road.bundled_scripts.finish_task import human_acceptance_ids, undecided_human_items
 from specy_road.orchestration_role_env import ROLE_ENV

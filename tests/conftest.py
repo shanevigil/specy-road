@@ -124,7 +124,7 @@ def harness_binaries_are_not_looked_up(monkeypatch: pytest.MonkeyPatch) -> None:
     """A default launch resolves its harness binary (harness_binary): on a machine without the harness that is a
     refusal, and on one with it an absolute path. Every test gets the bare program name (or the entry's
     ``harness_bin``), which the fake-binary tests put on PATH; test_harness_launch.py calls the real resolver."""
-    import specy_road.harness_binary as hb
+    import specy_road.orchestration.harness.harness_binary as hb
 
     monkeypatch.setattr(hb, "resolve", lambda harness, harness_bin=None: harness_bin or hb.PROGRAMS[harness])
 

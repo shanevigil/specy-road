@@ -40,7 +40,7 @@ from specy_road.bundled_scripts import refresh_stubs as rs
 from specy_road.brainstorm_prompt import render_brainstorm_prompt
 from specy_road.brainstorm_session import BrainstormSession, read_session, write_session
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.orchestrate_plan import Candidate, assign_leaf
+from specy_road.orchestration.orchestrate_plan import Candidate, assign_leaf
 from specy_road.orchestration_config import effective_config
 from specy_road.review_files import reviews_root
 from specy_road.specyrd_init import run_init
@@ -312,7 +312,7 @@ def test_an_invalid_configured_profile_is_a_staffing_error(tmp_path: Path) -> No
     (repo / "model-profiles").mkdir()
     (repo / "model-profiles" / "bad.md").write_text("not a profile\n")
     from specy_road.roadmap_load import load_roadmap
-    from specy_road.model_profiles import profile_for_entry
+    from specy_road.orchestration.model_profiles import profile_for_entry
 
     config, _e = effective_config(repo)
     node = next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.1")

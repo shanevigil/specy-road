@@ -221,6 +221,22 @@ _MOVED_FROM.update({
     )
     for path in (ROOT / "specy_road" / "orchestration" / "workers").glob("worker_*.py")
 })
+# Moved into specy_road/orchestration/ (its DESTINATIONS.md): new path -> path at pickup.
+_MOVED_FROM.update({
+    "specy_road/orchestration/harness/harness_binary.py": "specy_road/harness_binary.py",
+    "specy_road/orchestration/harness/harness_facts.py": "specy_road/harness_facts.py",
+    "specy_road/orchestration/model_names.py": "specy_road/model_names.py",
+    "specy_road/orchestration/model_profiles.py": "specy_road/model_profiles.py",
+    "specy_road/orchestration/orchestrate_assign.py": "specy_road/orchestrate_assign.py",
+    "specy_road/orchestration/orchestrate_plan.py": "specy_road/orchestrate_plan.py",
+    "specy_road/orchestration/role_prompt_cli.py": "specy_road/bundled_scripts/role_prompt_cli.py",
+    "specy_road/orchestration/role_prompt_rca.py": "specy_road/bundled_scripts/role_prompt_rca.py",
+    "specy_road/orchestration/role_prompt_rework.py":
+        "specy_road/bundled_scripts/role_prompt_rework.py",
+    "specy_road/orchestration/roster_generate.py": "specy_road/roster_generate.py",
+    "specy_road/orchestration/roster_local.py": "specy_road/roster_local.py",
+    "specy_road/orchestration/roster_profile_check.py": "specy_road/roster_profile_check.py",
+})
 
 
 def _in_pickup_tree(path: str, present: set[str], moved_from: dict[str, str]) -> bool:

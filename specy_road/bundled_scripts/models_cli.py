@@ -22,7 +22,7 @@ from typing import Any
 
 from specy_road.cli_args import add_json_arg
 from specy_road.cli_entry import run_cli
-from specy_road.model_profiles import (
+from specy_road.orchestration import (
     DEFAULT_MAX_AGE_DAYS,
     GUIDANCE_BYPASS_KEY,
     ROLES,
@@ -33,7 +33,7 @@ from specy_road.model_profiles import (
 )
 from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_diff, roster_source
-from specy_road.roster_generate import (
+from specy_road.orchestration import (
     format_entries,
     missing_profile_files,
     roster_entries,

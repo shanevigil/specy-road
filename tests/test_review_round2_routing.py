@@ -22,8 +22,8 @@ from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.brainstorm_session import read_session
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.roadmap_load import load_roadmap
-from specy_road.model_profiles import profile_for_entry
-from specy_road.orchestrate_plan import Candidate, assign_leaf
+from specy_road.orchestration.model_profiles import profile_for_entry
+from specy_road.orchestration.orchestrate_plan import Candidate, assign_leaf
 from specy_road.orchestration_config import effective_config
 from specy_road.specyrd_init import run_init
 

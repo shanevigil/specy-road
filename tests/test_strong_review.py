@@ -13,7 +13,7 @@ from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
 from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
 from tests.test_review_gate import TWO_FAMILIES
 
-from specy_road import orchestrate_plan as op
+from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import orchestrate_cli, review_cli
 from specy_road.orchestration_config import parse_orchestration_text

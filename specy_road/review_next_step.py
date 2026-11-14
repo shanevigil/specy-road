@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
-from specy_road.orchestrate_plan import guidance_problem, is_available
+from specy_road.orchestration.orchestrate_plan import guidance_problem, is_available
 from specy_road.review_deferral import rca_deferral
 from specy_road.review_files import HUMAN, PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 

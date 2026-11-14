@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.model_names import same_model
-from specy_road.model_profiles import Profile
+from specy_road.orchestration.model_names import same_model
+from specy_road.orchestration.model_profiles import Profile
 from specy_road.review_model_check import check
 from specy_road.orchestration.workers.worker_models import mismatch_note
 

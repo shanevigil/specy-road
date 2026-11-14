@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road import orchestrate_plan as op
+from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.decisions import add_preference, preference_active, read_decisions, schema_errors

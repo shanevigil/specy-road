@@ -7,7 +7,7 @@ from pathlib import Path
 
 from specy_road.agent_ignores import RUNTIME_WORK_DIRS
 from specy_road.git_workflow_config import WORKER_LOGS_REL
-from specy_road.model_profiles import Profile
+from specy_road.orchestration.model_profiles import Profile
 from specy_road.review_files import PACKET_NAME
 from specy_road.workflow_prefs import SUMMARY_LOCAL, implementation_summary_rule, summary_handling
 

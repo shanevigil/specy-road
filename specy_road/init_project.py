@@ -14,7 +14,7 @@ from specy_road.generated_files import GENERATED_COMMITTED, regenerate_generated
 from specy_road.git_subprocess import git_root
 from specy_road.harness_instruction_files import AGENTS_MD
 from specy_road.managed_block import CREATED, UNCHANGED, UPDATED, raise_rule_refusal
-from specy_road.model_profiles import PROFILES_REL, load_profile
+from specy_road.orchestration.model_profiles import PROFILES_REL, load_profile
 from specy_road.runtime_paths import (
     prefix_within,
     project_root,

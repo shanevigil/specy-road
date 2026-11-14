@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from specy_road import harness_facts as hf
+from specy_road.orchestration.harness import harness_facts as hf
 from specy_road.bundled_scripts import refresh_profiles as rp
 from specy_road.runtime_paths import project_template_root
 from specy_road.orchestration.workers.worker_state import HARNESSES

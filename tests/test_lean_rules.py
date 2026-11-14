@@ -17,7 +17,7 @@ from tests.test_models_and_prompt import ROSTER, TEMPLATE_PROFILES
 from specy_road.agents_md_block import render_rules
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts import role_prompt
-from specy_road.bundled_scripts.role_prompt_rca import TEST_RULES
+from specy_road.orchestration.role_prompt_rca import TEST_RULES
 from specy_road.review_files import PACKET_NAME, reviews_dir
 
 REPO = Path(__file__).resolve().parent.parent
@@ -125,7 +125,7 @@ def test_packet_notes_a_summary_without_an_added_inventory(tmp_path: Path) -> No
 
 
 def test_every_profile_has_a_dated_tendency_line_and_a_counter_rule() -> None:
-    from specy_road import model_profiles as mp
+    from specy_road.orchestration import model_profiles as mp
 
     profiles = mp.list_profiles(TEMPLATE_PROFILES.parent)
     measured = {"anthropic-claude", "openai-gpt", "google-gemini", "cursor-composer"}

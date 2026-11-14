@@ -24,7 +24,7 @@ from specy_road.orchestration.workers import worker_state as ws
 from specy_road.agent_ignores import RUNTIME_WORK_DIRS, apply_agent_ignores
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.bundled_scripts import chore_cli
-from specy_road.bundled_scripts.role_prompt_rca import dirty_check
+from specy_road.orchestration.role_prompt_rca import dirty_check
 from specy_road.init_project import run_init_project
 
 RUNTIME_FILES = ("work/.workers/w-0001.events.jsonl", "work/.sessions/agent.yaml",
