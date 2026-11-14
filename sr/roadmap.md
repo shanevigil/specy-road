@@ -271,5 +271,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M23.8` | The guard classifier becomes three rule tables with every verdict unchanged | task | Agentic-led | Not Started |
 | `M23.9` | The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working | task | Agentic-led | Not Started |
 | `M23.10` | Run the multi-operator brainstorm for 0.3.2 (two or more operators on several machines, plus a PM in the PM GUI) | task | Agentic-led | Not Started |
+| `M23.11` | The post-run zone check counts only the leaf's own commits, not integration commits a merge brings in | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
