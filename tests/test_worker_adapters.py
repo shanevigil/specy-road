@@ -14,11 +14,11 @@ from tests.review_repo_helpers import make_review_repo, shipped_anthropic_opus_c
 from tests.test_models_and_prompt import commit_profile, make_profile_repo, run_main
 from tests.test_worker_cli import run_worker_cli
 from tests.worker_repo_helpers import reset_cursor_adapter_via_init
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops as ops
-from specy_road import worker_reconcile as wrc
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_reconcile as wrc
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import role_prompt
 
 FAKE = '''
@@ -349,7 +349,7 @@ def test_custom_cli_effort_placeholder_becomes_each_harness_flag(tmp_path: Path)
 
 
 def test_effort_note_only_when_a_level_is_set_and_the_command_names_no_effort() -> None:
-    from specy_road.worker_adapter_parsers import effort_note  # noqa: PLC0415
+    from specy_road.orchestration.workers.worker_adapter_parsers import effort_note  # noqa: PLC0415
     assert "takes no effort" in effort_note("w {prompt}", "high")
     assert effort_note("w {effort} {prompt}", "high") is None
     assert effort_note("w {prompt}", None) is None and effort_note(None, "high") is None

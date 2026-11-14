@@ -20,8 +20,13 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from specy_road.clock import utc_now_iso
-from specy_road.worker_lock import _LOCAL, _THREAD_LOCKS, WorkerError, workers_dir
-from specy_road.worker_state import WorkerRecord, list_records, record_path
+from specy_road.orchestration.workers.worker_lock import (
+    _LOCAL,
+    _THREAD_LOCKS,
+    WorkerError,
+    workers_dir,
+)
+from specy_road.orchestration.workers.worker_state import WorkerRecord, list_records, record_path
 
 WITNESS_TIMEOUT = 2.0
 

@@ -16,7 +16,7 @@ import re
 import shlex
 import subprocess
 
-from specy_road.worker_lock import WorkerError
+from specy_road.orchestration.workers.worker_lock import WorkerError
 
 #: Letters, digits and ``._:-``, never whitespace or a shell metacharacter.
 #: Every harness's id fits; a Cursor chat id is not pinned to one shape.

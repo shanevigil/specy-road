@@ -33,13 +33,13 @@ from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_adapters as wa
-from specy_road import worker_lease as wl
-from specy_road import worker_ops as ops
-from specy_road import worker_reconcile as wrc
-from specy_road import worker_sessions as wsess
-from specy_road import worker_state as ws
-from specy_road import worker_witness as ww
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_lease as wl
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_reconcile as wrc
+from specy_road.orchestration.workers import worker_sessions as wsess
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers import worker_witness as ww
 
 UUID = "7f1c0000-1111-4222-8333-444444444444"
 

@@ -18,7 +18,7 @@ from tests.review_repo_helpers import review_output
 from specy_road import review_files as rf
 from specy_road.review_answer import Rerun, events, final_answer
 from specy_road.reviewer_run_failure import harness_error_line, turn_capacity_error
-from specy_road.worker_adapters import ADAPTERS, Launch
+from specy_road.orchestration.workers.worker_adapters import ADAPTERS, Launch
 
 DEPTH = 100_000
 V = review_output("a" * 40, model="m")

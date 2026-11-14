@@ -39,7 +39,7 @@ def lock_root(repo_root: Path) -> Path:
 
 
 def _start_token(pid: int) -> str | None:
-    from specy_road.worker_process import start_token   # lazy: worker_process pulls in the worker modules
+    from specy_road.orchestration.workers.worker_process import start_token   # lazy: worker_process pulls in the worker modules
 
     return start_token(pid)
 

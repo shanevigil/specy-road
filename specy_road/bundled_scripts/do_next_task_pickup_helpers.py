@@ -24,7 +24,7 @@ from specy_road.on_complete_session import (
 )
 from specy_road.registry_yaml import write_registry
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_adapters import linked_worktree
+from specy_road.orchestration.workers.worker_adapters import linked_worktree
 from specy_road.worktree_env import setup_worktree_env
 
 

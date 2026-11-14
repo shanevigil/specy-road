@@ -13,12 +13,12 @@ from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_cli import run_worker_cli
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_ops_launch
+from specy_road.orchestration.workers import worker_ops_launch
 from specy_road.bundled_scripts import doctor as des
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import load_ready, reviews_dir
 from specy_road.runtime_paths import REPO_ROOT_ENV, project_root
-from specy_road.worker_state import active_for_node
+from specy_road.orchestration.workers.worker_state import active_for_node
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road import worktree_env
 from specy_road.worktree_env import EnvSetupError, info_exclude_lines, info_exclude_records, link_into, linked_status_paths, setup_worktree_env

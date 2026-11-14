@@ -20,18 +20,20 @@ import pytest
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_m310_reconcile_status import nested_project
 
-from specy_road import worker_adapter_codex as codex
-from specy_road import worker_adapter_cursor as cursor
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops_message as wom
-from specy_road import worker_reconcile as wrc
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
-from specy_road import worker_turn_check as tc
-from specy_road.worker_adapter_claude import EXECUTOR_TOOLS
-from specy_road.worker_adapter_base import file_instruction
-from specy_road.worker_adapter_cursor import create_chat as real_create_chat   # before conftest stubs it
-from specy_road.worker_adapter_parsers import limit_detail
+from specy_road.orchestration.workers import worker_adapter_codex as codex
+from specy_road.orchestration.workers import worker_adapter_cursor as cursor
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops_message as wom
+from specy_road.orchestration.workers import worker_reconcile as wrc
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers import worker_turn_check as tc
+from specy_road.orchestration.workers.worker_adapter_claude import EXECUTOR_TOOLS
+from specy_road.orchestration.workers.worker_adapter_base import file_instruction
+from specy_road.orchestration.workers.worker_adapter_cursor import (  # before conftest stubs it
+    create_chat as real_create_chat,
+)
+from specy_road.orchestration.workers.worker_adapter_parsers import limit_detail
 
 STREAMS = json.loads((Path(__file__).parent / "fixtures/worker_turn_check/streams.json").read_text())
 
@@ -525,9 +527,9 @@ def test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_termi
     reports a limit: the finding is recorded and flags the worker, and nothing pauses it."""
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
-    package_parent = Path(ws.__file__).resolve().parents[1]
+    package_parent = Path(ws.__file__).resolve().parents[3]
     terminate = (f"{sys.executable} -c \"import sys; sys.path.insert(0, '{package_parent}'); from pathlib import Path; "
-                 f"from specy_road import worker_state as ws; r = Path('{repo}'); "
+                 f"from specy_road.orchestration.workers import worker_state as ws; r = Path('{repo}'); "
                  f"ws.set_state(r, ws.load_record(r, '{rec.worker_id}'), 'terminated')\"")
     _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_limit_as_success"],
              run=["echo stray > stray.txt", terminate])
@@ -559,7 +561,11 @@ def test_pre_turn_work_outside_the_zones_that_the_turn_restores_or_deletes_is_a_
 def test_a_paused_worker_frees_its_slot_once_its_leaf_is_over_like_an_idle_one(tmp_path: Path) -> None:
     """Merging M11.57: paused_by_limit holds its leaf and slot like idle, so it is a held state there too. Otherwise a
     worker paused at a limit whose leaf then ended elsewhere would hold a max_workers slot for good."""
-    from specy_road.worker_orphans import end_finished_workers, holding_slots, orphans
+    from specy_road.orchestration.workers.worker_orphans import (
+        end_finished_workers,
+        holding_slots,
+        orphans,
+    )
 
     repo = make_review_repo(tmp_path)
     gone = tmp_path / "removed-worktree"

@@ -6,10 +6,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from specy_road.worker_adapter_parsers import usage_text
-from specy_road.worker_process import wrapper_alive
-from specy_road.worker_state import events_since
-from specy_road.worker_usage_plausibility import possible_undercount
+from specy_road.orchestration.workers.worker_adapter_parsers import usage_text
+from specy_road.orchestration.workers.worker_process import wrapper_alive
+from specy_road.orchestration.workers.worker_state import events_since
+from specy_road.orchestration.workers.worker_usage_plausibility import possible_undercount
 
 
 def _row(rec) -> dict[str, Any]:
@@ -213,7 +213,9 @@ def usage(attempts: list[tuple[Any, list[dict[str, Any]]]]) -> dict[str, Any]:
 def _project_root_of(worktree: str | None) -> Path | None:
     """The project a worker's worktree belongs to, from its nearest existing directory (a finished leaf's
     worktree is gone, its parent under the project's ``work/`` is not)."""
-    from specy_road.worker_adapter_parsers import project_root_from_worktree  # noqa: PLC0415
+    from specy_road.orchestration.workers.worker_adapter_parsers import (  # noqa: PLC0415
+        project_root_from_worktree,
+    )
 
     p = Path(worktree).resolve() if worktree else None
     while p is not None and not p.is_dir():

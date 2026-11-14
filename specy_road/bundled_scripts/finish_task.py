@@ -67,8 +67,8 @@ from specy_road.review_policy_ref import committed_yaml
 from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.steering_gate import zones_or_exit
-from specy_road.worker_orphans import end_finished_workers
-from specy_road.worker_state import WorkerError
+from specy_road.orchestration import end_finished_workers
+from specy_road.orchestration import WorkerError
 
 # ---------------------------------------------------------------------------
 # Argument parser

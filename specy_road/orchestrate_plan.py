@@ -87,7 +87,7 @@ from specy_road.review_tally import area_quality
 from specy_road.reviewer_auth import claude_reviewer_auth_notices
 from specy_road.roster_local import local_roster_ids
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_adapter_cursor import force_warnings
+from specy_road.orchestration.workers.worker_adapter_cursor import force_warnings
 
 @dataclass
 class OrchestrationPlan:

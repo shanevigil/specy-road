@@ -1,6 +1,6 @@
 """``worker reconcile`` and ``worker sync``: what changed since the checkpoint, and the unread events (slice 7c).
 
-Split from :mod:`specy_road.worker_ops` for the file limit; the CLI reaches
+Split from :mod:`specy_road.orchestration.workers.worker_ops` for the file limit; the CLI reaches
 them through that module.
 """
 
@@ -26,9 +26,9 @@ from specy_road.nested_repos import in_nested, nested_changes, nested_prefixes
 from specy_road.roadmap_load import load_roadmap
 from specy_road.review_target import ReviewTarget, ReviewTargetError, _registry_entry, resolve_target
 from specy_road.runtime_paths import project_prefix, rebase_to_project
-from specy_road.worker_lease import sync_leases
-from specy_road.worker_process import branch_mismatch
-from specy_road.worker_state import (
+from specy_road.orchestration.workers.worker_lease import sync_leases
+from specy_road.orchestration.workers.worker_process import branch_mismatch
+from specy_road.orchestration.workers.worker_state import (
     FLAG_RECONCILE,
     WorkerError,
     WorkerRecord,
@@ -291,7 +291,7 @@ def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
     no readable line carries (lost or unreadable, the final one included); a
     worker with only gaps is listed too, and ``ack`` moves its mark past them.
     """
-    from specy_road.worker_ops import sweep_dead_wrappers, sweep_stalled   # noqa: PLC0415 — ops imports this module
+    from specy_road.orchestration.workers.worker_ops import sweep_dead_wrappers, sweep_stalled   # noqa: PLC0415 — ops imports this module
 
     path = _sync_path(repo_root)
     with workers_lock(repo_root):

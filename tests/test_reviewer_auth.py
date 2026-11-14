@@ -17,8 +17,8 @@ from specy_road.reviewer_auth import (
     auth_problem, bare_settings_argv, claude_reviewer_auth_notices, claude_reviewer_mode, launch_note,
     load_user_settings, reviewer_environment, user_settings_path,
 )
-from specy_road.worker_adapter_base import REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, STDIN_INSTRUCTION
-from specy_road.worker_adapter_claude import ClaudeCode
+from specy_road.orchestration.workers.worker_adapter_base import REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, STDIN_INSTRUCTION
+from specy_road.orchestration.workers.worker_adapter_claude import ClaudeCode
 from tests.review_delegate_helpers import fake_reviewer_run
 from tests.review_repo_helpers import claude_code_reviewer_repo, git, review_output
 from tests.test_models_and_prompt import commit_profile, run_main

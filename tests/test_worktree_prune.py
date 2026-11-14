@@ -20,7 +20,7 @@ from tests.test_nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
 
 from specy_road.nested_repos import add_nested_worktrees
 from specy_road import worktree_prune
-from specy_road.worker_state import create_record, set_state
+from specy_road.orchestration.workers.worker_state import create_record, set_state
 from specy_road.worktree_prune import PrunePlan, PruneError, plan_prune, remove
 
 

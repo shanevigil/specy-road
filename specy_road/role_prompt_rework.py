@@ -25,7 +25,7 @@ from pathlib import Path
 from specy_road.review_files import ReviewFile, list_reviews
 from specy_road.review_target import ReviewTarget, same_commit
 from specy_road.rework_rca import RcaDoc, RcaNotCarried, check_inputs, filed, governing_rca, rca_lines
-from specy_road.worker_state import WorkerError, WorkerRecord, active_for_node, events_since, list_records
+from specy_road.orchestration.workers.worker_state import WorkerError, WorkerRecord, active_for_node, events_since, list_records
 
 #: Worker states that count as ended for ``--rework`` context (prompt + delegate); not resumable-in-progress ones.
 REWORK_ENDED_WORKER_STATES = frozenset({"completed", "failed", "terminated"})

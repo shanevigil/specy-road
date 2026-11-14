@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
 
 

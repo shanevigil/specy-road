@@ -15,8 +15,8 @@ import yaml
 from tests.review_repo_helpers import NODE, git, make_review_repo
 
 from specy_road import session_presence as sp
-from specy_road import worker_ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli, session_cli
 from specy_road.bundled_scripts.do_next_prompt import print_pickup_header
 

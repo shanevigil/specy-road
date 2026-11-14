@@ -124,7 +124,7 @@ def _launch_models(entry: dict[str, Any], *profiles: Profile | None) -> list[str
     ``api_id``, else the roster id), and the literal ``--model`` / ``-m`` of ``channels.cli`` / ``cli_resume`` and of
     each copy's ``access.cli`` (read, never run; ``worker delegate`` and ``prompt --channel cli`` run it)."""
     # The worker stack, only with a roster to read.
-    from specy_road.worker_models import command_model
+    from specy_road.orchestration.workers.worker_models import command_model
 
     channels = _channels(entry)
     names = [command_model(str(channels[k])) or "" for k in LAUNCH_CHANNELS if channels.get(k)]
@@ -140,7 +140,7 @@ def _model_unreadable(command: str) -> bool:
     ``role_prompt_cli.bypass_problem`` splits (backslash-newlines removed, POSIX ``shlex`` with ``punctuation_chars``
     and no comment character; a command that cannot be split is unreadable), it has a ``--model``, ``--model=…``,
     ``-m`` or ``-m<value>`` word and no literal model is read, or it has more than one such word."""
-    from specy_road.worker_models import command_model
+    from specy_road.orchestration.workers.worker_models import command_model
 
     lexer = shlex.shlex(command.replace("\\\n", ""), posix=True, punctuation_chars=True)
     lexer.whitespace_split, lexer.commenters = True, ""

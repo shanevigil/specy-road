@@ -21,13 +21,20 @@ from tests.review_repo_helpers import git, make_review_repo
 from tests.test_models_and_prompt import run_main
 from tests.test_orchestrate_plan import plan_repo
 
-from specy_road import worker_adapters as wa
+from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.bundled_scripts import doctor, orchestrate_cli
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration_config import validate_orchestration_dict
-from specy_road.worker_adapter_cursor import force_warnings, launch_permissions
-from specy_road.worker_adapter_parsers import output_mode_note, placeholder_problem, resume_form_note
+from specy_road.orchestration.workers.worker_adapter_cursor import (
+    force_warnings,
+    launch_permissions,
+)
+from specy_road.orchestration.workers.worker_adapter_parsers import (
+    output_mode_note,
+    placeholder_problem,
+    resume_form_note,
+)
 
 DOC = Path(__file__).resolve().parents[1] / "docs" / "orchestration-workers.md"
 CODEX_POLICY = "-c sandbox_mode=workspace-write -c sandbox_workspace_write.network_access=true -c approval_policy=never"

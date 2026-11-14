@@ -14,7 +14,7 @@ from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road.role_prompt_rework import CLASS_AUDIT_LINES, rework_check, rework_lines
 from specy_road.review_files import reviews_dir
-from specy_road.worker_state import WorkerError
+from specy_road.orchestration.workers.worker_state import WorkerError
 
 X = "Design X, keep the per-line regex and add a CRLF branch"
 Y = "Design Y, replace the regex with one tokenizer pass over the whole file"

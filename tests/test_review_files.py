@@ -225,7 +225,7 @@ def test_review_record_stores_launch_mode_and_status_prints_it(tmp_path: Path, c
 
 def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, capsys, monkeypatch) -> None:
     from specy_road.bundled_scripts import role_prompt
-    from specy_road.worker_adapters import STDIN_INSTRUCTION
+    from specy_road.orchestration.workers.worker_adapters import STDIN_INSTRUCTION
     from tests.review_repo_helpers import git, review_output
     from tests.test_models_and_prompt import run_main
 

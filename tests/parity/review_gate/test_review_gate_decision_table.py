@@ -32,7 +32,7 @@ from specy_road.review_record_write import file_review
 from specy_road.review_signing import notes_digest, notes_problem, sign
 from specy_road.review_target import resolve_target
 from specy_road.review_write_check import snapshot
-from specy_road.worker_adapters import ADAPTERS
+from specy_road.orchestration.workers.worker_adapters import ADAPTERS
 
 HERE = Path(__file__).resolve().parent
 GATE = yaml.safe_load((HERE / "cases" / "gate_rows.yaml").read_text(encoding="utf-8"))

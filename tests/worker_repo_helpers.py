@@ -12,9 +12,9 @@ from pathlib import Path
 
 from tests.review_repo_helpers import git, make_review_repo
 
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
-from specy_road.worker_adapters import Launch
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers.worker_adapters import Launch
 
 FAKE = '''
 import json, sys, time
@@ -57,7 +57,7 @@ def run_fake_harness_turn(repo: Path, script: Path, rec: ws.WorkerRecord, lines:
 
 def reset_cursor_adapter_via_init(adapter=None):
     """Clear the shared Cursor adapter's per-turn usage list the way a real stream does (``system``/``init``)."""
-    from specy_road import worker_adapters as wa
+    from specy_road.orchestration.workers import worker_adapters as wa
 
     cu = adapter or wa.adapter_for("cursor")
     cu.parse(json.dumps({"type": "system", "subtype": "init", "session_id": "test-reset"}))

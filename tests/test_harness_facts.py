@@ -13,7 +13,7 @@ import yaml
 from specy_road import harness_facts as hf
 from specy_road.bundled_scripts import refresh_profiles as rp
 from specy_road.runtime_paths import project_template_root
-from specy_road.worker_state import HARNESSES
+from specy_road.orchestration.workers.worker_state import HARNESSES
 OPUS = Path("model-profiles/anthropic-claude/claude-opus-5-5.md")
 SOL = Path("model-profiles/openai-gpt/gpt-6.1-sol.md")
 

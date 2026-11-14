@@ -23,9 +23,14 @@ from specy_road.review_gate import evaluate_gate
 from specy_road.review_record_write import file_review, output_schema, review_run_lock, reviewer_env, snapshot, written
 from specy_road.review_rejected import rejected_path
 from specy_road.review_signing import notes_digest
-from specy_road.worker_adapter_base import file_instruction
-from specy_road.worker_adapter_codex import profile_home
-from specy_road.worker_adapters import Codex, Cursor, Unsupported, reviewer_cli
+from specy_road.orchestration.workers.worker_adapter_base import file_instruction
+from specy_road.orchestration.workers.worker_adapter_codex import profile_home
+from specy_road.orchestration.workers.worker_adapters import (
+    Codex,
+    Cursor,
+    Unsupported,
+    reviewer_cli,
+)
 
 def _record(repo: Path) -> Path:
     return rf.review_path(repo, "M1.1", "opus")

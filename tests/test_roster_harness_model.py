@@ -11,10 +11,10 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops as ops
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts.validate_roadmap import validate_orchestration_contract
 from specy_road.orchestration_config import harness_model, harness_model_warnings, parse_orchestration_text
 from specy_road.review_delegate import delegate as review_delegate

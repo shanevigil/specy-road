@@ -21,9 +21,9 @@ from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 from tests.worker_lease_helpers import checkout_id_file, idle_worker, remote_and_clone, remote_leases
 
-from specy_road import worker_lease as lease
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_lease as lease
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 
 
 def _foreign_worker(clone: Path, node: str = "M1.2") -> ws.WorkerRecord:

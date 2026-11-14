@@ -15,8 +15,8 @@ from starlette.testclient import TestClient
 from specy_road.gui_app import create_app
 from specy_road.orchestration import snapshot
 from specy_road.review_files import reviews_dir
-from specy_road.worker_sandbox import state_home
-from specy_road.worker_state import create_record, set_state, workers_dir
+from specy_road.orchestration.workers.worker_sandbox import state_home
+from specy_road.orchestration.workers.worker_state import create_record, set_state, workers_dir
 from tests.helpers import REPO
 from tests.review_repo_helpers import git, make_review_repo, review_text
 

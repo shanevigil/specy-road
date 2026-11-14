@@ -18,7 +18,7 @@ from typing import Any, Literal
 from specy_road.model_names import normalise, same_model  # noqa: F401 — normalise re-exported
 from specy_road.orchestration_config import harness_model
 from specy_road.review_answer import stream_lines
-from specy_road.worker_adapter_parsers import init_model
+from specy_road.orchestration.workers.worker_adapter_parsers import init_model
 
 MISMATCH_REASON = "harness ran a different model"
 

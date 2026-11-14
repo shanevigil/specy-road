@@ -12,7 +12,7 @@ from tests.test_models_and_prompt import make_profile_repo
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import role_prompt
 from specy_road.review_files import reviews_dir
 

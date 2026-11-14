@@ -12,9 +12,9 @@ import pytest
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
 
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.finish_land_integration import print_merge_push_notice
 from specy_road.review_files import reviews_dir
 

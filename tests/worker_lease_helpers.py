@@ -7,8 +7,8 @@ from pathlib import Path
 
 from tests.review_repo_helpers import git
 
-from specy_road import worker_lease as lease
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_lease as lease
+from specy_road.orchestration.workers import worker_state as ws
 
 
 def remote_and_clone(tmp_path: Path, repo: Path) -> tuple[Path, Path]:

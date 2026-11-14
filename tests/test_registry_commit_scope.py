@@ -17,7 +17,7 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import do_next_task as dnt
 from specy_road.bundled_scripts.do_next_task_pickup_helpers import register_and_commit
 from specy_road.repo_ops import working_tree_clean

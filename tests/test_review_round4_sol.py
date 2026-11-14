@@ -34,12 +34,12 @@ from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
-from specy_road import worker_adapters as wa
-from specy_road import worker_lease as wl
-from specy_road import worker_ops as ops
-from specy_road import worker_process as wp
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_lease as wl
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_process as wp
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import refresh_stubs as rs
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import session_cli

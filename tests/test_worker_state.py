@@ -13,10 +13,10 @@ import pytest
 from tests.review_repo_helpers import git, make_review_repo
 
 from specy_road import git_workflow_config as gwc
-from specy_road import worker_adapters as wa
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
-from specy_road.worker_cli_sync import wait_for_event
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers.worker_cli_sync import wait_for_event
 from specy_road.bundled_scripts import worker_cli
 
 
@@ -115,7 +115,9 @@ def test_sync_wait_ctrl_c_exits_130_without_a_traceback(tmp_path: Path, capsys, 
 
     def interrupted(*_a):
         raise KeyboardInterrupt
-    monkeypatch.setattr("specy_road.worker_cli_sync.wait_for_sync", interrupted)
+    monkeypatch.setattr(
+        "specy_road.orchestration.workers.worker_cli_sync.wait_for_sync", interrupted
+    )
     with pytest.raises(SystemExit) as e:
         worker_cli.main(["worker", "sync", "--wait", "--repo-root", str(repo)])
     assert e.value.code == 130
@@ -188,7 +190,7 @@ def test_op_outbox_answers_a_retry_from_the_first_result(tmp_path: Path) -> None
 
 
 def test_schemas_ship_in_the_package(tmp_path: Path) -> None:
-    pkg = Path(ws.__file__).resolve().parent / "schemas"
+    pkg = Path(ws.__file__).resolve().parents[2] / "schemas"
     for name in ("worker-record.schema.json", "worker-event.schema.json"):
         assert json.loads((pkg / name).read_text())["title"].startswith("specy-road")
 
@@ -261,7 +263,7 @@ def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp
     Under the managed block's ``work/*`` every leaf's ``work/worker-logs/`` is ignored, so another
     leaf's logs no longer show as untracked or block delegation either (M22.65).
     """
-    from specy_road import worker_ops as ops
+    from specy_road.orchestration.workers import worker_ops as ops
     from specy_road.agent_ignores import apply_agent_ignores
     from tests.test_worker_cli import FAKE, wait_for_worker, worker_roster
 

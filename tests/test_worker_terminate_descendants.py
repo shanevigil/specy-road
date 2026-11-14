@@ -19,11 +19,11 @@ from pathlib import Path
 
 import pytest
 
-from specy_road import worker_state as ws
-from specy_road.worker_adapters import Launch
-from specy_road.worker_process import kill_group, start_token
-from specy_road.worker_runner import spawn
-from specy_road.worker_state import WorkerError
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers.worker_adapters import Launch
+from specy_road.orchestration.workers.worker_process import kill_group, start_token
+from specy_road.orchestration.workers.worker_runner import spawn
+from specy_road.orchestration.workers.worker_state import WorkerError
 
 from tests.worker_cli_helpers import run_worker_cli
 from tests.worker_repo_helpers import make_worker_repo

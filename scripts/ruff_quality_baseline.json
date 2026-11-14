@@ -686,6 +686,100 @@
     "specy_road/orchestrate_plan.py": {
       "D102/D103": 2
     },
+    "specy_road/orchestration/workers/worker_adapter_base.py": {
+      "PL": 4,
+      "N": 1,
+      "D102/D103": 4
+    },
+    "specy_road/orchestration/workers/worker_adapter_claude.py": {
+      "PL": 3,
+      "D102/D103": 6
+    },
+    "specy_road/orchestration/workers/worker_adapter_codex.py": {
+      "PL": 4,
+      "D102/D103": 5
+    },
+    "specy_road/orchestration/workers/worker_adapter_cursor.py": {
+      "PL": 5,
+      "SIM": 1,
+      "D102/D103": 4
+    },
+    "specy_road/orchestration/workers/worker_adapters.py": {
+      "D102/D103": 1
+    },
+    "specy_road/orchestration/workers/worker_cli_render.py": {
+      "D102/D103": 2
+    },
+    "specy_road/orchestration/workers/worker_cli_sync.py": {
+      "D102/D103": 2
+    },
+    "specy_road/orchestration/workers/worker_exit.py": {
+      "PL": 1
+    },
+    "specy_road/orchestration/workers/worker_lease.py": {
+      "D102/D103": 2
+    },
+    "specy_road/orchestration/workers/worker_lock.py": {
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "specy_road/orchestration/workers/worker_models.py": {
+      "PL": 1
+    },
+    "specy_road/orchestration/workers/worker_ops_launch.py": {
+      "PL": 4
+    },
+    "specy_road/orchestration/workers/worker_ops_lifecycle.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "specy_road/orchestration/workers/worker_ops_message.py": {
+      "PL": 2,
+      "D102/D103": 3
+    },
+    "specy_road/orchestration/workers/worker_orphans.py": {
+      "D102/D103": 1
+    },
+    "specy_road/orchestration/workers/worker_outbox.py": {
+      "PL": 6,
+      "D102/D103": 2
+    },
+    "specy_road/orchestration/workers/worker_process.py": {
+      "PL": 2,
+      "SIM": 2,
+      "D102/D103": 3
+    },
+    "specy_road/orchestration/workers/worker_reconcile.py": {
+      "D102/D103": 1
+    },
+    "specy_road/orchestration/workers/worker_runner.py": {
+      "PL": 10,
+      "B": 1,
+      "SIM": 1,
+      "D102/D103": 4
+    },
+    "specy_road/orchestration/workers/worker_runner_ready.py": {
+      "PL": 3,
+      "SIM": 1,
+      "D102/D103": 1
+    },
+    "specy_road/orchestration/workers/worker_sandbox.py": {
+      "B": 1
+    },
+    "specy_road/orchestration/workers/worker_state.py": {
+      "PL": 3
+    },
+    "specy_road/orchestration/workers/worker_turn_check.py": {
+      "B": 1,
+      "D102/D103": 2
+    },
+    "specy_road/orchestration/workers/worker_usage_plausibility.py": {
+      "SIM": 1
+    },
+    "specy_road/orchestration/workers/worker_witness.py": {
+      "PL": 4,
+      "D102/D103": 1
+    },
     "specy_road/orchestration_config.py": {
       "PL": 1,
       "D102/D103": 5
@@ -965,101 +1059,7 @@
       "PL": 1,
       "D102/D103": 2
     },
-    "specy_road/worker_adapter_base.py": {
-      "PL": 4,
-      "N": 1,
-      "D102/D103": 4
-    },
-    "specy_road/worker_adapter_claude.py": {
-      "PL": 3,
-      "D102/D103": 6
-    },
-    "specy_road/worker_adapter_codex.py": {
-      "PL": 4,
-      "D102/D103": 5
-    },
-    "specy_road/worker_adapter_cursor.py": {
-      "PL": 5,
-      "SIM": 1,
-      "D102/D103": 4
-    },
-    "specy_road/worker_adapters.py": {
-      "D102/D103": 1
-    },
-    "specy_road/worker_cli_render.py": {
-      "D102/D103": 2
-    },
-    "specy_road/worker_cli_sync.py": {
-      "D102/D103": 2
-    },
-    "specy_road/worker_exit.py": {
-      "PL": 1
-    },
     "specy_road/worker_hook.py": {
-      "D102/D103": 1
-    },
-    "specy_road/worker_lease.py": {
-      "D102/D103": 2
-    },
-    "specy_road/worker_lock.py": {
-      "PL": 2,
-      "D102/D103": 1
-    },
-    "specy_road/worker_models.py": {
-      "PL": 1
-    },
-    "specy_road/worker_ops_launch.py": {
-      "PL": 4
-    },
-    "specy_road/worker_ops_lifecycle.py": {
-      "PL": 1,
-      "D102/D103": 2
-    },
-    "specy_road/worker_ops_message.py": {
-      "PL": 2,
-      "D102/D103": 3
-    },
-    "specy_road/worker_orphans.py": {
-      "D102/D103": 1
-    },
-    "specy_road/worker_outbox.py": {
-      "PL": 6,
-      "D102/D103": 2
-    },
-    "specy_road/worker_process.py": {
-      "PL": 2,
-      "SIM": 2,
-      "D102/D103": 3
-    },
-    "specy_road/worker_reconcile.py": {
-      "D102/D103": 1
-    },
-    "specy_road/worker_runner.py": {
-      "PL": 10,
-      "B": 1,
-      "SIM": 1,
-      "D102/D103": 4
-    },
-    "specy_road/worker_runner_ready.py": {
-      "PL": 3,
-      "SIM": 1,
-      "D102/D103": 1
-    },
-    "specy_road/worker_sandbox.py": {
-      "B": 1
-    },
-    "specy_road/worker_state.py": {
-      "PL": 3
-    },
-    "specy_road/worker_turn_check.py": {
-      "B": 1,
-      "D102/D103": 2
-    },
-    "specy_road/worker_usage_plausibility.py": {
-      "SIM": 1
-    },
-    "specy_road/worker_witness.py": {
-      "PL": 4,
       "D102/D103": 1
     },
     "specy_road/workflow_prefs.py": {

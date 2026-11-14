@@ -21,8 +21,8 @@ from specy_road.review_delegate import DelegateError
 from specy_road.review_signing import SigningError
 from specy_road.review_target import ReviewTargetError
 from specy_road.roster_generate import RosterError
-from specy_road.worker_lock import WorkerError
-from specy_road.worker_state import LeaseError
+from specy_road.orchestration.workers.worker_lock import WorkerError
+from specy_road.orchestration.workers.worker_state import LeaseError
 from specy_road.worktree_env import EnvSetupError
 from specy_road.worktree_prune import PruneError
 

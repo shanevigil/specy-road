@@ -287,9 +287,9 @@ def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, mo
     from tests.review_repo_helpers import make_review_repo, review_text
     from tests.test_prerelease_s2 import ROSTER
 
-    from specy_road import worker_adapters as wa
-    from specy_road import worker_runner as wr
-    from specy_road import worker_state as ws
+    from specy_road.orchestration.workers import worker_adapters as wa
+    from specy_road.orchestration.workers import worker_runner as wr
+    from specy_road.orchestration.workers import worker_state as ws
     from specy_road.bundled_scripts import finish_task
     from specy_road.bundled_scripts import mark_implementation_reviewed as mir
     from specy_road.bundled_scripts.role_prompt import build_prompt

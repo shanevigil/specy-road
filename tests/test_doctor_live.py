@@ -15,7 +15,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from specy_road import session_presence, worker_state
+from specy_road import session_presence
+from specy_road.orchestration.workers import worker_state
 from specy_road.bundled_scripts import doctor
 from specy_road.doctor_worktrees import NO_EVIDENCE
 from tests.review_repo_helpers import commit_file, git

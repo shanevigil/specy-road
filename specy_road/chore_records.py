@@ -15,7 +15,7 @@ from typing import Any
 from specy_road.git_subprocess import head_sha
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTarget
-from specy_road.worker_state import WorkerError
+from specy_road.orchestration.workers.worker_state import WorkerError
 
 # Lower case, so never a node id (``M1.2``); not ``w-``, which names a worker id where a target is either.
 _SLUG = re.compile(r"^(?!w-)[a-z0-9][a-z0-9-]*$")

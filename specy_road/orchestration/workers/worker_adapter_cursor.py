@@ -1,6 +1,6 @@
 """The ``cursor`` harness adapter: ``agent -p`` stream-json (slice 7b).
 
-Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach it through that module.
+Split from :mod:`specy_road.orchestration.workers.worker_adapters` for the file limit; callers reach it through that module.
 
 Composer 2.5 worker logs on this toolkit's grind carry usage on the terminal ``result`` line
 once per turn (``inputTokens``, ``outputTokens``, ``cacheReadTokens``, ``cacheWriteTokens``).
@@ -16,11 +16,11 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from specy_road.worker_adapter_base import (Adapter, Capabilities, Launch, Parsed, Unsupported, _model_flag,
+from specy_road.orchestration.workers.worker_adapter_base import (Adapter, Capabilities, Launch, Parsed, Unsupported, _model_flag,
                                          file_instruction)
-from specy_road.worker_adapter_parsers import _json, _num, _snip, usage_fields
-from specy_road.worker_sessions import session_id_problem
-from specy_road.worker_usage_delta import SESSION_TOKENS
+from specy_road.orchestration.workers.worker_adapter_parsers import _json, _num, _snip, usage_fields
+from specy_road.orchestration.workers.worker_sessions import session_id_problem
+from specy_road.orchestration.workers.worker_usage_delta import SESSION_TOKENS
 
 
 def _raw_usage(d: dict[str, Any]) -> Any:

@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import shutil
 
-from specy_road.worker_adapter_base import PROGRAMS, Unsupported
+from specy_road.orchestration.workers.worker_adapter_base import PROGRAMS, Unsupported
 
 #: Where each harness's own installer puts its binary: Cursor's agent CLI and Claude Code's native installer use
 #: ``~/.local/bin``; Claude Code's older local install ``~/.claude/local``.

@@ -24,16 +24,14 @@ from tests.decisions_repo_helpers import decisions_repo
 from tests.review_repo_helpers import make_review_repo
 from tests.worker_lease_helpers import idle_worker
 
-from specy_road import (
-    clock,
-    decisions,
-    session_presence,
+from specy_road import clock, decisions, session_presence
+from specy_road.orchestration.workers import (
     worker_lease,
     worker_outbox,
     worker_reconcile,
     worker_witness,
 )
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import chore_cli, chore_garden
 from specy_road.brainstorm_session import (
     BrainstormSession,
@@ -43,7 +41,7 @@ from specy_road.brainstorm_session import (
 from specy_road.bundled_scripts.grind_session_events import EventEmitter
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 from specy_road.reviewer_run_failure import record_reviewer_failure_event
-from specy_road.worker_turn_check import TurnWatch
+from specy_road.orchestration.workers.worker_turn_check import TurnWatch
 
 PACKAGE = Path(__file__).resolve().parents[1] / "specy_road"
 FROZEN = datetime(2026, 11, 9, 1, 2, 3, 456789, tzinfo=timezone.utc)
@@ -229,11 +227,11 @@ def _brainstorm(tmp_path: Path) -> Writer:
 #: The row's file exists before the call when the caller replaces one. The roadmap chunk writer
 #: has its own tests below, because its rollback removes the temporary file.
 WRITERS: dict[str, Callable[[Path], Writer]] = {
-    "worker_state.py:save_record": _save_record,
-    "worker_state.py:append_event": _mailbox_flag,
-    "worker_outbox.py:begin_op": _begin_op,
-    "worker_outbox.py:complete_op": _complete_op,
-    "worker_reconcile.py:sync": _sync_marks,
+    "orchestration/workers/worker_state.py:save_record": _save_record,
+    "orchestration/workers/worker_state.py:append_event": _mailbox_flag,
+    "orchestration/workers/worker_outbox.py:begin_op": _begin_op,
+    "orchestration/workers/worker_outbox.py:complete_op": _complete_op,
+    "orchestration/workers/worker_reconcile.py:sync": _sync_marks,
     "session_presence.py:start_session": _presence,
     "bundled_scripts/chore_cli.py:_save": lambda tmp_path: _chore(tmp_path, "json"),
     "bundled_scripts/chore_cli.py:close": lambda tmp_path: _chore(tmp_path, "md"),
@@ -321,10 +319,12 @@ OS_REPLACE_ALLOWED = {
     "fs_atomic.py": "the shared atomic text writer",
     "safe_write.py": "descriptor-anchored writes that refuse symlinks on the path",
     "review_write_check.py:replace_file": "never writes through a symlink at the file or a parent",
-    "worker_lease.py:checkout_id": "replaces an invalid id; an absent one is installed by os.link",
+    "orchestration/workers/worker_lease.py:checkout_id":
+        "replaces an invalid id; an absent one is installed by os.link",
     "finish_bookkeeping_undo.py:_restore": "puts back a file's bytes and mode, or a symlink",
     "finish_bookkeeping_undo.py:restore_pre_commit": "puts git's index bytes back",
-    "worker_sandbox.py:_install_seed": "copies bytes over a read-only placeholder, mode 0600",
+    "orchestration/workers/worker_sandbox.py:_install_seed":
+        "copies bytes over a read-only placeholder, mode 0600",
 }
 
 

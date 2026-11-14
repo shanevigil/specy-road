@@ -18,7 +18,7 @@ from tests.test_nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.finish_implementation_check import implementation_paths

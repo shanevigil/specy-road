@@ -12,15 +12,15 @@ from pathlib import Path
 import pytest
 
 from specy_road import orchestration_role_guard as org
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration_guard_adapters import ADAPTERS
 from specy_road.review_delegate import delegate
 from specy_road.review_files import reviews_dir
 from specy_road.specyrd_hooks import install_orchestration_hooks, install_pre_push_hook
 from specy_road.specyrd_init import run_init
 from specy_road.tool_call_guard import ADAPTERS as SESSION_ADAPTERS
-from specy_road.worker_adapters import Launch
+from specy_road.orchestration.workers.worker_adapters import Launch
 from tests.helpers import script_subprocess_env
 from tests.review_repo_helpers import make_review_repo
 from tests.test_hook_adapters import PAYLOADS

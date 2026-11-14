@@ -28,7 +28,13 @@ from specy_road.review_files import render_front_matter, reviews_dir
 from specy_road.review_override import block_item, shortfall_text
 from specy_road.review_policy_pin import pinned_message
 from specy_road.session_presence import start_session
-from specy_road.worker_state import FLAG_NEEDS_PERSON, add_flag, create_record, set_lease, set_state
+from specy_road.orchestration.workers.worker_state import (
+    FLAG_NEEDS_PERSON,
+    add_flag,
+    create_record,
+    set_lease,
+    set_state,
+)
 from specy_road.orchestration_role_env import ROLE_ENV
 from specy_road.review_gate import evaluate_gate
 from tests.review_repo_helpers import NODE, commit_file, diverge, make_review_repo, review_text

@@ -16,9 +16,9 @@ import pytest
 
 from tests.review_repo_helpers import make_review_repo
 
-from specy_road import worker_ops as ops
-from specy_road import worker_process as wp
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_process as wp
+from specy_road.orchestration.workers import worker_state as ws
 
 
 def _gone_pid() -> int:

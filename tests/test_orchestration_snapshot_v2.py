@@ -20,8 +20,13 @@ import pytest
 from specy_road.git_subprocess import run as git_run
 from specy_road.orchestration import snapshot
 from specy_road.review_files import reviews_dir
-from specy_road.worker_sandbox import state_home
-from specy_road.worker_state import create_record, events_since, mutate, set_state
+from specy_road.orchestration.workers.worker_sandbox import state_home
+from specy_road.orchestration.workers.worker_state import (
+    create_record,
+    events_since,
+    mutate,
+    set_state,
+)
 from tests.helpers import REPO
 from tests.review_repo_helpers import advance_dev, commit_file, git, make_review_repo, review_text
 

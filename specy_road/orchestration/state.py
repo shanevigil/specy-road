@@ -10,9 +10,9 @@ is invoked as ``git -c core.fsmonitor=false -c core.hooksPath=/dev/null`` with
 
 Each leaf's status comes from the fixture's truth table, first match wins. The abandoned rule is
 M15.26's, stated once in :func:`specy_road.orphaned_claims.orphaned_claims`; the slot states are
-:data:`specy_road.worker_orphans.SLOT_STATES`. An unreadable source sets only its own fields to
-``unknown``: an unreadable worker record is listed with its id and nothing else, and every status is
-judged from the readable records, as the M15.26 report judges them.
+:data:`specy_road.orchestration.workers.worker_orphans.SLOT_STATES`. An unreadable source sets only
+its own fields to ``unknown``: an unreadable worker record is listed with its id and nothing else,
+and every status is judged from the readable records, as the M15.26 report judges them.
 """
 
 from __future__ import annotations
@@ -35,10 +35,10 @@ from specy_road.orchestration.claims import read_claims
 from specy_road.orphaned_claims import orphaned_claims
 from specy_road.review_files import ReviewFile, list_ready, list_reviews, latest_ready
 from specy_road.review_target import ReviewTargetError, same_commit
-from specy_road.worker_orphans import SLOT_STATES
-from specy_road.worker_process import wrapper_alive
-from specy_road.worker_schema import schema_errors
-from specy_road.worker_state import WorkerError, WorkerRecord, events_since, load_record, workers_dir
+from specy_road.orchestration.workers.worker_orphans import SLOT_STATES
+from specy_road.orchestration.workers.worker_process import wrapper_alive
+from specy_road.orchestration.workers.worker_schema import schema_errors
+from specy_road.orchestration.workers.worker_state import WorkerError, WorkerRecord, events_since, load_record, workers_dir
 
 SCHEMA = 2
 UNKNOWN = "unknown"
@@ -312,7 +312,7 @@ def _account(repo: Path, rec: WorkerRecord) -> str | None:
 
 def _worker_config_dir(repo: Path, worker_id: str) -> str | None:
     """The sandbox record of the config dir this worker ran with, when it is a regular file."""
-    from specy_road.worker_sandbox import state_home
+    from specy_road.orchestration.workers.worker_sandbox import state_home
 
     path = state_home(repo, worker_id) / "claude-config-dir"
     text = _regular_text(path)

@@ -16,12 +16,12 @@ from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_lease_helpers import remote_and_clone
 from tests.worker_repo_helpers import make_worker_repo, worker_roster
 
-from specy_road import worker_ops as ops
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli
-from specy_road.worker_adapters import Launch
-from specy_road.worker_runner_ready import READY_ONLY_PROMPT
+from specy_road.orchestration.workers.worker_adapters import Launch
+from specy_road.orchestration.workers.worker_runner_ready import READY_ONLY_PROMPT
 
 
 FAKE_SLOW = '''

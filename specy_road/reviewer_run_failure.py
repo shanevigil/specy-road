@@ -12,7 +12,7 @@ from specy_road.clock import utc_now_iso
 from specy_road.review_bookkeeping import policy_line
 from specy_road.review_files import list_reviews, reviews_dir
 from specy_road.review_write_check import replace_file
-from specy_road.worker_adapter_parsers import UNREADABLE, loads_untrusted
+from specy_road.orchestration.workers.worker_adapter_parsers import UNREADABLE, loads_untrusted
 from specy_road.review_target import ReviewTarget, same_commit
 
 RUN_PREFIX = "RUN-"

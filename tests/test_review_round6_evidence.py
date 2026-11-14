@@ -22,7 +22,7 @@ import pytest
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
 
 from specy_road import review_signing as rs
-from specy_road import worker_reconcile as wr
+from specy_road.orchestration.workers import worker_reconcile as wr
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp

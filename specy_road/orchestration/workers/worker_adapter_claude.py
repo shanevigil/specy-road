@@ -1,6 +1,6 @@
 """The ``claude-code`` harness adapter: ``claude -p`` stream-json (slice 7b).
 
-Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach it through that module.
+Split from :mod:`specy_road.orchestration.workers.worker_adapters` for the file limit; callers reach it through that module.
 """
 
 from __future__ import annotations
@@ -14,9 +14,9 @@ from typing import Any
 
 from specy_road.claude_config import claude_projects_dir
 from specy_road.reviewer_auth import WORKER_FULL_FLAGS, bare_settings_argv, worker_environment
-from specy_road.worker_adapter_base import (REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, REVIEWER_TOOLS, STDIN_INSTRUCTION,
+from specy_road.orchestration.workers.worker_adapter_base import (REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, REVIEWER_TOOLS, STDIN_INSTRUCTION,
                                          Adapter, Capabilities, Launch, Parsed, _model_flag)
-from specy_road.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
+from specy_road.orchestration.workers.worker_adapter_parsers import _init_detail, _json, _snip, _text, limit_detail, usage_fields
 
 #: The executor's tools, listed rather than left to the mode: since 2.1.302 ``claude -p`` silently denies a tool
 #: nothing approved, and ``acceptEdits`` approves no shell command beyond the read-only and filesystem sets.

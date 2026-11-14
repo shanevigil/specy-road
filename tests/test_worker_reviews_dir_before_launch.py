@@ -11,8 +11,8 @@ from tests.review_repo_helpers import git
 from tests.test_worker_cli import wait_for_worker
 from tests.test_worker_m310_reconcile_status import nested_project
 
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.review_files import reviews_dir
 
 # A default-command harness that refuses a missing allowed directory, as Cursor's `agent` does for `--add-dir`.

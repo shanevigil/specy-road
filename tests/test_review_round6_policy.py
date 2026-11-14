@@ -15,8 +15,8 @@ import yaml
 
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import models_cli
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles
 from specy_road.bundled_scripts.role_prompt import build_prompt
@@ -26,7 +26,7 @@ from specy_road.orchestrate_plan import build_orchestration_plan, entry_may_proc
 from specy_road.orchestration_config import parse_orchestration_text
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_gate import policy_source, review_required
-from specy_road.worker_adapters import placeholder_problem
+from specy_road.orchestration.workers.worker_adapters import placeholder_problem
 
 REPO = Path(__file__).resolve().parent.parent
 OPUS = REPO / "specy_road/templates/project/model-profiles/anthropic-claude/claude-opus-5-5.md"

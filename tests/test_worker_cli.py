@@ -13,10 +13,10 @@ import yaml
 
 from tests.review_repo_helpers import git
 
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli, worker_cli
-from specy_road import worker_cli_render as wcr
+from specy_road.orchestration.workers import worker_cli_render as wcr
 
 from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import FAKE, make_worker_repo, run_fake_harness_turn, worker_roster  # noqa: F401
@@ -193,8 +193,8 @@ def test_terminate_a_live_worker(tmp_path: Path) -> None:
     spec = tmp_path / "slow.json"
     spec.write_text(json.dumps({"lines": [{"type": "system", "subtype": "init", "session_id": "slow"}], "sleep": 30}))
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
-    from specy_road.worker_adapters import Launch
-    from specy_road.worker_runner import pid_alive, spawn
+    from specy_road.orchestration.workers.worker_adapters import Launch
+    from specy_road.orchestration.workers.worker_runner import pid_alive, spawn
     spawn(repo, rec, Launch([sys.executable, str(script), str(spec)]))
     for _ in range(50):
         if ws.load_record(repo, "w-0001").provider_session_id:
@@ -338,7 +338,7 @@ def test_usage_events_per_turn_and_the_usage_command(tmp_path: Path, capsys) -> 
 
 def test_usage_event_schema_needs_every_field_nullable_never_missing() -> None:
     """M10.2 A1: a usage event carries all eight fields; null is allowed, a missing field or a wrong type is not."""
-    from specy_road.worker_adapter_parsers import USAGE_FIELDS
+    from specy_road.orchestration.workers.worker_adapter_parsers import USAGE_FIELDS
     ev = {"seq": 1, "worker_id": "w-0001", "at": "2026-11-01T00:00:00+00:00", "type": "usage", "source": "worker",
           "authority": "worker_suggestion", "summary": "usage", "epoch": 0}
     nulls = dict.fromkeys(USAGE_FIELDS)

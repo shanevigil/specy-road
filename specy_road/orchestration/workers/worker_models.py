@@ -3,7 +3,7 @@
 A harness that routes models itself (Cursor's Auto, a cascade, its own critic) can run another model than the
 ``--model`` it was given. The wrapper records the ``--model`` on each ``launched`` event and the model the harness's
 ``system/init`` line names on its ``started`` event; the turn's ``usage`` event keeps both, and its summary, which
-``worker sync`` prints, says when they differ (:func:`usage_event`). Split from :mod:`specy_road.worker_runner` for the file limit.
+``worker sync`` prints, says when they differ (:func:`usage_event`). Split from :mod:`specy_road.orchestration.workers.worker_runner` for the file limit.
 
 A custom command runs as ``sh -c <command>``; its model is read only when the command is one simple command and
 the value is literal (:func:`command_model`): in a list or pipeline a ``--model`` can belong to another program than
@@ -19,8 +19,13 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.model_names import roster_match, same_model
-from specy_road.worker_adapter_parsers import _WORD, ROSTER_PRICED, model_from_argv, usage_text
-from specy_road.worker_state import WorkerEvent
+from specy_road.orchestration.workers.worker_adapter_parsers import (
+    _WORD,
+    ROSTER_PRICED,
+    model_from_argv,
+    usage_text,
+)
+from specy_road.orchestration.workers.worker_state import WorkerEvent
 
 #: Spans ``sh`` reads literally: single-quoted, double-quoted without a substitution inside, a backslash escape.
 _LITERAL = re.compile(r"""'[^']*'|"(?:[^"\\`$]|\\.|\$(?!\())*"|\\.""", re.S)
@@ -82,7 +87,7 @@ def usage_event(repo_root: Path, detail: dict[str, Any]) -> dict[str, Any]:
     """The ``summary`` and ``detail`` of a turn's ``usage`` event (M15.19). The told model is compared with the
     reported one through its roster entry and profile; on a real mismatch a roster-price estimate is dropped,
     since it priced a model the harness did not run. A cost the harness reported is kept, estimate or not (Claude's
-    ``total_cost_usd``): only :data:`~specy_road.worker_adapter_parsers.ROSTER_PRICED` marks a roster fill, and the
+    ``total_cost_usd``): only :data:`~specy_road.orchestration.workers.worker_adapter_parsers.ROSTER_PRICED` marks a roster fill, and the
     marker is not stored."""
     detail = dict(detail)
     roster_priced = detail.pop(ROSTER_PRICED, None)

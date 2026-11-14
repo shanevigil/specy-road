@@ -15,7 +15,7 @@ from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agents_md_block import print_injected_context
 from specy_road.bundled_scripts import grind_session_implement as gsi
 from specy_road.claude_config import claude_projects_dir
-from specy_road.worker_adapter_claude import ClaudeCode
+from specy_road.orchestration.workers.worker_adapter_claude import ClaudeCode
 
 ROOT = Path(__file__).resolve().parent.parent
 SID = "7f1c0000-0000-4000-8000-000000000001"

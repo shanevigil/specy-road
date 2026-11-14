@@ -113,7 +113,7 @@ def history_cache_stays_out_of_the_source_tree(monkeypatch: pytest.MonkeyPatch) 
 def codex_homes_stay_in_tmp(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     """A default Codex launch creates the profile's ``CODEX_HOME`` (and links the user's ``auth.json``):
     never under the developer's own ``~/.specy-road``."""
-    import specy_road.worker_adapter_codex as codex
+    import specy_road.orchestration.workers.worker_adapter_codex as codex
 
     homes = tmp_path_factory.mktemp("codex-homes")
     monkeypatch.setattr(codex, "codex_homes", lambda: homes)
@@ -133,6 +133,6 @@ def harness_binaries_are_not_looked_up(monkeypatch: pytest.MonkeyPatch) -> None:
 def cursor_chats_are_never_created(monkeypatch: pytest.MonkeyPatch) -> None:
     """A default Cursor launch runs ``agent create-chat`` first: on a machine with Cursor's CLI that would create a
     real chat per test. Every test gets a fixed id instead; the fake-binary test calls the real function."""
-    import specy_road.worker_adapter_cursor as cursor
+    import specy_road.orchestration.workers.worker_adapter_cursor as cursor
 
     monkeypatch.setattr(cursor, "create_chat", lambda worktree, program="agent": "chat-under-test")

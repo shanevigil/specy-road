@@ -10,7 +10,7 @@ import pytest
 from tests.review_repo_helpers import git
 from tests.test_worker_m310_reconcile_status import nested_project
 
-from specy_road import worker_adapters as wa
+from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.review_files import reviews_dir
 
 

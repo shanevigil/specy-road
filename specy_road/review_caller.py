@@ -27,7 +27,7 @@ from typing import Any
 
 from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_policy_ref import policy_source
-from specy_road.worker_state import load_record
+from specy_road.orchestration.workers.worker_state import load_record
 
 #: ``(harness, environment variable, value)``: the marker each harness exports to the commands it runs, confirmed
 #: against the §9 replay versions (2026-11-05): Claude Code 2.1.318, codex-cli 0.166.0, Cursor agent

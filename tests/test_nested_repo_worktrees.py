@@ -18,10 +18,10 @@ from tests.review_repo_helpers import git
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_ops as ops
-from specy_road import worker_reconcile as wrc
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_reconcile as wrc
 from specy_road.git_workflow_config import load_git_workflow_config, validate_git_workflow_dict
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.nested_repos import NestedRepoError, add_nested_worktrees, covers, nested_repos
 
 COVERED, UNCOVERED = "src/engine", "lib"

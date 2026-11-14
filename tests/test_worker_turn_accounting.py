@@ -10,15 +10,15 @@ from pathlib import Path
 from tests.test_cursor_usage_cost import _api_id_for, _codex_repo
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
-from specy_road import worker_cli_render as wcr
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers import worker_cli_render as wcr
 from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
-from specy_road.worker_adapter_parsers import estimate_usage_cost, mtok_rates
-from specy_road.worker_adapters import Launch
-from specy_road.worker_models import mismatch_note
-from specy_road.worker_usage_delta import turn_usage
+from specy_road.orchestration.workers.worker_adapter_parsers import estimate_usage_cost, mtok_rates
+from specy_road.orchestration.workers.worker_adapters import Launch
+from specy_road.orchestration.workers.worker_models import mismatch_note
+from specy_road.orchestration.workers.worker_usage_delta import turn_usage
 
 ECHO = "import json, sys\nfor line in json.loads(open(sys.argv[1]).read()):\n    print(json.dumps(line), flush=True)\n"
 

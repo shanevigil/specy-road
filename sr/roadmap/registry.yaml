@@ -70,22 +70,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only
-    node_id: M16.5.1
-    branch: feature/rm-worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only
-    touch_zones:
-      - specy_road/orchestration/workers/
-      - specy_road/worker_*.py
-      - specy_road/bundled_scripts/worker_cli*.py
-      - tests/
-      - specy_road/
-      - scripts/line_width_baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-      - constraints/test-private-imports-baseline.txt
-      - constraints/clone-baseline.json
-      - specy_road/worker_hook.py
-      - docs/orchestration-workers.md
-    started: '2026-11-13'
-    owner: savigil
-    implementation_review: pending

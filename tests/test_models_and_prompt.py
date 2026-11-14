@@ -137,7 +137,7 @@ def test_models_show_prints_fields_and_section(tmp_path: Path, capsys) -> None:
 
 def test_models_show_prints_a_bad_launch_mode_and_delegate_reads_a_good_one(tmp_path: Path, capsys,
                                                                             monkeypatch) -> None:
-    from specy_road import worker_ops as ops, worker_state as ws  # noqa: PLC0415 — only this test needs the worker side
+    from specy_road.orchestration.workers import worker_ops as ops, worker_state as ws  # noqa: PLC0415 — only this test needs the worker side
     repo = make_profile_repo(tmp_path)
     launches = []
     monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))

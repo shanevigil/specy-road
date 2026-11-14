@@ -37,12 +37,12 @@
         "specy_road.review_write_check",
         "specy_road.roster_local",
         "specy_road.roster_profile_check",
-        "specy_road.worker_adapter_base",
-        "specy_road.worker_adapter_parsers",
-        "specy_road.worker_lock",
-        "specy_road.worker_models",
-        "specy_road.worker_outbox",
-        "specy_road.worker_state"
+        "specy_road.orchestration.workers.worker_adapter_base",
+        "specy_road.orchestration.workers.worker_adapter_parsers",
+        "specy_road.orchestration.workers.worker_lock",
+        "specy_road.orchestration.workers.worker_models",
+        "specy_road.orchestration.workers.worker_outbox",
+        "specy_road.orchestration.workers.worker_state"
       ]
     },
     {
@@ -58,20 +58,20 @@
         "specy_road.review_run_status",
         "specy_road.review_usage",
         "specy_road.role_prompt_cli",
-        "specy_road.worker_cli_render",
-        "specy_road.worker_exit",
-        "specy_road.worker_lease",
-        "specy_road.worker_ops",
-        "specy_road.worker_ops_launch",
-        "specy_road.worker_ops_lifecycle",
-        "specy_road.worker_ops_message",
-        "specy_road.worker_ops_slots",
-        "specy_road.worker_orphans",
-        "specy_road.worker_process",
-        "specy_road.worker_reconcile",
-        "specy_road.worker_runner",
-        "specy_road.worker_runner_ready",
-        "specy_road.worker_turn_check"
+        "specy_road.orchestration.workers.worker_cli_render",
+        "specy_road.orchestration.workers.worker_exit",
+        "specy_road.orchestration.workers.worker_lease",
+        "specy_road.orchestration.workers.worker_ops",
+        "specy_road.orchestration.workers.worker_ops_launch",
+        "specy_road.orchestration.workers.worker_ops_lifecycle",
+        "specy_road.orchestration.workers.worker_ops_message",
+        "specy_road.orchestration.workers.worker_ops_slots",
+        "specy_road.orchestration.workers.worker_orphans",
+        "specy_road.orchestration.workers.worker_process",
+        "specy_road.orchestration.workers.worker_reconcile",
+        "specy_road.orchestration.workers.worker_runner",
+        "specy_road.orchestration.workers.worker_runner_ready",
+        "specy_road.orchestration.workers.worker_turn_check"
       ]
     },
     {
@@ -335,11 +335,11 @@
       "to": "specy_road.bundled_scripts.refresh_schemas"
     },
     {
-      "from": "specy_road.worker_ops_launch",
+      "from": "specy_road.orchestration.workers.worker_ops_launch",
       "to": "specy_road.bundled_scripts.role_prompt"
     },
     {
-      "from": "specy_road.worker_reconcile",
+      "from": "specy_road.orchestration.workers.worker_reconcile",
       "to": "specy_road.bundled_scripts.role_prompt"
     }
   ]

@@ -16,8 +16,8 @@ from tests.review_repo_helpers import git, make_review_repo, review_text
 from tests.test_models_and_prompt import run_main
 
 from specy_road import harness_binary as hb
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road import role_prompt_cli
 from specy_road.runtime_paths import project_template_root
@@ -25,10 +25,10 @@ from specy_road.model_profiles import load_profile
 from specy_road import review_delegate
 from specy_road.review_files import reviews_dir
 from specy_road.review_record_write import strict_schema
-from specy_road.worker_adapter_base import (ARG_LIMIT, CODEX_REVIEW_POLICY, checked, file_instruction,
+from specy_road.orchestration.workers.worker_adapter_base import (ARG_LIMIT, CODEX_REVIEW_POLICY, checked, file_instruction,
                                          oversized_arg)
-from specy_road.worker_adapter_codex import CODEX_MEMORY_OFF, profile_home
-from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported
+from specy_road.orchestration.workers.worker_adapter_codex import CODEX_MEMORY_OFF, profile_home
+from specy_road.orchestration.workers.worker_adapters import ADAPTERS, Launch, Unsupported
 
 REAL_RESOLVE = hb.resolve   # taken at import, before conftest's autouse stub replaces it for each test
 
@@ -235,7 +235,7 @@ def test_worker_and_reviewer_launches_run_the_resolved_binary(tmp_path: Path, mo
     agent = _exe(tmp_path / "tools" / "agent")
     repo = make_review_repo(tmp_path, orchestration=ROSTER.format(extra=f", harness_bin: {agent}"))
     chats: list[str] = []
-    import specy_road.worker_adapter_cursor as cursor   # noqa: PLC0415
+    import specy_road.orchestration.workers.worker_adapter_cursor as cursor   # noqa: PLC0415
     monkeypatch.setattr(cursor, "create_chat", lambda wt, program="agent": chats.append(program) or "chat-1")
     launches: list[Launch] = []
     monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))

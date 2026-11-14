@@ -6,8 +6,8 @@ from pathlib import Path
 
 from specy_road.review_files import READY_PREFIX, _files
 from specy_road.review_target import same_commit
-from specy_road.worker_process import _fingerprint, branch_mismatch, new_ready
-from specy_road.worker_state import WorkerRecord, append_event
+from specy_road.orchestration.workers.worker_process import _fingerprint, branch_mismatch, new_ready
+from specy_road.orchestration.workers.worker_state import WorkerRecord, append_event
 
 
 READY_ONLY_PROMPT = (

@@ -30,11 +30,11 @@ from tests.worker_repo_helpers import make_worker_repo
 from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
 from specy_road import tool_call_guard_adapters as tga
-from specy_road import worker_adapters as wa
-from specy_road import worker_lease as wl
-from specy_road import worker_ops as ops
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_lease as wl
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import refresh_stubs as rs
 from specy_road.brainstorm_prompt import render_brainstorm_prompt
@@ -250,7 +250,7 @@ def test_event_sequences_survive_a_record_that_lags_the_log(tmp_path: Path) -> N
 def test_a_platform_without_a_file_lock_refuses_worker_mutations(tmp_path: Path, monkeypatch) -> None:
     import builtins
 
-    from specy_road import worker_lock
+    from specy_road.orchestration.workers import worker_lock
 
     real_import = builtins.__import__
 

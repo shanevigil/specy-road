@@ -51,7 +51,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.4.4` | milestone and planning command groups, and archive --hard-remove replaces archive-node | task | Agentic-led | Complete |
 | `M16.4.5` | One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points | task | Agentic-led | Complete |
 | `M16.5` | Orchestration subpackage, roster split and review-gate folds | milestone | — | Not Started |
-| `M16.5.1` | Worker runtime moves into orchestration/workers with import-path edits only | task | Agentic-led | Not Started |
+| `M16.5.1` | Worker runtime moves into orchestration/workers with import-path edits only | task | Agentic-led | Complete |
 | `M16.5.2` | worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes | task | Agentic-led | Not Started |
 | `M16.5.3` | Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration | task | Agentic-led | Not Started |
 | `M16.5.7` | Shared-checkout guard and session presence move into orchestration | task | Agentic-led | Not Started |

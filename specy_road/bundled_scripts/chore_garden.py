@@ -41,7 +41,7 @@ from specy_road.git_subprocess import git_root, git_text
 from specy_road.harness_instruction_files import RULES_MD
 from specy_road.integrity import _ratchet_findings, integration_ratchet_paths
 from specy_road.review_policy_ref import policy_source
-from specy_road.worker_state import WorkerError
+from specy_road.orchestration.workers.worker_state import WorkerError
 
 #: Finding class -> the title of the chore leaf ``--open-chores`` files for it.
 CLASSES = {

@@ -27,15 +27,15 @@ from pathlib import Path
 from specy_road.clock import utc_now_iso
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
-from specy_road import worker_sandbox
+from specy_road.orchestration.workers import worker_sandbox
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_adapter_cursor import launch_permissions
-from specy_road.worker_adapter_parsers import USAGE_FIELDS, init_model
-from specy_road.worker_adapters import ClaudeCode, Launch, adapter_for
-from specy_road.worker_exit import exit_event
-from specy_road.worker_lease import release_lease
-from specy_road.worker_models import launch_model, turn_models, usage_event
-from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
+from specy_road.orchestration.workers.worker_adapter_cursor import launch_permissions
+from specy_road.orchestration.workers.worker_adapter_parsers import USAGE_FIELDS, init_model
+from specy_road.orchestration.workers.worker_adapters import ClaudeCode, Launch, adapter_for
+from specy_road.orchestration.workers.worker_exit import exit_event
+from specy_road.orchestration.workers.worker_lease import release_lease
+from specy_road.orchestration.workers.worker_models import launch_model, turn_models, usage_event
+from specy_road.orchestration.workers.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
     new_token,
     pid_alive,
@@ -43,8 +43,8 @@ from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified
     ready_fingerprints,
     start_token,
 )
-from specy_road.worker_runner_ready import all_ready_fingerprints, fresh_ready
-from specy_road.worker_state import (
+from specy_road.orchestration.workers.worker_runner_ready import all_ready_fingerprints, fresh_ready
+from specy_road.orchestration.workers.worker_state import (
     FLAG_STALLED,
     FLAG_UNDELIVERED,
     WorkerError,
@@ -61,8 +61,12 @@ from specy_road.worker_state import (
     workers_dir,
     workers_lock,
 )
-from specy_road.worker_turn_check import PAUSED_BY_LIMIT, TurnWatch, close_turn
-from specy_road.worker_usage_delta import turn_usage
+from specy_road.orchestration.workers.worker_turn_check import (
+    PAUSED_BY_LIMIT,
+    TurnWatch,
+    close_turn,
+)
+from specy_road.orchestration.workers.worker_usage_delta import turn_usage
 
 
 def queue_worker_message(repo_root: Path, rec: WorkerRecord, text: str) -> WorkerRecord:
@@ -80,7 +84,9 @@ def queue_worker_message(repo_root: Path, rec: WorkerRecord, text: str) -> Worke
 
 
 def deliver_queued_message(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord | None:
-    from specy_road.worker_ops import _send  # noqa: PLC0415 — ops imports spawn from this module
+    from specy_road.orchestration.workers.worker_ops import (  # noqa: PLC0415 — ops imports spawn from this module
+        _send,
+    )
 
     with workers_lock(repo_root):   # process_alive and spawn as one transition, like message()
         rec = load_record(repo_root, worker_id)
@@ -179,7 +185,7 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
     # the turn, so a queued message's spawn records it too. ``-P`` keeps
     # the cwd (a worktree that may hold an older specy_road) off sys.path for
     # this interpreter only; PYTHONSAFEPATH would leak into the harness.
-    pkg_parent = str(Path(__file__).resolve().parent.parent)
+    pkg_parent = str(Path(__file__).resolve().parents[3])   # the directory holding specy_road/
     env["PYTHONPATH"] = pkg_parent + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     env["SPECY_ROAD_WORKER_ID"] = rec.worker_id   # so the harness's own hooks do not count it as a stranger
     # Under the lock, so the wrapper cannot write its own state before the
@@ -189,7 +195,7 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
         path = _payload_file(repo_root, rec, token, payload)
         try:
             p = subprocess.Popen(  # noqa: S603 — our own module, arguments are not user-shaped
-                [sys.executable, "-P", "-m", "specy_road.worker_runner", str(Path(repo_root).resolve()), rec.worker_id,
+                [sys.executable, "-P", "-m", "specy_road.orchestration.workers.worker_runner", str(Path(repo_root).resolve()), rec.worker_id,
                  token, str(path)],
                 cwd=rec.worktree, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL, start_new_session=True,
@@ -429,7 +435,7 @@ def _deliver_queued(repo_root: Path, worker_id: str) -> None:
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if len(argv) != 4:
-        print("usage: python -m specy_road.worker_runner <repo_root> <worker_id> <token> <payload-file>", file=sys.stderr)
+        print("usage: python -m specy_road.orchestration.workers.worker_runner <repo_root> <worker_id> <token> <payload-file>", file=sys.stderr)
         raise SystemExit(2)
     path = Path(argv[3])
     payload = json.loads(path.read_text(encoding="utf-8"))

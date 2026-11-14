@@ -27,7 +27,7 @@ from specy_road.bundled_scripts.brainstorm_fields import extra_to_dict, parse_ex
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.fs_atomic import atomic_write_text
 from specy_road.history_cache import CACHE_DIR, ensure_cache_dir
-from specy_road.worker_lock import _lock_file
+from specy_road.orchestration.workers.worker_lock import _lock_file
 
 SESSION_VERSION = 2
 #: v1 files (no rounds, URL-only evidence) read as-is and are written back as v2.

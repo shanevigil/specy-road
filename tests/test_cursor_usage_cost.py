@@ -13,13 +13,13 @@ from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_adapters import CODEX_TURN, CURSOR_RESULT, RECORDED
 from tests.worker_repo_helpers import reset_cursor_adapter_via_init
 
-from specy_road import worker_adapters as wa
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
 from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
-from specy_road.worker_adapter_parsers import estimate_usage_cost, mtok_rates
-from specy_road.worker_adapters import Launch
+from specy_road.orchestration.workers.worker_adapter_parsers import estimate_usage_cost, mtok_rates
+from specy_road.orchestration.workers.worker_adapters import Launch
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROFILES = REPO_ROOT / "specy_road" / "templates" / "project" / "model-profiles"
@@ -178,7 +178,7 @@ def test_cursor_parse_events_leaves_cost_null_when_profile_has_no_price(tmp_path
 
 
 def test_worker_usage_shows_estimated_cursor_cost(tmp_path: Path, capsys) -> None:
-    from specy_road import worker_runner as wr
+    from specy_road.orchestration.workers import worker_runner as wr
 
     repo = _cursor_repo(tmp_path)
     api_id = _api_id_for(repo, "priced")

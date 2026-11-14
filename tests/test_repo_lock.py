@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.repo_lock import RepoLockTimeout, new_ticket, ticket_pid, lock_root, pickup_finish_lock
-from specy_road.worker_process import start_token
+from specy_road.orchestration.workers.worker_process import start_token
 
 
 def _git_repo(tmp_path: Path) -> Path:

@@ -1,6 +1,6 @@
 """``worker terminate`` and ``worker adopt``: the record transitions that launch no harness (slice 7c).
 
-Split from :mod:`specy_road.worker_ops` for the file limit; callers reach
+Split from :mod:`specy_road.orchestration.workers.worker_ops` for the file limit; callers reach
 these through that module.
 """
 
@@ -9,11 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.session_presence import current_user, end_session, list_sessions
-from specy_road.worker_lease import lease_adopted, release_lease
-from specy_road.worker_ops_launch import _target, _worktree_for
-from specy_road.worker_process import kill_group, process_alive
-from specy_road.worker_sessions import check_session_id
-from specy_road.worker_state import (
+from specy_road.orchestration.workers.worker_lease import lease_adopted, release_lease
+from specy_road.orchestration.workers.worker_ops_launch import _target, _worktree_for
+from specy_road.orchestration.workers.worker_process import kill_group, process_alive
+from specy_road.orchestration.workers.worker_sessions import check_session_id
+from specy_road.orchestration.workers.worker_state import (
     FLAG_UNDELIVERED,
     WorkerError,
     WorkerRecord,

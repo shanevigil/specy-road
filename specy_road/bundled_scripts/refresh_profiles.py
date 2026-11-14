@@ -38,7 +38,7 @@ from specy_road.runtime_paths import (
     default_user_repo_root,
     project_template_root,
 )
-from specy_road.worker_adapter_codex import CODEX_MEMORY_OFF
+from specy_road.orchestration import CODEX_MEMORY_OFF
 
 
 def bundled_profiles_dir() -> Path:
