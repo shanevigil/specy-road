@@ -24,7 +24,8 @@ from tests.decisions_repo_helpers import decisions_repo
 from tests.review_repo_helpers import make_review_repo
 from tests.worker_lease_helpers import idle_worker
 
-from specy_road import clock, decisions, session_presence
+from specy_road import clock, session_presence
+from specy_road.orchestration.records import decisions
 from specy_road.orchestration.workers import (
     worker_lease,
     worker_outbox,

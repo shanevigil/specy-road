@@ -24,8 +24,8 @@ from typing import Any
 
 import pytest
 
-from specy_road.chore_garden_due import garden_due
-from specy_road.chore_records import (
+from specy_road.orchestration.records.chore_garden_due import garden_due
+from specy_road.orchestration.records.chore_records import (
     chore_node,
     chore_prompt,
     chore_target,
@@ -33,7 +33,7 @@ from specy_road.chore_records import (
     load_chore,
     open_chore,
 )
-from specy_road.decisions import (
+from specy_road.orchestration.records.decisions import (
     active_preferences,
     add_entry,
     add_preference,
@@ -55,9 +55,9 @@ from specy_road.decisions import (
     standing_rule_active,
     write_decisions,
 )
-from specy_road.decisions_local import load_merged, next_free_id
+from specy_road.orchestration.records.decisions import load_merged, next_free_id
 from specy_road.orchestration import WorkerError
-from specy_road.review_lessons import (
+from specy_road.orchestration.records.review_lessons import (
     add_lesson,
     format_lesson,
     lessons_path,
@@ -213,7 +213,7 @@ def _operator_append(s: Seeded) -> Any:
 
 ROWS: dict[str, Callable[[Seeded], Any]] = {
     # decisions: reads
-    "decisions-read": lambda s: _doc(s),
+    "decisions-read": _doc,
     "decisions-read-local": lambda s: _doc(s, local=True),
     "decisions-read-missing": lambda s: read_decisions(s.root / "roadmap" / "absent.yaml"),
     "decisions-load-checked": lambda s: load_checked_decisions(s.root),

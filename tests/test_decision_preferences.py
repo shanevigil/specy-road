@@ -11,7 +11,12 @@ import pytest
 from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.decisions import add_preference, preference_active, read_decisions, schema_errors
+from specy_road.orchestration.records.decisions import (
+    add_preference,
+    preference_active,
+    read_decisions,
+    schema_errors,
+)
 from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
 from tests.test_decisions import SKILL
 from tests.test_orchestrate_plan import ROSTER, plan_repo

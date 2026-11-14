@@ -3,10 +3,9 @@
   "tool": "ast import scan (nested imports included)",
   "components": [
     {
-      "size": 38,
+      "size": 37,
       "modules": [
-        "specy_road.decisions",
-        "specy_road.decisions_local",
+        "specy_road.orchestration.records.decisions",
         "specy_road.orchestration.harness.harness_binary",
         "specy_road.integrity",
         "specy_road.integrity_gate",

@@ -9,7 +9,7 @@ import pytest
 from specy_road.bundled_scripts import decisions_cli, role_prompt
 from specy_road.init_project import run_init_project
 from specy_road.review_files import PACKET_NAME, reviews_dir
-from specy_road.review_lessons import LESSONS_REL, read_lessons
+from specy_road.orchestration.records.review_lessons import LESSONS_REL, read_lessons
 from tests.review_repo_helpers import make_review_repo
 from tests.test_models_and_prompt import ROSTER
 

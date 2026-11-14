@@ -8,6 +8,13 @@ roster's ``available`` / ``paused_until`` fields. A standing operator rule
 (``kind: standing-rule``, M22.51) quotes the operator in ``why_now``; ``review
 operator-decision --rule`` accepts a leaf with limits under it. It is neither an
 open question nor a routing preference.
+
+``decisions add --local`` writes this clone's gitignored overlay, ``roadmap/decisions.local.yaml``
+(M15.22), instead of the tracked ledger, so a preference applies in this clone at once, with no
+commit or PR on an integration branch the project protects. Readers (``decisions list``,
+``orchestrate plan``) merge it over the tracked ledger (:func:`load_merged`): an entry whose id is
+in both is the local one, and every local entry is listed as local. Both files take the same
+schema.
 """
 
 from __future__ import annotations
@@ -24,6 +31,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from specy_road.runtime_paths import project_template_root
+from specy_road.orchestration.records import write_text
 from specy_road.orchestration_config import _paused_until_error
 from specy_road.registry_yaml import dump_registry_text
 
@@ -31,6 +39,8 @@ DECISIONS_REL = Path("roadmap") / "decisions.yaml"
 DECISIONS_LOCAL_REL = Path("roadmap") / "decisions.local.yaml"   # this clone only (M15.22)
 PREFERENCE = "preference"
 STANDING_RULE = "standing-rule"
+LOCAL = "local"
+SHARED = "shared"
 _SCHEMA_NAME = "decisions.schema.json"
 _DECISION_HEADINGS = {"decisions and notes", "decisions"}
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -56,8 +66,7 @@ def write_decisions(path: Path, doc: dict[str, Any]) -> None:
     errs = schema_errors(doc, schema_path_for_write(path.parent.parent))
     if errs:
         raise ValueError("decisions.yaml: " + "; ".join(errs))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(dump_registry_text(doc), encoding="utf-8")
+    write_text(path, dump_registry_text(doc))
 
 
 def bundled_schema_path() -> Path:
@@ -88,8 +97,9 @@ def schema_errors(doc: Any, schema_path: Path | None = None) -> list[str]:
     return out
 
 
-def _today_iso() -> str:
-    return date.today().isoformat()
+def _asked(asked: str | None) -> str:
+    """An entry's ``asked`` date: the one given, checked, or today."""
+    return require_iso_date("asked", asked) if asked else date.today().isoformat()
 
 
 def require_iso_date(name: str, value: str) -> str:
@@ -105,12 +115,14 @@ def require_iso_date(name: str, value: str) -> str:
 
 
 def open_entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
-    return [e for e in doc.get("entries") or [] if isinstance(e, dict) and e.get("status") == "open"]
+    return [e for e in doc.get("entries") or []
+            if isinstance(e, dict) and e.get("status") == "open"]
 
 
 def open_questions(doc: dict[str, Any]) -> list[dict[str, Any]]:
     """Open decision and human-action entries: what the human is asked, in needed-by order."""
-    return sort_for_list([e for e in open_entries(doc) if e.get("kind") not in (PREFERENCE, STANDING_RULE)])
+    return sort_for_list([e for e in open_entries(doc)
+                          if e.get("kind") not in (PREFERENCE, STANDING_RULE)])
 
 
 def _open_unexpired(e: dict[str, Any], now: datetime | date | None) -> bool:
@@ -133,7 +145,9 @@ def standing_rule_active(e: dict[str, Any], now: datetime | date | None = None) 
     return e.get("kind") == STANDING_RULE and _open_unexpired(e, now)
 
 
-def active_preferences(doc: dict[str, Any], now: datetime | date | None = None) -> list[dict[str, Any]]:
+def active_preferences(
+    doc: dict[str, Any], now: datetime | date | None = None
+) -> list[dict[str, Any]]:
     """Open, unexpired preferences, oldest first; expired ones are dropped, not closed."""
     prefs = [e for e in open_entries(doc) if preference_active(e, now)]
     return sorted(prefs, key=lambda e: ((e.get("asked") or ""), e.get("id") or ""))
@@ -194,11 +208,11 @@ def notice_decisions_naming_no_node(
         )
 
 
-def plan_preferences(root: Path, now: datetime | date | None = None) -> tuple[list[dict[str, Any]], str | None]:
-    """Active preferences for ``orchestrate plan``, ``roadmap/decisions.local.yaml`` merged over the tracked
-    ledger; an unreadable ledger is a warning, never a plan failure."""
-    from specy_road.decisions_local import load_merged
-
+def plan_preferences(
+    root: Path, now: datetime | date | None = None
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Active preferences for ``orchestrate plan``, ``roadmap/decisions.local.yaml`` merged over
+    the tracked ledger; an unreadable ledger is a warning, never a plan failure."""
     doc, _local_ids, errs = load_merged(root)
     if errs:
         return [], f"{errs[0]}; preferences not shown; run `specy-road decisions list`"
@@ -222,6 +236,19 @@ def next_decision_id(doc: dict[str, Any], prefix: str = "D") -> str:
         if cand not in used:
             return cand
         n += 1
+
+
+def _entry_by_id(doc: dict[str, Any], entry_id: str) -> dict[str, Any] | None:
+    """The first entry of ``doc`` with id ``entry_id``, or ``None``."""
+    return next((e for e in doc.get("entries") or []
+                 if isinstance(e, dict) and e.get("id") == entry_id), None)
+
+
+def _close(entry: dict[str, Any], answer: str) -> None:
+    """Close ``entry`` in place with ``answer``, stamped now."""
+    from specy_road.clock import utc_now_iso   # writers only
+
+    entry.update(status="closed", answer=answer, closed=utc_now_iso())
 
 
 def _unfenced_lines(text: str) -> list[str]:
@@ -295,7 +322,8 @@ def format_preference(e: dict[str, Any]) -> str:
         scope.append("leaf kinds " + ", ".join(e["applies_to"]))
     if e.get("expires"):
         scope.append(f"expires {e['expires']}")
-    lines = [f"{e['id']} [preference] " + ("; ".join(scope) or "every role and leaf"), f"  {e['summary']}"]
+    lines = [f"{e['id']} [preference] " + ("; ".join(scope) or "every role and leaf"),
+             f"  {e['summary']}"]
     if e.get("why_now"):
         lines.append(f"  why: {e['why_now']}")
     return "\n".join(lines)
@@ -362,9 +390,8 @@ def add_entry(
     path = decisions_path(root, local)
     doc = read_decisions(path)
     entry_id = decision_id or next_decision_id(doc)
-    for e in doc.get("entries") or []:
-        if isinstance(e, dict) and e.get("id") == entry_id:
-            raise ValueError(f"decision id {entry_id!r} already exists")
+    if _entry_by_id(doc, entry_id) is not None:
+        raise ValueError(f"decision id {entry_id!r} already exists")
     entry: dict[str, Any] = {
         "id": entry_id,
         "node": node_id,
@@ -375,7 +402,7 @@ def add_entry(
         "recommendation": recommendation.strip(),
         "recommendation_reason": recommendation_reason.strip(),
         "default_if_unanswered": default_if_unanswered.strip(),
-        "asked": require_iso_date("asked", asked) if asked else _today_iso(),
+        "asked": _asked(asked),
         "status": "open",
     }
     if needed_by:
@@ -403,30 +430,29 @@ def add_preference(
     local: bool = False,
     kind: str = PREFERENCE,
 ) -> dict[str, Any]:
-    """Record a routing preference, or with ``kind=STANDING_RULE`` a standing operator rule whose ``why``
-    quotes the operator; ``supersedes`` closes an open preference in the same write."""
+    """Record a routing preference, or with ``kind=STANDING_RULE`` a standing operator rule whose
+    ``why`` quotes the operator; ``supersedes`` closes an open preference in the same write."""
     path = decisions_path(root, local)
     doc = read_decisions(path)
     entries = doc.setdefault("entries", [])
     entry_id = preference_id or next_decision_id(doc, "P")
-    if any(isinstance(e, dict) and e.get("id") == entry_id for e in entries):
+    if _entry_by_id(doc, entry_id) is not None:
         raise ValueError(f"decision id {entry_id!r} already exists")
     if expires and (err := _paused_until_error("expires", expires.strip())):
         raise ValueError(err)
     entry: dict[str, Any] = {"id": entry_id, "kind": kind, "summary": summary.strip()}
     for key, val in (("node", node_id), ("role", role), ("why_now", (why or "").strip()),
-                     ("models", models), ("applies_to", applies_to), ("expires", (expires or "").strip())):
+                     ("models", models), ("applies_to", applies_to),
+                     ("expires", (expires or "").strip())):
         if val:
             entry[key] = val
-    entry["asked"] = require_iso_date("asked", asked) if asked else _today_iso()
+    entry["asked"] = _asked(asked)
     entry["status"] = "open"
     if supersedes:
-        old = next((e for e in entries if isinstance(e, dict) and e.get("id") == supersedes), None)
+        old = _entry_by_id(doc, supersedes)
         if not old or old.get("kind") != PREFERENCE or old.get("status") != "open":
             raise ValueError(f"--supersedes {supersedes!r} is not an open preference")
-        from specy_road.clock import utc_now_iso   # writers only
-
-        old.update(status="closed", answer=f"superseded by {entry_id}", closed=utc_now_iso())
+        _close(old, f"superseded by {entry_id}")
     entries.append(entry)
     write_decisions(path, doc)
     return entry
@@ -435,24 +461,62 @@ def add_preference(
 def close_entry(root: Path, decision_id: str, answer: str, *, sheet_text: str | None = None,
                 ledger_only: bool = False, local: bool = False, decided_by: str | None = None,
                 channel: str | None = None) -> dict[str, Any]:
-    """Close an open entry; no planning-sheet line is needed (M22.69). ``sheet_text`` and ``ledger_only`` are no
-    longer read: ``review defer`` and the PM GUI still pass them. ``decided_by`` and ``channel`` are recorded
-    when given."""
+    """Close an open entry; no planning-sheet line is needed (M22.69). ``sheet_text`` and
+    ``ledger_only`` are no longer read: ``review defer`` and the PM GUI still pass them.
+    ``decided_by`` and ``channel`` are recorded when given."""
     path = decisions_path(root, local)
     doc = read_decisions(path)
-    entries = doc.get("entries") or []
-    for e in entries:
-        if isinstance(e, dict) and e.get("id") == decision_id:
-            if e.get("status") != "open":
-                print(f"error: decision {decision_id!r} is not open", file=sys.stderr)
-                raise SystemExit(1)
-            e["status"] = "closed"
-            e["answer"] = answer.strip()
-            from specy_road.clock import utc_now_iso
+    e = _entry_by_id(doc, decision_id)
+    if e is None:
+        print(f"error: no decision {decision_id!r} in {path.relative_to(root).as_posix()}",
+              file=sys.stderr)
+        raise SystemExit(1)
+    if e.get("status") != "open":
+        print(f"error: decision {decision_id!r} is not open", file=sys.stderr)
+        raise SystemExit(1)
+    _close(e, answer.strip())
+    e.update({k: v for k, v in (("decided_by", decided_by), ("channel", channel)) if v})
+    write_decisions(path, doc)
+    return e
 
-            e["closed"] = utc_now_iso()
-            e.update({k: v for k, v in (("decided_by", decided_by), ("channel", channel)) if v})
-            write_decisions(path, doc)
-            return e
-    print(f"error: no decision {decision_id!r} in {path.relative_to(root).as_posix()}", file=sys.stderr)
-    raise SystemExit(1)
+
+def _load(root: Path, *, local: bool) -> tuple[dict[str, Any], list[str]]:
+    """One ledger and its problems, each naming the file; a missing file is an empty ledger."""
+    rel = (DECISIONS_LOCAL_REL if local else DECISIONS_REL).as_posix()
+    try:
+        doc = read_decisions(decisions_path(root, local))
+    except (OSError, yaml.YAMLError) as e:
+        return {}, [f"{rel} could not be read ({e})"]
+    errs = (schema_errors(doc, schema_path_for_write(root)) if isinstance(doc, dict)
+            else ["(root): not a mapping"])
+    return (doc, []) if not errs else ({}, [f"{rel} fails its schema ({e})" for e in errs])
+
+
+def merge_ledgers(shared: dict[str, Any], local: dict[str, Any]) -> tuple[dict[str, Any], set[str]]:
+    """``shared`` with ``local``'s entries over it by id (local wins), and the ids that came from
+    ``local``.
+
+    Both are schema-checked first (:func:`load_merged`), so every entry is a mapping with an id."""
+    mine = local.get("entries") or []
+    ids = {e["id"] for e in mine}
+    kept = [e for e in shared.get("entries") or [] if e["id"] not in ids]
+    return {"version": shared.get("version", 1), "entries": kept + mine}, ids
+
+
+def load_merged(root: Path) -> tuple[dict[str, Any], set[str], list[str]]:
+    """The ledger this clone reads: ``(merged doc, local ids, problems)``; with problems the doc is
+    empty."""
+    shared, errs = _load(root, local=False)
+    local, local_errs = _load(root, local=True)
+    if errs or local_errs:
+        return {"version": 1, "entries": []}, set(), errs + local_errs
+    doc, ids = merge_ledgers(shared, local)
+    return doc, ids, []
+
+
+def next_free_id(root: Path, prefix: str) -> str:
+    """The next ``<prefix>#`` used in neither ledger, so a new entry neither shadows nor is shadowed
+    by one."""
+    both = [*(read_decisions(decisions_path(root)).get("entries") or []),
+            *(read_decisions(decisions_path(root, True)).get("entries") or [])]
+    return next_decision_id({"entries": both}, prefix)

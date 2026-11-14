@@ -28,8 +28,12 @@ from specy_road import __version__
 from specy_road.fs_atomic import atomic_write_text
 from specy_road.agent_guide_block import PROVENANCE
 from specy_road.bundled_scripts.roadmap_crud import main
-from specy_road.chore_garden_due import garden_due, record_path, warn_garden_due
-from specy_road.chore_records import chores_dir
+from specy_road.orchestration.records.chore_garden_due import (
+    garden_due,
+    record_path,
+    warn_garden_due,
+)
+from specy_road.orchestration.records.chore_records import chores_dir
 from specy_road.validate_stale_commands import (
     agent_files,
     line_unknown_flags,

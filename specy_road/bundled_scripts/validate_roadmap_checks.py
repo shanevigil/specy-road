@@ -32,7 +32,7 @@ from specy_road.bundled_scripts.validate_registry_overlap import (
     warn_registry_touch_zone_overlap,
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
-from specy_road.decisions import notice_decisions_naming_no_node
+from specy_road.orchestration.records.decisions import notice_decisions_naming_no_node
 from specy_road.node_kinds import is_gate
 
 

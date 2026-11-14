@@ -15,7 +15,7 @@ from specy_road.agents_md_block import (
     warn_if_context_over_limits,
     warn_missing_load_order_paths,
 )
-from specy_road.chore_garden_due import warn_garden_due
+from specy_road.orchestration.records.chore_garden_due import warn_garden_due
 from specy_road.context_notice_cache import fold_next_report, report_context_warnings
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
 from specy_road.bundled_scripts.validate_registry_overlap import current_authoring_overlap_scope

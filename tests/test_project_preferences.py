@@ -12,7 +12,7 @@ import yaml
 from specy_road.agent_ignores import GITIGNORE_LINES
 from specy_road.bundled_scripts import do_next_prompt as dnp
 from specy_road.bundled_scripts import role_prompt
-from specy_road.decisions import plan_preferences, read_decisions
+from specy_road.orchestration.records.decisions import plan_preferences, read_decisions
 from specy_road.finish_land_local import land_on_integration
 from specy_road.finish_pr_body import write_pr_body
 from specy_road.git_workflow_config import validate_git_workflow_dict

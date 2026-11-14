@@ -501,10 +501,6 @@
     "specy_road/context_notice_cache.py": {
       "PL": 1
     },
-    "specy_road/decisions.py": {
-      "PL": 6,
-      "D102/D103": 13
-    },
     "specy_road/digest.py": {
       "PL": 6
     },
@@ -676,6 +672,13 @@
     "specy_road/orchestration/orchestrate_plan.py": {
       "D102/D103": 2
     },
+    "specy_road/orchestration/records/decisions.py": {
+      "PL": 6,
+      "D102/D103": 13
+    },
+    "specy_road/orchestration/records/review_lessons.py": {
+      "D102/D103": 2
+    },
     "specy_road/orchestration/role_prompt_cli.py": {
       "PL": 16
     },
@@ -844,9 +847,6 @@
     "specy_road/review_gate_ready.py": {
       "PL": 4,
       "D102/D103": 3
-    },
-    "specy_road/review_lessons.py": {
-      "D102/D103": 2
     },
     "specy_road/review_lock.py": {
       "PL": 2,

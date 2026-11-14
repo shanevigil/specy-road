@@ -13,7 +13,7 @@ import yaml
 
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.roadmap_load import load_roadmap
-from specy_road.decisions import read_decisions, write_decisions
+from specy_road.orchestration.records.decisions import read_decisions, write_decisions
 from specy_road.history_events import RENUMBERED, diff_snapshots, snapshot
 from tests.move_node_helpers import (
     base_fixture,

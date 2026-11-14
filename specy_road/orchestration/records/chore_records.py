@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.git_subprocess import head_sha
+from specy_road.orchestration.records import read_text
 from specy_road.review_files import reviews_dir, reviews_root
 from specy_road.review_target import ReviewTarget
 from specy_road.orchestration.workers.worker_state import WorkerError
@@ -27,10 +28,8 @@ def chores_dir(repo_root: Path) -> Path:
 
 def load_chore(repo_root: Path, slug: str) -> dict[str, Any] | None:
     """The chore ``slug``, open or closed; ``None`` when ``slug`` is not one (a node id)."""
-    path = chores_dir(repo_root) / f"{slug}.json"
-    if not _SLUG.match(slug) or not path.is_file():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    text = read_text(chores_dir(repo_root) / f"{slug}.json") if _SLUG.match(slug) else None
+    return None if text is None else json.loads(text)
 
 
 def open_chore(repo_root: Path, slug: str) -> dict[str, Any] | None:

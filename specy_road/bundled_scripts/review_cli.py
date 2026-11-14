@@ -47,7 +47,7 @@ from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
 from specy_road.cli import ALIASES_REMOVED_IN, warn_deprecated
 from specy_road.cli_entry import run_cli
 from specy_road.clock import utc_now_iso
-from specy_road.decisions import DECISIONS_REL
+from specy_road.orchestration import DECISIONS_REL
 from specy_road.git_subprocess import git_text
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.roadmap_load import load_roadmap
