@@ -16,7 +16,7 @@ from tests.review_repo_helpers import git
 from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
 from tests.test_worker_cli_fixes import EXECUTORLESS
 
-from specy_road import orchestrate_plan as op
+from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli
 from specy_road.bundled_scripts.validate_roadmap import validate_orchestration_contract
 

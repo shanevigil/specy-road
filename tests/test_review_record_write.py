@@ -17,7 +17,7 @@ from tests.test_models_and_prompt import run_main
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_cli, role_prompt
-from specy_road.model_profiles import load_profile
+from specy_road.orchestration.model_profiles import load_profile
 from specy_road.review_delegate import DelegateError, delegate
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_record_write import file_review, output_schema, review_run_lock, reviewer_env, snapshot, written

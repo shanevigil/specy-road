@@ -24,7 +24,7 @@ from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road import brainstorm_chat as bc
 from specy_road.bundled_scripts import brainstorm_verify as bv
-from specy_road.model_profiles import profile_for_entry
+from specy_road.orchestration.model_profiles import profile_for_entry
 from specy_road.review_files import reviews_root
 
 
@@ -65,7 +65,7 @@ def test_harness_override_cannot_move_a_rostered_model(tmp_path: Path) -> None:
 
 def test_a_plan_without_a_coordinator_says_so(tmp_path: Path) -> None:
     from specy_road.roadmap_load import load_roadmap
-    from specy_road.orchestrate_plan import Candidate, assign_leaf
+    from specy_road.orchestration.orchestrate_plan import Candidate, assign_leaf
     from specy_road.orchestration_config import effective_config
 
     repo = make_review_repo(tmp_path, orchestration="version: 1\nroster:\n  - {id: exec1, family: openai, roles: [executor, reviewer]}\n"

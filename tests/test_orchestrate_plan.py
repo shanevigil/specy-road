@@ -11,7 +11,7 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 
-from specy_road import orchestrate_plan as op
+from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli, role_prompt
 
 REPO = Path(__file__).resolve().parent.parent

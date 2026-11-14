@@ -36,7 +36,7 @@ from specy_road.cli_args import add_base_arg, add_remote_arg
 from specy_road.doctor_worktrees import SAME_PATCH, TEMP_WORKTREES, merged_how  # noqa: F401
 from specy_road.git_subprocess import git_text
 from specy_road.nested_repos import report_unpushed
-from specy_road.orchestrate_assign import guidance_bypass_lines
+from specy_road.orchestration import guidance_bypass_lines
 from specy_road.orchestration import read_state
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.orphaned_claims import report_lines

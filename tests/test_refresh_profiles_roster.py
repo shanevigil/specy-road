@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road import model_profiles as mp
+from specy_road.orchestration import model_profiles as mp
 from specy_road.bundled_scripts import refresh_profiles as rp
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 

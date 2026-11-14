@@ -12,10 +12,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from specy_road import model_profiles as mp
+from specy_road.orchestration import model_profiles as mp
 from specy_road.bundled_scripts import models_cli, role_prompt
 from specy_road.bundled_scripts.validate_roadmap import validate_at
-from specy_road.orchestrate_plan import guidance_bypass_refusal
+from specy_road.orchestration.orchestrate_plan import guidance_bypass_refusal
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 
 from tests.review_repo_helpers import git, shipped_anthropic_opus_cli_yaml_line

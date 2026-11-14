@@ -293,7 +293,7 @@ def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, mo
     from specy_road.bundled_scripts import finish_task
     from specy_road.bundled_scripts import mark_implementation_reviewed as mir
     from specy_road.bundled_scripts.role_prompt import build_prompt
-    from specy_road.bundled_scripts.role_prompt_rca import precondition
+    from specy_road.orchestration.role_prompt_rca import precondition
     from specy_road.review_files import PACKET_NAME, reviews_dir
     from specy_road.review_target import resolve_target
 

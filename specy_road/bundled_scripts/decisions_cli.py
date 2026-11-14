@@ -29,7 +29,7 @@ from specy_road.decisions import (
     open_questions,
 )
 from specy_road.decisions_local import LOCAL, SHARED, load_merged, next_free_id
-from specy_road.model_profiles import ROLES
+from specy_road.orchestration import ROLES
 from specy_road.review_lessons import LESSONS_REL, add_lesson, format_lesson, lessons_path, read_lessons
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 

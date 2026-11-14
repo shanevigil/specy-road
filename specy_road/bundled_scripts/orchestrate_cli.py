@@ -26,7 +26,7 @@ from datetime import date
 from specy_road.cli_args import add_json_arg
 from specy_road.decisions import format_preference
 from specy_road.roadmap_load import load_roadmap
-from specy_road.orchestrate_plan import OrchestrationPlan, build_orchestration_plan
+from specy_road.orchestration import OrchestrationPlan, build_orchestration_plan
 from specy_road.orchestration_pinned import WORKTREE_REF
 from specy_road.planning_scaffold_check import needs_approach_line
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root

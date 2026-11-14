@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from specy_road.git_subprocess import git_stdout, git_text
-from specy_road.model_profiles import (
+from specy_road.orchestration.model_profiles import (
     GUIDANCE_BYPASS_KEY,
     PROFILES_REL,
     Profile,
@@ -44,8 +44,10 @@ from specy_road.orchestration_config import (
 )
 from specy_road.review_policy_ref import integration_name, policy_source
 from specy_road.review_target import full_sha
-from specy_road.roster_local import GUIDANCE_OPT_IN, merge_local_roster
-from specy_road.roster_profile_check import profile_value_form_problem, profile_value_problem
+from specy_road.orchestration.roster_local import GUIDANCE_OPT_IN, merge_local_roster
+from specy_road.orchestration.roster_profile_check import (
+    profile_value_form_problem, profile_value_problem,
+)
 
 
 #: ``roster_ref`` of a plan built with ``worktree=True``: a dry run nothing may launch from.

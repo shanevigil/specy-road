@@ -12,7 +12,7 @@ import pytest
 from tests.test_models_and_prompt import run_main
 from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
 
-from specy_road import orchestrate_plan as op
+from specy_road.orchestration import orchestrate_plan as op
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.bundled_scripts import grind_session_args, models_cli, orchestrate_cli, review_cli, role_prompt
 from specy_road.bundled_scripts import worker_cli

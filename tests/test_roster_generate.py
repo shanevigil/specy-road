@@ -8,16 +8,16 @@ from pathlib import Path
 
 import yaml
 
-from specy_road import model_profiles as mp
+from specy_road.orchestration import model_profiles as mp
 from specy_road.bundled_scripts import models_cli
 from specy_road.bundled_scripts.validate_roadmap import validate_at
-from specy_road.orchestrate_plan import Assignment, Candidate, assign_leaf
+from specy_road.orchestration.orchestrate_plan import Assignment, Candidate, assign_leaf
 from specy_road.orchestration_config import effective_config
-from specy_road.roster_profile_check import profile_value_problem
+from specy_road.orchestration.roster_profile_check import profile_value_problem
 
 from tests.test_models_and_prompt import make_profile_repo, run_main
 from tests.test_orchestrate_plan import plan_repo
-from specy_road import orchestrate_plan as op
+from specy_road.orchestration import orchestrate_plan as op
 
 REPO = Path(__file__).resolve().parent.parent
 STARTER = REPO / "specy_road" / "templates" / "project" / "roadmap" / "orchestration.yaml"

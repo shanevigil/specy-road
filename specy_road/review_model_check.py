@@ -15,7 +15,10 @@ import json
 from pathlib import Path
 from typing import Any, Literal
 
-from specy_road.model_names import normalise, same_model  # noqa: F401 — normalise re-exported
+from specy_road.orchestration.model_names import (
+    normalise,  # noqa: F401 — normalise re-exported
+    same_model,
+)
 from specy_road.orchestration_config import harness_model
 from specy_road.review_answer import stream_lines
 from specy_road.orchestration.workers.worker_adapter_parsers import init_model

@@ -15,7 +15,7 @@ from typing import Any
 
 from specy_road.cli_args import add_json_arg, add_model_arg
 from specy_road.orchestration import worker_ops as ops
-from specy_road.role_prompt_rework import rework_check
+from specy_road.orchestration import rework_check
 from specy_road.orchestration import (_line, _row, timeline, timeline_lines, usage,
                                      usage_json_payload, usage_lines)
 from specy_road.orchestration import add_sync_parser, cmd_sync as _cmd_sync

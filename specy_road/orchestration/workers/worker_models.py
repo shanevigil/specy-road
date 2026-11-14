@@ -18,7 +18,7 @@ import shlex
 from pathlib import Path
 from typing import Any
 
-from specy_road.model_names import roster_match, same_model
+from specy_road.orchestration.model_names import roster_match, same_model
 from specy_road.orchestration.workers.worker_adapter_parsers import (
     _WORD,
     ROSTER_PRICED,
@@ -75,7 +75,7 @@ def turn_models(events: list[WorkerEvent]) -> dict[str, str | None]:
 
 
 def mismatch_note(detail: dict[str, Any], harness_model: object = None, profile: Any = None) -> str:
-    """The summary suffix when both models are known and :func:`~specy_road.model_names.same_model` says they
+    """The summary suffix when both models are known and :func:`~specy_road.orchestration.model_names.same_model` says they
     differ (Cursor's ``Composer 2.5`` is the ``composer-2.5`` it was told), else ``""``."""
     told, ran = detail.get("requested_model"), detail.get("observed_model")
     if not told or not ran or same_model(ran, told, harness_model, profile):

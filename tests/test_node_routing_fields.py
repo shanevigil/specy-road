@@ -12,7 +12,7 @@ from tests.review_repo_helpers import git, make_review_repo
 from specy_road.bundled_scripts.roadmap_crud import main as crud_main
 from specy_road.bundled_scripts.roadmap_edit_fields import apply_set
 from specy_road.bundled_scripts.validate_roadmap import validate_at
-from specy_road.orchestrate_plan import node_eligibility, node_sensitivity
+from specy_road.orchestration.orchestrate_plan import node_eligibility, node_sensitivity
 
 
 def _node(repo: Path, nid: str = "M1.1") -> dict:

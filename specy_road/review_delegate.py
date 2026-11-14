@@ -52,7 +52,9 @@ from specy_road.clock import utc_now_iso
 from specy_road.chore_records import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_root
-from specy_road.orchestrate_assign import guidance_bypass_refusal, guidance_bypass_warning
+from specy_road.orchestration.orchestrate_assign import (
+    guidance_bypass_refusal, guidance_bypass_warning,
+)
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_delegate_harness import HarnessSetupError, _Harness
 from specy_road.review_delegate_packet import ensure_packet

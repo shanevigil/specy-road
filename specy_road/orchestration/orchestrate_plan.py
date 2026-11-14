@@ -61,7 +61,7 @@ from typing import Any
 from specy_road.roadmap_load import load_roadmap
 from specy_road.session_plan_git import gather_session_plan
 from specy_road.decisions import plan_preferences
-from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: callers import them from here
+from specy_road.orchestration.orchestrate_assign import (  # noqa: F401 — re-exported: callers import them from here
     ANY,
     CLASS_RANK,
     DEFAULT_SENSITIVITY,
@@ -85,7 +85,7 @@ from specy_road.orchestrate_assign import (  # noqa: F401 — re-exported: calle
 from specy_road.orchestration_pinned import WORKTREE_REF, pinned_config, pinned_profile_for_entry, roster_source
 from specy_road.review_tally import area_quality
 from specy_road.reviewer_auth import claude_reviewer_auth_notices
-from specy_road.roster_local import local_roster_ids
+from specy_road.orchestration.roster_local import local_roster_ids
 from specy_road.runtime_paths import project_prefix
 from specy_road.orchestration.workers.worker_adapters import force_warnings
 

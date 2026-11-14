@@ -15,12 +15,12 @@ from specy_road.cli_entry import run_handler
 from specy_road.constitution_scaffold import ConstitutionExistsError
 from specy_road.errors import SpecyError
 from specy_road.finish_land_deterministic import DeterministicResolveError
-from specy_road.harness_facts import HarnessFactsError
+from specy_road.orchestration.harness.harness_facts import HarnessFactsError
 from specy_road.nested_repos import NestedRepoError
 from specy_road.review_delegate import DelegateError
 from specy_road.review_signing import SigningError
 from specy_road.review_target import ReviewTargetError
-from specy_road.roster_generate import RosterError
+from specy_road.orchestration.roster_generate import RosterError
 from specy_road.orchestration.workers.worker_lock import WorkerError
 from specy_road.orchestration.workers.worker_state import LeaseError
 from specy_road.worktree_env import EnvSetupError

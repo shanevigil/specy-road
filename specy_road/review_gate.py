@@ -54,7 +54,7 @@ from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_code, git_stdout, git_text
 from specy_road.integrity import compare_integrity
 from specy_road.integrity_gate import integrity_gate_problems
-from specy_road.orchestrate_assign import (
+from specy_road.orchestration import (
     entry_may_process,
     guidance_problem,
     may_handle,

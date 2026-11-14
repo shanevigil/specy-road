@@ -17,13 +17,15 @@ import pytest
 
 from tests.review_repo_helpers import make_review_repo
 
-from specy_road import harness_facts as hf
+from specy_road.orchestration.harness import harness_facts as hf
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers import worker_turn_check as tc
 from specy_road.bundled_scripts import refresh_profiles as rp
-from specy_road.role_prompt_cli import run_default_reviewer   # M8.3's name for run_bare_reviewer
+from specy_road.orchestration.role_prompt_cli import (
+    run_default_reviewer,   # M8.3's name for run_bare_reviewer
+)
 from specy_road.review_delegate import delegate
 from specy_road.review_files import reviews_dir
 from specy_road.orchestration.workers.worker_adapter_codex import CODEX_MEMORY_OFF

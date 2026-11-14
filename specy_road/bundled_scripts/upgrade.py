@@ -116,7 +116,7 @@ from specy_road.ignore_report import (
 from specy_road import safe_write
 from specy_road.managed_block import refused_link, resolves_outside, rule_refusal
 from specy_road.safe_write import SafeWriteError
-from specy_road.model_profiles import PROFILES_REL
+from specy_road.orchestration import PROFILES_REL
 from specy_road.runtime_paths import (
     add_repo_root_arg,
     prefix_within,

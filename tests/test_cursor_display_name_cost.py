@@ -16,7 +16,7 @@ from tests.test_worker_adapters import CLAUDE_RESULT, CURSOR_RESULT, FULL_INIT
 
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
-from specy_road.model_names import normalise, same_model
+from specy_road.orchestration.model_names import normalise, same_model
 from specy_road.orchestration.workers.worker_adapters import Launch
 
 SLUG = "cursor-grok-4.6-high"
@@ -129,7 +129,7 @@ def test_normalise_treats_case_spaces_dots_hyphens_alike() -> None:
     ("Composer 2.5", False),
 ])
 def test_same_model_against_slug_harness_model_and_profile(reported: str, same: bool) -> None:
-    from specy_road.model_profiles import Profile
+    from specy_road.orchestration.model_profiles import Profile
 
     prof = Profile(Path("grok-4.6.md"), {"api_id": "grok-4.6", "model": "Grok 4.6"})
     assert same_model(reported, SLUG, SLUG, prof) is same

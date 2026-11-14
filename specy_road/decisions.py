@@ -116,7 +116,7 @@ def open_questions(doc: dict[str, Any]) -> list[dict[str, Any]]:
 def _open_unexpired(e: dict[str, Any], now: datetime | date | None) -> bool:
     """Open, and its ``expires`` (a date, inclusive, or a datetime) has not passed."""
     # Same boundary rule as a roster pause, so `expires` and `paused_until` read alike.
-    from specy_road.orchestrate_assign import _pause_active
+    from specy_road.orchestration.orchestrate_assign import _pause_active
 
     if e.get("status") != "open":
         return False

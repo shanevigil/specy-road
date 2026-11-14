@@ -11,7 +11,7 @@ import pytest
 
 from tests.review_repo_helpers import NODE, git, make_review_repo, shipped_anthropic_opus_cli_yaml_line
 
-from specy_road import model_profiles as mp
+from specy_road.orchestration import model_profiles as mp
 from specy_road.bundled_scripts import models_cli, role_prompt
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_files import PACKET_NAME, reviews_dir

@@ -11,7 +11,7 @@ from tests.test_cursor_usage_cost import CODEX_ROSTER, priced_repo
 from tests.test_worker_adapters import CODEX_TURN
 
 from specy_road.orchestration.workers import worker_adapters as wa
-from specy_road.model_names import roster_match
+from specy_road.orchestration.model_names import roster_match
 from specy_road.orchestration.workers.worker_adapter_parsers import (
     estimate_usage_cost,
     mtok_rates,

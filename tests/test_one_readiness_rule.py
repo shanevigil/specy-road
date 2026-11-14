@@ -17,7 +17,7 @@ import pytest
 from tests.unauthored_repo_helpers import FILLED, pick_leaf, plan_json, unauthored_repo
 
 from specy_road.bundled_scripts import orchestrate_cli
-from specy_road.orchestrate_plan import build_orchestration_plan
+from specy_road.orchestration.orchestrate_plan import build_orchestration_plan
 
 
 def test_pickup_grind_plan_and_orchestrate_plan_agree(

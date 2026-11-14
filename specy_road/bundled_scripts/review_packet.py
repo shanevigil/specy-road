@@ -61,7 +61,7 @@ from specy_road.review_target import (
     resolve_target_or_exit, same_commit,
 )
 from specy_road.roadmap_load import load_roadmap
-from specy_road.role_prompt_cli import claimed_worktree
+from specy_road.orchestration import claimed_worktree
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
 from specy_road.orchestration import project_root_from_worktree
 

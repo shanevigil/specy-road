@@ -415,15 +415,8 @@
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/role_prompt.py": {
-      "PL": 6,
+      "PL": 7,
       "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/role_prompt_rca.py": {
-      "PL": 4,
-      "D102/D103": 4
-    },
-    "specy_road/bundled_scripts/role_prompt_stream.py": {
-      "PL": 1
     },
     "specy_road/bundled_scripts/scaffold_planning.py": {
       "D102/D103": 1
@@ -610,10 +603,6 @@
       "SIM": 1,
       "D102/D103": 2
     },
-    "specy_road/harness_facts.py": {
-      "B": 1,
-      "D102/D103": 7
-    },
     "specy_road/history_cache.py": {
       "SIM": 1,
       "D102/D103": 1
@@ -661,11 +650,6 @@
     "specy_road/milestone_session.py": {
       "D102/D103": 4
     },
-    "specy_road/model_profiles.py": {
-      "C901": 1,
-      "PL": 1,
-      "D102/D103": 8
-    },
     "specy_road/node_activity.py": {
       "PL": 1
     },
@@ -676,12 +660,35 @@
     "specy_road/on_complete_session.py": {
       "SIM": 1
     },
-    "specy_road/orchestrate_assign.py": {
+    "specy_road/orchestration/harness/harness_facts.py": {
+      "B": 1,
+      "D102/D103": 7
+    },
+    "specy_road/orchestration/model_profiles.py": {
+      "C901": 1,
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "specy_road/orchestration/orchestrate_assign.py": {
       "PL": 3,
       "D102/D103": 12
     },
-    "specy_road/orchestrate_plan.py": {
+    "specy_road/orchestration/orchestrate_plan.py": {
       "D102/D103": 2
+    },
+    "specy_road/orchestration/role_prompt_cli.py": {
+      "PL": 16
+    },
+    "specy_road/orchestration/role_prompt_rca.py": {
+      "PL": 4,
+      "D102/D103": 4
+    },
+    "specy_road/orchestration/roster_generate.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
+    "specy_road/orchestration/roster_local.py": {
+      "PL": 1
     },
     "specy_road/orchestration/workers/worker_adapter_base.py": {
       "PL": 4,
@@ -963,16 +970,6 @@
     "specy_road/roadmap_outline_ops.py": {
       "PL": 5,
       "D102/D103": 1
-    },
-    "specy_road/role_prompt_cli.py": {
-      "PL": 16
-    },
-    "specy_road/roster_generate.py": {
-      "PL": 1,
-      "D102/D103": 4
-    },
-    "specy_road/roster_local.py": {
-      "PL": 1
     },
     "specy_road/safe_write.py": {
       "B": 1

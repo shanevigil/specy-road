@@ -21,8 +21,10 @@ from specy_road.bundled_scripts import models_cli
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.bundled_scripts.validate_roadmap import validate_at
-from specy_road.model_profiles import load_profile
-from specy_road.orchestrate_plan import build_orchestration_plan, entry_may_process, may_handle
+from specy_road.orchestration.model_profiles import load_profile
+from specy_road.orchestration.orchestrate_plan import (
+    build_orchestration_plan, entry_may_process, may_handle,
+)
 from specy_road.orchestration_config import parse_orchestration_text
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_gate import policy_source, review_required
