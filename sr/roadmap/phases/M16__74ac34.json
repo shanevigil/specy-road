@@ -25,7 +25,7 @@
       ],
       "planning_dir": "planning/M16.4.5_one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points_74ac34a2-084a-4dd3-84ec-ac37b20dd983.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points",
       "touch_zones": [
         "specy_road/checks_config.py",

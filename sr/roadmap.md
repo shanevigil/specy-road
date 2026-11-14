@@ -44,12 +44,12 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.3.5` | The brainstorm CLI becomes two modules and the three managed-block writers share one engine | task | Agentic-led | Complete |
 | `M16.3.6` | Fold the remaining single-importer siblings from the code report's misc list | task | Agentic-led | Complete |
 | `M16.3.7` | Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed | task | Agentic-led | Complete |
-| `M16.4` | One command surface and one checks: config (aliases kept for rc5) | milestone | — | Not Started |
+| `M16.4` | One command surface and one checks: config (aliases kept for rc5) | milestone | — | In Progress |
 | `M16.4.1` | doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases | task | Agentic-led | Complete |
 | `M16.4.2` | upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update | task | Agentic-led | Complete |
 | `M16.4.3` | review status, review packet, and decisions --kind lesson replace handoff status, review list, review-packet and lessons | task | Agentic-led | Complete |
 | `M16.4.4` | milestone and planning command groups, and archive --hard-remove replaces archive-node | task | Agentic-led | Complete |
-| `M16.4.5` | One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points | task | Agentic-led | Not Started |
+| `M16.4.5` | One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points | task | Agentic-led | Complete |
 | `M16.5` | Orchestration subpackage, roster split and review-gate folds | milestone | — | Not Started |
 | `M16.5.1` | Worker runtime moves into orchestration/workers with import-path edits only | task | Agentic-led | Not Started |
 | `M16.5.2` | worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes | task | Agentic-led | Not Started |
