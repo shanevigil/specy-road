@@ -24,7 +24,7 @@ from specy_road.bundled_scripts.roadmap_crud_prepare import next_sibling_order
 from specy_road.roadmap_layout import next_child_id
 from specy_road.roadmap_load import load_roadmap
 from specy_road.roadmap_node_keys import new_node_key
-from specy_road.decisions import add_entry, close_entry
+from specy_road.orchestration.records.decisions import add_entry, close_entry
 from specy_road.git_subprocess import git_text
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.bundled_scripts.roadmap_chunk_atomic import TreeSnapshot

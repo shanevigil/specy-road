@@ -2,7 +2,8 @@
 """CLI for ``specy-road decisions add|list|close`` (M11.34; preferences M11.58; standing rules M22.51).
 
 ``--kind lesson`` reads and writes project review lessons in ``constraints/review-lessons.md``
-(:mod:`specy_road.review_lessons`), which ``lessons add|list``, its deprecated alias, also run.
+(:mod:`specy_road.orchestration.records.review_lessons`), which ``lessons add|list``, its
+deprecated alias, also run.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from specy_road.cli_args import add_json_arg, add_model_arg
 from specy_road.bundled_scripts.finish_task import TERMINAL, human_criteria
 from specy_road.review_override import OPERATOR, recorder, role_refusal
 from specy_road.roadmap_load import load_roadmap
-from specy_road.decisions import (
+from specy_road.orchestration import (
     PREFERENCE,
     STANDING_RULE,
     active_preferences,
@@ -28,9 +29,15 @@ from specy_road.decisions import (
     format_preference,
     open_questions,
 )
-from specy_road.decisions_local import LOCAL, SHARED, load_merged, next_free_id
+from specy_road.orchestration import LOCAL, SHARED, load_merged, next_free_id
 from specy_road.orchestration import ROLES
-from specy_road.review_lessons import LESSONS_REL, add_lesson, format_lesson, lessons_path, read_lessons
+from specy_road.orchestration import (
+    LESSONS_REL,
+    add_lesson,
+    format_lesson,
+    lessons_path,
+    read_lessons,
+)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 

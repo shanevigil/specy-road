@@ -8,7 +8,12 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.decisions import read_decisions, recorded_on_sheet, schema_errors, write_decisions
+from specy_road.orchestration.records.decisions import (
+    read_decisions,
+    recorded_on_sheet,
+    schema_errors,
+    write_decisions,
+)
 from specy_road.runtime_paths import specy_road_package_dir
 from tests.helpers import DOGFOOD
 from tests.decisions_repo_helpers import SHEET, add_args, decisions_repo, run_decisions

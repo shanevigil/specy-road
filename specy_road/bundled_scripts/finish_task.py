@@ -12,7 +12,7 @@ from pathlib import Path
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.cli_args import add_remote_arg
 from specy_road.cli_entry import run_reporting
-from specy_road.decisions import DECISIONS_REL
+from specy_road.orchestration import DECISIONS_REL
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_bookkeeping_undo import bookkeeping_guard, merge_undo_snapshot

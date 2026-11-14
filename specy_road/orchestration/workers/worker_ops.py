@@ -23,7 +23,12 @@ from typing import Any
 
 from specy_road.brief_generation import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.chore_records import chore_node, chore_prompt, chore_target, open_chore
+from specy_road.orchestration.records.chore_records import (
+    chore_node,
+    chore_prompt,
+    chore_target,
+    open_chore,
+)
 from specy_road.clock import utc_now
 from specy_road.git_subprocess import current_branch_name, git_root, head_sha, is_worktree_root, run
 from specy_road.nested_repos import (

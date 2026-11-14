@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from specy_road.orchestration.records import read_text, write_text
 from specy_road.runtime_paths import project_template_root
 from specy_road.text_sections import LEVEL2_RE, find_section, normalize_heading
 
@@ -45,12 +46,11 @@ def parse_lessons(text: str) -> list[dict[str, Any]]:
 
 def read_lessons(path: Path) -> list[dict[str, Any]]:
     """Entries in ``path``; a missing file has none. An unreadable one raises ``OSError``."""
-    if not path.is_file():
-        return []
     try:
-        return parse_lessons(path.read_text(encoding="utf-8"))
+        text = read_text(path)
     except UnicodeDecodeError as e:
         raise OSError(f"{path} is not UTF-8: {e}") from e
+    return [] if text is None else parse_lessons(text)
 
 
 def format_lesson(e: dict[str, Any]) -> str:
@@ -98,9 +98,9 @@ def add_lesson(root: Path, *, rule: str, example: str | None = None,
             raise ValueError(f"--from must be a node id such as M1.2, got {from_node!r}")
         entry["from"] = node
     path = lessons_path(root)
-    text = path.read_text(encoding="utf-8") if path.is_file() else bundled_header()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(_insert_entry(text, format_lesson(entry)), encoding="utf-8")
+    text = read_text(path)
+    text = bundled_header() if text is None else text
+    write_text(path, _insert_entry(text, format_lesson(entry)))
     return entry
 
 
