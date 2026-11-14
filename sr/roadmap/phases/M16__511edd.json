@@ -106,6 +106,7 @@
         "specy_road/bundled_scripts/grind_session.py",
         "specy_road/orchestrate_plan.py",
         "specy_road/orchestration/state.py",
+        "specy_road/orchestration/__init__.py",
         "scripts/ruff_quality_baseline.json",
         "constraints/import-layers-baseline.json",
         "constraints/test-private-imports-baseline.txt"
