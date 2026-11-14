@@ -92,24 +92,3 @@ entries:
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
-  - codename: chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte
-    node_id: M16.5.10
-    branch: feature/rm-chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte
-    touch_zones:
-      - specy_road/orchestration/records/
-      - specy_road/bundled_scripts/chore_*.py
-      - specy_road/decisions.py
-      - specy_road/bundled_scripts/decisions_cli.py
-      - specy_road/review_lessons.py
-      - tests/parity/records/
-      - tests/
-      - specy_road/
-      - scripts/line_width_baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-      - constraints/test-private-imports-baseline.txt
-      - constraints/clone-baseline.json
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-14T16:37:39+00:00'
