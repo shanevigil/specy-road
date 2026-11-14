@@ -20,7 +20,7 @@
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.3_roster-model-profiles-harness-facts-orchestrate-and-role-prompts-move-into-orchestration_67af8a9a-a8ef-4724-9702-be691a497a55.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration",
       "touch_zones": [
         "specy_road/orchestration/roster/",
