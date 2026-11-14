@@ -19,11 +19,11 @@ inlines the lot. * dependency list (resolved from node_key UUIDs to display ids)
 context: each effective dependency's ``## Intent`` block inlined verbatim** (so PMs do not have to
 paraphrase upstream work in this task's own planning sheet — see ``brief_dependency_context``; one
 line instead while that ``## Intent`` is still a placeholder) * an explicit touch-zone instruction
-for the implementing agent, then how to run the leaf's tests (``verify_cmd``,
-:mod:`specy_road.verify_cmd_config`); the header states the brief's size and largest sections
-(``brief_acceptance``) Determinism: same chunks + same planning files + same shared/*.md set =>
-byte-identical output. No timestamps, no host info. Output: stdout by default; ``-o PATH`` writes
-to a file.
+for the implementing agent, then how to run the leaf's tests (the ``checks:`` entry with ``when:
+prompt``, :mod:`specy_road.checks_config`); the header states the brief's size and largest
+sections (``brief_acceptance``) Determinism: same chunks + same planning files + same shared/*.md
+set => byte-identical output. No timestamps, no host info. Output: stdout by default; ``-o PATH``
+writes to a file.
 
 positional arguments:
   node_id               Roadmap node id, e.g. M1.1

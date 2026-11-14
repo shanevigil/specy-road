@@ -35,8 +35,8 @@ options:
   --land-check-cmd CMD  Shell command run at the project root of a detached worktree of the local
                         merge commit, before merge mode pushes it; a non-zero exit pushes nothing
                         and resets the integration branch. An empty value skips the check for this
-                        run. Default: land_check_cmd in roadmap/git-workflow.yaml. pr mode never
-                        runs it.
+                        run. Default: the checks: entries with when: land in roadmap/git-
+                        workflow.yaml. pr mode never runs it.
   --repo-root DIR       Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in
                         .specyrd/manifest.json, else the nearest enclosing roadmap/, else the git
                         root, else the current directory).

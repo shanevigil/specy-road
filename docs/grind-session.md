@@ -376,8 +376,8 @@ limit, so they can poll but cannot restart one. The installed
 `--baseline-cmd "make test"` runs in each pickup on the integration branch, after
 the sync and before the claim: a red base is caught before a leaf inherits it, and
 no implementer "fixes" failures it did not cause. Failure claims nothing and stops
-the session (exit `5`); `--baseline-warn` only warns. Default: `baseline_cmd` in
-`git-workflow.yaml`. Writes under `work/` are allowed; any other file change, a new
+the session (exit `5`); `--baseline-warn` only warns. Default: the `checks:` entries
+with `when: baseline` in `git-workflow.yaml`. Writes under `work/` are allowed; any other file change, a new
 HEAD or a branch switch refuses the pickup, even with `--baseline-warn`.
 `--pre-finish-cmd "make test && specy-road validate"` runs before `finish-this-task`;
 a non-zero exit stops the session (exit `4`) and leaves the feature branch intact.

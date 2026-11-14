@@ -201,7 +201,6 @@
     "specy_road/tool_call_guard_adapters.py": 22,
     "specy_road/tool_call_guard_shapes.py": 15,
     "specy_road/validate_stale_commands.py": 5,
-    "specy_road/verify_cmd_config.py": 11,
     "specy_road/version_skew.py": 2,
     "specy_road/worker_adapter_base.py": 60,
     "specy_road/worker_adapter_claude.py": 55,

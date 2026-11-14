@@ -144,6 +144,22 @@ def test_ready_run_records_the_tail_and_the_packet_shows_it(tmp_path: Path, monk
     assert "### `ruff .` → exit 0\n\n```\n(no output recorded)" in text   # --verify keeps no output
 
 
+def test_ready_runs_the_checks_ready_entries_before_its_run_commands(tmp_path: Path, monkeypatch,
+                                                                    capsys) -> None:
+    """``checks:`` entries with ``when: ready`` run first among the ``--run`` commands, alike."""
+    repo = make_review_repo(tmp_path)
+    monkeypatch.chdir(repo)
+    gw = repo / "roadmap" / "git-workflow.yaml"
+    checks = ("checks:\n  - {name: suite, run: echo suite ok, when: ready}\n"
+              "  - {name: leaf, run: echo leaf, when: prompt}\n")
+    gw.write_text(gw.read_text(encoding="utf-8") + checks, encoding="utf-8")
+    assert _cli("ready", "M1.1", "--model", "opus", "--run", "echo mine",
+                "--repo-root", str(repo)) == 0
+    r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
+    assert r.data["verify"] == [{"cmd": "echo suite ok", "exit": 0, "tail": "suite ok"},
+                                {"cmd": "echo mine", "exit": 0, "tail": "mine"}]
+
+
 def test_ready_run_refuses_a_failing_command_with_its_tail_and_writes_nothing(tmp_path: Path, monkeypatch,
                                                                               capsys) -> None:
     repo = make_review_repo(tmp_path)

@@ -145,8 +145,8 @@ def _add_landing_args(p: argparse.ArgumentParser) -> None:
             "Shell command run at the project root of a detached worktree of "
             "the local merge commit, before merge mode pushes it; a non-zero "
             "exit pushes nothing and resets the integration branch. An empty "
-            "value skips the check for this run. Default: land_check_cmd in "
-            "roadmap/git-workflow.yaml. pr mode never runs it."
+            "value skips the check for this run. Default: the checks: entries "
+            "with when: land in roadmap/git-workflow.yaml. pr mode never runs it."
         ),
     )
 

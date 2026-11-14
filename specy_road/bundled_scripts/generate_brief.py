@@ -14,7 +14,7 @@ from specy_road.brief_generation import (
     render_brief,
 )
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
-from specy_road.verify_cmd_config import verify_cmd_lines
+from specy_road.checks_config import verify_cmd_lines
 
 __all__ = [
     "_chain_sheet_paths",

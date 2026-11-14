@@ -1,4 +1,4 @@
-"""Baseline gate configuration: ``baseline_cmd`` resolution and grind-session pass-through.
+"""Baseline gate configuration: baseline command resolution and grind-session pass-through.
 
 The gate's behaviour is tested end to end in ``test_baseline_gate_cli.py``.
 """
@@ -11,7 +11,8 @@ from specy_road.bundled_scripts.grind_session_args import (
     parse_grind_session_args,
     pickup_args,
 )
-from specy_road.git_workflow_config import resolve_baseline_cmd, validate_git_workflow_dict
+from specy_road.checks_config import check_commands
+from specy_road.git_workflow_config import validate_git_workflow_dict
 
 _GW = "version: 1\nintegration_branch: main\nremote: origin\n"
 
@@ -34,21 +35,21 @@ def test_schema_accepts_baseline_cmd() -> None:
 
 def test_yaml_sets_the_default(tmp_path) -> None:
     _write_gw(tmp_path, "baseline_cmd: make test\n")
-    assert resolve_baseline_cmd(tmp_path, cli=None) == "make test"
+    assert check_commands(tmp_path, "baseline") == ["make test"]
 
 
 def test_cli_wins_over_yaml(tmp_path) -> None:
     _write_gw(tmp_path, "baseline_cmd: make test\n")
-    assert resolve_baseline_cmd(tmp_path, cli="pytest -q") == "pytest -q"
+    assert check_commands(tmp_path, "baseline", cli="pytest -q") == ["pytest -q"]
 
 
 def test_empty_cli_turns_the_yaml_default_off(tmp_path) -> None:
     _write_gw(tmp_path, "baseline_cmd: make test\n")
-    assert resolve_baseline_cmd(tmp_path, cli="") is None
+    assert check_commands(tmp_path, "baseline", cli="") == []
 
 
 def test_no_config_means_no_baseline(tmp_path) -> None:
-    assert resolve_baseline_cmd(tmp_path, cli=None) is None
+    assert check_commands(tmp_path, "baseline") == []
 
 
 # ---------------------------------------------------------------------------

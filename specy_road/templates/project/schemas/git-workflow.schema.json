@@ -6,6 +6,7 @@
   "required": ["version", "integration_branch", "remote"],
   "additionalProperties": false,
   "$defs": {
+    "checkStage": { "enum": ["baseline", "ready", "land", "prompt"] },
     "nestedRepoPath": {
       "type": "string",
       "minLength": 1,
@@ -75,17 +76,36 @@
       "enum": ["bwrap", "auto", "off", false],
       "description": "Whether unattended worker turns (worker delegate, message, resume) run their harness in a bubblewrap sandbox (default off when omitted: a project opts in). bwrap requires it: a host without bwrap, a turn outside a linked worktree, or a sandbox that fails to start stops the turn. auto uses bwrap on Linux where it is installed, with the same refusals, and elsewhere warns on each launch and runs unsandboxed. off (or YAML false) runs unsandboxed. See docs/orchestration-workers.md (Worker sandbox)."
     },
+    "checks": {
+      "type": "array",
+      "description": "The commands pickup, ready, landing and the prompts use, each named once with when: baseline (do-next-available-task and grind-session run it on the integration branch before a claim; CLI --baseline-cmd replaces it, an empty value runs none), ready (specy-road ready runs it like a --run command), land (finish-this-task in merge and auto mode runs it on the merge commit before it lands; CLI --land-check-cmd replaces it, an empty value runs none) and prompt (executor briefs and reviewer prompts give the first one for the leaf's tests, with the test paths appended). Entries of one stage run in file order. Replaces baseline_cmd, land_check_cmd and verify_cmd, which are ignored when checks is present. See docs/git-workflow.md (Checks).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "run", "when"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "description": "A label for the entry." },
+          "run": { "type": "string", "pattern": "\\S", "description": "The shell command; not blank." },
+          "when": {
+            "oneOf": [
+              { "$ref": "#/$defs/checkStage" },
+              { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/checkStage" } }
+            ]
+          }
+        }
+      }
+    },
     "baseline_cmd": {
       "type": "string",
-      "description": "Shell command do-next-available-task and grind-session run on the integration branch, after syncing and before claiming a leaf (e.g. make test). A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it. CLI --baseline-cmd wins (an empty value turns it off for that run); --baseline-warn downgrades a failure to a warning."
+      "description": "Deprecated: use checks with when: baseline (removed in the release after 0.3.1; ignored when checks is present). Shell command do-next-available-task and grind-session run on the integration branch, after syncing and before claiming a leaf (e.g. make test). A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it. CLI --baseline-cmd wins (an empty value turns it off for that run); --baseline-warn downgrades a failure to a warning."
     },
     "land_check_cmd": {
       "type": "string",
-      "description": "Shell command finish-this-task runs in merge (and auto) mode on the local merge commit, at the project root of a detached temporary worktree, before it pushes the integration branch (e.g. the full test and lint gate). A non-zero exit pushes nothing and resets the local integration branch. CLI --land-check-cmd wins (an empty value skips it for that run). pr mode never runs it."
+      "description": "Deprecated: use checks with when: land (removed in the release after 0.3.1; ignored when checks is present). Shell command finish-this-task runs in merge (and auto) mode on the local merge commit, at the project root of a detached temporary worktree, before it pushes the integration branch (e.g. the full test and lint gate). A non-zero exit pushes nothing and resets the local integration branch. CLI --land-check-cmd wins (an empty value skips it for that run). pr mode never runs it."
     },
     "verify_cmd": {
       "type": "string",
-      "description": "Command executor briefs and reviewer prompts give for running the leaf's tests, with the test paths appended (e.g. python -m pytest -n 4 -p no:cacheprovider). Keep its worker count small: several workers on one machine each running a full parallel suite oversubscribe the CPU. Separate from land_check_cmd, which runs the full suite at landing. When omitted, the prompts say to cap parallel test workers when other workers share the machine."
+      "description": "Deprecated: use checks with when: prompt (removed in the release after 0.3.1; ignored when checks is present). Command executor briefs and reviewer prompts give for running the leaf's tests, with the test paths appended (e.g. python -m pytest -n 4 -p no:cacheprovider). Keep its worker count small: several workers on one machine each running a full parallel suite oversubscribe the CPU. Separate from land_check_cmd, which runs the full suite at landing. When omitted, the prompts say to cap parallel test workers when other workers share the machine."
     },
     "prefer_agentic_pick_order": {
       "type": "boolean",

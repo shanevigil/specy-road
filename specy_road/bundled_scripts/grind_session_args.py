@@ -165,7 +165,8 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--baseline-cmd", default=None, metavar="CMD",
                    help="Passed through to pickup: run on the integration branch before "
                         "each claim; a non-zero exit refuses the pickup (exit 5). "
-                        "Default: baseline_cmd in roadmap/git-workflow.yaml.")
+                        "Default: the checks: entries with when: baseline in "
+                        "roadmap/git-workflow.yaml.")
     p.add_argument("--baseline-warn", action="store_true",
                    help="Passed through to pickup: a failing baseline only warns.")
     p.add_argument("--push", action="store_true",

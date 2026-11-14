@@ -32,6 +32,12 @@ implementation_summary: local
 # mode, because pr never merges between cycles and the next pickup cannot see the
 # work the last one finished. See docs/git-workflow.md and docs/grind-session.md.
 on_complete: pr
+# Optional: check commands, each named once with when: baseline (before a pickup claims),
+# ready (specy-road ready runs it), land (on the merge commit before finish lands it) or
+# prompt (the leaf test command briefs and reviewer prompts give). See docs/git-workflow.md (Checks).
+# checks:
+#   - {name: suite, run: python -m pytest -n auto -p no:cacheprovider, when: [baseline, land]}
+#   - {name: leaf tests, run: python -m pytest -n 4 -p no:cacheprovider, when: prompt}
 # Optional grind-session bounds for a Claude CLI implement hook. CLI flags win.
 # grind_session_max_limit_waits: 3             # waits per leaf before stopping
 # grind_session_max_limit_wait_hours: 6        # ceiling on any one wait

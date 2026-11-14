@@ -85,6 +85,8 @@ from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE
 from specy_road.agents_md_block import AGENTS_FILES, load_order_paths, print_migration, render_rules
 from specy_road.bundled_scripts.digest_cli import cmd_digest
+from specy_road.checks_config import migrate_text
+from specy_road.git_workflow_config import GIT_WORKFLOW_REL
 from specy_road.bundled_scripts import refresh_profiles as refresh_profiles_cli
 from specy_road.bundled_scripts import refresh_schemas as refresh_schemas_cli
 from specy_road.bundled_scripts import refresh_stubs as refresh_stubs_cli
@@ -410,6 +412,7 @@ def _refresh(
     declined_docs = _report_shipped_docs(project, verb, existence_project or project, out)
     declined = _report_stubs_declined(project, checkout, preview=preview, prune=prune,
                                       declined_docs=declined_docs, out=out)
+    _migrate_checks(project, verb, out)
     _report_file_limits_default(existence_project or project, out)
     out.print()
     return declined
@@ -461,6 +464,23 @@ def _check(
 _DIGEST_STEP = ("Run specy-road digest (and specy-road export if roadmap.md is tracked), then"
                 " commit"
                 " them. Not specy-road sync: it also fast-forwards the integration branch.")
+
+
+def _migrate_checks(project: Path, verb: str, out: Report) -> None:
+    """Rewrite ``baseline_cmd``, ``land_check_cmd`` and ``verify_cmd`` as ``checks:`` entries.
+
+    Every other key of ``roadmap/git-workflow.yaml``,
+    ``require_implementation_review_before_finish`` among them, keeps its value; the report says
+    when the file's comments and layout could not be kept
+    (:func:`specy_road.checks_config.migrate_text`).
+    """
+    path = project / GIT_WORKFLOW_REL
+    if not path.is_file() or (done := migrate_text(path.read_text(encoding="utf-8"))) is None:
+        return
+    safe_write.write(project, GIT_WORKFLOW_REL, done.text)
+    layout = "" if done.layout_kept else "; written again in block style, without its comments"
+    out.add(FILES, f"{verb} {GIT_WORKFLOW_REL.as_posix()} (baseline_cmd, land_check_cmd and"
+            f" verify_cmd become checks: entries{layout})")
 
 
 FILE_LIMITS = "constraints/file-limits.yaml"
@@ -577,7 +597,8 @@ def _mirror_extras(project: Path, checkout: Path) -> set[str]:
     rels = {
         AGENT_GUIDE, GITIGNORE, CURSOR_INDEXING_IGNORE,
         ".specyrd/manifest.json", ".specyrd/README.md",
-        under("roadmap/orchestration.yaml"), under("constraints/file-limits.yaml"),
+        under("roadmap/orchestration.yaml"), under(GIT_WORKFLOW_REL.as_posix()),
+        under("constraints/file-limits.yaml"),
         *(under(name) for name in AGENTS_FILES),
         *(under(name) for name in GENERATED_COMMITTED),
     }

@@ -14,6 +14,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `checks:` in `roadmap/git-workflow.yaml` names each check command once with `when:` (`baseline`, `ready`, `land`,
+  `prompt`): pickup's baseline, the land check under `land: push` and `land: local`, and the leaf test command the
+  prompts give, as `baseline_cmd`, `land_check_cmd` and `verify_cmd` did, plus `ready` entries, which `specy-road
+  ready` runs before its `--run` commands. Entries of one stage run in file order until one fails;
+  `--baseline-cmd` and `--land-check-cmd` still replace a stage for one run (an empty value runs none). The review
+  switch `require_implementation_review_before_finish` stays where it is. See `docs/git-workflow.md` (Checks) and
+  Deprecated.
+
 - `specy-road milestone start|status|pr` and `specy-road planning scaffold|approach` group the milestone-session and
   planning commands, with the old commands' flags and output, and `specy-road archive --hard-remove NODE_ID`
   deletes a node outright as `archive-node NODE_ID --hard-remove` did (it refuses `--auto`, `--deep`,
@@ -161,6 +169,14 @@ release after 0.3.1:
 - `specy-road scaffold-planning` -> `specy-road planning scaffold`.
 - `specy-road author-approach` -> `specy-road planning approach`.
 - `specy-road archive-node NODE_ID --hard-remove` -> `specy-road archive --hard-remove NODE_ID`.
+
+These `roadmap/git-workflow.yaml` keys are read until the release after 0.3.1, which removes them; `specy-road
+validate` prints one notice while one is present, `specy-road upgrade` rewrites them, and a `checks:` list beside
+them wins:
+
+- `baseline_cmd: CMD` -> `checks: [{name: baseline, run: CMD, when: baseline}]`.
+- `land_check_cmd: CMD` -> `checks: [{name: land check, run: CMD, when: land}]`.
+- `verify_cmd: CMD` -> `checks: [{name: verify, run: CMD, when: prompt}]`.
 
 ### Fixed
 

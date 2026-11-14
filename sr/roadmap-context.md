@@ -44,12 +44,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.3.5` The brainstorm CLI becomes two modules and the three managed-block writers share one engine `the-brainstorm-cli-becomes-two-modules-and-the-three-managed-block-writers-share-one-engine` — task — **Complete**
     - `M16.3.6` Fold the remaining single-importer siblings from the code report's misc list `fold-the-remaining-single-importer-siblings-from-the-code-report-s-misc-list` — task — **Complete**
     - `M16.3.7` Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed `fold-the-pm-ui-server-and-roadmap-crud-splits-after-the-orchestration-snapshot-is-fixed` — task — **Complete**
-  - `M16.4` One command surface and one checks: config (aliases kept for rc5) `one-command-surface-and-one-checks-config-aliases-kept-for-rc5` — milestone — **Not Started**
+  - `M16.4` One command surface and one checks: config (aliases kept for rc5) `one-command-surface-and-one-checks-config-aliases-kept-for-rc5` — milestone — **In Progress**
     - `M16.4.1` doctor --prune is the one cleanup path; branches prune, registry-prune and the grind cleanup become aliases `doctor-prune-is-the-one-cleanup-path-branches-prune-registry-prune-and-the-grind-cleanup-become-aliases` — task — **Complete**
     - `M16.4.2` upgrade absorbs the refresh commands and prints one report of what changed for the repo; update becomes self-update `upgrade-absorbs-the-refresh-commands-and-prints-one-report-of-what-changed-for-the-repo-update-becomes-self-update` — task — **Complete**
     - `M16.4.3` review status, review packet, and decisions --kind lesson replace handoff status, review list, review-packet and lessons `review-status-review-packet-decisions-kind-lesson-and-presence-replace-handoff-status-review-list-review-packet-lessons-and-session` — task — **Complete**
     - `M16.4.4` milestone and planning command groups, and archive --hard-remove replaces archive-node `milestone-and-planning-command-groups-and-archive-hard-remove-replaces-archive-node` — task — **Complete**
-    - `M16.4.5` One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points `one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points` — task — **Not Started**
+    - `M16.4.5` One checks: block replaces baseline_cmd, land_check_cmd and verify_cmd with the same commands at the same points `one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points` — task — **Complete**
   - `M16.5` Orchestration subpackage, roster split and review-gate folds `orchestration-subpackage-roster-split-and-review-gate-folds` — milestone — **Not Started**
     - `M16.5.1` Worker runtime moves into orchestration/workers with import-path edits only `worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only` — task — **Not Started**
     - `M16.5.2` worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes `worker-ops-parts-and-the-worker-siblings-fold-into-their-parents-and-the-module-class-swap-goes` — task — **Not Started**
@@ -339,7 +339,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.4.5` on `feature/rm-one-checks-block-replaces-baseline-cmd-land-check-cmd-and-verify-cmd-with-the-same-commands-at-the-same-points` since 2026-11-13
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -353,18 +352,19 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 3 | 0 | 2.33 | 67% | 18 | 0 |
-| `CHANGELOG.md` **flagged** | 22 | 0 | 2.41 | 68% | 13 | 2 |
+| `CHANGELOG.md` **flagged** | 23 | 0 | 2.39 | 70% | 13 | 2 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 27 | 0 | 2.56 | 70% | 48 | 2 |
-| `gui` **flagged** | 6 | 0 | 2.17 | 67% | 1 | 0 |
+| `docs` **flagged** | 28 | 0 | 2.54 | 71% | 48 | 2 |
+| `gui` **flagged** | 5 | 0 | 2.40 | 80% | 1 | 0 |
 | `planning` **flagged** | 3 | 0 | 3.00 | 67% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `schemas` **flagged** | 2 | 0 | 2.00 | 100% | 4 | 0 |
+| `specy_road` **flagged** | 46 | 0 | 2.22 | 52% | 91 | 2 |
 | `suggested_prompts` **flagged** | 5 | 0 | 2.60 | 100% | 4 | 0 |
-| `tests` **flagged** | 49 | 0 | 2.18 | 51% | 104 | 2 |
+| `tests` **flagged** | 50 | 0 | 2.18 | 52% | 104 | 2 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
@@ -373,8 +373,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `constraints` | 14 | 0 | 1.71 | 21% | 53 | 0 |
 | `pyproject.toml` | 2 | 0 | 2.50 | 50% | 20 | 0 |
-| `scripts` | 14 | 0 | 2.07 | 36% | 79 | 0 |
-| `specy_road` | 46 | 0 | 2.20 | 50% | 91 | 2 |
+| `scripts` | 15 | 0 | 2.07 | 40% | 79 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
