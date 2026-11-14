@@ -47,8 +47,8 @@ from specy_road.bundled_scripts.do_next_task_register import register_claim
 from specy_road.bundled_scripts.do_next_task_self_heal import (
     warn_about_stale_claims_before_pickup as _warn_about_stale_claims_before_pickup,
 )
-from specy_road.bundled_scripts.grind_session_events import EXIT_IN_FLIGHT
-from specy_road.bundled_scripts.grind_session_in_flight import (
+from specy_road.orchestration import EXIT_IN_FLIGHT
+from specy_road.orchestration import (
     InFlightClaim,
     own_in_flight_claims,
 )

@@ -102,7 +102,7 @@ class _Events:
 
 def grind_actions(repo: Path) -> list[dict]:
     """The grind cleanup with ``--push --delete-merged-branches`` after every local branch."""
-    from specy_road.grind_session_cleanup import run_session_cleanup
+    from specy_road.orchestration.grind.grind_session_cleanup import run_session_cleanup
 
     branches = sorted(fixture.git(repo, "for-each-ref", "--format=%(refname:short)",
                                   "refs/heads/feature/rm-*").splitlines())

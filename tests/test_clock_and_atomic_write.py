@@ -39,7 +39,7 @@ from specy_road.brainstorm_session import (
     session_path,
     write_session,
 )
-from specy_road.bundled_scripts.grind_session_events import EventEmitter
+from specy_road.orchestration.grind.grind_session_events import EventEmitter
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 from specy_road.reviewer_run_failure import record_reviewer_failure_event
 from specy_road.orchestration.workers.worker_turn_check import TurnWatch
