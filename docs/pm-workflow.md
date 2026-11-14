@@ -181,6 +181,8 @@ The outline **green left accent** compares **`git branch --show-current`** to ea
 
 **Optional:** check out **`feature/rm-*`**, use a **second worktree**, or open another clone if you need the literal on-disk files for that branch.
 
+**Reading the orchestration view.** A badge on a leaf's outline row says where it stands, most pressing first: `blocked` (a reviewer or the executor blocked it), `held` (on the hold list or behind an open gate), `exited_failed` or `stalled` (a worker needs a look), `running`, `READY awaiting review`, `approved`, `claimed`. Hover for the claim, workers, READY, reviews and holds; click to open the **Orchestration** drawer on that leaf, where **Detail** shows its worktrees (dirty, ahead / behind), the hand-off commit, each review's verdict and whether it is still fresh for HEAD, and the gate. `unknown` means the server could not read that source; **—** means there is nothing to show. The view only reads: to act, use its copy buttons and run the command in a terminal. Run the GUI from the main checkout, since workers and reviews live in that checkout's `work/` ([Which checkout to run the GUI from](#which-checkout-to-run-the-gui-from)); details in [pm-gui.md](pm-gui.md).
+
 See [git-workflow.md](git-workflow.md).
 
 ### Pick an item

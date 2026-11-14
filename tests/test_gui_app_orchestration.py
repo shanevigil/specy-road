@@ -286,3 +286,19 @@ def test_read_only_serves_the_get_and_refuses_the_post(tmp_path: Path, monkeypat
     assert response.status_code == 200 and response.content == dumped(snapshot(root))
     post = c.post("/api/orchestration")
     assert post.status_code == 403 and "read-only" in post.json()["detail"]
+
+
+def test_shipped_bundle_reads_the_route_and_cannot_render_the_mock() -> None:
+    """The production assets fetch ``/api/orchestration`` and carry none of the mock's leaf keys or its switch.
+
+    The mock loads only behind ``import.meta.env.DEV``, so ``npm run build`` drops it.
+    """
+    bundle = "".join(
+        p.read_text(encoding="utf-8")
+        for p in (REPO / "specy_road" / "pm_gantt_static" / "assets").glob("*.js")
+    )
+    mock = json.loads(MOCK.read_text(encoding="utf-8"))
+    assert "/api/orchestration" in bundle
+    assert mock["leaves"]
+    for marker in [*mock["leaves"], "orchestration_snapshot_mock", "mock=orchestration"]:
+        assert marker not in bundle, marker
