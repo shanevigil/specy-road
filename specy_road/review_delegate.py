@@ -49,7 +49,7 @@ from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
 from specy_road.errors import SpecyError, inherited_init
 from specy_road import safe_write
 from specy_road.clock import utc_now_iso
-from specy_road.chore_records import chore_prompt, chore_target, load_chore
+from specy_road.orchestration.records.chore_records import chore_prompt, chore_target, load_chore
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_root
 from specy_road.orchestration.orchestrate_assign import (

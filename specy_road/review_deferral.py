@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road.decisions import decisions_path, read_decisions
+from specy_road.orchestration.records.decisions import decisions_path, read_decisions
 from specy_road.review_files import RCA_PREFIX, ReviewFile, reviews_dir
 from specy_road.review_target import same_commit
 

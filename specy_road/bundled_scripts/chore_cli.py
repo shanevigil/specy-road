@@ -23,7 +23,7 @@ from typing import Any
 from specy_road.cli_args import add_json_arg, add_model_arg
 from specy_road.cli_entry import run_cli
 from specy_road.bundled_scripts.chore_garden import as_json, garden
-from specy_road.chore_records import (
+from specy_road.orchestration import (
     _SLUG,
     chore_node,
     chore_prompt,

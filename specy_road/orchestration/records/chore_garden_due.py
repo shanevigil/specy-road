@@ -16,7 +16,8 @@ from specy_road.orchestration_config import effective_config
 
 def record_path(root: Path) -> Path:
     """A dot-file: a chore slug starts with a letter or digit, so no chore record can be this file."""
-    from specy_road.chore_records import chores_dir   # the worker records stack, only when read
+    # the worker records stack, only when read
+    from specy_road.orchestration.records.chore_records import chores_dir
 
     return chores_dir(root) / ".garden.json"
 

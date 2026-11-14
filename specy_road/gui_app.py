@@ -39,8 +39,8 @@ from specy_road.orchestration import timeline, usage
 from specy_road.orchestration import sync_marks
 from specy_road.orchestration import WorkerError, events_since, list_records, load_record
 from specy_road.clock import utc_now_iso
-from specy_road.decisions import close_entry, decisions_path, read_decisions
-from specy_road.decisions_local import load_merged
+from specy_road.orchestration import close_entry, decisions_path, read_decisions
+from specy_road.orchestration import load_merged
 from specy_road.review_override import (
     OPERATOR,
     PM_GUI,

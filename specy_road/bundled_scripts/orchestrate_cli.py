@@ -24,7 +24,7 @@ import sys
 from datetime import date
 
 from specy_road.cli_args import add_json_arg
-from specy_road.decisions import format_preference
+from specy_road.orchestration import format_preference
 from specy_road.roadmap_load import load_roadmap
 from specy_road.orchestration import OrchestrationPlan, build_orchestration_plan
 from specy_road.orchestration_pinned import WORKTREE_REF

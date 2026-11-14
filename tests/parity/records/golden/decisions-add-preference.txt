@@ -1,0 +1,219 @@
+returned:
+{
+  "applies_to": [
+    "data"
+  ],
+  "asked": "2026-11-14",
+  "expires": "2026-12-31",
+  "id": "P4",
+  "kind": "preference",
+  "models": [
+    "mid-2",
+    "cheap-1"
+  ],
+  "node": "M1.1",
+  "role": "executor",
+  "status": "open",
+  "summary": "Data leaves to mid-2",
+  "why_now": "cheaper"
+}
+stdout:
+stderr:
+--- roadmap/decisions.yaml
+version: 1
+entries:
+  - id: D1
+    node: M1.1
+    kind: decision
+    summary: Which storage engine does the ledger use?
+    why_now: The writer lands next
+    options:
+      - label: yaml
+        effect: one file, merged by hand
+      - label: sqlite
+        effect: a binary file in git
+    recommendation: yaml
+    recommendation_reason: diffs stay readable
+    default_if_unanswered: yaml
+    asked: '2026-11-01'
+    needed_by: '2026-11-20'
+    status: open
+  - id: D2
+    node: M1.1
+    kind: human-action
+    summary: Confirm the vendor contract
+    why_now: A1 is a human criterion
+    options:
+      - label: signed
+        effect: the leaf may finish
+    recommendation: signed
+    recommendation_reason: the contract was sent
+    default_if_unanswered: wait
+    asked: '2026-11-02'
+    criterion: A1
+    status: open
+  - id: D3
+    node: M1.1
+    kind: decision
+    summary: accept M1.1 at 0123456789ab (operator decision)
+    why_now: the operator decided the review outcome in plain words
+    options:
+      - label: accept
+        effect: the gate settles the blocks and shortfall the answer names, at the
+          commit it names
+      - label: keep reviewing
+        effect: the blocks and shortfall still count
+    recommendation: accept
+    recommendation_reason: decided by the operator
+    default_if_unanswered: keep reviewing
+    asked: '2026-11-03'
+    status: closed
+    answer: 'accept for commit 0123456789abcdef0123456789abcdef01234567, recorded
+      by Op <op@example.com>. Settles: sol block at 0123456789ab. Operator''s words:
+      "ship it"'
+    closed: '2026-11-03T10:00:00+00:00'
+    decided_by: operator
+    channel: pm-gui
+  - id: D4
+    node: M1.1
+    kind: decision
+    summary: accept M1.1 at 0123456789ab (coordinator under standing rule R1)
+    why_now: standing rule R1 lets the coordinator accept with limits on this evidence
+    options:
+      - label: accept
+        effect: the gate settles the blocks and shortfall the answer names, at the
+          commit it names
+      - label: keep reviewing
+        effect: the blocks and shortfall still count
+    recommendation: accept
+    recommendation_reason: decided by the coordinator
+    default_if_unanswered: keep reviewing
+    asked: '2026-11-04'
+    status: closed
+    answer: 'accept for commit 0123456789abcdef0123456789abcdef01234567, recorded
+      by Op <op@example.com>. Settles: nothing named. Limits: ["docs only"].'
+    closed: '2026-11-04T10:00:00+00:00'
+    decided_by: coordinator
+  - id: P1
+    kind: preference
+    summary: Docs-only leaves go to the cheap executor
+    role: executor
+    models:
+      - cheap-1
+      - mid-2
+    applies_to:
+      - docs
+    why_now: Saves the strong model for code
+    asked: '2026-10-01'
+    status: open
+  - id: P2
+    kind: preference
+    summary: Reviews in October used the slow reviewer
+    role: reviewer
+    models:
+      - slow-3
+    expires: '2026-10-31'
+    asked: '2026-10-02'
+    status: open
+  - id: P3
+    node: M9.9
+    kind: preference
+    summary: Leaf M9.9 goes to mid-2
+    models:
+      - mid-2
+    asked: '2026-10-03'
+    status: open
+  - id: R1
+    kind: standing-rule
+    summary: The coordinator may accept docs-only leaves with limits
+    why_now: '"Accept docs leaves yourself when only style blocks remain" (operator,
+      2026-11-01)'
+    expires: '2026-12-31'
+    asked: '2026-11-01'
+    status: open
+  - id: P4
+    kind: preference
+    summary: Data leaves to mid-2
+    node: M1.1
+    role: executor
+    why_now: cheaper
+    models:
+      - mid-2
+      - cheap-1
+    applies_to:
+      - data
+    expires: '2026-12-31'
+    asked: '2026-11-14'
+    status: open
+--- roadmap/decisions.local.yaml
+version: 1
+entries:
+- id: P1
+  kind: preference
+  summary: Docs-only leaves go to mid-2 in this clone
+  role: executor
+  models:
+  - mid-2
+  asked: '2026-11-05'
+  status: open
+- id: P4
+  kind: preference
+  summary: This clone reviews with fast-4
+  role: reviewer
+  models:
+  - fast-4
+  asked: '2026-11-06'
+  status: open
+--- constraints/review-lessons.md
+# Project review lessons
+
+Defect classes that escaped one review, one rule each. Prose here is not an entry.
+
+- This bullet is above the section, so it is prose.
+
+## Lessons
+
+Each top-level bullet is a lesson.
+
+- A writer must refuse a symlinked target
+  - Example: the ledger followed a link out of the repo
+  - From: M3.2
+- Tests assert files, not mock call counts
+
+Trailing prose inside the section.
+
+## Notes
+
+- Not a lesson: a later section.
+--- work/chores/old-chore.json
+{
+  "slug": "old-chore",
+  "task": "Fix the broken links in docs/",
+  "touch_zones": [
+    "docs/"
+  ],
+  "review": true,
+  "model": "cheap-1",
+  "harness": null,
+  "worktree": "<tmp>/wt",
+  "branch": "main",
+  "base": "<head>",
+  "started_at": "2026-11-10T09:00:00+00:00",
+  "closed_at": "2026-11-11T09:00:00+00:00"
+}
+--- work/chores/tidy-docs.json
+{
+  "slug": "tidy-docs",
+  "task": "Fix the broken links in docs/",
+  "touch_zones": [
+    "docs/"
+  ],
+  "review": true,
+  "model": "cheap-1",
+  "harness": null,
+  "worktree": "<tmp>/wt",
+  "branch": "main",
+  "base": "<head>",
+  "started_at": "2026-11-10T09:00:00+00:00",
+  "closed_at": null
+}

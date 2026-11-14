@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 
-from specy_road.chore_records import load_chore
+from specy_road.orchestration.records.chore_records import load_chore
 from specy_road.git_subprocess import run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration.claims import read_claims

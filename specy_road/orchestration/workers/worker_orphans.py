@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg
-from specy_road.chore_records import load_chore
+from specy_road.orchestration.records.chore_records import load_chore
 from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import resolve_integration_defaults

@@ -19,7 +19,7 @@ from specy_road.roadmap_chunk_utils import (
     manifest_includes,
     roadmap_dir,
 )
-from specy_road.decisions import decisions_path, load_checked_decisions
+from specy_road.orchestration.records.decisions import decisions_path, load_checked_decisions
 from specy_road.registry_yaml import dump_registry_text, registry_path
 from specy_road.runtime_paths import project_prefix
 

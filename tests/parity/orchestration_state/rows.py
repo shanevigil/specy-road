@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from specy_road.orchestration.workers import worker_state as ws
-from specy_road.chore_records import chores_dir
+from specy_road.orchestration.records.chore_records import chores_dir
 from specy_road.orphaned_claims import orphaned_claims
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target

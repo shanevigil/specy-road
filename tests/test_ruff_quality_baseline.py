@@ -229,6 +229,10 @@ _MOVED_FROM.update({
     "specy_road/orchestration/model_profiles.py": "specy_road/model_profiles.py",
     "specy_road/orchestration/orchestrate_assign.py": "specy_road/orchestrate_assign.py",
     "specy_road/orchestration/orchestrate_plan.py": "specy_road/orchestrate_plan.py",
+    "specy_road/orchestration/records/chore_garden_due.py": "specy_road/chore_garden_due.py",
+    "specy_road/orchestration/records/chore_records.py": "specy_road/chore_records.py",
+    "specy_road/orchestration/records/decisions.py": "specy_road/decisions.py",
+    "specy_road/orchestration/records/review_lessons.py": "specy_road/review_lessons.py",
     "specy_road/orchestration/role_prompt_cli.py": "specy_road/bundled_scripts/role_prompt_cli.py",
     "specy_road/orchestration/role_prompt_rca.py": "specy_road/bundled_scripts/role_prompt_rca.py",
     "specy_road/orchestration/role_prompt_rework.py":

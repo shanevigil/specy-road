@@ -21,8 +21,8 @@ from typing import Any, Callable
 
 from specy_road.brainstorm_session import SESSION_PREFIX, SESSION_SUFFIX, list_slugs, read_session
 from specy_road.bundled_scripts.review_cli import rca_command, review_state
-from specy_road.decisions import open_questions, recorded_on_sheet
-from specy_road.decisions_local import LOCAL, SHARED, load_merged
+from specy_road.orchestration.records.decisions import open_questions, recorded_on_sheet
+from specy_road.orchestration.records.decisions import LOCAL, SHARED, load_merged
 from specy_road.git_subprocess import git_ok, git_stdout, head_sha
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.history_events import STATUS
