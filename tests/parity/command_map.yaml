@@ -175,6 +175,3 @@ rows:
   - old: specy-road grind-session
     new: specy-road grind-session
     allowed: "M16.4.5: `--baseline-cmd` help names the checks: entries with when: baseline as its default instead of baseline_cmd"
-  - old: specy-road grind-session
-    new: specy-road grind-session
-    allowed: "M16.5.11: `--watch`, `--max-limit-waits`, `--max-limit-wait-hours`, `--limit-wait-grace-seconds` and `--max-empty-retries` help name the yaml keys under grind: (grind.status_interval_minutes, grind.max_limit_waits, ...) instead of the top-level grind_session_* keys"
