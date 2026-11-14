@@ -200,7 +200,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.5` PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer `gui-orch-outline-badges` — task — **Complete**
   - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Complete**
   - `M17.7` PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together `gui-api-orchestration` — task — **Complete**
-  - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Not Started**
+  - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Complete**
   - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Not Started**
   - `M17.10` Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run `gui-orch-sandbox-use-approved` — gate — **Complete**
   - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Complete**
@@ -342,7 +342,6 @@ Do not pick these up.
 
 - `M16.5.10` on `feature/rm-chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte` since 2026-11-14
 - `M16.5.7` on `feature/rm-shared-checkout-guard-and-session-presence-move-into-orchestration` since 2026-11-14
-- `M17.8` on `feature/rm-gui-orch-docs-wiring` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -356,28 +355,28 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 3 | 0 | 2.33 | 67% | 18 | 0 |
-| `CHANGELOG.md` **flagged** | 21 | 0 | 2.19 | 71% | 13 | 1 |
+| `CHANGELOG.md` **flagged** | 21 | 0 | 2.19 | 71% | 9 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 28 | 0 | 2.32 | 68% | 79 | 1 |
-| `gui` **flagged** | 5 | 0 | 2.40 | 80% | 1 | 0 |
+| `docs` **flagged** | 28 | 0 | 2.32 | 68% | 75 | 1 |
+| `gui` **flagged** | 6 | 0 | 2.17 | 67% | 1 | 0 |
 | `planning` **flagged** | 3 | 0 | 3.00 | 67% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
+| `pyproject.toml` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `schemas` **flagged** | 2 | 0 | 2.00 | 100% | 4 | 0 |
-| `specy_road` **flagged** | 47 | 0 | 2.09 | 51% | 139 | 1 |
+| `specy_road` **flagged** | 47 | 0 | 2.09 | 51% | 135 | 1 |
 | `suggested_prompts` **flagged** | 5 | 0 | 2.60 | 100% | 4 | 0 |
-| `tests` **flagged** | 50 | 0 | 2.08 | 52% | 152 | 1 |
+| `tests` **flagged** | 50 | 0 | 2.08 | 52% | 148 | 1 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
 | `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
-| `constraints` | 17 | 0 | 1.71 | 24% | 101 | 0 |
-| `pyproject.toml` | 2 | 0 | 2.50 | 50% | 20 | 0 |
-| `scripts` | 18 | 0 | 2.00 | 39% | 127 | 0 |
+| `constraints` | 16 | 0 | 1.75 | 25% | 97 | 0 |
+| `scripts` | 17 | 0 | 2.06 | 41% | 123 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

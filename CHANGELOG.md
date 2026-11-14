@@ -27,6 +27,15 @@ body. Keep section bodies focused; link to PRs for detail.
   deletes a node outright as `archive-node NODE_ID --hard-remove` did (it refuses `--auto`, `--deep`,
   `--dry-run` and `--force` beside it). The old names are deprecated aliases (see Deprecated).
 
+- PM GUI: a read-only **Orchestration** drawer (header button) shows each leaf's claim and workers, served by the new
+  `GET /api/orchestration` (`specy_road.orchestration`'s snapshot of the main checkout's project, unchanged); it
+  refreshes every 15 s only while open and its buttons copy `specy-road worker status|open` and `review status`
+  commands. Each leaf's **Detail**, also in the node edit dialog, shows its worktrees (dirty, ahead / behind), the
+  READY commit, review verdicts with fresh-for-HEAD, the gate state and holds. The outline shows one badge per leaf
+  (blocked, held, exited_failed, stalled, running, READY awaiting review, approved, claimed, …) whose hover
+  summarises the leaf and whose click opens the drawer on it. A server without the route shows no badges. See
+  `docs/pm-gui.md` (Orchestration drawer).
+
 - PM GUI: the PM can answer an open ledger question or approve a claimed leaf over reviewer blocks from the Status window (`POST /api/pm-decisions`), recorded as an operator decision with the new optional `channel: pm-gui` (refresh copied schemas with `specy-road refresh-schemas`) and committed alone on the integration branch, never in the GUI's checkout. It needs the code `specy-road gui` prints once at startup (memory only; none under `--read-only`) and a review step before **Record decision**. `grind-session --status` lists these under **Decided in the GUI, not yet processed** (`decisions.gui_pending`) until a coordinator processes them, and each evaluated claimed leaf gains `commit`, `can_approve_over_block` and `settles`; the orchestrate skill pulls before each status check and processes them. An approval is usable only in the clone that ran the GUI. See `docs/pm-gui.md` (PM decisions in the Status window).
 
 - PM GUI: a **Status** button opens a read-only modal with the grind status, served unchanged by the new `GET /api/grind-status?until=&under=` (`400` with the CLI's message where `grind-session --status` exits 2). It shows **Last updated** with the report's age, refreshes on an interval (Off, 30 s, 60 s by default, 2 min, 5 min) only while open, and has a **Refresh now** icon; the scope fields and the interval are per-repo browser preferences. `docs/pm-workflow.md` gains "Which checkout to run the GUI from". See `docs/pm-gui.md` (Status modal).
