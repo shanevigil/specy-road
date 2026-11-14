@@ -343,14 +343,18 @@ def test_a_marker_not_bound_to_its_decision_and_rca_resolves_nothing(tmp_path: P
     assert governing_rca(repo, "M1.1", [b.review for b in gate.blocks]) is None
 
 
+# Every public name each old module defined before the rename or fold, by its new home.
 @pytest.mark.parametrize(("old", "new", "names"), [
-    ("review_defer", "review_defer_cli", "applicable_record cmd_review_defer"),
-    ("review_deferral", "review_defer_rules", "apply_deferrals deferral_in_effect"),
+    ("review_defer", "review_defer_cli", "add_parser applicable_record cmd_review_defer"),
+    ("review_deferral", "review_defer_rules", "CATEGORIES DEFERRAL_PREFIX Evidence MARKER_SCHEMA "
+     "Marker answer_item apply_deferrals deferral_evidence deferral_in_effect load_markers "
+     "marker_path normalise_input_class qualify_deferral rca_deferral round_of write_marker"),
     ("review_strong", "review_gate", "applicable_items human_closes_strong item_label "
      "strong_problem touch_zones unmet_strong zones_meet"),
     ("review_resumed_delta", "review_gate", "FRESH_SESSION RESUMED_KEY fresh_only_note "
      "fresh_session_problem resumed_delta_on"),
     ("review_eligible", "review_gate", "Identity reviews_to_judge writers"),
+    ("review_eligible", "bundled_scripts.review_cli", "eligibility_lines reviewer_eligibility"),
     ("review_ready_merge", "review_gate_ready", "add_ready_parser cmd_ready trial_merge_warning"),
     ("changelog_check", "review_gate_ready", "missing_entry_warning"),
     ("review_bookkeeping", "review_override", "CARRY_NOTE count_at_later_commit heads_problem "
@@ -369,3 +373,4 @@ def test_renamed_module_old_path_warns_and_serves_the_same_names(monkeypatch, ol
     target = importlib.import_module(f"specy_road.{new}")
     for name in names.split():
         assert getattr(module, name) is getattr(target, name)
+    assert not hasattr(module, "not_a_moved_name")
