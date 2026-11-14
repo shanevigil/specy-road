@@ -9,8 +9,9 @@ read alone, which the readiness rule takes (``specy_road.orchestration.claims``,
 does not import the worker modules). Writes stay in the modules that make
 them today.
 
-The worker runtime lives in ``specy_road.orchestration.workers`` and harness facts and binaries in
-``specy_road.orchestration.harness``; the roster, model profiles, leaf assignment and the
+The worker runtime lives in ``specy_road.orchestration.workers``, harness facts and binaries in
+``specy_road.orchestration.harness``, and the shared-checkout guard and session presence in
+``specy_road.orchestration.guard``; the roster, model profiles, leaf assignment and the
 role-prompt library are modules of this package (``DESTINATIONS.md`` lists where each came from).
 The names the gate, the CLI entry points and the GUI take from them are served here too
 (:data:`_SOURCES`). Every name loads on first use (:func:`__getattr__`, PEP 562) from the one module
@@ -27,6 +28,19 @@ from typing import Any
 #: Defining module (relative to this package) -> the names served from it.
 _SOURCES: dict[str, tuple[str, ...]] = {
     "claims": ("read_claims",),
+    "guard": ("tool_call_guard_adapters", "tool_call_guard_shapes"),
+    "guard.session_presence": (
+        "DEFAULT_TTL_HOURS", "Session", "conflicts", "current_user", "default_agent_id",
+        "end_session", "env_agent_id", "list_sessions", "load_session", "own_session_here",
+        "session_path", "start_session", "warn_lines",
+    ),
+    "guard.tool_call_guard": (
+        "_SHELLS", "_SUBSTITUTION", "_UNBALANCED", "_git_subcommand", "_opaque", "_unwrap",
+        "decide", "read_payload", "split_segments",
+    ),
+    "guard.tool_call_guard_adapters": (
+        "_bash_command", "_cursor_command", "_string_command", "print_answer",
+    ),
     "harness": ("harness_facts",),
     "model_profiles": (
         "DEFAULT_MAX_AGE_DAYS", "GUIDANCE_BYPASS_KEY", "PROFILES_REL", "Profile", "ROLES",
@@ -74,32 +88,35 @@ _SOURCES: dict[str, tuple[str, ...]] = {
 _SOURCE_OF = {name: source for source, names in _SOURCES.items() for name in names}
 
 __all__ = [
-    "ADAPTERS", "ANY", "CODEX_MEMORY_OFF", "DATA_LINE", "DEFAULT_MAX_AGE_DAYS",
+    "ADAPTERS", "ANY", "CODEX_MEMORY_OFF", "DATA_LINE", "DEFAULT_MAX_AGE_DAYS", "DEFAULT_TTL_HOURS",
     "GUIDANCE_BYPASS_KEY", "HARNESSES", "HELD_STATES", "LeaseError", "OrchestrationPlan",
-    "OrchestrationState", "PROFILES_REL", "Profile", "READ_BACK_HARNESSES", "ROLES", "Unsupported",
-    "WorkerError", "add_sync_parser", "add_terminate", "begin_op", "build_orchestration_plan",
-    "claimed_worktree", "cmd_sync", "complete_op", "coordinator_preamble", "display_rel",
-    "end_finished_workers", "entry_may_process", "events_since", "executor_preamble",
-    "fix_check_lines", "force_warnings", "format_entries", "guidance_bypass_lines",
-    "guidance_bypass_refusal", "guidance_bypass_warning", "guidance_problem", "harness_facts",
-    "is_available", "list_profiles", "list_records", "list_view", "load_profile", "load_record",
-    "log_path", "lookup_op", "may_handle", "missing_profile_files", "node_eligibility",
-    "node_sensitivity", "precondition", "preflight", "profile_lines", "project_root_from_worktree",
-    "read_claims", "read_state", "reconcile_lines", "recover_stalled", "render_command",
-    "resolve_cli", "reviewer_launch_block", "reviewer_preamble", "reviewer_turn", "rework_check",
-    "rework_lines", "roster_entries", "run_plain_cli", "snapshot", "stall_lines",
-    "stalled_workers", "sync_marks", "timeline", "timeline_lines", "unavailable_prompt_error",
-    "unmatched_roster_ids", "usage", "usage_json_payload", "usage_lines", "worker_ops",
-    "workers_dir", "write_entries",
+    "OrchestrationState", "PROFILES_REL", "Profile", "READ_BACK_HARNESSES", "ROLES", "Session",
+    "Unsupported", "WorkerError", "add_sync_parser", "add_terminate", "begin_op",
+    "build_orchestration_plan", "claimed_worktree", "cmd_sync", "complete_op", "conflicts",
+    "coordinator_preamble", "current_user", "decide", "default_agent_id", "display_rel",
+    "end_finished_workers", "end_session", "entry_may_process", "env_agent_id", "events_since",
+    "executor_preamble", "fix_check_lines", "force_warnings", "format_entries",
+    "guidance_bypass_lines", "guidance_bypass_refusal", "guidance_bypass_warning",
+    "guidance_problem", "harness_facts", "is_available", "list_profiles", "list_records",
+    "list_sessions", "list_view", "load_profile", "load_record", "load_session", "log_path",
+    "lookup_op", "may_handle", "missing_profile_files", "node_eligibility", "node_sensitivity",
+    "own_session_here", "precondition", "preflight", "print_answer", "profile_lines",
+    "project_root_from_worktree", "read_claims", "read_payload", "read_state", "reconcile_lines",
+    "recover_stalled", "render_command", "resolve_cli", "reviewer_launch_block",
+    "reviewer_preamble", "reviewer_turn", "rework_check", "rework_lines", "roster_entries",
+    "run_plain_cli", "session_path", "snapshot", "split_segments", "stall_lines", "stalled_workers",
+    "start_session", "sync_marks", "timeline", "timeline_lines", "tool_call_guard_adapters",
+    "tool_call_guard_shapes", "unavailable_prompt_error", "unmatched_roster_ids", "usage",
+    "usage_json_payload", "usage_lines", "warn_lines", "worker_ops", "workers_dir", "write_entries",
 ]
 
 
 def __getattr__(name: str) -> Any:
-    """Load ``name`` from the module that defines it; a ``workers`` or ``harness`` submodule is
-    served whole."""
+    """Load ``name`` from the module that defines it; a ``workers``, ``harness`` or ``guard``
+    submodule is served whole."""
     source = _SOURCE_OF.get(name)
     if source is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    if source in ("workers", "harness"):
+    if source in ("workers", "harness", "guard"):
         return importlib.import_module(f"{__name__}.{source}.{name}")
     return getattr(importlib.import_module(f"{__name__}.{source}"), name)

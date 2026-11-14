@@ -92,7 +92,7 @@ from specy_road.review_run_status import (extend_handoff_refused, print_refused_
 from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone_status,
                                       resolve_target, same_commit)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.session_presence import list_sessions
+from specy_road.orchestration import list_sessions
 from specy_road.orchestration import list_records
 
 

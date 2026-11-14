@@ -27,7 +27,7 @@ from specy_road.clock import utc_now_iso
 from specy_road.git_subprocess import git_ok, git_text, is_worktree_root
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration.model_profiles import Profile
-from specy_road.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
+from specy_road.orchestration.guard.orchestration_role_env import CLAUDE_REVIEWER_AVOID_ENV
 from specy_road.review_record_write import (Outcome, answer_scratch, close_review_run, replace_file, run_and_file,
                                             write_schema)
 from specy_road.review_files import project_of, reviews_dir

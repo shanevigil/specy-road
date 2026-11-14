@@ -22,7 +22,7 @@ from specy_road.orchestration.workers import worker_ops as slots
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import doctor
-from specy_road.session_presence import current_user, list_sessions, start_session
+from specy_road.orchestration.guard.session_presence import current_user, list_sessions, start_session
 from specy_road.orchestration.workers.worker_process import wrapper_alive
 
 OLD = "2026-01-01T00:00:00+00:00"   # long past policy.stall_after_seconds (default 600)

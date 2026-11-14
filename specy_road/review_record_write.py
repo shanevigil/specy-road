@@ -68,7 +68,7 @@ from specy_road.review_write_check import (  # re-exported: the post-run write c
     snapshot,
     written,
 )
-from specy_road.orchestration_role_env import harness_env
+from specy_road.orchestration.guard.orchestration_role_env import harness_env
 from specy_road.reviewer_run_failure import close_run, harness_error_line, record_reviewer_failure_event
 from specy_road.orchestration.workers.worker_process import end_group
 

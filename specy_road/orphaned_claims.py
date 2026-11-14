@@ -15,7 +15,7 @@ from specy_road.git_subprocess import git_text
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_files import latest_ready
 from specy_road.review_target import same_commit
-from specy_road.session_presence import list_sessions
+from specy_road.orchestration.guard.session_presence import list_sessions
 from specy_road.orchestration.workers.worker_orphans import SLOT_STATES
 from specy_road.orchestration.workers.worker_state import list_records
 

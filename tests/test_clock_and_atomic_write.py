@@ -24,7 +24,8 @@ from tests.decisions_repo_helpers import decisions_repo
 from tests.review_repo_helpers import make_review_repo
 from tests.worker_lease_helpers import idle_worker
 
-from specy_road import clock, decisions, session_presence
+from specy_road import clock, decisions
+from specy_road.orchestration.guard import session_presence
 from specy_road.orchestration.workers import (
     worker_lease,
     worker_outbox,
@@ -231,7 +232,7 @@ WRITERS: dict[str, Callable[[Path], Writer]] = {
     "orchestration/workers/worker_outbox.py:begin_op": _begin_op,
     "orchestration/workers/worker_outbox.py:complete_op": _complete_op,
     "orchestration/workers/worker_reconcile.py:sync": _sync_marks,
-    "session_presence.py:start_session": _presence,
+    "orchestration/guard/session_presence.py:start_session": _presence,
     "bundled_scripts/chore_cli.py:_save": lambda tmp_path: _chore(tmp_path, "json"),
     "bundled_scripts/chore_cli.py:close": lambda tmp_path: _chore(tmp_path, "md"),
     "bundled_scripts/chore_garden.py:garden": _garden,

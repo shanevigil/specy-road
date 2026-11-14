@@ -27,7 +27,7 @@ from pathlib import Path
 
 from specy_road.clock import utc_now_iso
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
-from specy_road.orchestration_role_env import harness_env
+from specy_road.orchestration.guard.orchestration_role_env import harness_env
 from specy_road.orchestration.workers import worker_sandbox
 from specy_road.runtime_paths import project_prefix
 from specy_road.orchestration.workers.worker_adapter_parsers import USAGE_FIELDS, init_model
