@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.session_plan import compute_session_plan
-from specy_road.bundled_scripts.session_plan_render import (
+from specy_road.orchestration.grind.session_plan import compute_session_plan
+from specy_road.orchestration.grind.session_plan_render import (
     render_session_plan_text,
     session_plan_to_dict,
     zone_overlaps,

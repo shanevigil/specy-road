@@ -1,0 +1,28 @@
+$ grind-session --step pickup --json
+exit: 0
+--- stdout ---
+{"event": "resumed", "ts": "2026-11-14T12:00:00Z", "node_id": "M1.2", "branch": "feature/rm-write-the-alpha-module", "brief": "work/brief-M1.2.md", "prompt": "work/prompt-M1.2.md"}
+--- errors ---
+
+--- state ---
+{
+  "branch": "feature/rm-write-the-alpha-module",
+  "branches": [
+    "feature/rm-write-the-alpha-module",
+    "main"
+  ],
+  "registry": {
+    "checkout": [
+      "M1.2 feature/rm-write-the-alpha-module"
+    ],
+    "main": [
+      "M1.2 feature/rm-write-the-alpha-module"
+    ]
+  },
+  "status_on_main": {
+    "M1": "Not Started",
+    "M1.1": "Complete",
+    "M1.2": "Not Started",
+    "M1.3": "Not Started"
+  }
+}

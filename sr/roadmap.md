@@ -55,7 +55,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.5.2` | worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes | task | Agentic-led | Complete |
 | `M16.5.3` | Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration | task | Agentic-led | Complete |
 | `M16.5.7` | Shared-checkout guard and session presence move into orchestration | task | Agentic-led | Complete |
-| `M16.5.9` | Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings | task | Agentic-led | Not Started |
+| `M16.5.9` | Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings | task | Agentic-led | Complete |
 | `M16.5.10` | Chore, decision and lesson records share internal adapters and keep their files byte for byte | task | Agentic-led | Complete |
 | `M16.5.11` | Grind settings move under grind: in git-workflow.yaml, migrated by upgrade | task | Agentic-led | Not Started |
 | `M16.5.12` | Fold the review gate fragments; no review policy is deprecated | task | Agentic-led | Not Started |

@@ -1,9 +1,9 @@
 """Registry claims as the orchestration state model reads them.
 
 Its own module, importing only the registry path, so the readiness rule
-(:func:`specy_road.session_plan_git.gather_session_plan`) can take its claims from the state model
-without importing the worker modules :mod:`specy_road.orchestration.state` reads, which import the
-planner back.
+(:func:`specy_road.orchestration.grind.session_plan_git.gather_session_plan`) can take its claims
+from the state model without importing the worker modules :mod:`specy_road.orchestration.state`
+reads, which import the planner back.
 """
 
 from __future__ import annotations

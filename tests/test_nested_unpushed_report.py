@@ -19,7 +19,7 @@ from tests.review_repo_helpers import commit_file, git
 from tests.test_nested_repo_worktrees import add_nested_repo
 
 from specy_road.bundled_scripts import doctor
-from specy_road.bundled_scripts import grind_session as gs
+from specy_road.orchestration.grind import grind_session as gs
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 from specy_road.nested_repos import describe_unpushed, unpushed_branches
 
