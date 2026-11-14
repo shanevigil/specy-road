@@ -527,9 +527,9 @@ def test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_termi
     reports a limit: the finding is recorded and flags the worker, and nothing pauses it."""
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
-    package_parent = Path(ws.__file__).resolve().parents[1]
+    package_parent = Path(ws.__file__).resolve().parents[3]
     terminate = (f"{sys.executable} -c \"import sys; sys.path.insert(0, '{package_parent}'); from pathlib import Path; "
-                 f"from specy_road import worker_state as ws; r = Path('{repo}'); "
+                 f"from specy_road.orchestration.workers import worker_state as ws; r = Path('{repo}'); "
                  f"ws.set_state(r, ws.load_record(r, '{rec.worker_id}'), 'terminated')\"")
     _harness(tmp_path, monkeypatch, "claude", lines=STREAMS["claude_limit_as_success"],
              run=["echo stray > stray.txt", terminate])
