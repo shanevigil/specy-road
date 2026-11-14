@@ -231,8 +231,7 @@
       "dependencies": [
         "fad930e4-76ee-407d-9ee4-a4d8a07d64c1",
         "6341c523-6051-4c9f-8cb7-74ab1a9eeed9",
-        "25c737eb-656b-487b-a238-b8e825a8e6d3",
-        "a0733044-eec3-4411-bec8-e6f31fac6456"
+        "25c737eb-656b-487b-a238-b8e825a8e6d3"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M17.8",

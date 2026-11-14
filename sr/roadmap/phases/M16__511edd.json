@@ -185,7 +185,7 @@
       ],
       "codename": "grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade",
       "dependencies": [
-        "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d"
+        "275b701c-4eb9-4214-ae77-7ab34a7d197a"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.5.11",

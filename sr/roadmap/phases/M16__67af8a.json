@@ -51,9 +51,7 @@
         "`tests/parity/records/` includes an operator decision, a coordinator decision and a standing-rule entry"
       ],
       "codename": "chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte",
-      "dependencies": [
-        "275b701c-4eb9-4214-ae77-7ab34a7d197a"
-      ],
+      "dependencies": [],
       "execution_milestone": "Agentic-led",
       "id": "M16.5.10",
       "node_key": "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d",
