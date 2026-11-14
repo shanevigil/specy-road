@@ -33,9 +33,9 @@ from specy_road.git_subprocess import current_branch_name, head_sha, run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import project_prefix, rebase_to_project
-from specy_road.worker_adapter_base import Parsed
-from specy_road.worker_reconcile import _bookkeeping
-from specy_road.worker_state import WorkerError, WorkerRecord, add_flag, append_event, clear_flag, mutate, status_entries
+from specy_road.orchestration.workers.worker_adapter_base import Parsed
+from specy_road.orchestration.workers.worker_reconcile import _bookkeeping
+from specy_road.orchestration.workers.worker_state import WorkerError, WorkerRecord, add_flag, append_event, clear_flag, mutate, status_entries
 
 #: The record state of a worker whose last turn stopped at a usage limit; resumable after ``limit_reset_at``.
 PAUSED_BY_LIMIT = "paused_by_limit"

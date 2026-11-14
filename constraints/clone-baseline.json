@@ -40,8 +40,8 @@
     },
     {
       "modules": [
-        "specy_road.worker_lock",
-        "specy_road.worker_witness"
+        "specy_road.orchestration.workers.worker_lock",
+        "specy_road.orchestration.workers.worker_witness"
       ],
       "lines": 8
     }

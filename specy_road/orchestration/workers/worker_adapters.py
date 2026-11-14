@@ -35,7 +35,7 @@ custom command goes through :func:`reviewer_cli`, which gives Antigravity's ``ag
 
 from __future__ import annotations
 
-from specy_road.worker_adapter_base import (  # re-exported
+from specy_road.orchestration.workers.worker_adapter_base import (  # re-exported
     CODEX_POLICY,
     CODEX_REVIEW_POLICY,
     EFFORT_FLAGS,
@@ -57,12 +57,12 @@ from specy_road.worker_adapter_base import (  # re-exported
     reviewer_cli,
     reviews_dir_into,
 )
-from specy_road.worker_adapter_claude import ClaudeCode
-from specy_road.worker_adapter_codex import Codex
-from specy_road.worker_adapter_cursor import Cursor
-from specy_road.worker_adapter_parsers import (_SESSION, _init_detail, _json, _snip, _text, _tokens,  # re-exported
+from specy_road.orchestration.workers.worker_adapter_claude import ClaudeCode
+from specy_road.orchestration.workers.worker_adapter_codex import Codex
+from specy_road.orchestration.workers.worker_adapter_cursor import Cursor
+from specy_road.orchestration.workers.worker_adapter_parsers import (_SESSION, _init_detail, _json, _snip, _text, _tokens,  # re-exported
                                                 placeholder_problem, substitute_prompt, usage_fields)
-from specy_road.worker_state import HARNESSES
+from specy_road.orchestration.workers.worker_state import HARNESSES
 
 
 ADAPTERS: dict[str, Adapter] = {a.harness: a for a in (Adapter(), ClaudeCode(), Codex(), Cursor())}

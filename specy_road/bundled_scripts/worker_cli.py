@@ -12,25 +12,25 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg, add_model_arg
-from specy_road import worker_ops as ops
-from specy_road import worker_ops_slots as slots
+from specy_road.orchestration import worker_ops as ops
+from specy_road.orchestration import worker_ops_slots as slots
 from specy_road.role_prompt_rework import rework_check
 from specy_road.bundled_scripts.worker_cli_args import FixRound
-from specy_road.worker_cli_render import (_line, _row, timeline, timeline_lines, usage,
-                                                       usage_json_payload, usage_lines)
-from specy_road.worker_cli_sync import add_sync_parser, cmd_sync as _cmd_sync
+from specy_road.orchestration import (_line, _row, timeline, timeline_lines, usage,
+                                     usage_json_payload, usage_lines)
+from specy_road.orchestration import add_sync_parser, cmd_sync as _cmd_sync
 from specy_road.orchestration import read_state
 from specy_road.orphaned_claims import append_claim_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
-from specy_road.worker_adapters import ADAPTERS, Unsupported
+from specy_road.orchestration import ADAPTERS, Unsupported
 from specy_road.worker_hook import HOOKS
-from specy_road.worker_orphans import add_terminate, list_view
-from specy_road.worker_outbox import lookup_op
-from specy_road.worker_reconcile import reconcile_lines, sync_marks
-from specy_road.worker_runner import log_path
-from specy_road.worker_sessions import render_command
-from specy_road.worker_state import (
+from specy_road.orchestration import add_terminate, list_view
+from specy_road.orchestration import lookup_op
+from specy_road.orchestration import reconcile_lines, sync_marks
+from specy_road.orchestration import log_path
+from specy_road.orchestration import render_command
+from specy_road.orchestration import (
     HARNESSES,
     LeaseError,
     WorkerError,

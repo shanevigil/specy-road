@@ -1,6 +1,6 @@
 """The event a worker's turn ends with, and the reason when its harness failed before saying anything (M11.35).
 
-Split from :mod:`specy_road.worker_runner` for the file limit. A harness that exits non-zero before its first
+Split from :mod:`specy_road.orchestration.workers.worker_runner` for the file limit. A harness that exits non-zero before its first
 stream event (an unknown model id answered with an HTTP 404, say) leaves its reason only in the raw log, so the
 exit event quotes the last error line the turn wrote there instead of only pointing at the log.
 """
@@ -10,8 +10,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from specy_road.worker_runner_ready import completion_summary
-from specy_road.worker_state import WorkerRecord, append_event, events_since
+from specy_road.orchestration.workers.worker_runner_ready import completion_summary
+from specy_road.orchestration.workers.worker_state import WorkerRecord, append_event, events_since
 
 #: How much of the turn's log tail is read for the reason; a harness that never started prints little.
 TAIL_BYTES = 64 * 1024

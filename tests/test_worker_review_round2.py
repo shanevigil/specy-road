@@ -28,11 +28,11 @@ from tests.worker_repo_helpers import make_worker_repo
 
 from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops as ops
-from specy_road import worker_process as wp
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_process as wp
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road import brainstorm_research as br
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.review_files import reviews_root

@@ -22,7 +22,7 @@ from specy_road.review_files import latest_ready, load_review, render_front_matt
 from specy_road.review_gate import evaluate_gate, gate_holds_at_head_or_exit
 from specy_road.runtime_paths import specy_road_package_dir
 from specy_road.schema_revision import revision_text
-from specy_road.worker_state import WorkerError, create_record, list_records, load_record, record_path, set_state
+from specy_road.orchestration.workers.worker_state import WorkerError, create_record, list_records, load_record, record_path, set_state
 
 ORCHESTRATION = "templates/project/schemas/orchestration.schema.json"
 GIT_WORKFLOW = "templates/project/schemas/git-workflow.schema.json"

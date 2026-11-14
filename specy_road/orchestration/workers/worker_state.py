@@ -36,8 +36,15 @@ from specy_road.fs_atomic import atomic_write_text
 from specy_road.git_subprocess import head_sha, run
 from specy_road.review_files import reviews_root  # noqa: F401 — re-exported for callers
 from specy_road.toolkit_version import running_toolkit_version
-from specy_road.worker_lock import WORKERS_DIRNAME, WorkerError, workers_dir, workers_lock  # noqa: F401 — re-exported
-from specy_road.worker_schema import schema_errors  # noqa: F401 — re-exported for callers
+from specy_road.orchestration.workers.worker_lock import (
+    WORKERS_DIRNAME,  # noqa: F401 — re-exported
+    WorkerError,  # noqa: F401 — re-exported
+    workers_dir,  # noqa: F401 — re-exported
+    workers_lock,  # noqa: F401 — re-exported
+)
+from specy_road.orchestration.workers.worker_schema import (
+    schema_errors,  # noqa: F401 — re-exported for callers
+)
 
 HARNESSES = ("claude-code", "codex", "cursor", "generic")
 #: A worker in one of these is over for good. ``completed`` is not: it still
@@ -374,4 +381,7 @@ def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None 
 
 # The operations outbox lives in worker_outbox; re-exported here for callers.
 __all__ = [n for n in dir() if not n.startswith("_")]
-from specy_road.worker_outbox import begin_op, complete_op  # noqa: E402,F401 — re-exported for callers
+from specy_road.orchestration.workers.worker_outbox import (  # noqa: E402
+    begin_op,  # noqa: F401 — re-exported for callers
+    complete_op,  # noqa: F401 — re-exported for callers
+)

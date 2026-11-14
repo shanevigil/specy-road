@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg
-from specy_road import worker_ops as ops
-from specy_road.worker_cli_render import sync_event_lines, sync_worker_header
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers.worker_cli_render import sync_event_lines, sync_worker_header
 from specy_road.runtime_paths import resolve_repo_root
-from specy_road.worker_orphans import with_orphans
-from specy_road.worker_state import (
+from specy_road.orchestration.workers.worker_orphans import with_orphans
+from specy_road.orchestration.workers.worker_state import (
     WorkerError,
     events_since,
     flag_stamp,
@@ -46,7 +46,8 @@ def wait_for_event(repo_root: Path, timeout: float, since: tuple[int, int] | Non
 
     When ``event_types`` is set, only an unacknowledged event whose ``type`` is in the set counts; the typed loop
     is :func:`wait_for_typed_event`. Kept here, beside its only callers, rather than in
-    :mod:`specy_road.worker_state`, so the review gate's imports never reach the worker CLI."""
+    :mod:`specy_road.orchestration.workers.worker_state`, so the review gate's imports never reach
+    the worker CLI."""
     if event_types is not None:
         return wait_for_typed_event(repo_root, timeout, since, interval, event_types)
     deadline = time.monotonic() + timeout

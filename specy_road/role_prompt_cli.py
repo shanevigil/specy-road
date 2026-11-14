@@ -37,9 +37,9 @@ from specy_road.review_model_check import resolve_effective_model
 from specy_road.review_target import ReviewTarget, resolve_target
 from specy_road.reviewer_auth import claude_launch_decision, launch_note
 from specy_road.reviewer_run_failure import harness_error_line, save_run, turn_capacity_error
-from specy_road.worker_adapter_base import checked, oversized_arg
-from specy_road.worker_adapter_parsers import effort_note
-from specy_road.worker_adapters import ADAPTERS, Launch, Unsupported, placeholder_problem, reviewer_cli, substitute_prompt
+from specy_road.orchestration.workers.worker_adapter_base import checked, oversized_arg
+from specy_road.orchestration.workers.worker_adapter_parsers import effort_note
+from specy_road.orchestration.workers.worker_adapters import ADAPTERS, Launch, Unsupported, placeholder_problem, reviewer_cli, substitute_prompt
 
 #: Reviewer harnesses whose default command specy-road launches, reads back and files from.
 READ_BACK_HARNESSES = ("claude-code", "codex", "cursor")

@@ -37,7 +37,7 @@ from pathlib import Path
 
 from specy_road.git_workflow_config import worker_sandbox_mode
 from specy_road.review_files import READY_PREFIX, reviews_dir
-from specy_road.worker_state import WorkerRecord, workers_dir
+from specy_road.orchestration.workers.worker_state import WorkerRecord, workers_dir
 
 #: Environment entries the sandboxed harness does not get.
 HIDDEN_ENV = ("SSH_AUTH_SOCK", "GH_TOKEN", "GITHUB_TOKEN")

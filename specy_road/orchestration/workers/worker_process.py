@@ -29,7 +29,7 @@ from pathlib import Path
 
 from specy_road.git_subprocess import current_branch_name
 from specy_road.review_files import list_ready
-from specy_road.worker_state import (
+from specy_road.orchestration.workers.worker_state import (
     FLAG_ORPHAN,
     WorkerError,
     WorkerRecord,
@@ -194,7 +194,7 @@ def wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
         return False
     append_event(repo_root, rec, "error", source="system",
                  summary=f"wrapper pid {rec.pid or '-'} is gone without recording an exit; marked failed")
-    from specy_road.worker_lease import release_lease   # noqa: PLC0415 — worker_lease imports this module
+    from specy_road.orchestration.workers.worker_lease import release_lease   # noqa: PLC0415 — worker_lease imports this module
     with workers_lock(repo_root):   # failed and its lease gone in one step, as in the wrapper
         set_state(repo_root, rec, "failed", pid=None)
         release_lease(repo_root, rec.worker_id)

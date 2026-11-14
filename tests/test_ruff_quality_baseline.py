@@ -213,6 +213,14 @@ _MOVED_FROM = {
         "worker_cli_sync.py",
     )
 }
+# Same filename, from the package into specy_road/orchestration/workers/ (the worker runtime move);
+# a module that came from bundled_scripts maps to its path there.
+_MOVED_FROM.update({
+    f"specy_road/orchestration/workers/{path.name}": _MOVED_FROM.get(
+        f"specy_road/{path.name}", f"specy_road/{path.name}"
+    )
+    for path in (ROOT / "specy_road" / "orchestration" / "workers").glob("worker_*.py")
+})
 
 
 def _in_pickup_tree(path: str, present: set[str], moved_from: dict[str, str]) -> bool:

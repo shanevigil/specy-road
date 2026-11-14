@@ -340,8 +340,8 @@ def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = 
               if s.agent != agent and not (tree_only and s.worktree and Path(s.worktree).resolve() != here)]
     others += [f"{p} (unreadable; fix or delete it)" for p in unreadable_records(repo_root)]
     try:
-        from specy_road.worker_process import wrapper_alive
-        from specy_road.worker_state import list_records
+        from specy_road.orchestration.workers.worker_process import wrapper_alive
+        from specy_road.orchestration.workers.worker_state import list_records
 
         me = os.environ.get("SPECY_ROAD_WORKER_ID")   # a worker's own hook must not count the worker
         others += [f"worker {r.worker_id}" for r in list_records(repo_root, active_only=True)

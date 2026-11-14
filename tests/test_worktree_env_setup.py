@@ -15,7 +15,7 @@ from tests.review_repo_helpers import git
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import doctor as des
 from specy_road.git_workflow_config import validate_git_workflow_dict
 from specy_road.worktree_env import EnvSetupError, setup_worktree_env

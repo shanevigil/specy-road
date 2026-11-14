@@ -23,7 +23,7 @@ from specy_road.git_subprocess import git_ok
 from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.review_files import reviews_root
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_adapter_base import linked_worktree
+from specy_road.orchestration.workers.worker_adapter_base import linked_worktree
 
 
 def work_artifact_rel_paths(node_id: str) -> tuple[str, str, str]:

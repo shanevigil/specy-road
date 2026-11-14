@@ -38,7 +38,7 @@ from specy_road.roadmap_index import RoadmapIndex
 from specy_road.roadmap_layout import natural_id_sort_key
 from specy_road.session_plan_git import gather_session_plan
 from specy_road.session_presence import list_sessions
-from specy_road.worker_state import FLAG_NEEDS_PERSON, list_records
+from specy_road.orchestration.workers.worker_state import FLAG_NEEDS_PERSON, list_records
 
 INTERVAL_KEY = "grind_session_status_interval_minutes"
 DEFAULT_INTERVAL_MINUTES = 30

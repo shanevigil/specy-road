@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration import snapshot
 from tests.helpers import REPO
 from tests.parity.orchestration_state.rows import ROWS, Row, build, snapshot_golden

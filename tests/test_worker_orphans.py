@@ -19,11 +19,15 @@ from tests.test_branch_cleanup import BR, _exit, _merge_mode_repo
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_lease as lease
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_lease as lease
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import finish_task
-from specy_road.worker_orphans import end_finished_workers, holding_slots, orphans
+from specy_road.orchestration.workers.worker_orphans import (
+    end_finished_workers,
+    holding_slots,
+    orphans,
+)
 
 OTHER = "feature/rm-other"
 
@@ -265,7 +269,9 @@ def test_finished_records_leave_a_slot_and_two_running_workers_refuse(tmp_path: 
     """M15.26: 19 completed or failed records plus one running worker, max_workers 2, leave a slot free;
     two running workers refuse. A pid-less running record would be swept to failed before the cap, so the
     sweep is held off: this test is the cap, not the dead-wrapper rule."""
-    monkeypatch.setattr("specy_road.worker_ops_slots.wrapper_gone", lambda *_a, **_k: False)
+    monkeypatch.setattr(
+        "specy_road.orchestration.workers.worker_ops_slots.wrapper_gone", lambda *_a, **_k: False
+    )
     repo, _ = make_worker_repo(tmp_path, max_workers=2)
     for n, state in enumerate(["completed"] * 10 + ["failed"] * 9):
         _worker(repo, f"M9.{n}", state)

@@ -1,7 +1,7 @@
 """The shared part of the harness adapters: launch and event types, the ``generic`` :class:`Adapter`, and the
 custom-command and hand-off directory helpers every harness uses (slice 7b).
 
-Split from :mod:`specy_road.worker_adapters` for the file limit; its docstring describes the adapters and the
+Split from :mod:`specy_road.orchestration.workers.worker_adapters` for the file limit; its docstring describes the adapters and the
 ``channels.cli`` placeholders, and callers reach these names through that module.
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.git_subprocess import git_text
-from specy_road.worker_adapter_parsers import (
+from specy_road.orchestration.workers.worker_adapter_parsers import (
     _SESSION,
     _json,
     _snip,
@@ -25,7 +25,7 @@ from specy_road.worker_adapter_parsers import (
     substitute_prompt,
     worktree_from_argv,
 )
-from specy_road.worker_models import launch_model
+from specy_road.orchestration.workers.worker_models import launch_model
 
 
 @dataclass(frozen=True)

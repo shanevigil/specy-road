@@ -43,9 +43,9 @@ from specy_road.orphaned_claims import report_lines
 from specy_road.review_gate_agreement import report_gate_mismatch
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
 from specy_road.version_skew import print_install_report, warn_if_running_version_older
-from specy_road.worker_adapter_cursor import force_warnings
-from specy_road.worker_lock import workers_dir
-from specy_road.worker_ops_slots import stall_lines, stalled_workers
+from specy_road.orchestration import force_warnings
+from specy_road.orchestration import workers_dir
+from specy_road.orchestration import stall_lines, stalled_workers
 from specy_road.worktree_env import (
     EnvSetupError, bounded_path, copy_pairs, copy_source, env_setup_config, git_top, link_paths,
     run_setup_cmd,

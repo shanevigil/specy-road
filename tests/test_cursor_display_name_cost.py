@@ -14,10 +14,10 @@ from tests.review_repo_helpers import git, make_review_repo
 from tests.test_cursor_usage_cost import PROFILES, priced_repo
 from tests.test_worker_adapters import CLAUDE_RESULT, CURSOR_RESULT, FULL_INIT
 
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.model_names import normalise, same_model
-from specy_road.worker_adapters import Launch
+from specy_road.orchestration.workers.worker_adapters import Launch
 
 SLUG = "cursor-grok-4.6-high"
 # The field roster entry (sr/roadmap/orchestration.yaml): its profile lists no Cursor aliases.

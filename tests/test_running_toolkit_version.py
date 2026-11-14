@@ -166,7 +166,7 @@ def test_dirty_checkout_marks_dirty(tmp_path: Path) -> None:
 def test_worker_record_stores_toolkit_version(tmp_path: Path) -> None:
     from tests.review_repo_helpers import make_review_repo
 
-    from specy_road import worker_state as ws
+    from specy_road.orchestration.workers import worker_state as ws
 
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "generic", "m", repo)

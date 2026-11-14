@@ -1,7 +1,7 @@
 """Slot checks behind ``specy-road worker``: dead wrappers, stalled workers and their recovery (M22.39), and the
 ``max_workers`` cap (slice 7c).
 
-Split from :mod:`specy_road.worker_ops` for the file limit; callers reach
+Split from :mod:`specy_road.orchestration.workers.worker_ops` for the file limit; callers reach
 these through that module.
 """
 
@@ -13,10 +13,10 @@ from pathlib import Path
 from specy_road.clock import utc_now
 from specy_road.orchestration_config import DEFAULT_POLICY
 from specy_road.orchestration_pinned import pinned_config
-from specy_road.worker_lease import max_workers, slot_error
-from specy_road.worker_orphans import holding_slots
-from specy_road.worker_process import wrapper_gone
-from specy_road.worker_state import (
+from specy_road.orchestration.workers.worker_lease import max_workers, slot_error
+from specy_road.orchestration.workers.worker_orphans import holding_slots
+from specy_road.orchestration.workers.worker_process import wrapper_gone
+from specy_road.orchestration.workers.worker_state import (
     FLAG_NEEDS_PERSON,
     FLAG_ORPHAN,
     FLAG_STALLED,
@@ -161,9 +161,12 @@ def recover(repo_root: Path, worker_id: str, *, offline: bool = False,
     resumed; past :func:`recovery_limit` it is flagged ``needs_person`` with its last output named (M22.39).
     A recovery is counted when it ends the turn; one whose resume was then refused stays pending
     (:func:`recovery_pending`), and the next call finishes it, online or ``--offline``, without counting it again."""
-    from specy_road.worker_adapters import adapter_for   # noqa: PLC0415
-    from specy_road.worker_ops_message import CONTINUE_PROMPT, _send   # noqa: PLC0415 — it imports this module
-    from specy_road.worker_process import require_branch   # noqa: PLC0415
+    from specy_road.orchestration.workers.worker_adapters import adapter_for   # noqa: PLC0415
+    from specy_road.orchestration.workers.worker_ops_message import (  # noqa: PLC0415 — it imports this module
+        CONTINUE_PROMPT,
+        _send,
+    )
+    from specy_road.orchestration.workers.worker_process import require_branch   # noqa: PLC0415
 
     with workers_lock(repo_root):
         sweep_stalled(repo_root, now=now)
@@ -198,8 +201,13 @@ def _end_turn(repo_root: Path, rec: WorkerRecord) -> None:
     behind: the ``wrapper_gone_harness_alive`` flag and the worker's own presence session (``<user>-s<pgid>``).
     The worktree, its commits and its uncommitted files are untouched."""
     from specy_road.session_presence import current_user   # noqa: PLC0415
-    from specy_road.worker_ops_lifecycle import _end_worker_session   # noqa: PLC0415 — terminate's own cleanup
-    from specy_road.worker_process import kill_group, process_alive   # noqa: PLC0415
+    from specy_road.orchestration.workers.worker_ops_lifecycle import (  # noqa: PLC0415 — terminate's own cleanup
+        _end_worker_session,
+    )
+    from specy_road.orchestration.workers.worker_process import (  # noqa: PLC0415
+        kill_group,
+        process_alive,
+    )
 
     agent = f"{current_user()}-s{rec.pgid}" if rec.pgid else None   # read before the new turn replaces the pgid
     if process_alive(rec, repo_root):

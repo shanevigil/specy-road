@@ -16,14 +16,14 @@ from tests.review_repo_helpers import git, make_review_repo
 from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo, worker_roster
 
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops as ops
-from specy_road import worker_ops_slots as slots
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_ops_slots as slots
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import doctor
 from specy_road.session_presence import current_user, list_sessions, start_session
-from specy_road.worker_process import wrapper_alive
+from specy_road.orchestration.workers.worker_process import wrapper_alive
 
 OLD = "2026-01-01T00:00:00+00:00"   # long past policy.stall_after_seconds (default 600)
 

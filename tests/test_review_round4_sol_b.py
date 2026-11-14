@@ -18,10 +18,10 @@ import pytest
 from tests.review_repo_helpers import git, make_review_repo
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops as ops
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road import brainstorm_chat as bc
 from specy_road.bundled_scripts import brainstorm_verify as bv
 from specy_road.model_profiles import profile_for_entry

@@ -1,7 +1,7 @@
 """The human lease: ``worker handoff`` / ``reclaim`` (slice 7c); the hook witness is :mod:`worker_witness`.
 Below them, the slot lease other checkouts count against ``max_workers`` (M11.4).
 
-Split from :mod:`specy_road.worker_ops` for the file limit; the CLI reaches
+Split from :mod:`specy_road.orchestration.workers.worker_ops` for the file limit; the CLI reaches
 these through that module. Each transition runs under the workers lock as
 one transaction, so a second ``reclaim`` sees the lease already returned
 and a hook append cannot slip between a reclaim's read and its write.
@@ -25,10 +25,14 @@ from specy_road.clock import utc_now_iso
 from specy_road.git_subprocess import GitResult, git_text, run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration_pinned import pinned_config
-from specy_road.worker_adapters import Unsupported, adapter_for
-from specy_road.worker_process import process_alive, require_branch, wrapper_gone
-from specy_road.worker_sessions import check_session_id, render_command
-from specy_road.worker_state import (
+from specy_road.orchestration.workers.worker_adapters import Unsupported, adapter_for
+from specy_road.orchestration.workers.worker_process import (
+    process_alive,
+    require_branch,
+    wrapper_gone,
+)
+from specy_road.orchestration.workers.worker_sessions import check_session_id, render_command
+from specy_road.orchestration.workers.worker_state import (
     FLAG_EXTERNAL,
     TERMINAL_STATES,
     WorkerError,
@@ -42,8 +46,11 @@ from specy_road.worker_state import (
     take_checkpoint,
     workers_lock,
 )
-from specy_road.worker_orphans import holding_slots, slot_breakdown
-from specy_road.worker_witness import interventions_path, record_hook_prompt  # noqa: F401 — re-exported
+from specy_road.orchestration.workers.worker_orphans import holding_slots, slot_breakdown
+from specy_road.orchestration.workers.worker_witness import (
+    interventions_path,  # noqa: F401 — re-exported
+    record_hook_prompt,  # noqa: F401 — re-exported
+)
 
 CLOSED_STATES = TERMINAL_STATES
 

@@ -24,7 +24,7 @@ from tests.review_repo_helpers import git, make_review_repo, review_output, revi
 from specy_road.bundled_scripts import role_prompt
 from specy_road.review_caller import HARNESS_MARKERS
 from specy_road.review_files import review_path, reviews_dir
-from specy_road.worker_state import create_record, record_path
+from specy_road.orchestration.workers.worker_state import create_record, record_path
 
 pytestmark = pytest.mark.real_review_caller
 

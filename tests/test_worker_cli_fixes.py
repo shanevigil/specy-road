@@ -25,9 +25,9 @@ from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_
 
 from specy_road import orchestrate_plan as op
 from specy_road import tool_call_guard as tg
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import orchestrate_cli, session_cli
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.bundled_scripts.validate_roadmap import validate_orchestration_contract

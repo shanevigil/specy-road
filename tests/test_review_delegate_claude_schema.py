@@ -16,7 +16,7 @@ from tests.review_repo_helpers import git, make_review_repo, review_output
 from specy_road.review_delegate import load_run
 from specy_road.review_files import reviews_dir
 from specy_road.review_write_check import OUTPUT_SCHEMA_NAME
-from specy_road.worker_adapters import ClaudeCode
+from specy_road.orchestration.workers.worker_adapters import ClaudeCode
 
 ROSTER = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
           "  - {id: opus, family: anthropic, roles: [reviewer], harness: claude-code}\n")

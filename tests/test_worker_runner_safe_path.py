@@ -15,9 +15,9 @@ from pathlib import Path
 from tests.review_repo_helpers import make_review_repo
 from tests.test_worker_cli import wait_for_worker
 
-from specy_road import worker_adapters as wa
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 
 
 def test_a_broken_runner_in_the_worktree_is_not_imported(tmp_path: Path, monkeypatch) -> None:

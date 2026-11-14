@@ -1,6 +1,6 @@
 """The ``codex`` harness adapter: ``codex exec --json`` (slice 7b).
 
-Split from :mod:`specy_road.worker_adapters` for the file limit; callers reach it through that module.
+Split from :mod:`specy_road.orchestration.workers.worker_adapters` for the file limit; callers reach it through that module.
 """
 
 from __future__ import annotations
@@ -11,10 +11,16 @@ import re
 from dataclasses import replace
 from pathlib import Path
 
-from specy_road.worker_adapter_base import (CODEX_POLICY, CODEX_REVIEW_POLICY, Adapter, Capabilities, Launch,
+from specy_road.orchestration.workers.worker_adapter_base import (CODEX_POLICY, CODEX_REVIEW_POLICY, Adapter, Capabilities, Launch,
                                          Parsed, _model_flag)
-from specy_road.worker_adapter_parsers import _json, _snip, _text, limit_detail, usage_fields
-from specy_road.worker_usage_delta import SESSION_TOKENS
+from specy_road.orchestration.workers.worker_adapter_parsers import (
+    _json,
+    _snip,
+    _text,
+    limit_detail,
+    usage_fields,
+)
+from specy_road.orchestration.workers.worker_usage_delta import SESSION_TOKENS
 
 #: Memories off on launch and resume, as config (``exec resume`` takes ``-c``): the feature and both of its
 #: switches (harness-facts: ``--disable memories`` is ``features.memories=false``; v2's key names are undocumented).

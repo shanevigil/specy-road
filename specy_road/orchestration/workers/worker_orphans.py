@@ -42,7 +42,7 @@ from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.worker_state import WorkerRecord, list_records, workers_lock
+from specy_road.orchestration.workers.worker_state import WorkerRecord, list_records, workers_lock
 
 #: Not running, still owning the leaf: what a leaf that is over releases. ``completed`` is here so a finished
 #: leaf's worker still shows as orphaned and ``finish`` can end it; it does not take a slot (see ``SLOT_STATES``).
@@ -154,9 +154,9 @@ def _end(repo_root: Path, pick: Callable[[WorkerRecord], str | None]) -> list[tu
         found = [(r, why) for r in list_records(repo_root, active_only=True) if (why := pick(r))]
         if not found:
             return []
-        from specy_road.worker_ops import _terminate_locked   # noqa: PLC0415 — ops imports this module
+        from specy_road.orchestration.workers.worker_ops import _terminate_locked   # noqa: PLC0415 — ops imports this module
         ended = [(_terminate_locked(repo_root, r), why) for r, why in found]
-    from specy_road.worker_lease import release_lease   # noqa: PLC0415 — worker_lease imports this module
+    from specy_road.orchestration.workers.worker_lease import release_lease   # noqa: PLC0415 — worker_lease imports this module
     release_lease(repo_root, *(r.worker_id for r, _why in ended))   # a network call: after the lock
     return ended
 

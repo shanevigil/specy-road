@@ -20,13 +20,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.chore_records import chores_dir
 from specy_road.orphaned_claims import orphaned_claims
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
 from specy_road.session_presence import start_session
-from specy_road.worker_orphans import holding_slots, orphans
+from specy_road.orchestration.workers.worker_orphans import holding_slots, orphans
 from tests.parity.process.corpus import corpus_env, step_transcript
 from tests.parity.support import run_cli
 from tests.review_repo_helpers import commit_file, git, review_text

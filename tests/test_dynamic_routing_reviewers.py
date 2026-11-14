@@ -14,14 +14,14 @@ from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import FAKE, make_worker_repo, worker_roster
 
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.orchestration_routing import entry_routing, routing_problem
 from specy_road.review_eligible import reviewer_eligibility
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
-from specy_road.worker_adapters import Launch
+from specy_road.orchestration.workers.worker_adapters import Launch
 
 
 def _roster(rev: str, *, distinct: bool = True) -> str:

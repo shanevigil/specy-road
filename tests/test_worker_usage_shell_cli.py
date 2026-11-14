@@ -10,9 +10,13 @@ import pytest
 from tests.test_cursor_usage_cost import CODEX_ROSTER, priced_repo
 from tests.test_worker_adapters import CODEX_TURN
 
-from specy_road import worker_adapters as wa
+from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.model_names import roster_match
-from specy_road.worker_adapter_parsers import estimate_usage_cost, mtok_rates, usage_text
+from specy_road.orchestration.workers.worker_adapter_parsers import (
+    estimate_usage_cost,
+    mtok_rates,
+    usage_text,
+)
 
 SIMPLE = "codex exec --json -m gpt-6.1-sol -c sandbox_mode=workspace-write -c approval_policy=never - < {prompt}"
 #: rc4's git-roots grant: the quoted $(...) makes it more than one simple command to command_model, so unpriced.

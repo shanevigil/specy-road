@@ -127,8 +127,8 @@ def test_unparseable_shell_mentioning_git_is_refused_not_waved_through() -> None
 def test_guard_sees_a_worker_running_in_this_checkout(tmp_path: Path, monkeypatch) -> None:
     from tests.review_repo_helpers import make_review_repo
 
-    from specy_road import worker_process as wp
-    from specy_road import worker_state as ws
+    from specy_road.orchestration.workers import worker_process as wp
+    from specy_road.orchestration.workers import worker_state as ws
 
     repo = make_review_repo(tmp_path)
     # The guard matches the wrapper's resolved repo root as a whole argument (review round 6, B11).

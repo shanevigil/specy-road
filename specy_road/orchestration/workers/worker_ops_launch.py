@@ -1,6 +1,6 @@
 """``worker delegate``: the roster and eligibility checks, the worktree, and the launch (slice 7c).
 
-Split from :mod:`specy_road.worker_ops` for the file limit; callers reach
+Split from :mod:`specy_road.orchestration.workers.worker_ops` for the file limit; callers reach
 these through that module.
 """
 
@@ -31,13 +31,21 @@ from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.reviewer_auth import claude_worker_refusal
 from specy_road.roadmap_load import load_roadmap
 from specy_road.runtime_paths import REPO_ROOT_ENV, project_prefix
-from specy_road.worker_adapter_parsers import effort_note, output_mode_note, resume_form_note
-from specy_road.worker_adapters import adapter_for
-from specy_road.worker_lease import acquire_lease, foreign_leases, release_lease
-from specy_road.worker_ops_slots import _slot_or_existing
-from specy_road.worker_reconcile import _bookkeeping
-from specy_road.worker_runner import spawn
-from specy_road.worker_state import (
+from specy_road.orchestration.workers.worker_adapter_parsers import (
+    effort_note,
+    output_mode_note,
+    resume_form_note,
+)
+from specy_road.orchestration.workers.worker_adapters import adapter_for
+from specy_road.orchestration.workers.worker_lease import (
+    acquire_lease,
+    foreign_leases,
+    release_lease,
+)
+from specy_road.orchestration.workers.worker_ops_slots import _slot_or_existing
+from specy_road.orchestration.workers.worker_reconcile import _bookkeeping
+from specy_road.orchestration.workers.worker_runner import spawn
+from specy_road.orchestration.workers.worker_state import (
     WorkerError,
     WorkerRecord,
     append_event,
@@ -269,7 +277,9 @@ def _rework_clear_completed(repo_root: Path, node_id: str, *, offline: bool) -> 
     existing = next((r for r in list_records(repo_root, active_only=True) if r.node_id == node_id), None)
     if existing is None or existing.state != "completed":
         return
-    from specy_road.worker_ops_lifecycle import _terminate_locked  # noqa: PLC0415 — launch must not import at module level
+    from specy_road.orchestration.workers.worker_ops_lifecycle import (  # noqa: PLC0415 — launch must not import at module level
+        _terminate_locked,
+    )
 
     wid = existing.worker_id
     _terminate_locked(repo_root, existing)

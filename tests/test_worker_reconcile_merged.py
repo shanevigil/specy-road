@@ -19,8 +19,8 @@ from tests.review_repo_helpers import commit_file, git
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.test_worker_m310_reconcile_status import worker_repo
 
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 
 
 def _checkpointed(tmp_path: Path) -> tuple[Path, ws.WorkerRecord]:

@@ -16,8 +16,8 @@ from tests.test_review_round6_runner import _launch
 from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import role_prompt
 from specy_road.bundled_scripts import validate_roadmap as vr
 from specy_road.bundled_scripts.validate_roadmap import validate_at

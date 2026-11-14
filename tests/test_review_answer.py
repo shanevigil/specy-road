@@ -17,7 +17,7 @@ import pytest
 from tests.review_repo_helpers import review_output
 
 from specy_road.review_answer import TURNS, Rerun, final_answer
-from specy_road.worker_adapters import ADAPTERS
+from specy_road.orchestration.workers.worker_adapters import ADAPTERS
 
 V = review_output("a" * 40, model="m")
 VT = json.dumps(V)

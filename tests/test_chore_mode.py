@@ -13,10 +13,10 @@ from tests.review_repo_helpers import commit_file, git, make_review_repo
 from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
 
 from specy_road import review_delegate as rd
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import chore_cli
-from specy_road.worker_orphans import orphans
+from specy_road.orchestration.workers.worker_orphans import orphans
 
 
 def chore_repo(tmp_path: Path) -> Path:

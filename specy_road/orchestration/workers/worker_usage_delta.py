@@ -1,6 +1,6 @@
 """One turn's share of a harness's running session totals, for the turn's ``usage`` event.
 
-Split from :mod:`specy_road.worker_runner` for the file limit. Some harnesses report the session's running total
+Split from :mod:`specy_road.orchestration.workers.worker_runner` for the file limit. Some harnesses report the session's running total
 instead of the turn's: Claude Code's ``total_cost_usd`` (recorded as ``session_cost_usd``), and the token counts of
 ``codex exec resume``'s ``turn.completed`` (recorded as ``session_usage``). The turn's figure is the difference from
 the worker's previous ``usage`` event that carried the same total, so ``worker usage`` can sum the turns. A total
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from specy_road.worker_state import WorkerEvent
+from specy_road.orchestration.workers.worker_state import WorkerEvent
 
 #: The token counts a ``session_usage`` total carries.
 SESSION_TOKENS = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_tokens")

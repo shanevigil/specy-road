@@ -59,7 +59,7 @@ from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
 from specy_road.repo_ops import current_branch
-from specy_road.worker_ops_slots import recover_stalled
+from specy_road.orchestration import recover_stalled
 
 
 # ---------------------------------------------------------------------------

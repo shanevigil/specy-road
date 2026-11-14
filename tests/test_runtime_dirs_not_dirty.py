@@ -19,8 +19,8 @@ import pytest
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_cli import FAKE, wait_for_worker, worker_roster
 
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.agent_ignores import RUNTIME_WORK_DIRS, apply_agent_ignores
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.bundled_scripts import chore_cli

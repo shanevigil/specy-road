@@ -73,9 +73,9 @@ from specy_road.reviewer_run_failure import gate_policy_summary as _gate_policy_
 from specy_road.reviewer_run_failure import (_read_json, close_run, run_path as _run_path, save_run,
                                              turn_capacity_error)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.worker_adapters import Unsupported
-from specy_road.worker_lock import WorkerError
-from specy_road.worker_sessions import check_session_id
+from specy_road.orchestration.workers.worker_adapters import Unsupported
+from specy_road.orchestration.workers.worker_lock import WorkerError
+from specy_road.orchestration.workers.worker_sessions import check_session_id
 
 RUN_PREFIX = "RUN-"
 DEFAULT_RETRIES = 3

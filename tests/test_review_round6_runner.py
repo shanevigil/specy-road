@@ -24,11 +24,11 @@ from tests.review_repo_helpers import git
 from tests.test_worker_cli import wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops as ops
-from specy_road import worker_process as wp
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_process as wp
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.review_files import reviews_root
 
 OK = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
@@ -138,7 +138,8 @@ def test_a_huge_stdin_prompt_travels_in_a_0600_file_not_argv(tmp_path: Path) -> 
     real = wr.subprocess.Popen
 
     def spy(argv, **kw):
-        if "specy_road.worker_runner" in argv:       # the lock's git calls go through Popen too
+        # the lock's git calls go through Popen too
+        if "specy_road.orchestration.workers.worker_runner" in argv:
             seen["argv"] = argv
             seen["mode"] = oct(Path(argv[-1]).stat().st_mode & 0o777)
         return real(argv, **kw)

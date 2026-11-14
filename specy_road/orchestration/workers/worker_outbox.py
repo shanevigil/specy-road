@@ -24,13 +24,13 @@ _OP = re.compile(r"^[A-Za-z0-9._-]{1,80}$")
 
 
 def ops_dir(repo_root: Path) -> Path:
-    from specy_road.worker_state import workers_dir
+    from specy_road.orchestration.workers.worker_state import workers_dir
 
     return workers_dir(repo_root) / "ops"
 
 
 def _error(msg: str) -> Exception:
-    from specy_road.worker_state import WorkerError
+    from specy_road.orchestration.workers.worker_state import WorkerError
 
     return WorkerError(msg)
 
@@ -59,7 +59,7 @@ def begin_op(repo_root: Path, op_id: str, kind: str, target: str | None = None,
     a replay must name the same one, so one op id cannot answer a delegate
     on a different leaf with another leaf's worker.
     """
-    from specy_road.worker_state import workers_lock
+    from specy_road.orchestration.workers.worker_state import workers_lock
 
     path = _op_path(repo_root, op_id)
     with workers_lock(repo_root):

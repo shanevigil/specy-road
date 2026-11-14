@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from specy_road import worker_state as ws
-from specy_road.worker_cli_render import sync_event_lines
-from specy_road.worker_runner_ready import READY_ONLY_PROMPT
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers.worker_cli_render import sync_event_lines
+from specy_road.orchestration.workers.worker_runner_ready import READY_ONLY_PROMPT
 from tests.review_repo_helpers import git
 from tests.test_rework_findings_in_prompt import file_review
 from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
@@ -188,7 +188,7 @@ def test_rework_refuses_idle_worker_without_a_block(tmp_path: Path, capsys) -> N
 
 
 def test_rework_offline_does_not_delete_completed_worker_leases(tmp_path: Path, monkeypatch) -> None:
-    from specy_road import worker_lease as wl
+    from specy_road.orchestration.workers import worker_lease as wl
     from tests.worker_lease_helpers import remote_and_clone, remote_leases
 
     repo, _ = make_worker_repo(tmp_path)

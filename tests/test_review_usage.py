@@ -17,13 +17,13 @@ from tests.review_delegate_helpers import (
 )
 from tests.review_repo_helpers import commit_file, git
 
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
-from specy_road.worker_cli_render import usage, usage_lines
+from specy_road.orchestration.workers.worker_cli_render import usage, usage_lines
 from specy_road.review_files import reviews_dir
 from specy_road.review_usage import archive_round, review_usage
 from specy_road.reviewer_run_failure import run_path, save_run
-from specy_road.worker_adapter_parsers import USAGE_FIELDS
+from specy_road.orchestration.workers.worker_adapter_parsers import USAGE_FIELDS
 
 def _round(repo: Path, notes: str, **result) -> dict:
     """One round: the fake's result line carries ``result`` (usage, cost, turns), as Claude's stream-json does, and

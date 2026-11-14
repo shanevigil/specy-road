@@ -18,13 +18,13 @@ import pytest
 
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.git_workflow_config import worker_sandbox_mode
 from specy_road.review_files import reviews_dir
-from specy_road.worker_adapters import Launch
-from specy_road.worker_sandbox import state_home
-from specy_road.worker_turn_check import PAUSED_BY_LIMIT
+from specy_road.orchestration.workers.worker_adapters import Launch
+from specy_road.orchestration.workers.worker_sandbox import state_home
+from specy_road.orchestration.workers.worker_turn_check import PAUSED_BY_LIMIT
 
 
 def _bwrap_starts() -> bool:

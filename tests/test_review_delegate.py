@@ -28,7 +28,7 @@ from specy_road.review_record_write import review_run_lock
 from specy_road.reviewer_run_failure import save_run, run_path, turn_capacity_error
 from specy_road.review_files import reviews_dir
 from specy_road import review_files as rf
-from specy_road.worker_adapters import ClaudeCode
+from specy_road.orchestration.workers.worker_adapters import ClaudeCode
 
 def _run(*args: str) -> int:
     with pytest.raises(SystemExit) as e:

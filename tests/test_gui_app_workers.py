@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from starlette.testclient import TestClient
 
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_state as ws
 from tests.review_repo_helpers import make_review_repo
 
 

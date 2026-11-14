@@ -22,11 +22,11 @@ import pytest
 from tests.test_worker_cli import run_worker_cli, wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import worker_adapters as wa
-from specy_road import worker_ops as ops
-from specy_road import worker_process as wp
-from specy_road import worker_runner as wr
-from specy_road import worker_state as ws
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_process as wp
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.orchestration.workers import worker_state as ws
 from specy_road.review_files import reviews_root
 
 
@@ -173,7 +173,7 @@ def test_a_bad_output_line_does_not_kill_the_wrapper(tmp_path: Path) -> None:
 
 def test_a_wrapper_with_a_long_command_line_is_still_recognised(tmp_path: Path) -> None:
     """procps ``ps`` without a terminal cuts ``-o command=`` at 80 columns unless ``-ww`` (cloud pre-release run)."""
-    from specy_road import worker_process as wp
+    from specy_road.orchestration.workers import worker_process as wp
     deep = tmp_path / ("d" * 120) / "r"
     p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)", "specy_road.worker_runner", str(deep), "w-0042", "{}"],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -183,6 +183,29 @@ def test_a_wrapper_with_a_long_command_line_is_still_recognised(tmp_path: Path) 
                 break
             time.sleep(0.1)
         assert wp.pid_alive(p.pid, "w-0042") and wp.pid_verified(p.pid, "w-0042")
+    finally:
+        p.kill()
+        p.wait()
+
+
+@pytest.mark.parametrize("module", [
+    "specy_road.worker_runner",                          # launched before the move
+    "specy_road.orchestration.workers.worker_runner",
+])
+def test_a_wrapper_launched_under_either_module_name_is_live(tmp_path: Path, module: str) -> None:
+    """A wrapper an older specy-road started as ``-m specy_road.worker_runner`` is still live."""
+    repo = tmp_path.resolve()
+    argv = ["-P", "-m", module, str(repo), "w-0042", "tok42", str(repo / "payload.json")]
+    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)", *argv],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    rec = ws.WorkerRecord("w-0042", "M1.1", "claude-code", "opus", str(repo), "running",
+                          {"holder": "broker", "since": "t"}, 0, 1, 0, "t", "t",
+                          pid=p.pid, wrapper_token="tok42")
+    try:
+        deadline = time.monotonic() + 5
+        while not wp.wrapper_verified(rec, repo) and time.monotonic() < deadline:   # ps may lag
+            time.sleep(0.1)
+        assert wp.wrapper_verified(rec, repo) and wp.wrapper_alive(rec, repo)
     finally:
         p.kill()
         p.wait()

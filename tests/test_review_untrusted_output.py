@@ -20,7 +20,7 @@ from specy_road import review_files as rf
 from specy_road.review_answer import Rerun, final_answer
 from specy_road.review_delegate import delegate
 from specy_road.review_record_write import run_text
-from specy_road.worker_adapters import ADAPTERS
+from specy_road.orchestration.workers.worker_adapters import ADAPTERS
 
 
 def _filed_block(tmp_path: Path) -> tuple[Path, Path, bytes, bytes]:

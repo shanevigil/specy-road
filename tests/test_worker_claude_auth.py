@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from specy_road import worker_ops as ops
-from specy_road import worker_state as ws
-from specy_road.worker_adapters import Launch
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers.worker_adapters import Launch
 from tests.review_repo_helpers import claude_code_reviewer_repo
 from tests.test_models_and_prompt import commit_profile
 

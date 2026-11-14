@@ -1,6 +1,6 @@
 """``worker message``, ``resume`` and ``interrupt``: a follow-up turn on a worker's native session (slice 7c).
 
-Split from :mod:`specy_road.worker_ops` for the file limit; callers reach
+Split from :mod:`specy_road.orchestration.workers.worker_ops` for the file limit; callers reach
 these through that module.
 """
 
@@ -13,18 +13,22 @@ from specy_road.chore_records import chore_node, open_chore
 from specy_road.role_prompt_rework import CLASS_AUDIT_LINES, _review_lines, blocking_reviews
 from specy_road.git_subprocess import head_sha
 from specy_road.review_files import reviews_dir
-from specy_road.worker_adapters import Unsupported, adapter_for
-from specy_road.worker_lease import acquire_lease
+from specy_road.orchestration.workers.worker_adapters import Unsupported, adapter_for
+from specy_road.orchestration.workers.worker_lease import acquire_lease
 from specy_road.runtime_paths import project_prefix
-from specy_road.worker_ops_launch import (
+from specy_road.orchestration.workers.worker_ops_launch import (
     _cli_for, _entry_and_harness, _launch_checks, _selected_cli, _target, launch_options, worker_env,
 )
-from specy_road.worker_ops_slots import _slot_or_existing, _wrapper_gone
-from specy_road.worker_process import process_alive, require_branch, wrapper_alive
-from specy_road.worker_runner import spawn
-from specy_road.worker_sessions import check_session_id
-from specy_road.worker_turn_check import limit_gate
-from specy_road.worker_state import (
+from specy_road.orchestration.workers.worker_ops_slots import _slot_or_existing, _wrapper_gone
+from specy_road.orchestration.workers.worker_process import (
+    process_alive,
+    require_branch,
+    wrapper_alive,
+)
+from specy_road.orchestration.workers.worker_runner import spawn
+from specy_road.orchestration.workers.worker_sessions import check_session_id
+from specy_road.orchestration.workers.worker_turn_check import limit_gate
+from specy_road.orchestration.workers.worker_state import (
     FLAG_STALLED,
     FLAG_UNDELIVERED,
     WorkerError,
@@ -37,7 +41,7 @@ from specy_road.worker_state import (
     workers_lock,
 )
 
-from specy_road.worker_runner_ready import READY_ONLY_PROMPT
+from specy_road.orchestration.workers.worker_runner_ready import READY_ONLY_PROMPT
 
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
                    "first; if the hand-off is already written, say so and stop.\n")
@@ -82,7 +86,9 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: boo
             raise WorkerError(f"{rec.worker_id} is still running (pid {rec.pid}); the CLI adapters cannot steer a live turn — "
                               + ("it is stalled: once its harness exits, message resumes the session (terminate closes it "
                                  "for good)" if FLAG_STALLED in rec.flags else "wait for it to end, or terminate it"))
-        from specy_road.worker_runner import queue_worker_message  # noqa: PLC0415 — runner calls _send on delivery
+        from specy_road.orchestration.workers.worker_runner import (  # noqa: PLC0415 — runner calls _send on delivery
+            queue_worker_message,
+        )
 
         entry_checked()   # a refused message is not queued
         return queue_worker_message(repo_root, rec, text)
