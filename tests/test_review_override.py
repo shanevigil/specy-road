@@ -18,7 +18,7 @@ from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, 
 from tests.test_review_policy_pin import SUBJECT
 
 from specy_road.bundled_scripts import decisions_cli, mark_implementation_reviewed, review_cli
-from specy_road.orchestration_role_env import ROLE_ENV
+from specy_road.orchestration.guard.orchestration_role_env import ROLE_ENV
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_override import block_item, shortfall_text

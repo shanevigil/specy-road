@@ -97,7 +97,7 @@ tests/test_review_round4_sol.py: specy_road.orchestration.workers.worker_runner.
 tests/test_review_round4_sol_b.py: specy_road.bundled_scripts.brainstorm_verify._PinnedHTTPS
 tests/test_review_round4_sol_b.py: specy_road.bundled_scripts.brainstorm_verify._is_off_host
 tests/test_review_round4_sol_b.py: specy_road.bundled_scripts.brainstorm_verify._public_address
-tests/test_review_round5.py: specy_road.tool_call_guard._expand_config_aliases
+tests/test_review_round5.py: specy_road.orchestration.guard.tool_call_guard._expand_config_aliases
 tests/test_review_round6_brainstorm.py: specy_road.gui_app_routes_brainstorm._payload
 tests/test_review_round6_evidence.py: specy_road.bundled_scripts.review_cli._node_status
 tests/test_review_round6_evidence.py: specy_road.bundled_scripts.review_packet._changed

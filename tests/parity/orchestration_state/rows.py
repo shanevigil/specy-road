@@ -25,7 +25,7 @@ from specy_road.orchestration.records.chore_records import chores_dir
 from specy_road.orphaned_claims import orphaned_claims
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
-from specy_road.session_presence import start_session
+from specy_road.orchestration.guard.session_presence import start_session
 from specy_road.orchestration.workers.worker_orphans import holding_slots, orphans
 from tests.parity.process.corpus import corpus_env, step_transcript
 from tests.parity.support import run_cli

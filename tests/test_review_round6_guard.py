@@ -16,9 +16,9 @@ import pytest
 from tests.review_repo_helpers import make_review_repo
 from tests.test_hook_adapters import DENY, PAYLOADS, _run
 
-from specy_road import session_presence as sp
-from specy_road import tool_call_guard as g
-from specy_road.tool_call_guard_adapters import ADAPTERS
+from specy_road.orchestration.guard import session_presence as sp
+from specy_road.orchestration.guard import tool_call_guard as g
+from specy_road.orchestration.guard.tool_call_guard_adapters import ADAPTERS
 
 ENV_ALIAS = "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.x GIT_CONFIG_VALUE_0='!git stash' git x"
 

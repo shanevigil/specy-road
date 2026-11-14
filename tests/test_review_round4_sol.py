@@ -32,8 +32,8 @@ from tests.test_review_signing import _key, _roster
 from tests.test_worker_cli import wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import session_presence as sp
-from specy_road import tool_call_guard as tg
+from specy_road.orchestration.guard import session_presence as sp
+from specy_road.orchestration.guard import tool_call_guard as tg
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_lease as wl
 from specy_road.orchestration.workers import worker_ops as ops
@@ -171,7 +171,7 @@ def test_an_embedded_placeholder_is_refused_not_quoted_inside_quotes(tmp_path: P
 
 def test_the_default_session_id_is_stable_across_processes(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
-    code = "from specy_road.session_presence import default_agent_id; print(default_agent_id())"
+    code = "from specy_road.orchestration.guard.session_presence import default_agent_id; print(default_agent_id())"
     env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parent.parent)}
     a = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env, check=True).stdout
     b = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env, check=True).stdout

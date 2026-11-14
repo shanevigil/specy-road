@@ -46,7 +46,7 @@ def print_pickup_header(node: dict, branch: str, repo_root: Path | None = None) 
     print(f"implementation branch: {branch}\n")
     zones = [z for z in (node.get("touch_zones") or []) if isinstance(z, str)]
     if repo_root is not None and zones:
-        from specy_road.session_presence import conflicts, warn_lines
+        from specy_road.orchestration.guard.session_presence import conflicts, warn_lines
 
         for line in warn_lines(conflicts(repo_root, zones), what=f"{node['id']}'s touch zones"):
             print(line, file=sys.stderr)

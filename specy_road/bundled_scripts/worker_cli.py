@@ -22,7 +22,7 @@ from specy_road.orchestration import add_sync_parser, cmd_sync as _cmd_sync
 from specy_road.orchestration import read_state
 from specy_road.orphaned_claims import append_claim_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.tool_call_guard import read_payload
+from specy_road.orchestration import read_payload
 from specy_road.orchestration import ADAPTERS, Unsupported
 from specy_road.orchestration import add_terminate, list_view
 from specy_road.orchestration import lookup_op

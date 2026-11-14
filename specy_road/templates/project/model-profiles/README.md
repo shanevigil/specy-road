@@ -233,7 +233,7 @@ every profile whose `family` a harness's executor template names is rendered fro
 - **Permissions:** whatever the command's own flags grant; specy-road adds none _[documented: M8.7 runtime verification (still unknown per access.cli; not exercised, 2026-11-02)]_
 - **Instruction files:** `AGENTS.md` _[documented: M8.7 runtime verification (specy-road init convention; not verified per generic binary, 2026-11-02)]_; size: unknown
 - **Skill directories:** `.agents/skills` _[documented: M8.7 runtime verification (init layout; per-binary load still unknown, 2026-11-02)]_
-- **Hooks:** no hook of its own; the session guard's generic contract reads a JSON object with a command field on stdin and exits 2 to deny, for any harness that can call it _[documented: specy_road/tool_call_guard_adapters.py (generic adapter)]_
+- **Hooks:** no hook of its own; the session guard's generic contract reads a JSON object with a command field on stdin and exits 2 to deny, for any harness that can call it _[documented: specy_road/orchestration/guard/tool_call_guard_adapters.py (generic adapter)]_
 - **Model families:** none listed _[documented: M8.7 runtime verification (roster contract; empty list by design, 2026-11-02)]_
 - **Quota:** unknown; no usage is reported (every usage field is null) _[documented: docs/orchestration-workers.md (usage events)]_
 - **Autonomous git actions:**

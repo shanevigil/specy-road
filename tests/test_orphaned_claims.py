@@ -17,7 +17,7 @@ from specy_road.bundled_scripts.grind_session_events import EventEmitter
 from specy_road.orphaned_claims import orphaned_claims, report_lines, stays_claimed
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
-from specy_road.session_presence import start_session
+from specy_road.orchestration.guard.session_presence import start_session
 from specy_road.orchestration.workers.worker_adapters import Unsupported
 from tests.review_repo_helpers import git, make_review_repo
 from tests.worker_repo_helpers import make_worker_repo

@@ -9,7 +9,7 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 
-from specy_road import session_presence as sp
+from specy_road.orchestration.guard import session_presence as sp
 from specy_road.bundled_scripts import session_cli
 
 

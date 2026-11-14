@@ -11,15 +11,15 @@ from pathlib import Path
 
 import pytest
 
-from specy_road import orchestration_role_guard as org
+from specy_road.bundled_scripts import orchestration_guard_cli as org
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
-from specy_road.orchestration_guard_adapters import ADAPTERS
+from specy_road.bundled_scripts.orchestration_guard_cli import ADAPTERS
 from specy_road.review_delegate import delegate
 from specy_road.review_files import reviews_dir
 from specy_road.specyrd_hooks import install_orchestration_hooks, install_pre_push_hook
 from specy_road.specyrd_init import run_init
-from specy_road.tool_call_guard import ADAPTERS as SESSION_ADAPTERS
+from specy_road.orchestration.guard.tool_call_guard import ADAPTERS as SESSION_ADAPTERS
 from specy_road.orchestration.workers.worker_adapters import Launch
 from tests.helpers import script_subprocess_env
 from tests.review_repo_helpers import make_review_repo
@@ -198,7 +198,7 @@ def test_codex_launch_template_pins_disable_flags() -> None:
 
 
 def test_harness_env_exports_claude_avoid_switches_for_executor() -> None:
-    from specy_road.orchestration_role_env import harness_env
+    from specy_road.orchestration.guard.orchestration_role_env import harness_env
 
     env = harness_env({}, "executor", harness="claude-code")
     assert env["SPECY_ROAD_ORCHESTRATION_ROLE"] == "executor"
