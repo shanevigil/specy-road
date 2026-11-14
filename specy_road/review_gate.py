@@ -83,8 +83,9 @@ from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exp
     trial_merge_or_exit, write_human_approval,
 )
 from specy_road.review_model_check import model_mismatch_problem
-from specy_road.review_override import (
-    CARRY_NOTE, apply_operator_decisions, count_at_later_commit, review_commit,
+from specy_road.review_override import (  # noqa: F401 — only_planning_... re-exported
+    CARRY_NOTE, apply_operator_decisions, count_at_later_commit,
+    only_planning_or_review_bookkeeping_since, review_commit,
 )
 from specy_road.review_policy_pin import (  # noqa: F401 — review_required re-exported
     committed_yaml as _committed_yaml, pin_problem, policy_source, review_required,

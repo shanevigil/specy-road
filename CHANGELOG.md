@@ -149,11 +149,12 @@ body. Keep section bodies focused; link to PRs for detail.
   project's copy once.
 
 - The review gate's internal modules are folded, with no change to any command, output or review
-  policy: `review_strong`, `review_resumed_delta`, `review_gate_agreement` and the gate half of
-  `review_eligible` (`writers`, `reviews_to_judge`) into `review_gate`; `review_ready_merge` and
-  `changelog_check` into `review_gate_ready`; `review_bookkeeping` into `review_override`;
-  `review_policy_ref` into `review_policy_pin`; and `reviewer_eligibility` and `eligibility_lines` into
-  the `review` CLI. The folded module paths are gone, without an alias.
+  policy: `review_strong`, `review_resumed_delta` and the gate half of `review_eligible` (`Identity`,
+  `writers`, `reviews_to_judge`) into `review_gate`; `review_ready_merge` and `changelog_check` into
+  `review_gate_ready`; `review_bookkeeping` into `review_override`; `review_policy_ref` and
+  `review_gate_agreement` into `review_policy_pin`; and `reviewer_eligibility` and
+  `eligibility_lines` into the `review` CLI. Each old module path stays as a deprecated alias (listed
+  under Deprecated).
 
 ### Deprecated
 
@@ -194,10 +195,21 @@ them wins:
 - `land_check_cmd: CMD` -> `checks: [{name: land check, run: CMD, when: land}]`.
 - `verify_cmd: CMD` -> `checks: [{name: verify, run: CMD, when: prompt}]`.
 
-These import paths warn on import (`DeprecationWarning`) and are removed in the release after 0.3.1:
+These import paths, renamed or folded by the review-gate fold, warn on import (`DeprecationWarning`) and
+are removed in the release after 0.3.1:
 
 - `specy_road.review_defer` -> `specy_road.review_defer_cli` (the `review defer` command).
 - `specy_road.review_deferral` -> `specy_road.review_defer_rules` (the deferral rules the gate applies).
+- `specy_road.review_strong` -> `specy_road.review_gate`.
+- `specy_road.review_resumed_delta` -> `specy_road.review_gate`.
+- `specy_road.review_eligible` -> `specy_road.review_gate` (`Identity`, `writers`, `reviews_to_judge`);
+  `reviewer_eligibility` and `eligibility_lines` are now in `specy_road.bundled_scripts.review_cli`,
+  and the old path does not serve them.
+- `specy_road.review_ready_merge` -> `specy_road.review_gate_ready`.
+- `specy_road.changelog_check` -> `specy_road.review_gate_ready`.
+- `specy_road.review_bookkeeping` -> `specy_road.review_override`.
+- `specy_road.review_gate_agreement` -> `specy_road.review_policy_pin`.
+- `specy_road.review_policy_ref` -> `specy_road.review_policy_pin`.
 
 ### Fixed
 
