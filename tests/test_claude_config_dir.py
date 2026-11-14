@@ -13,7 +13,7 @@ import pytest
 from specy_road import harness_instruction_files as hif
 from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agents_md_block import print_injected_context
-from specy_road.bundled_scripts import grind_session_implement as gsi
+from specy_road.orchestration.grind import grind_session_implement as gsi
 from specy_road.claude_config import claude_projects_dir
 from specy_road.orchestration.workers.worker_adapters import ClaudeCode
 

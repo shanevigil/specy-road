@@ -1,35 +1,14 @@
 {
-  "generated": "2026-11-04",
+  "generated": "2026-11-14",
   "tool": "pylint duplicate-code (R0801)",
   "min_similarity_lines": 6,
   "clones": [
-    {
-      "modules": [
-        "specy_road.bundled_scripts.do_next_task_args",
-        "specy_road.bundled_scripts.pm_sync"
-      ],
-      "lines": 12
-    },
     {
       "modules": [
         "specy_road.bundled_scripts.finish_task",
         "specy_road.bundled_scripts.mark_implementation_reviewed"
       ],
       "lines": 9
-    },
-    {
-      "modules": [
-        "specy_road.bundled_scripts.pm_sync",
-        "specy_road.bundled_scripts.start_milestone_session"
-      ],
-      "lines": 11
-    },
-    {
-      "modules": [
-        "specy_road.roadmap_chunk_router_pick",
-        "specy_road.roadmap_chunk_utils"
-      ],
-      "lines": 7
     },
     {
       "modules": [
@@ -44,6 +23,13 @@
         "specy_road.orchestration.workers.worker_lock"
       ],
       "lines": 8
+    },
+    {
+      "modules": [
+        "specy_road.roadmap_chunk_router_pick",
+        "specy_road.roadmap_chunk_utils"
+      ],
+      "lines": 7
     }
   ]
 }

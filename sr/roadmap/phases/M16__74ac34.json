@@ -173,7 +173,7 @@
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.9_grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings_275b701c-4eb9-4214-ae77-7ab34a7d197a.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings",
       "touch_zones": [
         "specy_road/orchestration/grind/",
@@ -219,7 +219,7 @@
     },
     {
       "acceptance": [
-        "review_bookkeeping and review_ready_merge fold into review_gate_ready (about 899 lines at 4bf300e5); review_strong, review_resumed_delta and review_gate_agreement fold into review_gate (about 770); review_policy_ref folds into review_policy_pin (about 483); re-measure line counts after M16.4.5 lands; move a fragment to another named target if a cap would be exceeded. From review_eligible, `reviews_to_judge` and `writers` go to a package module (the gate); only `reviewer_eligibility` and `eligibility_lines` go to review_cli (stays ≤1,000). review_rca and review_next_step stay package modules with their public names, and review_defer (CLI) and review_deferral (rules) are renamed so the names say which is which; the renamed defer module stays in `specy_road/`. Each merged module is at most 1,000 lines (not squashed to get under the 750-line warning) and the summary records each resulting file's line count; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
+        "review_bookkeeping and review_ready_merge fold into review_gate_ready (about 899 lines at 4bf300e5); review_strong, review_resumed_delta and review_gate_agreement fold into review_gate (about 770); review_policy_ref folds into review_policy_pin (about 483); re-measure line counts after M16.4.5 lands; move a fragment to another named target if a cap would be exceeded. From review_eligible, `reviews_to_judge` and `writers` go to a package module (the gate); only `reviewer_eligibility` and `eligibility_lines` go to review_cli (stays ≤1,000); the old review_eligible path does not serve these two CLI-only names, because a package module never imports the CLI, so importing them from it raises ImportError and CHANGELOG's Deprecated entry says to import them from review_cli (maintainer 2026-11-14). review_rca and review_next_step stay package modules with their public names, and review_defer (CLI) and review_deferral (rules) are renamed so the names say which is which; the renamed defer module stays in `specy_road/`. Each merged module is at most 1,000 lines (not squashed to get under the 750-line warning) and the summary records each resulting file's line count; a diff line outside the moved or folded modules and specy_road/orchestration/ changes only an import path or a patch-target string",
         "No review policy is deprecated (maintainer, 2026-11-09): every escalate_* key, max_fix_rounds and deferral keep their behaviour, decision-table rows and validate output",
         "The M16.1.2 rows for `review record` filed from a reviewer's final message are unchanged",
         "Moved files are rewrapped and leave the width baseline; no function rises above its merge-base complexity; parity harness unchanged except import paths of moved modules",

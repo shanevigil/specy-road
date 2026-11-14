@@ -11,8 +11,9 @@ them today.
 
 The worker runtime lives in ``specy_road.orchestration.workers``, harness facts and binaries in
 ``specy_road.orchestration.harness``, the shared-checkout guard and session presence in
-``specy_road.orchestration.guard``, and the chore, decision and lesson records in
-``specy_road.orchestration.records``; the roster, model profiles, leaf assignment and the
+``specy_road.orchestration.guard``, the chore, decision and lesson records in
+``specy_road.orchestration.records``, and the grind-session loop and its plan in
+``specy_road.orchestration.grind``; the roster, model profiles, leaf assignment and the
 role-prompt library are modules of this package (``DESTINATIONS.md`` lists where each came from).
 The names the gate, the CLI entry points and the GUI take from them are served here too
 (:data:`_SOURCES`). Every name loads on first use (:func:`__getattr__`, PEP 562) from the one module
@@ -29,6 +30,11 @@ from typing import Any
 #: Defining module (relative to this package) -> the names served from it.
 _SOURCES: dict[str, tuple[str, ...]] = {
     "claims": ("read_claims",),
+    "grind.grind_session": ("run_session",),
+    "grind.grind_session_events": ("EXIT_IN_FLIGHT",),
+    "grind.grind_session_in_flight": ("InFlightClaim", "own_in_flight_claims"),
+    "grind.session_plan_git": ("gather_session_plan",),
+    "grind.session_plan_render": ("zone_overlaps",),
     "guard": ("tool_call_guard_adapters", "tool_call_guard_shapes"),
     "guard.session_presence": (
         "DEFAULT_TTL_HOURS", "Session", "conflicts", "current_user", "default_agent_id",
@@ -105,31 +111,33 @@ _SOURCE_OF = {name: source for source, names in _SOURCES.items() for name in nam
 
 __all__ = [
     "ADAPTERS", "ANY", "CODEX_MEMORY_OFF", "DATA_LINE", "DECISIONS_REL", "DEFAULT_MAX_AGE_DAYS",
-    "DEFAULT_TTL_HOURS", "GUIDANCE_BYPASS_KEY", "HARNESSES", "HELD_STATES", "LESSONS_REL", "LOCAL",
-    "LeaseError", "OrchestrationPlan", "OrchestrationState", "PREFERENCE", "PROFILES_REL",
-    "Profile", "READ_BACK_HARNESSES", "ROLES", "SHARED", "STANDING_RULE", "Session", "Unsupported",
-    "WorkerError", "active_preferences", "add_entry", "add_lesson", "add_preference",
-    "add_sync_parser", "add_terminate", "begin_op", "build_orchestration_plan", "chore_node",
-    "chore_prompt", "chore_target", "chores_dir", "claimed_worktree", "close_entry", "cmd_sync",
-    "complete_op", "conflicts", "coordinator_decision_lines", "coordinator_preamble",
-    "current_user", "decide", "decisions_path", "default_agent_id", "display_rel",
-    "end_finished_workers", "end_session", "entry_may_process", "env_agent_id", "events_since",
-    "executor_preamble", "fix_check_lines", "force_warnings", "format_entries", "format_lesson",
-    "format_open_entry", "format_preference", "guidance_bypass_lines", "guidance_bypass_refusal",
+    "DEFAULT_TTL_HOURS", "EXIT_IN_FLIGHT", "GUIDANCE_BYPASS_KEY", "HARNESSES", "HELD_STATES",
+    "InFlightClaim", "LESSONS_REL", "LOCAL", "LeaseError", "OrchestrationPlan",
+    "OrchestrationState", "PREFERENCE", "PROFILES_REL", "Profile", "READ_BACK_HARNESSES", "ROLES",
+    "SHARED", "STANDING_RULE", "Session", "Unsupported", "WorkerError", "active_preferences",
+    "add_entry", "add_lesson", "add_preference", "add_sync_parser", "add_terminate", "begin_op",
+    "build_orchestration_plan", "chore_node", "chore_prompt", "chore_target", "chores_dir",
+    "claimed_worktree", "close_entry", "cmd_sync", "complete_op", "conflicts",
+    "coordinator_decision_lines", "coordinator_preamble", "current_user", "decide",
+    "decisions_path", "default_agent_id", "display_rel", "end_finished_workers", "end_session",
+    "entry_may_process", "env_agent_id", "events_since", "executor_preamble", "fix_check_lines",
+    "force_warnings", "format_entries", "format_lesson", "format_open_entry", "format_preference",
+    "gather_session_plan", "guidance_bypass_lines", "guidance_bypass_refusal",
     "guidance_bypass_warning", "guidance_problem", "harness_facts", "is_available", "lessons_path",
     "list_profiles", "list_records", "list_sessions", "list_view", "load_chore", "load_merged",
     "load_profile", "load_record", "load_session", "log_path", "lookup_op", "may_handle",
     "missing_profile_files", "next_free_id", "node_eligibility", "node_sensitivity", "open_chore",
-    "open_questions", "own_session_here", "precondition", "preflight", "print_answer",
-    "profile_lines", "project_root_from_worktree", "read_claims", "read_decisions", "read_lessons",
-    "read_payload", "read_state", "reconcile_lines", "recover_stalled", "render_command",
-    "resolve_cli", "reviewer_launch_block", "reviewer_lesson_lines", "reviewer_preamble",
-    "reviewer_turn", "rework_check", "rework_lines", "roster_entries", "run_plain_cli",
-    "session_path", "snapshot", "split_segments", "stall_lines", "stalled_workers", "start_session",
-    "sync_marks", "timeline", "timeline_lines", "tool_call_guard_adapters",
-    "tool_call_guard_shapes", "unavailability_reason", "unavailable_prompt_error",
-    "unmatched_roster_ids", "usage", "usage_json_payload", "usage_lines", "warn_garden_due",
-    "warn_lines", "worker_ops", "workers_dir", "write_entries",
+    "open_questions", "own_in_flight_claims", "own_session_here", "precondition", "preflight",
+    "print_answer", "profile_lines", "project_root_from_worktree", "read_claims", "read_decisions",
+    "read_lessons", "read_payload", "read_state", "reconcile_lines", "recover_stalled",
+    "render_command", "resolve_cli", "reviewer_launch_block", "reviewer_lesson_lines",
+    "reviewer_preamble", "reviewer_turn", "rework_check", "rework_lines", "roster_entries",
+    "run_plain_cli", "run_session", "session_path", "snapshot", "split_segments", "stall_lines",
+    "stalled_workers", "start_session", "sync_marks", "timeline", "timeline_lines",
+    "tool_call_guard_adapters", "tool_call_guard_shapes", "unavailability_reason",
+    "unavailable_prompt_error", "unmatched_roster_ids", "usage", "usage_json_payload",
+    "usage_lines", "warn_garden_due", "warn_lines", "worker_ops", "workers_dir", "write_entries",
+    "zone_overlaps",
 ]
 
 
