@@ -343,7 +343,9 @@ def test_a_marker_not_bound_to_its_decision_and_rca_resolves_nothing(tmp_path: P
     assert governing_rca(repo, "M1.1", [b.review for b in gate.blocks]) is None
 
 
-# Every public name each old module defined before the rename or fold, by its new home.
+# Every public name each old module defined before the rename or fold, by its new home. A name
+# that moved into a CLI entry point is not served (a package module never imports one): see
+# test_old_path_does_not_serve_names_that_moved_into_the_cli.
 @pytest.mark.parametrize(("old", "new", "names"), [
     ("review_defer", "review_defer_cli", "add_parser applicable_record cmd_review_defer"),
     ("review_deferral", "review_defer_rules", "CATEGORIES DEFERRAL_PREFIX Evidence MARKER_SCHEMA "
@@ -354,7 +356,6 @@ def test_a_marker_not_bound_to_its_decision_and_rca_resolves_nothing(tmp_path: P
     ("review_resumed_delta", "review_gate", "FRESH_SESSION RESUMED_KEY fresh_only_note "
      "fresh_session_problem resumed_delta_on"),
     ("review_eligible", "review_gate", "Identity reviews_to_judge writers"),
-    ("review_eligible", "bundled_scripts.review_cli", "eligibility_lines reviewer_eligibility"),
     ("review_ready_merge", "review_gate_ready", "add_ready_parser cmd_ready trial_merge_warning"),
     ("changelog_check", "review_gate_ready", "missing_entry_warning"),
     ("review_bookkeeping", "review_override", "CARRY_NOTE count_at_later_commit heads_problem "
@@ -373,4 +374,13 @@ def test_renamed_module_old_path_warns_and_serves_the_same_names(monkeypatch, ol
     target = importlib.import_module(f"specy_road.{new}")
     for name in names.split():
         assert getattr(module, name) is getattr(target, name)
-    assert not hasattr(module, "not_a_moved_name")
+
+
+def test_old_path_does_not_serve_names_that_moved_into_the_cli(monkeypatch) -> None:
+    """``review_eligible``'s two CLI names live only in the ``review`` CLI entry point."""
+    monkeypatch.delitem(sys.modules, "specy_road.review_eligible", raising=False)
+    with pytest.warns(DeprecationWarning):
+        module = importlib.import_module("specy_road.review_eligible")
+    cli = importlib.import_module("specy_road.bundled_scripts.review_cli")
+    for name in ("eligibility_lines", "reviewer_eligibility"):
+        assert not hasattr(module, name) and callable(getattr(cli, name))

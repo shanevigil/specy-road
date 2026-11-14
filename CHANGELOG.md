@@ -202,8 +202,10 @@ are removed in the release after 0.3.1:
 - `specy_road.review_deferral` -> `specy_road.review_defer_rules` (the deferral rules the gate applies).
 - `specy_road.review_strong` -> `specy_road.review_gate`.
 - `specy_road.review_resumed_delta` -> `specy_road.review_gate`.
-- `specy_road.review_eligible` -> `specy_road.review_gate` (`Identity`, `writers`, `reviews_to_judge`)
-  and `specy_road.bundled_scripts.review_cli` (`reviewer_eligibility`, `eligibility_lines`).
+- `specy_road.review_eligible` -> `specy_road.review_gate` (`Identity`, `writers`, `reviews_to_judge`).
+  `reviewer_eligibility` and `eligibility_lines` moved into the `review` CLI entry point,
+  `specy_road.bundled_scripts.review_cli`; the old path does not serve them, because a package module
+  never imports a CLI entry point. Import them from the CLI module.
 - `specy_road.review_ready_merge` -> `specy_road.review_gate_ready`.
 - `specy_road.changelog_check` -> `specy_road.review_gate_ready`.
 - `specy_road.review_bookkeeping` -> `specy_road.review_override`.
