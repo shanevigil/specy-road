@@ -231,8 +231,7 @@
       "dependencies": [
         "fad930e4-76ee-407d-9ee4-a4d8a07d64c1",
         "6341c523-6051-4c9f-8cb7-74ab1a9eeed9",
-        "25c737eb-656b-487b-a238-b8e825a8e6d3",
-        "a0733044-eec3-4411-bec8-e6f31fac6456"
+        "25c737eb-656b-487b-a238-b8e825a8e6d3"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M17.8",
@@ -240,7 +239,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.8_gui-orch-docs-wiring_c6f05a10-ac3d-4297-b8ca-e9e82076ad1d.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route",
       "touch_zones": [
         "docs/pm-gui.md",

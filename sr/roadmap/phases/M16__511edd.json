@@ -185,7 +185,7 @@
       ],
       "codename": "grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade",
       "dependencies": [
-        "24c28b1f-7b6d-4f86-8a89-a6963d9eb65d"
+        "275b701c-4eb9-4214-ae77-7ab34a7d197a"
       ],
       "execution_milestone": "Agentic-led",
       "id": "M16.5.11",
@@ -223,7 +223,7 @@
     {
       "acceptance": [
         "review_packet_observed, review_packet_nested and review_packet_uncommitted_refs fold into review_packet, which stays within the 1,000-line cap (not squashed to get under the 750-line warning), is rewrapped and has its width entry lowered",
-        "Before the fold, PACKET.md goldens with a nested-repo section and an over-budget truncation are committed under `tests/parity/golden/packet/`; after the fold they are byte-identical; parity harness and decision table unchanged",
+        "Before the fold, PACKET.md goldens with a nested-repo section and an over-budget truncation are committed under `tests/parity/golden/packet/`; after the fold they are byte-identical; parity harness and decision table unchanged except import paths of moved modules",
         "Estimated net line change (informational, not a gate): package about -100"
       ],
       "codename": "the-review-packet-fragments-fold-into-review-packet",
