@@ -7,23 +7,23 @@ from datetime import datetime
 
 import pytest
 
-from specy_road.bundled_scripts import grind_session as gs
-from specy_road.bundled_scripts import grind_session_events as gse
-from specy_road.bundled_scripts import grind_session_in_flight as gsif
-from specy_road.bundled_scripts.grind_session_events import (
+from specy_road.orchestration.grind import grind_session as gs
+from specy_road.orchestration.grind import grind_session_events as gse
+from specy_road.orchestration.grind import grind_session_in_flight as gsif
+from specy_road.orchestration.grind.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_IN_FLIGHT,
     EXIT_NO_LEAVES,
     EXIT_OK,
     EventEmitter,
 )
-from specy_road.bundled_scripts.grind_session_in_flight import (
+from specy_road.orchestration.grind.grind_session_in_flight import (
     InFlightClaim,
     handle_no_ready,
     own_in_flight_claims,
     prepare_resume,
 )
-from specy_road.bundled_scripts.session_plan import BlockedLeaf, SessionPlan, Wave
+from specy_road.orchestration.grind.session_plan import BlockedLeaf, SessionPlan, Wave
 
 TS = "2026-09-07T00:00:00Z"
 

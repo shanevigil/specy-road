@@ -13,7 +13,7 @@ import specy_road.orchestration.workers.worker_adapters as cursor
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli, worker_cli
-from specy_road.bundled_scripts.grind_session_events import EventEmitter
+from specy_road.orchestration.grind.grind_session_events import EventEmitter
 from specy_road.orphaned_claims import orphaned_claims, report_lines, stays_claimed
 from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target

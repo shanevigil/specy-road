@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from specy_road.bundled_scripts import grind_session as gs
-from specy_road.bundled_scripts import grind_session_implement as gsi
-from specy_road.bundled_scripts.grind_session_events import EXIT_GENERIC, EXIT_OK
+from specy_road.orchestration.grind import grind_session as gs
+from specy_road.orchestration.grind import grind_session_implement as gsi
+from specy_road.orchestration.grind.grind_session_events import EXIT_GENERIC, EXIT_OK
 from tests.test_grind_session import _event, _events, _Harness, _plan, _run
 
 def test_a_generic_hook_still_goes_through_the_plain_shell_runner(monkeypatch, capsys):

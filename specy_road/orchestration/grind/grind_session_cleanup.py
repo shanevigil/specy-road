@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.bundled_scripts.grind_session_events import EventEmitter
+from specy_road.orchestration.grind.grind_session_events import EventEmitter
 from specy_road.cleanup_plan import held_branches
 from specy_road.git_subprocess import git_code
 from specy_road.git_workflow_config import resolve_integration_defaults

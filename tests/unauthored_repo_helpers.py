@@ -16,7 +16,7 @@ import pytest
 from tests.helpers import SCHEMAS
 
 from specy_road.bundled_scripts import do_next_task as dnt
-from specy_road.bundled_scripts.grind_session import run_session
+from specy_road.orchestration.grind.grind_session import run_session
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 from specy_road.planning_artifacts import expected_planning_rel
 from specy_road.planning_sheet_bootstrap import render_feature_sheet_template

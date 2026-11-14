@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
-from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
+from specy_road.orchestration.grind.session_plan import compute_session_plan, session_plan_to_dict
+from specy_road.orchestration.grind.session_plan_render import render_session_plan_text
 
 
 def _leaf(nid, key, *, status="Not Started", deps=None, codename=None, ntype="task",
@@ -221,7 +221,7 @@ def test_render_omits_next_pick_when_nothing_is_ready():
 
 
 def test_to_dict_fields_keeps_only_those_keys_and_plan_fields_names_them_all():
-    from specy_road.bundled_scripts.session_plan_render import PLAN_FIELDS
+    from specy_road.orchestration.grind.session_plan_render import PLAN_FIELDS
 
     plan = compute_session_plan(_chain_nodes(), _empty_reg())
     assert tuple(session_plan_to_dict(plan)) == PLAN_FIELDS
@@ -248,11 +248,12 @@ def test_fields_flag_parses_and_rejects_unknown_keys(capsys):
 def test_plan_json_fields_prints_only_those_keys(monkeypatch, capsys):
     import json
 
-    from specy_road.bundled_scripts import grind_session as gs
+    from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
+    from specy_road.orchestration.grind import grind_session as gs
 
     plan = compute_session_plan(_chain_nodes(), _empty_reg())
     monkeypatch.setattr(gs, "gather_plan", lambda *a, **k: ([], _empty_reg(), plan))
-    args = gs.parse_grind_session_args(["--plan", "--json", "--fields", "ready", "--repo-root", "/tmp/x"])
+    args = parse_grind_session_args(["--plan", "--json", "--fields", "ready", "--repo-root", "/tmp/x"])
     assert gs.run_session(args) == 0
     payload = json.loads(capsys.readouterr().out.strip())
     assert set(payload) == {"ready"} and payload["ready"] == ["M10.3", "M10.4"]
