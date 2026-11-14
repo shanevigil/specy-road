@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.orchestration_config import effective_config, roster_entry
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_policy_pin import policy_source
 from specy_road.orchestration.workers.worker_state import load_record
 
 #: ``(harness, environment variable, value)``: the marker each harness exports to the commands it runs, confirmed

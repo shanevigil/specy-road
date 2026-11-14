@@ -8,48 +8,54 @@ reports. A review record counts only when all of these hold:
 * its ``commit`` is the commit under review — any later commit makes it stale,
   which is how "a substantive fix restarts both reviews" needs no extra state;
 * it is for this node, its model wrote no READY on the leaf (names compared after
-  :class:`~specy_road.review_eligible.Identity`; a record name whose roster entries wrote nothing but span two
-  families, or an unreadable READY, closes the gate), and no other record from that model already counts;
-* its model is rostered with the ``reviewer`` role, or is the substitute in an active substitution covering this
-  node — its family always comes from the roster, never from the file, and under ``reviewers_distinct_families``
-  an approval counts only from an entry whose routing is fixed or pinned (:func:`routing_problem`);
+  :class:`Identity`; a record name whose roster entries wrote nothing but span two
+  families, or an unreadable READY, closes the gate), and no other record from that model already
+  counts;
+* its model is rostered with the ``reviewer`` role, or is the substitute in an active substitution
+  covering this node — its family always comes from the roster, never from the file, and under
+  ``reviewers_distinct_families`` an approval counts only from an entry whose routing is fixed or
+  pinned (:func:`routing_problem`);
 * that model's roster ``may_process`` includes the node's sensitivity, as
   ``orchestrate plan`` and ``prompt`` require;
-* under ``signed_reviews``, no model its entry launches has a profile recording guidance bypass, unless the entry
-  sets ``allow_guidance_bypass_model: true`` (:func:`guidance_problem`, M21.44);
+* under ``signed_reviews``, no model its entry launches has a profile recording guidance bypass,
+  unless the entry sets ``allow_guidance_bypass_model: true`` (:func:`guidance_problem`);
 * it attests a fresh session when policy requires one (``reviewer_resumed_delta`` waives
-  that for an approval naming ``delta_from``: :mod:`specy_road.review_resumed_delta`).
+  that for an approval naming ``delta_from``: :func:`fresh_session_problem`).
 
-Policy is read from ``roadmap/orchestration.yaml`` **as committed on the integration branch** (its remote-tracking
-ref when present), and the gate is on when either that branch or the working tree turns it on: a feature branch
-cannot lower its own bar. Which branch that is comes from the committed ``git-workflow.yaml`` on the remote's
-default branch (at HEAD only in a repo with no remote), and a branch that cannot be found fails closed
-(:func:`policy_source`).
+Policy is read from ``roadmap/orchestration.yaml`` **as committed on the integration branch** (its
+remote-tracking ref when present), and the gate is on when either that branch or the working tree
+turns it on: a feature branch cannot lower its own bar. Which branch that is comes from the
+committed ``git-workflow.yaml`` on the remote's default branch (at HEAD only in a repo with no
+remote), and a branch that cannot be found fails closed (:func:`policy_source`).
 
-The gate passes when no counted record blocks and the counted approvals reach ``reviewers_required`` — counted by
-distinct family when ``reviewers_distinct_families`` is set. With ``policy.integrity_gate`` on, each test-integrity
-finding the node did not declare in ``planned_test_changes`` on the integration branch is a problem too
-(:mod:`specy_road.integrity_gate`). Each ``policy.strong_review`` item the leaf's touch zones meet needs one counted
-approval from its ``require_one_of`` (:mod:`specy_road.review_strong`). An approval naming ``delta_from`` (a delta
-review) must also meet :func:`delta_problem`. A block a human-applied deferral names (reviewer and commit) does not
-count (:func:`specy_road.review_deferral.apply_deferrals`). An operator decision recorded by the coordinator settles
-only the blocks and the approval shortfall it names, at the commit it names
-(:func:`specy_road.review_override.apply_operator_decisions`). A policy change since the claim: :mod:`review_policy_pin`.
-A current READY's ``fix_of`` lets another family's approval of the blocked commit count at the one fix commit
-(:func:`fix_carry_problem`); the blocker must still approve the fix commit.
+The gate passes when no counted record blocks and the counted approvals reach ``reviewers_required``
+— counted by distinct family when ``reviewers_distinct_families`` is set. With
+``policy.integrity_gate`` on, each test-integrity finding the node did not declare in
+``planned_test_changes`` on the integration branch is a problem too
+(:mod:`specy_road.integrity_gate`). Each ``policy.strong_review`` item the leaf's touch zones meet
+needs one counted approval from its ``require_one_of`` (:func:`unmet_strong`). An approval naming
+``delta_from`` (a delta review) must also meet :func:`delta_problem`. A block a human-applied
+deferral names (reviewer and commit) does not count
+(:func:`specy_road.review_defer_rules.apply_deferrals`). An operator decision recorded by the
+coordinator settles only the blocks and the approval shortfall it names, at the commit it names
+(:func:`specy_road.review_override.apply_operator_decisions`). A policy change since the claim:
+:mod:`review_policy_pin`. A current READY's ``fix_of`` lets another family's approval of the blocked
+commit count at the one fix commit (:func:`fix_carry_problem`); the blocker must still approve the
+fix commit.
 """
 
 from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from specy_road.brief_acceptance import acceptance_ids
-from specy_road.finish_implementation_check import in_zones
+from specy_road.finish_implementation_check import in_zones, zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_code, git_stdout, git_text
 from specy_road.integrity import compare_integrity
@@ -60,37 +66,45 @@ from specy_road.orchestration import (
     may_handle,
     node_sensitivity,
 )
-from specy_road.orchestration_config import (effective_config, family_of, is_rostered_reviewer, roster_entry,
-                                            routing_problem, substitute_for)
+from specy_road.orchestration_config import (
+    effective_config, family_of, is_rostered_reviewer, roster_entry, routing_problem,
+    substitute_for,
+)
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.review_defer_rules import apply_deferrals
+from specy_road.review_files import (
+    HUMAN, PACKET_NAME, REVIEWS_REL, ReviewFile, executor_blocked_gate_problems, latest_ready,
+    list_ready, list_review_history, list_reviews, review_semantic_errors, reviews_dir,
+    verifier_gate_problems,
+)
 from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exported
-    TRIAL_MERGE_BOOKKEEPING, TrialMerge, is_trial_merge_bookkeeping, trial_merge, trial_merge_or_exit,
-    write_human_approval)
+    TRIAL_MERGE_BOOKKEEPING, TrialMerge, is_trial_merge_bookkeeping, trial_merge,
+    trial_merge_or_exit, write_human_approval,
+)
+from specy_road.review_model_check import model_mismatch_problem
+from specy_road.review_override import (
+    CARRY_NOTE, apply_operator_decisions, count_at_later_commit, review_commit,
+)
+from specy_road.review_policy_pin import (  # noqa: F401 — review_required re-exported
+    committed_yaml as _committed_yaml, pin_problem, policy_source, review_required,
+)
 from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
     SigningError, notes_problem, verify)
-from specy_road.review_deferral import apply_deferrals
-from specy_road.review_eligible import reviews_to_judge
-from specy_road.review_model_check import model_mismatch_problem
-from specy_road.review_override import apply_operator_decisions
-from specy_road.review_bookkeeping import (CARRY_NOTE, count_at_later_commit, only_planning_or_review_bookkeeping_since,
-                                          review_commit)
-from specy_road.review_files import (HUMAN, PACKET_NAME, REVIEWS_REL, ReviewFile, executor_blocked_gate_problems, latest_ready,
-                                     list_review_history, list_reviews, review_semantic_errors, reviews_dir,
-                                     verifier_gate_problems)
-from specy_road.review_policy_pin import pin_problem
-from specy_road.review_policy_ref import (  # noqa: F401 — review_required re-exported
-    committed_yaml as _committed_yaml, policy_source, review_required)
-from specy_road.review_resumed_delta import FRESH_SESSION, fresh_only_note, fresh_session_problem
-from specy_road.review_strong import human_closes_strong, strong_problem, touch_zones, unmet_strong
-from specy_road.review_target import REGISTRY_REL, full_sha, node_at, resolve_target_or_exit, same_commit
+from specy_road.review_target import (
+    REGISTRY_REL, full_sha, node_at, resolve_target_or_exit, same_commit,
+)
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 #: A fix round is reviewed from a delta packet only when it changes at most this many files.
 DELTA_MAX_FILES = 3
 _DOC_SUFFIXES = (".md", ".rst", ".txt", ".adoc")
 _TEST_DIRS = frozenset({"tests", "test", "__tests__"})
-#: ``review packet --full`` stamps ``PACKET.md``; while that is the commit's packet, no delta counts.
+#: ``review packet --full`` stamps ``PACKET.md``; while that is the commit's packet, no delta
+#: counts.
 FULL_MARK = "- **Delta review:** off (`--full`): every reviewer reads this full packet"
-#: A planning sheet's ``## Tier`` word, read as ``sr/tools/tier.py`` reads it (``trust boundary`` is two words).
+#: A planning sheet's ``## Tier`` word, read as ``sr/tools/tier.py`` reads it (``trust boundary`` is
+#: two words).
 _TIER = re.compile(r"^## Tier\s*\n+\s*([A-Za-z]+(?: boundary)?)", re.M)
 #: The tiers whose one-commit fix of a block may carry the other family's approval (``fix_of``).
 FIX_CARRY_TIERS = ("plain", "behavioural")
@@ -125,28 +139,36 @@ class GateResult:
     verifier_problems: list[str] = field(default_factory=list)
     config_error: str | None = None
     bookkeeping_carry: bool = False; config: dict[str, Any] = field(default_factory=dict)
-    carry_refused: list[str] = field(default_factory=list)   # why an older approval did not carry (policy_line)
-    fix_carried: list[Path] = field(default_factory=list)   # records a fix_of carry let count (judged at their commit)
-    strong_unmet: list[tuple[int, dict[str, Any]]] = field(default_factory=list)   # unmet policy.strong_review items
-    policy_pin: str | None = None   # the policy changed since the claim and no human accepted it (review_policy_pin)
-    accepted: list[str] = field(default_factory=list)   # one line per honoured operator decision (review_override)
+    # why an older approval did not carry (policy_line)
+    carry_refused: list[str] = field(default_factory=list)
+    # records a fix_of carry let count (judged at their commit)
+    fix_carried: list[Path] = field(default_factory=list)
+    # unmet policy.strong_review items
+    strong_unmet: list[tuple[int, dict[str, Any]]] = field(default_factory=list)
+    # the policy changed since the claim and no human accepted it (review_policy_pin)
+    policy_pin: str | None = None
+    # one line per honoured operator decision (review_override)
+    accepted: list[str] = field(default_factory=list)
     shortfall_settled: bool = False   # an honoured operator decision names the approval shortfall
 
     @property
     def approval_count(self) -> int:
-        return len({a.family for a in self.approvals}) if self.distinct_families else len(self.approvals)
+        return (len({a.family for a in self.approvals}) if self.distinct_families
+                else len(self.approvals))
 
     @property
     def passed(self) -> bool:
-        return (self.config_error is None and self.commit is not None and not self.blocks and not self.policy_pin
-                and not self.verifier_problems and not self.strong_unmet
+        return (self.config_error is None and self.commit is not None and not self.blocks
+                and not self.policy_pin and not self.verifier_problems and not self.strong_unmet
                 and (self.approval_count >= self.required or self.shortfall_settled))
 
     def summary(self) -> str:
         unit = "distinct-family approvals" if self.distinct_families else "approvals"
         state = "met" if self.passed else "not met"
-        return (f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): {state}"
-                + (CARRY_NOTE if self.bookkeeping_carry else "") + "".join(f"; {a}" for a in self.accepted))
+        return (f"{self.approval_count}/{self.required} {unit}, {len(self.blocks)} block(s): "
+                f"{state}"
+                + (CARRY_NOTE if self.bookkeeping_carry else "")
+                + "".join(f"; {a}" for a in self.accepted))
 
     def problems(self) -> list[str]:
         out = []
@@ -157,7 +179,8 @@ class GateResult:
         for b in self.blocks:
             out.append(f"{b.review.path.name}: {b.model} blocks this commit")
         for r in self.stale:
-            out.append(f"{r.path.name}: reviewed {r.data.get('commit')}, not the current commit — re-review")
+            out.append(f"{r.path.name}: reviewed {r.data.get('commit')}, not the current commit "
+                       "— re-review")
         for r in self.invalid:
             out.append(f"{r.path.name}: invalid — {'; '.join(r.errors)}")
         for r, why in self.ineligible:
@@ -165,7 +188,8 @@ class GateResult:
         if self.approval_count < self.required and not self.shortfall_settled:
             unit = "distinct-family approvals" if self.distinct_families else "approvals"
             out.append(f"need {self.required} {unit} at this commit, have {self.approval_count}")
-        out.extend(self.verifier_problems + [strong_problem(i, item) for i, item in self.strong_unmet])
+        out.extend(self.verifier_problems
+                   + [strong_problem(i, item) for i, item in self.strong_unmet])
         return out + ([self.policy_pin] if self.policy_pin else [])
 
 
@@ -174,7 +198,7 @@ def _signature_problem(config: dict[str, Any], model: str, review: ReviewFile) -
 
     A present signature is always verified (tampering is caught even with the
     policy off); a missing one matters only when ``signed_reviews`` is on, or the
-    record is ``human_filed`` and ``count_human_filed_reviews`` is off (M21.31).
+    record is ``human_filed`` and ``count_human_filed_reviews`` is off.
     """
     sig = review.data.get("signature")
     entry = roster_entry(config, model) or {}
@@ -185,7 +209,8 @@ def _signature_problem(config: dict[str, Any], model: str, review: ReviewFile) -
         ok, reason = verify(review.data, sig, pub, model)
         return None if ok else f"signature does not verify for {model!r}: {reason}"
     if config["policy"].get("signed_reviews"):
-        return "policy requires signed reviews (signature missing); file it with `review record --sign-key`"
+        return ("policy requires signed reviews (signature missing); file it with "
+                "`review record --sign-key`")
     if review.data.get("human_filed") and not config["policy"].get("count_human_filed_reviews"):
         return "filed by hand (human_filed) and unsigned; policy.count_human_filed_reviews is off"
     return None
@@ -219,17 +244,20 @@ def _eligibility(repo_root: Path, config: dict[str, Any], node: dict[str, Any], 
         return None, (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
                       f"{entry_may_process(entry)} (roster may_process)")
     why = (rerun_problem(config["policy"], review.data) or notes_problem(review.data, review.body)
-           or _signature_problem(config, model, review) or routing_problem(repo_root, config, review.data)
+           or _signature_problem(config, model, review)
+           or routing_problem(repo_root, config, review.data)
            or model_mismatch_problem(review.data) or guidance_problem(repo_root, config, entry))
     family = family_of(config, model)
     why = why or (None if family else f"no family for {model!r}: add it to the roster")
-    if why := fresh_session_problem(config["policy"], review.data, why):   # exactly FRESH_SESSION when alone
+    # exactly FRESH_SESSION when alone
+    if why := fresh_session_problem(config["policy"], review.data, why):
         return None, why
     return CountedReview(review, family, sub), None
 
 
 def is_doc_or_test(path: str) -> bool:
-    """A documentation file (by suffix) or a test file (under a tests directory, or named as one)."""
+    """A documentation file (by suffix) or a test file (under a tests directory, or named as
+    one)."""
     p = PurePosixPath(path)
     return (p.suffix.lower() in _DOC_SUFFIXES or bool(_TEST_DIRS & set(p.parts[:-1]))
             or p.name.startswith("test_") and p.suffix == ".py" or p.stem.endswith("_test")
@@ -244,13 +272,15 @@ def delta_problem(repo_root: Path, node: dict[str, Any], approved: str, commit: 
     if not commit or same_commit(repo_root, approved, commit) or \
             git_code(["merge-base", "--is-ancestor", approved, commit], repo_root)[0] != 0:
         return f"{approved} is not an earlier commit of {commit}"
-    packet = reviews_dir(repo_root, node["id"]) / PACKET_NAME   # commit-bound: a new commit lifts it
+    # commit-bound: a new commit lifts it
+    packet = reviews_dir(repo_root, node["id"]) / PACKET_NAME
     if FULL_MARK in (text := packet.read_text(encoding="utf-8") if packet.is_file() else "") and \
             f"**Commit under review:** `{full_sha(repo_root, commit)}`" in text:
         return f"`review packet --full` forces a full review of {commit}"
     paths = diff_paths(repo_root, f"{approved}..{commit}")
     if paths is None or len(paths) > DELTA_MAX_FILES:
-        return f"the delta touches {'?' if paths is None else len(paths)} files (at most {DELTA_MAX_FILES})"
+        return (f"the delta touches {'?' if paths is None else len(paths)} files "
+                f"(at most {DELTA_MAX_FILES})")
     claimed, own = touch_zones(repo_root, node)
     zones = claimed or own
     prefix, summary = project_prefix(repo_root), f"work/implementation-summary-{node['id']}.md"
@@ -265,7 +295,8 @@ def delta_problem(repo_root: Path, node: dict[str, Any], approved: str, commit: 
 
 def _delta_why(repo_root: Path, node: dict[str, Any], priors: list[ReviewFile], review: ReviewFile,
                commit: str | None, policy: dict[str, Any]) -> str | None:
-    """Why ``review``'s ``delta_from`` approval of ``commit`` does not count given the model's counting ``priors``."""
+    """Why ``review``'s ``delta_from`` approval of ``commit`` does not count given the model's
+    counting ``priors``."""
     model, base = review.data["model"], review.data["delta_from"]
     if not any(same_commit(repo_root, k.data["commit"], base) for k in priors):
         return f"a delta review from {base}, which {model} did not approve; a full review is needed"
@@ -275,9 +306,11 @@ def _delta_why(repo_root: Path, node: dict[str, Any], priors: list[ReviewFile], 
 
 def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any], model: str,
                     commit: str | None, today: date | None = None) -> list[ReviewFile]:
-    """``model``'s counting approvals of other commits, in filing order. Its latest record on a commit is its
-    verdict there; an approval naming ``delta_from`` counts only while that basis counts and the delta qualifies."""
-    latest: dict[str, ReviewFile] = {}   # full sha -> the model's latest record on it, in filing order
+    """``model``'s counting approvals of other commits, in filing order. Its latest record on a
+    commit is its verdict there; an approval naming ``delta_from`` counts only while that basis
+    counts and the delta qualifies."""
+    # full sha -> the model's latest record on it, in filing order
+    latest: dict[str, ReviewFile] = {}
     for r in list_review_history(repo_root, node["id"]) + list_reviews(repo_root, node["id"]):
         if r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model and \
                 not same_commit(repo_root, r.data["commit"], commit):
@@ -290,22 +323,27 @@ def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any
         if sha not in counts:
             counts[sha], r = False, latest.get(sha)
             base = full_sha(repo_root, r.data.get("delta_from")) if r else None
-            counts[sha] = bool(r and r.data["verdict"] == "approve" and not review_semantic_errors(r.data, ids)
+            counts[sha] = bool(r and r.data["verdict"] == "approve"
+                               and not review_semantic_errors(r.data, ids)
                                and _eligibility(repo_root, config, node, r, today)[0] is not None
-                               and (not r.data.get("delta_from") or base in latest and counting(base)
-                                    and not delta_problem(repo_root, node, base, r.data["commit"], config["policy"])))
+                               and (not r.data.get("delta_from")
+                                    or base in latest and counting(base)
+                                    and not delta_problem(repo_root, node, base, r.data["commit"],
+                                                          config["policy"])))
         return counts[sha]
     return [r for sha, r in latest.items() if counting(sha)]
 
 
-def delta_basis(repo_root: Path, node: dict[str, Any], model: str, commit: str | None) -> tuple[ReviewFile | None, str]:
-    """``(model's latest counting approval of an earlier commit, "")`` when the change since may be reviewed
-    from a delta packet, else ``(None, why)``; an unreadable policy fails closed."""
+def delta_basis(repo_root: Path, node: dict[str, Any], model: str,
+                commit: str | None) -> tuple[ReviewFile | None, str]:
+    """``(model's latest counting approval of an earlier commit, "")`` when the change since may be
+    reviewed from a delta packet, else ``(None, why)``; an unreadable policy fails closed."""
     ref, err = policy_source(repo_root)
     config, err = (None, err) if err else effective_config(repo_root, ref)
     prior = [] if err else prior_approvals(repo_root, config, node, model, commit)
     why = err or ("no earlier approval" if not prior else
-                  delta_problem(repo_root, node, prior[-1].data["commit"], commit, config["policy"]))
+                  delta_problem(repo_root, node, prior[-1].data["commit"], commit,
+                                config["policy"]))
     return (None, why) if why else (prior[-1], "")
 
 
@@ -316,7 +354,8 @@ class FixOf:
     blocker: str
     blocked: str               # full sha of the blocked commit
     fix: str                   # full sha of the fix commit (the READY's)
-    block: ReviewFile | None   # the blocker's latest record at ``blocked``, when that record is a block
+    # the blocker's latest record at ``blocked``, when that record is a block
+    block: ReviewFile | None
     blocks: list[str]          # every model whose latest record at ``blocked`` is a block
 
 
@@ -324,13 +363,16 @@ def round_records(repo_root: Path, node_id: str, commit: str) -> dict[str, Revie
     """Each model's latest valid record of ``commit`` for ``node_id``, in filing order."""
     latest: dict[str, ReviewFile] = {}
     for r in list_review_history(repo_root, node_id) + list_reviews(repo_root, node_id):
-        if r.ok and r.data.get("node_id") == node_id and same_commit(repo_root, r.data["commit"], commit):
+        if r.ok and r.data.get("node_id") == node_id and \
+                same_commit(repo_root, r.data["commit"], commit):
             latest[r.data["model"]] = r
     return latest
 
 
-def fix_of_for(repo_root: Path, node: dict[str, Any], ready: ReviewFile | None, commit: str | None) -> FixOf | None:
-    """The block ``ready``'s ``fix_of`` names, when ``ready`` is at ``commit`` and names a commit here; else ``None``."""
+def fix_of_for(repo_root: Path, node: dict[str, Any], ready: ReviewFile | None,
+               commit: str | None) -> FixOf | None:
+    """The block ``ready``'s ``fix_of`` names, when ``ready`` is at ``commit`` and names a commit
+    here; else ``None``."""
     spec = ready.data.get("fix_of") if ready is not None else None
     if not spec or not commit or not same_commit(repo_root, ready.data["commit"], commit):
         return None
@@ -345,15 +387,18 @@ def fix_of_for(repo_root: Path, node: dict[str, Any], ready: ReviewFile | None, 
 
 
 def zones_at(repo_root: Path, node: dict[str, Any], commit: str) -> list[str]:
-    """The leaf's touch zones as committed at ``commit``: the registry claim's, else the node's own."""
+    """The leaf's touch zones as committed at ``commit``: the registry claim's, else the node's
+    own."""
     claim = next((e for e in _committed_yaml(repo_root, commit, REGISTRY_REL).get("entries") or []
                   if isinstance(e, dict) and e.get("node_id") == node["id"]), None) or {}
-    zones = claim.get("touch_zones") or (node_at(repo_root, node["id"], commit) or {}).get("touch_zones")
-    return [z.strip().strip("/") for z in zones or [] if isinstance(z, str) and z.strip().strip("/")]
+    zones = (claim.get("touch_zones")
+             or (node_at(repo_root, node["id"], commit) or {}).get("touch_zones"))
+    return _clean(zones)
 
 
 def _fix_range_problem(repo_root: Path, node: dict[str, Any], fix: FixOf) -> str | None:
-    """Why ``blocked..fix`` is not one commit inside the zones the leaf had at ``blocked``, else ``None``."""
+    """Why ``blocked..fix`` is not one commit inside the zones the leaf had at ``blocked``, else
+    ``None``."""
     parents = (git_text(["rev-list", "--parents", "-n", "1", fix.fix], repo_root) or "").split()[1:]
     if parents != [fix.blocked]:
         return f"{fix.blocked[:12]} is not the sole parent of {fix.fix[:12]}"
@@ -361,38 +406,45 @@ def _fix_range_problem(repo_root: Path, node: dict[str, Any], fix: FixOf) -> str
     if paths is None:
         return f"git cannot list the paths changed in {fix.blocked[:12]}..{fix.fix[:12]}"
     zones, prefix = zones_at(repo_root, node, fix.blocked), project_prefix(repo_root)
-    summary, handoffs = f"work/implementation-summary-{node['id']}.md", f"{REVIEWS_REL.as_posix()}/{node['id']}/"
+    summary = f"work/implementation-summary-{node['id']}.md"
+    handoffs = f"{REVIEWS_REL.as_posix()}/{node['id']}/"
     for p in paths:
         rel = rebase_to_project(p, prefix)
-        if rel != summary and not (rel or "").startswith(handoffs) and not in_zones(zones, p, prefix):
+        if rel != summary and not (rel or "").startswith(handoffs) and \
+                not in_zones(zones, p, prefix):
             return f"{p} is outside the touch zones at {fix.blocked[:12]}"
     return None
 
 
 def _tier_problem(repo_root: Path, node: dict[str, Any], ref: str | None) -> str | None:
-    """Why the integration branch's copy of the leaf's sheet does not name a tier that may carry, else ``None``."""
+    """Why the integration branch's copy of the leaf's sheet does not name a tier that may carry,
+    else ``None``."""
     if ref is None:
         return "the integration branch could not be resolved, so the sheet's tier cannot be read"
     sheet = (node.get("planning_dir") or "").strip().strip("/")
     text = git_stdout(["show", f"{ref}:./{sheet}"], repo_root) if sheet else None
     if not text:
-        return f"no planning sheet {sheet or '(planning_dir unset)'} on {ref}, so its tier is unknown"
+        return (f"no planning sheet {sheet or '(planning_dir unset)'} on {ref}, "
+                "so its tier is unknown")
     m = _TIER.search(text)
     if m is None:
         return f"the planning sheet on {ref} has no ## Tier, so its tier is unknown"
     if (tier := m.group(1).lower()) not in FIX_CARRY_TIERS:
-        return f"the planning sheet on {ref} names tier {tier!r}; only {' or '.join(FIX_CARRY_TIERS)} carry"
+        return (f"the planning sheet on {ref} names tier {tier!r}; "
+                f"only {' or '.join(FIX_CARRY_TIERS)} carry")
     return None
 
 
 def fix_carry_problem(repo_root: Path, node: dict[str, Any], fix: FixOf, ref: str | None,
                       policy: dict[str, Any]) -> str | None:
-    """Why the fix commit does not carry another family's approvals of the blocked commit, else ``None``.
+    """Why the fix commit does not carry another family's approvals of the blocked commit, else
+    ``None``.
 
-    It carries only when the blocker's latest record there is that commit's only block, the blocked commit is
-    the fix's sole parent, every changed path is in the zones the leaf had at the blocked commit (or is this
-    leaf's summary or review files), the integration branch's sheet names a tier that may carry, and neither
-    ``policy.delta_review: false``, a current ``review packet --full`` stamp nor an integrity finding applies.
+    It carries only when the blocker's latest record there is that commit's only block, the blocked
+    commit is the fix's sole parent, every changed path is in the zones the leaf had at the blocked
+    commit (or is this leaf's summary or review files), the integration branch's sheet names a tier
+    that may carry, and neither ``policy.delta_review: false``, a current ``review packet --full``
+    stamp nor an integrity finding applies.
     """
     short = fix.blocked[:12]
     if fix.block is None:
@@ -413,8 +465,9 @@ def fix_carry_problem(repo_root: Path, node: dict[str, Any], fix: FixOf, ref: st
 
 def _carried_by_fix(result: GateResult, repo_root: Path, review: ReviewFile, fix: FixOf | None,
                     why: str | None) -> bool:
-    """True when ``review``, stale at ``result.commit``, is another family's approval of the block ``fix`` answers
-    and the fix carries it: it leaves ``result.stale``. A refusal is listed in ``result.carry_refused``."""
+    """True when ``review``, stale at ``result.commit``, is another family's approval of the block
+    ``fix`` answers and the fix carries it: it leaves ``result.stale``. A refusal is listed in
+    ``result.carry_refused``."""
     d = review.data
     if fix is None or review not in result.stale or d["verdict"] != "approve" or \
             review_commit(result, repo_root, review) != fix.blocked or \
@@ -423,32 +476,37 @@ def _carried_by_fix(result: GateResult, repo_root: Path, review: ReviewFile, fix
     if not why and getattr(result, "sibling_repos", None):
         why = "sibling repositories are present, so changes there cannot be seen"
     if why:
-        result.carry_refused.append(f"{d['model']}'s approve at {fix.blocked[:12]} is stale: fix_of {fix.spec}: {why}")
+        result.carry_refused.append(
+            f"{d['model']}'s approve at {fix.blocked[:12]} is stale: fix_of {fix.spec}: {why}")
         return False
     result.stale.remove(review)
     result.fix_carried.append(review.path)
     return True
 
 
-def _judged_at(result: GateResult, repo_root: Path, node: dict[str, Any], review: ReviewFile, fix: FixOf | None,
-               fix_why: str | None) -> str | None:
-    """The commit ``review`` is judged at, or ``None`` when it is stale: the commit under review, or, for an approval
-    a fix carries, the blocked commit, so it counts at the fix exactly when it counted where it was filed."""
-    refused = len(result.carry_refused)   # count_at_later_commit lists its refusals there (siblings, a bad sha)
+def _judged_at(result: GateResult, repo_root: Path, node: dict[str, Any], review: ReviewFile,
+               fix: FixOf | None, fix_why: str | None) -> str | None:
+    """The commit ``review`` is judged at, or ``None`` when it is stale: the commit under review,
+    or, for an approval a fix carries, the blocked commit, so it counts at the fix exactly when it
+    counted where it was filed."""
+    # count_at_later_commit lists its refusals there (siblings, a bad sha)
+    refused = len(result.carry_refused)
     if count_at_later_commit(result, repo_root, node, review):
         return result.commit
-    if len(result.carry_refused) > refused or not _carried_by_fix(result, repo_root, review, fix, fix_why):
+    if len(result.carry_refused) > refused or \
+            not _carried_by_fix(result, repo_root, review, fix, fix_why):
         return None
     return fix.blocked
 
 
 def _blocker_must_approve(result: GateResult, fix: FixOf | None) -> list[str]:
-    """The carried approval alone never opens the gate: once a fix carry counts, the blocker must approve the fix."""
+    """The carried approval alone never opens the gate: once a fix carry counts, the blocker must
+    approve the fix."""
     if not any(a.review.path in result.fix_carried for a in result.approvals) or \
             any(a.model == fix.blocker for a in result.approvals):
         return []
-    return [f"fix_of {fix.spec}: {fix.blocker} must approve {fix.fix[:12]}; a carried approval alone does not "
-            "open the gate"]
+    return [f"fix_of {fix.spec}: {fix.blocker} must approve {fix.fix[:12]}; a carried approval "
+            "alone does not open the gate"]
 
 
 def _count(result: GateResult, counted: CountedReview) -> None:
@@ -460,9 +518,11 @@ def _count(result: GateResult, counted: CountedReview) -> None:
     if counted.verdict == "block" and same[0].verdict != "block":
         result.approvals.remove(same[0])
         result.blocks.append(counted)
-        result.ineligible.append((same[0].review, f"{counted.model} also blocks in {counted.review.path.name}"))
+        result.ineligible.append(
+            (same[0].review, f"{counted.model} also blocks in {counted.review.path.name}"))
         return
-    result.ineligible.append((counted.review, f"{same[0].review.path.name} already counts for {counted.model}"))
+    result.ineligible.append(
+        (counted.review, f"{same[0].review.path.name} already counts for {counted.model}"))
 
 
 def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
@@ -473,8 +533,10 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
     policy = config["policy"]
     result = GateResult(node_id=node["id"], commit=full_sha(repo_root, commit),
                         required=int(policy["reviewers_required"]),
-                        distinct_families=bool(policy["reviewers_distinct_families"]), config_error=err, config=config)
-    authorship: list[str] = []   # a record name spanning families, or an unreadable READY: gate closed
+                        distinct_families=bool(policy["reviewers_distinct_families"]),
+                        config_error=err, config=config)
+    # a record name spanning families, or an unreadable READY: gate closed
+    authorship: list[str] = []
     ready = latest_ready(repo_root, node["id"], branch, acceptance_ids(node))
     fix = fix_of_for(repo_root, node, ready, result.commit)
     fix_why = fix and fix_carry_problem(repo_root, node, fix, ref, policy)
@@ -492,17 +554,20 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
             why = _delta_why(repo_root, node, priors, review, at, policy)
             counted = None if why else counted
         if counted is None:
-            result.ineligible.append((review, fresh_only_note(repo_root, config, node, review, at, today)
-                                      if why == FRESH_SESSION else why or "not eligible"))
+            result.ineligible.append(
+                (review, fresh_only_note(repo_root, config, node, review, at, today)
+                 if why == FRESH_SESSION else why or "not eligible"))
         else:
             _count(result, counted)
     apply_deferrals(repo_root, result)   # a human-applied deferral resolves only the block it names
-    apply_operator_decisions(repo_root, result, node, ref)   # likewise: only the blocks and shortfall it names
+    # likewise: only the blocks and shortfall it names
+    apply_operator_decisions(repo_root, result, node, ref)
     result.verifier_problems = (authorship + verifier_gate_problems(ready, result.approvals)
                                 + _blocker_must_approve(result, fix))
     if ready is not None and same_commit(repo_root, ready.data["commit"], result.commit):
         result.verifier_problems += executor_blocked_gate_problems(ready)
-    result.verifier_problems += integrity_gate_problems(repo_root, policy, node["id"], result.commit, ref)
+    result.verifier_problems += integrity_gate_problems(
+        repo_root, policy, node["id"], result.commit, ref)
     result.strong_unmet = unmet_strong(repo_root, node, policy, result.approvals, result.commit)
     result.policy_pin = pin_problem(repo_root, node, result.commit) if result.commit else None
     return result
@@ -517,11 +582,12 @@ def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, 
     approval still missing, and — under ``signed_reviews`` — a key was given and
     the roster has its public key. An unmet ``strong_review`` item must list the human.
     """
-    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems or gate.policy_pin or \
-            not human_closes_strong(gate):
+    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems or \
+            gate.policy_pin or not human_closes_strong(gate):
         return False
     config = gate.config
-    if not is_rostered_reviewer(config, HUMAN) or not may_handle(roster_entry(config, HUMAN), node_sensitivity(node)):
+    if not is_rostered_reviewer(config, HUMAN) or \
+            not may_handle(roster_entry(config, HUMAN), node_sensitivity(node)):
         return False
     has_key = bool((roster_entry(config, HUMAN) or {}).get("public_key"))
     if config["policy"].get("signed_reviews") and (sign_key is None or not has_key):
@@ -554,10 +620,261 @@ def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
     gate = evaluate_gate(repo_root, node, target.commit, branch=(target.entry or {}).get("branch"))
     if gate.passed:
         return
-    print(f"error: the review approval for {node['id']} no longer holds at this commit ({gate.summary()}).",
-          file=sys.stderr)
+    print(f"error: the review approval for {node['id']} no longer holds at this commit "
+          f"({gate.summary()}).", file=sys.stderr)
     for problem in gate.problems():
         print(f"  - {problem}", file=sys.stderr)
     print(f"  Re-review, then run specy-road mark-implementation-reviewed again "
           f"(specy-road review status {node['id']}).", file=sys.stderr)
     raise SystemExit(1)
+
+
+# --- Who wrote the change: READY authors, whose records the gate never counts ---
+
+class Identity:
+    """One rule for READY ``agent`` and review-record ``model`` names.
+
+    An entry's names are its roster ``id`` and ``harness_model`` and, when it has a pinned profile
+    (:func:`~specy_road.orchestration_pinned.pinned_profile_for_entry`), that profile's declared
+    ``api_id``, file name and ``aliases``. A name, case-folded, may be every entry that has it:
+    exact ids and aliases together, no precedence; a name no entry has is only itself. A READY
+    author is excluded under every entry it may be, and a record whose name may be any of those
+    writers is not counted (:func:`reviews_to_judge`); neither closes the gate.
+
+    Any of these closes the gate with a problem (:attr:`problems`): a record name whose entries
+    wrote nothing on the leaf but have different families (the family it counts as cannot be
+    decided); an entry whose pinned profile is refused (its names cannot be known); an unreadable
+    READY (:func:`writers`). Limit: a record name that entries of one family share counts once for
+    that family."""
+
+    def __init__(self, repo_root: Path, config: dict[str, Any] | None = None) -> None:
+        config = pinned_config(repo_root)[0] if config is None else config
+        self.names: dict[str, set[str]] = {}
+        self.problems: list[str] = []
+        self.family: dict[str, object] = {}
+        for entry in config.get("roster") or []:
+            rid = str(entry.get("id"))
+            self.family[rid] = entry.get("family")
+            prof = pinned_profile_for_entry(repo_root, entry)
+            if prof is not None and not prof.ok:
+                self.problems.append(f"roster entry {rid!r}: its profile's names cannot be known "
+                                     f"({'; '.join(prof.errors)}); READY authorship cannot be "
+                                     "decided")
+            data = prof.data if prof is not None else {}
+            aliases = data.get("aliases") if isinstance(data.get("aliases"), list) else []
+            stem = [prof.path.stem] if prof is not None and prof.ok else []
+            names = [rid, entry.get("harness_model"), data.get("api_id"), *stem, *aliases]
+            for name in filter(None, names):
+                self.names.setdefault(str(name).casefold(), set()).add(rid)
+
+    def __call__(self, name: object) -> set[str]:
+        """The roster ids ``name`` may be (the class rule)."""
+        key = str(name).casefold()
+        return set(self.names.get(key) or {key})
+
+    def ambiguous(self, name: object, ids: set[str]) -> None:
+        """Record a problem when ``ids`` (``self(name)``) holds roster entries of more than one
+        family."""
+        why = (f"{name!r} names more than one roster entry ({', '.join(sorted(ids))}); which of "
+               "them wrote or reviewed this leaf cannot be decided: name distinct roster ids")
+        split = len({self.family.get(i) for i in ids}) > 1
+        self.problems += [why] if split and why not in self.problems else []
+
+
+def writers(repo_root: Path, node_id: str, branch: str | None,
+            identity: Identity | None = None) -> dict[str, tuple[str, str]]:
+    """Model -> (its READY file's name, why it wrote part of the change) for every model that filed
+    a valid READY on the leaf; the gate (:func:`evaluate_gate`) never counts their records and
+    ``review delegate`` refuses them. A READY written after the model's first valid review on the
+    leaf is a fix; any other READY is the executor's (an executor that also files an approval stays
+    the executor). Filing times are file mtimes: ``history/`` copies are written once. A self-review
+    (``authored_fix``) is invalid. Names are roster ids by ``identity`` (:class:`Identity` over the
+    pinned roster when omitted): a READY author is keyed under every entry it may be."""
+    ident = identity or Identity(repo_root)
+    first: dict[str, float] = {}
+    for r in list_review_history(repo_root, node_id) + list_reviews(repo_root, node_id):
+        if r.ok and (r.on_disk or r.path).is_file():
+            t = (r.on_disk or r.path).stat().st_mtime
+            first.update({m: min(t, first.get(m, t)) for m in ident(r.data["model"])})
+    out: dict[str, tuple[str, str]] = {}
+    for r in list_ready(repo_root, node_id, branch):
+        # its author is unknown: never ignore it
+        if r.errors[:1] and r.errors[0].startswith("cannot read:"):
+            ident.problems.append(f"{r.path.name} is unreadable ({r.errors[0]}); its author cannot "
+                                  "be excluded")
+        ids = ident(r.data.get("agent")) if r.ok else set()
+        for agent in sorted(ids - out.keys()):
+            fix = agent in first and r.path.stat().st_mtime > first[agent]
+            out[agent] = (r.path.name, f"wrote a fix commit on this leaf ({r.path.name})" if fix
+                          else f"executor of the leaf ({r.path.name})")
+    return out
+
+
+def reviews_to_judge(repo_root: Path, node: dict[str, Any], branch: str | None,
+                     ineligible: list[tuple[ReviewFile, str]], config: dict[str, Any] | None = None,
+                     problems: list[str] | None = None) -> list[ReviewFile]:
+    """The node's review records the gate judges: a record whose model may be one of :func:`writers`
+    goes to ``ineligible`` instead, whatever its validity, ``authored_fix``, verdict or signature.
+    Names are compared by :class:`Identity` over ``config``; a judged record whose name spans
+    families, and the identity's other problems, are added to ``problems``."""
+    ident = Identity(repo_root, config)
+    authors, out = writers(repo_root, node["id"], branch, ident), []
+    for r in list_reviews(repo_root, node["id"], acceptance_ids(node)):
+        ids = ident(model := str(r.data.get("model")))
+        if hit := sorted(ids & authors.keys()):
+            ineligible.append((r, f"{model} wrote {authors[hit[0]][0]} on this leaf; "
+                                  "the executor never reviews its own leaf"))
+        else:
+            ident.ambiguous(model, ids)
+            out.append(r)
+    if problems is not None:
+        problems += ident.problems
+    return out
+
+
+# --- policy.strong_review: one approval from a named set on high-risk zones ---
+#
+# A leaf that touches a high-risk zone needs one approval from a named set of reviewers. Each item
+# names ``zones`` (touch-zone paths or directory prefixes) and ``require_one_of`` (roster ids). An
+# item applies to a leaf when one of the leaf's touch zones meets one of its zones: the same path,
+# one a directory prefix of the other, or a glob zone matching the other
+# (:func:`finish_implementation_check.zone_matches`, the rule the review packet uses, tried in both
+# directions as the picker's zone clash is). In a nested project either zone may be written from
+# the git root or from the project root, so both forms are tried.
+#
+# The gate reads the leaf's zones from its claim, from the node in this checkout and from the node
+# as committed at the commit under review, and refuses while an applicable item has no counting
+# approval (one the gate already counts: eligible, at the commit under review) from a model it
+# lists; ``orchestrate plan`` shows each ready leaf's items and who can satisfy them. A substitute
+# satisfies an item only when its own id is listed.
+
+def _clean(zones: Iterable[Any] | None) -> list[str]:
+    return [z.strip().strip("/") for z in zones or []
+            if isinstance(z, str) and z.strip().strip("/")]
+
+
+def touch_zones(repo_root: Path, node: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """``(the registry claim's touch zones, the node's own)``, each cleaned of blanks and edge
+    slashes."""
+    entry = next((e for e in read_registry(registry_path(repo_root)).get("entries") or []
+                  if e.get("node_id") == node["id"]), None) or {}
+    return _clean(entry.get("touch_zones")), _clean(node.get("touch_zones"))
+
+
+def _forms(zone: str, prefix: str) -> set[str]:
+    zone = zone.strip().strip("/")
+    return {zone, rebase_to_project(zone, prefix) or zone, f"{prefix}{zone}"}
+
+
+def zones_meet(a: str, b: str, prefix: str = "") -> bool:
+    """Whether zones ``a`` and ``b`` share a path, in either root's form (``prefix``:
+    :func:`project_prefix`)."""
+    return any(zone_matches(x, y) or zone_matches(y, x)
+               for x in _forms(a, prefix) for y in _forms(b, prefix))
+
+
+def applicable_items(policy: dict[str, Any], zones: Iterable[Any] | None,
+                     prefix: str = "") -> list[tuple[int, dict[str, Any]]]:
+    """``(index, item)`` for every ``strong_review`` item one of ``zones`` meets."""
+    return [(i, item) for i, item in enumerate(policy.get("strong_review") or [])
+            if any(zones_meet(z, iz, prefix)
+                   for z in _clean(zones) for iz in _clean(item.get("zones")))]
+
+
+def item_label(index: int, item: dict[str, Any]) -> str:
+    return f"strong_review[{index}] (zones: {', '.join(item.get('zones') or [])})"
+
+
+def unmet_strong(repo_root: Path, node: dict[str, Any], policy: dict[str, Any],
+                 approvals: list[Any],
+                 commit: str | None = None) -> list[tuple[int, dict[str, Any]]]:
+    """The items that apply to ``node`` and that no counted approval in ``approvals`` satisfies.
+
+    The leaf's zones are the claim's and the node's in this checkout plus the node's **as committed
+    at ``commit``** (:attr:`ReviewTarget.review_zones`): a zone the feature commit adds counts
+    although the integration checkout running the gate has not seen it.
+    """
+    if not policy.get("strong_review"):
+        return []
+    claim, own = touch_zones(repo_root, node)
+    committed = _clean((node_at(repo_root, node["id"], commit) or {}).get("touch_zones"))
+    models = {a.model for a in approvals}
+    items = applicable_items(policy, list(dict.fromkeys(claim + own + committed)),
+                             project_prefix(repo_root))
+    return [(i, item) for i, item in items if not models & set(item["require_one_of"])]
+
+
+def strong_problem(index: int, item: dict[str, Any]) -> str:
+    """The gate's refusal line for an unmet item."""
+    return (f"{item_label(index, item)}: the leaf's touch zones meet a strong-review zone; need a "
+            f"counting approval from one of {', '.join(item['require_one_of'])} at this commit, "
+            "have none")
+
+
+def human_closes_strong(gate: Any) -> bool:
+    """Whether a human approval would satisfy every unmet item of ``gate``: each one lists the
+    human."""
+    return all(HUMAN in item["require_one_of"] for _, item in gate.strong_unmet)
+
+
+# --- policy.reviewer_resumed_delta: a delta approval may waive reviewer_fresh_session ---
+#
+# A reviewer that approved a commit and is resumed for the next small fix round attests
+# ``fresh_session: false``. With the key on (default off) such a record still counts when it names
+# ``delta_from``: the gate then holds it to the delta rules of :func:`delta_problem` like any delta
+# approval. Any other approval without ``fresh_session: true`` is still refused.
+
+FRESH_SESSION = "policy requires a fresh reviewer session (fresh_session: true)"
+RESUMED_KEY = "policy.reviewer_resumed_delta"
+
+
+def fresh_session_problem(policy: dict[str, Any], data: dict[str, Any],
+                          other: str | None) -> str | None:
+    """Why a record does not count given ``other``, the reason from the gate's remaining checks.
+
+    Exactly :data:`FRESH_SESSION` when ``reviewer_fresh_session`` is the only reason; ``other``
+    alone when the session passes or ``reviewer_resumed_delta`` waives it for an approval naming
+    ``delta_from``.
+    """
+    waived = policy.get("reviewer_resumed_delta") and data.get("delta_from")
+    if not policy.get("reviewer_fresh_session", True) or data.get("fresh_session") or waived:
+        return other
+    return f"{FRESH_SESSION}; {other}" if other else FRESH_SESSION
+
+
+def fresh_only_note(repo_root: Path, config: dict[str, Any], node: dict[str, Any],
+                    review: ReviewFile, commit: str | None, today: date | None = None) -> str:
+    """The ``handoff status`` reason for a record refused only for ``fresh_session``: says so, and
+    whether a resumed delta approval from the same model would count at ``commit`` (and under which
+    policy)."""
+    model, policy, base = review.data["model"], config["policy"], review.data.get("delta_from")
+    priors = prior_approvals(repo_root, config, node, model, commit, today)
+    head = f"{FRESH_SESSION}, the only reason it does not count"
+    # the delta rules gate approvals only; a waived block always counts
+    if review.data["verdict"] != "approve":
+        return (f"{head}; with {RESUMED_KEY}: true this resumed block would count" if base else
+                f"{head}; a resumed block counts only when it names delta_from"
+                + ("" if policy.get("reviewer_resumed_delta") else f" and {RESUMED_KEY} is on"))
+    if base:   # naming delta_from with fresh_session false is refused only while the key is off
+        why = _delta_why(repo_root, node, priors, review, commit, policy)
+        return (f"{head}; with {RESUMED_KEY}: true this resumed delta approval would count"
+                if why is None else
+                f"{head}; with {RESUMED_KEY}: true it would still not count: {why}")
+    why = "no earlier approval" if not priors else delta_problem(
+        repo_root, node, priors[-1].data["commit"], commit, policy)
+    if why:
+        return (f"{head}; a resumed delta approval would not count either ({why}): a fresh full "
+                "review is needed")
+    sha = priors[-1].data["commit"]
+    when = "" if policy.get("reviewer_resumed_delta") else f" with {RESUMED_KEY}: true"
+    return f"{head}; a resumed delta approval naming delta_from: {sha} would count{when}"
+
+
+def resumed_delta_on(root: Path) -> bool:
+    """Whether the effective policy (as the gate reads it) turns ``reviewer_resumed_delta`` on;
+    fails closed."""
+    ref, err = policy_source(root)
+    if err:
+        return False
+    config, err = effective_config(root, ref)
+    return not err and bool(config["policy"].get("reviewer_resumed_delta"))

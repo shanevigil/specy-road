@@ -39,7 +39,7 @@ from typing import Any
 from specy_road.git_subprocess import git_bytes, git_code
 from specy_road.integrity import _block_statements, _changed_files, _file_at, _is_python_test_module
 from specy_road.review_files import _read, render_front_matter, reviews_dir
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_policy_pin import policy_source
 from specy_road.review_target import resolve_target, same_commit
 from specy_road.runtime_paths import resolve_repo_root
 

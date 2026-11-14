@@ -241,6 +241,11 @@ _MOVED_FROM.update({
     "specy_road/orchestration/roster_local.py": "specy_road/roster_local.py",
     "specy_road/orchestration/roster_profile_check.py": "specy_road/roster_profile_check.py",
 })
+# Renamed by the review-gate fold: new path -> path at pickup.
+_MOVED_FROM.update({
+    "specy_road/review_defer_cli.py": "specy_road/bundled_scripts/review_defer.py",
+    "specy_road/review_defer_rules.py": "specy_road/review_deferral.py",
+})
 
 
 def _in_pickup_tree(path: str, present: set[str], moved_from: dict[str, str]) -> bool:

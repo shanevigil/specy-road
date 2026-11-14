@@ -4,28 +4,29 @@
 ``review status`` is what a coordinator polls: for each node with a
 ``work/reviews/<NODE_ID>/`` directory it reports the READY hand-off, every
 review record, and whether the review policy is met at the commit under
-review. Given one node it also prints what ``review list`` printed that the report above does not (each record's
-commit, stale and invalid records, RCA records, the gate line), and ``--json`` adds that node's ``records``. Records with no registry claim are listed without a commit unless
-``--ref`` names one. Given one node it exits 0 when the gate is met or the node
-is Complete, 1 when it is not met, and 2 when it cannot be determined. A leaf
-whose review loop is not converging and has no root-cause analysis for it is
-``escalated`` (exit 1), with the trigger named (``review_rca``).
-With ``policy.max_fix_rounds`` set, a leaf that spent that many blocking rounds is ``fix_round_budget_spent``
-(exit 1) with its next command; ``review defer`` applies an RCA's deferral (:mod:`review_defer`, human-only).
-``review accept-policy`` accepts a review policy change made since the claim (:mod:`review_policy_pin`, human-only);
-``--all-open`` asks once for every open claim whose pin differs and writes one acceptance file per leaf.
-``review operator-decision`` records an operator's review decision, or the coordinator's acceptance with limits
-under a standing operator rule (:mod:`specy_road.review_override`, coordinator only).
-``review record`` validates one reviewer's notes, fills in the family from the
-roster, labels same-family independence, and files the record as
-``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``. It refuses an approve whose
-findings or notes name a defect with neither a ``required_changes`` entry nor a ``not a defect because`` line
-(:mod:`specy_road.review_record_rules`).
-It reports the leaf's review rounds (distinct reviewed commits), the time from its first review to the latest,
-and each ``review delegate`` run with its commit; an older commit's record never reads as the current verdict.
-``review packet`` writes the reviewer's packet (:mod:`review_packet`).
-``handoff status`` (the report without the records) and ``review list`` (the records and the gate alone) are
-deprecated aliases of ``review status``, each printing one deprecation line first.
+review. Given one node it also prints what ``review list`` printed that the report above does not
+(each record's commit, stale and invalid records, RCA records, the gate line), and ``--json`` adds
+that node's ``records``. Records with no registry claim are listed without a commit unless ``--ref``
+names one. Given one node it exits 0 when the gate is met or the node is Complete, 1 when it is not
+met, and 2 when it cannot be determined. A leaf whose review loop is not converging and has no
+root-cause analysis for it is ``escalated`` (exit 1), with the trigger named (``review_rca``).
+With ``policy.max_fix_rounds`` set, a leaf that spent that many blocking rounds is
+``fix_round_budget_spent`` (exit 1) with its next command; ``review defer`` applies an RCA's
+deferral (:mod:`review_defer_cli`, human-only). ``review accept-policy`` accepts a review policy
+change made since the claim (:mod:`review_policy_pin`, human-only); ``--all-open`` asks once for
+every open claim whose pin differs and writes one acceptance file per leaf. ``review
+operator-decision`` records an operator's review decision, or the coordinator's acceptance with
+limits under a standing operator rule (:mod:`specy_road.review_override`, coordinator only).
+``review record`` validates one reviewer's notes, fills in the family from the roster, labels
+same-family independence, and files the record as ``REVIEW-<model>.md`` beside the READY file,
+keeping a copy under ``history/``. It refuses an approve whose findings or notes name a defect with
+neither a ``required_changes`` entry nor a ``not a defect because`` line
+(:mod:`specy_road.review_record_rules`). It reports the leaf's review rounds (distinct reviewed
+commits), the time from its first review to the latest, and each ``review delegate`` run with its
+commit; an older commit's record never reads as the current verdict. ``review packet`` writes the
+reviewer's packet (:mod:`review_packet`). ``handoff status`` (the report without the records) and
+``review list`` (the records and the gate alone) are deprecated aliases of ``review status``, each
+printing one deprecation line first.
 """
 
 from __future__ import annotations
@@ -47,29 +48,31 @@ from specy_road.cli_args import add_json_arg, add_model_arg, add_ref_arg
 from specy_road.cli import ALIASES_REMOVED_IN, warn_deprecated
 from specy_road.cli_entry import run_cli
 from specy_road.clock import utc_now_iso
-from specy_road.orchestration import DECISIONS_REL
+from specy_road.orchestration import (
+    DECISIONS_REL, entry_may_process, guidance_problem, is_available, may_handle, node_sensitivity,
+    unavailability_reason,
+)
+from specy_road.orchestration_config import is_rostered_reviewer, substitute_for
 from specy_road.git_subprocess import git_text
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.roadmap_load import load_roadmap
 from specy_road.red_green import cmd_red_green
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_files import (
-    REVIEW_LAUNCH_MODES, executor_blocked_display_lines, list_ready, project_of,
+    HUMAN, REVIEW_LAUNCH_MODES, executor_blocked_display_lines, list_ready, project_of,
     list_reviews, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
     review_path, reviews_dir, reviews_root, round_span, write_review,
 )
-from specy_road.review_gate_ready import empty_ready_error
-from specy_road.review_gate import GateResult, evaluate_gate, trial_merge
+from specy_road.review_gate_ready import add_ready_parser, empty_ready_error
+from specy_road.review_gate import GateResult, Identity, evaluate_gate, item_label, trial_merge, writers
 from specy_road import review_caller, review_lock, safe_write
 from specy_road.review_lock import ReviewRunBusy, filing_busy
 from specy_road.review_rejected import run_review_record
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states, gate_policy_summary
-from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
-from specy_road.review_ready_merge import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_next_step import fix_round_budget
-from specy_road.review_defer import add_parser as add_defer_parser
+from specy_road.review_defer_cli import add_parser as add_defer_parser
 from specy_road.review_policy_pin import (
     PolicyUnreadable,
     _asked_because,
@@ -81,6 +84,7 @@ from specy_road.review_override import (
     APPROVE,
     _coordinator_problem,
     append_decision,
+    as_if_decided,
     blocks_to_settle,
     recorder,
     role_refusal,
@@ -94,6 +98,167 @@ from specy_road.review_target import (ReviewTarget, ReviewTargetError, milestone
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
 from specy_road.orchestration import list_records
+
+
+# --- Who on the roster can still supply a counting approval ---
+#
+# The lines ``review status`` prints under the policy line.
+#
+# When the gate is not met, a coordinator needs more than ``1/2 ... not met``: which roster entries
+# may still approve at this commit (the human included), and why each of the others cannot. Each
+# roster entry is judged with the gate's own checks (:mod:`specy_road.review_gate`), plus who wrote
+# the change, taken from the leaf's READY files as ``review_rca.rca_parties`` does:
+#
+# * not a reviewer role — no ``reviewer`` role and no active substitution covering the node;
+# * the node's sensitivity is outside its roster ``may_process``;
+# * executor of the leaf — it filed a READY before any valid review of its own on the leaf (READY
+#   authors and record models are compared by :class:`~specy_road.review_gate.Identity`:
+#   case-folded, every roster entry whose id, ``harness_model`` or profile name it is; a READY
+#   author is excluded under every entry it may be; a record name whose entries wrote nothing and
+#   span two families, or a refused profile, closes the gate);
+# * wrote a fix commit on this leaf — it filed a READY after reviewing the leaf;
+# * rejected record — its record at this commit is invalid or does not count, with the gate's
+#   reason;
+# * same family as an approval already counted, under ``reviewers_distinct_families`` (not when its
+#   approval would satisfy an unmet ``policy.strong_review`` item, which counts whatever the
+#   family);
+# * ``signed_reviews`` is on and its roster entry has no ``public_key``;
+# * ``signed_reviews`` is on and its model's profile records guidance bypass, with no opt-in;
+# * unavailable — ``available: false`` or a ``paused_until`` / ``unavailable_until`` still in force
+#   (skipped when that model's approval already counts at this commit).
+#
+# Every exclusion is checked first, so a model whose approval the gate counts is listed as counting
+# only when none applies (a READY author never is); one that blocks may still approve on re-review.
+# While a ``policy.strong_review`` item is unmet, each row that can approve says whether its
+# approval would satisfy it.
+
+
+def _rejected(repo_root: Path, gate: Any) -> dict[str, str]:
+    """Model -> why its record at the commit under review does not count (invalid or ineligible)."""
+    counted = {c.model for c in gate.approvals + gate.blocks}
+    out: dict[str, str] = {}
+    for r in gate.invalid:
+        if r.data.get("model") and (not r.data.get("commit")
+                                    or same_commit(repo_root, r.data["commit"], gate.commit)):
+            out.setdefault(str(r.data["model"]),
+                           f"rejected record {r.path.name}: {'; '.join(r.errors)}")
+    for r, why in gate.ineligible:
+        if r.data["model"] not in counted:
+            out.setdefault(r.data["model"], f"rejected record {r.path.name}: {why}")
+    return out
+
+
+def _roster_reason(repo_root: Path, config: dict[str, Any], node: dict[str, Any], model: str,
+                   counting: set[str] | frozenset[str] = frozenset()) -> str | None:
+    """Why the roster itself keeps ``model`` from reviewing ``node``, else ``None``."""
+    entry = next(e for e in config["roster"] if e.get("id") == model)
+    if not is_rostered_reviewer(config, model) and \
+            substitute_for(config, node["id"], model) is None:
+        return (f"not a reviewer role (roles: {', '.join(entry.get('roles') or []) or 'none'}) "
+                "and no active substitution")
+    if not may_handle(entry, node_sensitivity(node)):
+        return (f"{node['id']} is {node_sensitivity(node)!r}; it may process only "
+                f"{entry_may_process(entry)}")
+    no_key = config["policy"].get("signed_reviews") and not entry.get("public_key")
+    if why := ("policy requires signed reviews and its roster entry has no public_key" if no_key
+               else guidance_problem(repo_root, config, entry)):
+        return why
+    if model not in counting and not is_available(entry):
+        return f"unavailable ({unavailability_reason(entry) or 'availability'})"
+    return None
+
+
+def _same_family(gate: Any, model: str, family: str | None) -> str | None:
+    """A counted approval of the family from another model; for a counted model, only an earlier
+    one, since the gate counts the family once."""
+    if not gate.distinct_families:
+        return None
+    mine = next((i for i, a in enumerate(gate.approvals) if a.model == model), len(gate.approvals))
+    other = next((a for a in gate.approvals[:mine] if a.family == family), None)
+    return (f"same family ({family}) as {other.model}'s approval, which already counts"
+            if other else None)
+
+
+def _human_text(gate: Any, node_id: str, branch: str | None, key: str) -> str:
+    """The human row: a milestone's id form; for a leaf (``branch``), the id-less command run on its
+    branch, and whether it approves over the counted blocks
+    (:func:`~specy_road.review_override.as_if_decided`)."""
+    if branch is None:
+        return ("can approve, interactively with "
+                f"`specy-road mark-implementation-reviewed {node_id}{key}`")
+    run = f"`specy-road mark-implementation-reviewed{key}` on {branch}"
+    if not gate.blocks:
+        return f"can approve, interactively: run {run}"
+    names = " and ".join(f"{b.model}'s" for b in gate.blocks)
+    if as_if_decided(gate).passed:
+        return f"can approve over {names} block(s), interactively: run {run}"
+    return (f"to request interactive approval over {names} block(s), run {run}; other gate "
+            "requirements still apply")
+
+
+def _eligible_text(gate: Any, node_id: str, model: str, branch: str | None) -> str:
+    if any(b.model == model for b in gate.blocks):
+        return "can approve on re-review (its record blocks this commit)"
+    signed = (gate.config.get("policy") or {}).get("signed_reviews")
+    key = " --sign-key <your private key>" if signed else ""
+    if model == HUMAN:
+        return _human_text(gate, node_id, branch, key)
+    return (f"can approve (file a signed record: `specy-road review record{key}`)" if key
+            else "can approve (file with `specy-road review record`)")
+
+
+def reviewer_eligibility(repo_root: Path, node: dict[str, Any], gate: Any,
+                         branch: str | None) -> list[dict[str, Any]]:
+    """One row per roster entry while the gate is not met: ``model``, ``family``, ``eligible`` and
+    ``reason``."""
+    if gate.passed or gate.config_error or gate.commit is None:
+        return []
+    config, rejected = gate.config, _rejected(repo_root, gate)
+    authors = writers(repo_root, node["id"], branch, Identity(repo_root, config))
+    counting = {a.model for a in gate.approvals}
+    rows = []
+    for entry in config["roster"]:
+        model, family = entry["id"], entry.get("family")
+        # Every exclusion first: an author or a second same-family approval never reads as counting.
+        why = (_roster_reason(repo_root, config, node, model, counting=counting)
+               or authors.get(model, ("", None))[1] or rejected.get(model)
+               or (None if _meets_strong(gate, model) else _same_family(gate, model, family)))
+        ok = ("its approval counts" if model in counting
+              else _eligible_text(gate, node["id"], model, branch))
+        if why is None and model in counting and not is_available(entry):
+            ok = "its approval counts; unavailable for new reviews"
+        elif why is None and model not in counting:
+            ok += _strong_text(gate, model)
+        rows.append({"model": model, "family": family, "eligible": why is None,
+                     "reason": why or ok})
+    return rows
+
+
+def _meets_strong(gate: Any, model: str) -> bool:
+    return any(model in item["require_one_of"] for _, item in gate.strong_unmet)
+
+
+def _strong_text(gate: Any, model: str) -> str:
+    """Which unmet ``strong_review`` items an approval from ``model`` would satisfy, and which
+    not."""
+    if not gate.strong_unmet:
+        return ""
+    meets = [item_label(i, item) for i, item in gate.strong_unmet
+             if model in item["require_one_of"]]
+    misses = [item_label(i, item) for i, item in gate.strong_unmet
+              if model not in item["require_one_of"]]
+    return ((f"; would satisfy {', '.join(meets)}" if meets else "")
+            + (f"; would not satisfy {', '.join(misses)}" if misses else ""))
+
+
+def eligibility_lines(st: dict[str, Any]) -> list[str]:
+    """``handoff status`` text: the rows of :func:`reviewer_eligibility`, under the policy line."""
+    rows = st.get("reviewer_eligibility") or []
+    head = ["  who can still supply a counting approval at this commit:"] if rows else []
+    return head + [f"    {r['model']} ({r['family']}): "
+                   f"{'' if r['eligible'] else 'excluded — '}{r['reason']}"
+                   for r in rows]
+
 
 
 def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | None) -> str:
@@ -127,7 +292,8 @@ class ReviewState:
 
 
 def review_state(root: Path, node_id: str, ref: str | None = None) -> ReviewState:
-    """The gate, READY, loop escalation, fix-round budget and policy pin of ``node_id``; no trial merge.
+    """The gate, READY, loop escalation, fix-round budget and policy pin of ``node_id``; no trial
+    merge.
 
     Raises :class:`ReviewTargetError` when no claim or ``ref`` names a commit to review."""
     t = resolve_target(root, node_id, ref)
@@ -145,7 +311,8 @@ def review_state(root: Path, node_id: str, ref: str | None = None) -> ReviewStat
     blocked_lines = executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
-    budget = fix_round_budget(root, gate.config, loop, node_id, bool(gate.blocks))   # None: max_fix_rounds unset
+    # None: max_fix_rounds unset
+    budget = fix_round_budget(root, gate.config, loop, node_id, bool(gate.blocks))
     spent = bool(budget and budget["spent"])   # spent and a counted review still blocks
     state = ("executor_blocked" if blocked_lines else "fix_round_budget_spent" if spent
              else "escalated" if escalated else _state(root, t, gate, ready_commit))
@@ -213,7 +380,8 @@ def _render(st: dict[str, Any]) -> list[str]:
     if st.get("human_criteria_undecided"):   # an unclaimed node's status has none
         lines.append(f"  human criteria undecided: {', '.join(st['human_criteria_undecided'])} (a person closes each "
                      "one's entry in roadmap/decisions.yaml before finish-this-task)")
-    lines += [f"  policy: {st['policy']}"] + eligibility_lines(st)   # who can still approve, when not met
+    # who can still approve, when not met
+    lines += [f"  policy: {st['policy']}"] + eligibility_lines(st)
     if tm := st.get("trial_merge"):
         kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
         lines.append(f"  trial merge with {tm['ref']}: conflicts on {', '.join(tm['conflicts'])}{kind}")
@@ -230,7 +398,8 @@ def _render(st: dict[str, Any]) -> list[str]:
 
 
 def rca_command(node_id: str) -> str:
-    """The root-cause analysis an escalated leaf needs next (``review status``, ``grind-session --status``)."""
+    """The root-cause analysis an escalated leaf needs next (``review status``, ``grind-session
+    --status``)."""
     return f"specy-road prompt {node_id} --role rca --model <reviewer that has not reviewed it>"
 
 
@@ -296,7 +465,8 @@ def _status_or_error(root: Path, nid: str, ref: str | None = None) -> dict[str, 
 
 
 def _status_report(ns: argparse.Namespace, *, records: bool) -> int:
-    """The hand-off report; with ``records`` and one node, ``review list``'s lines and payload too."""
+    """The hand-off report; with ``records`` and one node, ``review list``'s lines and payload
+    too."""
     root = resolve_repo_root(ns)
     if ns.ref and not ns.node_id:
         return _fail("--ref names one node's branch or commit; give the node id too", 2)
@@ -336,7 +506,8 @@ def _handoff_lines(root: Path, out: list[dict[str, Any]], sessions: list[Any], w
 
 
 def cmd_review_status(ns: argparse.Namespace) -> int:
-    """``review status``: the hand-off report, and for one node its records and gate line too; reads only."""
+    """``review status``: the hand-off report, and for one node its records and gate line too; reads
+    only."""
     return _status_report(ns, records=True)
 
 
@@ -368,17 +539,21 @@ def _relabel_independence(root: Path, gate: GateResult) -> None:
 def cmd_review_record(ns: argparse.Namespace) -> int:
     try:
         return run_review_record(ns, resolve_repo_root(ns), _fail, _relabel_independence)
-    except safe_write.SafeWriteError as e:   # a symlink on the live record or history/: nothing was written
+    # a symlink on the live record or history/: nothing was written
+    except safe_write.SafeWriteError as e:
         return _fail(str(e))
 
 
 def cmd_review_record_locked(ns: argparse.Namespace) -> int:
-    """``review record`` from the command line: waits for, then refuses during, a reviewer run on the leaf.
-    A run's own filing (``file_review``) calls :func:`cmd_review_record` inside the lock it holds."""
+    """``review record`` from the command line: waits for, then refuses during, a reviewer run on
+    the leaf. A run's own filing (``file_review``) calls :func:`cmd_review_record` inside the lock
+    it holds."""
     root = resolve_repo_root(ns)
-    if not any(n.get("id") == ns.node_id for n in load_roadmap(root)["nodes"]):   # before any mkdir or lock file
+    # before any mkdir or lock file
+    if not any(n.get("id") == ns.node_id for n in load_roadmap(root)["nodes"]):
         return _fail(f"unknown node id: {ns.node_id}")
-    if why := review_caller.refusal(root, ns):   # before the lock: a refused caller writes nothing (M21.31)
+    # before the lock: a refused caller writes nothing (M21.31)
+    if why := review_caller.refusal(root, ns):
         return _fail(why)
     try:
         with review_lock.review_run_lock(reviews_dir(root, ns.node_id), wait=review_lock.FILING_WAIT):
@@ -424,7 +599,8 @@ def _print_review_list_text(root: Path, node_id: str, t: ReviewTarget | None) ->
 
 
 def _review_target(root: Path, node_id: str, ref: str | None) -> ReviewTarget | None:
-    """The commit under review; ``None`` with no claim. Raises :class:`ReviewTargetError` for any other failure."""
+    """The commit under review; ``None`` with no claim. Raises :class:`ReviewTargetError` for any
+    other failure."""
     try:
         return resolve_target(root, node_id, ref)
     except ReviewTargetError as e:
@@ -434,7 +610,8 @@ def _review_target(root: Path, node_id: str, ref: str | None) -> ReviewTarget | 
 
 
 def _review_list_lines(root: Path, node_id: str, ref: str | None) -> list[str]:
-    """What ``review list`` printed for ``node_id``; none when the target does not resolve (it exited 1)."""
+    """What ``review list`` printed for ``node_id``; none when the target does not resolve (it
+    exited 1)."""
     try:
         t = _review_target(root, node_id, ref)
     except ReviewTargetError:
@@ -446,8 +623,8 @@ def _review_list_lines(root: Path, node_id: str, ref: str | None) -> list[str]:
 
 
 def cmd_review_list(ns: argparse.Namespace) -> int:
-    """``review list``, the deprecated alias: filed records and RCA records, the gate at the commit under
-    review, then any escalation; reads only."""
+    """``review list``, the deprecated alias: filed records and RCA records, the gate at the commit
+    under review, then any escalation; reads only."""
     warn_deprecated("review list", "review status")
     root = resolve_repo_root(ns)
     if ns.json:
@@ -469,7 +646,8 @@ def _user(root: Path) -> str:
 
 
 def _open_policy_changes(root: Path) -> list[dict[str, Any]]:
-    """Open claims whose pinned review policy differs from the integration branch, in registry order."""
+    """Open claims whose pinned review policy differs from the integration branch, in registry
+    order."""
     nodes = load_roadmap(root)["nodes"]
     changes = []
     for entry in read_registry(registry_path(root)).get("entries") or []:
@@ -486,7 +664,8 @@ def _open_policy_changes(root: Path) -> list[dict[str, Any]]:
 
 
 def _change_groups(changes: list[dict[str, Any]]) -> list[tuple[tuple[str, ...], list[dict[str, Any]]]]:
-    """Each distinct set of change lines once, with the leaves it affects, earliest leaf id first."""
+    """Each distinct set of change lines once, with the leaves it affects, earliest leaf id
+    first."""
     grouped: dict[tuple[str, ...], list[dict[str, Any]]] = {}
     for change in changes:
         grouped.setdefault(change["lines"], []).append(change)
@@ -587,8 +766,8 @@ def _usage_error(ns: argparse.Namespace) -> str | None:
 def cmd_accept_policy(ns: argparse.Namespace) -> int:
     """``review accept-policy``: a human, in a terminal, accepts the policy change since the claim.
 
-    One node id is that leaf. ``--all-open`` is every open claim whose pin differs: one confirmation, then
-    one acceptance file per leaf.
+    One node id is that leaf. ``--all-open`` is every open claim whose pin differs: one
+    confirmation, then one acceptance file per leaf.
     """
     if not sys.stdin.isatty():
         print("error: a human accepts a review policy change in a terminal; nothing was written", file=sys.stderr)
@@ -619,7 +798,8 @@ def add_accept_policy_parser(rsub: Any) -> None:
 
 
 def _form_problem(ns: argparse.Namespace) -> str | None:
-    """Why the flags are neither the operator form (``--quote``) nor the coordinator form (``--rule``)."""
+    """Why the flags are neither the operator form (``--quote``) nor the coordinator form
+    (``--rule``)."""
     if ns.rule is None:
         if ns.rca or ns.alignment or ns.limit:
             return "--rca, --alignment and --limit belong to the coordinator form (--rule)"
@@ -690,7 +870,8 @@ def add_operator_decision_parser(rsub: Any) -> None:
 
 
 def _add_status_parser(subparsers: Any, about: str, func: Any) -> None:
-    """``review status`` and its deprecated alias ``handoff status``: one node or every node, ``--json``, ``--ref``."""
+    """``review status`` and its deprecated alias ``handoff status``: one node or every node,
+    ``--json``, ``--ref``."""
     st = subparsers.add_parser("status", help=about)
     st.add_argument("node_id", nargs="?", help="One node (default: every node under work/reviews/)")
     add_json_arg(st, help="Machine-readable output for polling")
@@ -700,7 +881,8 @@ def _add_status_parser(subparsers: Any, about: str, func: Any) -> None:
 
 
 def _add_packet_parser(subparsers: Any) -> None:
-    """``review packet``: the flags of :func:`review_packet.build_parser`, which ``review-packet`` also reads."""
+    """``review packet``: the flags of :func:`review_packet.build_parser`, which ``review-packet``
+    also reads."""
     from specy_road.bundled_scripts import review_packet
 
     packet = review_packet.build_parser()

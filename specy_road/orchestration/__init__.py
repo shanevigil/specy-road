@@ -36,7 +36,7 @@ _SOURCES: dict[str, tuple[str, ...]] = {
     "orchestrate_assign": (
         "ANY", "entry_may_process", "guidance_bypass_lines", "guidance_bypass_refusal",
         "guidance_bypass_warning", "guidance_problem", "is_available", "may_handle",
-        "node_eligibility", "node_sensitivity", "unavailable_prompt_error",
+        "node_eligibility", "node_sensitivity", "unavailability_reason", "unavailable_prompt_error",
     ),
     "orchestrate_plan": ("OrchestrationPlan", "build_orchestration_plan"),
     "records.chore_garden_due": ("warn_garden_due",),
@@ -110,8 +110,9 @@ __all__ = [
     "resolve_cli", "reviewer_launch_block", "reviewer_lesson_lines", "reviewer_preamble",
     "reviewer_turn", "rework_check", "rework_lines", "roster_entries", "run_plain_cli", "snapshot",
     "stall_lines", "stalled_workers", "sync_marks", "timeline", "timeline_lines",
-    "unavailable_prompt_error", "unmatched_roster_ids", "usage", "usage_json_payload",
-    "usage_lines", "warn_garden_due", "worker_ops", "workers_dir", "write_entries",
+    "unavailability_reason", "unavailable_prompt_error", "unmatched_roster_ids", "usage",
+    "usage_json_payload", "usage_lines", "warn_garden_due", "worker_ops", "workers_dir",
+    "write_entries",
 ]
 
 

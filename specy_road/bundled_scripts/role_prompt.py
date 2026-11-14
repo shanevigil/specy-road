@@ -103,7 +103,7 @@ from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_record_write import Outcome, ReviewRunBusy, review_run_lock, schema_lines
 from specy_road.review_gate import delta_basis, fix_of_for
 from specy_road.orchestration import reviewer_lesson_lines
-from specy_road.review_resumed_delta import resumed_delta_on
+from specy_road.review_gate import resumed_delta_on
 from specy_road.review_record_rules import PROBE_RULES_LINES, REMOVED_TEXT_LINES
 from specy_road.review_rca import escalated_note, loop_state, rca_evidence, rca_preamble, rca_trigger
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target

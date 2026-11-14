@@ -148,6 +148,13 @@ body. Keep section bodies focused; link to PRs for detail.
   packet` in their descriptions. Only descriptions changed, so validation is unchanged; `upgrade` rewrites a
   project's copy once.
 
+- The review gate's internal modules are folded, with no change to any command, output or review
+  policy: `review_strong`, `review_resumed_delta`, `review_gate_agreement` and the gate half of
+  `review_eligible` (`writers`, `reviews_to_judge`) into `review_gate`; `review_ready_merge` and
+  `changelog_check` into `review_gate_ready`; `review_bookkeeping` into `review_override`;
+  `review_policy_ref` into `review_policy_pin`; and `reviewer_eligibility` and `eligibility_lines` into
+  the `review` CLI. The folded module paths are gone, without an alias.
+
 ### Deprecated
 
 Each alias below prints one line naming its replacement, is hidden from `specy-road --help`, and is removed in the
@@ -186,6 +193,11 @@ them wins:
 - `baseline_cmd: CMD` -> `checks: [{name: baseline, run: CMD, when: baseline}]`.
 - `land_check_cmd: CMD` -> `checks: [{name: land check, run: CMD, when: land}]`.
 - `verify_cmd: CMD` -> `checks: [{name: verify, run: CMD, when: prompt}]`.
+
+These import paths warn on import (`DeprecationWarning`) and are removed in the release after 0.3.1:
+
+- `specy_road.review_defer` -> `specy_road.review_defer_cli` (the `review defer` command).
+- `specy_road.review_deferral` -> `specy_road.review_defer_rules` (the deferral rules the gate applies).
 
 ### Fixed
 

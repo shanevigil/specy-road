@@ -28,7 +28,7 @@ from specy_road.orchestration_config import (
     is_rostered_reviewer,
     substitute_for,
 )
-from specy_road.review_deferral import load_markers
+from specy_road.review_defer_rules import load_markers
 from specy_road.review_files import (
     RCA_PREFIX,
     ReviewFile,
@@ -37,7 +37,7 @@ from specy_road.review_files import (
     list_review_history,
     reviews_dir,
 )
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_policy_pin import policy_source
 from specy_road.review_target import ReviewTarget, full_sha
 from specy_road.review_trend import converging, trend_status
 
@@ -97,7 +97,7 @@ class LoopState:
     rcas: list[ReviewFile]
     escalation: Escalation | None
     resolved: int = 0   # rounds an RCA record already covers
-    marker_problems: list[str] = field(default_factory=list)   # malformed DEFERRAL-*.yaml (review_deferral)
+    marker_problems: list[str] = field(default_factory=list)   # malformed DEFERRAL-*.yaml (review_defer_rules)
     converging: bool = False            # review_trend.converging over the rounds since the last RCA
     deferred_converging: bool = False   # a same_family/review_rounds escalation waits because of it
 

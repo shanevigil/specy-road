@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -16,7 +18,7 @@ from tests.test_review_cli import _ready
 from tests.test_review_rca import ROSTER, _block_round, _run, _status
 
 from specy_road.roadmap_load import load_roadmap
-from specy_road.review_deferral import answer_item
+from specy_road.review_defer_rules import answer_item
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.rework_rca import governing_rca
@@ -339,3 +341,15 @@ def test_a_marker_not_bound_to_its_decision_and_rca_resolves_nothing(tmp_path: P
     b = _status(repo, capsys)[1].get("fix_round_budget") or {}
     assert not str(b.get("state")).startswith("spent_defer_applied"), b
     assert governing_rca(repo, "M1.1", [b.review for b in gate.blocks]) is None
+
+
+@pytest.mark.parametrize(("old", "new", "name"), [
+    ("specy_road.review_defer", "specy_road.review_defer_cli", "applicable_record"),
+    ("specy_road.review_deferral", "specy_road.review_defer_rules", "apply_deferrals"),
+])
+def test_renamed_defer_module_old_path_warns_and_serves_the_same_names(monkeypatch, old, new, name):
+    """The pre-rename import path still works until its removal, and says so on import."""
+    monkeypatch.delitem(sys.modules, old, raising=False)
+    with pytest.warns(DeprecationWarning, match="removed in the release after 0.3.1"):
+        module = importlib.import_module(old)
+    assert getattr(module, name) is getattr(importlib.import_module(new), name)

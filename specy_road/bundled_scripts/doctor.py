@@ -10,7 +10,7 @@ removes exactly the rows it planned. ``--fix`` is the deprecated name of ``--pru
 
 Before the listing doctor checks the checkout (:func:`report_checkout`):
 
-- the review gate and the orchestration policy agree (:mod:`specy_road.review_gate_agreement`): an
+- the review gate and the orchestration policy agree (:mod:`specy_road.review_policy_pin`): an
   error.
 - ``env_setup`` (:mod:`specy_road.worktree_env`), when configured: its copy and link sources exist
   in the main checkout and its command succeeds there; either failing is an error.
@@ -40,7 +40,7 @@ from specy_road.orchestration import guidance_bypass_lines
 from specy_road.orchestration import read_state
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.orphaned_claims import report_lines
-from specy_road.review_gate_agreement import report_gate_mismatch
+from specy_road.review_policy_pin import report_gate_mismatch
 from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
 from specy_road.version_skew import print_install_report, warn_if_running_version_older
 from specy_road.orchestration import force_warnings

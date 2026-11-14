@@ -508,7 +508,7 @@ def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, 
     ``flagged``: the areas ``policy.quality_routing`` routes a strong reviewer to (:mod:`specy_road.review_tally`)."""
     # The review stack, imported only by a plan: validate reaches this module for its roster
     # warnings.
-    from specy_road.review_strong import applicable_items, item_label
+    from specy_road.review_gate import applicable_items, item_label
     from specy_road.review_tally import quality_review
 
     a = Assignment(node["id"], node_sensitivity(node), node_eligibility(node))

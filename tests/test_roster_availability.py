@@ -13,7 +13,7 @@ from specy_road.orchestration import orchestrate_plan as op
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.bundled_scripts import role_prompt
 from specy_road.orchestration_config import effective_config, roster_entry
-from specy_road.review_eligible import reviewer_eligibility
+from specy_road.bundled_scripts.review_cli import reviewer_eligibility
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.orchestration.workers.worker_state import WorkerError

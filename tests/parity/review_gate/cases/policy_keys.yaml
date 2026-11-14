@@ -5,16 +5,16 @@
 gate_inputs:
   reviewers_required: GateResult.required
   reviewers_distinct_families: GateResult.distinct_families and orchestration_routing.routing_problem
-  reviewer_fresh_session: review_resumed_delta.fresh_session_problem
+  reviewer_fresh_session: review_gate.fresh_session_problem
   signed_reviews: review_gate's signature check and orchestrate_plan.guidance_problem
   count_human_filed_reviews: review_gate's signature check (an unsigned human_filed record)
   reviewer_reruns_required: review_gate.rerun_problem
   delta_review: review_gate.delta_problem
-  reviewer_resumed_delta: review_resumed_delta.fresh_session_problem
+  reviewer_resumed_delta: review_gate.fresh_session_problem
   integrity_gate: integrity_gate.integrity_gate_problems
   red_green: integrity_gate.integrity_gate_problems (red_green.red_green_problems)
   ratchet_paths: integrity.compare_integrity, whose findings the integrity gate reports
-  strong_review: review_strong.unmet_strong
+  strong_review: review_gate.unmet_strong
 non_gate:
   max_workers: worker delegate's concurrency limit
   escalate_same_acceptance_blocks: review loop escalation to root-cause analysis (handoff status)

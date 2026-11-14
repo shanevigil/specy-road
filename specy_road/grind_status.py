@@ -32,7 +32,7 @@ from specy_road.milestone_subtree import leaf_ids_under_parent, subtree_node_ids
 from specy_road.node_kinds import is_gate
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.review_override import PM_GUI, integration, marker_path, over_block_offer
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_policy_pin import policy_source
 from specy_road.review_target import ReviewTargetError
 from specy_road.roadmap_index import RoadmapIndex
 from specy_road.roadmap_layout import natural_id_sort_key

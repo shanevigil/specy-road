@@ -35,7 +35,7 @@ Rules, in the order they apply:
   executor and reviewer pools (a note says why) unless its roster entry sets
   ``allow_guidance_bypass_model: true``; the coordinator pool is unaffected.
 * **Strong review.** Each ``policy.strong_review`` item the leaf's touch zones
-  meet (:mod:`specy_road.review_strong`) is listed with the reviewers that can
+  meet (:mod:`specy_road.review_gate`) is listed with the reviewers that can
   satisfy it, and its best-ranked one is picked first, whatever its family;
   an item none of them can satisfy makes the leaf unstaffable. With
   ``policy.quality_routing`` on, each flagged area (:mod:`specy_road.review_tally`)

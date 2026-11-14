@@ -15,7 +15,7 @@ import pytest
 from specy_road.bundled_scripts import doctor
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import validate_roadmap as vr
-from specy_road.review_gate_agreement import GATE_KEY, gate_config_mismatch
+from specy_road.review_policy_pin import GATE_KEY, gate_config_mismatch
 from tests.helpers import REPO
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 
