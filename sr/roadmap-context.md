@@ -286,6 +286,11 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-14 `M17.8` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
+- 2026-11-14 `M16.6.1` stopped depending on `M16.5.13 The review packet fragments fold into review_packet`
+- 2026-11-14 `M16.5.11` stopped depending on `M16.5.10 Chore, decision and lesson records share internal adapters and keep their files byte for byte`
+- 2026-11-14 `M16.5.12` stopped depending on `M16.5.11 Grind settings move under grind: in git-workflow.yaml, migrated by upgrade`
+- 2026-11-14 `M16.5.10` stopped depending on `M16.5.9 Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings`
 - 2026-11-10 `M16.7.7` stopped depending on `M16.7.6 Tests: public seams replace private-name patches, and no test sleeps on the wall clock`
 - 2026-11-09 `M17.14` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-09 `M16.2.6` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
@@ -306,12 +311,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M16.8.4` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
-- 2026-11-07 `M16.1.2` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
-- 2026-11-07 `M16.1.1` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
-- 2026-11-07 `M22.6` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
-- 2026-11-07 `M16.2.2` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
-- 2026-11-07 `M22.31` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
-- _…and 76 earlier — `specy-road history --json`_
+- _…and 81 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
