@@ -342,6 +342,7 @@ Do not pick these up.
 
 - `M16.5.11` on `feature/rm-grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade` since 2026-11-14
 - `M16.5.12` on `feature/rm-fold-the-review-gate-fragments-no-review-policy-is-deprecated` since 2026-11-14
+- `M17.9` on `feature/rm-gui-orch-sandbox-acceptance` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
