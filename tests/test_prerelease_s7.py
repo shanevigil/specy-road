@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from specy_road.orchestration.grind.session_plan import compute_session_plan
+from specy_road.bundled_scripts.session_plan import compute_session_plan
 
 
 def _node(nid, key, ntype, parent=None, deps=()):

@@ -47,8 +47,8 @@ from specy_road.bundled_scripts.do_next_task_register import register_claim
 from specy_road.bundled_scripts.do_next_task_self_heal import (
     warn_about_stale_claims_before_pickup as _warn_about_stale_claims_before_pickup,
 )
-from specy_road.orchestration import EXIT_IN_FLIGHT
-from specy_road.orchestration import (
+from specy_road.bundled_scripts.grind_session_events import EXIT_IN_FLIGHT
+from specy_road.bundled_scripts.grind_session_in_flight import (
     InFlightClaim,
     own_in_flight_claims,
 )
@@ -463,7 +463,7 @@ def _finalize_pickup(
 # Pickup used to register, push and switch to a second leaf while the first was
 # still checked out, so one checkout silently owned two leaves. grind-session
 # already refused that case with exit 6; refuse_second_claim applies the same test,
-# :func:`~specy_road.orchestration.grind.grind_session_in_flight.own_in_flight_claims`,
+# :func:`~specy_road.bundled_scripts.grind_session_in_flight.own_in_flight_claims`,
 # before pickup changes anything.
 #
 # A claim is this checkout's when the registry names its branch *and* that branch

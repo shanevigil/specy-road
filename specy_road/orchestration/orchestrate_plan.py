@@ -59,7 +59,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.roadmap_load import load_roadmap
-from specy_road.orchestration.grind.session_plan_git import gather_session_plan
+from specy_road.session_plan_git import gather_session_plan
 from specy_road.orchestration.records.decisions import plan_preferences
 from specy_road.orchestration.orchestrate_assign import (  # noqa: F401 — re-exported: callers import them from here
     ANY,

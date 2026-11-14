@@ -21,7 +21,7 @@ from specy_road.planning_scaffold_check import needs_approach_line
 from specy_road.shared_zones import DEFAULT_SHARED_ZONES, effective_overlap, ignored_shared_zones
 
 if TYPE_CHECKING:  # annotations only: session_plan re-exports session_plan_to_dict from here
-    from specy_road.orchestration.grind.session_plan import SessionPlan
+    from specy_road.bundled_scripts.session_plan import SessionPlan
 
 
 def zone_clash(

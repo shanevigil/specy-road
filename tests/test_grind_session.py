@@ -10,14 +10,14 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.orchestration.grind import grind_session as gs
-from specy_road.orchestration.grind import grind_session_cleanup as gsc
+from specy_road.bundled_scripts import grind_session as gs
+from specy_road import grind_session_cleanup as gsc
 from specy_road import merged_branch
-from specy_road.orchestration.grind import grind_session_events as gse
+from specy_road.bundled_scripts import grind_session_events as gse
 
 REPO = Path(__file__).resolve().parent.parent
 DOGFOOD = REPO / "tests" / "fixtures" / "specy_road_dogfood"
-from specy_road.orchestration.grind.grind_session_events import (
+from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_GENERIC,
     EXIT_NO_LEAVES,
@@ -25,7 +25,7 @@ from specy_road.orchestration.grind.grind_session_events import (
     EXIT_PICKUP_FAILED,
     EXIT_PRE_FINISH_FAILED,
 )
-from specy_road.orchestration.grind.session_plan import BlockedLeaf, SessionPlan, Wave
+from specy_road.bundled_scripts.session_plan import BlockedLeaf, SessionPlan, Wave
 
 
 #: Frozen event timestamp so `ts` can be asserted exactly.

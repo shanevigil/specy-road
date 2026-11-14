@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.orchestration.grind import grind_session_implement as gsi
+from specy_road.bundled_scripts import grind_session_implement as gsi
 
 NOW = datetime(2026, 9, 6, 20, 0, tzinfo=timezone.utc)
 CLAUDE = 'claude -p --permission-mode acceptEdits "do the task"'

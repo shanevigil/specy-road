@@ -15,9 +15,9 @@ from tests.helpers import DOGFOOD
 from specy_road.bundled_scripts import do_next_task as dnt
 from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args, pickup_args
-from specy_road.orchestration.grind.session_plan import compute_session_plan
-from specy_road.orchestration.grind.session_plan_git import gather_session_plan
-from specy_road.orchestration.grind.session_plan_render import render_session_plan_text, session_plan_to_dict
+from specy_road.bundled_scripts.session_plan import compute_session_plan
+from specy_road.session_plan_git import gather_session_plan
+from specy_road.bundled_scripts.session_plan_render import render_session_plan_text, session_plan_to_dict
 from specy_road.git_workflow_config import resolve_prefer_agentic, validate_git_workflow_dict
 
 _EMPTY_REG = {"version": 1, "entries": []}

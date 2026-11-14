@@ -7,10 +7,10 @@ import sys
 
 import pytest
 
-from specy_road.orchestration.grind import grind_session as gs
-from specy_road.orchestration.grind import grind_session_in_flight as gsif
+from specy_road.bundled_scripts import grind_session as gs
+from specy_road.bundled_scripts import grind_session_in_flight as gsif
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
-from specy_road.orchestration.grind.grind_session_events import (
+from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_GENERIC,
     EXIT_NO_LEAVES,
@@ -18,7 +18,7 @@ from specy_road.orchestration.grind.grind_session_events import (
     EXIT_PICKUP_FAILED,
     EXIT_PRE_FINISH_FAILED,
 )
-from specy_road.orchestration.grind.session_plan import BlockedLeaf
+from specy_road.bundled_scripts.session_plan import BlockedLeaf
 from tests.test_grind_session import REPO, _Harness, _event, _events, _plan, _run
 from tests.test_grind_session_in_flight import _artifacts, _entry, _reg
 
@@ -248,8 +248,8 @@ def test_json_step_routes_child_output_to_stderr_on_its_own(monkeypatch, capsys)
     The step module's ``gs`` is the imported copy, so run_step must set the
     flag itself or the pickup banner corrupts the JSONL on stdout.
     """
-    from specy_road.orchestration.grind.grind_session_events import EventEmitter
-    from specy_road.orchestration.grind.grind_session import run_step
+    from specy_road.bundled_scripts.grind_session_events import EventEmitter
+    from specy_road.bundled_scripts.grind_session_step import run_step
 
     _Harness(monkeypatch, [_plan(ready=["M1.1"])])
     assert gs.CHILD_STDOUT_TO_STDERR is False

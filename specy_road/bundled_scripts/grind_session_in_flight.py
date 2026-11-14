@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_finished_unmerged import node_complete_on_ref
-from specy_road.orchestration.grind.grind_session_events import (
+from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_IN_FLIGHT,
     EXIT_NO_LEAVES,

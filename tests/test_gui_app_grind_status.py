@@ -15,7 +15,7 @@ import yaml
 from starlette.testclient import TestClient
 
 from specy_road.brainstorm_session import BrainstormSession, write_session
-from specy_road.orchestration.grind import grind_session as gs
+from specy_road.bundled_scripts import grind_session as gs
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 from specy_road.grind_status import build_report
 from specy_road.gui_app import create_app

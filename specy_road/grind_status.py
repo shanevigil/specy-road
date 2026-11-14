@@ -36,7 +36,7 @@ from specy_road.review_policy_ref import policy_source
 from specy_road.review_target import ReviewTargetError
 from specy_road.roadmap_index import RoadmapIndex
 from specy_road.roadmap_layout import natural_id_sort_key
-from specy_road.orchestration.grind.session_plan_git import gather_session_plan
+from specy_road.session_plan_git import gather_session_plan
 from specy_road.orchestration.guard.session_presence import list_sessions
 from specy_road.orchestration.workers.worker_state import FLAG_NEEDS_PERSON, list_records
 

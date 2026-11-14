@@ -248,21 +248,6 @@ _MOVED_FROM.update({
     "specy_road/orchestration/guard/orchestration_role_env.py":
         "specy_road/orchestration_role_env.py",
     "specy_road/orchestration/guard/session_presence.py": "specy_road/session_presence.py",
-    "specy_road/orchestration/grind/grind_session.py":
-        "specy_road/bundled_scripts/grind_session.py",
-    "specy_road/orchestration/grind/grind_session_cleanup.py":
-        "specy_road/bundled_scripts/grind_session_cleanup.py",
-    "specy_road/orchestration/grind/grind_session_events.py":
-        "specy_road/bundled_scripts/grind_session_events.py",
-    "specy_road/orchestration/grind/grind_session_implement.py":
-        "specy_road/bundled_scripts/grind_session_implement.py",
-    "specy_road/orchestration/grind/grind_session_in_flight.py":
-        "specy_road/bundled_scripts/grind_session_in_flight.py",
-    "specy_road/orchestration/grind/session_plan.py": "specy_road/bundled_scripts/session_plan.py",
-    "specy_road/orchestration/grind/session_plan_git.py":
-        "specy_road/bundled_scripts/session_plan_git.py",
-    "specy_road/orchestration/grind/session_plan_render.py":
-        "specy_road/bundled_scripts/session_plan_render.py",
 })
 
 

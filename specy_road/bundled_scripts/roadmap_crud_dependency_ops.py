@@ -361,7 +361,7 @@ def _scratch_root(root: Path) -> Iterator[Path]:
 def wave_preview(root: Path) -> list[str]:
     """Ready / waves / blocked for the graph under ``root``, as ``grind-session --plan`` computes them."""
     from specy_road.planning_sheet_bootstrap import unauthored_leaves
-    from specy_road.orchestration.grind.session_plan import compute_session_plan
+    from specy_road.bundled_scripts.session_plan import compute_session_plan
     from specy_road.registry_yaml import read_registry, registry_path
 
     nodes = load_roadmap(root)["nodes"]

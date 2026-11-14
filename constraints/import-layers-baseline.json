@@ -154,6 +154,13 @@
     {
       "size": 2,
       "modules": [
+        "specy_road.bundled_scripts.grind_session",
+        "specy_road.bundled_scripts.grind_session_step"
+      ]
+    },
+    {
+      "size": 2,
+      "modules": [
         "specy_road.bundled_scripts.review_packet",
         "specy_road.bundled_scripts.review_packet_nested"
       ]
@@ -168,8 +175,8 @@
     {
       "size": 2,
       "modules": [
-        "specy_road.orchestration.grind.session_plan",
-        "specy_road.orchestration.grind.session_plan_render"
+        "specy_road.bundled_scripts.session_plan",
+        "specy_road.bundled_scripts.session_plan_render"
       ]
     },
     {
@@ -196,6 +203,10 @@
     {
       "from": "specy_road.bundled_scripts.doctor",
       "to": "specy_road.bundled_scripts.branches_cli"
+    },
+    {
+      "from": "specy_road.bundled_scripts.grind_session_step",
+      "to": "specy_road.bundled_scripts.grind_session"
     },
     {
       "from": "specy_road.bundled_scripts.review_packet_nested",

@@ -18,7 +18,7 @@ import yaml
 
 from specy_road import grind_status as gst
 from specy_road.brainstorm_session import BrainstormSession, write_session
-from specy_road.orchestration.grind import grind_session as gs
+from specy_road.bundled_scripts import grind_session as gs
 from specy_road.bundled_scripts import mark_implementation_reviewed, review_cli
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 from specy_road.history_index import clear_memo

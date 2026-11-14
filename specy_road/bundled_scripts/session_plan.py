@@ -30,14 +30,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from specy_road.bundled_scripts.do_next_available import execution_pick_rank
+from specy_road.bundled_scripts.do_next_available import _available, _claimed_node_ids
 from specy_road.roadmap_index import RoadmapIndex
 from specy_road.roadmap_layout import natural_id_sort_key
-from specy_road.orchestration.grind.session_plan_render import (
-    DEFAULT_SHARED_ZONES,
-    session_plan_to_dict,
-    split_on_zone_overlap,
-)
+from specy_road.bundled_scripts.session_plan_render import DEFAULT_SHARED_ZONES, session_plan_to_dict, split_on_zone_overlap
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.milestone_subtree import leaf_ids_under_parent, structural_leaf_ids
 from specy_road.node_kinds import is_gate
@@ -119,22 +115,6 @@ def _sorted_ids(ids) -> list[str]:
     return sorted(ids, key=natural_id_sort_key)
 
 
-def _pickup_order(index: RoadmapIndex, *, prefer_agentic: bool) -> list[dict]:
-    """The leaves pickup may claim, in the order it claims them.
-
-    :meth:`RoadmapIndex.ready` (outline order) less In Progress leaves; Blocked leaves first,
-    because a blocked leaf is the one most worth unblocking; with ``prefer_agentic``, each tier
-    by execution milestone (``execution_pick_rank``) before outline. The plan has no forge
-    enrichment, so pickup's MR-rejected tier is empty here.
-    """
-    ready = [n for n in index.ready() if _status(n) != "in progress"]
-
-    def tier_then_rank(node: dict) -> tuple[bool, int]:
-        return _status(node) != "blocked", execution_pick_rank(node) if prefer_agentic else 0
-
-    return sorted(ready, key=tier_then_rank)   # stable: outline order within each key
-
-
 def _scope_leaf_ids(nodes: list[dict], under: str | None) -> set[str]:
     leaves = structural_leaf_ids(nodes)
     if under:
@@ -156,13 +136,12 @@ def _classify(
     prefer_agentic: bool = False,
 ) -> dict:
     """Bucket scoped leaves into ready / unauthored / blocked / active / closed / gated."""
-    claimed = {e["node_id"] for e in reg.get("entries", []) if "node_id" in e}
-    index = RoadmapIndex(nodes, claimed=claimed)
+    index = RoadmapIndex(nodes)
+    claimed = _claimed_node_ids(reg)
     scope = _scope_leaf_ids(nodes, under)
 
-    pickable = [
-        n for n in _pickup_order(index, prefer_agentic=prefer_agentic) if n["id"] in scope
-    ]
+    available = _available(nodes, reg, prefer_agentic=prefer_agentic)
+    pickable = [n for n in available if n["id"] in scope]
     ready_order = [n["id"] for n in pickable if n["id"] not in unauthored]
     ready_set = {n["id"] for n in pickable}
 

@@ -237,8 +237,28 @@
       "PL": 2,
       "D102/D103": 5
     },
+    "specy_road/bundled_scripts/grind_session.py": {
+      "PL": 6,
+      "D102/D103": 2
+    },
     "specy_road/bundled_scripts/grind_session_args.py": {
       "D102/D103": 3
+    },
+    "specy_road/bundled_scripts/grind_session_events.py": {
+      "C901": 1,
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/grind_session_implement.py": {
+      "PL": 6,
+      "SIM": 1
+    },
+    "specy_road/bundled_scripts/grind_session_in_flight.py": {
+      "PL": 2,
+      "D102/D103": 1
+    },
+    "specy_road/bundled_scripts/grind_session_step.py": {
+      "D102/D103": 1
     },
     "specy_road/bundled_scripts/history_cli.py": {
       "D102/D103": 3
@@ -407,6 +427,13 @@
     },
     "specy_road/bundled_scripts/session_cli.py": {
       "D102/D103": 5
+    },
+    "specy_road/bundled_scripts/session_plan.py": {
+      "PL": 1
+    },
+    "specy_road/bundled_scripts/session_plan_render.py": {
+      "B": 1,
+      "D102/D103": 1
     },
     "specy_road/bundled_scripts/start_milestone_session.py": {
       "PL": 1,
@@ -629,30 +656,6 @@
     },
     "specy_road/on_complete_session.py": {
       "SIM": 1
-    },
-    "specy_road/orchestration/grind/grind_session.py": {
-      "PL": 6,
-      "D102/D103": 1
-    },
-    "specy_road/orchestration/grind/grind_session_events.py": {
-      "C901": 1,
-      "PL": 2,
-      "D102/D103": 1
-    },
-    "specy_road/orchestration/grind/grind_session_implement.py": {
-      "PL": 6,
-      "SIM": 1
-    },
-    "specy_road/orchestration/grind/grind_session_in_flight.py": {
-      "PL": 2,
-      "D102/D103": 1
-    },
-    "specy_road/orchestration/grind/session_plan.py": {
-      "PL": 1
-    },
-    "specy_road/orchestration/grind/session_plan_render.py": {
-      "B": 1,
-      "D102/D103": 1
     },
     "specy_road/orchestration/guard/session_presence.py": {
       "PL": 1,
