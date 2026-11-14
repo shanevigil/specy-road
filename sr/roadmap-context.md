@@ -342,6 +342,7 @@ Do not pick these up.
 
 - `M16.5.10` on `feature/rm-chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte` since 2026-11-14
 - `M16.5.7` on `feature/rm-shared-checkout-guard-and-session-presence-move-into-orchestration` since 2026-11-14
+- `M17.8` on `feature/rm-gui-orch-docs-wiring` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
