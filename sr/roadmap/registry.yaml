@@ -70,3 +70,26 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
+  - codename: roster-model-profiles-harness-facts-orchestrate-and-role-prompts-move-into-orchestration
+    node_id: M16.5.3
+    branch: feature/rm-roster-model-profiles-harness-facts-orchestrate-and-role-prompts-move-into-orchestration
+    touch_zones:
+      - specy_road/orchestration/roster/
+      - specy_road/roster_*.py
+      - specy_road/model_*.py
+      - specy_road/harness_*.py
+      - specy_road/orchestrate_*.py
+      - specy_road/bundled_scripts/role_prompt*.py
+      - specy_road/bundled_scripts/models_cli.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
+      - tests/
+      - specy_road/orchestration/
+      - specy_road/
+      - scripts/line_width_baseline.json
+      - scripts/ruff_quality_baseline.json
+      - constraints/import-layers-baseline.json
+      - constraints/test-private-imports-baseline.txt
+      - constraints/clone-baseline.json
+    started: '2026-11-13'
+    owner: savigil
+    implementation_review: pending
