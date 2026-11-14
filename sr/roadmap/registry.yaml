@@ -112,18 +112,3 @@ entries:
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
-  - codename: gui-orch-docs-wiring
-    node_id: M17.8
-    branch: feature/rm-gui-orch-docs-wiring
-    touch_zones:
-      - docs/pm-gui.md
-      - docs/pm-workflow.md
-      - CHANGELOG.md
-      - gui/pm-gantt/src/components/OrchestrationDrawer.tsx
-      - gui/pm-gantt/src/orchestrationSnapshot.ts
-      - specy_road/pm_gantt_static/
-      - tests/
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-14T15:33:36+00:00'

@@ -200,7 +200,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.5` PM GUI: the outline shows one orchestration badge per leaf for claims, holds, running or failed workers and review state, linking into the drawer `gui-orch-outline-badges` — task — **Complete**
   - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Complete**
   - `M17.7` PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together `gui-api-orchestration` — task — **Complete**
-  - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Not Started**
+  - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Complete**
   - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Not Started**
   - `M17.10` Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run `gui-orch-sandbox-use-approved` — gate — **Complete**
   - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Complete**
@@ -286,6 +286,11 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-14 `M17.8` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
+- 2026-11-14 `M16.6.1` stopped depending on `M16.5.13 The review packet fragments fold into review_packet`
+- 2026-11-14 `M16.5.11` stopped depending on `M16.5.10 Chore, decision and lesson records share internal adapters and keep their files byte for byte`
+- 2026-11-14 `M16.5.12` stopped depending on `M16.5.11 Grind settings move under grind: in git-workflow.yaml, migrated by upgrade`
+- 2026-11-14 `M16.5.10` stopped depending on `M16.5.9 Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings`
 - 2026-11-10 `M16.7.7` stopped depending on `M16.7.6 Tests: public seams replace private-name patches, and no test sleeps on the wall clock`
 - 2026-11-09 `M17.14` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-09 `M16.2.6` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
@@ -306,12 +311,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M16.8.4` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
-- 2026-11-07 `M16.1.2` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
-- 2026-11-07 `M16.1.1` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
-- 2026-11-07 `M22.6` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
-- 2026-11-07 `M16.2.2` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
-- 2026-11-07 `M22.31` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
-- _…and 76 earlier — `specy-road history --json`_
+- _…and 81 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -342,7 +342,6 @@ Do not pick these up.
 
 - `M16.5.10` on `feature/rm-chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte` since 2026-11-14
 - `M16.5.7` on `feature/rm-shared-checkout-guard-and-session-presence-move-into-orchestration` since 2026-11-14
-- `M17.8` on `feature/rm-gui-orch-docs-wiring` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
