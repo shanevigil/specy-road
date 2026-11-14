@@ -235,7 +235,7 @@ def test_worker_and_reviewer_launches_run_the_resolved_binary(tmp_path: Path, mo
     agent = _exe(tmp_path / "tools" / "agent")
     repo = make_review_repo(tmp_path, orchestration=ROSTER.format(extra=f", harness_bin: {agent}"))
     chats: list[str] = []
-    import specy_road.orchestration.workers.worker_adapter_cursor as cursor   # noqa: PLC0415
+    import specy_road.orchestration.workers.worker_adapters as cursor   # noqa: PLC0415
     monkeypatch.setattr(cursor, "create_chat", lambda wt, program="agent": chats.append(program) or "chat-1")
     launches: list[Launch] = []
     monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))

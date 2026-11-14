@@ -1,4 +1,4 @@
-"""Worker records and event log under ``work/.workers/`` (slice 7a).
+"""Worker records and event log under ``work/.workers/``.
 
 A worker is one leaf being implemented by one session on one vendor harness,
 launched (or adopted) by the coordinator. ``prompt --channel cli`` ran such a
@@ -26,24 +26,25 @@ import re
 import stat
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, fields
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 import yaml
+from jsonschema import Draft202012Validator
 
 from specy_road.clock import utc_now_iso
 from specy_road.fs_atomic import atomic_write_text
 from specy_road.git_subprocess import head_sha, run
 from specy_road.review_files import reviews_root  # noqa: F401 — re-exported for callers
+from specy_road.runtime_paths import specy_road_package_dir
+from specy_road.schema_revision import accepted_at_revision
 from specy_road.toolkit_version import running_toolkit_version
 from specy_road.orchestration.workers.worker_lock import (
     WORKERS_DIRNAME,  # noqa: F401 — re-exported
     WorkerError,  # noqa: F401 — re-exported
     workers_dir,  # noqa: F401 — re-exported
     workers_lock,  # noqa: F401 — re-exported
-)
-from specy_road.orchestration.workers.worker_schema import (
-    schema_errors,  # noqa: F401 — re-exported for callers
 )
 
 HARNESSES = ("claude-code", "codex", "cursor", "generic")
@@ -54,12 +55,51 @@ TERMINAL_STATES = frozenset({"failed", "terminated"})
 LEASE_HOLDERS = ("broker", "human", "native", "none")
 FLAG_EXTERNAL = "possibly_modified_externally"
 FLAG_RECONCILE = "needs_reconcile"
-FLAG_ORPHAN = "wrapper_gone_harness_alive"   # the wrapper died; its harness or process group did not
-FLAG_STALLED = "stalled"   # running, and no stdout for policy.stall_after_seconds; the next output line clears it
-FLAG_UNDELIVERED = "message_undelivered"   # a queued follow-up could not be delivered; the next message or resume sends it
-FLAG_NEEDS_PERSON = "needs_person"   # stalled past its recovery limit; cleared once it is no longer stalled (M22.39)
-MAILBOX_FLAG = "FLAG"   # work/.workers/FLAG: replaced by every append_event; `sync --wait` stats only this file
+# the wrapper died; its harness or process group did not
+FLAG_ORPHAN = "wrapper_gone_harness_alive"
+# running, and no stdout for policy.stall_after_seconds; the next output line clears it
+FLAG_STALLED = "stalled"
+# a queued follow-up could not be delivered; the next message or resume sends it
+FLAG_UNDELIVERED = "message_undelivered"
+# stalled past its recovery limit; cleared once it is no longer stalled
+FLAG_NEEDS_PERSON = "needs_person"
+# work/.workers/FLAG: replaced by every append_event; `sync --wait` stats only this file
+MAILBOX_FLAG = "FLAG"
 _ID = re.compile(r"^w-[0-9]{4,}$")
+
+
+# Schema checks for worker records and events.
+#
+# A leaf that adds a worker-record field writes, from its own code, records the
+# installed schema rejects. A worker record names the branch its leaf is built
+# on, so a record is valid when the installed schema or the one committed on
+# that ``branch`` in a specy-road checkout accepts it
+# (:func:`schema_revision.accepted_at_revision`). Without a branch, or outside a
+# checkout, only the installed schema counts.
+
+
+@cache
+def _validator(name: str) -> Draft202012Validator:
+    path = specy_road_package_dir() / "schemas" / name
+    return Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
+
+
+def schema_errors(data: dict[str, Any], schema_name: str, where: Path | None = None,
+                  branch: str | None = None) -> list[str]:
+    """The installed schema's errors, or none when ``schema_name`` as committed on ``branch``
+    accepts ``data``."""
+    out = []
+    for e in sorted(_validator(schema_name).iter_errors(data), key=lambda e: list(e.path)):
+        loc = "/".join(str(x) for x in e.path) if e.path else "(root)"
+        out.append(f"{loc}: {e.message}")
+    if (
+        out
+        and where is not None
+        and branch
+        and accepted_at_revision(data, f"schemas/{schema_name}", where, branch)
+    ):
+        return []
+    return out
 
 
 class LeaseError(WorkerError):
@@ -87,18 +127,28 @@ class WorkerRecord:
     contract_hash: str | None = None
     checkpoint: dict[str, Any] | None = None
     billing_route: str | None = None
-    started_head: str | None = None   # the worktree's HEAD when the worker was created; reconcile judges from here
-    wrapper_token: str | None = None  # random token in the wrapper's argv: a reused pid does not verify
-    pgid: int | None = None           # the wrapper's process group (it is a session leader); terminate kills it
+    # the worktree's HEAD when the worker was created; reconcile judges from here
+    started_head: str | None = None
+    # random token in the wrapper's argv: a reused pid does not verify
+    wrapper_token: str | None = None
+    # the wrapper's process group (it is a session leader); terminate kills it
+    pgid: int | None = None
     harness_pid: int | None = None    # the harness child, while it runs
-    harness_start: str | None = None  # the harness's start time (ps lstart): with the pid, its identity
-    last_output_at: str | None = None  # the harness's last stdout line (the turn's launch until one); stalled reads it
-    descendants_unchecked: bool | None = None  # terminate could not list escaped descendants; terminate repeats
-    queued_message: str | None = None  # a follow-up from ``worker message`` while the wrapper was still running
-    limit_reset_at: str | None = None  # while paused_by_limit: when the usage limit lifts (worker_turn_check)
-    recoveries: int | None = None      # `worker recover` runs on this worker so far; bounded by policy (M22.39)
+    # the harness's start time (ps lstart): with the pid, its identity
+    harness_start: str | None = None
+    # the harness's last stdout line (the turn's launch until one); stalled reads it
+    last_output_at: str | None = None
+    # terminate could not list escaped descendants; terminate repeats
+    descendants_unchecked: bool | None = None
+    # a follow-up from ``worker message`` while the wrapper was still running
+    queued_message: str | None = None
+    # while paused_by_limit: when the usage limit lifts (worker_turn_check)
+    limit_reset_at: str | None = None
+    # `worker recover` runs on this worker so far; bounded by policy
+    recoveries: int | None = None
     toolkit_version: str | None = None
-    unknown_fields: dict[str, Any] = field(default_factory=dict, repr=False)  # a newer schema's, kept on save
+    # a newer schema's, kept on save
+    unknown_fields: dict[str, Any] = field(default_factory=dict, repr=False)
 
     @property
     def active(self) -> bool:
@@ -177,7 +227,8 @@ def save_record(repo_root: Path, rec: WorkerRecord) -> Path:
 
 
 def _read_regular(path: Path) -> str:
-    """``path``'s UTF-8 text, opened without blocking: a FIFO or other non-regular file raises ``OSError`` at once."""
+    """``path``'s UTF-8 text, opened without blocking: a FIFO or other non-regular file raises
+    ``OSError`` at once."""
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(fd, "rb") as f:
         if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
@@ -200,7 +251,8 @@ def load_record(repo_root: Path, worker_id: str) -> WorkerRecord:
     errs = schema_errors(raw, "worker-record.schema.json", repo_root, raw.get("branch"))
     if errs:
         raise WorkerError(f"{worker_id}: " + "; ".join(errs))
-    known = {f.name for f in fields(WorkerRecord)} - {"unknown_fields"}   # a field the branch's schema added
+    # a field the branch's schema added
+    known = {f.name for f in fields(WorkerRecord)} - {"unknown_fields"}
     return WorkerRecord(**{k: v for k, v in raw.items() if k in known},
                         unknown_fields={k: v for k, v in raw.items() if k not in known})
 
@@ -234,18 +286,33 @@ def create_record(repo_root: Path, node_id: str, harness: str, model: str, workt
     with workers_lock(repo_root):
         attempts = [r.attempt for r in list_records(repo_root) if r.node_id == node_id]
         now = utc_now_iso()
-        rec = WorkerRecord(new_worker_id(repo_root), node_id, harness, model, str(Path(worktree).resolve()),
-                           "starting", {"holder": lease, "since": now}, 0, max(attempts, default=0) + 1, 0,
-                           now, now, branch=branch, contract_hash=contract_hash, billing_route=billing_route,
-                           started_head=head_sha(Path(worktree)),
-                           toolkit_version=running_toolkit_version())
+        rec = WorkerRecord(
+            new_worker_id(repo_root),
+            node_id,
+            harness,
+            model,
+            str(Path(worktree).resolve()),
+            "starting",
+            {"holder": lease, "since": now},
+            0,
+            max(attempts, default=0) + 1,
+            0,
+            now,
+            now,
+            branch=branch,
+            contract_hash=contract_hash,
+            billing_route=billing_route,
+            started_head=head_sha(Path(worktree)),
+            toolkit_version=running_toolkit_version(),
+        )
         save_record(repo_root, rec)
         append_event(repo_root, rec, "started", source="broker",
                      summary=f"delegated {node_id} to {harness}/{model} (attempt {rec.attempt})")
     return rec
 
 
-def set_state(repo_root: Path, rec: WorkerRecord, state: str, *, pid: int | None = ...) -> WorkerRecord:
+def set_state(repo_root: Path, rec: WorkerRecord, state: str, *,
+              pid: int | None = ...) -> WorkerRecord:
     def fn(r: WorkerRecord) -> None:
         r.state = state
         if pid is not ...:
@@ -276,7 +343,8 @@ def append_event(repo_root: Path, rec: WorkerRecord, type_: str, *, source: str,
         # A crash between the append and the record save leaves the record a
         # step behind the log; the log is the truth for the next sequence.
         rec.last_event_seq = max(rec.last_event_seq, _last_logged_seq(repo_root, rec.worker_id))
-        ev = WorkerEvent(rec.last_event_seq + 1, rec.worker_id, utc_now_iso(), type_, source, authority,
+        ev = WorkerEvent(rec.last_event_seq + 1, rec.worker_id, utc_now_iso(), type_, source,
+                         authority,
                          (summary or "(empty)")[:500], rec.instruction_epoch, detail, op_id)
         data = ev.to_dict()
         errs = schema_errors(data, "worker-event.schema.json")
@@ -288,12 +356,14 @@ def append_event(repo_root: Path, rec: WorkerRecord, type_: str, *, source: str,
             f.write(json.dumps(data, sort_keys=True) + "\n")
         rec.last_event_seq = ev.seq
         save_record(repo_root, rec)
-        atomic_write_text(workers_dir(repo_root) / MAILBOX_FLAG, f"{rec.worker_id} #{ev.seq} {ev.at}\n")
+        atomic_write_text(workers_dir(repo_root) / MAILBOX_FLAG,
+                          f"{rec.worker_id} #{ev.seq} {ev.at}\n")
     return ev
 
 
 def flag_stamp(repo_root: Path) -> tuple[int, int] | None:
-    """The flag's ``(inode, mtime_ns)``, ``None`` before any event; replaced, so the inode moves where mtime is coarse."""
+    """The flag's ``(inode, mtime_ns)``, ``None`` before any event; replaced, so the inode moves
+    where mtime is coarse."""
     path = workers_dir(repo_root) / MAILBOX_FLAG
     st = path.stat() if path.exists() else None
     return (st.st_ino, st.st_mtime_ns) if st else None
@@ -323,7 +393,8 @@ def events_since(repo_root: Path, worker_id: str, seq: int = 0) -> list[WorkerEv
             d = json.loads(line)
         except ValueError:
             continue
-        if isinstance(d, dict) and not schema_errors(d, "worker-event.schema.json") and d["seq"] > seq:
+        if isinstance(d, dict) and not schema_errors(d,
+                                                     "worker-event.schema.json") and d["seq"] > seq:
             out.append(WorkerEvent(**d))
     return out
 
@@ -335,21 +406,28 @@ def require_writer(rec: WorkerRecord, holder: str = "broker") -> None:
     have = rec.lease.get("holder")
     if have == holder:
         return
-    code = {"human": "WORKER_LEASED_BY_HUMAN", "native": "WORKER_NATIVE_OWNED"}.get(have, "WORKER_NO_WRITER")
-    raise LeaseError(f"{code}: {rec.worker_id} is leased to {have}; "
-                     + ("run `specy-road worker reclaim` first" if have == "human" else "it cannot be written"))
+    code = {"human": "WORKER_LEASED_BY_HUMAN", "native": "WORKER_NATIVE_OWNED"}.get(
+        have, "WORKER_NO_WRITER"
+    )
+    raise LeaseError(
+        f"{code}: {rec.worker_id} is leased to {have}; "
+        + ("run `specy-road worker reclaim` first" if have == "human" else "it cannot be written")
+    )
 
 
 def set_lease(repo_root: Path, rec: WorkerRecord, holder: str) -> None:
     if holder not in LEASE_HOLDERS:
         raise WorkerError(f"lease holder {holder!r}: expected one of {', '.join(LEASE_HOLDERS)}")
-    mutate(repo_root, rec, lambda r: setattr(r, "lease", {"holder": holder, "since": utc_now_iso()}))
+    mutate(repo_root, rec, lambda r: setattr(r, "lease", {"holder": holder,
+                                                          "since": utc_now_iso()}))
 
 
 def status_entries(worktree: Path) -> list[tuple[str, str]] | None:
-    """``(XY, path)`` per tracked-modified or untracked (``??``) path: what ``delegate`` refuses to launch over.
+    """``(XY, path)`` per tracked-modified or untracked (``??``) path: what ``delegate`` refuses to
+    launch over.
 
-    ``None`` when git cannot read the tree (re-review N9): a safety check must not read that as clean.
+    ``None`` when git cannot read the tree (re-review N9): a safety check must not read that as
+    clean.
     """
     # ``-z`` on the raw output: ``git_text`` strips the leading space of a `` M path`` line.
     r = run(["status", "--porcelain", "--untracked-files=all", "-z"], worktree)
@@ -371,7 +449,9 @@ def dirty_paths(worktree: Path) -> list[str]:
     return sorted({p for _xy, p in status_entries(worktree) or ()})
 
 
-def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None = None) -> dict[str, Any]:
+def take_checkpoint(
+    repo_root: Path, rec: WorkerRecord, native_turn: str | None = None
+) -> dict[str, Any]:
     """Remember where the worktree and session stood; a reclaim diffs from here."""
     cp = {"git_head": head_sha(Path(rec.worktree)), "native_turn": native_turn, "at": utc_now_iso(),
           "dirty_paths": dirty_paths(Path(rec.worktree))}

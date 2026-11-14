@@ -17,7 +17,7 @@ import json
 import sys
 from pathlib import Path
 
-from specy_road.orchestration.workers.worker_adapter_cursor import sum_cursor_turn_usage
+from specy_road.orchestration.workers.worker_adapters import sum_cursor_turn_usage
 from specy_road.orchestration.workers.worker_adapter_parsers import usage_fields
 
 _SESSION = "<session>"

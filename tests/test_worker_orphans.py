@@ -270,7 +270,7 @@ def test_finished_records_leave_a_slot_and_two_running_workers_refuse(tmp_path: 
     two running workers refuse. A pid-less running record would be swept to failed before the cap, so the
     sweep is held off: this test is the cap, not the dead-wrapper rule."""
     monkeypatch.setattr(
-        "specy_road.orchestration.workers.worker_ops_slots.wrapper_gone", lambda *_a, **_k: False
+        "specy_road.orchestration.workers.worker_ops.wrapper_gone", lambda *_a, **_k: False
     )
     repo, _ = make_worker_repo(tmp_path, max_workers=2)
     for n, state in enumerate(["completed"] * 10 + ["failed"] * 9):

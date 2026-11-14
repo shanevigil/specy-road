@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""CLI for ``specy-road worker …`` (``docs/orchestration-workers.md``). Commands return at once except ``sync --wait``.
-Exit codes: 0 done, 1 refused or failed, 2 unsupported or ``sync --wait`` timed out.
+"""CLI for ``specy-road worker …`` (``docs/orchestration-workers.md``). Commands return at once
+except ``sync --wait``. Exit codes: 0 done, 1 refused or failed, 2 unsupported or ``sync --wait``
+timed out.
 """
 
 from __future__ import annotations
@@ -8,14 +9,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from specy_road.cli_args import add_json_arg, add_model_arg
 from specy_road.orchestration import worker_ops as ops
-from specy_road.orchestration import worker_ops_slots as slots
 from specy_road.role_prompt_rework import rework_check
-from specy_road.bundled_scripts.worker_cli_args import FixRound
 from specy_road.orchestration import (_line, _row, timeline, timeline_lines, usage,
                                      usage_json_payload, usage_lines)
 from specy_road.orchestration import add_sync_parser, cmd_sync as _cmd_sync
@@ -24,7 +24,6 @@ from specy_road.orphaned_claims import append_claim_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.orchestration import ADAPTERS, Unsupported
-from specy_road.worker_hook import HOOKS
 from specy_road.orchestration import add_terminate, list_view
 from specy_road.orchestration import lookup_op
 from specy_road.orchestration import reconcile_lines, sync_marks
@@ -42,13 +41,121 @@ from specy_road.orchestration import (
 )
 
 
+# Prompt-submit hook adapters: record a human's direct prompt to a worker.
+#
+# A worker handed to a human (``worker handoff``) is resumed in the harness's
+# own session. The project-level prompt-submit hook fires in that session too,
+# so it can tell specy-road what was said: ``specy-road worker hook --format
+# <harness>`` reads the payload, matches the session id to a worker's
+# ``provider_session_id``, and appends the prompt to
+# ``work/.workers/<id>.interventions.jsonl``. ``worker reclaim`` reads that
+# file. The hook never blocks and always exits 0: it is a witness, not a gate.
+#
+# Payloads (verified against the vendors' docs, 2026-10-27): Claude Code and
+# Codex ``UserPromptSubmit`` carry ``session_id`` and ``prompt``; Cursor
+# ``beforeSubmitPrompt`` carries ``conversation_id`` and ``prompt`` and expects
+# a JSON answer with ``continue``.
+
+
+@dataclass(frozen=True)
+class HookAdapter:
+    harness: str
+    session_key: str
+    allow_output: str | None
+    config: str
+    notes: str
+
+    def session_and_prompt(self, payload: dict[str, Any]) -> tuple[str | None, str]:
+        sid = payload.get(self.session_key)
+        return (str(sid) if sid else None), str(payload.get("prompt") or "")
+
+
+HOOKS: dict[str, HookAdapter] = {
+    "claude-code": HookAdapter(
+        "claude-code", "session_id", None,
+        """{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {"type": "command", "command": "specy-road worker hook --format claude-code", "timeout": 10}
+        ]
+      }
+    ]
+  }
+}""",
+        "Put the snippet in .claude/settings.json. Plain stdout would be added as context, so the "
+        "hook prints "
+        "nothing. UserPromptSubmit fires for a human's `claude --resume <id>` session, the case "
+        "that matters, and "
+        "was observed to fire for every headless `claude -p --resume <id> \"<prompt>\"` run too "
+        "(Claude Code 2.1.312 in the 2026-11-04 sandbox replay; also seen in the 2026-10-28 one).",
+    ),
+    "codex": HookAdapter(
+        "codex", "session_id", None,
+        """{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {"type": "command", "command": "specy-road worker hook --format codex", "timeout": 10,
+           "statusMessage": "specy-road worker witness"}
+        ]
+      }
+    ]
+  }
+}""",
+        "Put the snippet in .codex/hooks.json; the project's .codex/ layer and the hook must be "
+        "trusted "
+        "(`/hooks`, or --dangerously-bypass-hook-trust). Silent on success, as Codex expects.",
+    ),
+    "cursor": HookAdapter(
+        "cursor", "conversation_id", json.dumps({"continue": True}),
+        """{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {"command": "specy-road worker hook --format cursor", "timeout": 10}
+    ]
+  }
+}""",
+        "Put the snippet in .cursor/hooks.json. The hook answers {\"continue\": true} so the "
+        "prompt always "
+        "goes through. Cursor's conversation_id is what `agent --resume` names, so it matches the "
+        "worker's session id.",
+    ),
+}
+
+
+class FixRound(argparse.Action):
+    """``--fix-round``: lets ``worker message`` omit ``--file``/``--text``.
+
+    The pair stays a required mutually exclusive group, so a plain message without either keeps
+    argparse's own refusal (exit 2, with the ``(--file PATH | --text TEXT)`` usage). argparse checks
+    required groups only after every argument's action has run, so this action lifting the
+    requirement covers ``--fix-round`` in any position.
+    """
+
+    def __init__(self, *args: Any, group: argparse._MutuallyExclusiveGroup, **kwargs: Any) -> None:
+        super().__init__(*args, nargs=0, default=False, **kwargs)
+        self.group = group
+
+    def __call__(self, parser: argparse.ArgumentParser, namespace: argparse.Namespace, values: Any,
+                 option_string: str | None = None) -> None:
+        setattr(namespace, self.dest, True)
+        # build_parser makes a new parser per main(), so this lasts one parse
+        self.group.required = False
+
+
 def _emit(ns: argparse.Namespace, data: dict[str, Any], lines: list[str]) -> int:
     print(json.dumps(data, indent=2) if ns.json else "\n".join(lines))
     return 0
 
 
 def _target_of(ns: argparse.Namespace) -> str | None:
-    return getattr(ns, "worker_id", None) or getattr(ns, "node_id", None) or getattr(ns, "node", None)
+    return (
+        getattr(ns, "worker_id", None) or getattr(ns, "node_id", None) or getattr(ns, "node", None)
+    )
 
 
 def _replay(ns: argparse.Namespace, op: str, old: dict[str, Any]) -> int:
@@ -57,7 +164,9 @@ def _replay(ns: argparse.Namespace, op: str, old: dict[str, Any]) -> int:
     return 0 if old["state"] == "applied" else 1
 
 
-def _with_op(ns: argparse.Namespace, root: Path, kind: str, fn, inputs: dict[str, Any] | None = None):
+def _with_op(
+    ns: argparse.Namespace, root: Path, kind: str, fn, inputs: dict[str, Any] | None = None
+):
     """Run ``fn()`` under ``--op-id``: a retried op answers from its first result.
 
     ``inputs`` are the behaviour-affecting arguments the op id is bound to;
@@ -67,7 +176,8 @@ def _with_op(ns: argparse.Namespace, root: Path, kind: str, fn, inputs: dict[str
     op = getattr(ns, "op_id", None)
     if op:
         if inputs is None:
-            inputs = {k: getattr(ns, k) for k in ("model", "harness", "worktree", "text", "note", "session", "offline", "rework")
+            inputs = {k: getattr(ns, k) for k in ("model", "harness", "worktree", "text", "note",
+                                                  "session", "offline", "rework")
                       if getattr(ns, k, None)}
         old = begin_op(root, op, kind, _target_of(ns), inputs)
         if old is not None:
@@ -88,12 +198,15 @@ def cmd_delegate(ns: argparse.Namespace) -> int:
     state: dict[str, Any] = {}
 
     def go():
-        if ns.rework:   # before delegate, which would return an active worker rather than replace it
+        # before delegate, which would return an active worker rather than replace it
+        if ns.rework:
             rework_check(root, ns.node_id)
         rec, created = ops.delegate(root, ns.node_id, ns.model, harness=ns.harness,
-                                    worktree=Path(ns.worktree) if ns.worktree else None, offline=ns.offline,
+                                    worktree=Path(ns.worktree) if ns.worktree else None,
+                                    offline=ns.offline,
                                     rework=ns.rework)
-        state.update(worker_id=rec.worker_id, created=created, state=rec.state, worktree=rec.worktree,
+        state.update(worker_id=rec.worker_id, created=created, state=rec.state,
+                     worktree=rec.worktree,
                      harness=rec.harness, model=rec.model, pid=rec.pid)
         return dict(state)
 
@@ -101,23 +214,34 @@ def cmd_delegate(ns: argparse.Namespace) -> int:
     if rc is not None:
         return rc
     verb = "delegated" if state["created"] else "already active"
-    return _emit(ns, state, [f"{state['worker_id']}: {verb} — {ns.node_id} on {state['harness']}/{state['model']} "
+    return _emit(ns, state,
+                 [f"{state['worker_id']}: {verb} — {ns.node_id} on "
+                  f"{state['harness']}/{state['model']} "
                              f"in {state['worktree']}", "Poll with `specy-road worker sync`."])
 
 
-def _with_stalls(data: dict[str, Any], lines: list[str], stalls: list[dict]) -> tuple[dict[str, Any], list[str]]:
-    """Add each stalled worker, with how long it has been silent, to ``list`` and ``sync`` output (M22.39)."""
-    return ({**data, "stalled": stalls}, [*lines, *slots.stall_lines(stalls)]) if stalls else (data, lines)
+def _with_stalls(
+    data: dict[str, Any], lines: list[str], stalls: list[dict]
+) -> tuple[dict[str, Any], list[str]]:
+    """Add each stalled worker, with how long it has been silent, to ``list`` and ``sync``
+    output."""
+    return (
+        ({**data, "stalled": stalls}, [*lines, *ops.stall_lines(stalls)])
+        if stalls
+        else (data, lines)
+    )
 
 
 def cmd_list(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
-    stalls = slots.stalled_workers(root)   # sweeps first, so the flags listed below are current
+    stalls = ops.stalled_workers(root)   # sweeps first, so the flags listed below are current
     state = read_state(root)
     recs = state.records if ns.all else state.active_records()
     if not recs:   # a pending recovery on a failed worker is still listed
-        return _emit(ns, *_with_stalls({"workers": []}, ["No workers under work/.workers/."], stalls))
-    return _emit(ns, *_with_stalls(*list_view(root, recs, _row, _line), stalls))   # orphaned: held, leaf over
+        return _emit(ns, *_with_stalls({"workers": []}, ["No workers under work/.workers/."],
+                                       stalls))
+    # orphaned: held, leaf over
+    return _emit(ns, *_with_stalls(*list_view(root, recs, _row, _line), stalls))
 
 
 def cmd_status(ns: argparse.Namespace) -> int:
@@ -126,7 +250,8 @@ def cmd_status(ns: argparse.Namespace) -> int:
     last = events_since(root, rec.worker_id, max(rec.last_event_seq - 3, 0))
     data = _row(rec)
     data["recent_events"] = [e.to_dict() for e in last]
-    return _emit(ns, data, [_line(rec), f"  worktree: {rec.worktree}", f"  session: {rec.provider_session_id or '-'}",
+    return _emit(ns, data, [_line(rec), f"  worktree: {rec.worktree}",
+                            f"  session: {rec.provider_session_id or '-'}",
                             *(f"  #{e.seq} {e.type} ({e.source}): {e.summary}" for e in last)])
 
 
@@ -139,11 +264,18 @@ def cmd_events(ns: argparse.Namespace) -> int:
 
 
 def cmd_sync(ns: argparse.Namespace) -> int:
-    root = resolve_repo_root(ns)   # sync sweeps stalls itself; the report reads them after it
-    return _cmd_sync(ns, emit=lambda ns, data, lines: _emit(ns, *_with_stalls(data, lines, slots.stalled_workers(root))))
+    root = resolve_repo_root(ns)  # sync sweeps stalls itself; the report reads them after it
+    return _cmd_sync(
+        ns,
+        emit=lambda ns, data, lines: _emit(
+            ns, *_with_stalls(data, lines, ops.stalled_workers(root))
+        ),
+    )
 
 
-def _mutate(ns: argparse.Namespace, kind: str, fn, render, inputs: dict[str, Any] | None = None) -> int:
+def _mutate(
+    ns: argparse.Namespace, kind: str, fn, render, inputs: dict[str, Any] | None = None
+) -> int:
     root = resolve_repo_root(ns)
     out: dict[str, Any] = {}
 
@@ -165,13 +297,31 @@ def cmd_message(ns: argparse.Namespace) -> int:
         if old is None:
             raise WorkerError(f"cannot read --file {ns.file}: {e}") from None
         return _replay(ns, ns.op_id, old)
-    return _mutate(ns, "message", lambda root: _row(ops.message(root, ns.worker_id, text, offline=ns.offline,
-                                                                 no_queue=ns.no_queue, fix_round=ns.fix_round)),
-                   lambda o: ([f"{o['worker_id']}: message queued for the next turn"]
-                              if o.get("queued_message") else
-                              [f"{o['worker_id']}: message sent; resumed (pid {o['pid']})"]),
-                   inputs={"text": text, **({"offline": True} if ns.offline else {}),
-                           **({"no_queue": True} if ns.no_queue else {}), **({"fix_round": True} if ns.fix_round else {})})
+    return _mutate(
+        ns,
+        "message",
+        lambda root: _row(
+            ops.message(
+                root,
+                ns.worker_id,
+                text,
+                offline=ns.offline,
+                no_queue=ns.no_queue,
+                fix_round=ns.fix_round,
+            )
+        ),
+        lambda o: (
+            [f"{o['worker_id']}: message queued for the next turn"]
+            if o.get("queued_message")
+            else [f"{o['worker_id']}: message sent; resumed (pid {o['pid']})"]
+        ),
+        inputs={
+            "text": text,
+            **({"offline": True} if ns.offline else {}),
+            **({"no_queue": True} if ns.no_queue else {}),
+            **({"fix_round": True} if ns.fix_round else {}),
+        },
+    )
 
 
 def _resume_op_inputs(ns: argparse.Namespace) -> dict[str, Any] | None:
@@ -192,10 +342,16 @@ def cmd_resume(ns: argparse.Namespace) -> int:
 
 
 def cmd_recover(ns: argparse.Namespace) -> int:
-    return _mutate(ns, "recover", lambda root: _row(slots.recover(root, ns.worker_id, offline=ns.offline)),
-                   lambda o: [f"{o['worker_id']}: recovered — ended the stalled turn, kept the worktree, resumed "
-                              f"(pid {o['pid']}, recovery {o.get('recoveries')})"],
-                   inputs={"offline": True} if ns.offline else None)
+    return _mutate(
+        ns,
+        "recover",
+        lambda root: _row(ops.recover(root, ns.worker_id, offline=ns.offline)),
+        lambda o: [
+            f"{o['worker_id']}: recovered — ended the stalled turn, kept the worktree, resumed "
+            f"(pid {o['pid']}, recovery {o.get('recoveries')})"
+        ],
+        inputs={"offline": True} if ns.offline else None,
+    )
 
 
 def cmd_interrupt(ns: argparse.Namespace) -> int:
@@ -212,10 +368,17 @@ def cmd_handoff(ns: argparse.Namespace) -> int:
     def fn(root):
         rec, cmd = ops.handoff(root, ns.worker_id)
         return {**_row(rec), "resume_command": cmd}
-    return _mutate(ns, "handoff", fn, lambda o: [
-        f"{o['worker_id']}: leased to you (epoch {o['instruction_epoch']}). In {o['worktree']} run:",
-        "  " + render_command(o["resume_command"]),
-        "Then `specy-road worker reclaim " + o["worker_id"] + "` when you are done."])
+    return _mutate(
+        ns,
+        "handoff",
+        fn,
+        lambda o: [
+            f"{o['worker_id']}: leased to you (epoch {o['instruction_epoch']}). In {o['worktree']} "
+            "run:",
+            "  " + render_command(o["resume_command"]),
+            "Then `specy-road worker reclaim " + o["worker_id"] + "` when you are done.",
+        ],
+    )
 
 
 def cmd_reclaim(ns: argparse.Namespace) -> int:
@@ -223,37 +386,59 @@ def cmd_reclaim(ns: argparse.Namespace) -> int:
         rec, delta = ops.reclaim(root, ns.worker_id, ns.note or "")
         return {**_row(rec), "delta": delta}
     return _mutate(ns, "reclaim", fn, lambda o: [
-        f"{o['worker_id']}: reclaimed; epoch {o['instruction_epoch']}; {len(o['delta']['prompts'])} prompt(s) recorded"
+        f"{o['worker_id']}: reclaimed; epoch {o['instruction_epoch']}; "
+        f"{len(o['delta']['prompts'])} prompt(s) recorded"
         + (f"; flags {o['flags']}" if o["flags"] else ""),
         *(o["delta"]["diff_stat"].splitlines() or ["  no changes since the checkpoint"])])
 
 
 def cmd_adopt(ns: argparse.Namespace) -> int:
     return _mutate(ns, "adopt", lambda root: _row(ops.adopt(
-        root, ns.node, ns.harness, ns.session, worktree=Path(ns.worktree) if ns.worktree else None, model=ns.model)),
-        lambda o: [f"{o['worker_id']}: adopted {o['harness']} session {o['provider_session_id']} (observe only)"])
+        root, ns.node, ns.harness, ns.session, worktree=Path(ns.worktree) if ns.worktree else None,
+                                                            model=ns.model)),
+        lambda o: [f"{o['worker_id']}: adopted {o['harness']} session {o['provider_session_id']} "
+                   "(observe only)"])
 
 
 def cmd_reconcile(ns: argparse.Namespace) -> int:
     def fn(root):
-        rec, delta = ops.dismiss(root, ns.worker_id, ns.dismiss) if ns.dismiss is not None else ops.reconcile(root, ns.worker_id)
+        rec, delta = (
+            ops.dismiss(root, ns.worker_id, ns.dismiss)
+            if ns.dismiss is not None
+            else ops.reconcile(root, ns.worker_id)
+        )
         return {**_row(rec), "delta": delta}
-    return _mutate(ns, "reconcile", fn, reconcile_lines, inputs={"dismiss": ns.dismiss} if ns.dismiss is not None else None)
+    return _mutate(ns, "reconcile", fn, reconcile_lines,
+                   inputs={"dismiss": ns.dismiss} if ns.dismiss is not None else None)
 
 
 def cmd_open(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     rec = load_record(root, ns.worker_id)
     try:
-        cmd = ADAPTERS[rec.harness].human_resume(rec.provider_session_id or "", Path(rec.worktree)) \
+        cmd = ADAPTERS[rec.harness].human_resume(rec.provider_session_id or "",
+                                                 Path(rec.worktree)) \
             if rec.provider_session_id else None
     except Unsupported:
         cmd = None
-    data = {"worker_id": rec.worker_id, "worktree": rec.worktree, "log": str(log_path(root, rec.worker_id)),
-            "resume_command": cmd, "lease": rec.lease.get("holder")}
-    return _emit(ns, data, [f"worktree: {rec.worktree}", f"log:      {data['log']}",
-                            "resume:   " + (render_command(cmd) if cmd else "(no native session)")
-                            + ("" if rec.lease.get("holder") == "human" else "  — run `worker handoff` first")])
+    data = {
+        "worker_id": rec.worker_id,
+        "worktree": rec.worktree,
+        "log": str(log_path(root, rec.worker_id)),
+        "resume_command": cmd,
+        "lease": rec.lease.get("holder"),
+    }
+    return _emit(
+        ns,
+        data,
+        [
+            f"worktree: {rec.worktree}",
+            f"log:      {data['log']}",
+            "resume:   "
+            + (render_command(cmd) if cmd else "(no native session)")
+            + ("" if rec.lease.get("holder") == "human" else "  — run `worker handoff` first"),
+        ],
+    )
 
 
 def _records_for(root: Path, target: str) -> list:
@@ -269,13 +454,19 @@ def _records_for(root: Path, target: str) -> list:
 def cmd_timeline(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     rec = _records_for(root, ns.target)[-1]   # a node id: its latest worker
-    data = timeline(rec, [e.to_dict() for e in events_since(root, rec.worker_id)], sync_marks(root).get(rec.worker_id))
+    data = timeline(rec, [e.to_dict() for e in events_since(root, rec.worker_id)],
+                    sync_marks(root).get(rec.worker_id))
     return _emit(ns, data, timeline_lines(data))
 
 
 def cmd_usage(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
-    data = usage([(r, [e.to_dict() for e in events_since(root, r.worker_id)]) for r in _records_for(root, ns.target)])
+    data = usage(
+        [
+            (r, [e.to_dict() for e in events_since(root, r.worker_id)])
+            for r in _records_for(root, ns.target)
+        ]
+    )
     payload = usage_json_payload(data, root) if ns.json else data
     return _emit(ns, payload, usage_lines(data, root))
 
@@ -299,15 +490,77 @@ def cmd_hook(ns: argparse.Namespace) -> int:
 
 def _offline_arg(sp: argparse.ArgumentParser) -> None:
     sp.add_argument("--offline", action="store_true",
-                    help="Count this checkout's workers only and push no lease (when the integration remote is unreachable)")
+                    help="Count this checkout's workers only and push no lease (when the "
+                         "integration remote is unreachable)")
 
 
 def _w(sp: argparse.ArgumentParser, *, op: bool = True) -> None:
     sp.add_argument("worker_id", metavar="W")
     add_json_arg(sp)
     if op:
-        sp.add_argument("--op-id", metavar="ID", help="Idempotency key; a retry returns the first result")
+        sp.add_argument("--op-id", metavar="ID",
+                        help="Idempotency key; a retry returns the first result")
     add_repo_root_arg(sp)
+
+
+def _add_follow_up_parsers(ws) -> None:
+    """``message``, ``resume``, ``recover`` and ``interrupt``: a further turn on a worker's
+    session."""
+    sp = ws.add_parser("message", help="Send a follow-up prompt (resumes the native session)")
+    _w(sp)
+    g = sp.add_mutually_exclusive_group(required=True)
+    g.add_argument("--file", metavar="PATH")
+    g.add_argument("--text", metavar="TEXT")
+    sp.add_argument("--fix-round", action=FixRound, group=g,
+                    help="Send the blocking findings and the class-audit block, then any text")
+    sp.add_argument("--no-queue", action="store_true",
+                    help="Refuse while a turn is still running instead of queueing for the next "
+                         "turn")
+    _offline_arg(sp)
+    sp.set_defaults(func=cmd_message)
+    sp = ws.add_parser("resume", help="Resume a stopped worker with a continue prompt")
+    _w(sp)
+    _offline_arg(sp)
+    sp.add_argument("--ready-only", action="store_true",
+                    help="Resume with a short prompt to write READY for HEAD only (after READY "
+                         "missing)")
+    sp.set_defaults(func=cmd_resume)
+    sp = ws.add_parser(
+        "recover", help="End a stalled worker, keep its work, and resume its session (one shot)")
+    _w(sp)
+    _offline_arg(sp)
+    sp.set_defaults(func=cmd_recover)
+    sp = ws.add_parser("interrupt",
+                       help="Stop the current turn (declared unsupported by the CLI adapters)")
+    _w(sp, op=False)
+    sp.set_defaults(func=cmd_interrupt)
+
+
+def _add_view_parsers(ws) -> None:
+    """``reconcile``, ``open``, ``timeline`` and ``usage``: what a worker changed, where, and at
+    what cost."""
+    sp = ws.add_parser("reconcile",
+                       help="Changed paths since the checkpoint vs the leaf's touch zones")
+    _w(sp)
+    sp.add_argument("--dismiss", metavar="REASON",
+                    help="Clear needs_reconcile, recording REASON as an event")
+    sp.set_defaults(func=cmd_reconcile)
+    sp = ws.add_parser("open", help="Where a human can look: worktree, log, resume command")
+    _w(sp, op=False)
+    sp.set_defaults(func=cmd_open)
+    sp = ws.add_parser("timeline",
+                       help="Seconds per phase of a worker's latest turn (worker id or node id)")
+    sp.add_argument("target", metavar="W|NODE_ID")
+    add_json_arg(sp)
+    add_repo_root_arg(sp)
+    sp.set_defaults(func=cmd_timeline)
+    sp = ws.add_parser("usage",
+                       help="Tokens and cost per attempt, and the node's total (worker id or node "
+                            "id)")
+    sp.add_argument("target", metavar="W|NODE_ID")
+    add_json_arg(sp)
+    add_repo_root_arg(sp)
+    sp.set_defaults(func=cmd_usage)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -320,10 +573,16 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("node_id", help="A claimed leaf, or a chore slug (`specy-road chore start`)")
     add_model_arg(sp, help="Roster id (executor role); a chore's default is its own --model")
     sp.add_argument("--harness", choices=HARNESSES, help="Override the roster entry's harness")
-    sp.add_argument("--worktree", help="Run in this checkout (default: this one if it has the claim's branch, else a linked worktree)")
-    _offline_arg(sp); sp.add_argument("--rework", action="store_true", help="Take over after blocking reviews or a terminated or failed worker")
-    add_json_arg(sp); sp.add_argument("--op-id", metavar="ID")
-    add_repo_root_arg(sp); sp.set_defaults(func=cmd_delegate)
+    sp.add_argument("--worktree",
+                    help="Run in this checkout (default: this one if it has the claim's branch, "
+                         "else a linked worktree)")
+    _offline_arg(sp)
+    sp.add_argument("--rework", action="store_true",
+                    help="Take over after blocking reviews or a terminated or failed worker")
+    add_json_arg(sp)
+    sp.add_argument("--op-id", metavar="ID")
+    add_repo_root_arg(sp)
+    sp.set_defaults(func=cmd_delegate)
 
     sp = ws.add_parser("list", help="Active workers (--all includes finished)")
     sp.add_argument("--all", action="store_true")
@@ -331,59 +590,52 @@ def build_parser() -> argparse.ArgumentParser:
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_list)
 
-    sp = ws.add_parser("status", help="One worker's record and last events"); _w(sp, op=False); sp.set_defaults(func=cmd_status)
-    sp = ws.add_parser("events", help="A worker's events after a sequence number"); _w(sp, op=False)
-    sp.add_argument("--since", type=int, default=0, metavar="N"); sp.set_defaults(func=cmd_events)
+    sp = ws.add_parser("status", help="One worker's record and last events")
+    _w(sp, op=False)
+    sp.set_defaults(func=cmd_status)
+    sp = ws.add_parser("events", help="A worker's events after a sequence number")
+    _w(sp, op=False)
+    sp.add_argument("--since", type=int, default=0, metavar="N")
+    sp.set_defaults(func=cmd_events)
 
     add_sync_parser(ws, cmd_sync, add_repo_root_arg)
-
-    sp = ws.add_parser("message", help="Send a follow-up prompt (resumes the native session)"); _w(sp)
-    g = sp.add_mutually_exclusive_group(required=True)
-    g.add_argument("--file", metavar="PATH"); g.add_argument("--text", metavar="TEXT")
-    sp.add_argument("--fix-round", action=FixRound, group=g, help="Send the blocking findings and the class-audit block, then any text")
-    sp.add_argument("--no-queue", action="store_true",
-                    help="Refuse while a turn is still running instead of queueing for the next turn")
-    _offline_arg(sp); sp.set_defaults(func=cmd_message)
-    sp = ws.add_parser("resume", help="Resume a stopped worker with a continue prompt"); _w(sp); _offline_arg(sp)
-    sp.add_argument("--ready-only", action="store_true",
-                    help="Resume with a short prompt to write READY for HEAD only (after READY missing)")
-    sp.set_defaults(func=cmd_resume)
-    sp = ws.add_parser("recover", help="End a stalled worker, keep its work, and resume its session (one shot)")
-    _w(sp); _offline_arg(sp); sp.set_defaults(func=cmd_recover)
-    sp = ws.add_parser("interrupt", help="Stop the current turn (declared unsupported by the CLI adapters)"); _w(sp, op=False)
-    sp.set_defaults(func=cmd_interrupt)
-    add_terminate(ws, cmd_terminate, _emit)   # `terminate W`, or `--orphaned` for every held worker whose leaf is over
-    sp = ws.add_parser("handoff", help="Lease the worker to a human and print the native resume command"); _w(sp); sp.set_defaults(func=cmd_handoff)
-    sp = ws.add_parser("reclaim", help="Take the lease back; record what the human did"); _w(sp)
-    sp.add_argument("--note", metavar="TEXT"); sp.set_defaults(func=cmd_reclaim)
-    sp = ws.add_parser("reconcile", help="Changed paths since the checkpoint vs the leaf's touch zones"); _w(sp)
-    sp.add_argument("--dismiss", metavar="REASON", help="Clear needs_reconcile, recording REASON as an event")
-    sp.set_defaults(func=cmd_reconcile)
-    sp = ws.add_parser("open", help="Where a human can look: worktree, log, resume command"); _w(sp, op=False)
-    sp.set_defaults(func=cmd_open)
-    sp = ws.add_parser("timeline", help="Seconds per phase of a worker's latest turn (worker id or node id)")
-    sp.add_argument("target", metavar="W|NODE_ID"); add_json_arg(sp)
-    add_repo_root_arg(sp); sp.set_defaults(func=cmd_timeline)
-    sp = ws.add_parser("usage", help="Tokens and cost per attempt, and the node's total (worker id or node id)")
-    sp.add_argument("target", metavar="W|NODE_ID"); add_json_arg(sp)
-    add_repo_root_arg(sp); sp.set_defaults(func=cmd_usage)
+    _add_follow_up_parsers(ws)
+    # `terminate W`, or `--orphaned` for every held worker whose leaf is over
+    add_terminate(ws, cmd_terminate, _emit)
+    sp = ws.add_parser("handoff",
+                       help="Lease the worker to a human and print the native resume command")
+    _w(sp)
+    sp.set_defaults(func=cmd_handoff)
+    sp = ws.add_parser("reclaim", help="Take the lease back; record what the human did")
+    _w(sp)
+    sp.add_argument("--note", metavar="TEXT")
+    sp.set_defaults(func=cmd_reclaim)
+    _add_view_parsers(ws)
 
     sp = ws.add_parser("adopt", help="Register a session the user started natively (observe only)")
-    sp.add_argument("--node", required=True); sp.add_argument("--harness", required=True, choices=HARNESSES)
+    sp.add_argument("--node", required=True)
+    sp.add_argument("--harness", required=True, choices=HARNESSES)
     sp.add_argument("--session", required=True, help="The harness's session/thread/chat id")
-    add_model_arg(sp, default="unknown"); sp.add_argument("--worktree")
-    add_json_arg(sp); sp.add_argument("--op-id", metavar="ID")
-    add_repo_root_arg(sp); sp.set_defaults(func=cmd_adopt)
+    add_model_arg(sp, default="unknown")
+    sp.add_argument("--worktree")
+    add_json_arg(sp)
+    sp.add_argument("--op-id", metavar="ID")
+    add_repo_root_arg(sp)
+    sp.set_defaults(func=cmd_adopt)
 
-    sp = ws.add_parser("hook", help="Prompt-submit hook body: record a human's prompt to a worker session")
+    sp = ws.add_parser("hook",
+                       help="Prompt-submit hook body: record a human's prompt to a worker session")
     sp.add_argument("--format", choices=sorted(HOOKS), required=True)
-    sp.add_argument("--print-config", action="store_true", help="Print the snippet that wires this hook into --format's harness")
-    add_repo_root_arg(sp); sp.set_defaults(func=cmd_hook)
+    sp.add_argument("--print-config", action="store_true",
+                    help="Print the snippet that wires this hook into --format's harness")
+    add_repo_root_arg(sp)
+    sp.set_defaults(func=cmd_hook)
     return p
 
 
 def _failure_code(exc: BaseException) -> int | None:
-    """The status a worker failure already has, or None when this command does not own that error."""
+    """The status a worker failure already has, or None when this command does not own that
+    error."""
     if isinstance(exc, Unsupported):
         return 2
     if isinstance(exc, (WorkerError, LeaseError)):
@@ -392,7 +644,8 @@ def _failure_code(exc: BaseException) -> int | None:
 
 
 def _report_failure(ns: argparse.Namespace, exc: BaseException, code: int) -> None:
-    """Print ``exc`` and stop. Every claimed ``delegate`` failure, of any type, names how to resolve the claim."""
+    """Print ``exc`` and stop. Every claimed ``delegate`` failure, of any type, names how to resolve
+    the claim."""
     text = str(exc)
     if getattr(ns, "worker_cmd", None) == "delegate":
         text = append_claim_hint(resolve_repo_root(ns), getattr(ns, "node_id", None), text)

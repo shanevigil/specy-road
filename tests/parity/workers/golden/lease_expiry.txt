@@ -1,0 +1,88 @@
+$ specy-road lease_expiry
+exit: 0
+--- stdout ---
+{"leases_before": ["<SHA>/w-0001", "<SHA>/w-0002"]}
+{"argv": ["sync"], "exit": 0, "out": "w-0001 M1.1 failed worktree=<REPO> lease=broker epoch=0\n  #1 started (broker): delegated M1.1 to claude-code/opus (attempt 1)\n  #2 error (system): wrapper pid - is gone without recording an exit; marked failed\nw-0002 M1.2 failed worktree=<REPO> lease=broker epoch=0\n  #1 started (broker): delegated M1.2 to claude-code/opus (attempt 1)\n(re-run with --ack once handled)\n", "err": ""}
+{"leases_after": []}
+=== .lock
+<present>
+=== FLAG
+<present>
+=== w-0001.events.jsonl
+{"at": "<MASKED>", "authority": "system", "epoch": 0, "seq": 1, "source": "broker", "summary": "delegated M1.1 to claude-code/opus (attempt 1)", "type": "started", "worker_id": "w-0001"}
+{"at": "<MASKED>", "authority": "system", "epoch": 0, "seq": 2, "source": "system", "summary": "wrapper pid - is gone without recording an exit; marked failed", "type": "error", "worker_id": "w-0001"}
+=== w-0001.yaml
+{
+  "attempt": 1,
+  "billing_route": null,
+  "branch": null,
+  "checkpoint": null,
+  "contract_hash": null,
+  "created": "<MASKED>",
+  "descendants_unchecked": null,
+  "flags": [],
+  "harness": "claude-code",
+  "harness_pid": null,
+  "harness_start": null,
+  "instruction_epoch": 0,
+  "last_event_seq": 2,
+  "last_output_at": null,
+  "lease": {
+    "holder": "broker",
+    "since": "<TIME>"
+  },
+  "limit_reset_at": null,
+  "model": "opus",
+  "node_id": "M1.1",
+  "pgid": null,
+  "pid": null,
+  "provider_session_id": "sid-1",
+  "queued_message": null,
+  "recoveries": null,
+  "started_head": "<MASKED>",
+  "state": "failed",
+  "toolkit_version": "<MASKED>",
+  "updated": "<MASKED>",
+  "worker_id": "w-0001",
+  "worktree": "<REPO>",
+  "wrapper_token": null
+}
+=== w-0002.events.jsonl
+{"at": "<MASKED>", "authority": "system", "epoch": 0, "seq": 1, "source": "broker", "summary": "delegated M1.2 to claude-code/opus (attempt 1)", "type": "started", "worker_id": "w-0002"}
+=== w-0002.yaml
+{
+  "attempt": 1,
+  "billing_route": null,
+  "branch": null,
+  "checkpoint": null,
+  "contract_hash": null,
+  "created": "<MASKED>",
+  "descendants_unchecked": null,
+  "flags": [],
+  "harness": "claude-code",
+  "harness_pid": null,
+  "harness_start": null,
+  "instruction_epoch": 0,
+  "last_event_seq": 1,
+  "last_output_at": null,
+  "lease": {
+    "holder": "broker",
+    "since": "<TIME>"
+  },
+  "limit_reset_at": null,
+  "model": "opus",
+  "node_id": "M1.2",
+  "pgid": null,
+  "pid": null,
+  "provider_session_id": "sid-2",
+  "queued_message": null,
+  "recoveries": null,
+  "started_head": "<MASKED>",
+  "state": "failed",
+  "toolkit_version": "<MASKED>",
+  "updated": "<MASKED>",
+  "worker_id": "w-0002",
+  "worktree": "<REPO>",
+  "wrapper_token": null
+}
+--- stderr ---

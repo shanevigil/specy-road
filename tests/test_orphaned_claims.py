@@ -9,7 +9,7 @@ import pytest
 import specy_road
 import yaml
 
-import specy_road.orchestration.workers.worker_adapter_cursor as cursor
+import specy_road.orchestration.workers.worker_adapters as cursor
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli, worker_cli

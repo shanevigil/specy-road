@@ -39,7 +39,7 @@ from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_reconcile as wrc
 from specy_road.orchestration.workers import worker_sessions as wsess
 from specy_road.orchestration.workers import worker_state as ws
-from specy_road.orchestration.workers import worker_witness as ww
+from specy_road.orchestration.workers import worker_lease as ww
 
 UUID = "7f1c0000-1111-4222-8333-444444444444"
 

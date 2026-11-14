@@ -46,7 +46,7 @@
       ]
     },
     {
-      "size": 24,
+      "size": 19,
       "modules": [
         "specy_road.bundled_scripts.review_cli",
         "specy_road.bundled_scripts.role_prompt",
@@ -59,13 +59,8 @@
         "specy_road.review_usage",
         "specy_road.role_prompt_cli",
         "specy_road.orchestration.workers.worker_cli_render",
-        "specy_road.orchestration.workers.worker_exit",
         "specy_road.orchestration.workers.worker_lease",
         "specy_road.orchestration.workers.worker_ops",
-        "specy_road.orchestration.workers.worker_ops_launch",
-        "specy_road.orchestration.workers.worker_ops_lifecycle",
-        "specy_road.orchestration.workers.worker_ops_message",
-        "specy_road.orchestration.workers.worker_ops_slots",
         "specy_road.orchestration.workers.worker_orphans",
         "specy_road.orchestration.workers.worker_process",
         "specy_road.orchestration.workers.worker_reconcile",
@@ -335,7 +330,7 @@
       "to": "specy_road.bundled_scripts.refresh_schemas"
     },
     {
-      "from": "specy_road.orchestration.workers.worker_ops_launch",
+      "from": "specy_road.orchestration.workers.worker_ops",
       "to": "specy_road.bundled_scripts.role_prompt"
     },
     {

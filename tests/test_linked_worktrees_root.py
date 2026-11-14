@@ -13,7 +13,7 @@ from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_cli import run_worker_cli
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road.orchestration.workers import worker_ops_launch
+from specy_road.orchestration.workers import worker_ops
 from specy_road.bundled_scripts import doctor as des
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import load_ready, reviews_dir
@@ -81,8 +81,8 @@ def test_a_working_directory_in_another_repository_keeps_the_variable(tmp_path: 
 
 def _capture_spawn(monkeypatch) -> list:
     launches: list = []
-    monkeypatch.setattr(worker_ops_launch, "spawn", lambda _root, _rec, launch: launches.append(launch) or 1)
-    monkeypatch.setattr(worker_ops_launch, "acquire_lease", lambda *a, **k: None)
+    monkeypatch.setattr(worker_ops, "spawn", lambda _root, _rec, launch: launches.append(launch) or 1)
+    monkeypatch.setattr(worker_ops, "acquire_lease", lambda *a, **k: None)
     return launches
 
 

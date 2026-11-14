@@ -133,6 +133,6 @@ def harness_binaries_are_not_looked_up(monkeypatch: pytest.MonkeyPatch) -> None:
 def cursor_chats_are_never_created(monkeypatch: pytest.MonkeyPatch) -> None:
     """A default Cursor launch runs ``agent create-chat`` first: on a machine with Cursor's CLI that would create a
     real chat per test. Every test gets a fixed id instead; the fake-binary test calls the real function."""
-    import specy_road.orchestration.workers.worker_adapter_cursor as cursor
+    import specy_road.orchestration.workers.worker_adapters as cursor
 
     monkeypatch.setattr(cursor, "create_chat", lambda worktree, program="agent": "chat-under-test")

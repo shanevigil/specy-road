@@ -21,16 +21,15 @@ from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_m310_reconcile_status import nested_project
 
 from specy_road.orchestration.workers import worker_adapter_codex as codex
-from specy_road.orchestration.workers import worker_adapter_cursor as cursor
 from specy_road.orchestration.workers import worker_adapters as wa
-from specy_road.orchestration.workers import worker_ops_message as wom
+from specy_road.orchestration.workers import worker_ops as wom
 from specy_road.orchestration.workers import worker_reconcile as wrc
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers import worker_turn_check as tc
-from specy_road.orchestration.workers.worker_adapter_claude import EXECUTOR_TOOLS
 from specy_road.orchestration.workers.worker_adapter_base import file_instruction
-from specy_road.orchestration.workers.worker_adapter_cursor import (  # before conftest stubs it
+from specy_road.orchestration.workers.worker_adapters import (  # before conftest stubs it
+    EXECUTOR_TOOLS,
     create_chat as real_create_chat,
 )
 from specy_road.orchestration.workers.worker_adapter_parsers import limit_detail
@@ -234,7 +233,7 @@ def test_codex_runs_exec_json_workspace_write_memories_off_in_a_profile_codex_ho
 
 def test_cursor_creates_the_chat_first_passes_trust_sandbox_and_never_w(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cursor, "create_chat", real_create_chat)
+    monkeypatch.setattr(wa, "create_chat", real_create_chat)
     spec = _harness(tmp_path, monkeypatch, "agent", chat="chat-7f3a")
     launch = wa.adapter_for("cursor").launch(_prompt(tmp_path), tmp_path, "composer-2.5", None)
     assert _calls(spec)[0]["argv"] == ["create-chat"]

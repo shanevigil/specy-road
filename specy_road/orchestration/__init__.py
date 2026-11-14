@@ -26,17 +26,16 @@ from typing import Any
 _SOURCES: dict[str, tuple[str, ...]] = {
     "claims": ("read_claims",),
     "state": ("OrchestrationState", "read_state", "snapshot"),
-    "workers": ("worker_ops", "worker_ops_slots"),
+    "workers": ("worker_ops",),
     "workers.worker_adapter_codex": ("CODEX_MEMORY_OFF",),
-    "workers.worker_adapter_cursor": ("force_warnings",),
     "workers.worker_adapter_parsers": ("project_root_from_worktree",),
-    "workers.worker_adapters": ("ADAPTERS", "Unsupported"),
+    "workers.worker_adapters": ("ADAPTERS", "Unsupported", "force_warnings"),
     "workers.worker_cli_render": (
         "_line", "_row", "timeline", "timeline_lines", "usage", "usage_json_payload", "usage_lines",
     ),
     "workers.worker_cli_sync": ("add_sync_parser", "cmd_sync"),
     "workers.worker_lock": ("workers_dir",),
-    "workers.worker_ops_slots": ("recover_stalled", "stall_lines", "stalled_workers"),
+    "workers.worker_ops": ("recover_stalled", "stall_lines", "stalled_workers"),
     "workers.worker_orphans": ("HELD_STATES", "add_terminate", "end_finished_workers", "list_view"),
     "workers.worker_outbox": ("lookup_op",),
     "workers.worker_reconcile": ("reconcile_lines", "sync_marks"),
@@ -57,7 +56,7 @@ __all__ = [
     "read_claims",
     "read_state", "reconcile_lines", "recover_stalled", "render_command", "snapshot", "stall_lines",
     "stalled_workers", "sync_marks", "timeline", "timeline_lines", "usage", "usage_json_payload",
-    "usage_lines", "worker_ops", "worker_ops_slots", "workers_dir",
+    "usage_lines", "worker_ops", "workers_dir",
 ]
 
 

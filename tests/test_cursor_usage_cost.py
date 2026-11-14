@@ -95,7 +95,7 @@ def _cursor_workspace(tmp_path: Path, layout: str) -> tuple[Path, Path]:
 
 
 def _api_id_for(repo: Path, roster_id: str) -> str | None:
-    """The id ``worker_ops_launch._cli_for`` puts on argv: profile api_id, or none when unknown."""
+    """The id ``worker_ops._cli_for`` puts on argv: profile api_id, or none when unknown."""
     config, err = pinned_config(repo)
     assert err is None
     entry = roster_entry(config, roster_id)
