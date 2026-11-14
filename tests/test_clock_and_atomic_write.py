@@ -29,7 +29,6 @@ from specy_road.orchestration.workers import (
     worker_lease,
     worker_outbox,
     worker_reconcile,
-    worker_witness,
 )
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import chore_cli, chore_garden
@@ -92,8 +91,8 @@ def _lease(tmp_path: Path) -> Any:
 def _witness(tmp_path: Path) -> Any:
     repo = make_review_repo(tmp_path)
     rec, _ = worker_lease.handoff(repo, idle_worker(repo, "M1.1", "sid-1").worker_id)
-    worker_witness.record_hook_prompt(repo, "sid-1", "hello")
-    return json.loads(worker_witness.interventions_path(repo, rec.worker_id).read_text())["at"]
+    worker_lease.record_hook_prompt(repo, "sid-1", "hello")
+    return json.loads(worker_lease.interventions_path(repo, rec.worker_id).read_text())["at"]
 
 
 def _reviewer_failure(tmp_path: Path) -> Any:
@@ -134,7 +133,7 @@ def _turn_clock(tmp_path: Path) -> Any:
         "worker_outbox",
         "session_presence",
         "worker_lease",
-        "worker_witness",
+        "worker_lease_witness",
         "reviewer_run_failure",
         "decisions",
         "worker_turn_check",

@@ -26,7 +26,7 @@ from specy_road.bundled_scripts import doctor, orchestrate_cli
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration_config import validate_orchestration_dict
-from specy_road.orchestration.workers.worker_adapter_cursor import (
+from specy_road.orchestration.workers.worker_adapters import (
     force_warnings,
     launch_permissions,
 )

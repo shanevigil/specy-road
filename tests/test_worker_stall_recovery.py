@@ -18,7 +18,7 @@ from tests.worker_repo_helpers import make_worker_repo, worker_roster
 
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_ops as ops
-from specy_road.orchestration.workers import worker_ops_slots as slots
+from specy_road.orchestration.workers import worker_ops as slots
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import doctor

@@ -14,7 +14,7 @@ from tests.test_worker_adapters import CURSOR_RESULT
 from tests.worker_repo_helpers import make_worker_repo, reset_cursor_adapter_via_init, run_fake_harness_turn
 
 from specy_road.orchestration.workers import worker_state as ws
-from specy_road.orchestration.workers.worker_adapter_cursor import sum_cursor_turn_usage
+from specy_road.orchestration.workers.worker_adapters import sum_cursor_turn_usage
 from specy_road.orchestration.workers.worker_adapter_parsers import usage_fields
 from specy_road.orchestration.workers.worker_usage_plausibility import (
     MIN_OUTPUT_TOKENS_PER_MINUTE,

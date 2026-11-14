@@ -1,4 +1,4 @@
-"""The per-worker wrapper: runs the harness, turns its output into events, records the exit (slice 7b).
+"""The per-worker wrapper: runs the harness, turns its output into events, records the exit.
 
 ``worker delegate`` does not wait for a worker. It spawns this module as a
 detached process (``start_new_session``, no inherited stdio) and returns the
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -29,13 +30,17 @@ from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.orchestration_role_env import harness_env
 from specy_road.orchestration.workers import worker_sandbox
 from specy_road.runtime_paths import project_prefix
-from specy_road.orchestration.workers.worker_adapter_cursor import launch_permissions
 from specy_road.orchestration.workers.worker_adapter_parsers import USAGE_FIELDS, init_model
-from specy_road.orchestration.workers.worker_adapters import ClaudeCode, Launch, adapter_for
-from specy_road.orchestration.workers.worker_exit import exit_event
+from specy_road.orchestration.workers.worker_adapters import (
+    ClaudeCode,
+    Launch,
+    adapter_for,
+    launch_permissions,
+)
 from specy_road.orchestration.workers.worker_lease import release_lease
 from specy_road.orchestration.workers.worker_models import launch_model, turn_models, usage_event
-from specy_road.orchestration.workers.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
+# pid_alive and pid_verified are re-exported for existing callers.
+from specy_road.orchestration.workers.worker_process import (  # noqa: F401
     argv_too_long,
     new_token,
     pid_alive,
@@ -43,7 +48,11 @@ from specy_road.orchestration.workers.worker_process import (  # noqa: F401 — 
     ready_fingerprints,
     start_token,
 )
-from specy_road.orchestration.workers.worker_runner_ready import all_ready_fingerprints, fresh_ready
+from specy_road.orchestration.workers.worker_runner_ready import (
+    all_ready_fingerprints,
+    completion_summary,
+    fresh_ready,
+)
 from specy_road.orchestration.workers.worker_state import (
     FLAG_STALLED,
     FLAG_UNDELIVERED,
@@ -76,15 +85,19 @@ def queue_worker_message(repo_root: Path, rec: WorkerRecord, text: str) -> Worke
         rec = load_record(repo_root, rec.worker_id)
         require_writer(rec)
         prior = rec.queued_message
-        mutate(repo_root, rec, lambda r: setattr(r, "queued_message", f"{prior}\n\n{text}" if prior else text))
+        mutate(repo_root, rec, lambda r: setattr(r, "queued_message",
+                                                 f"{prior}\n\n{text}" if prior else text))
     verb = "appended" if prior else "queued"
-    append_event(repo_root, load_record(repo_root, rec.worker_id), "message_queued", source="orchestrator",
+    append_event(repo_root, load_record(repo_root, rec.worker_id), "message_queued",
+                 source="orchestrator",
                  authority="orchestrator", summary=f"{verb}: {' '.join(text.split())[:300]}")
     return load_record(repo_root, rec.worker_id)
 
 
-def deliver_queued_message(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord | None:
-    from specy_road.orchestration.workers.worker_ops import (  # noqa: PLC0415 — ops imports spawn from this module
+def deliver_queued_message(repo_root: Path, worker_id: str, *,
+                           offline: bool = False) -> WorkerRecord | None:
+    # worker_ops imports spawn from this module, so _send is imported here.
+    from specy_road.orchestration.workers.worker_ops import (  # noqa: PLC0415
         _send,
     )
 
@@ -98,10 +111,12 @@ def deliver_queued_message(repo_root: Path, worker_id: str, *, offline: bool = F
             return _send(repo_root, rec, text, "message", offline)
         except Exception as e:
             rec = load_record(repo_root, worker_id)
-            if rec.state != "terminated":   # terminate already dropped the text; it does not gain the flag
+            # terminate already dropped the text; it does not gain the flag
+            if rec.state != "terminated":
                 mutate(repo_root, rec, lambda r: setattr(r, "queued_message", text))
                 add_flag(repo_root, rec, FLAG_UNDELIVERED)
-            append_event(repo_root, rec, "error", source="system", summary=f"queued message not delivered: {e}")
+            append_event(repo_root, rec, "error", source="system",
+                         summary=f"queued message not delivered: {e}")
             raise
 
 
@@ -114,7 +129,8 @@ def log_path(repo_root: Path, worker_id: str) -> Path:
 
 
 def mirror_dir(repo_root: Path, rec: WorkerRecord) -> Path:
-    """``work/worker-logs/<NODE_ID>/`` in the worker's own checkout: the leaf's branch is checked out there."""
+    """``work/worker-logs/<NODE_ID>/`` in the worker's own checkout: the leaf's branch is checked
+    out there."""
     return Path(rec.worktree) / project_prefix(repo_root) / WORKER_LOGS_REL / rec.node_id
 
 
@@ -140,7 +156,8 @@ def mirror_logs(repo_root: Path, rec: WorkerRecord) -> None:
 
 
 def _copy_tail(src: Path, dst: Path) -> None:
-    """Append what ``src`` holds past ``dst``'s length: both only grow, so the copy stays byte-identical."""
+    """Append what ``src`` holds past ``dst``'s length: both only grow, so the copy stays
+    byte-identical."""
     have = dst.stat().st_size if dst.is_file() else 0
     if not src.is_file() or src.stat().st_size <= have:
         return
@@ -151,7 +168,8 @@ def _copy_tail(src: Path, dst: Path) -> None:
 
 
 def _payload_file(repo_root: Path, rec: WorkerRecord, token: str, payload: str) -> Path:
-    """The launch payload (argv, the prompt on stdin) in a 0600 file: a brief must never travel in argv."""
+    """The launch payload (argv, the prompt on stdin) in a 0600 file: a brief must never travel in
+    argv."""
     d = workers_dir(repo_root)
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"{rec.worker_id}.launch-{token}.json"
@@ -163,7 +181,8 @@ def _payload_file(repo_root: Path, rec: WorkerRecord, token: str, payload: str) 
 
 def _refuse(repo_root: Path, rec: WorkerRecord, why: str) -> None:
     append_event(repo_root, rec, "error", source="system", summary=why[:500])
-    with workers_lock(repo_root):   # held by the launching caller already; re-entered so the pair stays one step
+    # held by the launching caller already; re-entered so the pair stays one step
+    with workers_lock(repo_root):
         set_state(repo_root, rec, "failed", pid=None)
         release_lease(repo_root, rec.worker_id)
     raise WorkerError(f"{rec.worker_id}: {why}")
@@ -185,9 +204,12 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
     # the turn, so a queued message's spawn records it too. ``-P`` keeps
     # the cwd (a worktree that may hold an older specy_road) off sys.path for
     # this interpreter only; PYTHONSAFEPATH would leak into the harness.
-    pkg_parent = str(Path(__file__).resolve().parents[3])   # the directory holding specy_road/
-    env["PYTHONPATH"] = pkg_parent + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
-    env["SPECY_ROAD_WORKER_ID"] = rec.worker_id   # so the harness's own hooks do not count it as a stranger
+    pkg_parent = str(Path(__file__).resolve().parents[3])  # the directory holding specy_road/
+    env["PYTHONPATH"] = pkg_parent + (
+        os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else ""
+    )
+    # so the harness's own hooks do not count it as a stranger
+    env["SPECY_ROAD_WORKER_ID"] = rec.worker_id
     # Under the lock, so the wrapper cannot write its own state before the
     # session id chosen up front is on disk; the id goes in through mutate,
     # which reloads first, so it survives (a bare attribute set did not).
@@ -195,7 +217,8 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
         path = _payload_file(repo_root, rec, token, payload)
         try:
             p = subprocess.Popen(  # noqa: S603 — our own module, arguments are not user-shaped
-                [sys.executable, "-P", "-m", "specy_road.orchestration.workers.worker_runner", str(Path(repo_root).resolve()), rec.worker_id,
+                [sys.executable, "-P", "-m", "specy_road.orchestration.workers.worker_runner",
+                 str(Path(repo_root).resolve()), rec.worker_id,
                  token, str(path)],
                 cwd=rec.worktree, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL, start_new_session=True,
@@ -224,19 +247,23 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
     log = log_path(repo_root, worker_id)
     # The turn's checkpoint: a completion needs a READY that is not one of these.
     before = ready_fingerprints(repo_root, rec.node_id)
-    watch = TurnWatch(repo_root, rec)   # the post-run check's starting git state, before the harness can move it
+    # the post-run check's starting git state, before the harness can move it
+    watch = TurnWatch(repo_root, rec)
     before_all = all_ready_fingerprints(repo_root, rec.node_id)
     set_state(repo_root, rec, "running", pid=os.getpid())
     if resumed:
-        append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
-    env = harness_env(os.environ, "executor", harness_pythonpath=harness_pythonpath, harness=rec.harness)
+        append_event(repo_root, rec, "resumed", source="broker",
+                     summary="resumed with a new prompt")
+    env = harness_env(os.environ, "executor", harness_pythonpath=harness_pythonpath,
+                      harness=rec.harness)
     env.update(launch.env or {})   # the adapter's own (Codex: the profile's CODEX_HOME)
     try:
-        box = worker_sandbox.prepare(repo_root, rec, env)   # M22.44: every harness argv runs under it
+        box = worker_sandbox.prepare(repo_root, rec, env)   # every harness argv runs under it
     except worker_sandbox.SandboxError as e:
         return _not_started(repo_root, rec, launch, watch, f"sandbox: {e}")
     with log.open("a", encoding="utf-8") as raw:
-        log_start = raw.tell()   # this turn's part of the log starts here (the harness writes stderr into it)
+        # this turn's part of the log starts here (the harness writes stderr into it)
+        log_start = raw.tell()
         try:
             proc = subprocess.Popen(  # noqa: S603 — the adapter's documented command
                 box.command(launch.argv), cwd=rec.worktree, env=env, pass_fds=box.pass_fds,
@@ -245,7 +272,8 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             )
         except OSError as e:
             box.finish()
-            return _not_started(repo_root, rec, launch, watch, f"cannot start {launch.argv[0]}: {e}")
+            return _not_started(repo_root, rec, launch, watch,
+                                f"cannot start {launch.argv[0]}: {e}")
         def seen(r: WorkerRecord) -> None:
             r.harness_pid, r.harness_start, r.pgid = proc.pid, start_token(proc.pid), os.getpgid(0)
             # A new turn is a new silence: measured from the launch, not the last turn's output.
@@ -262,15 +290,18 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             raw.flush()
             if first:
                 first = False
-                append_event(repo_root, rec, "first_output", source="system", summary="first stdout line read")
+                append_event(repo_root, rec, "first_output", source="system",
+                             summary="first stdout line read")
             try:
                 marked = _output_seen(repo_root, rec, marked, clock())
-                usage_logged = _consume(repo_root, rec, adapter, line, launch, watch) or usage_logged
+                usage_logged = _consume(repo_root, rec, adapter, line, launch,
+                                        watch) or usage_logged
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
     _close_box(repo_root, rec, box)   # READY leaves the outbox before the turn's READY check
-    # A Claude result always carries usage, so none means no result line: a limit is then only in the transcript.
+    # A Claude result always carries usage, so none means no result line: a limit is then only in
+    # the transcript.
     if code != 0 and not usage_logged and isinstance(adapter, ClaudeCode):
         _transcript_limit(repo_root, rec, adapter, launch, watch, box.state)
     return _finish(repo_root, rec, code, before, before_all, usage_logged, watch, log_start)
@@ -286,58 +317,83 @@ def _feed(proc: subprocess.Popen, launch: Launch, raw) -> None:
             raw.write(f"[wrapper] harness closed stdin early: {e}\n")
 
 
-def _launched(repo_root: Path, rec: WorkerRecord, launch: Launch, pid: int, box: worker_sandbox.Box, raw,
+def _launched(repo_root: Path, rec: WorkerRecord, launch: Launch, pid: int, box: worker_sandbox.Box,
+              raw,
               *, resumed: bool) -> None:
-    """The ``launched`` event; a sandboxed launch names its sandbox, an unsandboxed ``auto`` one warns (also in the log)."""
-    boxed = {"sandbox": box.mode} if box.prefix or box.warning else {}   # off by default: the event is as before
+    """The ``launched`` event; a sandboxed launch names its sandbox, an unsandboxed ``auto`` one
+    warns (also in the log)."""
+    # off by default: the event is as before
+    boxed = {"sandbox": box.mode} if box.prefix or box.warning else {}
     if box.warning:
         raw.write(f"[wrapper] warning: {box.warning}\n")
-    append_event(repo_root, rec, "launched", source="system",
-                 summary=f"started {launch.argv[0]} (pid {pid})" + (f", sandbox {box.mode}" if box.prefix else "")
-                         + (f"; warning: {box.warning}" if box.warning else ""),
-                 detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed, **boxed,
-                         "model": launch_model(launch.argv),   # the model the harness is told, if any
-                         # Cursor: the permission flags passed, so a roster's --force opt-in shows in the log.
-                         **({"permissions": launch_permissions(launch.argv)} if rec.harness == "cursor" else {})})
+    append_event(
+        repo_root,
+        rec,
+        "launched",
+        source="system",
+        summary=f"started {launch.argv[0]} (pid {pid})"
+        + (f", sandbox {box.mode}" if box.prefix else "")
+        + (f"; warning: {box.warning}" if box.warning else ""),
+        detail={
+            "argv0": launch.argv[0],
+            "harness": rec.harness,
+            "resumed": resumed,
+            **boxed,
+            # the model the harness is told, if any
+            "model": launch_model(launch.argv),
+            # Cursor: the permission flags passed, so a roster's --force opt-in shows
+            # in the log.
+            **({"permissions": launch_permissions(launch.argv)} if rec.harness == "cursor" else {}),
+        },
+    )
 
 
 def _close_box(repo_root: Path, rec: WorkerRecord, box: worker_sandbox.Box) -> None:
-    """Move READY out of the outbox; a sandbox that never started the harness is recorded (the exit is non-zero)."""
+    """Move READY out of the outbox; a sandbox that never started the harness is recorded (the exit
+    is non-zero)."""
     why = box.finish()
     if why:
         append_event(repo_root, rec, "error", source="system", summary=f"sandbox: {why}")
 
 
-def _not_started(repo_root: Path, rec: WorkerRecord, launch: Launch, watch: TurnWatch, why: str) -> int:
-    """The turn ends before the harness runs: nulls for usage, the post-run check, an exit record, ``failed``."""
+def _not_started(repo_root: Path, rec: WorkerRecord, launch: Launch, watch: TurnWatch,
+                 why: str) -> int:
+    """The turn ends before the harness runs: nulls for usage, the post-run check, an exit record,
+    ``failed``."""
     # Nothing reported, so nulls; no `launched` event names its model.
-    _append_usage(repo_root, rec, {"requested_model": launch_model(launch.argv), "observed_model": None})
+    _append_usage(repo_root, rec, {"requested_model": launch_model(launch.argv),
+                                   "observed_model": None})
     watch.failed = why   # a failed turn: the post-run check runs here too
-    close_turn(repo_root, rec, watch)   # (M8.2); the record still ends `failed` below
+    close_turn(repo_root, rec, watch)   # the record still ends `failed` below
     append_event(repo_root, rec, "error", source="system", summary=why,
                  detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
     mirror_logs(repo_root, rec)
-    with workers_lock(repo_root):   # failed and its lease gone in one step: a resume cannot fall between
+    # failed and its lease gone in one step: a resume cannot fall between
+    with workers_lock(repo_root):
         set_state(repo_root, rec, "failed", pid=None)
         release_lease(repo_root, rec.worker_id)
     return 127
 
 
-def _transcript_limit(repo_root: Path, rec: WorkerRecord, adapter: ClaudeCode, launch: Launch, watch: TurnWatch,
+def _transcript_limit(repo_root: Path, rec: WorkerRecord, adapter: ClaudeCode, launch: Launch,
+                      watch: TurnWatch,
                       home: Path | None = None) -> None:
     """Record a usage limit the session transcript names, for the post-run check to pause on.
 
-    ``home``: the sandboxed worker's own state home, where its transcripts are; ``None`` reads the user's.
+    ``home``: the sandboxed worker's own state home, where its transcripts are; ``None`` reads the
+    user's.
     """
-    parsed = adapter.transcript_limit(launch.session_id or load_record(repo_root, rec.worker_id).provider_session_id,
-                                      home=home)
+    parsed = adapter.transcript_limit(
+        launch.session_id or load_record(repo_root, rec.worker_id).provider_session_id, home=home
+    )
     if parsed:
         append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
                      summary=parsed.summary, detail=parsed.detail)
         watch.observe(parsed)
 
 
-def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:
+def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None,
+                 now: float) -> float | None:
     """Write ``last_output_at`` and drop ``stalled`` unless the last write is under five seconds old
     and the record is not flagged ``stalled``.
 
@@ -357,18 +413,24 @@ def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: 
     return now
 
 
-def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Launch, watch: TurnWatch) -> bool:
+def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Launch,
+             watch: TurnWatch) -> bool:
     """Append the events ``line`` records; True when one of them carried the turn's usage."""
     logged = False
-    # One line can record more than one event (Claude's init: `started`, then a launch-mode mismatch).
+    # One line can record more than one event (Claude's init: `started`, then a launch-mode
+    # mismatch).
     for parsed in adapter.parse_events(line, launch):
         if parsed.session_id:
             # First seen wins; a later line (which the model controls) cannot move it.
-            mutate(repo_root, rec, lambda r: setattr(r, "provider_session_id", r.provider_session_id or parsed.session_id))
-        model = init_model(line) if parsed.type == "started" else None   # the model the harness says it runs
-        # Parsed from the harness's stdout, which the model controls: a claim, not a fact the wrapper observed.
+            mutate(repo_root, rec, lambda r: setattr(r, "provider_session_id",
+                                                     r.provider_session_id or parsed.session_id))
+        # the model the harness says it runs
+        model = init_model(line) if parsed.type == "started" else None
+        # Parsed from the harness's stdout, which the model controls: a claim, not a fact the
+        # wrapper observed.
         append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
-                     summary=parsed.summary, detail={**(parsed.detail or {}), "model": model} if model else parsed.detail)
+                     summary=parsed.summary, detail={**(parsed.detail or {}),
+                                                     "model": model} if model else parsed.detail)
         watch.observe(parsed)   # what the post-run check and the retry watchdog read
         if parsed.usage is not None:
             _append_usage(repo_root, rec, parsed.usage)
@@ -377,13 +439,21 @@ def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Lau
 
 
 def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
-    """The turn's ``usage`` event; running session totals become this turn's, the version comes from ``started``."""
+    """The turn's ``usage`` event; running session totals become this turn's, the version comes from
+    ``started``."""
     events = events_since(repo_root, rec.worker_id)
-    # A turn that never launched sets its own models; a running session total becomes this turn's share.
+    # A turn that never launched sets its own models; a running session total becomes this turn's
+    # share.
     detail = turn_usage({**dict.fromkeys(USAGE_FIELDS), **turn_models(events), **usage}, events)
     if detail["harness_version"] is None:
-        detail["harness_version"] = next((str(e.detail["version"]) for e in reversed(events) if e.type == "started"
-                                          and e.source == "worker" and (e.detail or {}).get("version")), None)
+        detail["harness_version"] = next(
+            (
+                str(e.detail["version"])
+                for e in reversed(events)
+                if e.type == "started" and e.source == "worker" and (e.detail or {}).get("version")
+            ),
+            None,
+        )
     # Parsed from the harness's output, like the line it came from.
     append_event(repo_root, rec, "usage", source="worker", authority="worker_suggestion",
                  **usage_event(repo_root, detail))
@@ -391,18 +461,31 @@ def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
 
 def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], before_all: list[str],
             usage_logged: bool, watch: TurnWatch, log_start: int = 0) -> int:
-    rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
+    # the record may have moved on (handoff, terminate)
+    rec = load_record(repo_root, rec.worker_id)
     if rec.state == "terminated":
-        close_turn(repo_root, rec, watch, pause=False)   # the check still runs; a terminated worker is not paused
+        # the check still runs; a terminated worker is not paused
+        close_turn(repo_root, rec, watch, pause=False)
         return code
-    if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
+    # one usage event per turn: a harness that reported none gets nulls, not zeros
+    if not usage_logged:
         _append_usage(repo_root, rec, {})
     ready = fresh_ready(repo_root, rec, before)
-    watch.exited(code)   # the check runs before the exit event: a failed exit is one of its findings
-    paused = close_turn(repo_root, rec, watch)   # the post-run check (M8.2): a usage limit pauses, whatever the exit code
-    exit_event(repo_root, rec, code, ready, before_all=before_all, log=log_path(repo_root, rec.worker_id),
-               log_start=log_start)
-    _exit_state(repo_root, rec, PAUSED_BY_LIMIT if paused   # a limit wins over READY and over the exit code
+    # the check runs before the exit event: a failed exit is one of its findings
+    watch.exited(code)
+    # the post-run check: a usage limit pauses, whatever the exit code
+    paused = close_turn(repo_root, rec, watch)
+    exit_event(
+        repo_root,
+        rec,
+        code,
+        ready,
+        before_all=before_all,
+        log=log_path(repo_root, rec.worker_id),
+        log_start=log_start,
+    )
+    _exit_state(repo_root, rec,
+                PAUSED_BY_LIMIT if paused   # a limit wins over READY and over the exit code
                 else ("completed" if ready else "idle") if code == 0 else "failed")
     return code
 
@@ -418,9 +501,11 @@ def _exit_state(repo_root: Path, rec: WorkerRecord, state: str) -> None:
     def fn(r: WorkerRecord) -> None:
         r.state = state
         r.pid = r.pgid = r.harness_pid = r.harness_start = None
-    with workers_lock(repo_root):   # a resume acquires under this lock, so it sees completed or failed only once that lease is gone
+    # a resume acquires under this lock, so it sees completed or failed only once that lease is gone
+    with workers_lock(repo_root):
         mutate(repo_root, rec, fn)
-        if state in ("failed", "completed"):   # idle keeps its lease; completed releases it, as failed does
+        # idle keeps its lease; completed releases it, as failed does
+        if state in ("failed", "completed"):
             release_lease(repo_root, rec.worker_id)
     _deliver_queued(repo_root, rec.worker_id)
 
@@ -435,7 +520,8 @@ def _deliver_queued(repo_root: Path, worker_id: str) -> None:
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if len(argv) != 4:
-        print("usage: python -m specy_road.orchestration.workers.worker_runner <repo_root> <worker_id> <token> <payload-file>", file=sys.stderr)
+        print("usage: python -m specy_road.orchestration.workers.worker_runner <repo_root> "
+              "<worker_id> <token> <payload-file>", file=sys.stderr)
         raise SystemExit(2)
     path = Path(argv[3])
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -451,6 +537,59 @@ def main(argv: list[str] | None = None) -> None:
         os.environ.pop("PYTHONPATH", None)
     raise SystemExit(run(Path(argv[0]), argv[1], launch, resumed=bool(payload.get("resumed")),
                          harness_pythonpath=harness_pythonpath))
+
+
+# The event a worker's turn ends with, and the reason when its harness failed before saying
+# anything.
+# A harness that exits non-zero before its first stream event (an unknown model id answered with an
+# HTTP 404, say) leaves its reason only in the raw log, so the exit event quotes the last error line
+# the turn wrote there instead of only pointing at the log.
+
+#: How much of the turn's log tail is read for the reason; a harness that never started prints
+#: little.
+TAIL_BYTES = 64 * 1024
+_ERRORISH = re.compile(r"error|fail|denied|invalid|not found|unknown|\b[45]\d\d\b", re.IGNORECASE)
+
+
+def streamed(repo_root: Path, worker_id: str) -> bool:
+    """True when the harness's output gave an event since the turn's ``launched`` (the wrapper's
+    null usage aside)."""
+    events = events_since(repo_root, worker_id)
+    start = max((i for i, e in enumerate(events) if e.type == "launched"), default=-1)
+    return any(e.source == "worker" and e.type != "usage" for e in events[start + 1:])
+
+
+def last_error_line(log: Path, start: int = 0) -> str | None:
+    """The last line of ``log`` past byte ``start`` that reads like an error, else its last line;
+    wrapper notes skipped."""
+    try:
+        with log.open("rb") as f:
+            f.seek(max(start, f.seek(0, 2) - TAIL_BYTES))
+            text = f.read().decode("utf-8", errors="replace")
+    except OSError:
+        return None
+    lines = [s.strip() for s in text.splitlines() if s.strip() and not s.startswith("[wrapper]")]
+    return next((s for s in reversed(lines) if _ERRORISH.search(s)), lines[-1] if lines else None)
+
+
+def exit_event(repo_root: Path, rec: WorkerRecord, code: int, ready: bool, *, before_all: list[str],
+               log: Path,
+               log_start: int = 0) -> None:
+    """``completion`` on exit 0 (READY present, invalid or missing: :func:`completion_summary`
+    against the turn's ``before_all``), else ``error``, with the harness's own reason when it failed
+    before streaming."""
+    if code == 0:
+        append_event(repo_root, rec, "completion", source="worker",
+                     summary=completion_summary(repo_root, rec, before_all, ready),
+                     detail={"exit": 0, "ready": ready})
+        return
+    detail: dict = {"exit": code, "ready": ready}
+    summary = f"exit {code}; see {log.name}"
+    why = None if streamed(repo_root, rec.worker_id) else last_error_line(log, log_start)
+    if why:
+        detail["harness_error"] = why[:2000]
+        summary = f"exit {code} before any stream event: {why[:300]}; see {log.name}"
+    append_event(repo_root, rec, "error", source="worker", summary=summary, detail=detail)
 
 
 if __name__ == "__main__":
