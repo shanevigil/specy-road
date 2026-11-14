@@ -92,7 +92,7 @@
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.2_worker-ops-parts-and-the-worker-siblings-fold-into-their-parents-and-the-module-class-swap-goes_d0c0d4f8-0294-4c8d-8d1d-e52dee8d3291.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes",
       "touch_zones": [
         "specy_road/orchestration/workers/",
