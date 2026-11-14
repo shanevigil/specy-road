@@ -54,7 +54,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.5.1` Worker runtime moves into orchestration/workers with import-path edits only `worker-runtime-moves-into-orchestration-workers-with-import-path-edits-only` — task — **Complete**
     - `M16.5.2` worker_ops parts and the worker siblings fold into their parents, and the module-class swap goes `worker-ops-parts-and-the-worker-siblings-fold-into-their-parents-and-the-module-class-swap-goes` — task — **Complete**
     - `M16.5.3` Roster, model profiles, harness facts, orchestrate and role prompts move into orchestration `roster-model-profiles-harness-facts-orchestrate-and-role-prompts-move-into-orchestration` — task — **Complete**
-    - `M16.5.7` Shared-checkout guard and session presence move into orchestration `shared-checkout-guard-and-session-presence-move-into-orchestration` — task — **Not Started**
+    - `M16.5.7` Shared-checkout guard and session presence move into orchestration `shared-checkout-guard-and-session-presence-move-into-orchestration` — task — **Complete**
     - `M16.5.9` Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings `grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings` — task — **Not Started**
     - `M16.5.10` Chore, decision and lesson records share internal adapters and keep their files byte for byte `chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte` — task — **Complete**
     - `M16.5.11` Grind settings move under grind: in git-workflow.yaml, migrated by upgrade `grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade` — task — **Not Started**
@@ -286,11 +286,6 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
-- 2026-11-14 `M17.8` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
-- 2026-11-14 `M16.6.1` stopped depending on `M16.5.13 The review packet fragments fold into review_packet`
-- 2026-11-14 `M16.5.11` stopped depending on `M16.5.10 Chore, decision and lesson records share internal adapters and keep their files byte for byte`
-- 2026-11-14 `M16.5.12` stopped depending on `M16.5.11 Grind settings move under grind: in git-workflow.yaml, migrated by upgrade`
-- 2026-11-14 `M16.5.10` stopped depending on `M16.5.9 Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings`
 - 2026-11-10 `M16.7.7` stopped depending on `M16.7.6 Tests: public seams replace private-name patches, and no test sleeps on the wall clock`
 - 2026-11-09 `M17.14` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-09 `M16.2.6` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
@@ -311,7 +306,12 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M16.8.4` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
 - 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
-- _…and 81 earlier — `specy-road history --json`_
+- 2026-11-07 `M16.1.2` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.1.1` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M22.6` stopped depending on `ec3a12b6-2bb1-465f-b0fe-c8bca6d457bf` (no longer live)
+- 2026-11-07 `M16.2.2` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
+- 2026-11-07 `M22.31` stopped depending on `37904d88-a256-4ae0-9abf-1c92de6bed7f` (no longer live)
+- _…and 76 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -340,7 +340,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.5.7` on `feature/rm-shared-checkout-guard-and-session-presence-move-into-orchestration` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -354,26 +353,28 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.github` **flagged** | 3 | 0 | 2.33 | 67% | 18 | 0 |
-| `.gitignore` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `CHANGELOG.md` **flagged** | 21 | 0 | 2.19 | 71% | 9 | 1 |
+| `CHANGELOG.md` **flagged** | 21 | 0 | 2.19 | 71% | 13 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 27 | 0 | 2.37 | 70% | 56 | 1 |
-| `gui` **flagged** | 6 | 0 | 2.17 | 67% | 1 | 0 |
+| `docs` **flagged** | 28 | 0 | 2.32 | 68% | 79 | 1 |
+| `gui` **flagged** | 5 | 0 | 2.40 | 80% | 1 | 0 |
 | `planning` **flagged** | 3 | 0 | 3.00 | 67% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
-| `pyproject.toml` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `schemas` **flagged** | 2 | 0 | 2.00 | 100% | 4 | 0 |
-| `specy_road` **flagged** | 47 | 0 | 2.09 | 51% | 116 | 1 |
+| `specy_road` **flagged** | 47 | 0 | 2.09 | 51% | 139 | 1 |
 | `suggested_prompts` **flagged** | 5 | 0 | 2.60 | 100% | 4 | 0 |
-| `tests` **flagged** | 50 | 0 | 2.08 | 52% | 129 | 1 |
+| `tests` **flagged** | 50 | 0 | 2.08 | 52% | 152 | 1 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
+| `.cursor` | 1 | 0 | 1.00 | 0% | 19 | 0 |
+| `.cursorindexingignore` | 1 | 0 | 1.00 | 0% | 19 | 0 |
+| `.gitignore` | 2 | 0 | 1.50 | 50% | 22 | 0 |
 | `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
 | `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
-| `constraints` | 16 | 0 | 1.75 | 25% | 78 | 0 |
-| `scripts` | 17 | 0 | 2.06 | 41% | 104 | 0 |
+| `constraints` | 17 | 0 | 1.71 | 24% | 101 | 0 |
+| `pyproject.toml` | 2 | 0 | 2.50 | 50% | 20 | 0 |
+| `scripts` | 18 | 0 | 2.00 | 39% | 127 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

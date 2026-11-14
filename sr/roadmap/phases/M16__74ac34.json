@@ -135,7 +135,7 @@
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.7_shared-checkout-guard-and-session-presence-move-into-orchestration_a536eb60-74a5-4a71-9556-d9cb752c881b.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Shared-checkout guard and session presence move into orchestration",
       "touch_zones": [
         "specy_road/orchestration/guard/",

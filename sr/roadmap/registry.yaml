@@ -70,26 +70,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: shared-checkout-guard-and-session-presence-move-into-orchestration
-    node_id: M16.5.7
-    branch: feature/rm-shared-checkout-guard-and-session-presence-move-into-orchestration
-    touch_zones:
-      - specy_road/orchestration/guard/
-      - specy_road/tool_call_guard*.py
-      - specy_road/session_*.py
-      - specy_road/orchestration_role_guard.py
-      - specy_road/orchestration_guard_adapters.py
-      - specy_road/orchestration_role_env.py
-      - specy_road/bundled_scripts/orchestration_guard_cli.py
-      - specy_road/bundled_scripts/session_cli.py
-      - scripts/line_width_baseline.json
-      - tests/
-      - specy_road/
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-      - constraints/test-private-imports-baseline.txt
-      - constraints/clone-baseline.json
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-14T17:49:31+00:00'
