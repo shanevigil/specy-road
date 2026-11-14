@@ -1,29 +1,11 @@
 $ grind-session --json --implement-mode hook --implement-cmd claude -p task --max-limit-wait-hours 0
 exit: 1
---- events ---
-{
-  "event": "picked",
-  "ts": "<TS>",
-  "node_id": "M1.2",
-  "branch": "feature/rm-write-the-alpha-module",
-  "brief": "work/brief-M1.2.md",
-  "prompt": "work/prompt-M1.2.md"
-}
-{
-  "event": "implementing",
-  "ts": "<TS>",
-  "node_id": "M1.2",
-  "mode": "hook"
-}
-{
-  "event": "hook_failed",
-  "ts": "<TS>",
-  "phase": "implement",
-  "node_id": "M1.2",
-  "rc": 1
-}
+--- stdout ---
+{"event": "picked", "ts": "2026-11-14T12:00:00Z", "node_id": "M1.2", "branch": "feature/rm-write-the-alpha-module", "brief": "work/brief-M1.2.md", "prompt": "work/prompt-M1.2.md"}
+{"event": "implementing", "ts": "2026-11-14T12:00:00Z", "node_id": "M1.2", "mode": "hook"}
+{"event": "hook_failed", "ts": "2026-11-14T12:00:00Z", "phase": "implement", "node_id": "M1.2", "rc": 1}
 --- errors ---
-grind-session: the stated reset is <N> hours away, beyond the 0h this loop waits unattended. Raise --max-limit-wait-hours (or grind_session_max_limit_wait_hours in roadmap/git-workflow.yaml) if that is what you want, or re-run after it lifts.
+grind-session: the stated reset is 11.0 hours away, beyond the 0h this loop waits unattended. Raise --max-limit-wait-hours (or grind_session_max_limit_wait_hours in roadmap/git-workflow.yaml) if that is what you want, or re-run after it lifts.
 
 --- state ---
 {

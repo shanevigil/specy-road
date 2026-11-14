@@ -1,14 +1,7 @@
 $ grind-session --step pickup --json
 exit: 0
---- events ---
-{
-  "event": "resumed",
-  "ts": "<TS>",
-  "node_id": "M1.2",
-  "branch": "feature/rm-write-the-alpha-module",
-  "brief": "work/brief-M1.2.md",
-  "prompt": "work/prompt-M1.2.md"
-}
+--- stdout ---
+{"event": "resumed", "ts": "2026-11-14T12:00:00Z", "node_id": "M1.2", "branch": "feature/rm-write-the-alpha-module", "brief": "work/brief-M1.2.md", "prompt": "work/prompt-M1.2.md"}
 --- errors ---
 
 --- state ---

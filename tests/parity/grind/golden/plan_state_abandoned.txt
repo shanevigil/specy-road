@@ -1,52 +1,12 @@
 $ grind-session --plan --json
 exit: 0
---- events ---
-{
-  "event": "plan",
-  "ts": "<TS>",
-  "under": null,
-  "ready": [],
-  "blocked": [],
-  "active": [
-    "M1.1"
-  ],
-  "closed": [],
-  "gated": [],
-  "gates_open": [],
-  "needs_codename": [],
-  "waves": [
-    {
-      "index": 0,
-      "node_ids": [
-        "M1.1"
-      ]
-    }
-  ],
-  "parallel_batches": [],
-  "zone_overlaps": [],
-  "shared_zones_ignored": [],
-  "finished_unmerged": [],
-  "finished_claimed": [],
-  "unauthored": [],
-  "totals": {
-    "ready": 0,
-    "blocked": 0,
-    "active": 1,
-    "closed": 0,
-    "gated": 0,
-    "gates_open": 0,
-    "needs_codename": 0,
-    "waves": 1
-  },
-  "ready_execution": {},
-  "prefer_agentic": false,
-  "nested_unpushed": []
-}
+--- stdout ---
+{"event": "plan", "ts": "2026-11-14T12:00:00Z", "under": null, "ready": [], "blocked": [], "active": ["M1.1"], "closed": [], "gated": [], "gates_open": [], "needs_codename": [], "waves": [{"index": 0, "node_ids": ["M1.1"]}], "parallel_batches": [], "zone_overlaps": [], "shared_zones_ignored": [], "finished_unmerged": [], "finished_claimed": [], "unauthored": [], "totals": {"ready": 0, "blocked": 0, "active": 1, "closed": 0, "gated": 0, "gates_open": 0, "needs_codename": 0, "waves": 1}, "ready_execution": {}, "prefer_agentic": false, "nested_unpushed": []}
 --- errors ---
 
 $ grind-session --plan
 exit: 0
---- events ---
+--- stdout ---
 # grind-session plan
 
 Totals: ready=0 blocked=0 active=1 closed=0 gated=0 gates_open=0 waves=1

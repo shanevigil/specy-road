@@ -1,21 +1,12 @@
 $ grind-session --json --under M1.8 --implement-mode hook --implement-cmd mkdir -p "src/$SPECY_ROAD_NODE_ID" && echo "x = 1" > "src/$SPECY_ROAD_NODE_ID/m.py" && git add src && git commit -qm "implement $SPECY_ROAD_NODE_ID"
 exit: 3
---- events ---
-{
-  "event": "blocked",
-  "ts": "<TS>",
-  "reason": "dependency",
-  "waiting_on": [
-    "M1.2"
-  ],
-  "count": 1,
-  "node_id": "M1.8"
-}
+--- stdout ---
+{"event": "blocked", "ts": "2026-11-14T12:00:00Z", "reason": "dependency", "waiting_on": ["M1.2"], "count": 1, "node_id": "M1.8"}
 --- errors ---
 
 $ grind-session --under M1.8 --implement-mode hook --implement-cmd mkdir -p "src/$SPECY_ROAD_NODE_ID" && echo "x = 1" > "src/$SPECY_ROAD_NODE_ID/m.py" && git add src && git commit -qm "implement $SPECY_ROAD_NODE_ID"
 exit: 3
---- events ---
+--- stdout ---
 [grind-session] blocked: dependency — 1 leaf/leaves waiting (e.g. on M1.2). Human action required.
 --- errors ---
 

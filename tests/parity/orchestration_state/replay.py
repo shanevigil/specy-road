@@ -26,19 +26,29 @@ ROWS_DIR = Path(__file__).resolve().parent
 OVERLAY = ("__init__.py", "rows.py", "test_state_rows.py")
 
 
-def replay(ref: str) -> int:
-    """Run the pickup test on ``ref``'s package against this checkout's goldens."""
+def replay(
+    ref: str,
+    *,
+    rows_dir: Path = ROWS_DIR,
+    overlay: tuple[str, ...] = OVERLAY,
+    test: str = "test_state_rows.py",
+) -> int:
+    """Run the pickup test on ``ref``'s package against this checkout's goldens.
+
+    ``rows_dir``, ``overlay`` and ``test`` name another parity table laid over ``ref`` the same
+    way (the grind table's replay).
+    """
     tree = subprocess.run(["git", "archive", ref], cwd=REPO, capture_output=True, check=True).stdout
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         with tarfile.open(fileobj=io.BytesIO(tree)) as archive:
             archive.extractall(root, filter="data")
-        dest = root / ROWS_DIR.relative_to(REPO)
+        dest = root / rows_dir.relative_to(REPO)
         shutil.rmtree(dest, ignore_errors=True)
         dest.mkdir(parents=True)
-        for name in OVERLAY:
-            shutil.copy2(ROWS_DIR / name, dest / name)
-        shutil.copytree(ROWS_DIR / "golden", dest / "golden")
+        for name in overlay:
+            shutil.copy2(rows_dir / name, dest / name)
+        shutil.copytree(rows_dir / "golden", dest / "golden")
         argv = [
             sys.executable,
             "-m",
@@ -48,7 +58,7 @@ def replay(ref: str) -> int:
             "no:cacheprovider",
             "-n",
             "4",
-            str(dest / "test_state_rows.py"),
+            str(dest / test),
         ]
         env = {k: v for k, v in os.environ.items() if k != "SPECY_ROAD_PARITY_REGEN"}
         return subprocess.run(argv, cwd=root, env=env, check=False).returncode

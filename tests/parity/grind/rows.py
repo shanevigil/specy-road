@@ -1,28 +1,39 @@
 """The grind table: one fixture repo per row, ``grind-session`` run on it, and what it did.
 
 Rows run the real command (``python -m specy_road.cli grind-session``) on the offline project of
-:mod:`tests.parity.grind.fixture`; pickup and finish are the real child commands, and the
-implement hook is a shell command (or the fake ``claude`` on PATH). ``golden/<row>.txt`` holds,
-for each step, its exit code, its events (``--json`` lines with ``ts`` masked, or the human
-``[grind-session]`` lines), the stderr lines the loop and its children print as errors or
-refusals, and then the project's state: the checked-out branch, the local branches, the registry
-rows and each leaf's status on ``main``. The plan rows record ``grind-session --plan`` (JSON and
-text) on the dogfood fixture, on the readiness cases, on a project with an open claim and on four
-rows of the orchestration state table. Every golden was recorded before the grind modules moved.
+:mod:`tests.parity.grind.fixture`; pickup and finish are the real child commands, and the implement
+hook is a shell command (or the fake ``claude`` on PATH). Every commit carries fixed dates and the
+command runs with a frozen clock (:mod:`tests.parity.grind.fixture`), so every row prints the same
+timestamps on every run. The dogfood row starts from the committed fixture as one commit whose id
+repeats run to run, and record it (``git rev-parse HEAD``); the generated projects cannot repeat an
+id, because ``add-node`` and the state table's helpers draw random node keys and worker ids, so
+their state section stands in for the refs. ``golden/<row>.txt`` holds, for each step, its exit
+code, its stdout (:func:`_stdout`: byte for byte, but for a human-mode loop step's
+``[grind-session]`` lines), its stderr (:func:`_stderr`: byte for byte for a plan step, else the
+lines the loop and its children print as errors or refusals), and then the project's state: the
+checked-out branch, the local branches, the registry rows and each leaf's status on ``main``. The
+only rewrite is each row's temporary directories to ``<LABEL>`` placeholders. The plan rows record
+``grind-session --plan`` (JSON, text, ``--prefer-agentic``) on the dogfood fixture, on the readiness
+cases, on a project with an open claim and on four rows of the orchestration state table. The
+goldens are recorded on the package before the grind modules moved (``python -m
+tests.parity.grind.replay REF`` reruns them on ``REF``'s package).
 """
 
 from __future__ import annotations
 
 import json
-import re
+import os
+import shutil
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
 
 from tests.parity.grind.fixture import (
+    GIT_DATES,
     IMPLEMENT,
     LEAVES,
     cli,
@@ -32,7 +43,6 @@ from tests.parity.grind.fixture import (
     offline_env,
 )
 from tests.parity.orchestration_state import rows as state_rows
-from tests.parity.support import normalise, repo_copy
 
 GOLDEN = Path(__file__).resolve().parent / "golden"
 DOGFOOD = Path(__file__).resolve().parents[2] / "fixtures" / "specy_road_dogfood"
@@ -48,9 +58,6 @@ VANISHES = "exit 137\n"
 #: Steps whose first word is this run :data:`IMPLEMENT` in the project, as an agent would.
 SHELL_IMPLEMENT = "(implement)"
 
-_TS = re.compile(r'"ts": "[^"]*"')
-_HOURS_AWAY = re.compile(r"is \d+\.\d hours away")
-_SHA = re.compile(r"\b[0-9a-f]{7,40}\b")
 
 
 @dataclass(frozen=True)
@@ -62,6 +69,8 @@ class Row:
     steps: tuple[tuple[str, ...], ...]
     claude: str = "exit 0\n"
     state: bool = True
+    #: Built from a committed fixture, so its start commit id is the same every run (recorded).
+    fixed_ref: bool = False
     env_extra: dict[str, str] = field(default_factory=dict)
 
 
@@ -80,8 +89,29 @@ def _project(template: str, *prepare: tuple[str, ...]) -> Callable:
 
 
 def _dogfood(tmp: Path, _templates: dict[str, Path]) -> tuple[Path, dict[str, Path]]:
-    root = repo_copy(DOGFOOD, tmp / "dogfood")
+    """The committed dogfood fixture as one commit with fixed dates: the same commit id each run."""
+    root = tmp / "dogfood"
+    shutil.copytree(DOGFOOD, root)
+    git(root, "init", "-q", "-b", "main")
+    git(root, "add", "-A")
+    git(root, "-c", "user.email=parity@example.com", "-c", "user.name=Parity",
+        "commit", "-qm", "fixture")
     return root, {"repo": root.resolve(), "tmp": tmp.resolve()}
+
+
+@contextmanager
+def _fixed_git_dates() -> Iterator[None]:
+    """:data:`GIT_DATES` in this process's environment while the state table's helpers commit."""
+    saved = {key: os.environ.get(key) for key in GIT_DATES}
+    os.environ.update(GIT_DATES)
+    try:
+        yield
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 def _state_row(name: str) -> Callable:
@@ -89,7 +119,8 @@ def _state_row(name: str) -> Callable:
     row = next(r for r in state_rows.ROWS if r.name == name)
 
     def build(tmp: Path, _templates: dict[str, Path]) -> tuple[Path, dict[str, Path]]:
-        return state_rows.build(row, tmp)
+        with _fixed_git_dates():
+            return state_rows.build(row, tmp)
 
     return build
 
@@ -123,7 +154,7 @@ ROWS: tuple[Row, ...] = (
     Row("step_pickup_resumes_own_claim", _project("base", _PICKUP_ALPHA),
         (("--step", "pickup", "--json"),)),
     Row("step_finish_without_claim", _project("base"), (("--step", "finish", "--json"),)),
-    Row("plan_dogfood", _dogfood, PLAN, state=False),
+    Row("plan_dogfood", _dogfood, PLAN, state=False, fixed_ref=True),
     Row("plan_readiness", _project("readiness"), PLAN_READINESS),
     Row("plan_open_claim", _project("readiness", _PICKUP_ALPHA), PLAN_READINESS),
     *(
@@ -133,24 +164,28 @@ ROWS: tuple[Row, ...] = (
 )
 
 
-def _events(stdout: str, *, plan: bool) -> str:
-    """JSON events one per block (``ts`` masked), else the human ``[grind-session]`` lines.
+def _stdout(stdout: str, argv: tuple[str, ...]) -> str:
+    """What a step printed, as printed; one bounded exception.
 
-    A ``--plan`` step keeps every line: its text report is the event.
+    A ``--plan`` or ``--json`` step's stdout is the command's own output (in ``--json`` mode the
+    loop sends its children's output to stderr), so it is kept byte for byte: the clock is frozen,
+    so ``ts`` needs no mask. A human-mode loop step shares stdout with pickup and finish, whose
+    banners are not grind output, so only its ``[grind-session]`` lines are kept.
     """
-    out = []
-    for line in stdout.splitlines():
-        try:
-            event = json.loads(_TS.sub('"ts": "<TS>"', line))
-        except ValueError:
-            if plan or line.startswith("[grind-session]"):
-                out.append(line)
-            continue
-        out.append(json.dumps(event, indent=2))
-    return "\n".join(out) + "\n"
+    if "--plan" in argv or "--json" in argv:
+        return stdout
+    lines = stdout.splitlines()
+    return "".join(f"{line}\n" for line in lines if line.startswith("[grind-session]"))
 
 
-def _refusals(stderr: str) -> str:
+def _stderr(stderr: str, argv: tuple[str, ...]) -> str:
+    """A ``--plan`` step's stderr byte for byte; a loop step's ``grind-session``/``error:`` lines.
+
+    A loop step's stderr carries its children's output (pickup and finish banners, git), which is
+    not grind output; the plan starts no child.
+    """
+    if "--plan" in argv:
+        return stderr
     keep = [
         line for line in stderr.splitlines()
         if line.startswith(("grind-session", "error:"))
@@ -191,7 +226,7 @@ def record(row: Row, tmp: Path, templates: dict[str, Path]) -> str:
     """The golden text for ``row``: each step, then the project's state."""
     root, dirs = row.build(tmp, templates)
     env = {**offline_env(tmp / "env", row.claude), **row.env_extra}
-    parts = []
+    parts = [f"$ git rev-parse HEAD\n{git(root, 'rev-parse', 'HEAD')}\n"] if row.fixed_ref else []
     for argv in row.steps:
         if argv[0] == SHELL_IMPLEMENT:
             result = subprocess.run(
@@ -202,14 +237,15 @@ def record(row: Row, tmp: Path, templates: dict[str, Path]) -> str:
             result = cli(root, env, "grind-session", *argv)
         parts.append(
             f"$ grind-session {' '.join(argv)}\nexit: {result.returncode}\n"
-            f"--- events ---\n{_events(result.stdout, plan='--plan' in argv)}"
-            f"--- errors ---\n{_refusals(result.stderr)}"
+            f"--- stdout ---\n{_stdout(result.stdout, argv)}"
+            f"--- errors ---\n{_stderr(result.stderr, argv)}"
         )
     if row.state:
         parts.append(f"--- state ---\n{_state(root)}")
-    paths = {path: f"<{label.upper()}>" for label, path in dirs.items()}
-    text = normalise("\n".join(parts), paths)
-    return _SHA.sub("<SHA>", _HOURS_AWAY.sub("is <N> hours away", text))
+    text = "\n".join(parts)
+    for path, label in sorted(dirs.items(), key=lambda kv: -len(str(kv[1]))):
+        text = text.replace(str(label), f"<{path.upper()}>")
+    return text
 
 
 def golden_path(row: Row) -> Path:

@@ -1,27 +1,9 @@
 $ grind-session --json --implement-mode hook --implement-cmd claude -p task --max-limit-waits 0
 exit: 1
---- events ---
-{
-  "event": "picked",
-  "ts": "<TS>",
-  "node_id": "M1.2",
-  "branch": "feature/rm-write-the-alpha-module",
-  "brief": "work/brief-M1.2.md",
-  "prompt": "work/prompt-M1.2.md"
-}
-{
-  "event": "implementing",
-  "ts": "<TS>",
-  "node_id": "M1.2",
-  "mode": "hook"
-}
-{
-  "event": "hook_failed",
-  "ts": "<TS>",
-  "phase": "implement",
-  "node_id": "M1.2",
-  "rc": 1
-}
+--- stdout ---
+{"event": "picked", "ts": "2026-11-14T12:00:00Z", "node_id": "M1.2", "branch": "feature/rm-write-the-alpha-module", "brief": "work/brief-M1.2.md", "prompt": "work/prompt-M1.2.md"}
+{"event": "implementing", "ts": "2026-11-14T12:00:00Z", "node_id": "M1.2", "mode": "hook"}
+{"event": "hook_failed", "ts": "2026-11-14T12:00:00Z", "phase": "implement", "node_id": "M1.2", "rc": 1}
 --- errors ---
 grind-session: still rate-limited after 0 waits; stopping rather than looping. Re-run when the quota recovers.
 

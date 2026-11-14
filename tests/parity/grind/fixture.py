@@ -7,6 +7,11 @@ same commits. Finish lands with ``on_complete: merge`` and
 ``require_implementation_review_before_finish: false``, so a cycle completes without a review
 round. Nothing reaches a hosting service: ``gh`` and ``glab`` on PATH
 fail, git may use the file protocol only, and a fake ``claude`` on PATH prints what the row asks.
+
+Fixed refs and a fixed clock: every git commit this fixture or the CLI makes carries
+:data:`GIT_DATES`, so the same steps give the same commit ids on every run, and :func:`cli` runs
+``specy-road`` with ``specy_road.clock.utc_now`` returning :data:`FIXED_NOW` (set before any other
+package module imports it). The children grind-session starts (pickup, finish) keep the real clock.
 """
 
 from __future__ import annotations
@@ -16,10 +21,24 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from tests.parity.support import cli_env, run_cli
+from tests.parity.support import cli_env
+
+#: The instant :func:`cli` freezes ``specy_road.clock.utc_now`` at.
+FIXED_NOW = "2026-11-14T12:00:00+00:00"
+#: Author and committer dates of every commit, so commit ids repeat run to run.
+GIT_DATES = {"GIT_AUTHOR_DATE": FIXED_NOW, "GIT_COMMITTER_DATE": FIXED_NOW}
+_FROZEN_CLI = (
+    "import runpy, sys\n"
+    "from datetime import datetime\n"
+    "import specy_road.clock as clock\n"
+    f"clock.utc_now = lambda: datetime.fromisoformat({FIXED_NOW!r})\n"
+    "sys.argv = ['specy-road', *sys.argv[1:]]\n"
+    "runpy.run_module('specy_road.cli', run_name='__main__')\n"
+)
 
 LEAVES = (("M1.2", "write-the-alpha-module"), ("M1.3", "write-the-beta-module"))
 SHEET = (
@@ -31,7 +50,8 @@ SHEET = (
 def git(cwd: Path, *args: str) -> str:
     """Run git in ``cwd``; its stdout, stripped. Fails the test on a non-zero exit."""
     return subprocess.run(
-        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True,
+        env={**os.environ, **GIT_DATES},
     ).stdout.strip()
 
 
@@ -48,12 +68,16 @@ def offline_env(tmp: Path, claude_script: str = "exit 0\n") -> dict[str, str]:
         GIT_ALLOW_PROTOCOL="file",
         GIT_AUTHOR_NAME="Parity", GIT_AUTHOR_EMAIL="parity@example.com",
         GIT_COMMITTER_NAME="Parity", GIT_COMMITTER_EMAIL="parity@example.com",
+        **GIT_DATES,
     )
 
 
 def cli(root: Path, env: dict[str, str], *argv: str) -> subprocess.CompletedProcess[str]:
-    """``specy-road <argv> --repo-root <root>`` from ``root``."""
-    return run_cli("specy_road.cli", [*argv, "--repo-root", str(root)], cwd=root, env=env)
+    """``specy-road <argv> --repo-root <root>`` from ``root``, with the clock at FIXED_NOW."""
+    return subprocess.run(
+        [sys.executable, "-c", _FROZEN_CLI, *argv, "--repo-root", str(root)],
+        cwd=root, env=env, capture_output=True, text=True, check=False,
+    )
 
 
 def _checked(result: subprocess.CompletedProcess[str]) -> None:
@@ -67,7 +91,10 @@ def build_template(tmp: Path) -> Path:
     git(tmp, "init", "-q", "-b", "main", str(root))
     git(root, "config", "user.email", "parity@example.com")
     git(root, "config", "user.name", "Parity")
-    _checked(run_cli("specy_road.cli", ["init", "project", str(root)], cwd=root, env=env))
+    _checked(subprocess.run(
+        [sys.executable, "-c", _FROZEN_CLI, "init", "project", str(root)],
+        cwd=root, env=env, capture_output=True, text=True, check=False,
+    ))
     workflow = root / "roadmap" / "git-workflow.yaml"
     text = workflow.read_text(encoding="utf-8")
     for old, new in (
