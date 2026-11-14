@@ -294,8 +294,9 @@
       "D102/D103": 5
     },
     "specy_road/bundled_scripts/orchestration_guard_cli.py": {
-      "PL": 1,
-      "D102/D103": 3
+      "PL": 3,
+      "B": 1,
+      "D102/D103": 6
     },
     "specy_road/bundled_scripts/planning_rename.py": {
       "PL": 7,
@@ -656,6 +657,18 @@
     "specy_road/on_complete_session.py": {
       "SIM": 1
     },
+    "specy_road/orchestration/guard/session_presence.py": {
+      "PL": 1,
+      "D102/D103": 8
+    },
+    "specy_road/orchestration/guard/tool_call_guard.py": {
+      "C901": 2,
+      "PL": 10,
+      "D102/D103": 2
+    },
+    "specy_road/orchestration/guard/tool_call_guard_shapes.py": {
+      "B": 1
+    },
     "specy_road/orchestration/harness/harness_facts.py": {
       "B": 1,
       "D102/D103": 7
@@ -773,11 +786,6 @@
     },
     "specy_road/orchestration_pinned.py": {
       "PL": 2
-    },
-    "specy_road/orchestration_role_guard.py": {
-      "PL": 2,
-      "B": 1,
-      "D102/D103": 3
     },
     "specy_road/orphaned_claims.py": {
       "PL": 1
@@ -968,10 +976,6 @@
     "specy_road/search_sources.py": {
       "PL": 5
     },
-    "specy_road/session_presence.py": {
-      "PL": 1,
-      "D102/D103": 8
-    },
     "specy_road/shared_zones.py": {
       "PL": 1,
       "D102/D103": 1
@@ -995,14 +999,6 @@
     },
     "specy_road/steering_gate.py": {
       "PL": 5
-    },
-    "specy_road/tool_call_guard.py": {
-      "C901": 2,
-      "PL": 10,
-      "D102/D103": 2
-    },
-    "specy_road/tool_call_guard_shapes.py": {
-      "B": 1
     },
     "specy_road/validate_stale_commands.py": {
       "PL": 2,

@@ -80,6 +80,25 @@ roster:
     # check counts the wrapper's Linux bwrap mount points as reviewer writes).
     channels:
       cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-6.1-sol {prompt}'
+  - id: gpt-6.1-terra
+    family: openai
+    roles: [reviewer]
+    profile: model-profiles/openai-gpt/gpt-6.1-terra.md
+    harness: codex
+    harness_model: gpt-6.1-terra
+    # First reviewer instead of Sol since 2026-11-14 (maintainer: "use Terra latest version as a reviewer");
+    # same Codex wrapper as gpt-6.1-sol until M8.3 lands.
+    channels:
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-6.1-terra {prompt}'
+  - id: gpt-6.1-terra-low
+    family: openai
+    roles: [reviewer]
+    profile: model-profiles/openai-gpt/gpt-6.1-terra.md
+    harness: codex
+    harness_model: gpt-6.1-terra
+    # Plain leaves' first reviewer since 2026-11-14 (replaces gpt-5.6-sol-low), low reasoning effort.
+    channels:
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-6.1-terra {prompt} low'
   - id: gpt-5.6-sol-medium
     family: openai
     roles: [reviewer]

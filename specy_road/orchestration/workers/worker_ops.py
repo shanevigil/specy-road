@@ -76,7 +76,7 @@ from specy_road.orchestration.role_prompt_rework import (
 )
 from specy_road.roadmap_load import load_roadmap
 from specy_road.runtime_paths import REPO_ROOT_ENV, project_prefix
-from specy_road.session_presence import current_user, end_session, list_sessions
+from specy_road.orchestration.guard.session_presence import current_user, end_session, list_sessions
 from specy_road.worktree_env import EnvSetupError, linked_status_paths, setup_worktree_env
 
 def _target(repo_root: Path, node_id: str):

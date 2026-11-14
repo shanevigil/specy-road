@@ -240,6 +240,14 @@ _MOVED_FROM.update({
     "specy_road/orchestration/roster_generate.py": "specy_road/roster_generate.py",
     "specy_road/orchestration/roster_local.py": "specy_road/roster_local.py",
     "specy_road/orchestration/roster_profile_check.py": "specy_road/roster_profile_check.py",
+    "specy_road/orchestration/guard/tool_call_guard.py": "specy_road/tool_call_guard.py",
+    "specy_road/orchestration/guard/tool_call_guard_adapters.py":
+        "specy_road/tool_call_guard_adapters.py",
+    "specy_road/orchestration/guard/tool_call_guard_shapes.py":
+        "specy_road/tool_call_guard_shapes.py",
+    "specy_road/orchestration/guard/orchestration_role_env.py":
+        "specy_road/orchestration_role_env.py",
+    "specy_road/orchestration/guard/session_presence.py": "specy_road/session_presence.py",
 })
 # Renamed by the review-gate fold: new path -> path at pickup.
 _MOVED_FROM.update({

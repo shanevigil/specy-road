@@ -422,7 +422,7 @@ harnesses:
     hooks:
       value: no hook of its own; the session guard's generic contract reads a JSON object with a command field on stdin and exits 2 to deny, for any harness that can call it
       label: documented
-      source: specy_road/tool_call_guard_adapters.py (generic adapter)
+      source: specy_road/orchestration/guard/tool_call_guard_adapters.py (generic adapter)
     git_actions:
       - action: unknown; depends on the binary access.cli names
         switch: unknown

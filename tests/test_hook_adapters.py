@@ -20,8 +20,8 @@ import pytest
 from tests.helpers import script_subprocess_env
 from tests.review_repo_helpers import make_review_repo
 
-from specy_road import session_presence as sp
-from specy_road.tool_call_guard import ADAPTERS
+from specy_road.orchestration.guard import session_presence as sp
+from specy_road.orchestration.guard.tool_call_guard import ADAPTERS
 
 REPO = Path(__file__).resolve().parent.parent
 

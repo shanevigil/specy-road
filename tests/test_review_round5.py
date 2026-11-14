@@ -27,9 +27,9 @@ from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_cli import wait_for_worker
 from tests.worker_repo_helpers import make_worker_repo
 
-from specy_road import session_presence as sp
-from specy_road import tool_call_guard as tg
-from specy_road import tool_call_guard_adapters as tga
+from specy_road.orchestration.guard import session_presence as sp
+from specy_road.orchestration.guard import tool_call_guard as tg
+from specy_road.orchestration.guard import tool_call_guard_adapters as tga
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_lease as wl
 from specy_road.orchestration.workers import worker_ops as ops

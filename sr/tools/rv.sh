@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Review one leaf: trial-merge with WIP, rebuild the packet, then R1 (Sol); R2 (Grok) only after R1 approves.
+# Review one leaf: trial-merge with WIP, rebuild the packet, then R1 (Terra since 2026-11-14); R2 (Grok) only after R1 approves.
 # Usage: sr/tools/rv.sh <NODE_ID> <worktree-dir-name>
 set -u
 ID=$1; WT=$2
@@ -11,7 +11,7 @@ cd "$ROOT" || exit 2
 # A plain leaf (tier from the integration line's sheet, raised by a path floor: sr/tools/tier.py) gets the
 # low-effort pair, cheapest first (maintainer 2026-11-09). Behavioural and trust leaves keep the configured pair.
 TIER=$("$PY" "$ROOT/sr/tools/tier.py" "$ID" "sr/work/.worktrees/$WT" 2>/dev/null || echo behavioural)
-if [ "$TIER" = plain ]; then R1=gpt-5.6-sol-low; R2=grok-4.7-low; fi
+if [ "$TIER" = plain ]; then R1=gpt-6.1-terra-low; R2=grok-4.7-low; fi   # Terra instead of Sol (maintainer 2026-11-14)
 # While Cursor's Opus and GPT/Sol models are capped (flag file present), never route a Sol review through Cursor;
 # Grok through Cursor still works. gpt-5.6-sol-high is the Cursor-routed Sol id; use Codex Sol instead.
 [ -e "$ROOT/sr/work/orchestrator-2026-11-04/cursor-capped" ] && { [ "${R1:-}" = gpt-5.6-sol-high ] && R1=gpt-6.1-sol; [ "${R2:-}" = gpt-5.6-sol-high ] && R2=gpt-6.1-sol; }

@@ -24,7 +24,7 @@ from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
 from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
 
 from specy_road.orchestration import orchestrate_plan as op
-from specy_road import tool_call_guard as tg
+from specy_road.orchestration.guard import tool_call_guard as tg
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws

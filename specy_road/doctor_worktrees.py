@@ -17,7 +17,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
-from specy_road import session_presence
+from specy_road.orchestration.guard import session_presence
 from specy_road.merged_branch import merged_into
 from specy_road.orchestration import read_state
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_root, git_text

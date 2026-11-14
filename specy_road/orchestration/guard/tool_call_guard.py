@@ -30,9 +30,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from specy_road import tool_call_guard_shapes as shapes
+from specy_road.orchestration.guard import tool_call_guard_shapes as shapes
 from specy_road.git_subprocess import git_root, git_text
-from specy_road.session_presence import list_sessions, unreadable_records
+from specy_road.orchestration.guard.session_presence import list_sessions, unreadable_records
 
 ALLOW = "allow"
 DENY = "deny"
@@ -387,7 +387,7 @@ def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = F
                          "or a human.", command)
 
 
-from specy_road.tool_call_guard_adapters import ADAPTERS, Adapter  # noqa: E402,F401 — re-exported for session_cli
+from specy_road.orchestration.guard.tool_call_guard_adapters import ADAPTERS, Adapter  # noqa: E402,F401 — re-exported for session_cli
 
 
 def read_payload(text: str) -> dict[str, Any]:
