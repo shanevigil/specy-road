@@ -252,8 +252,8 @@ def record(row: Row, tmp: Path) -> str:
     dirs = {"repo": repo.resolve(), "tmp": tmp.resolve(), "fake": script.resolve(),
             **{k: v.resolve() for k, v in extra.items()}}
     body = "\n".join(steps) + "\n" + _state_files(repo)
-    text = step_transcript([row.name], 0, _HASH.sub("<HASH>", _UUID.sub("<UUID>", body)), "", dirs)
-    return _PID.sub(r"\1 <N>", text)
+    body = _PID.sub(r"\1 <N>", _HASH.sub("<HASH>", _UUID.sub("<UUID>", body)))
+    return step_transcript([row.name], 0, body, "", dirs)   # pids first: seven digits read as a sha
 
 
 def golden_path(row: Row) -> Path:
