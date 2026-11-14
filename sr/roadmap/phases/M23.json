@@ -35,6 +35,30 @@
         "sr/planning/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A worker turn that merges or fast-forwards the integration branch reports no committed_outside_zones finding for paths changed only by commits reachable from the integration ref; a path the leaf's own commit changes outside its zones is still reported",
+        "The check reads the integration ref the worker state already records, and an unreadable ref is a check_error finding, never a silent pass",
+        "One test through the public post-run check covers both cases (integration-only path, leaf-own out-of-zone path); CHANGELOG [Unreleased] entry"
+      ],
+      "codename": "the-post-run-zone-check-counts-only-the-leaf-s-own-commits-not",
+      "dependencies": [
+        "51f22f17-0d11-4dc4-8709-d39d406991c5"
+      ],
+      "id": "M23.11",
+      "node_key": "537e61c5-c23b-4132-ac56-91d4da439380",
+      "parent_id": "M23",
+      "planning_dir": "planning/M23.11_the-post-run-zone-check-counts-only-the-leaf-s-own-commits-not_537e61c5-c23b-4132-ac56-91d4da439380.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "The post-run zone check counts only the leaf's own commits, not integration commits a merge brings in",
+      "touch_zones": [
+        "specy_road/orchestration/workers/worker_turn_check.py",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
