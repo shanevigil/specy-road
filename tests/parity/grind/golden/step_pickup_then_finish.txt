@@ -1,0 +1,65 @@
+$ grind-session --step pickup --json
+exit: 0
+--- events ---
+{
+  "event": "picked",
+  "ts": "<TS>",
+  "node_id": "M1.2",
+  "branch": "feature/rm-write-the-alpha-module",
+  "brief": "work/brief-M1.2.md",
+  "prompt": "work/prompt-M1.2.md"
+}
+--- errors ---
+
+$ grind-session (implement)
+exit: 0
+--- events ---
+
+--- errors ---
+
+$ grind-session --step finish --json
+exit: 0
+--- events ---
+{
+  "event": "finished",
+  "ts": "<TS>",
+  "node_id": "M1.2"
+}
+--- errors ---
+
+$ grind-session --step pickup --json
+exit: 0
+--- events ---
+{
+  "event": "picked",
+  "ts": "<TS>",
+  "node_id": "M1.3",
+  "branch": "feature/rm-write-the-beta-module",
+  "brief": "work/brief-M1.3.md",
+  "prompt": "work/prompt-M1.3.md"
+}
+--- errors ---
+
+--- state ---
+{
+  "branch": "feature/rm-write-the-beta-module",
+  "branches": [
+    "feature/rm-write-the-alpha-module",
+    "feature/rm-write-the-beta-module",
+    "main"
+  ],
+  "registry": {
+    "checkout": [
+      "M1.3 feature/rm-write-the-beta-module"
+    ],
+    "main": [
+      "M1.3 feature/rm-write-the-beta-module"
+    ]
+  },
+  "status_on_main": {
+    "M1": "Not Started",
+    "M1.1": "Complete",
+    "M1.2": "Complete",
+    "M1.3": "Not Started"
+  }
+}

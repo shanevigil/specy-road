@@ -1,0 +1,39 @@
+$ grind-session --json --under M1.6 --implement-mode hook --implement-cmd mkdir -p "src/$SPECY_ROAD_NODE_ID" && echo "x = 1" > "src/$SPECY_ROAD_NODE_ID/m.py" && git add src && git commit -qm "implement $SPECY_ROAD_NODE_ID"
+exit: 3
+--- events ---
+{
+  "event": "blocked",
+  "ts": "<TS>",
+  "reason": "gate",
+  "waiting_on": [
+    "M1.5"
+  ],
+  "count": 1,
+  "node_id": "M1.6"
+}
+--- errors ---
+
+--- state ---
+{
+  "branch": "main",
+  "branches": [
+    "main"
+  ],
+  "registry": {
+    "checkout": [],
+    "main": []
+  },
+  "status_on_main": {
+    "M1": "Not Started",
+    "M1.1": "Complete",
+    "M1.2": "Not Started",
+    "M1.3": "Not Started",
+    "M1.4": "Not Started",
+    "M1.4.1": "Complete",
+    "M1.5": "Not Started",
+    "M1.6": "Not Started",
+    "M1.7": "Blocked",
+    "M1.8": "Not Started",
+    "M1.10": "In Progress"
+  }
+}

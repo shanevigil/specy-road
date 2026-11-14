@@ -1,0 +1,30 @@
+$ grind-session --step finish --json
+exit: 1
+--- events ---
+{
+  "event": "hook_failed",
+  "ts": "<TS>",
+  "phase": "locate_claim",
+  "branch": "main",
+  "rc": 1
+}
+--- errors ---
+error: grind-session --step finish needs a claimed feature/rm-* branch checked out, but HEAD is on 'main'. Run `specy-road grind-session --step pickup`, which checks out this clone's open claim, then retry.
+
+--- state ---
+{
+  "branch": "main",
+  "branches": [
+    "main"
+  ],
+  "registry": {
+    "checkout": [],
+    "main": []
+  },
+  "status_on_main": {
+    "M1": "Not Started",
+    "M1.1": "Complete",
+    "M1.2": "Not Started",
+    "M1.3": "Not Started"
+  }
+}

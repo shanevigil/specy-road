@@ -1,0 +1,82 @@
+$ grind-session --plan --json
+exit: 0
+--- events ---
+{
+  "event": "plan",
+  "ts": "<TS>",
+  "under": null,
+  "ready": [
+    "M0.2",
+    "M2"
+  ],
+  "blocked": [],
+  "active": [],
+  "closed": [
+    "M0.1",
+    "M0.3"
+  ],
+  "gated": [],
+  "gates_open": [],
+  "needs_codename": [
+    "M1"
+  ],
+  "waves": [
+    {
+      "index": 0,
+      "node_ids": [
+        "M0.2",
+        "M2"
+      ]
+    }
+  ],
+  "parallel_batches": [
+    [
+      "M0.2",
+      "M2"
+    ]
+  ],
+  "zone_overlaps": [],
+  "shared_zones_ignored": [],
+  "finished_unmerged": [],
+  "finished_claimed": [],
+  "unauthored": [],
+  "totals": {
+    "ready": 2,
+    "blocked": 0,
+    "active": 0,
+    "closed": 2,
+    "gated": 0,
+    "gates_open": 0,
+    "needs_codename": 1,
+    "waves": 1
+  },
+  "ready_execution": {
+    "M0.2": "Agentic-led",
+    "M2": null
+  },
+  "prefer_agentic": false,
+  "nested_unpushed": []
+}
+--- errors ---
+
+$ grind-session --plan
+exit: 0
+--- events ---
+# grind-session plan
+
+Totals: ready=2 blocked=0 active=0 closed=2 gated=0 gates_open=0 waves=1
+
+## Suggested sub-agent batches
+
+**Dispatch now (parallel, in pickup order):** M0.2, M2  — 2 independent leaf/leaves, all dependencies satisfied, listed in the order the loop will claim them.
+
+**Next auto-pick:** `M0.2` (Agentic-led) — what `specy-road do-next-available-task` claims if you run it now.
+
+_This plan reads feature-branch tips locally so ``ready`` and ``Next auto-pick`` match what pickup skips after sync. Pickup still fetches the integration branch first, so a leaf listed in flight below can become the next pick once its claim is released._
+
+## Blocked — do not start yet
+
+_None._
+
+**Needs codename (cannot be auto-claimed):** M1
+--- errors ---
