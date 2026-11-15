@@ -25,7 +25,7 @@ from playwright.sync_api import Page, expect, sync_playwright
 
 TITLES = {"M0.1": "Establish shared contracts and ADR skeleton", "M0.2": "Roadmap validator in CI",
           "M0.3": "Define API contract outline in shared/", "M2": "testing"}
-BADGES = {"M0.1": "approved", "M0.2": "running", "M0.3": "held", "M2": "stalled"}
+BADGES = {"M0.1": "approved", "M0.2": "running", "M0.3": "held", "M2": "failed"}
 READ_ONLY = "server is read-only (specy-road gui --read-only)"
 NO_SCOPE = ("grind-session --status needs a scope: pass --until NODE or --under NODE, or start a milestone "
             "session with `specy-road start-milestone-session <PARENT_NODE_ID>`")

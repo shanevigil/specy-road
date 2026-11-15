@@ -31,7 +31,7 @@ session `sandbox-ideas` with one idea, live session `planner` (note `planning M0
    **Orchestration** opens a dialog titled `Orchestration` containing "Read-only: nothing here changes a
    worker, claim or review."; groups in outline order `M0.1`, `M0.2`, `M0.3`, `M2`, then `No leaf`.
 4. **Each leaf group shows its badge** (`leafBadge`, M17.1 precedence): M0.1 `approved`, M0.2 `running`,
-   M0.3 `held`, M2 `stalled`.
+   M0.3 `held`, M2 `failed` (a failed worker outranks the stalled flag).
 5. **Each leaf group shows the outline's id link and title** (docs/pm-gui.md, Groups): the id is a link
    button, then the title: M0.1 "Establish shared contracts and ADR skeleton", M0.2 "Roadmap validator in
    CI", M0.3 "Define API contract outline in shared/", M2 "testing".
@@ -53,7 +53,7 @@ session `sandbox-ideas` with one idea, live session `planner` (note `planning M0
 11. **The leafless worker is under No leaf.** Group `No leaf`: one row, `w-0004`, status `idle`; no
     **Detail** button.
 12. **Outline badges, hover and click-through.** Outline rows: M0.1 `approved`, M0.2 `running`, M0.3
-    `held`, M2 `stalled`. The M0.2 badge's hover, line by line: `claim: roadmap-ci ·
+    `held`, M2 `failed`. The M0.2 badge's hover, line by line: `claim: roadmap-ci ·
     feature/rm-roadmap-ci · <age>`, `workers: w-0001 terminated, w-0002 running`, `worktrees: 2`,
     `READY: —`, `reviews: —`, `holds: —`. Clicking it opens the drawer with only the M0.2 group.
 13. **Without the route (404) the drawer says so and the outline has no badges.** With `GET
@@ -93,11 +93,10 @@ session `sandbox-ideas` with one idea, live session `planner` (note `planning M0
 
 ## Read from the code before the run
 
-- Items 5 and 12 are expected to fail at this commit: `GET /api/orchestration` keys `leaves` by node id
-  (`M0.2`, `specy_road/orchestration/state.py`), while the outline joins on `node_key`, a UUID
-  (`OutlineTable.tsx`, `buildOrchestrationView`), and docs/pm-gui.md says the keys are node keys. The
-  drawer would then show each leaf as missing from the outline (`<code>` id, title `—`) and the outline
-  no badges.
-- Item 7: docs/pm-gui.md lists worker statuses as `claimed`, `running`, `exited_ok`, `exited_failed`,
-  `abandoned`; the snapshot sends the record state (`failed`), so `leafBadge` never sees
-  `exited_failed` on a worker and a failed, stalled worker's leaf badge is `stalled`.
+- M17.16 (landed before this run) joins the snapshot's `leaves` to the outline by node id
+  (`buildOrchestrationView`, `outline.map((n) => n.id)`), matching `GET /api/orchestration`, which keys
+  `leaves` by node id (`specy_road/orchestration/state.py`). Items 5 and 12 are expected to pass: each
+  leaf group shows its outline title and each outline row its badge.
+- Items 4, 7 and 12: the snapshot sends the worker record state (`failed`), and docs/pm-gui.md now lists
+  the record states. `leafBadge` checks `failed` before the `stalled` flag, so M2's badge is `failed`;
+  the `stalled` flag still shows in its worker row (item 7).
