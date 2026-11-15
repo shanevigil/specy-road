@@ -70,15 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: gui-orch-sandbox-acceptance
-    node_id: M17.9
-    branch: feature/rm-gui-orch-sandbox-acceptance
-    touch_zones:
-      - tests/sandbox/pm_gui_orchestration/
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-15T23:57:49+00:00'
   - codename: docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra
     node_id: M16.6.1
     branch: feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra

@@ -192,7 +192,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.68` grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only `grind-status` — task — **Complete**
   - `M22.69` A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line `human-criteria-in-ledger` — task — **Complete**
   - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Complete**
-- `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **Not Started**
+- `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
   - `M17.3` PM GUI: a read-only Orchestration drawer lists workers per leaf with state, harness and model, account, last activity and flags `gui-orch-drawer` — task — **Complete**
@@ -201,7 +201,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.6` Orchestration snapshot schema 2: optional fields for the PM GUI (worker account, last activity and flags; worktree ahead/behind; READY, gate summary and holds per leaf) `orch-snapshot-schema-2` — task — **Complete**
   - `M17.7` PM GUI server: GET /api/orchestration serves the snapshot read-only, with contract tests tying the server fixture and the GUI mock together `gui-api-orchestration` — task — **Complete**
   - `M17.8` PM GUI orchestration view: docs/pm-gui.md and pm-workflow.md sections, the API table row, the CHANGELOG entry and a live check against the real route `gui-orch-docs-wiring` — task — **Complete**
-  - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Not Started**
+  - `M17.9` GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results `gui-orch-sandbox-acceptance` — task — **Complete**
   - `M17.10` Gate: maintainer approves using the agentic sandbox for M17.9's GUI acceptance run `gui-orch-sandbox-use-approved` — gate — **Complete**
   - `M17.11` PM GUI: view and edit a node's acceptance criteria in the node edit dialog, through the existing PATCH and edit-node semantics `gui-acceptance-editing` — task — **Complete**
   - `M17.12` PM GUI: a group-siblings outline action that calls the existing POST /api/outline/group `gui-group-siblings-action` — task — **Complete**
@@ -344,7 +344,6 @@ Do not pick these up.
 
 - `M16.6.1` on `feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` since 2026-11-14
 - `M16.6.4` on `feature/rm-tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support` since 2026-11-15
-- `M17.9` on `feature/rm-gui-orch-sandbox-acceptance` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -357,20 +356,25 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
+| `.github` **flagged** | 2 | 0 | 3.00 | 100% | 16 | 0 |
 | `.gitignore` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `CHANGELOG.md` **flagged** | 23 | 0 | 2.48 | 70% | 21 | 1 |
+| `CHANGELOG.md` **flagged** | 21 | 0 | 2.19 | 71% | 9 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 25 | 0 | 2.52 | 68% | 53 | 1 |
-| `gui` **flagged** | 8 | 0 | 2.62 | 62% | 1 | 0 |
+| `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
+| `docs` **flagged** | 25 | 0 | 2.40 | 72% | 41 | 1 |
+| `gui` **flagged** | 6 | 0 | 2.17 | 67% | 1 | 0 |
 | `planning` **flagged** | 3 | 0 | 3.00 | 67% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
-| `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `specy_road` **flagged** | 48 | 0 | 2.23 | 52% | 111 | 1 |
+| `pyproject.toml` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
+| `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
+| `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
+| `schemas` **flagged** | 2 | 0 | 2.00 | 100% | 4 | 0 |
+| `specy_road` **flagged** | 48 | 0 | 2.17 | 54% | 118 | 1 |
 | `suggested_prompts` **flagged** | 5 | 0 | 2.60 | 100% | 4 | 0 |
-| `tests` **flagged** | 49 | 0 | 2.14 | 51% | 115 | 1 |
+| `tests` **flagged** | 50 | 0 | 2.14 | 54% | 118 | 1 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `constraints` | 21 | 0 | 2.10 | 38% | 99 | 0 |
-| `scripts` | 18 | 0 | 2.28 | 44% | 94 | 0 |
+| `constraints` | 18 | 0 | 1.94 | 33% | 82 | 0 |
+| `scripts` | 17 | 0 | 2.24 | 47% | 93 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
