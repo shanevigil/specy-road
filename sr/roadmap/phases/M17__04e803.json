@@ -33,6 +33,36 @@
         "tests/test_gui_app_orchestration.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "The Orchestration drawer lists leaf groups in the outline's row order (the order OutlineTable renders, parents before children, siblings by sibling order), then No leaf; with the M17.9 sandbox fixture (M0.2 depends on M0.3) the groups read M0.1, M0.2, M0.3, M2, No leaf, not the Gantt's dependency-step order (M17.9 RESULTS.md item 3)",
+        "Outline badge loading is unchanged: the GUI already requests GET /api/orchestration on each roadmap load without waiting for it (App.tsx loadSnapshot, since M17.5), and this leaf keeps that line as it is. M17.9's first run read the badges before that response arrived; that was a check timing error, not a GUI defect (operator 2026-11-15)",
+        "GUI tests: one test that fails on the old drawer order (groups taken from the Gantt's node order) and asserts the drawer's observable group order, not source text; npm ci, lint, test and build pass in gui/pm-gantt and the rebuilt specy_road/pm_gantt_static is committed",
+        "CHANGELOG.md [Unreleased] records the drawer-order fix only; docs/pm-gui.md already states this behaviour and is not changed; no version heading is written",
+        "Estimated net line change (informational, not a gate): GUI about +-30 plus the rebuilt bundle"
+      ],
+      "codename": "orchestration-drawer-outline-order-badges-load-with-roadmap",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.17",
+      "node_key": "26c0652b-8220-4b08-8449-cf69ea48bcca",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.17_orchestration-drawer-outline-order-badges-load-with-roadmap_26c0652b-8220-4b08-8449-cf69ea48bcca.md",
+      "sibling_order": 17,
+      "status": "Not Started",
+      "title": "Orchestration drawer follows the outline's order",
+      "touch_zones": [
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "gui/pm-gantt/src/components/OrchestrationDrawer.tsx",
+        "gui/pm-gantt/src/components/OutlineTable.tsx",
+        "gui/pm-gantt/src/App.tsx",
+        "gui/pm-gantt/src/api.ts",
+        "specy_road/pm_gantt_static/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

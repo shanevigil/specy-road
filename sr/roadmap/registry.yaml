@@ -78,19 +78,6 @@ entries:
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
-  - codename: the-review-packet-fragments-fold-into-review-packet
-    node_id: M16.5.13
-    branch: feature/rm-the-review-packet-fragments-fold-into-review-packet
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet*.py
-      - scripts/line_width_baseline.json
-      - tests/
-      - constraints/clone-baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: pending
   - codename: docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra
     node_id: M16.6.1
     branch: feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra
@@ -137,5 +124,37 @@ entries:
       - specy_road/orchestration/records/chore_garden_due.py
       - tests/parity/golden/help/specy-road__self-update.txt
     started: '2026-11-14'
+    owner: savigil
+    implementation_review: pending
+  - codename: tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them
+    node_id: M16.6.3
+    branch: feature/rm-tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them
+    touch_zones:
+      - tests/support/
+      - tests/conftest.py
+      - tests/test_worker_cli.py
+      - tests/test_models_and_prompt.py
+      - tests/test_orchestrate_plan.py
+      - tests/test_roadmap_crud.py
+      - tests/
+      - scripts/line_width_baseline.json
+      - scripts/ruff_quality_baseline.json
+      - constraints/test-private-imports-baseline.txt
+    started: '2026-11-15'
+    owner: savigil
+    implementation_review: pending
+  - codename: orchestration-drawer-outline-order-badges-load-with-roadmap
+    node_id: M17.17
+    branch: feature/rm-orchestration-drawer-outline-order-badges-load-with-roadmap
+    touch_zones:
+      - gui/pm-gantt/src/orchestrationSnapshot.ts
+      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
+      - gui/pm-gantt/src/components/OrchestrationDrawer.tsx
+      - gui/pm-gantt/src/components/OutlineTable.tsx
+      - gui/pm-gantt/src/App.tsx
+      - gui/pm-gantt/src/api.ts
+      - specy_road/pm_gantt_static/
+      - CHANGELOG.md
+    started: '2026-11-15'
     owner: savigil
     implementation_review: pending

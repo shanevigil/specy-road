@@ -256,7 +256,7 @@
       "acceptance": [
         "Run by the coordinator, not CI and not a worker, only once gate M17.10 records the maintainer's dated approval to use the sandbox; RESULTS.md cites that approval and keeps to its limits",
         "tests/sandbox/pm_gui_orchestration/ holds a setup script that builds the wheel (after `npm run build`), creates a fixture repo from tests/fixtures/specy_road_dogfood seeded with orchestration state (a claim with a running worker whose pid is an inert child process the script supervises and kills on exit, success or failure; a failed worker flagged stalled; a leaf with two worktrees one dirty; a READY with one approving and one stale review; a held leaf; a leafless worker) and starts `specy-road gui --read-only`, waiting for an HTTP 200 rather than a fixed sleep; a browser test script for sbvm_run_browser_test; and CHECKLIST.md with the expected badge and detail values per item",
-        "The run uses the sandbox MCP tools (claim_workspace, vm_start, sbvm_exec to install the wheel and run setup, sbvm_run_browser_test, sbvm_screenshot) and covers each checklist item: drawer groups and flags, leaf detail (stale review, ahead/behind, holds), outline badge and its link, the 404 message (the browser script answers `GET /api/orchestration` with 404 by request interception, or a stub server in this directory does), and `POST /api/orchestration` answering 403 under --read-only",
+        "The run uses the sandbox MCP tools (claim_workspace, vm_start, sbvm_exec to install the wheel, run setup and run the Playwright browser script, which takes one screenshot per item; the 2026-11-15 run used sbvm_exec only, and sbvm_run_browser_test and sbvm_screenshot get their trial at the re-run after the filed defects are fixed (operator 2026-11-15)) and covers each checklist item: drawer groups and flags, leaf detail (stale review, ahead/behind, holds), outline badge and its link, the 404 message (the browser script answers `GET /api/orchestration` with 404 by request interception, or a stub server in this directory does), and `POST /api/orchestration` answering 403 under --read-only",
         "RESULTS.md records date, wheel version and commit, VM image, pass / fail per checklist item and screenshot names (screenshots stay under work/, gitignored), and lists each defect for the coordinator to file as a new M17 leaf in a separate roadmap operation; this leaf edits nothing outside its zone, and the M16.8.9 gate stays held until every filed leaf is Complete",
         "Estimated net line change (informational, not a gate): tests/sandbox about +280; package 0"
       ],
@@ -266,7 +266,8 @@
         "860efe04-3d36-451d-9f69-1f0657634bc1",
         "db9cb5a1-b899-411e-a825-0d68894f273e",
         "d4d16cb9-49c7-49ef-a254-3223e0b3a80c",
-        "04e80356-712f-4b73-8e45-d3f2ebcb96d4"
+        "04e80356-712f-4b73-8e45-d3f2ebcb96d4",
+        "26c0652b-8220-4b08-8449-cf69ea48bcca"
       ],
       "execution_milestone": "Human-led",
       "id": "M17.9",
