@@ -157,10 +157,10 @@ export function LeafOrchestrationDetail({
  * Loads once when opened; it does not save and does not poll.
  */
 export function LeafOrchestrationSection({
-  nodeKey,
+  nodeId,
   nodes,
 }: {
-  nodeKey: string;
+  nodeId: string;
   nodes: readonly OutlineNodeRef[];
 }) {
   const [open, setOpen] = useState(false);
@@ -176,7 +176,7 @@ export function LeafOrchestrationSection({
     return () => {
       live = false;
     };
-  }, [open, nodeKey]);
+  }, [open, nodeId]);
 
   const copy = useCallback(async (kind: CopyKind, id: string) => {
     const cmd = copyCommand(kind, id);
@@ -191,7 +191,7 @@ export function LeafOrchestrationSection({
   const group =
     loaded?.result.kind === "ok"
       ? (buildOrchestrationView(loaded.result.snapshot, nodes, loaded.at).find(
-          (g) => g.key === nodeKey,
+          (g) => g.key === nodeId,
         ) ?? null)
       : null;
 

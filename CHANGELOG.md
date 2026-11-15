@@ -224,6 +224,12 @@ are removed in the release after 0.3.1:
 
 ### Fixed
 
+- PM GUI orchestration view: the drawer, the outline badges and the edit dialog's Orchestration section join
+  `GET /api/orchestration`'s leaves on the outline node's id, as the snapshot keys them, so a leaf in the outline
+  shows under its id and title instead of as missing from the outline, and its badge renders. The worker status is
+  the record state the snapshot sends (`starting`, `running`, `idle`, `paused_by_limit`, `completed`, `failed`,
+  `terminated`); the failed-worker badge, now `failed`, fires on state `failed` at its old precedence. See
+  `docs/pm-gui.md`.
 - `specy-road review-packet` reads `work/implementation-summary-<NODE_ID>.md` from the reviewed commit, then from the leaf's own worktree (the worktree `git worktree list` shows with that leaf's `feature/rm-<codename>` branch checked out), then from the working tree of the checkout running the command. The section names which copy it used; the leaf worktree's label includes that file's path. When none has the file, the missing line names every path checked. A milestone packet still says each leaf's summary was reviewed with that leaf. See `docs/orchestration-review.md` (Implementation summary in the review packet).
 - `specy-road review record` refuses a record whose notes body is empty or whitespace only after normalisation, and a record whose body matches another model's REVIEW record for the same leaf at the same commit. The refusal says the notes go in the body below the front matter and that `notes_sha256` covers only that body, not `findings` or `commands_rerun`. The same model re-filing at that commit, and the same body at another commit, are filed as before. The gate is unchanged, so a record already filed still counts. See `docs/orchestration-reviewer-output.md`.
 - An approval still counts across later commits that change only roadmap or planning files, other than `roadmap/orchestration.yaml` and `roadmap/git-workflow.yaml`, or this leaf's implementation summary and review files, and across a two-parent merge from the integration branch whose non-bookkeeping diff is unchanged. It is refused, and `handoff status` gives the reason, when this leaf's acceptance, touch zones or `## Tier` value changed, when the sheet has no tier value, or when the graph or sheet cannot be read. An operator decision still ends on a policy commit. See `docs/orchestration-review.md`.
