@@ -14,7 +14,7 @@ from tests.review_repo_helpers import (
 from tests.test_nested_repo_worktrees import COVERED, add_nested_repo
 
 from specy_road.bundled_scripts import review_packet as rp
-from specy_road.bundled_scripts.review_packet_uncommitted_refs import UNCOMMITTED_REF_NOTE
+from specy_road.bundled_scripts.review_packet import UNCOMMITTED_REF_NOTE
 from specy_road.review_files import PACKET_NAME, reviews_dir
 
 #: Goldens recorded before the packet fragments folded. Git dates and the

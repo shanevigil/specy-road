@@ -7,7 +7,7 @@ from pathlib import Path
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
 
 from specy_road.bundled_scripts import review_packet as rp
-from specy_road.bundled_scripts.review_packet_uncommitted_refs import UNCOMMITTED_REF_NOTE
+from specy_road.bundled_scripts.review_packet import UNCOMMITTED_REF_NOTE
 
 
 def test_packet_skips_dot_git_paths_named_in_the_brief(tmp_path: Path, capsys) -> None:

@@ -258,18 +258,8 @@
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/review_packet.py": {
-      "PL": 5,
+      "PL": 10,
       "B": 2,
-      "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/review_packet_nested.py": {
-      "PL": 2
-    },
-    "specy_road/bundled_scripts/review_packet_observed.py": {
-      "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/review_packet_uncommitted_refs.py": {
-      "PL": 3,
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/roadmap_apply_entries.py": {

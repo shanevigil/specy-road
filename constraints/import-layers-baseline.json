@@ -150,13 +150,6 @@
     {
       "size": 2,
       "modules": [
-        "specy_road.bundled_scripts.review_packet",
-        "specy_road.bundled_scripts.review_packet_nested"
-      ]
-    },
-    {
-      "size": 2,
-      "modules": [
         "specy_road.bundled_scripts.roadmap_codename_cap",
         "specy_road.bundled_scripts.roadmap_edit_fields"
       ]
@@ -192,10 +185,6 @@
     {
       "from": "specy_road.bundled_scripts.doctor",
       "to": "specy_road.bundled_scripts.branches_cli"
-    },
-    {
-      "from": "specy_road.bundled_scripts.review_packet_nested",
-      "to": "specy_road.bundled_scripts.review_packet"
     },
     {
       "from": "specy_road.bundled_scripts.roadmap_apply_entries",
