@@ -26,7 +26,11 @@ import {
   setPmGuiFingerprintGetter,
   getSettings,
 } from "./api";
-import { subscribeOrchestration, type OrchestrationNotice } from "./orchestrationSnapshot";
+import {
+  outlineNodesInRowOrder,
+  subscribeOrchestration,
+  type OrchestrationNotice,
+} from "./orchestrationSnapshot";
 import {
   BRAINSTORM_WINDOW_ID,
   computeSpawnRect,
@@ -821,6 +825,14 @@ export default function App() {
       displayData.registry_by_node,
     );
   }, [displayData, byId]);
+
+  const orchestrationOutline = useMemo(
+    () =>
+      displayData
+        ? outlineNodesInRowOrder(displayData.nodes, displayData.ordered_ids)
+        : [],
+    [displayData],
+  );
 
   const visibleOrderedIds = useMemo(() => {
     if (!displayData?.ordered_ids) return [] as string[];
@@ -1898,7 +1910,7 @@ export default function App() {
         <OrchestrationDrawer
           open={orchestrationOpen}
           onClose={() => setOrchestrationOpen(false)}
-          nodes={displayData?.nodes ?? []}
+          nodes={orchestrationOutline}
           onOpenNode={openEditNode}
           onOpenWorker={(id) => {
             setWorkersInitialId(id);
