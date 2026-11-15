@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-from tests.helpers import DOGFOOD, SCHEMAS
+from tests.helpers import DOGFOOD, SCHEMAS, script_subprocess_env
 from tests.review_repo_helpers import git
 from tests.support.cli import run_cli, run_cli_subprocess
 from tests.support.harness import make_worker_repo, run_fake_harness_turn
@@ -89,3 +91,21 @@ def test_fake_harness_turn_records_the_session_and_its_completion(tmp_path: Path
     run_fake_harness_turn(repo, script, rec, lines)
     assert ws.load_record(repo, rec.worker_id).provider_session_id == "s-fake"
     assert [e.type for e in ws.events_since(repo, rec.worker_id)][-1] == "completion"
+
+
+def test_an_environment_change_a_test_makes_does_not_reach_the_next_test(tmp_path: Path) -> None:
+    """tests/conftest.py restores ``os.environ`` after each test, including a direct write."""
+    (tmp_path / "conftest.py").write_text(
+        "from tests.conftest import environment_restored_after_each_test  # noqa: F401\n",
+        encoding="utf-8")
+    (tmp_path / "test_order.py").write_text(
+        "import os\n\n"
+        "def test_writes():\n    os.environ['SPECY_ROAD_LEAK_PROBE'] = '1'\n\n"
+        "def test_reads():\n    assert 'SPECY_ROAD_LEAK_PROBE' not in os.environ\n",
+        encoding="utf-8")
+    run = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-p", "no:randomly",
+         str(tmp_path / "test_order.py")],
+        cwd=tmp_path, env=script_subprocess_env(), capture_output=True, text=True, check=False)
+    assert run.returncode == 0, run.stdout + run.stderr
+    assert "2 passed" in run.stdout

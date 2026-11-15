@@ -6,6 +6,8 @@ should only ever prevent a test from damaging the checkout.
 
 from __future__ import annotations
 
+import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -31,6 +33,22 @@ def pytest_sessionstart(session: pytest.Session) -> None:
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     fail_if_fixtures_status_changed(session, REPO)
+
+
+@pytest.fixture(autouse=True)
+def environment_restored_after_each_test() -> Iterator[None]:
+    """What a test leaves in ``os.environ`` never reaches the next test in the same process.
+
+    Code under test writes the environment directly, not through ``monkeypatch`` (worker_runner's
+    ``main`` replaces ``PYTHONPATH``, the GUI settings loader sets provider keys, a grind session
+    marks itself). Left alone, each change reaches every later test the worker runs and every
+    child process those tests start, so what a test sees depends on what ran before it.
+    """
+    saved = dict(os.environ)
+    yield
+    if os.environ != saved:
+        os.environ.clear()
+        os.environ.update(saved)
 
 
 @pytest.fixture(autouse=True)
