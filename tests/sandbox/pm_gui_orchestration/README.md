@@ -34,6 +34,11 @@ python3 tests/sandbox/pm_gui_orchestration/browser_check.py \
   --wheel specy_road-*.whl --wheelhouse wheelhouse
 ```
 
+Through the sandbox's browser-test tool, pass `tests/sandbox/pm_gui_orchestration/sandbox_pytest_entry.py`
+(absolute, in the copied directory) as the test path: its one test runs the command above with pytest's
+interpreter and fails unless every item passed. The file is not named `test_*.py`, so the repository's
+own suite does not collect it.
+
 It installs the wheel with `pip install --target` (no virtualenv; the browser keeps the system
 Playwright), seeds, starts the read-only server, waits for HTTP 200, confirms `pid_alive` is true for the
 running worker in `GET /api/orchestration`, then walks the items. Items 19 and 20 start a second, writable
