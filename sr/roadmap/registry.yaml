@@ -91,4 +91,5 @@ entries:
       - specy_road/review_defer*.py
     started: '2026-11-14'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-15T00:27:49+00:00'
