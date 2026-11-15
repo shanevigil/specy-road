@@ -1,0 +1,37 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "The drawer, the outline badges and the edit dialog's Orchestration section join GET /api/orchestration's leaves on the outline node's id (the snapshot keys leaves by node id, as specy_road/orchestration/state.py and the M16.3.1 parity goldens do); a leaf in the outline renders under its outline id and title, and only a leaf id absent from the outline renders as missing from it. The server's snapshot is unchanged",
+        "The GUI's worker status type is the record states the snapshot sends (starting, running, idle, paused_by_limit, completed, failed, terminated); the badge step M17.1 set for a failed worker matches state failed, at the same precedence (above stalled); no other badge precedence changes",
+        "The GUI tests and the orchestration mock fixture use node-id keys and record states as the snapshot sends them, with one test that fails on the old node_key join (a leaf present in the outline must not render as missing); npm ci, lint, test and build pass in gui/pm-gantt and the rebuilt specy_road/pm_gantt_static is committed",
+        "docs/pm-gui.md says leaves are keyed by node id and lists the worker states the snapshot sends; CHANGELOG.md [Unreleased] records the fix; no version heading is written",
+        "Estimated net line change (informational, not a gate): GUI about +-40 plus the rebuilt bundle"
+      ],
+      "codename": "orchestration-view-joins-the-snapshot-by-node-id-and-the-docs",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M17.16",
+      "node_key": "04e80356-712f-4b73-8e45-d3f2ebcb96d4",
+      "parent_id": "M17",
+      "planning_dir": "planning/M17.16_orchestration-view-joins-the-snapshot-by-node-id-and-the-docs_04e80356-712f-4b73-8e45-d3f2ebcb96d4.md",
+      "sibling_order": 16,
+      "status": "Not Started",
+      "title": "Orchestration view joins the snapshot by node id, and the docs name the worker states it sends",
+      "touch_zones": [
+        "gui/pm-gantt/src/orchestrationSnapshot.ts",
+        "gui/pm-gantt/src/orchestrationSnapshot.test.ts",
+        "gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json",
+        "gui/pm-gantt/src/components/OutlineTable.tsx",
+        "gui/pm-gantt/src/components/EditModal.tsx",
+        "gui/pm-gantt/src/components/OrchestrationDrawer.tsx",
+        "gui/pm-gantt/src/components/LeafOrchestrationDetail.tsx",
+        "gui/pm-gantt/src/App.tsx",
+        "specy_road/pm_gantt_static/",
+        "docs/pm-gui.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    }
+  ]
+}
