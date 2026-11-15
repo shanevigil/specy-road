@@ -138,23 +138,3 @@ entries:
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
-  - codename: orchestration-view-joins-the-snapshot-by-node-id-and-the-docs
-    node_id: M17.16
-    branch: feature/rm-orchestration-view-joins-the-snapshot-by-node-id-and-the-docs
-    touch_zones:
-      - gui/pm-gantt/src/orchestrationSnapshot.ts
-      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
-      - gui/pm-gantt/src/fixtures/orchestration_snapshot_mock.json
-      - gui/pm-gantt/src/components/OutlineTable.tsx
-      - gui/pm-gantt/src/components/EditModal.tsx
-      - gui/pm-gantt/src/components/OrchestrationDrawer.tsx
-      - gui/pm-gantt/src/components/LeafOrchestrationDetail.tsx
-      - gui/pm-gantt/src/App.tsx
-      - specy_road/pm_gantt_static/
-      - docs/pm-gui.md
-      - CHANGELOG.md
-      - tests/test_gui_app_orchestration.py
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-15T07:05:23+00:00'
