@@ -38,10 +38,12 @@ on_complete: pr
 # checks:
 #   - {name: suite, run: python -m pytest -n auto -p no:cacheprovider, when: [baseline, land]}
 #   - {name: leaf tests, run: python -m pytest -n 4 -p no:cacheprovider, when: prompt}
-# Optional grind-session bounds for a Claude CLI implement hook. CLI flags win.
-# grind_session_max_limit_waits: 3             # waits per leaf before stopping
-# grind_session_max_limit_wait_hours: 6        # ceiling on any one wait
-# grind_session_limit_wait_grace_seconds: 120  # slack after the stated reset
-# grind_session_max_empty_retries: 2           # re-runs when it dies silently
-# Optional: minutes between grind-session --status --watch reports and coordinator check-ins.
-# grind_session_status_interval_minutes: 30
+# Optional grind-session settings. The first four bound a Claude CLI implement hook;
+# status_interval_minutes is the minutes between grind-session --status --watch reports
+# and coordinator check-ins. CLI flags win.
+# grind:
+#   max_limit_waits: 3             # waits per leaf before stopping
+#   max_limit_wait_hours: 6        # ceiling on any one wait
+#   limit_wait_grace_seconds: 120  # slack after the stated reset
+#   max_empty_retries: 2           # re-runs when it dies silently
+#   status_interval_minutes: 30

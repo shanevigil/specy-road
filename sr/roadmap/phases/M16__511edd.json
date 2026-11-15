@@ -196,7 +196,7 @@
       ],
       "planning_dir": "planning/M16.5.11_grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade_6434cf7b-842b-4532-96e3-1821655a5fb5.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Grind settings move under grind: in git-workflow.yaml, migrated by upgrade",
       "touch_zones": [
         "specy_road/git_workflow_config.py",

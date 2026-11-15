@@ -114,17 +114,17 @@
     "grind_session_max_limit_waits": {
       "type": "integer",
       "minimum": 0,
-      "description": "grind-session: how many times one leaf may wait out a Claude usage limit before the run stops (default 3). CLI --max-limit-waits wins."
+      "description": "Deprecated: use grind.max_limit_waits (removed in the release after 0.3.1; grind.max_limit_waits wins when both are set). grind-session: how many times one leaf may wait out a Claude usage limit before the run stops (default 3). CLI --max-limit-waits wins."
     },
     "grind_session_max_limit_wait_hours": {
       "type": "number",
       "minimum": 0,
-      "description": "grind-session: longest single wait for a stated Claude reset, in hours (default 6). A reset further out stops the run rather than waiting unattended. CLI --max-limit-wait-hours wins."
+      "description": "Deprecated: use grind.max_limit_wait_hours (removed in the release after 0.3.1; grind.max_limit_wait_hours wins when both are set). grind-session: longest single wait for a stated Claude reset, in hours (default 6). A reset further out stops the run rather than waiting unattended. CLI --max-limit-wait-hours wins."
     },
     "grind_session_limit_wait_grace_seconds": {
       "type": "integer",
       "minimum": 0,
-      "description": "grind-session: slack added after the stated reset, because clocks disagree (default 120). CLI --limit-wait-grace-seconds wins."
+      "description": "Deprecated: use grind.limit_wait_grace_seconds (removed in the release after 0.3.1; grind.limit_wait_grace_seconds wins when both are set). grind-session: slack added after the stated reset, because clocks disagree (default 120). CLI --limit-wait-grace-seconds wins."
     },
     "nested_repos": {
       "type": "array",
@@ -207,12 +207,12 @@
     "grind_session_max_empty_retries": {
       "type": "integer",
       "minimum": 0,
-      "description": "grind-session: how many times to re-run a Claude implement command that died on a signal without printing anything (default 2). Not a retry for failed implementations - those still stop the run. CLI --max-empty-retries wins."
+      "description": "Deprecated: use grind.max_empty_retries (removed in the release after 0.3.1; grind.max_empty_retries wins when both are set). grind-session: how many times to re-run a Claude implement command that died on a signal without printing anything (default 2). Not a retry for failed implementations - those still stop the run. CLI --max-empty-retries wins."
     },
     "grind_session_status_interval_minutes": {
       "type": "integer",
       "minimum": 1,
-      "description": "grind-session --status --watch: minutes between reports (default 30), and how often the bundled coordinator skills post grind-session --status during a grind. CLI --watch MINUTES wins."
+      "description": "Deprecated: use grind.status_interval_minutes (removed in the release after 0.3.1; grind.status_interval_minutes wins when both are set). grind-session --status --watch: minutes between reports (default 30), and how often the bundled coordinator skills post grind-session --status during a grind. CLI --watch MINUTES wins."
     },
     "grind": {
       "type": "object",
@@ -224,6 +224,31 @@
           "items": { "type": "string", "minLength": 1 },
           "uniqueItems": true,
           "description": "Directory touch zones that do not make two leaves overlap in grind-session --plan batches or the validate registry overlap warning (default [\"planning/\", \"shared/\"]; [] turns it off). Two leaves naming the same file under one still overlap."
+        },
+        "max_limit_waits": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "grind-session: how many times one leaf may wait out a Claude usage limit before the run stops (default 3). CLI --max-limit-waits wins."
+        },
+        "max_limit_wait_hours": {
+          "type": "number",
+          "minimum": 0,
+          "description": "grind-session: longest single wait for a stated Claude reset, in hours (default 6). A reset further out stops the run rather than waiting unattended. CLI --max-limit-wait-hours wins."
+        },
+        "limit_wait_grace_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "grind-session: slack added after the stated reset, because clocks disagree (default 120). CLI --limit-wait-grace-seconds wins."
+        },
+        "max_empty_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "grind-session: how many times to re-run a Claude implement command that died on a signal without printing anything (default 2). Not a retry for failed implementations - those still stop the run. CLI --max-empty-retries wins."
+        },
+        "status_interval_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "grind-session --status --watch: minutes between reports (default 30), and how often the bundled coordinator skills post grind-session --status during a grind. CLI --watch MINUTES wins."
         }
       }
     }

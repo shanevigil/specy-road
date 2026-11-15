@@ -24,7 +24,7 @@ from specy_road.bundled_scripts.review_cli import rca_command, review_state
 from specy_road.orchestration.records.decisions import open_questions, recorded_on_sheet
 from specy_road.orchestration.records.decisions import LOCAL, SHARED, load_merged
 from specy_road.git_subprocess import git_ok, git_stdout, head_sha
-from specy_road.git_workflow_config import load_git_workflow_config
+from specy_road.git_workflow_config import grind_setting, load_git_workflow_config
 from specy_road.history_events import STATUS
 from specy_road.history_index import events, history_index
 from specy_road.milestone_session import milestone_session_path, read_milestone_session
@@ -40,7 +40,7 @@ from specy_road.orchestration.grind.session_plan_git import gather_session_plan
 from specy_road.orchestration.guard.session_presence import list_sessions
 from specy_road.orchestration.workers.worker_state import FLAG_NEEDS_PERSON, list_records
 
-INTERVAL_KEY = "grind_session_status_interval_minutes"
+INTERVAL_KEY = "status_interval_minutes"   # under grind:
 DEFAULT_INTERVAL_MINUTES = 30
 MIN_COMPLETIONS = 5
 MIN_SPAN = timedelta(hours=24)
@@ -470,13 +470,14 @@ def render_text(r: dict[str, Any]) -> str:
 
 
 def watch_seconds(root: Path, watch) -> int:
-    """``--watch MINUTES``, else ``grind_session_status_interval_minutes``, else 30, in seconds."""
+    """``--watch MINUTES``, else ``grind.status_interval_minutes`` (or the old top-level
+    ``grind_session_status_interval_minutes``), else 30, in seconds."""
     if watch is not True:
         return int(watch) * 60
     data, err = load_git_workflow_config(root)
     if err:
         raise StatusError(err)
-    return int((data or {}).get(INTERVAL_KEY) or DEFAULT_INTERVAL_MINUTES) * 60
+    return int(grind_setting(data, INTERVAL_KEY) or DEFAULT_INTERVAL_MINUTES) * 60
 
 
 def _local_now() -> datetime:

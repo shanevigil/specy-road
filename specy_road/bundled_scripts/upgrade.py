@@ -85,8 +85,8 @@ from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agent_ignores import CURSOR_INDEXING_IGNORE
 from specy_road.agents_md_block import AGENTS_FILES, load_order_paths, print_migration, render_rules
 from specy_road.bundled_scripts.digest_cli import cmd_digest
-from specy_road.checks_config import migrate_text
-from specy_road.git_workflow_config import GIT_WORKFLOW_REL
+from specy_road.checks_config import Migration, _dump, _loads_to, _without_keys, migrate_text
+from specy_road.git_workflow_config import GIT_WORKFLOW_REL, GRIND_OLD_PREFIX, old_grind_keys
 from specy_road.bundled_scripts import refresh_profiles as refresh_profiles_cli
 from specy_road.bundled_scripts import refresh_schemas as refresh_schemas_cli
 from specy_road.bundled_scripts import refresh_stubs as refresh_stubs_cli
@@ -412,7 +412,10 @@ def _refresh(
     declined_docs = _report_shipped_docs(project, verb, existence_project or project, out)
     declined = _report_stubs_declined(project, checkout, preview=preview, prune=prune,
                                       declined_docs=declined_docs, out=out)
-    _migrate_checks(project, verb, out)
+    _migrate_git_workflow(project, verb, out, migrate_text,
+                          "baseline_cmd, land_check_cmd and verify_cmd become checks: entries")
+    _migrate_git_workflow(project, verb, out, migrate_grind_text,
+                          "grind_session_* keys move under grind:")
     _report_file_limits_default(existence_project or project, out)
     out.print()
     return declined
@@ -466,21 +469,73 @@ _DIGEST_STEP = ("Run specy-road digest (and specy-road export if roadmap.md is t
                 " them. Not specy-road sync: it also fast-forwards the integration branch.")
 
 
-def _migrate_checks(project: Path, verb: str, out: Report) -> None:
-    """Rewrite ``baseline_cmd``, ``land_check_cmd`` and ``verify_cmd`` as ``checks:`` entries.
+def _migrate_git_workflow(project: Path, verb: str, out: Report,
+                          migrate: Callable[[str], Migration | None], what: str) -> None:
+    """Write one rewrite of ``roadmap/git-workflow.yaml`` and report ``what`` it did.
 
-    Every other key of ``roadmap/git-workflow.yaml``,
+    ``migrate`` is :func:`specy_road.checks_config.migrate_text` (``baseline_cmd``,
+    ``land_check_cmd`` and ``verify_cmd`` become ``checks:`` entries) or
+    :func:`migrate_grind_text`. Every other key,
     ``require_implementation_review_before_finish`` among them, keeps its value; the report says
-    when the file's comments and layout could not be kept
-    (:func:`specy_road.checks_config.migrate_text`).
+    when the file's comments and layout could not be kept.
     """
     path = project / GIT_WORKFLOW_REL
-    if not path.is_file() or (done := migrate_text(path.read_text(encoding="utf-8"))) is None:
+    if not path.is_file() or (done := migrate(path.read_text(encoding="utf-8"))) is None:
         return
     safe_write.write(project, GIT_WORKFLOW_REL, done.text)
     layout = "" if done.layout_kept else "; written again in block style, without its comments"
-    out.add(FILES, f"{verb} {GIT_WORKFLOW_REL.as_posix()} (baseline_cmd, land_check_cmd and"
-            f" verify_cmd become checks: entries{layout})")
+    out.add(FILES, f"{verb} {GIT_WORKFLOW_REL.as_posix()} ({what}{layout})")
+
+
+def migrate_grind_text(text: str) -> Migration | None:
+    """``upgrade``'s rewrite of ``git-workflow.yaml``: each old top-level ``grind_session_<name>``
+    key becomes ``<name>`` under ``grind:``.
+
+    An existing ``grind:`` block is kept and the moved keys are added to it; a key it already sets
+    wins and the old one is only removed, since it was ignored. ``None`` when there is nothing to
+    rewrite, so a second run changes nothing, or when the text is not YAML or ``grind:`` is not a
+    mapping (validate reports both). The layout rule is
+    :func:`specy_road.checks_config.migrate_text`'s: the line edit is kept when its text loads to
+    exactly the expected mapping, else the mapping is written again in block style.
+    """
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return None
+    old = old_grind_keys(data) if isinstance(data, dict) else []
+    if not old or not isinstance(data.get("grind", {}), dict):
+        return None
+    grind = data.get("grind") or {}
+    moved = {k.removeprefix(GRIND_OLD_PREFIX): data[k] for k in old
+             if k.removeprefix(GRIND_OLD_PREFIX) not in grind}
+    expected = {k: v for k, v in data.items() if k not in old}
+    expected["grind"] = {**grind, **moved}
+    out = _with_grind_keys(_without_keys(text, old), moved) if moved else _without_keys(text, old)
+    if _loads_to(out, expected):
+        return Migration(out, layout_kept=True)
+    return Migration(_dump(expected), layout_kept=False)
+
+
+def _with_grind_keys(text: str, moved: dict) -> str:
+    """``text`` with ``moved`` added at the end of its block ``grind:`` mapping, or appended as a
+    new ``grind:`` block when it has none on a line of its own."""
+    lines = text.splitlines(keepends=True)
+    start = next((i for i, line in enumerate(lines)
+                  if re.fullmatch(r"grind\s*:\s*(#.*)?", line.rstrip("\r\n"))), None)
+    if start is None:
+        return text.rstrip("\n") + "\n" + _dump({"grind": moved})
+    end = start + 1
+    while end < len(lines) and not re.match(r"\S", lines[end]):   # the block's indented lines
+        end += 1
+    while end > start + 1 and not lines[end - 1].strip():   # blank lines after it stay after it
+        end -= 1
+    children = [line for line in lines[start + 1:end] if line.strip()
+                and not line.lstrip().startswith("#")]
+    indent = re.match(r"\s*", children[0]).group() if children else "  "
+    head = "".join(lines[:end])
+    head += "" if head.endswith("\n") else "\n"
+    added = "".join(indent + line for line in _dump(moved).splitlines(keepends=True))
+    return head + added + "".join(lines[end:])
 
 
 FILE_LIMITS = "constraints/file-limits.yaml"

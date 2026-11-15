@@ -71,6 +71,36 @@ def load_git_workflow_config(repo_root: Path) -> tuple[dict[str, Any] | None, st
     return raw, None
 
 
+#: grind-session settings under ``grind:`` that were top-level ``grind_session_<name>`` keys. The
+#: old names are read until the release after 0.3.1; ``upgrade`` moves them under ``grind:``.
+GRIND_MOVED_KEYS = ("max_limit_waits", "max_limit_wait_hours", "limit_wait_grace_seconds",
+                    "max_empty_retries", "status_interval_minutes")
+GRIND_OLD_PREFIX = "grind_session_"
+
+
+def grind_setting(data: dict[str, Any] | None, key: str) -> Any:
+    """``grind.<key>`` of a loaded ``git-workflow.yaml``, else its old top-level
+    ``grind_session_<key>``, else ``None``; the ``grind:`` form wins when both are set."""
+    data = data or {}
+    grind = data.get("grind") or {}
+    return grind[key] if key in grind else data.get(GRIND_OLD_PREFIX + key)
+
+
+def old_grind_keys(data: dict[str, Any] | None) -> list[str]:
+    """The old top-level ``grind_session_*`` keys a loaded ``git-workflow.yaml`` still uses."""
+    return [GRIND_OLD_PREFIX + k for k in GRIND_MOVED_KEYS if GRIND_OLD_PREFIX + k in (data or {})]
+
+
+def grind_legacy_notice(data: dict[str, Any] | None) -> str | None:
+    """validate's one notice when the config uses an old ``grind_session_*`` key, or ``None``."""
+    keys = old_grind_keys(data)
+    if not keys:
+        return None
+    return (f"notice: {GIT_WORKFLOW_REL.as_posix()} uses {', '.join(keys)}, read until the release "
+            "after 0.3.1 (grind: wins where both are set); run specy-road upgrade to move them "
+            "under grind: (docs/git-workflow.md).")
+
+
 def resolve_integration_defaults(
     repo_root: Path,
     *,

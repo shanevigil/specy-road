@@ -35,7 +35,7 @@ def _add_mode_and_stop_args(p: argparse.ArgumentParser) -> None:
         "--watch", nargs="?", const=True, default=None, type=int, metavar="MINUTES",
         help=(
             "With --status: print the report again every MINUTES (default:\n"
-            "grind_session_status_interval_minutes in roadmap/git-workflow.yaml,\n"
+            "grind.status_interval_minutes in roadmap/git-workflow.yaml,\n"
             "else 30) until Ctrl+C."
         ),
     )
@@ -119,26 +119,26 @@ def _add_implement_limit_args(p: argparse.ArgumentParser) -> None:
         "--max-limit-waits", type=int, default=None, metavar="N",
         help="Claude hook: how many times one leaf may wait out a usage limit "
              "before the run stops (default 3; yaml "
-             "grind_session_max_limit_waits).",
+             "grind.max_limit_waits).",
     )
     p.add_argument(
         "--max-limit-wait-hours", type=float, default=None, metavar="H",
         help="Claude hook: longest single wait for a stated reset (default 6). "
              "A reset further out stops the run rather than waiting "
-             "unattended (yaml grind_session_max_limit_wait_hours).",
+             "unattended (yaml grind.max_limit_wait_hours).",
     )
     p.add_argument(
         "--limit-wait-grace-seconds", type=int, default=None, metavar="S",
         help="Claude hook: slack added after the stated reset, because clocks "
              "disagree (default 120; yaml "
-             "grind_session_limit_wait_grace_seconds).",
+             "grind.limit_wait_grace_seconds).",
     )
     p.add_argument(
         "--max-empty-retries", type=int, default=None, metavar="N",
         help="Claude hook: re-runs when the command dies without printing "
              "anything at all — killed from outside, not a failed "
              "implementation (default 2; yaml "
-             "grind_session_max_empty_retries).",
+             "grind.max_empty_retries).",
     )
 
 
