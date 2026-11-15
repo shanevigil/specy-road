@@ -44,7 +44,8 @@ def test_rendered_skill_and_block_carry_no_bare_toolkit_doc_path() -> None:
 _RC_PIN = re.compile(r"\d+\.\d+\.\d+rc\d+")
 _LINK = re.compile(r"\]\(([^)\s]+)\)")
 _CODE = re.compile(r"^```.*?^```|`[^`\n]*`", re.M | re.S)
-_TOOLKIT_URL = re.compile(r"https://github\.com/shanevigil/specy-road/blob/main/(docs/[\w-]+\.md)(#[\w-]+)?")
+_TOOLKIT_URL = re.compile(
+    r"https://github\.com/shanevigil/specy-road/blob/main/(docs/[\w-]+\.md)(#[\w-]+)?")
 
 
 def _docs() -> list[Path]:
@@ -52,16 +53,17 @@ def _docs() -> list[Path]:
 
 
 def _without_install_section(text: str) -> str:
-    """docs/install-and-usage.md's ``## Install`` section keeps its worked release-candidate commands."""
+    """docs/install-and-usage.md's ``## Install`` section keeps its worked release-candidate
+    commands."""
     start = text.index("\n## Install\n")
     end = text.index("\n## ", start + 1)
     return text[:start] + text[end:]
 
 
 def test_no_doc_pins_a_release_candidate() -> None:
-    """A pinned ``X.Y.ZrcN`` goes stale with the next candidate; the release runbook's worked examples
-    and the install section of install-and-usage.md are the only places one belongs. Every file under
-    docs/ is scanned, whatever its type (Markdown, YAML, …), and README.md."""
+    """A pinned ``X.Y.ZrcN`` goes stale with the next candidate; the release runbook's worked
+    examples and the install section of install-and-usage.md are the only places one belongs.
+    Every file under docs/ is scanned, whatever its type (Markdown, YAML, …), and README.md."""
     hits = []
     files = [REPO / "README.md", *sorted(p for p in (REPO / "docs").rglob("*") if p.is_file())]
     for path in files:
@@ -76,7 +78,8 @@ def test_no_doc_pins_a_release_candidate() -> None:
 
 
 def _anchors(path: Path) -> set[str]:
-    """GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens, repeats numbered."""
+    """GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens, repeats
+    numbered."""
     seen: dict[str, int] = {}
     fence = False
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -93,15 +96,16 @@ def _anchors(path: Path) -> set[str]:
 
 def _broken(source: Path, target: Path, anchor: str) -> str | None:
     if not target.exists():
-        return f"{source.relative_to(REPO)}: no {target.relative_to(REPO) if target.is_relative_to(REPO) else target}"
+        shown = target.relative_to(REPO) if target.is_relative_to(REPO) else target
+        return f"{source.relative_to(REPO)}: no {shown}"
     if anchor and target.suffix == ".md" and anchor not in _anchors(target):
         return f"{source.relative_to(REPO)}: no #{anchor} in {target.relative_to(REPO)}"
     return None
 
 
 def test_doc_links_resolve() -> None:
-    """Every relative link in README.md and docs/, and every toolkit-docs URL there, names a file that
-    exists and a heading it has, so a moved or merged doc leaves no dead inbound link."""
+    """Every relative link in README.md and docs/, and every toolkit-docs URL there, names a file
+    that exists and a heading it has, so a moved or merged doc leaves no dead inbound link."""
     broken = []
     for path in _docs():
         text = _CODE.sub("", path.read_text(encoding="utf-8"))
@@ -117,8 +121,8 @@ def test_doc_links_resolve() -> None:
 
 
 def test_project_templates_cite_toolkit_docs_by_url() -> None:
-    """``init project`` copies templates/project verbatim: a doc the consumer does not get is cited by
-    its toolkit URL, and that doc exists."""
+    """``init project`` copies templates/project verbatim: a doc the consumer does not get is cited
+    by its toolkit URL, and that doc exists."""
     project = REPO / "specy_road" / "templates" / "project"
     bare, missing = [], []
     for path in sorted(p for p in project.rglob("*") if p.is_file()):
@@ -138,7 +142,8 @@ _PLACEHOLDER = re.compile(r"<[^>]*>|(?:^|\s)\[[^\]]*\]|…|\.\.\.")
 
 
 def _commands(text: str) -> list[str]:
-    """Each command a reader may copy: a fenced-block line, or an inline code span, minus a ``#`` comment."""
+    """Each command a reader may copy: a fenced-block line, or an inline code span, minus a ``#``
+    comment."""
     out, fence = [], False
     for line in text.splitlines():
         if line.lstrip().startswith("```"):
@@ -161,19 +166,24 @@ def _alternation_offenders(text: str) -> list[str]:
 
 
 def test_alternation_rule_clauses() -> None:
-    assert _alternation_offenders("Run `specyrd init . --ai cursor|codex`.") == ["specyrd init . --ai cursor|codex"]
+    assert _alternation_offenders("Run `specyrd init . --ai cursor|codex`.") == [
+        "specyrd init . --ai cursor|codex"]
     assert _alternation_offenders("```bash\npip install x|y  # note\n```\n") == ["pip install x|y"]
-    assert _alternation_offenders("`specy-road worker list --json | jq .` and `pip download x | sha256sum`") == []
+    real_pipes = "`specy-road worker list --json | jq .` and `pip download x | sha256sum`"
+    assert _alternation_offenders(real_pipes) == []
     assert _alternation_offenders("`specy-road prompt <NODE_ID> --role executor|reviewer`") == []
     assert _alternation_offenders("`specyrd init [PATH] --ai cursor|codex`") == []
-    assert _alternation_offenders('`pip install "specy-road[gui]" --x a|b`') == ['pip install "specy-road[gui]" --x a|b']
+    extra = 'pip install "specy-road[gui]" --x a|b'
+    assert _alternation_offenders(f"`{extra}`") == [extra]
 
 
 def test_no_runnable_doc_command_uses_a_bar_for_alternatives() -> None:
-    """A shell reads ``a|b`` as a pipe, so a copied command would run a pipeline: README.md, docs/ and the
-    Markdown templates ``init project`` and ``specyrd init`` copy into a consumer repo."""
+    """A shell reads ``a|b`` as a pipe, so a copied command would run a pipeline: README.md, docs/
+    and the Markdown templates ``init project`` and ``specyrd init`` copy into a consumer repo."""
     templates = REPO / "specy_road" / "templates"
-    files = [*_docs(), *sorted((templates / "project").rglob("*.md")), *sorted((templates / "specyrd").rglob("*.md"))]
+    files = [*_docs(), *sorted((templates / "project").rglob("*.md")),
+             *sorted((templates / "specyrd").rglob("*.md"))]
     hits = [f"{path.relative_to(REPO)}: {c}" for path in files
             for c in _alternation_offenders(path.read_text(encoding="utf-8"))]
-    assert hits == [], "write one runnable example and name the alternatives in prose:\n" + "\n".join(hits)
+    assert hits == [], ("write one runnable example and name the alternatives in prose:\n"
+                        + "\n".join(hits))

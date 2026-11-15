@@ -19,13 +19,13 @@ def test_install_docs_name_every_extra() -> None:
 
 
 #: The docs whose install lines name the GUI extra (M16.6.1, A8).
-GUI_INSTALL_DOCS = ("README.md", "docs/install-and-usage.md", "docs/pm-gui.md", "docs/pm-workflow.md",
-                    "docs/contributor-guide.md")
+GUI_INSTALL_DOCS = ("README.md", "docs/install-and-usage.md", "docs/pm-gui.md",
+                    "docs/pm-workflow.md", "docs/contributor-guide.md")
 
 
 def test_gui_install_lines_name_gui_not_its_alias() -> None:
-    """A line that installs (``pip install`` or a ``specy-road[...]`` spec) never names gui-next; the
-    one line that does is install-and-usage's deprecation note, which installs nothing."""
+    """A line that installs (``pip install`` or a ``specy-road[...]`` spec) never names gui-next;
+    the one line that does is install-and-usage's deprecation note, which installs nothing."""
     hits = [f"{path}:{n}" for path in GUI_INSTALL_DOCS
             for n, line in enumerate((REPO / path).read_text(encoding="utf-8").splitlines(), 1)
             if "gui-next" in line and ("pip install" in line or "specy-road[" in line)]
