@@ -78,19 +78,6 @@ entries:
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
-  - codename: the-review-packet-fragments-fold-into-review-packet
-    node_id: M16.5.13
-    branch: feature/rm-the-review-packet-fragments-fold-into-review-packet
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet*.py
-      - scripts/line_width_baseline.json
-      - tests/
-      - constraints/clone-baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: pending
   - codename: docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra
     node_id: M16.6.1
     branch: feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra
