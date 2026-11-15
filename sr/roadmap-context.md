@@ -342,6 +342,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.6.1` on `feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` since 2026-11-14
+- `M16.6.3` on `feature/rm-tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` since 2026-11-15
 - `M17.9` on `feature/rm-gui-orch-sandbox-acceptance` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
