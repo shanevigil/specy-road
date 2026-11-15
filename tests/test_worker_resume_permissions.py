@@ -18,8 +18,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_models_and_prompt import run_main
-from tests.test_orchestrate_plan import plan_repo
+from tests.support.cli import run_main
+from tests.support.plan import plan_repo
 
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.bundled_scripts import doctor, orchestrate_cli

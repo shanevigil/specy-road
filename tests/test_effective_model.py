@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.test_models_and_prompt import OPUS
+from tests.support.profiles import OPUS
 
 from specy_road.orchestration.role_prompt_cli import model_problem
 from specy_road.orchestration.model_profiles import load_profile

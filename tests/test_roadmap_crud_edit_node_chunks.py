@@ -11,7 +11,7 @@ from specy_road.roadmap_chunk_router_pick import simulate_chunk_lines
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.roadmap_crud_ops import cmd_edit
 from tests.review_repo_helpers import make_review_repo
-from tests.test_roadmap_crud import _edit, crud_fixture_repo, run_crud
+from tests.support.crud import crud_fixture_repo, edit_m99_1, run_crud
 from tests.test_roadmap_chunk_router import _milestone, _phase_M0, _seed_repo
 
 
@@ -41,7 +41,7 @@ def _paths_changed(before: dict[str, bytes], after: dict[str, bytes]) -> set[str
 def test_edit_node_in_place_lists_read_and_written_chunk(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
     chunk_rel = "roadmap/phases/T.json"
-    r = _edit(tmp_path, "--set", "status=Complete")
+    r = edit_m99_1(tmp_path, "--set", "status=Complete")
     assert r.returncode == 0, r.stderr
     assert f"read from {chunk_rel}" in r.stdout
     assert f"wrote {chunk_rel}" in r.stdout
@@ -149,9 +149,9 @@ def test_add_node_new_chunk_includes_manifest(tmp_path: Path) -> None:
 
 def test_edit_node_planning_rename_commit_list_matches_disk(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
-    assert _edit(tmp_path, "--set", "status=Complete").returncode == 0
+    assert edit_m99_1(tmp_path, "--set", "status=Complete").returncode == 0
     before = _roadmap_planning_bytes(tmp_path)
-    r = _edit(tmp_path, "--set", "codename=renamed-one")
+    r = edit_m99_1(tmp_path, "--set", "codename=renamed-one")
     assert r.returncode == 0, r.stderr
     after = _roadmap_planning_bytes(tmp_path)
     changed = _paths_changed(before, after)
@@ -212,7 +212,7 @@ def test_edit_node_heal_in_another_chunk_is_in_commit_list(tmp_path: Path) -> No
         encoding="utf-8",
     )
     before = _roadmap_planning_bytes(tmp_path)
-    r = _edit(tmp_path, "--set", "status=Complete")
+    r = edit_m99_1(tmp_path, "--set", "status=Complete")
     assert r.returncode == 0, r.stderr
     changed = _paths_changed(before, _roadmap_planning_bytes(tmp_path))
     committed = set(_commit_files(r.stdout))

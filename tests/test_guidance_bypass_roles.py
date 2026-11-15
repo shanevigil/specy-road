@@ -20,7 +20,8 @@ import pytest
 from tests.review_delegate_helpers import run_review_cli
 from tests.helpers import REPO
 from tests.review_repo_helpers import git, make_review_repo, review_text
-from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
+from tests.support.cli import run_worker_cli
+from tests.support.harness import wait_for_worker
 
 from specy_road import cli
 from specy_road.bundled_scripts import chore_cli, models_cli, orchestrate_cli, role_prompt

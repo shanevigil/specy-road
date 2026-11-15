@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.harness import make_worker_repo
 
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_ops as ops

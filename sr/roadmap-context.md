@@ -63,7 +63,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.6` Docs and tests reorganised by topic `docs-and-tests-reorganised-by-topic` — milestone — **Not Started**
     - `M16.6.1` Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra `docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` — task — **Not Started**
     - `M16.6.2` suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout `suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` — task — **Not Started**
-    - `M16.6.3` Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them `tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` — task — **Not Started**
+    - `M16.6.3` Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them `tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` — task — **Complete**
     - `M16.6.4` Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support `tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support` — task — **Not Started**
     - `M16.6.5` Tests: files move into unit, flows, cli, gui and repo lanes, moves only `tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` — task — **Not Started**
     - `M16.6.6` Tests: per-leaf and per-round test files fold into the file for the module or flow they test `tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test` — task — **Not Started**
@@ -209,7 +209,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.14` PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon `gui-grind-status-modal` — task — **Complete**
   - `M17.15` PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it `gui-pm-decisions` — task — **Complete**
   - `M17.16` Orchestration view joins the snapshot by node id, and the docs name the worker states it sends `orchestration-view-joins-the-snapshot-by-node-id-and-the-docs` — task — **Complete**
-  - `M17.17` Orchestration drawer follows the outline's order `orchestration-drawer-outline-order-badges-load-with-roadmap` — task — **Not Started**
+  - `M17.17` Orchestration drawer follows the outline's order `orchestration-drawer-outline-order-badges-load-with-roadmap` — task — **Complete**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
   - `M18.1` Reviewers check that code is well-formed and that fixes do not degrade it `review-code-quality` — task — **Not Started**
   - `M18.2` Harness-facts records for the Copilot CLI and Antigravity agy `harness-facts-copilot-agy` — task — **Not Started**
@@ -343,8 +343,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.6.1` on `feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` since 2026-11-14
-- `M16.6.3` on `feature/rm-tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` since 2026-11-15
-- `M17.17` on `feature/rm-orchestration-drawer-outline-order-badges-load-with-roadmap` since 2026-11-15
+- `M16.6.4` on `feature/rm-tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support` since 2026-11-15
 - `M17.9` on `feature/rm-gui-orch-sandbox-acceptance` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -359,19 +358,19 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.gitignore` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `CHANGELOG.md` **flagged** | 23 | 0 | 2.30 | 70% | 21 | 1 |
+| `CHANGELOG.md` **flagged** | 23 | 0 | 2.48 | 70% | 21 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 26 | 0 | 2.50 | 69% | 53 | 1 |
-| `gui` **flagged** | 7 | 0 | 2.14 | 57% | 1 | 0 |
+| `docs` **flagged** | 25 | 0 | 2.52 | 68% | 53 | 1 |
+| `gui` **flagged** | 8 | 0 | 2.62 | 62% | 1 | 0 |
 | `planning` **flagged** | 3 | 0 | 3.00 | 67% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `specy_road` **flagged** | 49 | 0 | 2.12 | 51% | 113 | 1 |
+| `specy_road` **flagged** | 48 | 0 | 2.23 | 52% | 111 | 1 |
 | `suggested_prompts` **flagged** | 5 | 0 | 2.60 | 100% | 4 | 0 |
+| `tests` **flagged** | 49 | 0 | 2.14 | 51% | 115 | 1 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `constraints` | 20 | 0 | 2.05 | 35% | 95 | 0 |
-| `scripts` | 17 | 0 | 2.24 | 41% | 90 | 0 |
-| `tests` | 50 | 0 | 2.10 | 50% | 113 | 1 |
+| `constraints` | 21 | 0 | 2.10 | 38% | 99 | 0 |
+| `scripts` | 18 | 0 | 2.28 | 44% | 94 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

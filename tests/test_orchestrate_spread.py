@@ -10,8 +10,8 @@ from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli
 
 from tests.review_repo_helpers import git
-from tests.test_models_and_prompt import run_main
-from tests.test_orchestrate_plan import plan_repo
+from tests.support.cli import run_main
+from tests.support.plan import plan_repo
 
 ROSTER = """version: 1
 roster:

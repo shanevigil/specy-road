@@ -12,7 +12,7 @@ import shutil
 from pathlib import Path
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_models_and_prompt import ROSTER, TEMPLATE_PROFILES
+from tests.support.profiles import ROSTER, TEMPLATE_PROFILES
 
 from specy_road.agents_md_block import render_rules
 from specy_road.bundled_scripts import review_packet as rp

@@ -19,7 +19,7 @@ import pytest
 
 from tests.review_delegate_helpers import delegate_repo, delegate_roster, set_steps, verdict_step
 from tests.review_repo_helpers import git, make_review_repo, review_output
-from tests.test_models_and_prompt import run_main
+from tests.support.cli import run_main
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_cli, role_prompt

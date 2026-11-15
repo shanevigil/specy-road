@@ -34,7 +34,7 @@ import pytest
 import yaml
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_models_and_prompt import make_profile_repo
+from tests.support.profiles import make_profile_repo
 
 from specy_road.bundled_scripts import review_cli, review_packet, role_prompt, validate_roadmap
 from specy_road.bundled_scripts.upgrade import run_upgrade

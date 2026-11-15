@@ -20,7 +20,7 @@ from specy_road.review_target import resolve_target
 from specy_road.orchestration.guard.session_presence import start_session
 from specy_road.orchestration.workers.worker_adapters import Unsupported
 from tests.review_repo_helpers import git, make_review_repo
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.harness import make_worker_repo
 
 
 def _claim(repo: Path, node_id: str, branch: str, *, started: str | None = None, make_branch: bool = True) -> None:

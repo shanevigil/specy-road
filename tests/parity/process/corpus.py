@@ -101,7 +101,7 @@ def _doctor_repo(tmp: Path, *, dirty: bool = False) -> dict[str, Path]:
 def _prompt_repo(tmp: Path) -> dict[str, Path]:
     """The ``opus`` roster entry with the shipped Claude Opus profile, on the claimed leaf's
     branch, with a review packet filed."""
-    from tests.test_models_and_prompt import make_profile_repo
+    from tests.support.profiles import make_profile_repo
 
     repo = make_profile_repo(tmp)
     (repo / "work" / "reviews" / "M1.1").mkdir(parents=True)

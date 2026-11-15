@@ -16,8 +16,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import make_review_repo
-from tests.test_worker_cli import wait_for_worker, worker_roster
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.harness import make_worker_repo, wait_for_worker, worker_roster
 
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_ops as ops
@@ -172,7 +171,7 @@ def test_list_and_sync_flag_a_live_silent_worker(tmp_path: Path, capsys) -> None
     import json
     import time
 
-    from tests.test_worker_cli import run_worker_cli
+    from tests.support.cli import run_worker_cli
 
     repo, script = make_worker_repo(tmp_path)
     spec = tmp_path / "silent.json"

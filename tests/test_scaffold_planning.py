@@ -5,7 +5,7 @@ from pathlib import Path
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.scaffold_planning import scaffold_planning_for_node
 
-from tests.test_roadmap_crud import crud_fixture_repo
+from tests.support.crud import crud_fixture_repo
 
 
 def test_scaffold_restores_missing_planning_file(tmp_path: Path) -> None:

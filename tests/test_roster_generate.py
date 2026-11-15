@@ -15,8 +15,9 @@ from specy_road.orchestration.orchestrate_plan import Assignment, Candidate, ass
 from specy_road.orchestration_config import effective_config
 from specy_road.orchestration.roster_profile_check import profile_value_problem
 
-from tests.test_models_and_prompt import make_profile_repo, run_main
-from tests.test_orchestrate_plan import plan_repo
+from tests.support.cli import run_main
+from tests.support.profiles import make_profile_repo
+from tests.support.plan import plan_repo
 from specy_road.orchestration import orchestrate_plan as op
 
 REPO = Path(__file__).resolve().parent.parent

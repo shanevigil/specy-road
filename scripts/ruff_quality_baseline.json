@@ -1025,6 +1025,10 @@
     "tests/scenarios/roadmap_edit/test_outline.py": {
       "D102/D103": 8
     },
+    "tests/support/harness.py": {
+      "PL": 1,
+      "D102/D103": 4
+    },
     "tests/test_abort_task_pickup.py": {
       "PL": 2,
       "N": 1,
@@ -2460,15 +2464,8 @@
       "N": 1,
       "D102/D103": 2
     },
-    "tests/worker_cli_helpers.py": {
-      "D102/D103": 2
-    },
     "tests/worker_lease_helpers.py": {
       "D102/D103": 3
-    },
-    "tests/worker_repo_helpers.py": {
-      "PL": 1,
-      "D102/D103": 2
     }
   }
 }

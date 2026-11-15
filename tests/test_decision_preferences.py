@@ -19,7 +19,7 @@ from specy_road.orchestration.records.decisions import (
 )
 from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
 from tests.test_decisions import SKILL
-from tests.test_orchestrate_plan import ROSTER, plan_repo
+from tests.support.plan import plan_repo, ROSTER
 
 
 def _prefer(repo: Path, *extra: str) -> list[str]:

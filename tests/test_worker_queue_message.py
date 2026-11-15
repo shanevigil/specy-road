@@ -12,9 +12,10 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import run_worker_cli, wait_for_worker
+from tests.support.cli import run_worker_cli
+from tests.support.harness import wait_for_worker
 from tests.worker_lease_helpers import remote_and_clone
-from tests.worker_repo_helpers import make_worker_repo, worker_roster
+from tests.support.harness import make_worker_repo, worker_roster
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_runner as wr
@@ -45,7 +46,7 @@ sys.exit(0)
 def _slow_repo(tmp_path: Path) -> Path:
     script = tmp_path / "slow.py"
     script.write_text(FAKE_SLOW)
-    from tests.test_worker_cli import worker_roster
+    from tests.support.harness import worker_roster
     from tests.review_repo_helpers import git, make_review_repo
 
     repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))

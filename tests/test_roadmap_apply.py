@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import script_subprocess_env
-from tests.test_roadmap_crud import crud_fixture_repo, run_crud
+from tests.support.crud import crud_fixture_repo, run_crud
 
 NK991 = "10000000-0000-4000-8000-000000009902"
 NK992 = "10000000-0000-4000-8000-000000009903"

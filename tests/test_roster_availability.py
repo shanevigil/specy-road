@@ -18,7 +18,7 @@ from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.orchestration.workers.worker_state import WorkerError
 
-from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
+from tests.support.plan import only_assignment, plan_repo, ROSTER
 
 
 def _write_local(repo: Path, text: str) -> None:

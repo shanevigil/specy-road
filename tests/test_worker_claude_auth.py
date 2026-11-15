@@ -12,7 +12,7 @@ from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers.worker_adapters import Launch
 from tests.review_repo_helpers import claude_code_reviewer_repo
-from tests.test_models_and_prompt import commit_profile
+from tests.support.profiles import commit_profile
 
 KEY = "sk-ant-m15-36-do-not-print"
 EXPLICIT = ["--setting-sources", "user,project,local"]

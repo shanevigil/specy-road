@@ -12,7 +12,7 @@ from pathlib import Path
 from specy_road.bundled_scripts import brief_call_sites as bcs
 from specy_road.bundled_scripts import generate_brief as gb
 from tests.integrity_repo_helpers import git
-from tests.test_roadmap_crud import crud_fixture_repo
+from tests.support.crud import crud_fixture_repo
 
 SOURCES = {
     "pkg/__init__.py": "",

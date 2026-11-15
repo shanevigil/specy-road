@@ -17,8 +17,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git
-from tests.test_worker_cli import run_worker_cli, wait_for_worker
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import make_worker_repo, wait_for_worker
 from tests.worker_lease_helpers import checkout_id_file, idle_worker, remote_and_clone, remote_leases
 
 from specy_road.orchestration.workers import worker_lease as lease

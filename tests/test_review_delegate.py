@@ -17,7 +17,7 @@ from tests.helpers import script_subprocess_env
 from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, fake_prompts, launches,
                                            set_steps, verdict_step)
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_output
-from tests.test_models_and_prompt import run_main
+from tests.support.cli import run_main
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.orchestration import role_prompt_cli
@@ -194,7 +194,7 @@ def test_refusals(tmp_path: Path, capsys) -> None:
 def test_a_chore_reviewer_keeps_its_launch_that_a_leaf_reviewer_is_refused(tmp_path: Path) -> None:
     """M21.21: the prompt launcher's reviewer checks are for roadmap reviews; a chore reviewer's launch is unchanged."""
     from specy_road.bundled_scripts import chore_cli   # noqa: PLC0415
-    from tests.worker_repo_helpers import FAKE as WORKER_FAKE, worker_roster   # noqa: PLC0415
+    from tests.support.harness import FAKE as WORKER_FAKE, worker_roster  # noqa: PLC0415
 
     script = tmp_path / "fake.py"
     script.write_text(WORKER_FAKE)

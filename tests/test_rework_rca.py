@@ -9,8 +9,8 @@ import pytest
 
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
 from tests.rework_rca_helpers import ROSTER, file_after, rca_record, run_review_cli, write_rca
-from tests.test_worker_cli import run_worker_cli
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import make_worker_repo
 
 from specy_road.orchestration.role_prompt_rework import (
     CLASS_AUDIT_LINES, rework_check, rework_lines,
