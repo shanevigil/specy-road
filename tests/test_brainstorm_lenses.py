@@ -34,30 +34,16 @@ from specy_road.brainstorm_prompt import (
     render_shard_prompt,
 )
 from specy_road.brainstorm_session import BrainstormSession, add_idea, read_session
+from tests.support.same.cli_4bb09fdf3883 import _cli
+from tests.support.same.prompt_26b6cb7fef04 import _prompt
 
 SLUG = "how-do-we-expand-payments"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code or 0)
-    return code, out.getvalue(), err.getvalue()
 
 
-def _prompt(repo: Path, pass_name: str = "r1") -> str:
-    return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
 # --- A1: personas and directions from `served`, the personal profile -------

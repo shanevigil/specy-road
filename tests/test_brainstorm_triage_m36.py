@@ -12,15 +12,11 @@ from tests.helpers import DOGFOOD
 
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.brainstorm_session import read_session
+from tests.support.same.session_9311e77aa0c8 import _session
 
 SLUG = "how-do-we-expand-payments"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
@@ -40,8 +36,6 @@ def _start(repo: Path) -> None:
     assert _cli(repo, "start", "--topic", "How do we expand payments?")[0] == 0
 
 
-def _session(repo: Path):
-    return read_session(repo, SLUG)
 
 
 def test_triage_checks_every_id_before_printing_or_saving(repo: Path) -> None:

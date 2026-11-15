@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, delegate_layout, git
+from tests.support.review import commit_file, delegate_layout, git
 
 from specy_road.bundled_scripts import finish_task
 
@@ -19,6 +19,7 @@ def _finish(repo: Path) -> int:
     return e.value.code or 0
 
 
+@pytest.mark.slow
 def test_finish_lands_merge_in_the_worktree_that_holds_the_integration_branch(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:

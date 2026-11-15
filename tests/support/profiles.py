@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 from tests.helpers import REPO
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 
 TEMPLATE_PROFILES = REPO / "specy_road" / "templates" / "project" / "model-profiles"
 OPUS = TEMPLATE_PROFILES / "anthropic-claude" / "claude-opus-5-5.md"

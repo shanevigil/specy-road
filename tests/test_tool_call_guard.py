@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard import tool_call_guard as g
@@ -125,7 +125,7 @@ def test_unparseable_shell_mentioning_git_is_refused_not_waved_through() -> None
 
 
 def test_guard_sees_a_worker_running_in_this_checkout(tmp_path: Path, monkeypatch) -> None:
-    from tests.review_repo_helpers import make_review_repo
+    from tests.support.review import make_review_repo
 
     from specy_road.orchestration.workers import worker_process as wp
     from specy_road.orchestration.workers import worker_state as ws

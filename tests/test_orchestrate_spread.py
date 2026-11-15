@@ -9,9 +9,10 @@ from pathlib import Path
 from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli
 
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.cli import run_main
 from tests.support.plan import plan_repo
+import pytest
 
 ROSTER = """version: 1
 roster:
@@ -43,6 +44,7 @@ def executors(plan: op.OrchestrationPlan) -> list[tuple[str, str | None]]:
     return [(a.node_id, a.executor) for b in plan.batches for a in b]
 
 
+@pytest.mark.slow
 def test_spread_assigns_three_leaves_round_robin_over_two_capable_entries(tmp_path: Path) -> None:
     repo = three_leaf_repo(tmp_path)
     plan, err = op.build_orchestration_plan(repo)

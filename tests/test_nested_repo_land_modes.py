@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo
-from tests.test_nested_repo_finish import BRANCH, _land, _origin_tip, _repo
-from tests.test_nested_repo_worktrees import COVERED, _cfg, add_nested_repo
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.extracted.nested_repo_finish import BRANCH, _land, _origin_tip, _repo
+from tests.support.extracted.nested_repo_worktrees import COVERED, _cfg, add_nested_repo
 
 from specy_road.finish_modes import merge_landing_failed
 from specy_road.nested_repos import NestedRepo, NestedRepoError, add_nested_worktrees, nested_repos

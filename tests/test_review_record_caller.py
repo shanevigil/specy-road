@@ -18,8 +18,9 @@ import pytest
 import yaml
 
 from tests.helpers import script_subprocess_env
-from tests.review_delegate_helpers import delegate_repo, handoff_status_node, run_review_cli
-from tests.review_repo_helpers import git, make_review_repo, review_output, review_text
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
+from tests.review_delegate_helpers import delegate_repo, handoff_status_node
+from tests.support.review import make_review_repo, review_output, review_text, git
 
 from specy_road.bundled_scripts import role_prompt
 from specy_road.review_caller import HARNESS_MARKERS
@@ -192,6 +193,7 @@ print(json.dumps({{"type": "turn.completed", "usage": {{}}}}), flush=True)
 """
 
 
+@pytest.mark.slow
 def test_review_delegate_from_a_cursor_coordinator_files_the_codex_reviewer_and_counts(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=_roster())

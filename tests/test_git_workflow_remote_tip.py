@@ -15,10 +15,9 @@ from specy_road.git_workflow_config import (
     git_local_branch_tip_author,
     git_remote_tip_author,
 )
+from tests.support.same.run_git_e7b46ac47b3e import _run_git
 
 
-def _run_git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
 def test_git_remote_tip_author_from_remote_tracking_ref(tmp_path: Path) -> None:

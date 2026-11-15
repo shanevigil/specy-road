@@ -9,11 +9,10 @@ from pathlib import Path
 import yaml
 
 from tests.helpers import REPO, script_subprocess_env
+from tests.support.same.cli_fda77d440965 import _cli
+import pytest
 
 
-def _cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run([sys.executable, "-m", "specy_road.cli", *args, "--repo-root", str(root)],
-                          cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True)
 
 
 def _git(root: Path, *args: str) -> str:
@@ -39,6 +38,7 @@ def _app(tmp_path: Path) -> tuple[Path, Path]:
     return remote, app
 
 
+@pytest.mark.slow
 def test_pickup_commits_the_digest_with_the_claim(tmp_path: Path) -> None:
     remote, app = _app(tmp_path)
 
@@ -55,6 +55,7 @@ def test_pickup_commits_the_digest_with_the_claim(tmp_path: Path) -> None:
     assert _cli(app, "digest", "--check").returncode == 0   # on the integration branch
 
 
+@pytest.mark.slow
 def test_abort_drops_a_local_register_commit_that_carries_the_digest(tmp_path: Path) -> None:
     remote, app = _app(tmp_path)
     pushed = _git(app, "rev-parse", "main")
@@ -93,6 +94,7 @@ def _digest_check_at_origin_main(app: Path, snapshot: Path) -> None:
         )
 
 
+@pytest.mark.slow
 def test_abort_after_pushed_pickup_regenerates_the_digest_on_integration(tmp_path: Path) -> None:
     """R3: removing a pushed claim must leave digest --check passing locally and on the remote."""
     remote, app = _app(tmp_path)
@@ -118,6 +120,7 @@ def _reject_first_integration_push(bare: Path, marker: Path) -> None:
     hook.chmod(0o755)
 
 
+@pytest.mark.slow
 def test_failed_pickup_self_heal_leaves_integration_digest_current(tmp_path: Path) -> None:
     """R4: a one-time rejected registration push must not publish a stale digest on self-heal."""
     remote, app = _app(tmp_path)

@@ -14,8 +14,8 @@ import pytest
 import yaml
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
-from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.review import NODE, make_review_repo, review_text, git
+from tests.support.extracted.review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed, review_cli
 from specy_road.registration_pickup_commit import registration_commit_message
@@ -23,10 +23,12 @@ from specy_road.roadmap_load import load_roadmap
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_policy_pin import ACCEPTANCE_NAME, pin_of, pin_problem, pinned_message, policy_digest
+from tests.support.same.exit_a673d831c5ea import _exit
+from tests.support.same.gate_9f3572d00caf import _gate
+from tests.support.extracted.review_policy_pin import SUBJECT
 
 ORCH = "roadmap/orchestration.yaml"
 WORKFLOW = "roadmap/git-workflow.yaml"
-SUBJECT = registration_commit_message("thing", include_ci_skip=True)
 #: CR1: an executor-only roster entry gains the reviewer role on the integration branch after the claim.
 CR1_ROSTER = TWO_FAMILIES.replace("{id: composer, family: cursor, roles: [executor]}",
                                   "{id: composer, family: cursor, roles: [executor, reviewer]}")
@@ -79,15 +81,8 @@ def _repo(tmp_path: Path, orchestration: str = TWO_FAMILIES, *, pin: str | None 
     return repo
 
 
-def _gate(repo: Path):
-    return evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
 
 
-def _exit(fn, argv: list[str]) -> int:
-    with pytest.raises(SystemExit) as e:
-        fn(argv)
-        raise SystemExit(0)
-    return e.value.code or 0
 
 
 def _accept(repo: Path, monkeypatch, *, tty: bool, typed: str = "M1.1") -> int:
@@ -263,6 +258,7 @@ def _plant_acceptance(path: Path, content: str | bytes | None, monkeypatch) -> N
         _write(path, content)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(("kind", "where", "content"), UNREADABLE_CASES,
                          ids=[f"{k} in {w}" for k, w, _ in UNREADABLE_CASES])
 def test_unreadable_input_is_a_problem_and_every_command_refuses_cleanly(tmp_path: Path, monkeypatch, capsys,

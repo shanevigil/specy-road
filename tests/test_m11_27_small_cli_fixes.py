@@ -11,8 +11,8 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import REPO, SCHEMAS
-from tests.review_repo_helpers import git, make_review_repo
-from tests.test_review_round6_runner import _launch
+from tests.support.review import make_review_repo, git
+from tests.support.extracted.review_round6_runner import _launch
 from tests.support.cli import run_worker_cli
 from tests.support.harness import FAKE, make_worker_repo, wait_for_worker, worker_roster
 
@@ -187,6 +187,7 @@ def test_exit_zero_with_a_broken_roadmap_still_completes_idle(tmp_path: Path) ->
     assert ws.load_record(repo, rec.worker_id).state == "idle"
 
 
+@pytest.mark.slow
 def test_worker_list_and_sync_show_worktree(tmp_path: Path, capsys) -> None:
     script = tmp_path / "fake.py"
     script.write_text(FAKE)

@@ -21,7 +21,9 @@ from specy_road.orchestration.grind.grind_session_events import (
     EXIT_OK,
     EXIT_PICKUP_FAILED,
 )
-from tests.test_grind_session import TS, _Harness, _event, _events, _plan, _run
+from tests.support.same.events_bc2d3e84325c import _events
+from tests.support.same.plan_a42dad7814e8 import _plan
+from tests.support.extracted.grind_session import TS, _Harness, _event, _run
 
 BASE = ["--on-complete", "merge", "--implement-mode", "hook",
         "--implement-cmd", "true", "--json", "--repo-root", "/tmp/x"]

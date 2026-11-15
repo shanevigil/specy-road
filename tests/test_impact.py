@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.integrity_repo_helpers import commit, git, make_repo, merge_dev, on_dev
-from tests.review_repo_helpers import NODE
+from tests.support.integrity import commit, make_repo, merge_dev, on_dev
+from tests.support.review import NODE, git
 from specy_road.bundled_scripts import do_next_prompt as dnp
 from specy_road.bundled_scripts import impact_cli
 from specy_road.bundled_scripts import review_packet as rp

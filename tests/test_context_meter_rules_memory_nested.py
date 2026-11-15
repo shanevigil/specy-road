@@ -21,6 +21,7 @@ from specy_road.agents_md_block import (
     warn_if_context_over_limits,
 )
 from specy_road.harness_instruction_files import CLAUDE_MAX_FILE_BYTES, claude_memory_loaded
+from tests.support.same.rels_4014f350b2c5 import _rels
 
 SCOPED = "---\npaths:\n  - \"src/**/*.py\"\n---\n\n- Only for src.\n"
 
@@ -49,8 +50,6 @@ def _write(root: Path, rel: str, text: str) -> Path:
     return root / rel
 
 
-def _rels(root: Path, harness: str) -> list[str]:
-    return [f.rel for f in injected_context(root)[harness]]
 
 
 def _memory(home: Path, checkout: Path, text: str) -> Path:

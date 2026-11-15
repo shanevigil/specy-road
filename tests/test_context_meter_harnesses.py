@@ -14,6 +14,7 @@ import pytest
 
 from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agents_md_block import AGENTS_MD, injected_context, print_injected_context
+from tests.support.same.rels_4014f350b2c5 import _rels
 
 ALWAYS = "---\ndescription: house rule\nalwaysApply: true\n---\n\n- Always do this.\n"
 SCOPED = "---\ndescription: only for tests\nglobs: tests/**\nalwaysApply: false\n---\n\n- Scoped.\n"
@@ -35,8 +36,6 @@ def _write(root: Path, rel: str, text: str) -> None:
     (root / rel).write_text(text, encoding="utf-8")
 
 
-def _rels(root: Path, harness: str) -> list[str]:
-    return [f.rel for f in injected_context(root)[harness]]
 
 
 def test_cursor_reads_agents_claude_and_only_always_applied_rules(repo: Path) -> None:

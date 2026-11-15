@@ -22,8 +22,8 @@ from specy_road.history_cache import CACHE_VERSION, cache_path, load_cache, save
 from specy_road.history_events import DEP_REMOVED
 from specy_road.history_index import clear_memo, history_index
 from tests.helpers import DOGFOOD
-from tests.test_digest import run_cli
-from tests.test_history_walk import commit, edit_node, git
+from tests.support.extracted.digest import run_cli
+from tests.support.extracted.history_walk import commit, edit_node, git
 
 _BASELINE = "2026-01-01T12:00:00+00:00"
 _SIDE = "2026-02-01T12:00:00+00:00"

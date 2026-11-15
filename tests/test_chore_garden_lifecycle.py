@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git
-from tests.test_chore_mode import _roadmap_bytes, garden_repo, run_chore_cli
+from tests.support.same.git_84c8ad8f55f9 import git
+from tests.support.extracted.chore_mode import _roadmap_bytes, garden_repo, run_chore_cli
 
 from specy_road.bundled_scripts import archive_cli, roadmap_crud
 from specy_road.roadmap_load import load_roadmap
@@ -66,6 +66,7 @@ def test_in_progress_leaf_is_skipped(tmp_path: Path, capsys) -> None:
     assert _roadmap_bytes(repo) == before
 
 
+@pytest.mark.slow
 def test_complete_then_archived_takes_the_next_unused_number(tmp_path: Path, capsys) -> None:
     """R5. Rows: Complete leaf -> add (2); Complete then archived -> add max + 1, then skip."""
     repo = garden_repo(tmp_path)
@@ -88,6 +89,7 @@ def test_complete_then_archived_takes_the_next_unused_number(tmp_path: Path, cap
     assert _roadmap_bytes(repo) == before
 
 
+@pytest.mark.slow
 def test_generations_with_gaps_skip_the_open_one_then_number_past_the_highest(tmp_path: Path, capsys) -> None:
     """Row: 1 archived, 2 Complete, 3 open -> skip (3); once 3 is Complete -> add (4)."""
     repo = garden_repo(tmp_path)

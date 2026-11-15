@@ -18,35 +18,14 @@ from specy_road import cli
 from specy_road.bundled_scripts import branches_cli, finish_task
 from specy_road.merged_branch import delete_remote_branch
 from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git, make_review_repo
-
-BR = "feature/rm-thing"
-
-
-def _exit(fn, argv: list[str]) -> int:
-    with pytest.raises(SystemExit) as e:
-        fn(argv)
-        raise SystemExit(0)
-    return e.value.code or 0
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.same.exit_a673d831c5ea import _exit
+from tests.support.extracted.branch_cleanup import BR, _merge_mode_repo
 
 
-def _merge_mode_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
-    """The claimed leaf, mergeable into ``dev``, with a bare origin holding both branches."""
-    monkeypatch.setenv("PYTHONPATH", str(REPO))   # finish runs validate/export/digest as subprocesses
-    repo = make_review_repo(tmp_path)
-    git(repo, "checkout", "-q", "dev")
-    commit_file(repo, "roadmap/git-workflow.yaml",
-                "version: 1\nintegration_branch: dev\nremote: origin\non_complete: merge\n", "merge mode")
-    commit_file(repo, ".gitignore", "work/reviews/\n.specyrd/cache/\n", "as init project scaffolds")
-    git(repo, "checkout", "-q", BR)
-    git(repo, "merge", "-q", "--no-edit", "dev")
-    bare = tmp_path / "remote.git"
-    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
-    git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")   # a remote refuses to delete its HEAD branch
-    git(repo, "remote", "add", "origin", str(bare))
-    git(repo, "fetch", "-q", "origin")
-    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
-    return repo, bare
+
+
+
 
 
 def _has_branch(repo: Path, ref: str) -> bool:
@@ -56,6 +35,7 @@ def _has_branch(repo: Path, ref: str) -> bool:
 # --- finish-this-task --delete-branch ------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "delegated, on_remote",
     [(False, True), (True, True), (False, False)],
@@ -90,6 +70,7 @@ def test_finish_delete_branch_deletes_it_locally_and_on_the_remote(
         assert git(repo, "branch", "--show-current") == "dev"
 
 
+@pytest.mark.slow
 def test_a_retried_landing_deletes_the_branch(tmp_path: Path, monkeypatch, capsys) -> None:
     """The bookkeeping commit already exists; the re-run only lands, and still deletes."""
     repo, bare = _merge_mode_repo(tmp_path, monkeypatch)

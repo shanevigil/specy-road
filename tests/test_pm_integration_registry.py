@@ -13,26 +13,15 @@ from specy_road import roadmap_gui_settings as _rgs
 
 from specy_road.pm_integration_registry import describe_integration_branch_auto_ff
 from specy_road.registry_remote_overlay import merge_registry_with_remote_overlay
+from tests.support.same.isolate_gui_settings_f1cfb6733460 import _isolate_gui_settings
+from tests.support.same.run_git_e7b46ac47b3e import _run_git
+from tests.support.same.write_gw_c3cc7b6c500e import _write_gw
 
 
-def _isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    gui = tmp_path / ".specy-road"
-    gui.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr(_rgs, "SETTINGS_DIR", gui)
-    monkeypatch.setattr(_rgs, "SETTINGS_PATH", gui / "gui-settings.json")
 
 
-def _run_git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
-def _write_gw(repo: Path) -> None:
-    p = repo / "roadmap" / "git-workflow.yaml"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(
-        "version: 1\nintegration_branch: main\nremote: origin\n",
-        encoding="utf-8",
-    )
 
 
 def _minimal_registry(entries: list[dict]) -> str:

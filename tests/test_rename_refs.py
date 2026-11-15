@@ -28,6 +28,7 @@ from tests.move_node_helpers import (
     tree_bytes,
     wide_fixture,
 )
+from tests.support.same.client_218dbc43887f import client
 
 FENCED = "```\nsee M1.3\n```\n"
 HISTORICAL = "<!-- historical -->was M1.3<!-- /historical -->\n"
@@ -175,12 +176,6 @@ def test_a_failed_move_rewrites_nothing(repo: Path, monkeypatch: pytest.MonkeyPa
     assert tree_bytes(repo) == before
 
 
-@pytest.fixture()
-def client(repo: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(repo))
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
 @pytest.mark.parametrize(

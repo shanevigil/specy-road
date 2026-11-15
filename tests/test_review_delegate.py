@@ -16,7 +16,7 @@ import pytest
 from tests.helpers import script_subprocess_env
 from tests.review_delegate_helpers import (CAPACITY, delegate_repo, delegate_roster, fake_calls, fake_prompts, launches,
                                            set_steps, verdict_step)
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_output
+from tests.support.review import NODE, commit_file, make_review_repo, review_output, git
 from tests.support.cli import run_main
 
 from specy_road.bundled_scripts import review_cli, role_prompt
@@ -29,11 +29,8 @@ from specy_road.reviewer_run_failure import save_run, run_path, turn_capacity_er
 from specy_road.review_files import reviews_dir
 from specy_road import review_files as rf
 from specy_road.orchestration.workers.worker_adapters import ClaudeCode
+from tests.support.same.run_651387813ee4 import _run
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def _delegate(repo: Path, *extra: str) -> int:
@@ -89,6 +86,7 @@ def test_a_retry_never_files_an_earlier_attempts_answer(tmp_path: Path) -> None:
     assert not (reviews_dir(repo, "M1.1") / "REVIEW-opus.md").exists()
 
 
+@pytest.mark.slow
 def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:
     """Moved from tests/test_review_record_write.py (file limit): a refused launch writes none of the run's files."""
     repo, spec = delegate_repo(tmp_path)
@@ -119,6 +117,7 @@ def test_capacity_retries_are_bounded_and_end_incomplete(tmp_path: Path, capsys)
     assert "incomplete" in capsys.readouterr().out
 
 
+@pytest.mark.slow
 def test_a_run_that_writes_no_record_is_incomplete_and_never_shows_the_old_verdict(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, verdict_step(repo, "block"))
@@ -140,6 +139,7 @@ def test_a_run_that_writes_no_record_is_incomplete_and_never_shows_the_old_verdi
     assert "REVIEW-opus.md: block by opus" in out and "stale: not the commit under review" in out
 
 
+@pytest.mark.slow
 def test_a_clean_exit_without_a_record_is_incomplete(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {})
@@ -152,6 +152,7 @@ def test_a_clean_exit_without_a_record_is_incomplete(tmp_path: Path) -> None:
     assert not (reviews_dir(repo, "M1.1") / "REVIEW-opus.md").exists()
 
 
+@pytest.mark.slow
 def test_resume_continues_the_recorded_session(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {}, {}, verdict_step(repo))   # M21.42: no JSON twice (the turn and its one repair)
@@ -259,6 +260,7 @@ def test_handoff_policy_line_names_a_usage_limit_reviewer_failure(tmp_path: Path
     assert events[-1]["type"] == "reviewer-failure" and "usage limit" in events[-1]["error"].lower()
 
 
+@pytest.mark.slow
 def test_successful_delegate_run_has_no_reviewer_failure_event(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, verdict_step(repo))
@@ -336,6 +338,7 @@ NO_PROFILE_ROSTER = ("version: 1\nroster:\n  - {id: human, family: human, roles:
                      "  - {id: label-reviewer, family: anthropic, roles: [reviewer], harness: claude-code}\n")
 
 
+@pytest.mark.slow
 def test_delegate_passes_the_roster_id_when_the_entry_has_no_profile(tmp_path: Path, monkeypatch) -> None:
     import os
 
@@ -360,6 +363,7 @@ print(json.dumps({{"type": "result", "subtype": "success", "result": ans, "sessi
     assert argv[argv.index("--model") + 1] == "label-reviewer"
 
 
+@pytest.mark.slow
 def test_delegate_records_model_mismatch_and_the_gate_excludes_the_approval(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
     step = verdict_step(repo, model="opus")

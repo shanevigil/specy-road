@@ -11,12 +11,9 @@ import pytest
 from specy_road.orchestration.grind.session_plan import compute_session_plan
 from specy_road.orchestration.grind.session_plan_git import enrich_session_plan_with_git
 from specy_road.orchestration.grind.session_plan_render import render_session_plan_text
+from tests.support.same.git_81b020dd1411 import _git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(
-        ["git", "-C", str(repo), *args], check=True, capture_output=True
-    )
 
 
 def _write_graph(repo: Path, status: str, *, node_id: str = "M1.1", codename: str = "leaf-a") -> None:

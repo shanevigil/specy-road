@@ -145,6 +145,7 @@ UNREADABLE_WORKER_RECORDS = {
 }
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("record", UNREADABLE_WORKER_RECORDS, ids=str)
 def test_an_unreadable_worker_record_is_leafless_unknown_and_readers_go_on(
     record: str, tmp_path: Path

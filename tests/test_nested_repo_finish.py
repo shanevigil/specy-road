@@ -13,8 +13,8 @@ import shutil
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo
-from tests.test_nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.extracted.nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker
 
@@ -24,41 +24,16 @@ from specy_road.bundled_scripts import review_packet as rp
 from specy_road.finish_implementation_check import implementation_paths
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.nested_repos import land_nested_branches
-
-BRANCH = "feature/rm-thing"
-
-
-def _repos(tmp_path: Path, *rels: str, text: str = "x = 2\n") -> tuple[Path, list[Path]]:
-    """``(repo on the feature branch, each nested repo on dev with the leaf branch committed)``; the leaf's
-    ``core.py`` is ``text``, prefixed with the repository's path so each diff is its own."""
-    repo = make_review_repo(tmp_path)
-    git(repo, "checkout", "-q", "dev")
-    nested = [add_nested_repo(repo, rel, "dev") for rel in rels]
-    git(repo, "checkout", "-q", BRANCH)
-    git(repo, "merge", "-q", "--no-edit", "dev")
-    bare = tmp_path / "remote.git"
-    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
-    git(repo, "remote", "add", "origin", str(bare))
-    git(repo, "fetch", "-q", "origin")
-    for rel, n in zip(rels, nested):
-        git(n, "checkout", "-q", "-b", BRANCH)
-        commit_file(n, "core.py", (f"# {rel}\n" if len(rels) > 1 else "") + text, "leaf work in the nested repo")
-        git(n, "checkout", "-q", "dev")
-    return repo, nested
+from tests.support.extracted.nested_repo_finish import BRANCH, _land, _origin_tip, _repo, _repos
 
 
-def _repo(tmp_path: Path, rel: str = COVERED, text: str = "x = 2\n") -> tuple[Path, Path]:
-    repo, (nested,) = _repos(tmp_path, rel, text=text)
-    return repo, nested
 
 
-def _origin_tip(repo: Path, branch: str = "dev") -> str:
-    return git(repo, "ls-remote", "origin", f"refs/heads/{branch}").split()[0]
 
 
-def _land(repo: Path) -> tuple[bool, str]:
-    return land_merge_feature_into_integration(repo, remote="origin", integration_branch="dev",
-                                               feature_branch=BRANCH, land_check_cmd="")
+
+
+
 
 
 def test_merge_mode_lands_the_nested_branch_then_the_main_repository(tmp_path: Path) -> None:
@@ -88,6 +63,7 @@ def test_a_nested_conflict_stops_before_the_main_repository_moves(tmp_path: Path
     assert len(git(nested, "worktree", "list").splitlines()) == 1   # the temporary worktree is gone
 
 
+@pytest.mark.slow
 def test_delegate_in_the_checkout_on_the_claim_branch_puts_the_nested_repo_on_it_and_finish_lands_it(
         tmp_path: Path) -> None:
     """The direct-checkout layout: the main checkout is on the claim's branch, so the worker edits the
@@ -123,6 +99,7 @@ def test_direct_checkout_delegate_refuses_a_dirty_nested_repo_off_the_branch(tmp
     assert (nested / "core.py").read_text(encoding="utf-8") == "unsaved\n"
 
 
+@pytest.mark.slow
 def test_direct_checkout_delegate_detaches_an_uncovered_nested_repo_at_the_tip(tmp_path: Path) -> None:
     repo, _script = make_worker_repo(tmp_path)
     nested = add_nested_repo(repo, UNCOVERED, "dev")

@@ -12,11 +12,12 @@ import shlex
 import subprocess
 from pathlib import Path
 
-from tests.pickup_repo_helpers import FEATURE, make_pickup_project, run_specy_road
-from tests.review_repo_helpers import commit_file, git
-from tests.test_nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
+from tests.support.pickup import FEATURE, make_pickup_project, run_specy_road
+from tests.support.review import commit_file, git
+from tests.support.extracted.nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
 
 from specy_road.worktree_prune import plan_prune, remove
+import pytest
 
 
 def _landed_leaf_ignoring_sibling(tmp_path: Path, nested: tuple[str, ...] = ()) -> tuple[Path, Path]:
@@ -226,6 +227,7 @@ def test_an_owning_repository_with_a_carriage_return_in_its_name_is_named_exactl
     _refused_both_ways(root, sib, wt)
 
 
+@pytest.mark.slow
 def test_every_foreign_repository_in_anything_removal_deletes_refuses_at_any_depth(tmp_path: Path) -> None:
     """The scan covers what removal deletes: the leaf and a configured full clone, its ``.git`` included."""
     root, wt = _landed_leaf_ignoring_sibling(tmp_path, (UNCOVERED,))
@@ -277,6 +279,7 @@ def test_a_foreign_worktree_in_the_leafs_administrative_directory_refuses_and_su
     assert "checkout in the admin directory" in why
 
 
+@pytest.mark.slow
 def test_every_directory_of_every_kind_prune_deletes_is_scanned(tmp_path: Path) -> None:
     """The leaf and its admin directory, a configured linked worktree and its admin directory, a configured
     full clone and its .git: foreign checkouts and linked worktrees at depths 1 to 3 in each all refuse."""

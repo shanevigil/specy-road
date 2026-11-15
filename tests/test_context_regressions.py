@@ -10,7 +10,7 @@ import jsonschema
 import pytest
 import yaml
 
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 from specy_road.bundled_scripts import role_prompt
 

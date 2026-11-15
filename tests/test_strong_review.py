@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
+from tests.support.review import NODE, make_review_repo, review_text, git
 from tests.support.plan import only_assignment, plan_repo, ROSTER
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.extracted.review_gate import TWO_FAMILIES
 
 from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
@@ -20,6 +20,8 @@ from specy_road.orchestration_config import parse_orchestration_text
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, human_approval_completes
 from specy_road.review_gate import applicable_items, zones_meet
+from tests.support.same.gate_9f3572d00caf import _gate
+from tests.support.same.review_434036b364c2 import _review
 
 #: The leaf's zone is ``src``; ``sonnet`` is the strong reviewer, so opus + sol meet the count but not the item.
 STRONG = TWO_FAMILIES.replace(
@@ -32,14 +34,8 @@ UNMET = "strong_review[0] (zones: src/a.py, lib/): the leaf's touch zones meet a
         "need a counting approval from one of sonnet at this commit, have none"
 
 
-def _review(repo: Path, model: str, **kw) -> None:
-    d = reviews_dir(repo, "M1.1")
-    d.mkdir(parents=True, exist_ok=True)
-    (d / f"REVIEW-{model}.md").write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, **kw))
 
 
-def _gate(repo: Path):
-    return evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
 
 
 @pytest.mark.parametrize(("a", "b", "prefix", "meet"), [

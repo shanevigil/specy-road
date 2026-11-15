@@ -22,7 +22,7 @@ import pytest
 from specy_road import cli
 from specy_road.bundled_scripts import scaffold_planning
 from specy_road.milestone_session import milestone_session_path, write_milestone_session
-from tests.milestone_repo_helpers import make_milestone_repo
+from tests.support.milestone import make_milestone_repo
 from tests.move_node_helpers import base_fixture
 from tests.parity.command_map import command_map_rows, retired_top_level_names
 from tests.scenarios.milestone.repos import (

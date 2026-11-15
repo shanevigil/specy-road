@@ -14,8 +14,10 @@ from specy_road.orchestration.grind import grind_session as gs
 from specy_road.orchestration.grind import grind_session_cleanup as gsc
 from specy_road import merged_branch
 from specy_road.orchestration.grind import grind_session_events as gse
+from tests.support.same.events_bc2d3e84325c import _events
+from tests.support.same.plan_a42dad7814e8 import _plan
+from tests.support.extracted.grind_session import REPO, TS, _Harness, _event, _node, _run
 
-REPO = Path(__file__).resolve().parent.parent
 DOGFOOD = REPO / "tests" / "fixtures" / "specy_road_dogfood"
 from specy_road.orchestration.grind.grind_session_events import (
     EXIT_BLOCKED,
@@ -28,115 +30,18 @@ from specy_road.orchestration.grind.grind_session_events import (
 from specy_road.orchestration.grind.session_plan import BlockedLeaf, SessionPlan, Wave
 
 
-#: Frozen event timestamp so `ts` can be asserted exactly.
-TS = "2026-09-06T00:00:00Z"
 
 
-def _node(nid, codename=None):
-    return {"id": nid, "codename": codename or f"cn-{nid.lower().replace('.', '-')}"}
 
 
-def _plan(ready=None, blocked=None, active=None):
-    ready = ready or []
-    return SessionPlan(
-        under=None,
-        ready=list(ready),
-        blocked=list(blocked or []),
-        active=list(active or []),
-        closed=[],
-        gated=[],
-        gates_open=[],
-        needs_codename=[],
-        waves=[Wave(index=0, node_ids=list(ready))] if ready else [],
-        parallel_batches=[list(ready)] if ready else [],
-        totals={"ready": len(ready)},
-    )
 
 
-class _Harness:
-    """Drives a scripted sequence of plans and records subprocess calls."""
-
-    def __init__(self, monkeypatch, plans, *, pickup_rc=0, finish_rc=0,
-                 implement_rc=0, pre_finish_rc=0):
-        self.plans = list(plans)
-        self.idx = 0
-        self.cli_calls: list[list[str]] = []
-        self.shell_calls: list[str] = []
-        self.git_calls: list[list[str]] = []
-        #: Per-git-verb return codes for the end-of-session cleanup.
-        self.git_rc: dict[str, int] = {}
-        self.implement_rc = implement_rc
-        self.pre_finish_rc = pre_finish_rc
-        self.pickup_rc = pickup_rc
-        self.finish_rc = finish_rc
-        self.gather_allow: list[bool] = []
-
-        def fake_gather(repo_root, under, *, allow_unauthored=False, prefer_agentic=None):
-            self.gather_allow.append(allow_unauthored)
-            plan = self.plans[min(self.idx, len(self.plans) - 1)]
-            nodes = [_node(nid) for nid in plan.ready]
-            return nodes, {"version": 1, "entries": []}, plan
-
-        def fake_run_cli(repo_root, cli_args):
-            self.cli_calls.append(cli_args)
-            if cli_args[0] == "do-next-available-task":
-                return self.pickup_rc
-            if cli_args[0] == "finish-this-task":
-                # advance to the next scripted plan after a finish
-                self.idx += 1
-                return self.finish_rc
-            return 0
-
-        def fake_run_shell(cmd, env, repo_root):
-            self.shell_calls.append(cmd)
-            # distinguish pre-finish vs implement by env marker is not needed;
-            # implement-cmd and pre-finish-cmd use different stored values.
-            return 0
-
-        def fake_current_branch(repo_root):
-            plan = self.plans[min(self.idx, len(self.plans) - 1)]
-            nid = plan.ready[0]
-            return f"feature/rm-cn-{nid.lower().replace('.', '-')}"
-
-        def fake_resolve(repo_root, branch, fallback):
-            return fallback
-
-        def fake_wait(repo_root, rel, timeout):
-            return self.implement_rc == 0
-
-        monkeypatch.setattr(gsc, "git_code", self._fake_git)
-        monkeypatch.setattr(merged_branch, "git_code", self._fake_git)
-        monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
-        monkeypatch.setattr(gs, "CHILD_STDOUT_TO_STDERR", False)
-        monkeypatch.setattr(gs, "gather_plan", fake_gather)
-        monkeypatch.setattr(gs, "_run_cli", fake_run_cli)
-        monkeypatch.setattr(gs, "_run_shell", fake_run_shell)
-        monkeypatch.setattr(gs, "current_branch", fake_current_branch)
-        monkeypatch.setattr(gs, "_resolve_picked", fake_resolve)
-        monkeypatch.setattr(gs, "_wait_for_signal", fake_wait)
-
-    def _fake_git(self, git_args, repo_root):
-        self.git_calls.append(list(git_args))
-        if git_args[0] == "rev-parse":
-            return 0, "a" * 40
-        return self.git_rc.get(git_args[0], 0), ""
 
 
-def _run(argv):
-    from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
-
-    args = parse_grind_session_args(argv)
-    return gs.run_session(args)
 
 
-def _events(capsys):
-    out = capsys.readouterr().out.strip().splitlines()
-    return [json.loads(line) for line in out if line.strip()]
 
 
-def _event(evs, name):
-    """The last event of one kind. `cleanup` now trails `stopped`."""
-    return [e for e in evs if e["event"] == name][-1]
 
 
 # ---------------------------------------------------------------------------

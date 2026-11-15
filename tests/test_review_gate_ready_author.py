@@ -11,8 +11,8 @@ import pytest
 import yaml
 
 from tests.review_delegate_helpers import delegate_repo
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_gate import TWO_FAMILIES
 
 from specy_road import review_signing as rs
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
@@ -21,19 +21,13 @@ from specy_road.bundled_scripts.review_cli import eligibility_lines, reviewer_el
 from specy_road.review_files import load_review, render_front_matter, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.toolkit_version import stamp_review_toolkit_version
+from tests.support.same.ready_cddba06c620f import _ready
 
 
 def _sentence(model: str) -> str:
     return f"{model} wrote READY-{model}.md on this leaf; the executor never reviews its own leaf"
 
 
-def _ready(repo: Path, agent: str) -> None:
-    d = reviews_dir(repo, "M1.1")
-    d.mkdir(parents=True, exist_ok=True)
-    (d / f"READY-{agent}.md").write_text(
-        f"---\nnode_id: M1.1\nagent: {agent}\nbranch: feature/rm-thing\ncommit: {git(repo, 'rev-parse', 'HEAD')}\n"
-        f"base: {git(repo, 'rev-parse', 'dev')}\nchanged_paths: [src/a.py]\n---\n"
-    )
 
 
 def _review(repo: Path, model: str, **kw) -> Path:

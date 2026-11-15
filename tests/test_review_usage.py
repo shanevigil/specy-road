@@ -7,15 +7,15 @@ from pathlib import Path
 
 import pytest
 
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
 from tests.review_delegate_helpers import (
     CAPACITY,
     files_record_step,
     make_delegate_repo,
     run_review_delegate,
-    run_review_cli,
     set_delegate_steps,
 )
-from tests.review_repo_helpers import commit_file, git
+from tests.support.review import commit_file, git
 
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
@@ -52,6 +52,7 @@ def two_rounds(tmp_path: Path) -> tuple[Path, str, str]:
     return repo, c1, c2
 
 
+@pytest.mark.slow
 def test_each_round_keeps_its_run_json_log_and_notes_in_history(two_rounds) -> None:
     """A1/A4: round 1's files are kept under history/ with its commit and round; the current files are round 2's."""
     repo, c1, c2 = two_rounds
@@ -68,6 +69,7 @@ def test_each_round_keeps_its_run_json_log_and_notes_in_history(two_rounds) -> N
     assert not list(hist.glob("notes-*.md"))   # never beside the filed records history/*.md holds
 
 
+@pytest.mark.slow
 def test_review_usage_lists_each_run_and_the_total(two_rounds, capsys) -> None:
     """A2: per run (model, round, commit) and a total, --json and text; '?' where the harness reported nothing."""
     repo, c1, c2 = two_rounds
@@ -86,6 +88,7 @@ def test_review_usage_lists_each_run_and_the_total(two_rounds, capsys) -> None:
     assert "  total, 2 turn(s): in 300 (? cached), out 30, reasoning ?, $0.7500 est." in out
 
 
+@pytest.mark.slow
 def test_worker_usage_adds_reviewers_to_the_node_total(two_rounds, capsys) -> None:
     """A3: executors, reviewers and the combined total, each on its own line."""
     repo, _c1, _c2 = two_rounds
@@ -110,6 +113,7 @@ def test_worker_usage_adds_reviewers_to_the_node_total(two_rounds, capsys) -> No
     assert (t["turns"], t["input_tokens"], t["output_tokens"], t["cost_usd"]) == (3, 1300, 130, 1.75)
 
 
+@pytest.mark.slow
 def test_notes_are_not_relabeled_when_a_later_run_writes_no_notes(tmp_path: Path) -> None:
     """A4/RC2: a capacity failure at a new commit must not archive the previous commit's notes under that run."""
     repo, spec = make_delegate_repo(tmp_path)
@@ -142,6 +146,7 @@ def _write_prompt_cli_run(path: Path, commit: str) -> None:
     path.with_suffix(".log").write_text(_PROMPT_CLI_USAGE_LOG, encoding="utf-8")
 
 
+@pytest.mark.slow
 def test_prompt_cli_runs_are_excluded_from_review_and_worker_usage(two_rounds, capsys) -> None:
     """A3/R1: ``source=prompt-cli`` RUN files in history and at the current path do not enter reviewer totals."""
     repo, c1, _c2 = two_rounds
@@ -193,6 +198,7 @@ def test_delegate_after_prompt_cli_does_not_append_to_the_old_log(tmp_path: Path
     assert not list((reviews_dir(repo, "M1.1") / "history").glob("RUN-opus*"))
 
 
+@pytest.mark.slow
 def test_a_removed_worktree_still_finds_its_projects_reviews(two_rounds) -> None:
     """A finished leaf's worktree is gone; its nearest existing parent names the project."""
     repo, _c1, _c2 = two_rounds
@@ -209,6 +215,7 @@ def test_no_delegated_review_keeps_the_single_total_line(tmp_path: Path) -> None
     assert not any("reviewers" in line or "executors" in line for line in lines)
 
 
+@pytest.mark.slow
 def test_worker_usage_uses_its_repo_root_not_the_worktree(two_rounds, tmp_path_factory, capsys) -> None:
     """A3: ``worker usage --repo-root`` finds the reviewers even when the worker's worktree names no project."""
     repo, _c1, _c2 = two_rounds

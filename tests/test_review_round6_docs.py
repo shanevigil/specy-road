@@ -10,6 +10,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.specyrd_init import run_init
 from specy_road.specyrd_skills import generated_match, render_skill
+from tests.support.same.manifest_ae1e6c3dc58c import _manifest
 
 REPO = Path(__file__).resolve().parent.parent
 BLOCK = REPO / "specy_road" / "templates" / "specyrd" / "agents-rules.md"
@@ -23,8 +24,6 @@ def _init(root: Path, *, force: bool):
     return run_init(target=root, agent="claude-code", dry_run=False, force=force, ai_commands_dir=None, role="dev")
 
 
-def _manifest(root: Path) -> dict:
-    return json.loads((root / ".specyrd" / "manifest.json").read_text(encoding="utf-8"))
 
 
 # --- B18 (a): first-install --force and the text heuristic ---------------------

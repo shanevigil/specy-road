@@ -19,8 +19,11 @@ from specy_road.orchestration.grind.grind_session_events import (
     EXIT_PRE_FINISH_FAILED,
 )
 from specy_road.orchestration.grind.session_plan import BlockedLeaf
-from tests.test_grind_session import REPO, _Harness, _event, _events, _plan, _run
-from tests.test_grind_session_in_flight import _artifacts, _entry, _reg
+from tests.support.same.events_bc2d3e84325c import _events
+from tests.support.same.plan_a42dad7814e8 import _plan
+from tests.support.extracted.grind_session import REPO, _Harness, _event, _run
+from tests.support.same.reg_506cecd4ff0e import _reg
+from tests.support.extracted.grind_session_in_flight import _artifacts, _entry
 
 MERGE = ["--on-complete", "merge", "--json", "--repo-root", "/tmp/x"]
 

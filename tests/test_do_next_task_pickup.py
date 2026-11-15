@@ -11,13 +11,12 @@ import pytest
 from specy_road.bundled_scripts import do_next_task as dnt
 
 
-def _git_init(root: Path) -> None:
-    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 from specy_road.registration_pickup_commit import (
     REGISTRATION_COMMIT_CI_SKIP_SUFFIX,
     registration_commit_message,
 )
 from specy_road.review_policy_pin import policy_digest
+from tests.support.same.git_init_39224a6ae177 import _git_init
 
 
 def _git_log(root: Path) -> str:

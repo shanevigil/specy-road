@@ -13,32 +13,25 @@ from pathlib import Path
 
 import pytest
 
-# The project and CLI runners live in pickup_repo_helpers; the old private names
+# The project and CLI runners live in tests.support.pickup; the old private names
 # stay for the modules that import them from here.
-from tests.pickup_repo_helpers import (  # noqa: F401 — SHEET is re-exported
+from tests.support.pickup import (  # noqa: F401 — SHEET is re-exported
     FEATURE, SHEET, make_pickup_project as _project, run_pickup as _pickup, run_specy_road as _run,
+)
+from tests.support.extracted.baseline_gate_cli import (
+    _assert_nothing_claimed,
+    _branches,
+    _claimed_on,
+    _git,
 )
 
 
-def _git(root: Path, *args: str) -> str:
-    return subprocess.run(
-        ["git", "-C", str(root), *args], check=True, capture_output=True, text=True
-    ).stdout.strip()
 
 
-def _claimed_on(root: Path, ref: str) -> bool:
-    return "leaf-one" in _git(root, "show", f"{ref}:roadmap/registry.yaml")
 
 
-def _branches(root: Path) -> list[str]:
-    return _git(root, "branch", "--format=%(refname:short)").split()
 
 
-def _assert_nothing_claimed(root: Path, main_before: str) -> None:
-    assert _git(root, "rev-parse", "main") == main_before
-    assert _git(root, "rev-parse", "origin/main") == main_before
-    assert not _claimed_on(root, "main")
-    assert FEATURE not in _branches(root)
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +107,7 @@ def test_baseline_may_write_under_work(tmp_path: Path) -> None:
     assert _claimed_on(root, "origin/main")
 
 
+@pytest.mark.slow
 def test_git_workflow_baseline_applies_and_an_empty_flag_turns_it_off(tmp_path: Path) -> None:
     root = _project(tmp_path, "baseline_cmd: exit 4\n")
     before = _git(root, "rev-parse", "HEAD")

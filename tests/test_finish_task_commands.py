@@ -8,15 +8,14 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import diverge, git, make_review_repo
+from tests.support.review import diverge, make_review_repo, git
 
 from specy_road.bundled_scripts import finish_task as ft
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road import feature_rm_registry as frm
+from tests.support.same.git_init_39224a6ae177 import _git_init
 
 
-def _git_init(root: Path) -> None:
-    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 
 
 def _write_registry(tmp_path, reg: dict) -> None:

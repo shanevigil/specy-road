@@ -62,6 +62,7 @@ def test_stale_holder_from_killed_process_is_cleared(tmp_path: Path) -> None:
     assert not holder.exists()
 
 
+@pytest.mark.slow
 def test_permission_denied_holder_is_not_stolen(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

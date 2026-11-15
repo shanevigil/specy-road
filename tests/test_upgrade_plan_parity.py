@@ -24,7 +24,7 @@ from specy_road.bundled_scripts import upgrade
 from specy_road.bundled_scripts.upgrade import run_upgrade
 from specy_road.init_project import run_init_project
 from specy_road.managed_block import HTML_COMMENT, render_block
-from tests.upgrade_repo_helpers import old_repo
+from tests.support.upgrade import old_repo
 
 SKILL = ".agents/skills/specyrd-validate/SKILL.md"
 

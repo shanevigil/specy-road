@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.support.review import make_review_repo, review_text, git
 from tests.support.profiles import make_profile_repo
-from tests.test_review_cli import ONE_AI
+from tests.support.extracted.review_cli import ONE_AI
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
@@ -21,6 +21,7 @@ from specy_road.review_record_rules import (
     note_problem,
     unexplained_defects,
 )
+from tests.support.same.run_651387813ee4 import _run
 
 
 def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
@@ -45,10 +46,6 @@ def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
     assert err is None and "Run the tests that import each changed module" not in executor
 
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def _record(repo: Path, verdict: str = "approve", findings: dict | None = None, notes: str = "notes\n",

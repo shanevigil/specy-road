@@ -1,0 +1,53 @@
+# Test files that write manifest.json with write_text or json.dump.
+# tests/support/roadmap.py roadmap_repo is the builder and is not listed.
+# Each row is a malformed document or raw bytes the builder does not produce.
+tests/move_node_helpers.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/decisions.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/extracted/grind_status.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/extracted/roadmap_chunk_router.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/extracted/set_gate_status.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/extracted/worker_m310_reconcile_status.py: project manifest (.specyrd), not a roadmap the builder writes
+tests/support/integrity.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/milestone.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/pickup.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/review.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/unauthored.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/support/upgrade.py: project manifest (.specyrd), not a roadmap the builder writes
+tests/test_claim_traps.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_cli.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_cursor_usage_cost.py: project manifest (.specyrd), not a roadmap the builder writes
+tests/test_do_next_finished_unmerged.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_do_next_virtual_pickup.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_finish_ancestor_rollup.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_finish_land_roadmap_graph.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_finish_task_commands.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_gui_app_orchestration.py: project manifest and raw roadmap manifest bytes
+tests/test_init_project.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_init_project_reports.py: malformed or empty manifest left as raw bytes
+tests/test_m11_27_small_cli_fixes.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_m13_7_notices.py: project manifest (.specyrd), not a roadmap the builder writes
+tests/test_phase_root_chunk_routing.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_pick_ordering.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_planned_test_changes.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_pm_integration_registry.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_pm_publish.py: malformed or empty manifest left as raw bytes
+tests/test_reconcile_branch.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_refresh_stubs.py: project manifest (.specyrd), not a roadmap the builder writes
+tests/test_registry_remote_overlay.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_registry_remote_overlay_sync.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_review_node.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_review_round5.py: malformed or empty manifest left as raw bytes
+tests/test_review_round6_docs.py: project manifest (.specyrd), not a roadmap the builder writes
+tests/test_roadmap_crud_atomicity.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_roadmap_crud_ops.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_roadmap_load.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_rollup_branch_cleanup.py: project manifest and raw roadmap manifest bytes
+tests/test_runtime_paths.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_session_plan_git.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_specyrd_init.py: malformed or empty manifest left as raw bytes
+tests/test_specyrd_init_guide_block.py: malformed or empty manifest left as raw bytes
+tests/test_sync_planning_outline.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_validate_roadmap.py: project manifest (.specyrd), not a roadmap the builder writes
+tests/test_validate_self_heal.py: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/test_version_skew_install.py: project manifest (.specyrd), not a roadmap the builder writes
+tests/test_worker_cli_fixes.py: project manifest (.specyrd), not a roadmap the builder writes

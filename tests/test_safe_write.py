@@ -13,6 +13,7 @@ from specy_road.generated_files import regenerate_generated_files
 from specy_road.init_project import run_init_project
 from specy_road.managed_block import apply_managed_block
 from specy_road.safe_write import SafeWriteError
+from tests.support.extracted.safe_write import swap_at_open
 
 OLD = b"old\n"
 
@@ -206,27 +207,6 @@ def test_a_link_swapped_in_right_before_replace_is_refused(
     assert sorted(p.name for p in path.parent.iterdir()) == ["f"]   # the temp file is gone
 
 
-def swap_at_open(monkeypatch: pytest.MonkeyPatch, opened: Path, swapped: Path, to: Path, before: bool = False) -> None:
-    """A racer: once ``opened`` is opened as a directory (right before ``opened`` is opened by its path, with
-    ``before``), ``swapped`` is moved to ``<name>.real`` and a symlink to ``to`` takes its place (once)."""
-    real_open, aside = os.open, swapped.with_name(swapped.name + ".real")
-
-    def swap() -> None:
-        if not os.path.lexists(aside):
-            swapped.rename(aside)
-            swapped.symlink_to(to)
-
-    def racing_open(path, flags, *args, **kwargs):
-        if before and flags & os.O_DIRECTORY and path == opened:
-            swap()
-        fd = real_open(path, flags, *args, **kwargs)
-        if not before and flags & os.O_DIRECTORY and os.path.isdir(opened) \
-                and os.path.samestat(os.fstat(fd), os.lstat(opened)):
-            swap()
-        return fd
-
-    monkeypatch.setattr(os, "open", racing_open)
-    monkeypatch.setattr(os, "supports_dir_fd", os.supports_dir_fd | {racing_open})
 
 
 def _generated(tmp_path: Path):

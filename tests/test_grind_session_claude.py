@@ -11,7 +11,9 @@ from datetime import datetime, timedelta, timezone
 from specy_road.orchestration.grind import grind_session as gs
 from specy_road.orchestration.grind import grind_session_implement as gsi
 from specy_road.orchestration.grind.grind_session_events import EXIT_GENERIC, EXIT_OK
-from tests.test_grind_session import _event, _events, _Harness, _plan, _run
+from tests.support.same.events_bc2d3e84325c import _events
+from tests.support.same.plan_a42dad7814e8 import _plan
+from tests.support.extracted.grind_session import _event, _Harness, _run
 
 def test_a_generic_hook_still_goes_through_the_plain_shell_runner(monkeypatch, capsys):
     """Cursor and other agents keep today's behaviour: one run, rc stops it."""

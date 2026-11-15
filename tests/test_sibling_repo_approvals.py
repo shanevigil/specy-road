@@ -7,15 +7,17 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.review_delegate_helpers import handoff_status_node, run_review_cli
-from tests.test_review_cli import ONE_AI
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
+from tests.review_delegate_helpers import handoff_status_node
+from tests.support.extracted.review_cli import ONE_AI
 
 from specy_road.bundled_scripts import validate_roadmap
 from specy_road.review_override import policy_line
 from specy_road.review_files import load_ready, load_review, review_path, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.sibling_repos import sibling_repos
+from tests.support.same.gate_9f3572d00caf import _gate
 
 
 def _glob_escaped(rel: str) -> str:
@@ -53,8 +55,6 @@ def notes_file(repo: Path, model: str = "opus") -> Path:
     return p
 
 
-def _gate(repo: Path):
-    return evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
 
 
 def test_lists_siblings_with_head_and_dirty_and_skips_tracked_configured_and_deep(tmp_path: Path) -> None:

@@ -11,11 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard import tool_call_guard as g
 from specy_road.bundled_scripts import session_cli
+from tests.support.same.cli_9a8b40e70510 import _cli
 
 RULE = "is not yours (you are me); never end or override another agent's session (AGENTS.md, Shared checkouts)"
 
@@ -29,10 +30,6 @@ class _Stdin(io.StringIO):
         return self._tty
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        session_cli.main(list(args))
-    return e.value.code or 0
 
 
 @pytest.mark.parametrize("ttl, caller, args, tty, code, kept, says", [

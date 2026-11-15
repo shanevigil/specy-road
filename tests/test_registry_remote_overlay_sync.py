@@ -23,22 +23,12 @@ from specy_road.registry_remote_overlay import (
     maybe_auto_integration_ff,
 )
 import specy_road.registry_remote_overlay as _registry_overlay
+from tests.support.same.isolate_gui_settings_f1cfb6733460 import _isolate_gui_settings
+from tests.support.same.write_gw_c3cc7b6c500e import _write_gw
 
 
-def _isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    gui = tmp_path / ".specy-road"
-    gui.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr(_rgs, "SETTINGS_DIR", gui)
-    monkeypatch.setattr(_rgs, "SETTINGS_PATH", gui / "gui-settings.json")
 
 
-def _write_gw(repo: Path) -> None:
-    p = repo / "roadmap" / "git-workflow.yaml"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(
-        "version: 1\nintegration_branch: main\nremote: origin\n",
-        encoding="utf-8",
-    )
 
 
 def _init_integration_ff_repo(tmp_path: Path) -> Path:

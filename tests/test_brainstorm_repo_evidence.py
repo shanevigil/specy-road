@@ -21,6 +21,7 @@ from tests.helpers import DOGFOOD
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import brainstorm_verify as bv
 from specy_road.brainstorm_session import BrainstormError, read_session, session_path
+from tests.support.same.cli_4bb09fdf3883 import _cli
 
 SLUG = "how-do-we-expand-payments"
 PAY = "def charge(amount):\n    # Links expire after 24 hours.\n    return link(amount)\n\n\ndef refund():\n    pass\n"
@@ -48,15 +49,6 @@ def repo(tmp_path: Path) -> Path:
     return dest
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code or 0)
-    return code, out.getvalue(), err.getvalue()
 
 
 def _started(repo: Path) -> None:

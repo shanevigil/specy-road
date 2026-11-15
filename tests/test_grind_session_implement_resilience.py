@@ -16,7 +16,7 @@ import yaml
 
 import specy_road.orchestration.grind.grind_session_implement as gsi
 from specy_road.orchestration.grind.grind_session import resolve_implement_limits
-from tests.test_grind_session_implement import (  # noqa: F401 - autouse fixture
+from tests.support.extracted.grind_session_implement import (
     CLAUDE,
     LIMIT,
     _Emitter,

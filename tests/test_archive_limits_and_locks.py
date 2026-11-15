@@ -18,11 +18,6 @@ from specy_road.archive_plan import plan_archive
 from tests.helpers import DOGFOOD
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def _validate(root: Path) -> None:

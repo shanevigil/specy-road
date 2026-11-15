@@ -20,7 +20,7 @@ from specy_road.orchestration.role_prompt_rca import reviewer_preamble
 from specy_road.orchestration.records.decisions import read_decisions
 from specy_road.bundled_scripts.finish_task import human_acceptance_ids, undecided_human_items
 from specy_road.orchestration.guard.orchestration_role_env import ROLE_ENV
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
+from tests.support.review import NODE, commit_file, make_review_repo, git
 from tests import test_gui_app_pm_decisions as gui
 
 HUMAN_NODE = {**NODE, "acceptance": ["a.py exists", "human: the maintainer approves the wording"]}

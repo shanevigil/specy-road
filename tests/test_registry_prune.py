@@ -15,10 +15,9 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import registry_prune as rp
+from tests.support.same.git_ba787a68f973 import _git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
 
 
 def _reg(*entries: dict) -> dict:

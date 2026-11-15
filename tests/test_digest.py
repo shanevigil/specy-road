@@ -16,26 +16,17 @@ import pytest
 
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.history_index import clear_memo
-from tests.test_history_walk import commit, edit_node, git, repo
+from tests.support.extracted.history_walk import commit, edit_node, git, repo
+from tests.support.same.no_memo_7c8ae8741ef9 import _no_memo
+from tests.support.extracted.digest import headings, run_cli
 
 __all__ = ["repo"]  # re-exported fixture
 
 
-@pytest.fixture(autouse=True)
-def _no_memo() -> None:
-    clear_memo()
 
 
-def run_cli(argv: list[str], root: Path) -> int:
-    from specy_road.bundled_scripts.digest_cli import main
-
-    with pytest.raises(SystemExit) as exit_info:
-        main([*argv, "--repo-root", str(root)])
-    return int(exit_info.value.code or 0)
 
 
-def headings(text: str) -> list[str]:
-    return [ln[3:] for ln in text.splitlines() if ln.startswith("## ")]
 
 
 # --- content ----------------------------------------------------------------

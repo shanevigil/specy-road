@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
 
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws

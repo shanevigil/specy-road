@@ -19,8 +19,8 @@ from specy_road.orchestration.guard import session_presence
 from specy_road.orchestration.workers import worker_state
 from specy_road.bundled_scripts import doctor
 from specy_road.doctor_worktrees import NO_EVIDENCE
-from tests.review_repo_helpers import commit_file, git
-from tests.test_doctor import doctor_repo  # noqa: F401 — the fixture
+from tests.support.review import commit_file, git
+from tests.support.extracted.doctor import doctor_repo
 
 
 def run_doctor(repo: Path, *args: str) -> int:
@@ -50,6 +50,7 @@ def _claim_fresh(repo: Path, codename: str, node_id: str) -> Path:
     return wt
 
 
+@pytest.mark.slow
 def test_a_claimed_worktree_on_a_fresh_branch_is_live_and_fix_leaves_it(doctor_repo, capsys) -> None:
     repo, _bare = doctor_repo
     wt = _claim_fresh(repo, "fresh", "M1.5")
@@ -135,6 +136,7 @@ def _fast_forwarded(repo: Path) -> str:
     return git(repo, "rev-parse", "feature/rm-ff")
 
 
+@pytest.mark.slow
 def test_f4_a_fast_forwarded_commit_with_an_expired_reflog_is_merged_but_left(doctor_repo, capsys) -> None:
     repo, bare = doctor_repo
     tip = _fast_forwarded(repo)
@@ -150,6 +152,7 @@ def test_f4_a_fast_forwarded_commit_with_an_expired_reflog_is_merged_but_left(do
     assert git(repo, "rev-parse", "feature/rm-ff") == tip == git(bare, "rev-parse", "feature/rm-ff")
 
 
+@pytest.mark.slow
 def test_f4_a_fast_forwarded_commit_with_no_local_branch_is_merged_but_left(doctor_repo, capsys) -> None:
     repo, bare = doctor_repo
     tip = _fast_forwarded(repo)
@@ -162,6 +165,7 @@ def test_f4_a_fast_forwarded_commit_with_no_local_branch_is_merged_but_left(doct
     assert git(bare, "rev-parse", "feature/rm-ff") == tip
 
 
+@pytest.mark.slow
 def test_a_worker_held_branch_is_live_until_the_worker_is_terminal(doctor_repo, capsys) -> None:
     """feature/rm-done is merged, has commits and no claim: a running worker still keeps it."""
     repo, bare = doctor_repo
@@ -242,6 +246,7 @@ def test_r5_f1_a_copy_of_a_merged_branch_has_no_commits_of_its_own(doctor_repo, 
     assert "[ok] deleted local branch feature/rm-done" in out   # the source keeps its evidence
 
 
+@pytest.mark.slow
 def test_r5_f2_a_local_namesake_at_the_remote_tip_keeps_the_remotes_finish_merge(doctor_repo, capsys) -> None:
     """Only the local branch is new: origin's feature/rm-gone still landed by a finish merge."""
     repo, bare = doctor_repo

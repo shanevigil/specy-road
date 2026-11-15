@@ -12,6 +12,7 @@ import pytest
 from specy_road.bundled_scripts import do_next_available as dna
 from specy_road.bundled_scripts import do_next_task as dnt
 from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from tests.support.same.run_git_e7b46ac47b3e import _run_git
 
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
 _NK_A = "22222222-2222-4222-8222-222222222222"
@@ -41,8 +42,6 @@ _CHUNK_VR2_MAIN = {
 }
 
 
-def _run_git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
 def test_status_overrides_unblock_dependent_leaf() -> None:

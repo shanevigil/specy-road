@@ -89,6 +89,7 @@ def test_counter_matches_each_pattern(source: str, expected: int) -> None:
     assert count_lookups(source) == expected
 
 
+@pytest.mark.slow
 def test_graph_lookups_outside_the_index_only_shrink() -> None:
     """The package total stays at the committed baseline; a new hand-built lookup fails."""
     per_file = {

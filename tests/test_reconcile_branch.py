@@ -11,7 +11,7 @@ from pathlib import Path
 import yaml
 
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
-from tests.review_repo_helpers import NODE, commit_file, git
+from tests.support.review import NODE, commit_file, git
 
 from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 from specy_road.digest import render_digest
@@ -19,14 +19,13 @@ from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_deterministic import merge_feature_deterministically
 from specy_road.bundled_scripts.reconcile_branch_cli import reconcile_branch
 from specy_road.registry_yaml import registry_path, write_registry
+from tests.support.same.cli_fda77d440965 import _cli
+import pytest
 
 LEAVES = (("M1.1", "one", "11111111-1111-5111-8111-111111111111"),
           ("M1.2", "two", "22222222-2222-5222-8222-222222222222"))
 
 
-def _cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run([sys.executable, "-m", "specy_road.cli", *args, "--repo-root", str(root)],
-                          cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True)
 
 
 def _regenerate(root: Path) -> None:
@@ -98,6 +97,7 @@ def _two_pr_leaves(tmp_path: Path, *, shared_code: bool) -> tuple[Path, Path]:
     return root, wt
 
 
+@pytest.mark.slow
 def test_reconcile_resolves_bookkeeping_and_pushes(tmp_path: Path, capsys) -> None:
     root, wt = _two_pr_leaves(tmp_path, shared_code=False)
     # without reconcile the PR conflicts on bookkeeping
@@ -161,6 +161,7 @@ def _pushed_app(tmp_path: Path) -> Path:
     return app
 
 
+@pytest.mark.slow
 def test_reconcile_keeps_a_local_only_claim_when_the_remote_moves(tmp_path: Path, capsys) -> None:
     """A1: a ``--local`` claim never pushed is still the row finish finds after the integration branch moves."""
     app = _pushed_app(tmp_path)

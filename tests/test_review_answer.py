@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import review_output
+from tests.support.review import review_output
 
 from specy_road.review_answer import TURNS, Rerun, final_answer
 from specy_road.orchestration.workers.worker_adapters import ADAPTERS

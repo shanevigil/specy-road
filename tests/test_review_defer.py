@@ -13,79 +13,46 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.test_review_cli import _ready
-from tests.test_review_rca import ROSTER, _block_round, _run, _status
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_cli import _ready
+from tests.support.same.run_651387813ee4 import _run
+from tests.support.extracted.review_rca import ROSTER, _block_round, _status
 
 from specy_road.roadmap_load import load_roadmap
 from specy_road.review_defer_rules import answer_item
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.rework_rca import governing_rca
+from tests.support.extracted.review_defer import (
+    BUDGET,
+    ROSTER4,
+    _Tty,
+    _forge_closed_deferral,
+    _item,
+    _record,
+    _review,
+    _two_fail_round,
+    _untouched,
+    _write_rca,
+    bound_ledger,
+    human,
+)
 
-ROSTER4 = ROSTER + "  - {id: sonnet, family: anthropic, roles: [reviewer]}\n"
-BUDGET = "policy: {max_fix_rounds: 2}\n"
 SCHEMA = Path(__file__).resolve().parents[1] / "specy_road" / "schemas" / "rca-record.schema.json"
 
 
-def _item(commit: str, **kw) -> dict:
-    return {"finding": "round 2/opus: CRLF input still warns", "reviewer": "opus", "commit": commit,
-            "category": "boundary", "acceptance_id": "A1", "input_class": "CRLF line endings",
-            "follow_up_title": "Handle CRLF input", "follow_up_acceptance": "CRLF input parses like LF", **kw}
 
 
-def _record(round_: int, items: list[dict] | None, *, action: str = "defer_findings", disposition_class=None) -> dict:
-    data = {
-        "node_id": "M1.1", "model": "sol", "date": "2026-11-04",
-        "trigger": {"rule": "forced", "acceptance_ids": [], "round": round_, "reason": "fix-round budget spent"},
-        "classification": {"primary": "hard_problem", "confidence": 0.7},
-        "evidence": [{"kind": "finding", "ref": f"round {round_}/opus", "note": "a new input class"}],
-        "recommended_action": {"type": action, "instructions": "defer the new class",
-                               "requires_human_approval": True},
-    }
-    if items is not None:
-        data["deferred_findings"] = items
-    if disposition_class:
-        data["classification"]["primary"] = "specification"
-        data["criterion_rewrite"] = {
-            "acceptance_id": "A1", "original_text": "a.py exists", "proposed_text": "src/a.py exists",
-            "finding_disposition": [{"finding": "round 1/opus", "label": "out_of_scope_now",
-                                     "input_class": disposition_class}]}
-    return data
 
 
-def _write_rca(repo: Path, data: dict) -> Path:
-    path = reviews_dir(repo, "M1.1") / f"RCA-{data['trigger']['round']}.md"
-    path.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nreasoning\n")
-    return path
 
 
-def _review(repo: Path, model: str, verdict: str = "block") -> None:
-    notes = repo.parent / f"notes-{model}.md"
-    text = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
-                       a1="fail" if verdict == "block" else "pass")
-    front, _body = text.rsplit("---\n", 1)
-    notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
-    assert _run("review", "record", "M1.1", "--model", model, "--verdict", verdict,
-                "--file", str(notes), "--repo-root", str(repo)) == 0
 
 
-class _Tty:
-    def isatty(self) -> bool:
-        return True
 
 
-@pytest.fixture
-def human(monkeypatch):
-    """A person at a terminal answering ``y``."""
-    monkeypatch.setattr("sys.stdin", _Tty())
-    monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
 
 
-def _untouched(repo: Path) -> None:
-    assert not (repo / "roadmap" / "decisions.yaml").exists()
-    assert not list(reviews_dir(repo, "M1.1").glob("DEFERRAL-*"))
-    assert [n["id"] for n in load_roadmap(repo)["nodes"]] == ["M1.1"]
 
 
 def test_schema_accepts_defer_findings_only_with_its_list() -> None:
@@ -100,6 +67,7 @@ def test_schema_accepts_defer_findings_only_with_its_list() -> None:
     assert not list(v.iter_errors(_record(2, None, action="escalate_human", disposition_class="CRLF")))
 
 
+@pytest.mark.slow
 def test_budget_unset_reports_nothing_new(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     for n in (1, 2):
@@ -110,6 +78,7 @@ def test_budget_unset_reports_nothing_new(tmp_path: Path, capsys) -> None:
     assert "fix_round" not in capsys.readouterr().out
 
 
+@pytest.mark.slow
 def test_budget_spent_names_the_rca_then_the_defer_command(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
     _block_round(repo, 1)
@@ -142,6 +111,7 @@ def test_defer_refuses_a_run_without_a_terminal(tmp_path: Path, capsys, monkeypa
     _untouched(repo)
 
 
+@pytest.mark.slow
 def test_defer_applies_and_resolves_only_that_reviewers_block_at_that_commit(tmp_path: Path, capsys,
                                                                               human) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER4 + BUDGET)
@@ -177,6 +147,7 @@ def test_defer_applies_and_resolves_only_that_reviewers_block_at_that_commit(tmp
     assert [b.model for b in later.blocks] == ["opus"]
 
 
+@pytest.mark.slow
 def test_an_open_or_missing_decision_does_not_resolve_the_block(tmp_path: Path, human) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
     _block_round(repo, 1)
@@ -236,38 +207,10 @@ def test_rca_prompt_states_the_deferral_rule_and_shape(tmp_path: Path) -> None:
     assert "lower-cased, whitespace collapsed" in text and "earlier round marked `pass`" in text
 
 
-def _two_fail_round(repo: Path, n: int, *, correctness: bool) -> None:
-    """opus blocks on A1 (boundary) and, when ``correctness``, on A2 with a correctness finding."""
-    commit_file(repo, f"src/m{n}.py", f"m = {n}\n", f"mixed {n}")
-    text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", a1="fail")
-    if correctness:
-        text = text.replace("A2: pass", "A2: fail").replace("correctness: []", "correctness:\n  - A2 regressed")
-    notes = repo.parent / "notes.md"
-    notes.write_text(text.replace("boundary: []", "boundary:\n  - CRLF input still warns"))
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
-                "--file", str(notes), "--repo-root", str(repo)) == 0
 
 
-def bound_ledger(rca: str, marker_items: list[dict], did: str = "D9") -> dict:
-    """A ledger whose one closed decision is worded as ``review defer``'s ``_record`` words it."""
-    return {"version": 1, "entries": [{
-        "id": did, "node": "M1.1", "kind": "decision", "summary": "s",
-        "why_now": f"{rca} recommends defer_findings: defer the new class",
-        "options": [{"label": "a", "effect": "b"}], "recommendation": "a", "recommendation_reason": "r",
-        "default_if_unanswered": "a", "asked": "2026-11-04", "status": "closed", "closed": "2026-11-04",
-        "answer": f"Deferred by T <t@e.com> from {rca}: " + "; ".join(f"{answer_item(x)} -> M1.2"
-                                                                     for x in marker_items)}]}
 
 
-def _forge_closed_deferral(repo: Path, items: list[dict], round_: int = 2) -> None:
-    """An RCA, a closed decision in ``review defer``'s shape and a marker, all written by hand: the gate must
-    still re-check the items against the history."""
-    _write_rca(repo, _record(round_, items))
-    marker = [{k: x[k] for k in ("reviewer", "commit", "finding", "category", "acceptance_id", "input_class")}
-              for x in items]
-    (repo / "roadmap" / "decisions.yaml").write_text(yaml.safe_dump(bound_ledger(f"RCA-{round_}.md", marker)))
-    (reviews_dir(repo, "M1.1") / f"DEFERRAL-{round_}.yaml").write_text(yaml.safe_dump(
-        {"node_id": "M1.1", "rca": f"RCA-{round_}.md", "round": round_, "decision": "D9", "deferred": marker}))
 
 
 def _crlf_review(repo: Path, model: str) -> None:
@@ -318,6 +261,7 @@ UNBOUND = {   # each leaves the named reviewer's block counted at HEAD (and the 
 }
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", sorted(UNBOUND))
 def test_a_marker_not_bound_to_its_decision_and_rca_resolves_nothing(tmp_path: Path, capsys, human,
                                                                      case: str) -> None:

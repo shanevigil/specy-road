@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import FAKE, wait_for_worker, worker_roster
 
@@ -18,44 +18,11 @@ from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.finish_land_integration import print_merge_push_notice
 from specy_road.review_files import reviews_dir
+from tests.support.extracted.worker_m310_reconcile_status import nested_project, worker_repo
 
 
-def worker_repo(tmp_path: Path) -> Path:
-    """A claimed review repo whose roster launches the shared fake harness."""
-    script = tmp_path / "fake.py"
-    script.write_text(FAKE)
-    repo = make_review_repo(
-        tmp_path,
-        orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"),
-    )
-    (repo / ".gitignore").write_text("work/\n")
-    git(repo, "add", ".gitignore")
-    git(repo, "commit", "-qm", "ignore work")
-    return repo
 
 
-def nested_project(tmp_path: Path, roster: str | None = None) -> tuple[Path, Path]:
-    """``(git root, project root)`` with the claim's branch checked out under ``sr/``; ``roster`` replaces the fake's."""
-    script = tmp_path / "fake.py"
-    script.write_text(FAKE)
-    flat = make_review_repo(tmp_path, orchestration=roster or worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
-    top = tmp_path / "top"
-    git(flat, "checkout", "-q", "dev")
-    shutil.copytree(flat, top / "sr", ignore=shutil.ignore_patterns(".git"))
-    (top / "sr" / ".gitignore").write_text("work/reviews/\nwork/prompt-*.md\nwork/.workers/\nwork/.worktrees/\n")
-    (top / ".specyrd").mkdir()
-    (top / ".specyrd" / "manifest.json").write_text('{"project_root": "sr"}\n')
-    git(top, "init", "-q", "-b", "dev")
-    git(top, "config", "user.email", "t@e.com")
-    git(top, "config", "user.name", "T")
-    git(top, "add", "-A")
-    git(top, "commit", "-qm", "graph")
-    git(top, "checkout", "-q", "-b", "feature/rm-thing")
-    (top / "src").mkdir()
-    (top / "src" / "a.py").write_text("print('a')\n")
-    git(top, "add", "-A")
-    git(top, "commit", "-qm", "impl")
-    return top.resolve(), (top / "sr").resolve()
 
 
 def test_claude_passes_add_dir_only_in_a_linked_worktree(tmp_path: Path) -> None:
@@ -78,6 +45,7 @@ def test_claude_passes_add_dir_only_in_a_linked_worktree(tmp_path: Path) -> None
     assert "--add-dir" not in main.argv
 
 
+@pytest.mark.slow
 def test_reconcile_treats_a_directory_touch_zone_as_covering_files(tmp_path: Path) -> None:
     repo = worker_repo(tmp_path)
     reg = repo / "roadmap" / "registry.yaml"
@@ -137,6 +105,7 @@ sys.exit(1)
     assert limit in capsys.readouterr().out
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("exit_type, exit_summary, exit_detail", [
     ("completion", "exit 0; READY file missing", {"exit": 0, "ready": False}),
     ("error", "exit 1; see w-0001.log", {"exit": 1, "ready": False}),

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 
 from specy_road import git_workflow_config as gwc
 from specy_road.orchestration.workers import worker_adapters as wa
@@ -91,6 +91,7 @@ def test_every_event_replaces_the_mailbox_flag(tmp_path: Path) -> None:
     assert (ws.workers_dir(repo) / "FLAG").read_text().startswith("w-0001 #2 ")
 
 
+@pytest.mark.slow
 def test_wait_for_event_returns_on_the_next_event_or_times_out(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
@@ -257,6 +258,7 @@ def test_off_writes_nothing_outside_work_workers(tmp_path: Path) -> None:
     assert not (wt / "work" / "worker-logs").exists() and not (repo / "work" / "worker-logs").exists()
 
 
+@pytest.mark.slow
 def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp_path: Path) -> None:
     """R2: through `delegate`, `reconcile` and `terminate`, as the coordinator drives them.
 

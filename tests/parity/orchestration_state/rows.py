@@ -29,7 +29,7 @@ from specy_road.orchestration.guard.session_presence import start_session
 from specy_road.orchestration.workers.worker_orphans import holding_slots, orphans
 from tests.parity.process.corpus import corpus_env, step_transcript
 from tests.parity.support import run_cli
-from tests.review_repo_helpers import commit_file, git, review_text
+from tests.support.review import commit_file, review_text, git
 from tests.support.harness import make_worker_repo
 
 GOLDEN = Path(__file__).resolve().parent / "golden"
@@ -230,9 +230,6 @@ def record(row: Row, tmp: Path) -> str:
     return normalise("\n".join(parts))
 
 
-def golden_path(row: Row) -> Path:
-    """Where ``row``'s recorded output lives."""
-    return GOLDEN / f"{row.name}.txt"
 
 
 def snapshot_golden(row: Row) -> Path:

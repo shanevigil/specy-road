@@ -28,7 +28,8 @@ from specy_road.orchestration.workers.worker_state import (
     set_state,
 )
 from tests.helpers import REPO
-from tests.review_repo_helpers import advance_dev, commit_file, git, make_review_repo, review_text
+from tests.support.review import advance_dev, commit_file, make_review_repo, review_text, git
+from tests.support.same.quoted_aa331427ddf7 import _quoted
 
 ONE = """version: 1
 roster:
@@ -445,8 +446,6 @@ def _write_gate(repo: Path) -> None:
     )
 
 
-def _quoted(block: str) -> list[str]:
-    return re.findall(r'"([^"]*)"', block)
 
 
 def _const_list(src: str, name: str) -> list[str]:

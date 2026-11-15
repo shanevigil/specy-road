@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_adapters import CODEX_TURN, CURSOR_RESULT, RECORDED
+from tests.support.review import make_review_repo, git
+from tests.support.extracted.worker_adapters import CODEX_TURN, CURSOR_RESULT, RECORDED
 from tests.support.harness import reset_cursor_adapter_via_init
 
 from specy_road.orchestration.workers import worker_adapters as wa
@@ -20,9 +20,15 @@ from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration.workers.worker_adapter_parsers import estimate_usage_cost, mtok_rates
 from specy_road.orchestration.workers.worker_adapters import Launch
+from tests.support.extracted.cursor_usage_cost import (
+    CODEX_ROSTER,
+    PROFILES,
+    REPO_ROOT,
+    _api_id_for,
+    _codex_repo,
+    priced_repo,
+)
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-PROFILES = REPO_ROOT / "specy_road" / "templates" / "project" / "model-profiles"
 
 CURSOR_ROSTER = """version: 1
 roster:
@@ -40,36 +46,14 @@ roster:
 policy: {}
 """
 
-CODEX_ROSTER = """version: 1
-roster:
-  - {id: human, family: human, roles: [coordinator, reviewer]}
-  - id: priced
-    family: openai
-    harness: codex
-    profile: model-profiles/openai-gpt/gpt-6.1-sol.md
-    roles: [executor]
-policy: {}
-"""
 
 
-def priced_repo(tmp_path: Path, roster: str, profiles: tuple[str, ...]) -> Path:
-    repo = make_review_repo(tmp_path, orchestration=roster)
-    for rel in profiles:
-        dest = repo / "model-profiles" / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(PROFILES / rel, dest)
-    git(repo, "checkout", "-q", "dev")
-    git(repo, "add", "model-profiles")
-    git(repo, "commit", "-qm", "priced profiles")
-    return repo
 
 
 def _cursor_repo(tmp_path: Path) -> Path:
     return priced_repo(tmp_path, CURSOR_ROSTER, ("cursor-composer/composer-2.5.md", "cursor-composer/composer-2.md"))
 
 
-def _codex_repo(tmp_path: Path) -> Path:
-    return priced_repo(tmp_path, CODEX_ROSTER, ("openai-gpt/gpt-6.1-sol.md",))
 
 
 def _cursor_workspace(tmp_path: Path, layout: str) -> tuple[Path, Path]:
@@ -94,14 +78,6 @@ def _cursor_workspace(tmp_path: Path, layout: str) -> tuple[Path, Path]:
     return wt.resolve(), (wt / "sr").resolve()
 
 
-def _api_id_for(repo: Path, roster_id: str) -> str | None:
-    """The id ``worker_ops._cli_for`` puts on argv: profile api_id, or none when unknown."""
-    config, err = pinned_config(repo)
-    assert err is None
-    entry = roster_entry(config, roster_id)
-    prof = pinned_profile_for_entry(repo, entry)
-    assert prof is not None and prof.ok
-    return None if prof.api_id.strip().lower() == "unknown" else prof.api_id
 
 
 def _prompt(tmp_path: Path) -> Path:

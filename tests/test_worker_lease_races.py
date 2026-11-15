@@ -19,6 +19,7 @@ from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_runner as runner
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("argv", [[sys.executable, "-c", "import sys; sys.exit(1)"], ["/nonexistent/harness"]],
                          ids=["nonzero-exit", "harness-start-failure"])
 def test_a_failed_turns_cleanup_cannot_delete_the_lease_of_a_resume_that_overlaps_it(tmp_path: Path, monkeypatch,

@@ -7,32 +7,20 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.review import commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import reviews_dir
+from tests.support.same.ready_cddba06c620f import _ready
+from tests.support.same.review_434036b364c2 import _review
+from tests.support.same.run_651387813ee4 import _run
 
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
-def _review(repo: Path, model: str, **kw) -> None:
-    d = reviews_dir(repo, "M1.1")
-    d.mkdir(parents=True, exist_ok=True)
-    (d / f"REVIEW-{model}.md").write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, **kw))
 
 
-def _ready(repo: Path, agent: str) -> None:
-    d = reviews_dir(repo, "M1.1")
-    d.mkdir(parents=True, exist_ok=True)
-    (d / f"READY-{agent}.md").write_text(
-        f"---\nnode_id: M1.1\nagent: {agent}\nbranch: feature/rm-thing\ncommit: {git(repo, 'rev-parse', 'HEAD')}\n"
-        f"base: {git(repo, 'rev-parse', 'dev')}\nchanged_paths: [src/a.py]\n---\n"
-    )
 
 
 def _rows(repo: Path, capsys) -> dict[str, dict]:
@@ -121,6 +109,7 @@ def test_text_lists_reviewers_below_the_policy_line_until_the_gate_is_met(tmp_pa
 RUN = "run `specy-road mark-implementation-reviewed` on feature/rm-thing"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(("strong", "blockers", "text"), [
     (False, ("opus", "sol"), f"can approve over opus's and sol's block(s), interactively: {RUN}"),
     (True, ("opus",), f"to request interactive approval over opus's block(s), {RUN}; other gate requirements "
@@ -128,7 +117,7 @@ RUN = "run `specy-road mark-implementation-reviewed` on feature/rm-thing"
 ], ids=["settling_passes", "strong_review_unmet"])
 def test_the_human_row_says_whether_it_approves_over_the_blocks(tmp_path: Path, capsys, strong, blockers,
                                                                 text) -> None:
-    from tests.test_review_override import ROSTER, STRONG
+    from tests.support.extracted.review_override import ROSTER, STRONG
 
     repo = make_review_repo(tmp_path, orchestration=STRONG if strong else ROSTER)
     for model in blockers:

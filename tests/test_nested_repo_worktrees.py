@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.pickup_repo_helpers import FEATURE, make_pickup_project, run_pickup
-from tests.review_repo_helpers import git
+from tests.support.pickup import FEATURE, make_pickup_project, run_pickup
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker
 
@@ -23,40 +23,12 @@ from specy_road.orchestration.workers import worker_reconcile as wrc
 from specy_road.git_workflow_config import load_git_workflow_config, validate_git_workflow_dict
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.nested_repos import NestedRepoError, add_nested_worktrees, covers, nested_repos
-
-COVERED, UNCOVERED = "src/engine", "lib"
-
-
-def add_nested_repo(project: Path, rel: str, branch: str) -> Path:
-    """A repository at ``project/rel`` on ``branch``, pushed to its own bare origin, ignored and configured in ``project``.
-
-    The main repository must be on its integration branch; the config commit lands there. A second call
-    adds a second repository to the same list.
-    """
-    nested = project / rel
-    nested.mkdir(parents=True)
-    git(nested, "init", "-q", "-b", branch)
-    git(nested, "config", "user.email", "t@e.com")
-    git(nested, "config", "user.name", "T")
-    (nested / "core.py").write_text("x = 1\n", encoding="utf-8")
-    git(nested, "add", "-A")
-    git(nested, "commit", "-qm", "nested root")
-    origin = project.parent / (rel.replace("/", "+") + "-origin.git")
-    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
-    git(nested, "remote", "add", "origin", str(origin))
-    git(nested, "push", "-q", "-u", "origin", branch)
-    ignore = project / ".gitignore"
-    ignore.write_text((ignore.read_text() if ignore.is_file() else "") + f"{rel}/\n", encoding="utf-8")
-    cfg = project / "roadmap" / "git-workflow.yaml"
-    text = cfg.read_text()
-    cfg.write_text(text + ("" if "nested_repos:" in text else "nested_repos:\n") + f"  - {rel}\n", encoding="utf-8")
-    git(project, "add", ".gitignore", "roadmap/git-workflow.yaml")
-    git(project, "commit", "-qm", "nested repo")
-    return nested
+from tests.support.extracted.nested_repo_worktrees import COVERED, UNCOVERED, _cfg, add_nested_repo
 
 
-def _cfg(extra: dict) -> str | None:
-    return validate_git_workflow_dict({"version": 1, "integration_branch": "main", "remote": "origin", **extra})
+
+
+
 
 
 def test_schema_takes_paths_and_objects_and_refuses_escapes() -> None:
@@ -121,6 +93,7 @@ def _leaf_worktree_delegate(tmp_path: Path, rel: str) -> tuple[Path, Path, Path,
     return repo, nested, Path(rec.worktree), rec.worker_id
 
 
+@pytest.mark.slow
 def test_delegate_adds_the_nested_worktree_on_the_leaf_branch(tmp_path: Path) -> None:
     repo, nested, wt, _wid = _leaf_worktree_delegate(tmp_path, COVERED)
     assert wt == (repo / "work" / ".worktrees" / "thing").resolve()
@@ -154,6 +127,7 @@ def test_delegate_refuses_an_ordinary_directory_where_the_nested_worktree_goes(t
     assert not ws.list_records(repo)
 
 
+@pytest.mark.slow
 def test_an_existing_nested_worktree_in_the_wrong_state_is_refused(tmp_path: Path) -> None:
     repo, _nested, wt, _wid = _leaf_worktree_delegate(tmp_path, COVERED)
     # Zones that no longer cover it want it detached; it holds the leaf's branch.
@@ -161,6 +135,7 @@ def test_an_existing_nested_worktree_in_the_wrong_state_is_refused(tmp_path: Pat
         add_nested_worktrees(repo, wt, "feature/rm-thing", ["docs"])
 
 
+@pytest.mark.slow
 def test_a_detached_nested_worktree_off_the_integration_tip_is_refused(tmp_path: Path) -> None:
     repo, nested, wt, _wid = _leaf_worktree_delegate(tmp_path, UNCOVERED)
     inner = wt / UNCOVERED
@@ -203,6 +178,7 @@ def test_delegate_refuses_a_nested_repo_without_its_integration_branch(tmp_path:
     assert not (repo / "work" / ".worktrees" / "thing" / rel).exists()
 
 
+@pytest.mark.slow
 def test_reconcile_diffs_the_nested_repo_and_flags_edits_outside_the_zones(tmp_path: Path) -> None:
     repo, _nested, wt, wid = _leaf_worktree_delegate(tmp_path, COVERED)
     inner = wt / COVERED
@@ -217,6 +193,7 @@ def test_reconcile_diffs_the_nested_repo_and_flags_edits_outside_the_zones(tmp_p
     assert not any(p.rstrip("/") == COVERED for p in delta["untracked"])   # the directory is not an untracked file
 
 
+@pytest.mark.slow
 def test_reconcile_flags_an_edit_in_a_detached_nested_repo(tmp_path: Path) -> None:
     repo, _nested, wt, wid = _leaf_worktree_delegate(tmp_path, UNCOVERED)
     inner = wt / UNCOVERED

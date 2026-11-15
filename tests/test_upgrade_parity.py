@@ -18,7 +18,7 @@ import pytest
 from specy_road.agents_md_block import agents_md_block_state
 from specy_road.bundled_scripts import upgrade
 from specy_road.bundled_scripts.upgrade import run_upgrade
-from tests.upgrade_repo_helpers import old_repo
+from tests.support.upgrade import old_repo
 
 ERROR = "error: AGENTS.md has no current specy-road block"
 

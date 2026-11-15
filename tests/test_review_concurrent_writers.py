@@ -14,14 +14,16 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_delegate_helpers import delegate_repo, delegate_roster, run_review_cli, set_steps, verdict_step
-from tests.review_repo_helpers import git, review_text
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
+from tests.review_delegate_helpers import delegate_repo, delegate_roster, set_steps, verdict_step
+from tests.support.review import review_text, git
 
 from specy_road import review_lock
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_delegate import load_run
 from specy_road.review_files import review_path, reviews_dir
 from specy_road.review_lock import ReviewRunBusy, review_run_lock
+from tests.support.same.snapshot_3fe0117d744f import _snapshot
 
 # The reviewer harness: say it started, wait for the test to release it, then run the usual fake.
 GATE = '''
@@ -44,8 +46,6 @@ def _wait_for(path: Path, timeout: float = 60) -> None:
         time.sleep(0.05)
 
 
-def _snapshot(d: Path) -> dict[str, bytes]:
-    return {str(p.relative_to(d)): p.read_bytes() for p in sorted(d.rglob("*")) if p.is_file()}
 
 
 def _record(repo: Path, model: str) -> int:
@@ -55,6 +55,7 @@ def _record(repo: Path, model: str) -> int:
                           "--repo-root", str(repo))
 
 
+@pytest.mark.slow
 def test_filings_wait_for_and_refuse_during_a_reviewer_run(tmp_path: Path, monkeypatch, capsys) -> None:
     gate, ready, release = tmp_path / "gate.py", tmp_path / "ready", tmp_path / "release"
     gate.write_text(GATE)
@@ -120,6 +121,7 @@ def test_lock_wait_against_another_process(tmp_path: Path, hold: float, wait: fl
         proc.wait()
 
 
+@pytest.mark.slow
 def test_two_filings_started_together_both_file(tmp_path: Path) -> None:
     repo, _spec = delegate_repo(tmp_path)
     notes = {}

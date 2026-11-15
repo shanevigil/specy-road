@@ -7,16 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.bundled_scripts import session_cli
+from tests.support.same.cli_9a8b40e70510 import _cli
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        session_cli.main(list(args))
-    return e.value.code or 0
 
 
 def _other_worktree(tmp_path: Path, repo: Path, branch: str = "feature/other") -> Path:

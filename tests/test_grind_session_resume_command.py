@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 import specy_road.orchestration.grind.grind_session_implement as gsi
-from tests.test_grind_session_implement import (  # noqa: F401 - autouse fixture
+from tests.support.extracted.grind_session_implement import (
     LIMIT,
     SESSION,
     _empty_claude_home,

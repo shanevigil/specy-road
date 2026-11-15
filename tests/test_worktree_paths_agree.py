@@ -7,12 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo, review_text
-from tests.test_prerelease_s2 import ROSTER
+from tests.support.review import make_review_repo, review_text, git
+from tests.support.extracted.prerelease_s2 import ROSTER
 
 from specy_road.bundled_scripts import review_cli, review_packet
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.review_files import PACKET_NAME, reviews_dir, reviews_root
+from tests.support.same.cli_02173e685269 import _cli
 
 
 def _linked(tmp_path: Path) -> tuple[Path, Path]:
@@ -24,10 +25,6 @@ def _linked(tmp_path: Path) -> tuple[Path, Path]:
     return repo, wt
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def test_packet_record_and_status_agree_from_a_linked_worktree(tmp_path: Path, capsys, monkeypatch) -> None:

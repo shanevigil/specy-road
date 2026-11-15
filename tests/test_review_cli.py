@@ -9,35 +9,19 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, commit_file, diverge, git, make_review_repo, review_text
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.review import NODE, commit_file, diverge, make_review_repo, review_text, git
+from tests.support.extracted.review_gate import TWO_FAMILIES
+from tests.support.same.run_651387813ee4 import _run
 
-# One AI reviewer beside the default human: `review record` refuses `human`.
-ONE_AI = """version: 1
-roster:
-  - {id: human, family: human, roles: [coordinator, reviewer]}
-  - {id: opus, family: anthropic, roles: [reviewer]}
-"""
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import load_review, review_path, reviews_dir
 from specy_road.review_rejected import rejected_path
+from tests.support.extracted.review_cli import ONE_AI, _ready, _status
 
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
-def _ready(repo: Path, commit: str | None = None) -> None:
-    d = reviews_dir(repo, "M1.1")
-    d.mkdir(parents=True, exist_ok=True)
-    commit = commit or git(repo, "rev-parse", "HEAD")
-    (d / "READY-composer.md").write_text(
-        f"---\nnode_id: M1.1\nagent: composer\nbranch: feature/rm-thing\ncommit: {commit}\n"
-        f"base: {git(repo, 'rev-parse', 'dev')}\nchanged_paths: [src/a.py]\n---\n"
-    )
 
 
 def _notes(repo: Path, model: str = "opus", **kw) -> Path:
@@ -46,15 +30,9 @@ def _notes(repo: Path, model: str = "opus", **kw) -> Path:
     return p
 
 
-def _status(repo: Path, capsys) -> dict:
-    """One node's status; its exit is 0 when the gate is met and 1 when it is not."""
-    capsys.readouterr()
-    code = _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
-    st = json.loads(capsys.readouterr().out)["nodes"][0]
-    assert code == (0 if st["policy_met"] else 1), st["state"]
-    return st
 
 
+@pytest.mark.slow
 def test_status_walks_waiting_review_approved_stale(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     assert _status(repo, capsys)["state"] == "waiting"
@@ -89,6 +67,7 @@ def test_status_with_no_handoffs(tmp_path: Path, capsys) -> None:
     assert "No hand-offs" in capsys.readouterr().out
 
 
+@pytest.mark.slow
 def test_record_fills_family_and_labels_independence(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
     for model in ("opus", "sonnet"):
@@ -276,6 +255,7 @@ def _rounds_lines(repo: Path, capsys) -> tuple[dict, list[str], list[str]]:
     return span, status, listed
 
 
+@pytest.mark.slow
 def test_rounds_and_elapsed_time_count_distinct_reviewed_commits(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _record(repo, "block", a1="fail")
@@ -296,6 +276,7 @@ def test_rounds_and_elapsed_time_count_distinct_reviewed_commits(tmp_path: Path,
     assert listed == [line]
 
 
+@pytest.mark.slow
 def test_a_single_review_has_no_elapsed_time(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     span, status, listed = _rounds_lines(repo, capsys)
@@ -310,6 +291,7 @@ def test_a_single_review_has_no_elapsed_time(tmp_path: Path, capsys) -> None:
     assert listed == ["rounds: 1, first to latest: n/a"]
 
 
+@pytest.mark.slow
 def test_a_review_with_no_history_copy_counts_and_a_short_sha_is_the_same_round(
     tmp_path: Path, capsys
 ) -> None:

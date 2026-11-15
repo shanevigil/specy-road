@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.harness import FAKE, wait_for_worker, worker_roster
 
 from specy_road.orchestration.workers import worker_ops as ops
@@ -160,6 +160,7 @@ def _chore(repo: Path, *args: str) -> None:
     assert not e.value.code
 
 
+@pytest.mark.slow
 def test_chore_records_beside_a_claimed_leaf_trip_no_clean_tree_check(tmp_path: Path) -> None:
     repo = _new_block_repo(tmp_path)
     rec, created = ops.delegate(repo, "M1.1", "opus")
@@ -180,6 +181,7 @@ def test_chore_records_beside_a_claimed_leaf_trip_no_clean_tree_check(tmp_path: 
     wait_for_worker(repo, again.worker_id)
 
 
+@pytest.mark.slow
 def test_files_still_tracked_under_work_are_still_seen(tmp_path: Path) -> None:
     repo = _new_block_repo(tmp_path)
     tracked = ("work/brief-M1.md", "work/chores/tidy.md")

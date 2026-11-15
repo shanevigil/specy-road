@@ -18,44 +18,19 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import script_subprocess_env
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard.tool_call_guard import ADAPTERS
-
-REPO = Path(__file__).resolve().parent.parent
-
-#: The stdin each harness sends for a shell command, as documented.
-def _pre_tool_use(cmd: str) -> dict:
-    return {
-        "session_id": "abc", "transcript_path": "/tmp/t.jsonl", "cwd": "/tmp", "permission_mode": "default",
-        "hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_use_id": "toolu_1",
-        "tool_input": {"command": cmd, "description": "x", "timeout": 120000},
-    }
+from tests.support.extracted.hook_adapters import DENY, PAYLOADS, REPO, _pre_tool_use, _run
 
 
-PAYLOADS = {
-    "generic": lambda cmd: {"command": cmd},
-    "claude-code": _pre_tool_use,
-    "codex": _pre_tool_use,
-    "cursor": lambda cmd: {"conversation_id": "c", "generation_id": "g", "hook_event_name": "beforeShellExecution",
-                           "workspace_roots": ["/tmp"], "command": cmd, "cwd": "/tmp", "sandbox": False},
-}
 
-#: How each harness reads a deny and an allow, per its docs.
-DENY = {   # (exit code, where the reason appears)
-    "generic": (2, "stderr"), "claude-code": (2, "stderr"), "codex": (2, "stderr"), "cursor": (0, "stdout"),
-}
+
+
 EXPLICIT_ALLOW = {"cursor"}   # must print JSON on every allow: empty output is a failure there
 
 
-def _run(repo: Path, fmt: str, payload: dict, *extra: str) -> subprocess.CompletedProcess[str]:
-    env = script_subprocess_env()
-    env["SPECY_ROAD_AGENT_ID"] = "me"
-    return subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "session", "guard", "--format", fmt, *extra, "--repo-root", str(repo)],
-        input=json.dumps(payload), capture_output=True, text=True, env=env, cwd=REPO, check=False,
-    )
 
 
 def test_every_adapter_has_a_documented_payload() -> None:

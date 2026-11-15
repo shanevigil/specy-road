@@ -248,6 +248,3 @@ def record(row: Row, tmp: Path, templates: dict[str, Path]) -> str:
     return text
 
 
-def golden_path(row: Row) -> Path:
-    """Where ``row``'s recorded output lives."""
-    return GOLDEN / f"{row.name}.txt"

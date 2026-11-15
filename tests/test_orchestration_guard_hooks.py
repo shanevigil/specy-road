@@ -22,8 +22,8 @@ from specy_road.specyrd_init import run_init
 from specy_road.orchestration.guard.tool_call_guard import ADAPTERS as SESSION_ADAPTERS
 from specy_road.orchestration.workers.worker_adapters import Launch
 from tests.helpers import script_subprocess_env
-from tests.review_repo_helpers import make_review_repo
-from tests.test_hook_adapters import PAYLOADS
+from tests.support.review import make_review_repo
+from tests.support.extracted.hook_adapters import PAYLOADS
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -265,6 +265,7 @@ def _pretool_commands(settings: dict) -> list[str]:
     return cmds
 
 
+@pytest.mark.slow
 def test_installed_hook_denies_through_launch_without_injected_role(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

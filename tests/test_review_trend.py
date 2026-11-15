@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
-from tests.test_review_rca import ROSTER
+from tests.support.review import commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_rca import ROSTER
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.orchestration_config import DEFAULT_POLICY
@@ -100,6 +100,7 @@ def _replay(tmp_path: Path, policy: str = "") -> Path:
     return repo
 
 
+@pytest.mark.slow
 def test_status_prints_the_trend_and_defers_a_converging_loop(tmp_path: Path, capsys) -> None:
     repo = _replay(tmp_path)
     code, st = node_status(repo, capsys)
@@ -114,6 +115,7 @@ def test_status_prints_the_trend_and_defers_a_converging_loop(tmp_path: Path, ca
     assert "converging; escalation deferred" in out
 
 
+@pytest.mark.slow
 def test_status_with_policy_true_escalates_the_same_replay(tmp_path: Path, capsys) -> None:
     repo = _replay(tmp_path, "policy: {escalate_when_converging: true}\n")
     code, st = node_status(repo, capsys)
@@ -161,6 +163,7 @@ def test_threshold_one_or_an_unknown_count_never_converges() -> None:
     assert escalation(rounds, POLICY).rule == "same_family"
 
 
+@pytest.mark.slow
 def test_cli_two_falling_rounds_below_the_window_escalate_on_review_rounds(tmp_path: Path, capsys) -> None:
     policy = "policy: {escalate_same_acceptance_blocks: 3, escalate_review_rounds: 2}\n"
     repo = make_review_repo(tmp_path, orchestration=ROSTER + policy)

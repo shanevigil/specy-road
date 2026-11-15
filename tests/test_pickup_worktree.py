@@ -10,7 +10,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.test_baseline_gate_cli import FEATURE, _assert_nothing_claimed, _branches, _claimed_on, _git, _pickup, _project
+from tests.support.extracted.baseline_gate_cli import (
+    _assert_nothing_claimed,
+    _branches,
+    _claimed_on,
+    _git,
+)
+from tests.support.pickup import FEATURE, make_pickup_project as _project, run_pickup as _pickup
 
 
 def _linked(root: Path, tmp_path: Path) -> Path:

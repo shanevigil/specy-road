@@ -23,8 +23,15 @@ from specy_road.orchestration.guard.orchestration_role_env import ROLE_ENV
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_override import block_item, shortfall_text
-from tests.review_repo_helpers import NODE, commit_file, git, make_layout_finish_repo, make_review_repo, review_text
-from tests.test_review_override import ROSTER, STRONG
+from tests.support.review import (
+    NODE,
+    commit_file,
+    make_layout_finish_repo,
+    make_review_repo,
+    review_text,
+    git,
+)
+from tests.support.extracted.review_override import ROSTER, STRONG
 
 CODE = "c0de"
 NOW = datetime(2026, 11, 10, 12, 0, tzinfo=timezone.utc)
@@ -181,6 +188,7 @@ def test_a_local_answer_closes_in_place(tmp_path: Path, monkeypatch) -> None:
 # --- approval over a block -----------------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(("shape", "remote"), [("root", True), ("sr", True), ("root", False)])
 def test_an_approval_over_a_block_is_m22_67s_record_with_the_channel(tmp_path: Path, monkeypatch, shape: str,
                                                                     remote: bool) -> None:
@@ -213,6 +221,7 @@ def test_an_approval_over_a_block_is_m22_67s_record_with_the_channel(tmp_path: P
         assert not (lay.run / LEDGER).exists()   # the server's ledger is unchanged
 
 
+@pytest.mark.slow
 def test_the_gate_still_unmet_after_the_commit_is_reported_recorded(tmp_path: Path, monkeypatch) -> None:
     lay = layout(tmp_path, monkeypatch)
     block(lay)
@@ -235,6 +244,7 @@ def test_the_gate_still_unmet_after_the_commit_is_reported_recorded(tmp_path: Pa
     assert c.get("/api/health").status_code == 200
 
 
+@pytest.mark.slow
 def test_an_old_copied_schema_refuses_both_kinds_naming_refresh_schemas(tmp_path: Path, monkeypatch) -> None:
     lay = layout(tmp_path, monkeypatch)
     schema = json.loads((project_template_root() / "schemas" / "decisions.schema.json").read_text())
@@ -374,6 +384,7 @@ def _second_block(lay: Layout, _tmp: Path) -> None:
     block(lay, "sol")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", ["empty_words", "multiline_words", "stale_commit", "stale_settles"])
 def test_an_approval_refusal_records_nothing(tmp_path: Path, monkeypatch, case: str) -> None:
     lay = layout(tmp_path, monkeypatch)
@@ -402,6 +413,7 @@ def _executor(_lay: Layout, monkeypatch) -> str:
     return ROLE_ENV
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", ["strong_review", "role", "identity"])
 def test_a_withheld_approval_names_why_and_records_nothing(tmp_path: Path, monkeypatch, case: str) -> None:
     lay = layout(tmp_path, monkeypatch, roster=STRONG if case == "strong_review" else ROSTER)
@@ -416,6 +428,7 @@ def test_a_withheld_approval_names_why_and_records_nothing(tmp_path: Path, monke
     assert lay.snapshot() == before
 
 
+@pytest.mark.slow
 def test_a_refused_push_records_nothing(tmp_path: Path, monkeypatch) -> None:
     lay = layout(tmp_path, monkeypatch)
     hook = lay.bare / "hooks" / "pre-receive"

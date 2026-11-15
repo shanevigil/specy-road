@@ -23,6 +23,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import BUNDLED_SCRIPTS, REPO
+pytestmark = pytest.mark.repo
 
 # Entry scripts `specy_road/cli.py` dispatches to via ``_run``, plus the console
 # entry points themselves.

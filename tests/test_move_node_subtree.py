@@ -231,6 +231,7 @@ def test_a_subtree_move_rewrites_nothing_outside_the_subtree(tmp_path: Path) -> 
     assert claims["inner-four"]["touch_zones"] == ["docs/M2.5.4/"]
 
 
+@pytest.mark.slow
 def test_a_move_rewrites_zones_naming_the_moved_sheet_in_both_forms(tmp_path: Path) -> None:
     """A zone naming the node's own sheet follows the rename, as does a docs/<old id>/ zone."""
     top, root = tmp_path, tmp_path / "sr"

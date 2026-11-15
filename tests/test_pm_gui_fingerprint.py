@@ -10,11 +10,6 @@ import pytest
 from tests.helpers import DOGFOOD
 
 
-@pytest.fixture()
-def dogfood_copy(tmp_path: Path) -> Path:
-    dest = tmp_path / "dogfood"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def test_pm_gui_mutation_fingerprint_base_changes_when_planning_file_touched(

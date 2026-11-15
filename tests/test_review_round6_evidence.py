@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
 
 from specy_road import review_signing as rs
 from specy_road.orchestration.workers import worker_reconcile as wr
@@ -31,6 +31,7 @@ from specy_road.git_changed_paths import diff_paths, parse_name_status
 from specy_road.review_files import latest_ready, load_review, render_front_matter, review_path, reviews_dir
 from specy_road.review_gate import SigningError, evaluate_gate, write_human_approval
 from specy_road.review_target import resolve_target
+from tests.support.same.key_5acf3bfe8b72 import _key
 
 needs_keygen = pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="needs OpenSSH ssh-keygen")
 
@@ -133,10 +134,6 @@ def test_a_ready_for_another_node_or_branch_is_invalid_here(tmp_path: Path) -> N
 
 # --- F12 ------------------------------------------------------------------
 
-def _key(tmp_path: Path, name: str) -> tuple[Path, str]:
-    key = tmp_path / f"{name}_key"
-    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", name, "-f", str(key)], check=True)
-    return key, (tmp_path / f"{name}_key.pub").read_text(encoding="utf-8").strip()
 
 
 def _roster(opus_pub: str | None, human_pub: str | None = None, *, signed: bool = True) -> str:

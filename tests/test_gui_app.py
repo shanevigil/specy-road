@@ -10,6 +10,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
+from tests.support.same.mutation_headers_1fdfef6b66c9 import _mutation_headers
 
 
 def _expected_gui_repo_id(path: Path) -> str:
@@ -17,28 +18,10 @@ def _expected_gui_repo_id(path: Path) -> str:
     return hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()
 
 
-@pytest.fixture()
-def dogfood_copy(tmp_path: Path) -> Path:
-    dest = tmp_path / "dogfood"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-@pytest.fixture()
-def api_client(
-    dogfood_copy: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> TestClient:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
-def _mutation_headers(client: TestClient) -> dict[str, str]:
-    r = client.get("/api/roadmap")
-    assert r.status_code == 200
-    return {"X-PM-Gui-Fingerprint": str(r.json()["fingerprint"])}
 
 
 def test_api_repo_follows_cwd_when_env_unset(

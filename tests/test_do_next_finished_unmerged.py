@@ -13,12 +13,9 @@ from specy_road.bundled_scripts import do_next_task as dnt
 from specy_road.bundled_scripts.do_next_task_pickup_helpers import (
     assert_not_already_claimed,
 )
+from tests.support.same.git_81b020dd1411 import _git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(
-        ["git", "-C", str(repo), *args], check=True, capture_output=True
-    )
 
 
 def _write_graph(repo: Path, status: str) -> None:

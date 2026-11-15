@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import pytest
 from pathlib import Path
 
 import yaml
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 
 from specy_road.bundled_scripts import do_next_task as dnt
 from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
@@ -77,6 +78,7 @@ def test_pickup_args_local_and_owner() -> None:
     assert not ns.local and ns.owner is None
 
 
+@pytest.mark.slow
 def test_local_pickup_skips_sync_and_push(tmp_path: Path, monkeypatch) -> None:
     """--local: no fetch/merge, no push; the claim is still committed locally."""
     repo = make_review_repo(tmp_path)

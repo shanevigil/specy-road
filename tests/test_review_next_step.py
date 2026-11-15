@@ -12,11 +12,20 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
-from tests.test_review_cli import _ready
-from tests.test_review_defer import (BUDGET, ROSTER, _block_round, _item, _record, _review, _run, _two_fail_round,
-                                     _write_rca, human)  # noqa: F401 — human is a fixture
-from tests.test_review_defer_rounds import _runs
+from tests.support.review import commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_cli import _ready
+from tests.support.extracted.review_defer import (
+    BUDGET,
+    _item,
+    _record,
+    _review,
+    _two_fail_round,
+    _write_rca,
+    human,
+)
+from tests.support.extracted.review_rca import ROSTER, _block_round
+from tests.support.same.run_651387813ee4 import _run
+from tests.support.extracted.review_defer_rounds import _runs
 
 from specy_road.review_next_step import STATES
 
@@ -68,6 +77,7 @@ def test_within_budget(tmp_path: Path, capsys) -> None:
     _row(repo, capsys, "within_budget", "none")
 
 
+@pytest.mark.slow
 def test_spent_no_blocks(tmp_path: Path, capsys) -> None:
     repo, _ = _spent(tmp_path)
     head = commit_file(repo, "src/fix.py", "fix\n", "fix")
@@ -78,11 +88,13 @@ def test_spent_no_blocks(tmp_path: Path, capsys) -> None:
     _row(repo, capsys, "spent_no_blocks", "none")
 
 
+@pytest.mark.slow
 def test_spent_no_rca(tmp_path: Path, capsys) -> None:
     b = _row(_spent(tmp_path)[0], capsys, "spent_no_rca", "command")
     assert b["next"].endswith("--model sol")
 
 
+@pytest.mark.slow
 def test_spent_no_rca_no_analyst(tmp_path: Path, capsys) -> None:
     """R2: sol is the only independent reviewer and is unavailable, so no RCA prompt is named."""
     roster = ROSTER.replace("{id: sol, family: openai, roles: [reviewer]}",
@@ -92,6 +104,7 @@ def test_spent_no_rca_no_analyst(tmp_path: Path, capsys) -> None:
     assert "sol" not in b["next"].split("--why")[0]
 
 
+@pytest.mark.slow
 def test_spent_defer_unapplied_then_applied_rows(tmp_path: Path, capsys, human) -> None:
     """R3: after one reviewer's deferral, the budget stays spent while another block counts."""
     repo, head = _spent(tmp_path, ROSTER + SONNET)
@@ -103,6 +116,7 @@ def test_spent_defer_unapplied_then_applied_rows(tmp_path: Path, capsys, human) 
     assert "review defer" not in b["next"] and b["spent"]
 
 
+@pytest.mark.slow
 def test_spent_defer_applied(tmp_path: Path, capsys, human) -> None:
     repo, head = _spent(tmp_path, ROSTER + SONNET + EXECUTOR)
     _review(repo, "sonnet")
@@ -113,6 +127,7 @@ def test_spent_defer_applied(tmp_path: Path, capsys, human) -> None:
     assert b["next"] == "specy-road prompt M1.1 --role executor --model composer"
 
 
+@pytest.mark.slow
 def test_spent_defer_refused(tmp_path: Path, capsys) -> None:
     repo, head = _spent(tmp_path)
     _write_rca(repo, _record(2, [_item(head, category="regression")]))
@@ -120,6 +135,7 @@ def test_spent_defer_refused(tmp_path: Path, capsys) -> None:
     assert "would refuse it" in b["next_why"]
 
 
+@pytest.mark.slow
 def test_spent_rca_executor(tmp_path: Path, capsys) -> None:
     repo, _ = _spent(tmp_path, ROSTER + EXECUTOR)
     _ready(repo)
@@ -127,6 +143,7 @@ def test_spent_rca_executor(tmp_path: Path, capsys) -> None:
     _row(repo, capsys, "spent_rca_executor", "command")
 
 
+@pytest.mark.slow
 def test_spent_rca_packet_then_reviewer(tmp_path: Path, capsys) -> None:
     repo, _ = _spent(tmp_path)
     _write_rca(repo, _record(2, None, action="change_or_reprompt_reviewer"))
@@ -134,6 +151,7 @@ def test_spent_rca_packet_then_reviewer(tmp_path: Path, capsys) -> None:
     assert _row(repo, capsys, "spent_rca_reviewer", "command")["next"].endswith("--role reviewer --model opus")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("action", ["escalate_human", "continue_with_class_fix"])   # no executor for the latter
 def test_spent_rca_human(tmp_path: Path, capsys, action: str) -> None:
     repo, _ = _spent(tmp_path)

@@ -11,6 +11,7 @@ import pytest
 import yaml
 
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
+from tests.support.same.snapshot_3fe0117d744f import _snapshot
 
 
 def _brainstorm(repo: Path, *args: str) -> subprocess.Popen[str]:
@@ -38,8 +39,6 @@ def _cli(repo: Path, *args: str, module: str = "specy_road.cli") -> subprocess.C
                           env=script_subprocess_env())
 
 
-def _snapshot(d: Path) -> dict[str, bytes]:
-    return {str(p.relative_to(d)): p.read_bytes() for p in sorted(d.rglob("*")) if p.is_file()}
 
 
 @pytest.mark.parametrize(("link", "outside_kind", "command"), [

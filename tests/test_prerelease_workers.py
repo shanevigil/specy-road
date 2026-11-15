@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_process as wp

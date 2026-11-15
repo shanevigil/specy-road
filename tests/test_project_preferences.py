@@ -25,9 +25,10 @@ from specy_road.workflow_prefs import (
     summary_rule_notice,
     warn_summary_rule,
 )
-from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
-from tests.review_repo_helpers import git
+from tests.support.decisions import add_args, decisions_repo, run_decisions
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.profiles import make_profile_repo
+from tests.support.same.prefer_6f3256850a24 import _prefer
 
 _ACCESSORS = {"pr_body_footer": pr_body_footer, "implementation_summary": implementation_summary_rule,
               "land": lambda root, _node_id: root_land(root)}
@@ -36,8 +37,6 @@ GW = "version: 1\nintegration_branch: master\nremote: origin\n"
 
 # --- A1: decisions add --local ---------------------------------------------------------------
 
-def _prefer(repo: Path, *extra: str) -> list[str]:
-    return ["decisions", "add", "--repo-root", str(repo), "--kind", "preference", *extra]
 
 
 def test_local_preference_is_merged_over_the_tracked_ledger(tmp_path: Path, capsys) -> None:

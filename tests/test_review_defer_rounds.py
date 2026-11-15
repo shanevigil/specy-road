@@ -7,16 +7,29 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.test_review_cli import _ready
-from tests.test_review_defer import (BUDGET, ROSTER, ROSTER4, _block_round, _forge_closed_deferral, _item,
-                                     _record, _review, _run, _status, _two_fail_round, _untouched,
-                                     _write_rca, human)  # noqa: F401 — human is a fixture
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_cli import _ready
+from tests.support.extracted.review_defer import (
+    BUDGET,
+    ROSTER4,
+    _forge_closed_deferral,
+    _item,
+    _record,
+    _review,
+    _two_fail_round,
+    _untouched,
+    _write_rca,
+    human,
+)
+from tests.support.extracted.review_rca import ROSTER, _block_round, _status
+from tests.support.same.run_651387813ee4 import _run
 
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
+from tests.support.extracted.review_defer_rounds import _cli, _runs, _this_checkout
 
 
+@pytest.mark.slow
 def test_r1_a_partial_deferral_neither_applies_nor_hides_the_rest_of_the_block(tmp_path: Path, capsys,
                                                                                human) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
@@ -42,6 +55,7 @@ def test_r1_a_partial_deferral_neither_applies_nor_hides_the_rest_of_the_block(t
     assert [b.model for b in evaluate_gate(repo, NODE, head).blocks] == ["opus"]
 
 
+@pytest.mark.slow
 def test_r1_a_deferral_covering_every_finding_of_the_block_resolves_it(tmp_path: Path, human) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
     _block_round(repo, 1)
@@ -62,6 +76,7 @@ def test_r2_no_marker_means_the_ledger_is_never_read(tmp_path: Path, capsys) -> 
     assert (code, st["state"]) == (1, "blocked") and "fix_round_budget" not in st
 
 
+@pytest.mark.slow
 def test_r3_a_later_record_is_not_earlier_evidence(tmp_path: Path, capsys, human) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
     _two_fail_round(repo, 1, correctness=False)
@@ -76,6 +91,7 @@ def test_r3_a_later_record_is_not_earlier_evidence(tmp_path: Path, capsys, human
     assert marker["round"] == 1
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("action,expected", [
     ("continue_with_class_fix", "specy-road prompt M1.1 --role executor --model composer"),
     ("change_or_reprompt_reviewer", "specy-road review packet M1.1"),   # no packet yet; the prompt needs one
@@ -105,6 +121,7 @@ def test_r4_a_non_defer_rca_names_a_runnable_step_for_its_action(tmp_path: Path,
         assert (entry["status"], entry["recommendation"]) == ("open", "apply")
 
 
+@pytest.mark.slow
 def test_r5_an_empty_second_title_fails_before_any_node_is_written(tmp_path: Path, capsys, human) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER4 + BUDGET)
     _block_round(repo, 1)
@@ -119,6 +136,7 @@ def test_r5_an_empty_second_title_fails_before_any_node_is_written(tmp_path: Pat
     assert not list((repo / "planning").glob("M0*"))
 
 
+@pytest.mark.slow
 def test_r5_a_failed_roadmap_write_is_rolled_back(tmp_path: Path, capsys, human, monkeypatch) -> None:
     from specy_road import review_defer_cli
 
@@ -137,6 +155,7 @@ def test_r5_a_failed_roadmap_write_is_rolled_back(tmp_path: Path, capsys, human,
     assert not list(reviews_dir(repo, "M1.1").glob("DEFERRAL-*"))
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("swap", ["crossed_categories", "acceptance_ids_swapped"])
 def test_round2_r1_items_bind_to_original_findings(tmp_path: Path, capsys, human, swap: str) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
@@ -160,6 +179,7 @@ def test_round2_r1_items_bind_to_original_findings(tmp_path: Path, capsys, human
     assert [b.model for b in evaluate_gate(repo, NODE, head).blocks] == ["opus"]
 
 
+@pytest.mark.slow
 def test_round2_r2_a_marker_write_failure_rolls_back_everything(tmp_path: Path, capsys, human) -> None:
     import os
 
@@ -184,6 +204,7 @@ def test_round2_r2_a_marker_write_failure_rolls_back_everything(tmp_path: Path, 
     _untouched(repo)
 
 
+@pytest.mark.slow
 def test_round2_r3_an_item_round_comes_from_its_blocking_commit(tmp_path: Path, capsys, human) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
     _two_fail_round(repo, 1, correctness=False)
@@ -204,6 +225,7 @@ def test_round2_r3_an_item_round_comes_from_its_blocking_commit(tmp_path: Path, 
     _untouched(repo)
 
 
+@pytest.mark.slow
 def test_round2_probe_the_gate_applies_the_correctness_rule_to_a_hand_written_marker(tmp_path: Path) -> None:
     """A correctness item on an id an earlier round passed never resolves a block, whoever wrote the marker."""
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
@@ -225,31 +247,13 @@ def test_round2_probe_the_gate_applies_the_correctness_rule_to_a_hand_written_ma
     assert evaluate_gate(repo, NODE, head).blocks == []   # the same findings, the correctness one on A1, resolve
 
 
-def _runs(repo: Path, command: str) -> int:
-    """Run a status ``next`` command exactly as printed (plus ``--repo-root``)."""
-    import shlex
-    import subprocess
-
-    argv = shlex.split(command)
-    assert argv[0] == "specy-road", command
-    return subprocess.run(_cli(argv[1:], repo), capture_output=True, text=True, cwd=repo,
-                          env=_this_checkout()).returncode
 
 
-def _cli(args: list[str], repo: Path) -> list[str]:
-    """``specy-road <args>`` from this checkout's package, not whichever ``specy-road`` is first on PATH."""
-    import sys
-
-    return [sys.executable, "-c", "import sys; from specy_road.cli import main; main(sys.argv[1:])",
-            *args, "--repo-root", str(repo)]
 
 
-def _this_checkout() -> dict[str, str]:
-    import os
-
-    return {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1])}
 
 
+@pytest.mark.slow
 def test_round3_every_next_step_runs_or_is_absent(tmp_path: Path, capsys, human) -> None:
     """The next-step audit: each budget state names a command that succeeds, or none at all."""
     executor = "  - {id: composer, family: cursor, roles: [executor]}\n"
@@ -284,6 +288,7 @@ def test_round3_every_next_step_runs_or_is_absent(tmp_path: Path, capsys, human)
     assert evaluate_gate(repo, NODE, head).blocks == []
 
 
+@pytest.mark.slow
 def test_round3_a_ready_agent_without_the_executor_role_is_not_named(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)   # composer is not rostered
     _block_round(repo, 1)
@@ -294,6 +299,7 @@ def test_round3_a_ready_agent_without_the_executor_role_is_not_named(tmp_path: P
     assert b["next"].startswith("specy-road decisions add M1.1") and _runs(repo, b["next"]) == 0
 
 
+@pytest.mark.slow
 def test_round3_no_independent_analyst_names_a_human_decision(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER.replace("  - {id: sol, family: openai, roles: [reviewer]}\n", "")
                             + BUDGET)   # opus reviews; no other non-human reviewer is rostered

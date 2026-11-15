@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.harness import make_worker_repo, wait_for_worker
 
 from specy_road.orchestration.workers import worker_adapters as wa
@@ -29,8 +29,8 @@ from specy_road.orchestration.workers import worker_process as wp
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.review_files import reviews_root
+from tests.support.extracted.review_round6_runner import OK, _launch
 
-OK = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
 
 
 def _ready_text(repo: Path, commit: str, agent: str = "x", branch: str = "feature/rm-thing") -> str:
@@ -38,10 +38,6 @@ def _ready_text(repo: Path, commit: str, agent: str = "x", branch: str = "featur
             "changed_paths: []\nverify: []\n---\n")
 
 
-def _launch(tmp_path: Path, script: Path, repo: Path, name: str, **spec):
-    p = tmp_path / f"{name}.json"
-    p.write_text(json.dumps({"lines": OK, **spec}))
-    return wa.adapter_for("claude-code").launch(p, repo, "opus", f"{sys.executable} {script} {{prompt}}")
 
 
 # --- B3 ---------------------------------------------------------------------------
@@ -81,6 +77,7 @@ def test_the_checkpoint_is_by_content_not_mtime(tmp_path: Path) -> None:
 
 # --- B9 ---------------------------------------------------------------------------
 
+@pytest.mark.slow
 @pytest.mark.skipif(not hasattr(signal, "SIGKILL"), reason="POSIX signals")
 def test_a_dead_wrapper_with_a_live_harness_keeps_the_leaf_and_terminate_kills_the_group(tmp_path: Path) -> None:
     repo, script = make_worker_repo(tmp_path)

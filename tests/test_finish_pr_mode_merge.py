@@ -16,12 +16,12 @@ import yaml
 
 from specy_road.bundled_scripts import finish_task
 from tests.helpers import REPO
-from tests.review_repo_helpers import (
+from tests.support.review import (
     commit_file,
-    git,
     git_root_relative,
     make_layout_finish_repo,
     prepare_layout_merge_mode_remote,
+    git,
 )
 
 BR = "feature/rm-thing"
@@ -63,6 +63,7 @@ def _with_other_claim(text: str) -> str:
     return yaml.safe_dump(doc)
 
 
+@pytest.mark.slow
 def test_claim_gained_after_pickup_is_resolved_and_the_branch_merges_cleanly(lane, tmp_path, capsys) -> None:
     git_top, project, bare, prefix = lane
     reg = prefix + "roadmap/registry.yaml"
@@ -88,6 +89,7 @@ def test_claim_gained_after_pickup_is_resolved_and_the_branch_merges_cleanly(lan
     assert git(git_top, "status", "--porcelain", "--untracked-files=no") == ""
 
 
+@pytest.mark.slow
 def test_code_conflict_is_named_and_nothing_is_pushed(lane, tmp_path, capsys) -> None:
     git_top, project, bare, prefix = lane
     _push_to_dev(tmp_path, bare, prefix + "src/a.py", lambda _old: "print('dev')\n")

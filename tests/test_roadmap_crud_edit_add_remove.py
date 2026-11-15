@@ -10,18 +10,16 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
 from specy_road.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
+from tests.support.same.crud_87ad31dc4313 import _crud
 
 NK = "11111111-1111-5111-8111-111111111111"
 
 
-def _crud(repo: Path, *argv: str) -> None:
-    ns = build_parser().parse_args(["--repo-root", str(repo), *argv])
-    ns.func(ns)
 
 
 def _node(repo: Path, nid: str = "M1.1") -> dict:

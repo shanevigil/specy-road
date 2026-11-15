@@ -9,10 +9,9 @@ import yaml
 import pytest
 
 from specy_road.bundled_scripts import abort_task_pickup as atp
+from tests.support.same.git_init_39224a6ae177 import _git_init
 
 
-def _git_init(root: Path) -> None:
-    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 
 
 def _claimed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -290,7 +289,7 @@ def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path
 
 def _claim_leaf(tmp_path, shape: str):
     """A claimed leaf in a linked worktree; the main checkout is on ``park``, not ``dev``."""
-    from tests.review_repo_helpers import make_layout_finish_repo
+    from tests.support.review import make_layout_finish_repo
 
     git_top, project = make_layout_finish_repo(tmp_path / "src", shape)
     return git_top, project

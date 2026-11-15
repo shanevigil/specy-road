@@ -131,6 +131,7 @@ def _matches() -> set[tuple[str, tuple[str, ...]]]:
     return found
 
 
+@pytest.mark.slow
 def test_print_and_exit_handlers_are_only_the_named_exceptions() -> None:
     """A print-and-exit of one of the fifteen is one of the three recorded handlers."""
     assert _matches() == KEPT_PRINT_AND_EXIT

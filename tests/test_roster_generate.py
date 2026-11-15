@@ -193,7 +193,7 @@ def test_committed_plan_reports_invalid_profile_for_a_well_formed_missing_path(t
 
 
 def test_committed_plan_refuses_a_malformed_profile_even_when_a_file_exists_at_that_path(tmp_path: Path) -> None:
-    from tests.review_repo_helpers import git
+    from tests.support.same.git_84c8ad8f55f9 import git
 
     roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
               f"  - {{id: opus, family: anthropic, profile: {MALFORMED}, roles: [executor]}}\n"

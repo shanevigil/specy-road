@@ -18,8 +18,8 @@ from typing import Any
 import pytest
 import yaml
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
-from tests.test_review_defer import bound_ledger
+from tests.support.review import commit_file, make_review_repo, review_output, git
+from tests.support.extracted.review_defer import bound_ledger
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.registration_pickup_commit import registration_commit_message
@@ -185,6 +185,7 @@ def assert_outcome(gate: GateResult, row: dict[str, Any]) -> None:
         assert sentence in " ".join(gate.problems())
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("row", GATE["rows"], ids=[r["id"] for r in GATE["rows"]])
 def test_gate_row(tmp_path: Path, row: dict[str, Any]) -> None:
     leaf = Leaf(tmp_path, orchestration(row))

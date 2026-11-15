@@ -17,13 +17,12 @@ from specy_road.orchestration.records.decisions import (
     read_decisions,
     schema_errors,
 )
-from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
-from tests.test_decisions import SKILL
+from tests.support.decisions import add_args, decisions_repo, run_decisions
+from tests.support.extracted.decisions import SKILL
 from tests.support.plan import plan_repo, ROSTER
+from tests.support.same.prefer_6f3256850a24 import _prefer
 
 
-def _prefer(repo: Path, *extra: str) -> list[str]:
-    return ["decisions", "add", "--repo-root", str(repo), "--kind", "preference", *extra]
 
 
 def _ledger(repo: Path) -> list[dict]:

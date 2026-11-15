@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts.role_prompt import run_cli_channel
 from specy_road.review_files import reviews_dir

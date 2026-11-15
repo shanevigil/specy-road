@@ -15,10 +15,9 @@ from specy_road.file_limits_engine import (
     git_ignored_paths,
     run_file_limits_scan,
 )
+from tests.support.same.git_736cc1f249f0 import _git
 
 
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
 
 
 def _init_repo(root: Path) -> None:

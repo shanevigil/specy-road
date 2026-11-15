@@ -10,9 +10,9 @@ from types import SimpleNamespace
 from specy_road.roadmap_chunk_router_pick import simulate_chunk_lines
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.roadmap_crud_ops import cmd_edit
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 from tests.support.crud import crud_fixture_repo, edit_m99_1, run_crud
-from tests.test_roadmap_chunk_router import _milestone, _phase_M0, _seed_repo
+from tests.support.extracted.roadmap_chunk_router import _milestone, _phase_M0, _seed_repo
 
 
 def _commit_files(stdout: str) -> list[str]:

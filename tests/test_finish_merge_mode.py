@@ -14,35 +14,19 @@ from specy_road.finish_land_integration import (
     print_merge_push_notice,
 )
 from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.same.commit_553cf5f7a1bf import _commit
+from tests.support.same.git_df16ee62bf81 import _git
+from tests.support.extracted.finish_merge_mode import _bootstrap, merge_mode_finish_repo
+import pytest
 
 BR = "feature/rm-x"
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=repo)
 
 
-def _commit(repo: Path, message: str) -> None:
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "--allow-empty", "-m", message)
 
 
-def _bootstrap(tmp_path: Path) -> tuple[Path, Path]:
-    """Init a sandbox repo with a bare 'origin', and master + feature branches."""
-    bare = tmp_path / "remote.git"
-    subprocess.check_call(["git", "init", "--bare", "-q", str(bare)])
-    repo = tmp_path / "work"
-    subprocess.check_call(["git", "init", "-q", "-b", "master", str(repo)])
-    _git(repo, "config", "user.email", "t@e.com")
-    _git(repo, "config", "user.name", "T")
-    _git(repo, "remote", "add", "origin", str(bare))
-    _commit(repo, "init")
-    _git(repo, "push", "-q", "-u", "origin", "master")
-    _git(repo, "checkout", "-b", "feature/rm-x")
-    _commit(repo, "feature work")
-    _git(repo, "push", "-q", "-u", "origin", "feature/rm-x")
-    return repo, bare
 
 
 def test_land_merge_succeeds_when_integration_branch_is_master(tmp_path: Path) -> None:
@@ -82,26 +66,6 @@ def test_integration_branch_present_finds_local_branch(tmp_path: Path) -> None:
     assert ok2 is False
 
 
-def merge_mode_finish_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
-    monkeypatch.setenv("PYTHONPATH", str(REPO))
-    repo = make_review_repo(tmp_path)
-    git(repo, "checkout", "-q", "dev")
-    commit_file(
-        repo,
-        "roadmap/git-workflow.yaml",
-        "version: 1\nintegration_branch: dev\nremote: origin\non_complete: merge\n",
-        "merge mode",
-    )
-    commit_file(repo, ".gitignore", "work/reviews/\n.specyrd/cache/\n", "gitignore")
-    git(repo, "checkout", "-q", "feature/rm-thing")
-    git(repo, "merge", "-q", "--no-edit", "dev")
-    bare = tmp_path / "remote.git"
-    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
-    git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
-    git(repo, "remote", "add", "origin", str(bare))
-    git(repo, "fetch", "-q", "origin")
-    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
-    return repo, bare
 
 
 def _finish_cli(repo: Path, *extra: str) -> subprocess.CompletedProcess[str]:
@@ -158,6 +122,7 @@ def test_merge_push_disclosure_counts_when_tracking_ref_is_absent(
     assert (total, not_from) == (4, 1)
 
 
+@pytest.mark.slow
 def test_finish_merge_prints_push_disclosure_for_unrelated_dev_commit(
     tmp_path: Path, monkeypatch,
 ) -> None:
@@ -180,6 +145,7 @@ def test_finish_merge_prints_push_disclosure_for_unrelated_dev_commit(
     )
 
 
+@pytest.mark.slow
 def test_finish_merge_omits_the_branch_line_when_the_branch_is_deleted(
     tmp_path: Path, monkeypatch,
 ) -> None:

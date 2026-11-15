@@ -25,6 +25,7 @@ from specy_road.brainstorm_session import (
 )
 from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
+from tests.support.same.by_id_a6a5bf211114 import _by_id
 
 
 @pytest.fixture()
@@ -48,8 +49,6 @@ def _accepted_session(**kw) -> BrainstormSession:
     return s
 
 
-def _by_id(root: Path) -> dict[str, dict]:
-    return {n["id"]: n for n in load_roadmap(root)["nodes"]}
 
 
 def test_an_accepted_idea_becomes_a_node_under_the_anchor(repo: Path) -> None:

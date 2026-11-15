@@ -54,6 +54,7 @@ def test_shared_options_parse_as_the_table_records() -> None:
     assert table == json.loads(TABLE.read_text(encoding="utf-8"))
 
 
+@pytest.mark.slow
 def test_only_cli_args_declares_the_shared_options() -> None:
     declared = []
     for path in sorted((REPO / "specy_road").rglob("*.py")):

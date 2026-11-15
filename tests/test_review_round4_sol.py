@@ -27,8 +27,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
-from tests.test_review_signing import _key, _roster
+from tests.support.review import make_review_repo, git
+from tests.support.same.key_5acf3bfe8b72 import _key
+from tests.support.extracted.review_signing import _roster
 from tests.support.harness import make_worker_repo, wait_for_worker
 
 from specy_road.orchestration.guard import session_presence as sp
@@ -55,6 +56,7 @@ def _wrapper_cmdline(monkeypatch, worker_id: str = "w-0001") -> None:
 
 # --- B1 -----------------------------------------------------------------------
 
+@pytest.mark.slow
 def test_a_completed_worker_still_owns_its_leaf(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path, max_workers=4)
     rec, _c = ops.delegate(repo, "M1.1", "opus")
@@ -256,7 +258,7 @@ def test_signing_without_a_roster_key_is_refused_early(tmp_path: Path, capsys) -
     key, _pub = _key(tmp_path, "opus")
     repo = make_review_repo(tmp_path, orchestration=_roster("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", signed=False)
                             .replace('public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"', ""))
-    from tests.review_repo_helpers import review_text
+    from tests.support.review import review_text
 
     notes = tmp_path / "notes.md"
     notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus"))
@@ -270,7 +272,7 @@ def test_a_wrong_key_is_an_error_not_a_written_record(tmp_path: Path, capsys) ->
     key, _pub = _key(tmp_path, "opus")
     _other, other_pub = _key(tmp_path, "other")
     repo = make_review_repo(tmp_path, orchestration=_roster(other_pub))
-    from tests.review_repo_helpers import review_text
+    from tests.support.review import review_text
 
     notes = tmp_path / "notes.md"
     notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus"))

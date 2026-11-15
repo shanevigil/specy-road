@@ -12,19 +12,16 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, git, make_review_repo
+from tests.support.review import NODE, make_review_repo, git
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.workers import worker_ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli, session_cli
 from specy_road.bundled_scripts.do_next_prompt import print_pickup_header
+from tests.support.same.cli_9a8b40e70510 import _cli
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        session_cli.main(list(args))
-    return e.value.code or 0
 
 
 def test_start_touch_end_round_trip(tmp_path: Path) -> None:

@@ -22,18 +22,15 @@ from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.registry_yaml import registry_path, write_registry
 from tests.helpers import DOGFOOD
+from tests.support.same.commit_553cf5f7a1bf import _commit
+from tests.support.same.git_df16ee62bf81 import _git
 
 CODENAME = "contracts-bootstrap"
 BRANCH = f"feature/rm-{CODENAME}"
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=repo)
 
 
-def _commit(repo: Path, message: str) -> None:
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "--allow-empty", "-m", message)
 
 
 def _chunk_path(repo: Path) -> Path:

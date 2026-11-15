@@ -8,7 +8,8 @@ import pytest
 from starlette.testclient import TestClient
 
 from specy_road.orchestration.workers import worker_state as ws
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
+from tests.support.same.client_2447f1fd9143 import _client
 
 
 def _usage(cost: float | None) -> dict:
@@ -34,10 +35,6 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-def _client() -> TestClient:
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
 def _snapshot(root: Path) -> dict[str, bytes]:

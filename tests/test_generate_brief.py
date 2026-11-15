@@ -9,8 +9,10 @@ from pathlib import Path
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
 from specy_road.bundled_scripts import generate_brief as gb
+import pytest
 
 
+@pytest.mark.slow
 def test_render_brief_m02_contains_title() -> None:
     nodes = gb.load_nodes(DOGFOOD)
     by_id = gb.index(nodes)
@@ -50,6 +52,7 @@ def test_render_brief_dependencies_use_display_ids_not_raw_node_keys() -> None:
     assert "- **44ef4a9d-" not in text
 
 
+@pytest.mark.slow
 def test_render_brief_inlines_planning_sheet_body() -> None:
     """F-004: brief inlines the planning sheet content, not just paths."""
     nodes = gb.load_nodes(DOGFOOD)
@@ -60,6 +63,7 @@ def test_render_brief_inlines_planning_sheet_body() -> None:
     assert "## Intent" in text
 
 
+@pytest.mark.slow
 def test_render_brief_inlines_cited_shared_contracts() -> None:
     """A contract named in the chain's ``## References`` is inlined bodily."""
     nodes = gb.load_nodes(DOGFOOD)
@@ -71,6 +75,7 @@ def test_render_brief_inlines_cited_shared_contracts() -> None:
     assert "Error codes (enum)" in text  # a heading from inside that contract
 
 
+@pytest.mark.slow
 def test_render_brief_lists_uncited_contracts_without_inlining_them() -> None:
     """The fix for the 436 KB brief: uncited contracts cost a path, not a body.
 
@@ -87,6 +92,7 @@ def test_render_brief_lists_uncited_contracts_without_inlining_them() -> None:
     assert "--kind shared" in text
 
 
+@pytest.mark.slow
 def test_render_brief_always_inlines_the_shared_readme() -> None:
     """AGENTS.md's load order: the index, then cited contracts only."""
     nodes = gb.load_nodes(DOGFOOD)
@@ -95,6 +101,7 @@ def test_render_brief_always_inlines_the_shared_readme() -> None:
     assert "### `shared/README.md`" in text
 
 
+@pytest.mark.slow
 def test_render_brief_all_contracts_restores_inlining_everything() -> None:
     """The escape hatch has to be a real restoration, not an approximation."""
     nodes = gb.load_nodes(DOGFOOD)
@@ -122,6 +129,7 @@ def test_render_brief_finds_contracts_in_shared_subdirectories(tmp_path) -> None
     assert "`shared/contracts/auth-model.md`" in text
 
 
+@pytest.mark.slow
 def test_render_brief_includes_touch_zone_instruction() -> None:
     """F-009: brief tells the implementer to derive/confirm touch zones."""
     nodes = gb.load_nodes(DOGFOOD)
@@ -160,6 +168,7 @@ def test_render_brief_dependency_context_empty_when_no_deps() -> None:
     assert "_no effective dependencies_" in text
 
 
+@pytest.mark.slow
 def test_render_brief_is_deterministic() -> None:
     """F-004: same inputs => byte-identical output."""
     nodes = gb.load_nodes(DOGFOOD)
@@ -169,6 +178,7 @@ def test_render_brief_is_deterministic() -> None:
     assert a == b
 
 
+@pytest.mark.slow
 def test_unknown_node_exits() -> None:
     proc = subprocess.run(
         [
@@ -187,6 +197,7 @@ def test_unknown_node_exits() -> None:
 # --- ## 9. History (derived from git) ---------------------------------------
 
 
+@pytest.mark.slow
 def test_render_brief_includes_the_history_section() -> None:
     """The section header is a stable landmark even with nothing to report."""
     from specy_road.bundled_scripts import generate_brief as gb
@@ -197,6 +208,7 @@ def test_render_brief_includes_the_history_section() -> None:
     assert "## 9. History (derived from git)" in text
 
 
+@pytest.mark.slow
 def test_render_brief_no_history_omits_the_section() -> None:
     from specy_road.bundled_scripts import generate_brief as gb
 
@@ -228,7 +240,7 @@ def test_render_brief_history_reports_archived_work_in_the_subtree(tmp_path) -> 
     from specy_road.bundled_scripts import generate_brief as gb
     from specy_road.archive_ops import archive_node
     from specy_road.history_index import clear_memo
-    from tests.test_history_walk import commit, git
+    from tests.support.extracted.history_walk import commit, git
 
     dest = tmp_path / "repo"
     import shutil
@@ -248,6 +260,7 @@ def test_render_brief_history_reports_archived_work_in_the_subtree(tmp_path) -> 
     assert "specy-road show-archive M0.1-" in text
 
 
+@pytest.mark.slow
 def test_render_brief_shows_goal_and_numbered_acceptance() -> None:
     """Review records cite A1..An, so the brief must number acceptance."""
     nodes = gb.load_nodes(DOGFOOD)
@@ -263,6 +276,7 @@ def test_render_brief_shows_goal_and_numbered_acceptance() -> None:
     assert "- **A2:** CI passes on dogfood" in section1
 
 
+@pytest.mark.slow
 def test_render_brief_says_when_goal_and_acceptance_are_missing() -> None:
     nodes = gb.load_nodes(DOGFOOD)
     by_id = gb.index(nodes)
@@ -282,6 +296,7 @@ def test_acceptance_ids_skip_blank_entries() -> None:
 # --- size line and warning (A2) ----------------------------------------------
 
 
+@pytest.mark.slow
 def test_render_brief_header_states_its_size_and_largest_sections() -> None:
     by_id = gb.index(gb.load_nodes(DOGFOOD))
     text = gb.render_brief("M0.3", by_id, repo_root=DOGFOOD)
@@ -291,6 +306,7 @@ def test_render_brief_header_states_its_size_and_largest_sections() -> None:
     assert line.count("` ") == 3 and "`## 4. Shared contracts (cited)`" in line and "Intent" not in line
 
 
+@pytest.mark.slow
 def test_size_warning_names_the_largest_sections_past_the_threshold(capsys) -> None:
     from specy_road.brief_acceptance import SIZE_WARN_BYTES, size_warning
 

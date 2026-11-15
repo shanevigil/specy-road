@@ -19,13 +19,10 @@ from specy_road.brainstorm_session import (
 from specy_road.planning_sheet_bootstrap import placeholder_sheet, promote_placeholder
 from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
+from tests.support.same.section_01bb84fed3e3 import _section
+from tests.support.same.sheet_6e3ca8bf910b import _sheet
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def _judged_session(**kw) -> BrainstormSession:
@@ -41,14 +38,8 @@ def _judged_session(**kw) -> BrainstormSession:
     return s
 
 
-def _sheet(root: Path, node_id: str) -> str:
-    node = next(n for n in load_roadmap(root)["nodes"] if n["id"] == node_id)
-    return (root / node["planning_dir"]).read_text(encoding="utf-8")
 
 
-def _section(text: str, heading: str) -> str:
-    body = text.split(f"## {heading}\n", 1)[1]
-    return body.split("\n## ", 1)[0]
 
 
 def test_references_list_overlaps_by_id_and_relation(repo: Path) -> None:

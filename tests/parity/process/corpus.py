@@ -23,9 +23,9 @@ from pathlib import Path
 
 import yaml
 
-from tests.milestone_repo_helpers import make_milestone_repo
+from tests.support.milestone import make_milestone_repo
 from tests.parity.support import cli_env, normalise
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
+from tests.support.review import NODE, commit_file, make_review_repo, git
 
 GOLDEN = Path(__file__).resolve().parent / "golden"
 

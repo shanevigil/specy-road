@@ -32,40 +32,22 @@ from specy_road.brainstorm_session import (
     session_path,
     write_session,
 )
+from tests.support.same.cli_11f0555f0fa9 import _cli
+from tests.support.same.prompt_26b6cb7fef04 import _prompt
+from tests.support.same.session_9301503dde8a import _session
+from tests.support.same.start_f653667be42d import _start
 
 SLUG = "how-do-we-expand-payments"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    import contextlib
-
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code or 0)
-    return code, out.getvalue(), err.getvalue()
 
 
-def _start(repo: Path, *extra: str) -> tuple[int, str, str]:
-    return _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
 
 
-def _prompt(repo: Path, pass_name: str = "r1") -> str:
-    return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
-def _session(repo: Path) -> BrainstormSession:
-    return read_session(repo, SLUG)
 
 
 # --- session model ----------------------------------------------------------

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
+from tests.support.review import NODE, make_review_repo, review_text, git
 
 from specy_road import review_signing as rs
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
@@ -16,23 +16,14 @@ from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.review_files import PACKET_NAME, load_review, review_path, reviews_dir
 from specy_road.review_gate import evaluate_gate
+from tests.support.same.key_5acf3bfe8b72 import _key
+from tests.support.extracted.review_signing import _roster
 
 pytestmark = pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="needs OpenSSH ssh-keygen")
 
 
-def _key(tmp_path: Path, name: str) -> tuple[Path, str]:
-    key = tmp_path / f"{name}_key"
-    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", name, "-f", str(key)], check=True)
-    return key, (tmp_path / f"{name}_key.pub").read_text(encoding="utf-8").strip()
 
 
-def _roster(opus_pub: str, human_pub: str | None = None, *, signed: bool = True) -> str:
-    human = f"  - {{id: human, family: human, roles: [coordinator, reviewer], public_key: \"{human_pub}\"}}\n" if human_pub \
-        else "  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
-    return ("version: 1\nroster:\n" + human +
-            f"  - {{id: opus, family: anthropic, roles: [reviewer], public_key: \"{opus_pub}\"}}\n"
-            "  - {id: sol, family: openai, roles: [reviewer]}\n"
-            f"policy: {{reviewers_required: 1, signed_reviews: {'true' if signed else 'false'}}}\n")
 
 
 def _record(repo: Path, model: str, **kw) -> dict:
@@ -146,6 +137,7 @@ def _cli(*args: str) -> int:
     return e.value.code or 0
 
 
+@pytest.mark.slow
 def test_review_record_signs_with_a_key_and_refuses_without_one(tmp_path: Path, capsys) -> None:
     key, pub = _key(tmp_path, "opus")
     repo = make_review_repo(tmp_path, orchestration=_roster(pub))
@@ -204,6 +196,7 @@ def test_reviewer_prompt_and_handoff_status_name_the_sign_key(tmp_path: Path, ca
         assert "can approve (file with `specy-road review record`)" in status and "--sign-key" not in status
 
 
+@pytest.mark.slow
 def test_a_launched_reviewers_verdict_is_filed_signed_with_the_callers_key(tmp_path: Path) -> None:
     from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
     from tests.support.cli import run_main

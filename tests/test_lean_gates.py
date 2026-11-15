@@ -12,6 +12,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
+pytestmark = pytest.mark.repo
 
 ROOT = Path(__file__).resolve().parents[1]
 MUTMUT_SAMPLE = ROOT / "tests" / "fixtures" / "mutation" / "results-sample.txt"
@@ -79,6 +80,7 @@ def _pylint() -> str:
     return exe
 
 
+@pytest.mark.slow
 def test_check_clones_passes_on_committed_baseline(monkeypatch):
     exe = _pylint()
     monkeypatch.chdir(ROOT)
@@ -146,6 +148,7 @@ def test_find_private_refs_forms():
     }
 
 
+@pytest.mark.slow
 def test_private_imports_pass_on_committed_baseline(monkeypatch):
     monkeypatch.chdir(ROOT)
     assert private_imports.main([]) == 0
@@ -219,6 +222,7 @@ def _commit(repo: Path, message: str, author: tuple[str, str] = PUBLIC, committe
     return subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
 
 
+@pytest.mark.slow
 def test_public_hygiene_passes_on_this_repo():   # the script, its allow file and this file among them
     assert hygiene.main([]) == 0
 

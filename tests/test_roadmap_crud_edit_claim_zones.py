@@ -13,17 +13,16 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts import roadmap_chunk_router
 from specy_road.roadmap_crud_ops import cmd_edit, edit_node_set_pairs
 from specy_road.finish_implementation_check import implementation_gate_error
 from specy_road.registry_yaml import read_registry, registry_path
+from tests.support.same.edit_70b56ec19282 import _edit
 
 
-def _edit(repo: Path, *sets: str) -> None:
-    cmd_edit(SimpleNamespace(repo_root=str(repo), node_id="M1.1", set=list(sets), sync_codename=False))
 
 
 def _claim(repo: Path) -> dict:

@@ -24,42 +24,20 @@ from specy_road.orchestration.grind.grind_session_in_flight import (
     prepare_resume,
 )
 from specy_road.orchestration.grind.session_plan import BlockedLeaf, SessionPlan, Wave
+from tests.support.same.events_bc2d3e84325c import _events
+from tests.support.same.plan_a42dad7814e8 import _plan
+from tests.support.same.reg_506cecd4ff0e import _reg
+from tests.support.extracted.grind_session_in_flight import _artifacts, _entry
 
 TS = "2026-09-07T00:00:00Z"
 
 
-def _plan(ready=None, blocked=None, active=None):
-    ready = ready or []
-    return SessionPlan(
-        under=None,
-        ready=list(ready),
-        blocked=list(blocked or []),
-        active=list(active or []),
-        closed=[],
-        gated=[],
-        gates_open=[],
-        needs_codename=[],
-        waves=[Wave(index=0, node_ids=list(ready))] if ready else [],
-        parallel_batches=[list(ready)] if ready else [],
-        totals={"ready": len(ready)},
-    )
 
 
-def _reg(*entries):
-    return {"version": 1, "entries": list(entries)}
 
 
-def _entry(node_id, codename, branch=None):
-    return {
-        "node_id": node_id,
-        "codename": codename,
-        "branch": branch or f"feature/rm-{codename}",
-    }
 
 
-def _events(capsys):
-    out = capsys.readouterr().out.strip().splitlines()
-    return [json.loads(line) for line in out if line.strip()]
 
 
 # ---------------------------------------------------------------------------
@@ -206,11 +184,6 @@ def test_extra_claims_are_listed_but_only_one_is_named(capsys, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _artifacts(repo_root, node_id, *, brief="brief", prompt="prompt"):
-    work = repo_root / "work"
-    work.mkdir(parents=True, exist_ok=True)
-    (work / f"brief-{node_id}.md").write_text(brief, encoding="utf-8")
-    (work / f"prompt-{node_id}.md").write_text(prompt, encoding="utf-8")
 
 
 def test_prepare_resume_checks_out_and_keeps_existing_artifacts(tmp_path):

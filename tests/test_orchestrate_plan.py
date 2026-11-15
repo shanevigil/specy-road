@@ -40,6 +40,7 @@ def test_senior_eligibility_picks_the_tagged_class(tmp_path: Path) -> None:
     assert "opus" not in a.reviewers and set(a.reviewers) == {"sol", "human"}
 
 
+@pytest.mark.slow
 def test_unavailable_model_is_skipped_until_its_date(tmp_path: Path) -> None:
     roster = ROSTER.replace("    may_process: [public, internal]\n", "    may_process: [public, internal]\n    unavailable_until: 2026-11-10\n", 1)
     repo = plan_repo(tmp_path, roster=roster)
@@ -55,6 +56,7 @@ def test_substitute_counts_as_a_reviewer(tmp_path: Path) -> None:
     assert "sol" in a.reviewers and any("[substitute]" in n for n in a.notes)
 
 
+@pytest.mark.slow
 def test_cli_text_and_json_and_exit_code(tmp_path: Path, capsys) -> None:
     repo = plan_repo(tmp_path)
     with pytest.raises(SystemExit) as e:

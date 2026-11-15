@@ -15,16 +15,12 @@ from specy_road.bundled_scripts import finish_task
 from specy_road.finish_on_complete_override import configured_on_complete, needs_override
 from specy_road.on_complete_session import on_complete_session_path, write_on_complete_session
 from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.same.exit_a673d831c5ea import _exit
 
 BR = "feature/rm-thing"
 
 
-def _exit(fn, argv: list[str]) -> int:
-    with pytest.raises(SystemExit) as e:
-        fn(argv)
-        raise SystemExit(0)
-    return e.value.code or 0
 
 
 def _repo(tmp_path: Path, monkeypatch, mode: str) -> tuple[Path, Path]:
@@ -64,6 +60,7 @@ def test_merge_over_a_committed_pr_is_refused_before_anything_changes(
     assert git(repo, "branch", "--show-current") == BR
 
 
+@pytest.mark.slow
 def test_a_repeat_finish_cannot_land_a_pr_mode_leaf_with_merge(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
@@ -80,6 +77,7 @@ def test_a_repeat_finish_cannot_land_a_pr_mode_leaf_with_merge(
     assert git(bare, "rev-parse", "dev") == dev
 
 
+@pytest.mark.slow
 def test_the_configured_value_passed_explicitly_still_lands(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
@@ -91,6 +89,7 @@ def test_the_configured_value_passed_explicitly_still_lands(
     assert git(bare, "merge-base", "--is-ancestor", git(repo, "rev-parse", BR), "dev") == ""
 
 
+@pytest.mark.slow
 def test_the_acknowledgement_lets_a_person_override(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
@@ -104,6 +103,7 @@ def test_the_acknowledgement_lets_a_person_override(
     assert f"[ok] merged {BR} into dev and pushed to origin" in out
 
 
+@pytest.mark.slow
 def test_pr_is_never_refused(tmp_path: Path, monkeypatch, capsys) -> None:
     """pr lands nothing and keeps the branch: the safe direction needs no acknowledgement."""
     repo, bare = _repo(tmp_path, monkeypatch, "merge")
@@ -115,6 +115,7 @@ def test_pr_is_never_refused(tmp_path: Path, monkeypatch, capsys) -> None:
     assert git(bare, "rev-parse", "dev") == dev
 
 
+@pytest.mark.slow
 def test_an_overridden_landing_that_fails_names_the_flag_on_its_re_run(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
@@ -129,6 +130,7 @@ def test_an_overridden_landing_that_fails_names_the_flag_on_its_re_run(
     assert "finish-this-task --on-complete merge --override-on-complete" in capsys.readouterr().err
 
 
+@pytest.mark.slow
 def test_the_pickup_session_counts_as_the_configured_mode(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:

@@ -20,8 +20,8 @@ from typing import Any, Callable
 import pytest
 import yaml
 
-from tests.decisions_repo_helpers import decisions_repo
-from tests.review_repo_helpers import make_review_repo
+from tests.support.decisions import decisions_repo
+from tests.support.review import make_review_repo
 from tests.worker_lease_helpers import idle_worker
 
 from specy_road import clock

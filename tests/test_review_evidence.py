@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
+from tests.support.review import commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp
@@ -20,6 +20,7 @@ from specy_road.orchestration_config import parse_orchestration_text
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_target import resolve_target
+from tests.support.same.run_651387813ee4 import _run
 
 ONE_AI = """version: 1
 roster:
@@ -28,10 +29,6 @@ roster:
 """
 
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def _ready(repo: Path, verify: str) -> None:

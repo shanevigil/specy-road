@@ -8,9 +8,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_delegate_helpers import delegate_repo, run_review_cli, set_steps, verdict_step
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output, review_text
-from tests.test_review_cli import ONE_AI
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
+from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
+from tests.support.review import commit_file, make_review_repo, review_output, review_text, git
+from tests.support.extracted.review_cli import ONE_AI
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import list_reviews, reviews_dir
@@ -111,6 +112,7 @@ def test_marker_at_another_commit_is_not_shown(tmp_path: Path, capsys) -> None:
     assert not st.get("refused")
 
 
+@pytest.mark.slow
 def test_delegated_refusal_writes_the_same_marker(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     stale = review_output(git(repo, "rev-parse", "HEAD~1"), model="opus")

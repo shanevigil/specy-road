@@ -14,26 +14,14 @@ import yaml
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.brainstorm_session import BrainstormError, read_session, session_path
 from tests.helpers import DOGFOOD
+from tests.support.same.cli_3c7fcb2cc75e import _cli
+from tests.support.same.session_9311e77aa0c8 import _session
 
 SLUG = "how-do-we-expand-payments"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code) if isinstance(e.code, int) else 1
-    return code, out.getvalue(), err.getvalue()
 
 
 def _start(repo: Path, *titles: str) -> None:
@@ -42,8 +30,6 @@ def _start(repo: Path, *titles: str) -> None:
         assert _cli(repo, "add-idea", "--title", title)[0] == 0
 
 
-def _session(repo: Path):
-    return read_session(repo, SLUG)
 
 
 def _file(tmp_path: Path, name: str, data) -> str:

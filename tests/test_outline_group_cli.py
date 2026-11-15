@@ -40,12 +40,9 @@ from tests.move_node_helpers import (
     unchanged_except,
     wide_fixture,
 )
+from tests.support.same.repo_cbcea23f14ab import repo
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    wide_fixture(tmp_path)
-    return tmp_path
 
 
 def _make_gate(root: Path, node_id: str) -> None:

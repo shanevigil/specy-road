@@ -9,23 +9,25 @@ from typing import Callable
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, advance_dev, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, advance_dev, commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import review_cli, review_packet as rp
 from specy_road.bundled_scripts.role_prompt import reviewer_packet
 from specy_road.review_files import PACKET_NAME, archive_review, reviews_dir
 from specy_road.review_gate import delta_basis, evaluate_gate, is_doc_or_test
 from specy_road.review_target import resolve_target
+from tests.support.same.gate_9f3572d00caf import _gate
+from tests.support.extracted.delta_review import (
+    FINDING,
+    ROSTER,
+    SHEET,
+    TEST_FILE,
+    TEST_SRC,
+    _file,
+    _ready,
+    fix_round,
+)
 
-ROSTER = """version: 1
-roster:
-  - {id: opus, family: anthropic, roles: [reviewer]}
-  - {id: sonnet, family: anthropic, roles: [reviewer]}
-  - {id: sol, family: openai, roles: [reviewer]}
-policy: {reviewers_required: 2, reviewers_distinct_families: true%s}
-"""
-TEST_FILE = "src/tests/test_a.py"
-TEST_SRC = "def test_a():\n    assert 1\n"
 
 
 def _repo(tmp_path: Path, policy: str = "") -> tuple[Path, str]:
@@ -36,22 +38,6 @@ def _repo(tmp_path: Path, policy: str = "") -> tuple[Path, str]:
     return repo, approved
 
 
-def _file(repo: Path, model: str, commit: str, verdict: str = "approve", delta_from: str | None = None,
-          drop: str | None = None, findings: dict | None = None) -> None:
-    """File a record as `review record` does: the live REVIEW-<model>.md plus a copy under history/.
-    ``drop`` leaves out that acceptance id's result, so the record is incomplete for the brief."""
-    found = {"correctness": [], "regression": [], "boundary": [], "test_integrity": [], **(findings or {})}
-    text = review_text(commit, model=model, verdict=verdict, a1="pass" if verdict == "approve" else "fail",
-                       findings=found)
-    text = text.replace("notes\n", f"{model} notes on {commit[:7]}\n")
-    if drop:
-        text = text.replace(f"  {drop}: pass\n", "")
-    if delta_from:
-        text = text.replace("---\n", f"---\ndelta_from: '{delta_from}'\n", 1)
-    d = reviews_dir(repo, "M1.1")
-    d.mkdir(parents=True, exist_ok=True)
-    (d / f"REVIEW-{model}.md").write_text(text)
-    archive_review(repo, "M1.1", model, text)
 
 
 def _fix(repo: Path, files: dict[str, str]) -> str:
@@ -60,8 +46,6 @@ def _fix(repo: Path, files: dict[str, str]) -> str:
     return git(repo, "rev-parse", "HEAD")
 
 
-def _gate(repo: Path):
-    return evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
 
 
 def _why(repo: Path, model: str) -> str:
@@ -150,6 +134,7 @@ def test_an_earlier_approval_missing_an_acceptance_result_is_no_delta_basis(tmp_
     assert not _gate(repo).approvals
 
 
+@pytest.mark.slow
 def test_the_gate_refuses_a_delta_approval_while_review_packet_full_is_current(tmp_path: Path) -> None:
     repo, approved = _repo(tmp_path)
     head = _fix(repo, {"src/NOTES.md": "# n\n"})
@@ -233,40 +218,10 @@ def test_review_packet_full_stops_delta_packets(tmp_path: Path) -> None:
 
 # --- fix check (M22.52): the blocker checks its findings, the other family's approval carries ----------------
 
-FINDING = "src/b.py divides by zero"
-SHEET = "# M1.1 Thing\n\n## Intent\n\nDo the thing.\n\n## Tier\n\n%s: a small change.\n"
 
 
-def _ready(repo: Path, fix_of: str | None) -> int:
-    """composer's READY at HEAD via `specy-road ready`, naming ``fix_of`` when given."""
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(["ready", "M1.1", "--model", "composer", "--verify", "true=0",
-                         *(["--fix-of", fix_of] if fix_of else []), "--repo-root", str(repo)])
-    return e.value.code
 
 
-def fix_round(tmp_path: Path, *, fix: Callable[[Path], object] | None = None, fix_of: str | None = "sol",
-              tier: str | None = "plain", branch_tier: str | None = None, policy: str = "",
-              roster: str = ROSTER, delta: bool = False) -> tuple[Path, str, str]:
-    """``(repo, P, F)``: opus (anthropic) approves ``P``, sol (openai) blocks it with :data:`FINDING`, and ``fix``
-    (default: commit ``src/b.py``) makes the fix commit ``F``; composer's READY at ``F`` names ``<fix_of>@P``.
-    The integration branch's sheet names ``tier`` (``None``: today's sheet, which has no ``## Tier``);
-    ``branch_tier`` sets the branch's own copy before ``P``. ``delta``: opus approved ``P``'s parent in full and
-    ``P`` (a test-only change) as a delta review from it."""
-    repo = make_review_repo(tmp_path, orchestration=roster % policy)
-    if branch_tier:
-        commit_file(repo, NODE["planning_dir"], SHEET % branch_tier, "branch sheet")
-    basis = git(repo, "rev-parse", "HEAD")
-    if delta:
-        _file(repo, "opus", basis)
-    approved = commit_file(repo, TEST_FILE, TEST_SRC, "first round")
-    _file(repo, "opus", approved, delta_from=basis if delta else None)
-    _file(repo, "sol", approved, verdict="block", findings={"correctness": [FINDING]})
-    if tier:
-        advance_dev(repo, NODE["planning_dir"], SHEET % tier)
-    (fix or (lambda r: commit_file(r, "src/b.py", "x = 1\n", "fix")))(repo)
-    assert _ready(repo, fix_of and f"{fix_of}@{approved}") == 0
-    return repo, approved, git(repo, "rev-parse", "HEAD")
 
 
 def _carried(repo: Path) -> bool:
@@ -285,6 +240,7 @@ def _status(repo: Path, capsys) -> dict:
     return json.loads(capsys.readouterr().out)["nodes"][0]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("roster", [ROSTER, ROSTER.replace("reviewers_required: 2, reviewers_distinct_families: true",
                                                            "reviewers_required: 1, reviewers_distinct_families: false")])
 @pytest.mark.parametrize("then", [None, "approve", "block"])

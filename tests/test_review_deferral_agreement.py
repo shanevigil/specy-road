@@ -8,9 +8,18 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, git, make_review_repo
-from tests.test_review_defer import (BUDGET, ROSTER, _block_round, _item, _record, _run, _two_fail_round,
-                                     _write_rca, bound_ledger, human)  # noqa: F401 — human is a fixture
+from tests.support.review import NODE, make_review_repo, git
+from tests.support.extracted.review_defer import (
+    BUDGET,
+    _item,
+    _record,
+    _two_fail_round,
+    _write_rca,
+    bound_ledger,
+    human,
+)
+from tests.support.extracted.review_rca import ROSTER, _block_round
+from tests.support.same.run_651387813ee4 import _run
 
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
@@ -51,6 +60,7 @@ CASES = ["eligible", "earlier_class", "later_round", "crossed_category", "unboun
          "absent_reviewer", "duplicate", "protected_block", "correctness_item"]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", CASES)
 def test_review_defer_and_the_gate_agree(tmp_path: Path, capsys, human, case: str) -> None:
     """The agreement table: each item set is accepted by both, or refused by both."""
@@ -85,6 +95,7 @@ MALFORMED = {
 }
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("name", sorted(MALFORMED))
 def test_a_malformed_marker_resolves_nothing_and_status_stays_usable(tmp_path: Path, capsys, name: str) -> None:
     """R4: with max_fix_rounds unset, a bad marker never raises; status names it on one line."""

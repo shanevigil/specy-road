@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo
-from tests.test_hook_adapters import DENY, PAYLOADS, _run
+from tests.support.review import make_review_repo
+from tests.support.extracted.hook_adapters import DENY, PAYLOADS, _run
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard import tool_call_guard as g

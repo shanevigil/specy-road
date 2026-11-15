@@ -15,10 +15,9 @@ import sys
 from pathlib import Path
 
 from tests.helpers import REPO, script_subprocess_env
+from tests.support.same.git_df16ee62bf81 import _git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=repo)
 
 
 def _stage_dogfood_with_git(tmp_path: Path) -> Path:

@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
-from tests.test_cursor_usage_cost import PROFILES, priced_repo
-from tests.test_worker_adapters import CLAUDE_RESULT, CURSOR_RESULT, FULL_INIT
+from tests.support.review import make_review_repo, git
+from tests.support.extracted.cursor_usage_cost import PROFILES, priced_repo
+from tests.support.extracted.worker_adapters import CLAUDE_RESULT, CURSOR_RESULT, FULL_INIT
 
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws

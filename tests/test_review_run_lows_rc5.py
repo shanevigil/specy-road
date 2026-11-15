@@ -21,7 +21,7 @@ import pytest
 
 from tests.review_delegate_helpers import CAPACITY, delegate_repo, set_steps, verdict_step
 from tests.support.cli import run_main
-from tests.test_review_record_write import GENERIC
+from tests.support.extracted.review_record_write import GENERIC
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import role_prompt
@@ -67,6 +67,7 @@ def _summary(model: str = "opus") -> str:
             f"full text in work/reviews/M1.1/REJECTED-{model}.md)")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("path", ["immediate", "resumed"])
 def test_a_refusal_summary_names_the_first_line_whole_and_counts_the_rest(tmp_path: Path, path: str) -> None:
     repo, spec = delegate_repo(tmp_path)
@@ -86,6 +87,7 @@ def test_the_initial_refusal_summary_through_prompt_run(tmp_path: Path, capsys) 
     assert f"rerun: {_summary('gem')}" in capsys.readouterr().err.splitlines()
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("turn", ["initial", "repair"])
 def test_a_capacity_failure_has_no_parse_reason(tmp_path: Path, turn: str) -> None:
     repo, spec = delegate_repo(tmp_path)
@@ -129,6 +131,7 @@ def _gone(pid: int) -> bool:
     return False
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("runner", ["delegate", "prompt-run"])
 def test_a_reviewer_exiting_while_its_prompt_is_undelivered_ends_its_group_and_the_run(
         tmp_path: Path, monkeypatch, runner: str) -> None:
@@ -156,6 +159,7 @@ def test_an_interrupt_while_the_prompt_is_undelivered_ends_the_reviewers_group_a
     assert run["state"] == "incomplete" and run["reason"].startswith("interrupted")
 
 
+@pytest.mark.slow
 def test_a_reviewer_that_leaves_nothing_gets_no_signal(tmp_path: Path, monkeypatch) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, verdict_step(repo))

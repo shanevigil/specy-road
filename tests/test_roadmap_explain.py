@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from specy_road.bundled_scripts.roadmap_explain import explain, open_gates
+from tests.support.same.reg_506cecd4ff0e import _reg
 
 
 def _node(nid, key, *, type_="task", status="Not Started", parent=None,
@@ -29,8 +30,6 @@ def _chain_graph():
     ]
 
 
-def _reg(*entries):
-    return {"version": 1, "entries": list(entries)}
 
 
 # ---------------------------------------------------------------------------

@@ -15,9 +15,9 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import script_subprocess_env
-from tests.review_repo_helpers import delegate_layout, git, make_review_repo, review_text
-from tests.milestone_repo_helpers import make_milestone_repo
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.review import delegate_layout, make_review_repo, review_text, git
+from tests.support.milestone import make_milestone_repo
+from tests.support.extracted.review_gate import TWO_FAMILIES
 from tests.support.crud import crud_fixture_repo, run_crud
 
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
@@ -100,6 +100,7 @@ def _abort_while_the_base_is_held(tmp_path: Path, monkeypatch) -> tuple[Path, li
     return leaf, ["abort-task-pickup", "--repo-root", str(leaf)]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("setup", [_unlisted_dependency, _leaf_approval_on_a_dirty_tree,
                                    _milestone_approval_on_a_dirty_tree, _abort_while_the_base_is_held])
 def test_each_refusal_exits_1_and_names_a_runnable_next_step(tmp_path: Path, monkeypatch, setup) -> None:

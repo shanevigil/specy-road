@@ -17,6 +17,7 @@ from specy_road.pm_publish import (
 )
 
 from tests.helpers import DOGFOOD
+from tests.support.same.git_04549aebf210 import _git
 
 
 def test_path_in_publish_scope() -> None:
@@ -30,8 +31,6 @@ def test_path_in_publish_scope() -> None:
     assert path_in_publish_scope("README.md") is False
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
 def _git_out(repo: Path, *args: str) -> str:

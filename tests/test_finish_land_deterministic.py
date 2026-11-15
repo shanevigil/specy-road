@@ -19,7 +19,9 @@ from specy_road.finish_land_deterministic import (
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.milestone_rollup_git import cherry_pick_bookkeeping_to_integration
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
-from tests.test_finish_merge_mode import _bootstrap, _commit, _git
+from tests.support.same.commit_553cf5f7a1bf import _commit
+from tests.support.same.git_df16ee62bf81 import _git
+from tests.support.extracted.finish_merge_mode import _bootstrap
 
 
 def _out(repo: Path, *args: str) -> str:

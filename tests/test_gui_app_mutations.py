@@ -9,35 +9,18 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
-from tests.test_set_gate_status import repo_with_gate
+from tests.support.extracted.set_gate_status import repo_with_gate
+from tests.support.same.mutation_headers_1fdfef6b66c9 import _mutation_headers
 
 _M02_PLANNING = (
     "planning/M0.2_roadmap-ci_e7fcdb23-5d23-5bbf-a9b5-aaa0140ff208.md"
 )
 
 
-def _mutation_headers(client: TestClient) -> dict[str, str]:
-    r = client.get("/api/roadmap")
-    assert r.status_code == 200
-    return {"X-PM-Gui-Fingerprint": str(r.json()["fingerprint"])}
 
 
-@pytest.fixture()
-def dogfood_copy(tmp_path: Path) -> Path:
-    dest = tmp_path / "dogfood"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-@pytest.fixture()
-def api_client(
-    dogfood_copy: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> TestClient:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
 def test_api_planning_put_success_updates_file(

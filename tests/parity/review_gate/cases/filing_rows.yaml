@@ -1,7 +1,7 @@
 # `review record` filed from a reviewer's final message (M8.3's one-shot filing path), recorded at pickup.
 #
 # The final message is a Claude Code stream-json turn whose `result` text is `message`, with {answer} replaced by
-# the reviewer's JSON object (tests/review_repo_helpers.review_output: opus approves HEAD, notes "## Findings\n\nnone").
+# the reviewer's JSON object (tests.support.review.review_output: opus approves HEAD, notes "## Findings\n\nnone").
 # `notes` replaces the answer's notes. review_answer.final_answer reads it and review_record_write.file_review
 # files it; `state` is the outcome, then the gate is evaluated as in gate_rows.yaml.
 rows:

@@ -247,6 +247,7 @@ def _drive(tmp: Path, mode: str, reviewers: tuple[str, ...] = ("rev-b", "rev-c")
     return loop
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mode", ["merge", "pr"])
 def test_leaf_loop_matches_golden(tmp_path: Path, mode: str) -> None:
     loop = _drive(tmp_path, mode)
@@ -265,6 +266,7 @@ def test_leaf_loop_matches_golden(tmp_path: Path, mode: str) -> None:
     check_golden(GOLDEN / "leaf_loop" / f"{mode}.json", json.dumps(loop.steps, indent=1) + "\n")
 
 
+@pytest.mark.slow
 def test_leaf_loop_gate_refuses_one_review_short(tmp_path: Path) -> None:
     """The loop exercises the gate: with one of the two reviews missing, the gate check fails."""
     loop = _drive(tmp_path, "merge", reviewers=("rev-b",))

@@ -31,87 +31,26 @@ from specy_road.roadmap_chunk_utils import (
     render_json_chunk,
     write_json_chunk,
 )
+from tests.support.extracted.roadmap_chunk_router import (
+    _NK,
+    _milestone,
+    _node,
+    _phase_M0,
+    _seed_repo,
+    _write_planning,
+)
 
 
-# Use distinct UUID-shaped prefixes so the 6-hex tail of node_key derived
-# filenames differs across nodes (the router takes the first 6 hex chars).
-_NK = "{tail:08d}-0000-4000-8000-000000000001"
 
 
-def _node(
-    nid: str,
-    parent: str | None,
-    *,
-    type_: str = "task",
-    title: str = "T",
-    codename: str | None = None,
-    n_index: int = 1,
-    deps: list[str] | None = None,
-) -> dict:
-    nk = _NK.format(tail=n_index)
-    cn = codename
-    if cn is None and type_ == "task":
-        cn = f"{title.lower().replace(' ', '-')}-{n_index:03d}"
-    pd = (
-        f"planning/{nid}_{cn or 'unnamed'}_{nk}.md"
-        if type_ in ("phase", "milestone", "task", "vision", "gate")
-        else None
-    )
-    out: dict = {
-        "id": nid,
-        "node_key": nk,
-        "parent_id": parent,
-        "type": type_,
-        "title": title,
-        "codename": cn,
-        "planning_dir": pd,
-        "execution_milestone": "Agentic-led" if type_ != "phase" else "Human-led",
-        "status": "Not Started",
-        "touch_zones": [],
-        "dependencies": list(deps or []),
-        "parallel_tracks": 1,
-    }
-    return {k: v for k, v in out.items() if v is not None}
 
 
-def _write_planning(root: Path, node: dict) -> None:
-    pd = node.get("planning_dir")
-    if not isinstance(pd, str):
-        return
-    p = root / pd
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(f"# {node['id']}\n", encoding="utf-8")
 
 
-def _seed_repo(root: Path, chunks: dict[str, list[dict]]) -> None:
-    """Build a minimal-but-complete repo: schemas, constraints, planning, manifest, chunks."""
-    shutil.copytree(SCHEMAS, root / "schemas")
-    shutil.copytree(REPO / "constraints", root / "constraints")
-    (root / "shared").mkdir(parents=True)
-    (root / "shared" / "README.md").write_text("# Shared\n", encoding="utf-8")
-    (root / "roadmap" / "phases").mkdir(parents=True)
-    (root / "roadmap" / "registry.yaml").write_text(
-        "version: 1\nentries: []\n", encoding="utf-8"
-    )
-    includes = list(chunks.keys())
-    (root / "roadmap" / "manifest.json").write_text(
-        json.dumps({"version": 1, "includes": includes}) + "\n",
-        encoding="utf-8",
-    )
-    pl = root / "planning"
-    pl.mkdir(parents=True)
-    for rel, nodes in chunks.items():
-        write_json_chunk(root / "roadmap" / rel, nodes)
-        for n in nodes:
-            _write_planning(root, n)
 
 
-def _phase_M0(parent: str | None = None) -> dict:
-    return _node("M0", None, type_="phase", title="phase0", codename=None, n_index=1)
 
 
-def _milestone(nid: str, parent: str, *, n_index: int) -> dict:
-    return _node(nid, parent, type_="milestone", title=f"m{n_index}", n_index=n_index)
 
 
 def _task(nid: str, parent: str, *, n_index: int) -> dict:

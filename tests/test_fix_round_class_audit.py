@@ -4,13 +4,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.profiles import make_profile_repo
-from tests.test_rework_findings_in_prompt import executor_prompt, file_review, stopped_worker
+from tests.support.extracted.rework_findings_in_prompt import (
+    executor_prompt,
+    file_review,
+    stopped_worker,
+)
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker
 
 from specy_road.orchestration.role_prompt_rework import CLASS_AUDIT_LINES
+import pytest
 
 AUDIT = CLASS_AUDIT_LINES[0]
 
@@ -44,6 +49,7 @@ def _sent(repo: Path) -> str:
     return prompt.read_text(encoding="utf-8")
 
 
+@pytest.mark.slow
 def test_fix_round_sends_findings_audit_and_text(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
@@ -60,6 +66,7 @@ def test_fix_round_sends_findings_audit_and_text(tmp_path: Path) -> None:
     assert sent.endswith("Also rerun the gate.\n")
 
 
+@pytest.mark.slow
 def test_fix_round_without_text_and_its_refusal(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
@@ -72,6 +79,7 @@ def test_fix_round_without_text_and_its_refusal(tmp_path: Path, capsys) -> None:
     assert _sent(repo).endswith(AUDIT + "\n")
 
 
+@pytest.mark.slow
 def test_plain_message_is_sent_unchanged(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))

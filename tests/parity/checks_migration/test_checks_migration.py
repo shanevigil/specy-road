@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.profiles import make_profile_repo
 
 from specy_road.bundled_scripts import review_cli, review_packet, role_prompt, validate_roadmap
@@ -44,7 +44,7 @@ from specy_road.bundled_scripts.do_next_available import run_baseline_gate
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.finish_land_local import land_root_locally
 from specy_road.review_files import PACKET_NAME, load_ready, reviews_dir
-from tests.upgrade_repo_helpers import old_repo
+from tests.support.upgrade import old_repo
 
 HERE = Path(__file__).resolve().parent
 ROWS = yaml.safe_load((HERE / "rows.yaml").read_text(encoding="utf-8"))["rows"]
@@ -258,6 +258,7 @@ def test_entries_run_in_file_order_until_one_fails(stage: str, tmp_path: Path, m
     assert got["ok"] is False
 
 
+@pytest.mark.slow
 def test_upgrade_rewrites_the_keys_once_and_leaves_the_review_switch(tmp_path: Path,
                                                                      capsys) -> None:
     """A4: ``--dry-run`` writes nothing; upgrade rewrites the keys once, keeping other lines."""

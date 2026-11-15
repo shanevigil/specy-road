@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from specy_road.roadmap_crud_ops import cmd_edit
 from specy_road.bundled_scripts.validate_registry_overlap import touch_zone_overlap
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 
 def _zones_clash(x: str, y: str) -> bool:

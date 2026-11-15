@@ -12,6 +12,7 @@ from specy_road.finish_implementation_check import (
     implementation_paths,
     zone_matches,
 )
+from tests.support.same.git_04549aebf210 import _git
 
 
 # ---------------------------------------------------------------------------
@@ -43,8 +44,6 @@ def test_zone_matching(zone, path, expected):
 # ---------------------------------------------------------------------------
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
 @pytest.fixture

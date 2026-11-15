@@ -13,11 +13,13 @@ import json
 import uuid
 from pathlib import Path
 
-from tests.test_baseline_gate_cli import FEATURE, SHEET, _branches, _git, _pickup, _project, _run
+from tests.support.extracted.baseline_gate_cli import _branches, _git
+from tests.support.pickup import FEATURE, SHEET, make_pickup_project as _project, run_pickup as _pickup, run_specy_road as _run
 
 from specy_road.agents_md_block import render_rules
 from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
 from specy_road.planning_artifacts import expected_planning_rel
+import pytest
 
 SECOND = "feature/rm-leaf-two"
 
@@ -44,6 +46,7 @@ def _registry(root: Path, ref: str) -> str:
     return _git(root, "show", f"{ref}:roadmap/registry.yaml")
 
 
+@pytest.mark.slow
 def test_second_pickup_exits_6_naming_the_held_claim_and_claims_nothing(tmp_path: Path) -> None:
     root = _two_leaves(tmp_path)
     assert _pickup(root).returncode == 0
@@ -60,6 +63,7 @@ def test_second_pickup_exits_6_naming_the_held_claim_and_claims_nothing(tmp_path
     assert SECOND not in _branches(root)
 
 
+@pytest.mark.slow
 def test_allow_second_claim_picks_up_the_next_leaf(tmp_path: Path) -> None:
     root = _two_leaves(tmp_path)
     assert _pickup(root).returncode == 0
@@ -69,6 +73,7 @@ def test_allow_second_claim_picks_up_the_next_leaf(tmp_path: Path) -> None:
     assert "leaf-one" in _registry(root, "origin/main") and "leaf-two" in _registry(root, "origin/main")
 
 
+@pytest.mark.slow
 def test_a_claim_whose_branch_is_gone_does_not_block(tmp_path: Path) -> None:
     root = _two_leaves(tmp_path)
     assert _pickup(root).returncode == 0
@@ -80,6 +85,7 @@ def test_a_claim_whose_branch_is_gone_does_not_block(tmp_path: Path) -> None:
     assert _git(root, "branch", "--show-current") == SECOND
 
 
+@pytest.mark.slow
 def test_claims_checked_out_in_other_worktrees_are_theirs_not_this_checkouts(tmp_path: Path) -> None:
     root = _two_leaves(tmp_path)
     assert _pickup(root, "--worktree").returncode == 0
@@ -89,6 +95,7 @@ def test_claims_checked_out_in_other_worktrees_are_theirs_not_this_checkouts(tmp
     assert _git(root / "work" / ".worktrees" / "leaf-two", "branch", "--show-current") == SECOND
 
 
+@pytest.mark.slow
 def test_a_leaf_finished_in_pr_mode_does_not_block_the_next_pickup(tmp_path: Path) -> None:
     """``pr`` finish releases the row on the feature branch only; ``main`` keeps it until the PR merges."""
     root = _two_leaves(tmp_path)

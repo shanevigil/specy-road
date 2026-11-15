@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws

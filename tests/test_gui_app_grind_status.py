@@ -22,7 +22,17 @@ from specy_road.gui_app import create_app
 from specy_road.milestone_session import milestone_session_path, write_milestone_session
 from specy_road.orchestration.guard.session_presence import start_session
 from specy_road.orchestration.workers.worker_state import create_record
-from tests.test_grind_status import D1, D2, branch_with, claim, commit, git, make_repo, node, set_status
+from tests.support.extracted.grind_status import (
+    D1,
+    D2,
+    branch_with,
+    claim,
+    commit,
+    git,
+    make_repo,
+    node,
+    set_status,
+)
 
 MOCK = Path(__file__).resolve().parents[1] / "gui" / "pm-gantt" / "src" / "fixtures" / "grind_status_mock.json"
 # Every leaf the live clock can see: a presence session expires by the wall clock, so ``now`` is pinned near it.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 # grind_session_cleanup now lives in specy_road, so it is not a bundled entry point.
@@ -221,6 +222,7 @@ def test_difference_lists_every_change_and_main_exits_zero(tmp_path, capsys):
     assert "no difference from the committed report" in capsys.readouterr().out
 
 
+@pytest.mark.slow
 def test_report_names_the_cycles_and_running_it_exits_zero(monkeypatch):
     """The live scan and the committed report keep roadmap_load apart from review_gate and
     roadmap_crud apart from chore_cli, and the script exits 0."""

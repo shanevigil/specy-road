@@ -36,28 +36,15 @@ from specy_road.brainstorm_session import (
     read_session,
 )
 from specy_road.gui_app_routes_brainstorm import _payload
+from tests.support.same.cli_4bb09fdf3883 import _cli
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = "how-do-we-expand-payments"
 FORBIDDEN = ("planning/", "roadmap/", "registry.yaml", "shared/", "Do not edit code")
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code or 0)
-    return code, out.getvalue(), err.getvalue()
 
 
 def _started(repo: Path, *extra: str) -> BrainstormSession:

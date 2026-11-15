@@ -14,8 +14,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, commit_file, git
-from tests.test_branch_cleanup import BR, _exit, _merge_mode_repo
+from tests.support.review import NODE, commit_file, git
+from tests.support.same.exit_a673d831c5ea import _exit
+from tests.support.extracted.branch_cleanup import BR, _merge_mode_repo
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker
 
@@ -265,6 +266,7 @@ def test_the_refusal_lists_running_and_held_workers_separately(tmp_path: Path) -
         "2 running: w-0001, w-0002; wait for one to finish or raise the limit")
 
 
+@pytest.mark.slow
 def test_finished_records_leave_a_slot_and_two_running_workers_refuse(tmp_path: Path, monkeypatch, capsys) -> None:
     """M15.26: 19 completed or failed records plus one running worker, max_workers 2, leave a slot free;
     two running workers refuse. A pid-less running record would be swept to failed before the cap, so the
@@ -353,6 +355,7 @@ def test_terminate_one_worker_still_works(tmp_path: Path, capsys) -> None:
 
 # --- A3: finish-this-task ------------------------------------------------------------------------------------------
 
+@pytest.mark.slow
 def test_finish_terminates_the_finished_leafs_idle_and_completed_workers(tmp_path: Path, monkeypatch, capsys) -> None:
     repo, _bare = _merge_mode_repo(tmp_path, monkeypatch)
     done = _worker(repo, "M1.1", "completed", branch=BR)

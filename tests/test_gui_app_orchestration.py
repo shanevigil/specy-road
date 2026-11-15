@@ -18,7 +18,8 @@ from specy_road.review_files import reviews_dir
 from specy_road.orchestration.workers.worker_sandbox import state_home
 from specy_road.orchestration.workers.worker_state import create_record, set_state, workers_dir
 from tests.helpers import REPO
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.support.review import make_review_repo, review_text, git
+from tests.support.same.quoted_aa331427ddf7 import _quoted
 
 NODE = "M1.1"
 ROSTER = (
@@ -58,8 +59,6 @@ def key_paths(value: object, path: str = "", found: set[str] | None = None) -> s
     return found
 
 
-def _quoted(block: str) -> list[str]:
-    return re.findall(r'"([^"]*)"', block)
 
 
 def required_key_paths() -> set[str]:
@@ -237,6 +236,7 @@ def check_row(case: str, body: dict) -> None:
             assert "divergent-model" not in blob and "w-0099" not in blob
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", ["empty", "live", "unreadable", "secret", "nested", "linked"])
 def test_fixture_repos(case: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Each row is the snapshot of the main project, with nothing added."""

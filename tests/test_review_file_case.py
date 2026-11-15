@@ -12,19 +12,16 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.test_review_cli import ONE_AI
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_cli import ONE_AI
 
 from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed, review_cli
 from specy_road.review_files import list_reviews, review_path, reviews_dir, write_review
 from specy_road.review_gate import evaluate_gate, write_human_approval
 from specy_road.review_rejected import rejected_state, unreadable_rejected_lines, write_rejected
+from tests.support.same.run_651387813ee4 import _run
 
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def _lowercase_record(repo: Path, name: str = "review-opus.md", commit: str | None = None) -> Path:

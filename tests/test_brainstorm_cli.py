@@ -19,11 +19,6 @@ from specy_road.brainstorm_session import resolve_slug
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def _run(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -133,6 +128,7 @@ def test_the_roadmap_inventory_moves_to_the_converge_prompt(repo: Path) -> None:
     assert "`M0.1`" in text
 
 
+@pytest.mark.slow
 def test_add_idea_allocates_ids_in_order(repo: Path) -> None:
     _start(repo)
 
@@ -143,6 +139,7 @@ def test_add_idea_allocates_ids_in_order(repo: Path) -> None:
     assert "[ok] B2 Two" in second.stdout
 
 
+@pytest.mark.slow
 def test_list_reports_status_and_recommendation(repo: Path) -> None:
     _start(repo)
     _run(repo, "add-idea", "--title", "One")
@@ -153,6 +150,7 @@ def test_list_reports_status_and_recommendation(repo: Path) -> None:
     assert "B1" in out and "accepted" in out
 
 
+@pytest.mark.slow
 def test_list_json_is_machine_readable(repo: Path) -> None:
     _start(repo, "--under", "M1")
     _run(repo, "add-idea", "--title", "One", "--evidence", "https://x")
@@ -164,6 +162,7 @@ def test_list_json_is_machine_readable(repo: Path) -> None:
     assert payload["ideas"][0]["evidence"] == ["https://x"]
 
 
+@pytest.mark.slow
 def test_list_filters_by_status(repo: Path) -> None:
     _start(repo)
     _run(repo, "add-idea", "--title", "Keep")
@@ -176,6 +175,7 @@ def test_list_filters_by_status(repo: Path) -> None:
     assert [i["title"] for i in payload["ideas"]] == ["Keep"]
 
 
+@pytest.mark.slow
 def test_accept_takes_several_ideas_at_once(repo: Path) -> None:
     _start(repo)
     _run(repo, "add-idea", "--title", "One")
@@ -188,6 +188,7 @@ def test_accept_takes_several_ideas_at_once(repo: Path) -> None:
     assert len(payload["ideas"]) == 2
 
 
+@pytest.mark.slow
 def test_a_recommendation_alone_does_not_consume_the_triage_decision(repo: Path) -> None:
     """The agent advises; accepting and rejecting stays the PM's call."""
     _start(repo)
@@ -200,6 +201,7 @@ def test_a_recommendation_alone_does_not_consume_the_triage_decision(repo: Path)
     assert idea["status"] == "proposed"
 
 
+@pytest.mark.slow
 def test_editing_content_marks_the_idea_revised(repo: Path) -> None:
     _start(repo)
     _run(repo, "add-idea", "--title", "One")
@@ -211,6 +213,7 @@ def test_editing_content_marks_the_idea_revised(repo: Path) -> None:
     assert idea["status"] == "revised"
 
 
+@pytest.mark.slow
 def test_recommend_switches_the_session_to_roadmap_mode(repo: Path) -> None:
     _start(repo)
     _run(repo, "add-idea", "--title", "One")
@@ -231,6 +234,7 @@ def test_the_converge_prompt_asks_for_judgement_not_ideas(repo: Path) -> None:
     assert "**B1** (proposed, feature) — Stored payment vault" in text
 
 
+@pytest.mark.slow
 def test_promote_writes_accepted_ideas_into_the_graph(repo: Path) -> None:
     _start(repo, "--under", "M1")
     _run(repo, "add-idea", "--title", "Stored payment vault")
@@ -247,6 +251,7 @@ def test_promote_writes_accepted_ideas_into_the_graph(repo: Path) -> None:
     assert listed.returncode == 0, listed.stderr
 
 
+@pytest.mark.slow
 def test_promote_with_nothing_accepted_says_so(repo: Path) -> None:
     _start(repo, "--under", "M1")
     _run(repo, "add-idea", "--title", "One")
@@ -257,6 +262,7 @@ def test_promote_with_nothing_accepted_says_so(repo: Path) -> None:
     assert "nothing to promote" in r.stdout
 
 
+@pytest.mark.slow
 def test_several_open_sessions_require_a_slug(repo: Path) -> None:
     _start(repo)
     _run(repo, "start", "--topic", "Something else entirely")
@@ -267,6 +273,7 @@ def test_several_open_sessions_require_a_slug(repo: Path) -> None:
     assert "--slug" in r.stderr
 
 
+@pytest.mark.slow
 def test_sessions_lists_every_open_brainstorm(repo: Path) -> None:
     _start(repo)
     _run(repo, "start", "--topic", "Something else entirely")
@@ -277,6 +284,7 @@ def test_sessions_lists_every_open_brainstorm(repo: Path) -> None:
     assert "something-else-entirely" in out
 
 
+@pytest.mark.slow
 def test_reopening_a_session_keeps_its_ideas(repo: Path) -> None:
     _start(repo)
     _run(repo, "add-idea", "--title", "One")
@@ -292,6 +300,7 @@ def _seed(repo: Path, slug: str) -> None:
     assert _run(repo, "start", "--slug", slug, "--topic", slug).returncode == 0
 
 
+@pytest.mark.slow
 def test_an_unreadable_session_is_flagged_and_the_rest_still_listed(repo: Path) -> None:
     for slug in ("aa", "bb", "cc"):
         _seed(repo, slug)
@@ -332,6 +341,7 @@ def test_close_moves_the_session_and_its_prompts_and_nothing_else(repo: Path) ->
     assert json.loads(_run(repo, "list", "--json").stdout)["slug"] == "ab"
 
 
+@pytest.mark.slow
 def test_close_leaves_a_name_another_open_session_could_own(repo: Path) -> None:
     """`a-s1` and `a-authoring` are valid slugs: their prompts, and the bare names they
     share with `a`'s shard 1 and authoring prompt, stay."""
@@ -351,6 +361,7 @@ def test_close_leaves_a_name_another_open_session_could_own(repo: Path) -> None:
         assert (work / name).is_file(), name
 
 
+@pytest.mark.slow
 def test_close_refuses_a_missing_session_and_an_existing_destination(repo: Path) -> None:
     _seed(repo, "a")
     assert _run(repo, "close").returncode == 0

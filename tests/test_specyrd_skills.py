@@ -12,6 +12,7 @@ from specy_road import __version__
 from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.specyrd_init import run_init
 from specy_road.specyrd_skills import SKILL_AGENTS, link_target, with_name
+from tests.support.same.manifest_ae1e6c3dc58c import _manifest
 
 SKILL = Path(".agents/skills/specyrd-validate/SKILL.md")
 LINK = Path(".claude/skills/specyrd-validate")
@@ -21,8 +22,6 @@ def _init(tmp_path: Path, agent: str, **kw):
     return run_init(target=tmp_path, agent=agent, dry_run=False, force=False, ai_commands_dir=None, **kw)
 
 
-def _manifest(root: Path) -> dict:
-    return json.loads((root / ".specyrd" / "manifest.json").read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("agent", sorted(SKILL_AGENTS))

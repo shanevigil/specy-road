@@ -15,6 +15,7 @@ import pytest
 
 from specy_road.agents_md_block import CLAUDE_MD_TARGET_LINES, injected_context, render_agents_lines, render_rules
 from specy_road.init_project import run_init_project
+pytestmark = pytest.mark.repo
 
 REPO = Path(__file__).resolve().parent.parent
 AGENTS = render_rules()

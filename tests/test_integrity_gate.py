@@ -9,7 +9,7 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import do_next_prompt as dnp
 from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed as mir, review_cli

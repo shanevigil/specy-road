@@ -8,41 +8,22 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
+from tests.support.review import commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_files import PACKET_NAME, reviews_dir
-
-ROSTER = """version: 1
-roster:
-  - {id: human, family: human, roles: [coordinator, reviewer]}
-  - {id: opus, family: anthropic, roles: [reviewer]}
-  - {id: sol, family: openai, roles: [reviewer]}
-"""
+from tests.support.same.run_651387813ee4 import _run
+from tests.support.extracted.review_rca import ROSTER, _block_round, _status
 
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
-def _block_round(repo: Path, n: int, a1: str = "fail") -> None:
-    """One more commit, blocked by opus."""
-    commit_file(repo, f"src/r{n}.py", f"r = {n}\n", f"fix {n}")
-    notes = repo.parent / "notes.md"
-    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", a1=a1)
-                     .replace("notes\n", f"round {n}: the heading case still warns\n"))
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
-                "--file", str(notes), "--repo-root", str(repo)) == 0
 
 
-def _status(repo: Path, capsys) -> tuple[int, dict]:
-    capsys.readouterr()
-    code = _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
-    return code, json.loads(capsys.readouterr().out)["nodes"][0]
 
 
+
+@pytest.mark.slow
 def test_three_rounds_blocking_on_one_id_escalate_status_and_list(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     _block_round(repo, 1)
@@ -62,6 +43,7 @@ def test_three_rounds_blocking_on_one_id_escalate_status_and_list(tmp_path: Path
     assert "escalated: the last 3 review rounds all block on A1" in capsys.readouterr().out
 
 
+@pytest.mark.slow
 def test_total_rounds_threshold_comes_from_policy(tmp_path: Path, capsys) -> None:
     policy = "policy: {escalate_same_acceptance_blocks: 3, escalate_review_rounds: 2}\n"
     repo = make_review_repo(tmp_path, orchestration=ROSTER + policy)
@@ -100,6 +82,7 @@ def test_rca_prompt_carries_history_diffs_and_protocol(tmp_path: Path) -> None:
     assert "reports an invalid record" not in text
 
 
+@pytest.mark.slow
 def test_rca_prompt_refuses_when_not_escalated_and_for_a_party(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     _block_round(repo, 1)
@@ -131,6 +114,7 @@ def _rca(repo: Path, *, primary: str = "specification", round_: int = 3, rewrite
     return path
 
 
+@pytest.mark.slow
 def test_rca_record_validates_and_resolves_the_escalation(tmp_path: Path, capsys) -> None:
     repo = _escalated_repo(tmp_path)
     bad = _rca(repo, rewrite=False)
@@ -154,6 +138,7 @@ def test_rca_record_validates_and_resolves_the_escalation(tmp_path: Path, capsys
     assert _status(repo, capsys)[1]["state"] == "blocked"   # counting restarts after the analysis
 
 
+@pytest.mark.slow
 def test_mismatched_or_non_independent_rca_keeps_escalation(tmp_path: Path, capsys) -> None:
     """Schema-valid records that name the wrong trigger or a party must not resolve the loop."""
     repo = _escalated_repo(tmp_path)
@@ -178,6 +163,7 @@ def test_mismatched_or_non_independent_rca_keeps_escalation(tmp_path: Path, caps
     assert _status(repo, capsys)[1]["state"] == "blocked"
 
 
+@pytest.mark.slow
 def test_schema_invalid_rca_is_reported_without_crashing_status(tmp_path: Path, capsys) -> None:
     repo = _escalated_repo(tmp_path)
     (reviews_dir(repo, "M1.1") / "RCA-3.md").write_text(
@@ -208,6 +194,7 @@ def test_two_spellings_of_one_commit_are_one_round(tmp_path: Path, capsys) -> No
     assert st["escalation"]["acceptance_ids"] == ["A1"]
 
 
+@pytest.mark.slow
 def test_reviewer_prompt_says_the_loop_is_escalated_until_an_rca_exists(tmp_path: Path) -> None:
     repo = _escalated_repo(tmp_path)
     (reviews_dir(repo, "M1.1") / PACKET_NAME).write_text("# Review packet: `M1.1`\n")
@@ -233,6 +220,7 @@ def _family_round(repo: Path, n: int, model: str, verdict: str = "block", fails:
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 
 
+@pytest.mark.slow
 def test_one_family_blocking_three_rounds_escalates_across_ids_and_models(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=FAMILY_ROSTER)
     _family_round(repo, 1, "opus", fails="A1")
@@ -251,6 +239,7 @@ def test_one_family_blocking_three_rounds_escalates_across_ids_and_models(tmp_pa
     assert (code, st["state"]) == (1, "blocked") and not any("RCA" in p for p in st["problems"])
 
 
+@pytest.mark.slow
 def test_a_family_approval_resets_its_count_and_families_count_apart(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=FAMILY_ROSTER)
     _family_round(repo, 1, "opus", fails="A1")
@@ -261,6 +250,7 @@ def test_a_family_approval_resets_its_count_and_families_count_apart(tmp_path: P
     assert (code, st["state"], st["escalation"]) == (1, "blocked", None)
 
 
+@pytest.mark.slow
 def test_force_starts_an_rca_with_a_recorded_reason(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     _block_round(repo, 1)
@@ -296,6 +286,7 @@ def test_force_needs_the_rca_role_and_a_reason(tmp_path: Path, args: list[str]) 
     assert e.value.code == 2
 
 
+@pytest.mark.slow
 def test_an_active_escalation_wins_over_force(tmp_path: Path, capsys) -> None:
     repo = _escalated_repo(tmp_path)
     capsys.readouterr()

@@ -19,6 +19,7 @@ from tests.fixture_guard import (
 )
 from tests.helpers import REPO
 from tests.support.fixtures import (  # noqa: F401 — registered for every test
+    repo,
     api_client,
     dogfood_copy,
     git_remote_repo,
@@ -69,6 +70,8 @@ def repo_root_env_never_leaks_in(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "real_review_caller: run `review record`'s caller check (M21.31) for real")
+    config.addinivalue_line("markers", "slow: this test took over 1 second at M16.6.4")
+    config.addinivalue_line("markers", "repo: checks this repository rather than a temporary one")
 
 
 @pytest.fixture(autouse=True)

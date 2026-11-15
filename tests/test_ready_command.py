@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import diverge, git, make_review_repo
+from tests.support.review import diverge, make_review_repo, git
 from tests.support.profiles import make_profile_repo
 
 import argparse
@@ -19,6 +19,8 @@ import specy_road.ready_run_checks as ready_run_checks
 from specy_road.ready_run_checks import parse_run_argv, run_argv, run_check
 from specy_road.review_files import load_ready, reviews_dir
 from specy_road.review_gate_ready import add_ready_parser
+from tests.support.same.cli_02173e685269 import _cli
+from tests.support.same.status_54517de2b19f import _status
 
 # Examples named in ``--run-argv`` help (must stay in sync with ``add_ready_parser``).
 RUN_ARGV_HELP_REFUSED = ("not-json", "[]", "{}", "[1]", '[""]')
@@ -34,16 +36,8 @@ def _run_argv_help() -> str:
     return next(a.help for a in ready._actions if a.dest == "run_argv")
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
-def _status(repo: Path, capsys) -> dict:
-    capsys.readouterr()
-    _cli("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
-    return json.loads(capsys.readouterr().out)["nodes"][0]
 
 
 def test_ready_writes_a_valid_hand_off_from_a_worktree(tmp_path: Path, capsys) -> None:

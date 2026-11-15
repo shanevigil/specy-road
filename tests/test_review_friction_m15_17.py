@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp
@@ -17,12 +17,9 @@ from specy_road.integrity import compare_integrity
 from specy_road.review_delegate import load_run
 from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
 from specy_road.review_record_rules import approve_defect_problem, clause_problem
+from tests.support.same.run_651387813ee4 import _run
 
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def _delegate(repo: Path) -> int:
@@ -193,6 +190,7 @@ def test_the_reported_shape_is_refused_with_the_word_and_both_parts() -> None:
 # A5 — a failed run superseded by a record filed later at the same commit
 
 
+@pytest.mark.slow
 def test_a_failed_run_is_marked_superseded_by_a_later_record(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {"raw": "not a verdict"})

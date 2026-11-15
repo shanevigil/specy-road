@@ -271,6 +271,35 @@ _MOVED_FROM.update({
 })
 # Moved into tests/support/ (the fake harness and worker CLI helpers): new path -> path at pickup.
 _MOVED_FROM["tests/support/harness.py"] = "tests/worker_repo_helpers.py"
+_MOVED_FROM['tests/support/decisions.py'] = 'tests/decisions_repo_helpers.py'
+_MOVED_FROM['tests/support/extracted/chore_mode.py'] = 'tests/test_chore_mode.py'
+_MOVED_FROM['tests/support/extracted/cursor_usage_cost.py'] = 'tests/test_cursor_usage_cost.py'
+_MOVED_FROM['tests/support/extracted/delta_review.py'] = 'tests/test_delta_review.py'
+_MOVED_FROM['tests/support/extracted/digest.py'] = 'tests/test_digest.py'
+_MOVED_FROM['tests/support/extracted/doctor.py'] = 'tests/test_doctor.py'
+_MOVED_FROM['tests/support/extracted/finish_merge_mode.py'] = 'tests/test_finish_merge_mode.py'
+_MOVED_FROM['tests/support/extracted/grind_session.py'] = 'tests/test_grind_session.py'
+_MOVED_FROM['tests/support/extracted/grind_status.py'] = 'tests/conftest.py'
+_MOVED_FROM['tests/support/extracted/harness_facts.py'] = 'tests/test_harness_facts.py'
+_MOVED_FROM['tests/support/extracted/history_walk.py'] = 'tests/test_history_walk.py'
+_MOVED_FROM['tests/support/extracted/nested_repo_finish.py'] = 'tests/test_nested_repo_finish.py'
+_MOVED_FROM['tests/support/extracted/review_defer_rounds.py'] = 'tests/test_review_defer_rounds.py'
+_MOVED_FROM['tests/support/extracted/rework_findings_in_prompt.py'] = 'tests/test_rework_findings_in_prompt.py'
+_MOVED_FROM['tests/support/extracted/roadmap_chunk_router.py'] = 'tests/test_roadmap_chunk_router.py'
+_MOVED_FROM['tests/support/extracted/touch_zone_tracked.py'] = 'tests/test_touch_zone_tracked.py'
+_MOVED_FROM['tests/support/integrity.py'] = 'tests/integrity_repo_helpers.py'
+_MOVED_FROM['tests/support/milestone.py'] = 'tests/milestone_repo_helpers.py'
+_MOVED_FROM['tests/support/pickup.py'] = 'tests/pickup_repo_helpers.py'
+_MOVED_FROM['tests/support/review.py'] = 'tests/review_repo_helpers.py'
+_MOVED_FROM['tests/support/same/cli_fda77d440965.py'] = 'tests/conftest.py'
+_MOVED_FROM['tests/support/same/client_218dbc43887f.py'] = 'tests/conftest.py'
+_MOVED_FROM['tests/support/same/client_2447f1fd9143.py'] = 'tests/conftest.py'
+_MOVED_FROM['tests/support/same/dogfood_copy_46daf68d3795.py'] = 'tests/conftest.py'
+_MOVED_FROM['tests/support/same/git_84c8ad8f55f9.py'] = 'tests/conftest.py'
+_MOVED_FROM['tests/support/same/mutation_headers_1fdfef6b66c9.py'] = 'tests/conftest.py'
+_MOVED_FROM['tests/support/same/repo_cbcea23f14ab.py'] = 'tests/conftest.py'
+_MOVED_FROM['tests/support/same/run_review_cli_5df07e4aaa50.py'] = 'tests/conftest.py'
+_MOVED_FROM['tests/support/unauthored.py'] = 'tests/unauthored_repo_helpers.py'
 
 
 def _in_pickup_tree(path: str, present: set[str], moved_from: dict[str, str]) -> bool:

@@ -8,18 +8,18 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import review_cli, review_packet as rp
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, review_required
 from specy_road.review_target import ReviewTargetError, resolve_target, same_commit
+from tests.support.same.cli_02173e685269 import _cli
+from tests.support.same.head_efa27b25c0a5 import _head
 
 
-def _head(repo: Path) -> str:
-    return git(repo, "rev-parse", "HEAD")
 
 
 def _record(repo: Path, model: str, *, name: str | None = None, **kw) -> None:
@@ -154,10 +154,6 @@ def test_same_commit_asks_git(tmp_path: Path) -> None:
     assert not same_commit(repo, "abcdef1", "abcdef12deadbeef")
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def test_status_exit_codes_and_leftover_directories(tmp_path: Path, capsys) -> None:

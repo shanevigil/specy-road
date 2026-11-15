@@ -22,6 +22,8 @@ from specy_road.registry_remote_overlay import (
 import specy_road.registry_remote_overlay as _registry_overlay
 from specy_road import roadmap_gui_settings as _rgs
 from specy_road.roadmap_gui_lib import roadmap_fingerprint
+from tests.support.same.run_git_e7b46ac47b3e import _run_git
+from tests.support.same.write_gw_c3cc7b6c500e import _write_gw
 
 
 def _isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -32,17 +34,8 @@ def _isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     monkeypatch.setattr(_rgs, "SETTINGS_PATH", gui / "gui-settings.json")
 
 
-def _run_git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
-def _write_gw(repo: Path) -> None:
-    p = repo / "roadmap" / "git-workflow.yaml"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(
-        "version: 1\nintegration_branch: main\nremote: origin\n",
-        encoding="utf-8",
-    )
 
 
 def _minimal_registry(

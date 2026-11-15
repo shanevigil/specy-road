@@ -11,18 +11,13 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
+from tests.support.same.dogfood_copy_46daf68d3795 import dogfood_copy
 
 PLANNING = "vision.md"
 SHARED = "shared/README.md"
 ROUTES = [("/api/planning/file", PLANNING), ("/api/workspace/file", SHARED)]
 
 
-@pytest.fixture()
-def dogfood_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    dest = tmp_path / "dogfood"
-    shutil.copytree(DOGFOOD, dest)
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dest))
-    return dest
 
 
 def _client(read_only: bool = False) -> TestClient:

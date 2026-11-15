@@ -23,6 +23,7 @@ from tests.parity.support import check_golden, run_cli
 pytestmark = pytest.mark.parity
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", CASES, ids=lambda c: c.name)
 def test_each_step_in_its_own_process_matches_the_corpus(case: Case, tmp_path: Path) -> None:
     dirs, steps = build(case, tmp_path)
@@ -35,6 +36,7 @@ def test_each_step_in_its_own_process_matches_the_corpus(case: Case, tmp_path: P
     check_golden(golden_path(case), "\n".join(recorded))
 
 
+@pytest.mark.slow
 def test_every_step_in_one_process_matches_the_corpus(tmp_path: Path) -> None:
     """All cases through ``specy_road.cli.main`` in one interpreter that refuses to start another.
 

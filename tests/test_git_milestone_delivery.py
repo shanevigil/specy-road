@@ -6,15 +6,12 @@ import subprocess
 from pathlib import Path
 
 from specy_road.git_milestone_delivery import rollup_merged_into_integration
+from tests.support.same.commit_553cf5f7a1bf import _commit
+from tests.support.same.git_df16ee62bf81 import _git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=repo)
 
 
-def _commit(repo: Path, message: str) -> None:
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "--allow-empty", "-m", message)
 
 
 def _repo_with_merged_feature(tmp_path: Path) -> Path:

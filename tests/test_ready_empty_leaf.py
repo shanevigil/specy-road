@@ -7,11 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo
-from tests.test_nested_repo_worktrees import add_nested_repo
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.extracted.nested_repo_worktrees import add_nested_repo
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import render_front_matter, reviews_dir
+from tests.support.same.cli_02173e685269 import _cli
+from tests.support.same.status_54517de2b19f import _status
 
 #: Rows of one table: dirty in-zone paths are refused and named; the boundary rows and nested-only work are not.
 _LEAF = {
@@ -26,10 +28,6 @@ _LEAF = {
 }
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def _ready_path(repo: Path) -> Path:
@@ -157,10 +155,6 @@ def _hand_ready(repo: Path, *, blocked: bool) -> None:
     path.write_text(render_front_matter(data), encoding="utf-8")
 
 
-def _status(repo: Path, capsys) -> dict:
-    capsys.readouterr()
-    _cli("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
-    return json.loads(capsys.readouterr().out)["nodes"][0]
 
 
 @pytest.mark.parametrize("kind", ["empty", "blocked", "nonempty"])

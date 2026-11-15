@@ -21,7 +21,7 @@ from specy_road.ignore_report import UNTRACK_HINT
 from specy_road.runtime_paths import project_template_root
 from specy_road.managed_block import MARKER_END, MARKER_START
 from tests.m13_7_ignore_helpers import repo_with_prompts
-from tests.test_touch_zone_tracked import UNTRACKED, zone_git_repo
+from tests.support.extracted.touch_zone_tracked import UNTRACKED, zone_git_repo
 
 MANIFEST_NOTE = "`.specyrd/manifest.json`, when present, stays tracked."
 

@@ -8,13 +8,20 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import (
-    NODE, commit_file, git, git_root_relative, make_layout_finish_repo, make_review_repo, review_text,
+from tests.support.review import (
+    NODE,
+    commit_file,
+    git_root_relative,
+    make_layout_finish_repo,
+    make_review_repo,
+    review_text,
+    git,
 )
-from tests.test_review_cli import ONE_AI, _status
+from tests.support.extracted.review_cli import ONE_AI, _status
 
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
+from tests.support.same.gate_9f3572d00caf import _gate
 
 
 def _review(repo: Path) -> str:
@@ -25,8 +32,6 @@ def _review(repo: Path) -> str:
     return commit
 
 
-def _gate(repo: Path):
-    return evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
 
 
 def test_sheet_only_delta_keeps_approval(tmp_path: Path) -> None:

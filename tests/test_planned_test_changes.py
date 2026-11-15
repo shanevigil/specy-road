@@ -11,8 +11,8 @@ import pytest
 import yaml
 
 from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
-from tests.milestone_repo_helpers import land_leaf, make_milestone_repo, merge_leaf, set_status
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
+from tests.support.milestone import land_leaf, make_milestone_repo, merge_leaf, set_status
+from tests.support.review import commit_file, make_review_repo, review_text, git
 from tests.support.profiles import make_profile_repo, ROSTER
 
 from specy_road.bundled_scripts import review_cli
@@ -22,14 +22,12 @@ from specy_road.bundled_scripts.roadmap_edit_list_fields import planned_test_cha
 from specy_road.roadmap_load import load_roadmap
 from specy_road.integrity_removals import REQUIRED_HEADING, unplanned_removals
 from specy_road.registry_yaml import read_registry, registry_path
+from tests.support.same.crud_87ad31dc4313 import _crud
 
 OLD = "removed-test: tests/test_leaf.py::test_old"
 HEADING = f"## {REQUIRED_HEADING}"
 
 
-def _crud(repo: Path, *argv: str) -> None:
-    ns = build_parser().parse_args(["--repo-root", str(repo), *argv])
-    ns.func(ns)
 
 
 def _planned(repo: Path) -> list[str] | None:
@@ -149,6 +147,7 @@ def test_record_files_a_block_without_the_entry_and_refuses_a_fail_on_it(tmp_pat
     assert "'pass' was expected" in capsys.readouterr().err
 
 
+@pytest.mark.slow
 def test_record_files_an_approve_when_the_removal_is_planned(tmp_path: Path) -> None:
     repo = make_profile_repo(tmp_path)
     _remove_old_test(repo)
@@ -170,6 +169,7 @@ def test_reviewer_prompt_requires_the_entry_whatever_integrity_gate_says(tmp_pat
     assert "whatever `policy.integrity_gate` says" in text
 
 
+@pytest.mark.slow
 def test_packet_with_an_explicit_base_still_reads_the_plan_from_the_integration_branch(tmp_path: Path) -> None:
     """``--base`` moves the diff range only; authorization made on dev after that base still counts (RC1)."""
     repo = make_profile_repo(tmp_path)
@@ -231,6 +231,7 @@ def _milestone_record(root: Path, tmp_path: Path, acceptance: dict[str, str]) ->
     return e.value.code or 0
 
 
+@pytest.mark.slow
 def test_milestone_review_gets_the_required_check_for_an_unplanned_removal(tmp_path: Path, capsys) -> None:
     """No milestone exception (RC2): the full review's packet and record enforce the check."""
     root = _milestone_with_a_removal(tmp_path)
@@ -242,6 +243,7 @@ def test_milestone_review_gets_the_required_check_for_an_unplanned_removal(tmp_p
     assert _milestone_record(root, tmp_path, {line: "pass"}) == 0
 
 
+@pytest.mark.slow
 def test_milestone_review_takes_a_leaf_plan_on_the_integration_branch(tmp_path: Path) -> None:
     root = _milestone_with_a_removal(tmp_path)
     _crud(root, "edit-node", "M2.1", "--add", "planned_test_changes=removed-test: tests/test_ms.py::test_old")

@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import REPO, script_subprocess_env
+from tests.support.same.git_ba787a68f973 import _git
 
 _GUARD = REPO / "tests" / "fixture_guard.py"
 _MINI_CONFTEST = '''\
@@ -37,8 +38,6 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
 '''
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
 
 
 def _mini_repo(tmp_path: Path) -> Path:

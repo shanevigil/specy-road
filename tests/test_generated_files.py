@@ -7,6 +7,8 @@ the file is tracked, so the detection here passes ``--no-index`` on purpose.
 
 from __future__ import annotations
 
+import pytest
+
 import argparse
 from pathlib import Path
 
@@ -19,7 +21,8 @@ from specy_road.generated_files import (
     unstageable_generated_files,
     warn_if_generated_files_ignored,
 )
-from tests.test_history_walk import commit, git, repo  # noqa: F401 - fixture
+from tests.support.extracted.history_walk import commit, git, repo
+pytestmark = pytest.mark.repo
 
 __all__ = ["repo"]
 

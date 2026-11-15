@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import DOGFOOD
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 
 
 @pytest.fixture()
@@ -63,3 +63,15 @@ def git_remote_repo(git_template: tuple[Path, Path], tmp_path: Path) -> tuple[Pa
     bare = shutil.copytree(src_bare, tmp_path / "remote.git", symlinks=True)
     git(repo, "remote", "set-url", "origin", str(bare))
     return repo, bare
+
+
+@pytest.fixture()
+def repo(tmp_path: Path) -> Path:
+    """A private copy of the dogfood fixture, at ``tmp_path / "repo"``.
+
+    Twenty-two test modules defined this same fixture. A module that still defines
+    ``repo`` keeps its own; pytest uses the closer one.
+    """
+    dest = tmp_path / "repo"
+    shutil.copytree(DOGFOOD, dest)
+    return dest

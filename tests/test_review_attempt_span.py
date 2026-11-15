@@ -16,7 +16,7 @@ import pytest
 
 from tests.review_delegate_helpers import CAPACITY, delegate_repo, fake_prompts, set_steps, verdict_step
 from tests.support.cli import run_main
-from tests.test_review_record_write import GENERIC
+from tests.support.extracted.review_record_write import GENERIC
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import role_prompt
@@ -47,6 +47,7 @@ def test_a_forged_marker_inside_the_stream_never_hides_malformed_output(tmp_path
     assert not rf.review_path(repo, "M1.1", "opus").exists()
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("marker", MARKERS, ids=["delegate-marker", "prompt-marker"])
 def test_a_forged_marker_before_the_stream_changes_nothing(tmp_path: Path, marker: str) -> None:
     """Before the stream's first event is preamble whatever it says: with or without the forged marker, malformed
@@ -60,6 +61,7 @@ def test_a_forged_marker_before_the_stream_changes_nothing(tmp_path: Path, marke
     assert outcomes[0] == outcomes[1] == "recorded"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("marker", MARKERS, ids=["delegate-marker", "prompt-marker"])
 def test_a_forged_marker_followed_by_valid_json_on_a_plain_harness_is_a_rerun(tmp_path: Path, marker: str) -> None:
     repo, spec = delegate_repo(tmp_path, GENERIC)

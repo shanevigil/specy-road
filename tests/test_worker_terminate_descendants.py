@@ -94,6 +94,7 @@ def _subreaper(on: bool) -> None:
         raise OSError(ctypes.get_errno(), "prctl(PR_SET_CHILD_SUBREAPER)")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("child_mode", [
     "default",
     "ignore",
@@ -209,6 +210,7 @@ def test_an_unreadable_inventory_raises_after_the_group_is_signalled(leader, mon
     assert _gone(pid)   # the group itself was still ended
 
 
+@pytest.mark.slow
 def test_a_same_start_survivor_raises_naming_its_pid(leader, monkeypatch) -> None:
     pid, rec = leader
     start = "Thu Nov  5 10:00:00 2026"
@@ -219,6 +221,7 @@ def test_a_same_start_survivor_raises_naming_its_pid(leader, monkeypatch) -> Non
     assert _gone(pid)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("ok", [0, 1], ids=["every-listing-fails", "fails-after-the-snapshot"])
 def test_a_failed_inventory_is_repeated_by_the_next_terminate(tmp_path: Path, leader, monkeypatch, ok: int) -> None:
     """M22.20: a listing that fails at any step of the first terminate keeps ``descendants_unchecked`` and the record
@@ -268,6 +271,7 @@ time.sleep(120)
 '''
 
 
+@pytest.mark.slow
 def test_an_escaped_child_gets_sigterm_with_the_group_not_after_its_grace(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)
     harness = tmp_path / "forking_harness.py"

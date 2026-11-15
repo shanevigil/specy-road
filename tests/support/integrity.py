@@ -16,11 +16,9 @@ from pathlib import Path
 import yaml
 
 from tests.helpers import DOGFOOD
+from tests.support.same.git_84c8ad8f55f9 import git
 
 
-def git(repo: Path, *args: str) -> str:
-    r = subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True)
-    return r.stdout.strip()
 
 
 def commit(repo: Path, rel: str, text: str, msg: str) -> str:

@@ -7,14 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import advance_dev, git, make_review_repo
+from tests.support.review import advance_dev, make_review_repo, git
 
 import specy_road
 from specy_road.git_subprocess import git_ok, is_worktree_root, merge_conflicts, run
+from tests.support.same.git_04549aebf210 import _git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
 def test_git_ok_returns_stdout_for_success(tmp_path: Path) -> None:
@@ -94,6 +93,7 @@ def _asks_git_for_root_or_branch(source: str) -> bool:
                for n in ast.walk(ast.parse(source)))
 
 
+@pytest.mark.slow
 def test_only_git_subprocess_asks_git_for_the_root_or_the_branch() -> None:
     """Every other module calls git_root, current_branch_name or is_worktree_root instead."""
     assert _asks_git_for_root_or_branch('git_text(["branch", "--show-current"], here)')

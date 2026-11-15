@@ -1,6 +1,6 @@
 """M22.51: ``review operator-decision`` and the gate's reading of the decision it records (the sheet's test table).
 
-In-process CLI on a temporary repo (:func:`tests.review_repo_helpers.make_review_repo`); refusals assert exit 1
+In-process CLI on a temporary repo (:func:`tests.support.review.make_review_repo`); refusals assert exit 1
 and unchanged ledger and marker bytes.
 """
 
@@ -14,8 +14,8 @@ from typing import Callable
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.test_review_policy_pin import SUBJECT
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_policy_pin import SUBJECT
 
 from specy_road.bundled_scripts import decisions_cli, mark_implementation_reviewed, review_cli
 from specy_road.orchestration.guard.orchestration_role_env import ROLE_ENV
@@ -23,20 +23,9 @@ from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_override import block_item, shortfall_text
 from specy_road.review_policy_pin import pinned_message
+from tests.support.same.head_efa27b25c0a5 import _head
+from tests.support.extracted.review_override import ROSTER, STRONG
 
-ROSTER = """version: 1
-roster:
-  - {id: human, family: human, roles: [coordinator, reviewer]}
-  - {id: opus, family: anthropic, roles: [reviewer]}
-  - {id: sonnet, family: anthropic, roles: [reviewer]}
-  - {id: haiku, family: anthropic, roles: [reviewer]}
-  - {id: sol, family: openai, roles: [reviewer]}
-  - {id: astra, family: openai, roles: [reviewer]}
-  - {id: gem, family: google, roles: [reviewer]}
-  - {id: grok, family: xai, roles: [reviewer]}
-  - {id: composer, family: cursor, roles: [executor]}
-policy: {reviewers_required: 1}
-"""
 LEDGER = Path("roadmap") / "decisions.yaml"
 SHEET = NODE["planning_dir"]
 PLAIN = "# M1.1 Thing\n\n## Intent\n\nDo the thing.\n\n## Tier\n\nplain: a small change.\n"
@@ -56,8 +45,6 @@ def _cli(module, *args: str) -> int:
     return e.value.code
 
 
-def _head(repo: Path) -> str:
-    return git(repo, "rev-parse", "HEAD")
 
 
 def _block(repo: Path, model: str = "opus", findings: dict | None = None, extra: tuple[str, ...] = ()) -> None:
@@ -109,6 +96,7 @@ def _on_dev(repo: Path, rel: str, text: str) -> None:
     git(repo, "checkout", "-q", "feature/rm-thing")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(("policy", "block", "role"), [
     ("{reviewers_required: 1}", True, None),            # block: a counted correctness block, role unset
     ("{reviewers_required: 2}", False, "coordinator"),  # shortfall: none approved
@@ -137,6 +125,7 @@ def test_the_operator_form_records_the_decision_and_the_gate_honours_it(tmp_path
     assert f"0/{need} approvals" in st["policy"] and text.count(f"accepted by operator decision {entry['id']}") >= 2
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("path", ["src/b.py", "roadmap/orchestration.yaml"])
 def test_the_decision_holds_across_bookkeeping_only(tmp_path: Path, capsys, path: str) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
@@ -150,6 +139,7 @@ def test_the_decision_holds_across_bookkeeping_only(tmp_path: Path, capsys, path
     assert _blockers(repo) == ["opus"]
 
 
+@pytest.mark.slow
 def test_a_later_block_still_counts_until_a_new_decision_names_it(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     _block(repo)
@@ -241,6 +231,7 @@ REFUSED = {   # setup, operator-decision arguments
 }
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", sorted(REFUSED))
 def test_refusals_write_nothing(tmp_path: Path, monkeypatch, case: str) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
@@ -288,6 +279,7 @@ def _coordinate(repo: Path, rule: str = "R1", rcas=("sol", "gem"), aligns=("sonn
     return _decide(repo, *args, quote=None, decision="accept-with-limits")
 
 
+@pytest.mark.slow
 def test_the_coordinator_form_accepts_with_limits_under_a_standing_rule(tmp_path: Path, capsys) -> None:
     repo = _coordinator_repo(tmp_path)
     head = _head(repo)
@@ -342,6 +334,7 @@ COORDINATOR_REFUSED = {   # setup, _coordinate keyword arguments
 }
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", sorted(COORDINATOR_REFUSED))
 def test_the_coordinator_form_refuses(tmp_path: Path, case: str) -> None:
     repo = _coordinator_repo(tmp_path)
@@ -354,6 +347,7 @@ def test_the_coordinator_form_refuses(tmp_path: Path, case: str) -> None:
     assert sorted(p.name for p in reviews_dir(repo, "M1.1").iterdir()) == before
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("raw", ["sol", "sol=missing.md", "OUTSIDE"])
 def test_cited_evidence_must_be_a_project_file(tmp_path: Path, raw: str) -> None:
     repo = _coordinator_repo(tmp_path)
@@ -389,6 +383,7 @@ OTHER_FAILURES = {   # roster, before the block, after the decision, the problem
 }
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", sorted(OTHER_FAILURES))
 def test_other_gate_failures_still_fail(tmp_path: Path, capsys, case: str) -> None:
     roster, before, after, named, block = OTHER_FAILURES[case]
@@ -405,6 +400,7 @@ def test_other_gate_failures_still_fail(tmp_path: Path, capsys, case: str) -> No
     assert any(named in p for p in st["problems"]), st["problems"]
 
 
+@pytest.mark.slow
 def test_mark_implementation_reviewed_stamps_the_registry(tmp_path: Path) -> None:
     """The coordinator records on the integration branch; the leaf branch's gate reads the committed entry."""
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
@@ -446,7 +442,7 @@ def _layout(tmp_path: Path, monkeypatch, shape: str, remote: bool, roster: str =
         top = make_review_repo(tmp_path, orchestration=roster)
         prefix = ""
     else:
-        from tests.review_repo_helpers import make_layout_finish_repo
+        from tests.support.review import make_layout_finish_repo
         top, _project = make_layout_finish_repo(tmp_path, "nested")
         prefix = "sr/"
         _on_dev(top, f"{prefix}roadmap/orchestration.yaml", roster)
@@ -520,6 +516,7 @@ def _assert_decision_landed(lay: Layout, before: str, out: str) -> dict:
     return entry
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("role", [None, "coordinator"])
 @pytest.mark.parametrize("shape", ["root", "sr"])
 def test_a_person_approves_over_the_block_with_no_remote(tmp_path: Path, monkeypatch, capsys, shape, role) -> None:
@@ -537,6 +534,7 @@ def test_a_person_approves_over_the_block_with_no_remote(tmp_path: Path, monkeyp
     assert (code, st["state"]) == (0, "approved") and f"accepted by operator decision {entry['id']}" in text
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("shape", ["root", "sr"])
 def test_a_person_approves_over_the_block_and_the_decision_is_pushed(tmp_path: Path, monkeypatch, capsys,
                                                                     shape) -> None:
@@ -566,6 +564,7 @@ def test_a_person_approves_over_the_block_and_the_decision_is_pushed(tmp_path: P
     assert "[ok] this checkout is still on feature/rm-thing (landed into dev)" in captured.out
 
 
+@pytest.mark.slow
 def test_a_clean_holder_of_the_integration_branch_follows_the_decision(tmp_path: Path, monkeypatch, capsys) -> None:
     lay = _layout(tmp_path, monkeypatch, "root", remote=False)
     holder = tmp_path / "holder"
@@ -601,8 +600,6 @@ def _pin(lay: Layout, _tmp: Path, _mp) -> str:
     return "review policy changed on"
 
 
-STRONG = ROSTER.replace("policy: {reviewers_required: 1}", "policy:\n  reviewers_required: 1\n"
-                        "  strong_review:\n    - {zones: [src], require_one_of: [sonnet]}")
 WITHHELD = {   # setup before the block (returns the text the refusal names), roster, layout before the block
     "holder_dirty": (_dirty_holder, ROSTER, None),
     "unclean_tree": (_unclean_leaf, ROSTER, None),
@@ -612,6 +609,7 @@ WITHHELD = {   # setup before the block (returns the text the refusal names), ro
 }
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", sorted(WITHHELD))
 def test_the_approval_over_the_block_is_withheld_and_nothing_recorded(tmp_path: Path, monkeypatch, capsys,
                                                                       case: str) -> None:
@@ -629,6 +627,7 @@ def test_the_approval_over_the_block_is_withheld_and_nothing_recorded(tmp_path: 
     assert named in captured.err and lay.snapshot() == before
 
 
+@pytest.mark.slow
 def test_a_signed_review_shortfall_withholds_the_approval(tmp_path: Path, monkeypatch, capsys) -> None:
     if shutil.which("ssh-keygen") is None:
         pytest.skip("needs OpenSSH ssh-keygen")
@@ -648,6 +647,7 @@ def test_a_signed_review_shortfall_withholds_the_approval(tmp_path: Path, monkey
     assert lay.snapshot() == before
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("value", ["executor", "reviewer", "rca", "", " coordinator", "Coordinator"])
 def test_an_agent_role_never_approves_over_the_block(tmp_path: Path, monkeypatch, capsys, value: str) -> None:
     lay = _layout(tmp_path, monkeypatch, "root", remote=False)
@@ -659,6 +659,7 @@ def test_an_agent_role_never_approves_over_the_block(tmp_path: Path, monkeypatch
     assert seen == [] and f"{ROLE_ENV} is {value!r}" in capsys.readouterr().err and lay.snapshot() == before
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("answers", [("a", ""), ("q",)], ids=["empty_reason", "quit"])
 def test_no_reason_records_nothing(tmp_path: Path, monkeypatch, capsys, answers) -> None:
     lay = _layout(tmp_path, monkeypatch, "root", remote=False)
@@ -668,6 +669,7 @@ def test_no_reason_records_nothing(tmp_path: Path, monkeypatch, capsys, answers)
     assert _mark(lay.run) == 0 and lay.snapshot() == before
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("yes", [True, False], ids=["yes", "not_a_tty"])
 def test_not_interactive_never_approves_over_the_block(tmp_path: Path, monkeypatch, capsys, yes: bool) -> None:
     lay = _layout(tmp_path, monkeypatch, "root", remote=False)
@@ -681,6 +683,7 @@ def test_not_interactive_never_approves_over_the_block(tmp_path: Path, monkeypat
     assert lay.snapshot() == before
 
 
+@pytest.mark.slow
 def test_a_policy_change_pushed_meanwhile_withholds_the_approval(tmp_path: Path, monkeypatch, capsys) -> None:
     lay = _layout(tmp_path, monkeypatch, "root", remote=True)
     other = tmp_path / "other"
@@ -698,6 +701,7 @@ def test_a_policy_change_pushed_meanwhile_withholds_the_approval(tmp_path: Path,
     assert git(lay.bare, "rev-parse", "dev") == pushed and lay.snapshot()[2:] == before[2:]
 
 
+@pytest.mark.slow
 def test_a_refused_push_records_nothing(tmp_path: Path, monkeypatch, capsys) -> None:
     lay = _layout(tmp_path, monkeypatch, "root", remote=True)
     hook = lay.bare / "hooks" / "pre-receive"
@@ -711,6 +715,7 @@ def test_a_refused_push_records_nothing(tmp_path: Path, monkeypatch, capsys) -> 
     assert "git push origin" in err and "review operator-decision M1.1" in err and lay.snapshot() == before
 
 
+@pytest.mark.slow
 def test_a_refused_registry_commit_keeps_the_decision_and_says_how_to_finish(tmp_path: Path, monkeypatch,
                                                                             capsys) -> None:
     lay = _layout(tmp_path, monkeypatch, "root", remote=False)
@@ -733,7 +738,7 @@ def test_a_refused_registry_commit_keeps_the_decision_and_says_how_to_finish(tmp
 
 
 def test_a_milestone_full_review_block_is_unchanged(tmp_path: Path, monkeypatch, capsys) -> None:
-    from tests.milestone_repo_helpers import make_milestone_repo
+    from tests.support.milestone import make_milestone_repo
 
     root = make_milestone_repo(tmp_path, orchestration=ROSTER)
     d = reviews_dir(root, "M2")

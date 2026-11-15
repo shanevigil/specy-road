@@ -10,9 +10,25 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from tests.review_delegate_helpers import (FAKE_AGY, FAKE_CODEX, delegate_repo, fake_reviewer_run, run_review_cli,
-                                          set_steps, strict_problems, verdict_step, wrote_paths)
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_output, review_text
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
+from tests.review_delegate_helpers import (
+    FAKE_AGY,
+    FAKE_CODEX,
+    delegate_repo,
+    fake_reviewer_run,
+    set_steps,
+    strict_problems,
+    verdict_step,
+    wrote_paths,
+)
+from tests.support.review import (
+    NODE,
+    commit_file,
+    make_review_repo,
+    review_output,
+    review_text,
+    git,
+)
 from tests.support.cli import run_main
 
 from specy_road import review_files as rf
@@ -31,6 +47,7 @@ from specy_road.orchestration.workers.worker_adapters import (
     Unsupported,
     reviewer_cli,
 )
+from tests.support.extracted.review_record_write import GENERIC
 
 def _record(repo: Path) -> Path:
     return rf.review_path(repo, "M1.1", "opus")
@@ -55,6 +72,7 @@ def test_a_write_the_tripwire_sees_is_a_review_failure_and_files_nothing(tmp_pat
     assert not _record(repo).exists()                                 # the verdict in its output is not filed
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("name", ["notes-opus.md", "RUN-opus.json", ".review-run.lock"])
 def test_the_notes_and_specy_roads_own_run_files_are_not_the_reviewers_writes(tmp_path: Path, name: str) -> None:
     repo, spec = delegate_repo(tmp_path)
@@ -64,6 +82,7 @@ def test_the_notes_and_specy_roads_own_run_files_are_not_the_reviewers_writes(tm
     assert run["outcome"] == "recorded", run["reason"]
 
 
+@pytest.mark.slow
 def test_a_run_that_files_its_own_record_is_a_review_failure_and_the_record_is_put_back(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, verdict_step(repo, "block"))
@@ -114,6 +133,7 @@ SCHEMA = "does not match the review output schema"
 CUT = "is not one JSON object (a cut-off or stray line)"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("raw,why", [
     ('{"verdict": "approve", "commit": ', UNFINISHED),
     ('{"verdict": "approve"}', SCHEMA),
@@ -145,6 +165,7 @@ def test_output_review_record_refuses_is_a_rerun_request(tmp_path: Path) -> None
     assert "Re-review the current commit" in run["reason"] and not _record(repo).exists()
 
 
+@pytest.mark.slow
 def test_an_answer_with_null_optional_fields_files_the_same_record_as_one_without(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     plain = verdict_step(repo)["answer"]
@@ -159,6 +180,7 @@ def test_an_answer_with_null_optional_fields_files_the_same_record_as_one_withou
     assert delegate(repo, "M1.1", "opus", sleep=lambda s: None)["outcome"] == "rerun"
 
 
+@pytest.mark.slow
 def test_a_valid_result_then_a_truncated_result_line_is_a_rerun_through_the_cli(tmp_path: Path, capsys) -> None:
     """Sol F2: a schema-valid result event, then ``{"type":"result","result":`` before exit 0. The truncated line
     is inside the final turn, so the earlier result never stands in."""
@@ -227,6 +249,7 @@ def test_codex_reviewer_runs_read_only_with_the_output_schema(tmp_path: Path) ->
     assert resumed.env == {"CODEX_HOME": str(profile_home("gpt-6.1-sol"))}
 
 
+@pytest.mark.slow
 def test_a_codex_review_delegate_files_the_verdict_from_its_output_file(tmp_path: Path, monkeypatch) -> None:
     repo = make_review_repo(tmp_path, orchestration=(
         "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
@@ -287,10 +310,9 @@ def test_prompt_channel_cli_runs_a_cursor_reviewer_read_only_and_files_its_answe
 
 # --- custom reviewer commands: captured, write-checked and filed too ------------------------------------------------
 
-GENERIC = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
-           "  - {id: gem, family: google, roles: [reviewer], harness: generic, channels: {cli: '{fake} {prompt}'}}\n")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("writes", [False, True])
 def test_prompt_channel_cli_captures_a_custom_reviewer_command_and_checks_its_writes(tmp_path: Path, capsys,
                                                                                      writes: bool) -> None:
@@ -307,12 +329,14 @@ def test_prompt_channel_cli_captures_a_custom_reviewer_command_and_checks_its_wr
     assert "**specy-road files your record.**" in prompt
 
 
+@pytest.mark.slow
 def test_a_custom_reviewer_command_under_review_delegate_is_checked_and_filed(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path, GENERIC)
     set_steps(repo, spec, {**verdict_step(repo, model="gem"), "plain": True})
     assert delegate(repo, "M1.1", "gem", sleep=lambda s: None)["outcome"] == "recorded"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("harness", ["codex", "cursor"])
 def test_a_plain_text_wrapper_on_a_codex_or_cursor_entry_is_filed_from_its_final_message(tmp_path: Path, capsys,
                                                                                           harness: str) -> None:
@@ -349,6 +373,7 @@ def test_the_shipped_agy_profile_gets_only_the_flags_it_lacks_as_a_reviewer(tmp_
     assert cli == profile.cli().replace("agy ", f"agy --json-schema {schema} --sandbox ", 1)   # keeps json and 60m
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("bin_name,program", [
     ("bin", lambda b: "agy"),                                          # found on PATH
     ("tools with spaces", lambda b: f'"{b}/agy"'),                     # a quoted path with spaces stays one word
@@ -506,6 +531,7 @@ def test_a_schema_invalid_record_is_not_a_notes_body_candidate(tmp_path: Path) -
     assert _submit(repo, "sol", _BODY, verdict="block", findings=_FIND_B, commands_rerun=["pytest -n 4"]) == 0
 
 
+@pytest.mark.slow
 def test_a_notes_body_only_in_history_is_filed(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=_TWO)
     assert _submit(repo, "opus", _BODY, verdict="block", findings=_FIND_A, commands_rerun=["pytest -q"]) == 0

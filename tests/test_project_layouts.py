@@ -26,6 +26,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, script_subprocess_env
+from tests.support.same.git_736cc1f249f0 import _git
 
 #: (script, extra args) — the read-mostly commands a consumer runs constantly.
 COMMANDS = [
@@ -39,8 +40,6 @@ COMMANDS = [
 ]
 
 
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
 
 
 @pytest.fixture(params=["embedded", "nested"])

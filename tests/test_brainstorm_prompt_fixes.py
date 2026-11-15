@@ -22,31 +22,17 @@ from tests.helpers import DOGFOOD
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.brainstorm_prompt import render_brainstorm_prompt, render_recommend_prompt
 from specy_road.brainstorm_session import add_idea, read_session
+from tests.support.same.cli_4bb09fdf3883 import _cli
+from tests.support.same.start_f653667be42d import _start
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = "how-do-we-expand-payments"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code or 0)
-    return code, out.getvalue(), err.getvalue()
 
 
-def _start(repo: Path, *extra: str) -> tuple[int, str, str]:
-    return _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
 
 
 def _prompt(repo: Path, pass_name: str) -> str:

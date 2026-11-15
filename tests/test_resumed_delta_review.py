@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts.role_prompt import build_prompt
@@ -78,6 +78,7 @@ def test_resumed_delta_approval_still_meets_the_delta_rules(tmp_path: Path) -> N
     assert "src/app.py is not a documentation or test file; a full review is needed" in _why(repo)
 
 
+@pytest.mark.slow
 def test_resumed_delta_refused_when_policy_off(tmp_path: Path, capsys) -> None:
     repo, approved = _repo(tmp_path)
     head = _fix(repo)

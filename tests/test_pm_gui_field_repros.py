@@ -27,10 +27,7 @@ import json
 
 import pytest
 
-from tests.test_pm_gui_concurrency_autoff import (  # noqa: F401 — fixture import
-    _siblings_of,
-    autoff_repo,
-)
+from tests.support.extracted.pm_gui_concurrency_autoff import _siblings_of, autoff_repo
 
 
 def test_fingerprint_emitted_as_string_to_dodge_js_number_precision(

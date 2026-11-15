@@ -23,10 +23,9 @@ from specy_road.runtime_paths import (
     recorded_project_root,
     source_scan_root,
 )
+from tests.support.same.git_736cc1f249f0 import _git
 
 
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
 
 
 def _repo(tmp_path: Path, project: str = ".") -> tuple[Path, Path]:
