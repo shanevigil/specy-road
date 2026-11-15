@@ -67,7 +67,7 @@ def leaf_tally(repo_root: Path, gate: Any) -> dict[str, Any]:
     """The leaf's review counts at its passing gate: rounds, blocking rounds, approvals the gate counted, findings
     per category, integrity findings and RCA escalations."""
     from specy_road.integrity import compare_integrity
-    from specy_road.review_policy_ref import policy_source
+    from specy_road.review_policy_pin import policy_source
     from specy_road.review_rca import loop_state
 
     loop = loop_state(repo_root, gate.node_id)
@@ -150,7 +150,7 @@ def _reverted(root: Path) -> set[str]:
 def completed_leaves(root: Path) -> list[tuple[str, str]]:
     """``(codename, finish merge)`` per distinct codename, newest first, from ``HEAD``'s first-parent history into
     the integration branch named at ``HEAD``; a reverted merge is skipped. Empty when git cannot answer."""
-    from specy_road.review_policy_ref import WORKFLOW_REL, committed_yaml
+    from specy_road.review_policy_pin import WORKFLOW_REL, committed_yaml
 
     into = str(committed_yaml(root, "HEAD", WORKFLOW_REL).get("integration_branch") or "main")
     # No pathspec: under one, --first-parent drops a merge that is TREESAME to its first parent under the project.

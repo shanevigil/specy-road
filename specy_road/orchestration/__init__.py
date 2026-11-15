@@ -56,7 +56,7 @@ _SOURCES: dict[str, tuple[str, ...]] = {
     "orchestrate_assign": (
         "ANY", "entry_may_process", "guidance_bypass_lines", "guidance_bypass_refusal",
         "guidance_bypass_warning", "guidance_problem", "is_available", "may_handle",
-        "node_eligibility", "node_sensitivity", "unavailable_prompt_error",
+        "node_eligibility", "node_sensitivity", "unavailability_reason", "unavailable_prompt_error",
     ),
     "orchestrate_plan": ("OrchestrationPlan", "build_orchestration_plan"),
     "records.chore_garden_due": ("warn_garden_due",),
@@ -134,9 +134,10 @@ __all__ = [
     "reviewer_preamble", "reviewer_turn", "rework_check", "rework_lines", "roster_entries",
     "run_plain_cli", "run_session", "session_path", "snapshot", "split_segments", "stall_lines",
     "stalled_workers", "start_session", "sync_marks", "timeline", "timeline_lines",
-    "tool_call_guard_adapters", "tool_call_guard_shapes", "unavailable_prompt_error",
-    "unmatched_roster_ids", "usage", "usage_json_payload", "usage_lines", "warn_garden_due",
-    "warn_lines", "worker_ops", "workers_dir", "write_entries", "zone_overlaps",
+    "tool_call_guard_adapters", "tool_call_guard_shapes", "unavailability_reason",
+    "unavailable_prompt_error", "unmatched_roster_ids", "usage", "usage_json_payload",
+    "usage_lines", "warn_garden_due", "warn_lines", "worker_ops", "workers_dir", "write_entries",
+    "zone_overlaps",
 ]
 
 

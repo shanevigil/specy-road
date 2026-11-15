@@ -55,7 +55,7 @@ from specy_road.registry_yaml import REGISTRY_REL
 from specy_road.review_files import PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 from specy_road.review_gate import FULL_MARK
 from specy_road.review_gate_ready import policy_source_line, trial_merge_lines
-from specy_road.review_resumed_delta import RESUMED_KEY, resumed_delta_on
+from specy_road.review_gate import RESUMED_KEY, resumed_delta_on
 from specy_road.review_target import (
     MILESTONE_SUMMARY, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
     resolve_target_or_exit, same_commit,

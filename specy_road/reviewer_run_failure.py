@@ -9,7 +9,7 @@ from typing import Any
 
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.clock import utc_now_iso
-from specy_road.review_bookkeeping import policy_line
+from specy_road.review_override import policy_line
 from specy_road.review_files import list_reviews, reviews_dir
 from specy_road.review_write_check import replace_file
 from specy_road.orchestration.workers.worker_adapter_parsers import UNREADABLE, loads_untrusted

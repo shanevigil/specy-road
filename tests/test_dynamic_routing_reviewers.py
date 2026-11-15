@@ -18,7 +18,7 @@ from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.orchestration_routing import entry_routing, routing_problem
-from specy_road.review_eligible import reviewer_eligibility
+from specy_road.bundled_scripts.review_cli import reviewer_eligibility
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.orchestration.workers.worker_adapters import Launch

@@ -11,24 +11,8 @@
   "ruff": "ruff 0.17.3",
   "commit": "542aa46c29cf4765c20b6879d322cc53422b1da3",
   "files": {
-    "scripts/census/coverage_overlap.py": {
-      "PL": 1,
-      "D102/D103": 4
-    },
-    "scripts/census/private_coupling.py": {
-      "PL": 1,
-      "SIM": 1,
-      "D102/D103": 2
-    },
-    "scripts/census/unexecuted_guards.py": {
-      "PL": 1,
-      "D102/D103": 1
-    },
     "scripts/check_clones.py": {
       "D102/D103": 5
-    },
-    "scripts/check_machine_paths.py": {
-      "D102/D103": 1
     },
     "scripts/check_release_version.py": {
       "PL": 1,
@@ -51,11 +35,6 @@
       "PL": 1,
       "D102/D103": 1
     },
-    "scripts/review_effort_study.py": {
-      "PL": 6,
-      "N": 1,
-      "D102/D103": 5
-    },
     "scripts/verify_wheel_contents.py": {
       "PL": 1,
       "D102/D103": 1
@@ -63,9 +42,6 @@
     "specy_road/agents_md_block.py": {
       "B": 1,
       "D102/D103": 1
-    },
-    "specy_road/agents_md_report.py": {
-      "PL": 1
     },
     "specy_road/archive_deep.py": {
       "PL": 2,
@@ -84,9 +60,6 @@
     },
     "specy_road/archive_restore.py": {
       "PL": 6
-    },
-    "specy_road/brainstorm_chat.py": {
-      "PL": 4
     },
     "specy_road/brainstorm_promote.py": {
       "PL": 5
@@ -115,26 +88,6 @@
     "specy_road/bundled_scripts/author_approach.py": {
       "D102/D103": 2
     },
-    "specy_road/bundled_scripts/brainstorm_cli.py": {
-      "PL": 1,
-      "D102/D103": 10
-    },
-    "specy_road/bundled_scripts/brainstorm_cli_args_v2.py": {
-      "PL": 2,
-      "B": 2,
-      "D102/D103": 3
-    },
-    "specy_road/bundled_scripts/brainstorm_cli_revise.py": {
-      "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/brainstorm_cli_v2.py": {
-      "PL": 2,
-      "B": 1,
-      "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/brainstorm_close.py": {
-      "D102/D103": 1
-    },
     "specy_road/bundled_scripts/brainstorm_fields.py": {
       "C901": 1,
       "PL": 3,
@@ -161,7 +114,7 @@
       "PL": 2
     },
     "specy_road/bundled_scripts/branches_cli.py": {
-      "D102/D103": 4
+      "D102/D103": 3
     },
     "specy_road/bundled_scripts/brief_dependency_context.py": {
       "PL": 1
@@ -171,11 +124,11 @@
     },
     "specy_road/bundled_scripts/chore_cli.py": {
       "PL": 1,
-      "D102/D103": 7
+      "D102/D103": 5
     },
     "specy_road/bundled_scripts/chore_garden.py": {
       "PL": 1,
-      "D102/D103": 5
+      "D102/D103": 4
     },
     "specy_road/bundled_scripts/decisions_cli.py": {
       "D102/D103": 5
@@ -186,7 +139,6 @@
     "specy_road/bundled_scripts/do_next_available.py": {
       "C901": 1,
       "PL": 2,
-      "SIM": 1,
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/do_next_finished_unmerged.py": {
@@ -233,21 +185,11 @@
       "RET": 1,
       "D102/D103": 2
     },
-    "specy_road/bundled_scripts/generate_brief.py": {
-      "PL": 2,
-      "D102/D103": 5
-    },
     "specy_road/bundled_scripts/grind_session_args.py": {
       "D102/D103": 3
     },
     "specy_road/bundled_scripts/history_cli.py": {
       "D102/D103": 3
-    },
-    "specy_road/bundled_scripts/impact_cli.py": {
-      "D102/D103": 1
-    },
-    "specy_road/bundled_scripts/integrity_cli.py": {
-      "D102/D103": 1
     },
     "specy_road/bundled_scripts/lessons_cli.py": {
       "D102/D103": 4
@@ -259,13 +201,12 @@
       "D102/D103": 2
     },
     "specy_road/bundled_scripts/mark_implementation_reviewed.py": {
-      "PL": 3,
-      "D102/D103": 1
+      "PL": 3
     },
     "specy_road/bundled_scripts/models_cli.py": {
       "C901": 1,
       "PL": 1,
-      "D102/D103": 6
+      "D102/D103": 5
     },
     "specy_road/bundled_scripts/open_milestone_pr.py": {
       "D102/D103": 1
@@ -274,7 +215,7 @@
       "D102/D103": 5
     },
     "specy_road/bundled_scripts/orchestration_guard_cli.py": {
-      "PL": 3,
+      "PL": 2,
       "B": 1,
       "D102/D103": 6
     },
@@ -283,7 +224,6 @@
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/pm_sync.py": {
-      "PL": 1,
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/reconcile_branch_cli.py": {
@@ -315,13 +255,12 @@
       "D102/D103": 4
     },
     "specy_road/bundled_scripts/review_node.py": {
-      "PL": 7,
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/review_packet.py": {
       "PL": 5,
       "B": 2,
-      "D102/D103": 2
+      "D102/D103": 1
     },
     "specy_road/bundled_scripts/review_packet_nested.py": {
       "PL": 2
@@ -396,8 +335,7 @@
       "D102/D103": 1
     },
     "specy_road/bundled_scripts/role_prompt.py": {
-      "PL": 7,
-      "D102/D103": 1
+      "PL": 7
     },
     "specy_road/bundled_scripts/scaffold_planning.py": {
       "D102/D103": 1
@@ -409,7 +347,6 @@
       "D102/D103": 5
     },
     "specy_road/bundled_scripts/start_milestone_session.py": {
-      "PL": 1,
       "B": 1,
       "D102/D103": 1
     },
@@ -438,9 +375,6 @@
     "specy_road/bundled_scripts/validate_registry_overlap.py": {
       "PL": 1,
       "D102/D103": 2
-    },
-    "specy_road/bundled_scripts/validate_roadmap.py": {
-      "PL": 1
     },
     "specy_road/bundled_scripts/validate_roadmap_checks.py": {
       "PL": 2,
@@ -497,8 +431,7 @@
       "PL": 1
     },
     "specy_road/finish_ancestor_rollup.py": {
-      "PL": 10,
-      "D102/D103": 1
+      "PL": 5
     },
     "specy_road/finish_implementation_check.py": {
       "PL": 1
@@ -591,15 +524,14 @@
     },
     "specy_road/ignore_report.py": {
       "PL": 1,
-      "B": 1,
-      "N": 1
+      "B": 1
     },
     "specy_road/impact.py": {
       "D102/D103": 1
     },
     "specy_road/init_project.py": {
       "PL": 5,
-      "D102/D103": 4
+      "D102/D103": 3
     },
     "specy_road/integrity.py": {
       "PL": 1,
@@ -742,7 +674,7 @@
       "D102/D103": 1
     },
     "specy_road/orchestration/workers/worker_outbox.py": {
-      "PL": 6,
+      "PL": 5,
       "D102/D103": 2
     },
     "specy_road/orchestration/workers/worker_process.py": {
@@ -823,14 +755,11 @@
       "PL": 1,
       "B": 1
     },
-    "specy_road/review_bookkeeping.py": {
-      "PL": 1
-    },
-    "specy_road/review_defer.py": {
+    "specy_road/review_defer_cli.py": {
       "PL": 1,
       "D102/D103": 2
     },
-    "specy_road/review_deferral.py": {
+    "specy_road/review_defer_rules.py": {
       "PL": 1,
       "D102/D103": 2
     },
@@ -838,16 +767,13 @@
       "PL": 15,
       "D102/D103": 3
     },
-    "specy_road/review_eligible.py": {
-      "PL": 2
-    },
     "specy_road/review_files.py": {
       "PL": 3,
       "D102/D103": 6
     },
     "specy_road/review_gate.py": {
-      "PL": 5,
-      "D102/D103": 7
+      "PL": 10,
+      "D102/D103": 8
     },
     "specy_road/review_gate_ready.py": {
       "PL": 4,
@@ -865,18 +791,12 @@
       "N": 1,
       "D102/D103": 2
     },
-    "specy_road/review_policy_ref.py": {
-      "D102/D103": 1
-    },
     "specy_road/review_pre_existing.py": {
       "PL": 1
     },
     "specy_road/review_rca.py": {
       "PL": 2,
       "D102/D103": 7
-    },
-    "specy_road/review_ready_merge.py": {
-      "D102/D103": 2
     },
     "specy_road/review_record_rules.py": {
       "PL": 3,
@@ -891,9 +811,6 @@
       "PL": 8,
       "D102/D103": 3
     },
-    "specy_road/review_resumed_delta.py": {
-      "PL": 3
-    },
     "specy_road/review_run_status.py": {
       "PL": 1,
       "D102/D103": 3
@@ -902,15 +819,12 @@
       "PL": 1,
       "D102/D103": 1
     },
-    "specy_road/review_strong.py": {
-      "D102/D103": 1
-    },
     "specy_road/review_tally.py": {
-      "PL": 9,
+      "PL": 8,
       "D102/D103": 3
     },
     "specy_road/review_target.py": {
-      "D102/D103": 4
+      "D102/D103": 3
     },
     "specy_road/review_trend.py": {
       "PL": 1,
@@ -1017,10 +931,7 @@
     },
     "specy_road/validate_stale_commands.py": {
       "PL": 2,
-      "B": 1,
-      "SIM": 1,
-      "RET": 1,
-      "D102/D103": 1
+      "RET": 1
     },
     "specy_road/version_skew.py": {
       "PL": 1,
@@ -1151,7 +1062,7 @@
       "D102/D103": 8
     },
     "tests/test_archive_dependencies.py": {
-      "PL": 7,
+      "PL": 6,
       "D102/D103": 6
     },
     "tests/test_archive_git_provenance.py": {
@@ -1183,7 +1094,7 @@
       "D102/D103": 20
     },
     "tests/test_brainstorm_chat.py": {
-      "PL": 6,
+      "PL": 3,
       "D102/D103": 9
     },
     "tests/test_brainstorm_cli.py": {
@@ -1336,7 +1247,7 @@
     },
     "tests/test_decisions.py": {
       "PL": 1,
-      "D102/D103": 9
+      "D102/D103": 8
     },
     "tests/test_delta_review.py": {
       "PL": 2,
@@ -1516,7 +1427,7 @@
       "D102/D103": 1
     },
     "tests/test_grind_session_cleanup.py": {
-      "D102/D103": 16
+      "D102/D103": 15
     },
     "tests/test_grind_session_implement.py": {
       "PL": 5,
@@ -1543,7 +1454,7 @@
       "D102/D103": 16
     },
     "tests/test_gui_app_brainstorm.py": {
-      "PL": 23,
+      "PL": 19,
       "D102/D103": 17
     },
     "tests/test_gui_app_milestone_lock.py": {
@@ -1631,7 +1542,6 @@
       "D102/D103": 1
     },
     "tests/test_init_project_gitignore.py": {
-      "PL": 1,
       "D102/D103": 2
     },
     "tests/test_init_project_reports.py": {
@@ -1689,7 +1599,7 @@
       "D102/D103": 13
     },
     "tests/test_managed_block.py": {
-      "D102/D103": 7
+      "D102/D103": 6
     },
     "tests/test_mark_implementation_reviewed_gate.py": {
       "PL": 5,
@@ -2004,9 +1914,6 @@
       "PL": 1,
       "D102/D103": 11
     },
-    "tests/test_review_effort_study.py": {
-      "D102/D103": 18
-    },
     "tests/test_review_eligible.py": {
       "D102/D103": 7
     },
@@ -2043,7 +1950,7 @@
       "D102/D103": 9
     },
     "tests/test_review_node.py": {
-      "PL": 5,
+      "PL": 2,
       "D102/D103": 16
     },
     "tests/test_review_packet.py": {
@@ -2062,7 +1969,7 @@
     },
     "tests/test_review_rca.py": {
       "PL": 3,
-      "D102/D103": 13
+      "D102/D103": 12
     },
     "tests/test_review_record_caller.py": {
       "PL": 3,
@@ -2096,7 +2003,7 @@
       "D102/D103": 18
     },
     "tests/test_review_round6_brainstorm.py": {
-      "PL": 7,
+      "PL": 6,
       "D102/D103": 13
     },
     "tests/test_review_round6_docs.py": {
@@ -2212,7 +2119,7 @@
       "D102/D103": 11
     },
     "tests/test_roadmap_gui_lib.py": {
-      "D102/D103": 7
+      "D102/D103": 6
     },
     "tests/test_roadmap_gui_pr_pickers.py": {
       "PL": 2,

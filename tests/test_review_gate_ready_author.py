@@ -17,7 +17,7 @@ from tests.test_review_gate import TWO_FAMILIES
 from specy_road import review_signing as rs
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import review_cli
-from specy_road.review_eligible import eligibility_lines, reviewer_eligibility
+from specy_road.bundled_scripts.review_cli import eligibility_lines, reviewer_eligibility
 from specy_road.review_files import load_review, render_front_matter, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.toolkit_version import stamp_review_toolkit_version

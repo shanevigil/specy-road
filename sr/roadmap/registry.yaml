@@ -70,28 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: fold-the-review-gate-fragments-no-review-policy-is-deprecated
-    node_id: M16.5.12
-    branch: feature/rm-fold-the-review-gate-fragments-no-review-policy-is-deprecated
-    touch_zones:
-      - specy_road/review_*.py
-      - specy_road/rework_rca.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - docs/orchestration-review.md
-      - docs/orchestration.md
-      - scripts/line_width_baseline.json
-      - tests/
-      - CHANGELOG.md
-      - specy_road/
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-      - constraints/test-private-imports-baseline.txt
-      - constraints/clone-baseline.json
-      - specy_road/review_defer*.py
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: pending
   - codename: gui-orch-sandbox-acceptance
     node_id: M17.9
     branch: feature/rm-gui-orch-sandbox-acceptance

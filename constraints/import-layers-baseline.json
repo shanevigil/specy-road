@@ -3,7 +3,7 @@
   "tool": "ast import scan (nested imports included)",
   "components": [
     {
-      "size": 37,
+      "size": 33,
       "modules": [
         "specy_road.orchestration.records.decisions",
         "specy_road.orchestration.harness.harness_binary",
@@ -17,9 +17,7 @@
         "specy_road.orchestration_routing",
         "specy_road.red_green",
         "specy_road.review_answer",
-        "specy_road.review_bookkeeping",
-        "specy_road.review_deferral",
-        "specy_road.review_eligible",
+        "specy_road.review_defer_rules",
         "specy_road.review_files",
         "specy_road.review_gate",
         "specy_road.review_gate_ready",
@@ -29,8 +27,6 @@
         "specy_road.review_policy_pin",
         "specy_road.review_pre_existing",
         "specy_road.review_rca",
-        "specy_road.review_resumed_delta",
-        "specy_road.review_strong",
         "specy_road.review_tally",
         "specy_road.review_trend",
         "specy_road.review_write_check",

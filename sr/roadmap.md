@@ -58,7 +58,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.5.9` | Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings | task | Agentic-led | Complete |
 | `M16.5.10` | Chore, decision and lesson records share internal adapters and keep their files byte for byte | task | Agentic-led | Complete |
 | `M16.5.11` | Grind settings move under grind: in git-workflow.yaml, migrated by upgrade | task | Agentic-led | Complete |
-| `M16.5.12` | Fold the review gate fragments; no review policy is deprecated | task | Agentic-led | Not Started |
+| `M16.5.12` | Fold the review gate fragments; no review policy is deprecated | task | Agentic-led | Complete |
 | `M16.5.13` | The review packet fragments fold into review_packet | task | Agentic-led | Not Started |
 | `M16.6` | Docs and tests reorganised by topic | milestone | — | Not Started |
 | `M16.6.1` | Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra | task | Agentic-led | Not Started |
