@@ -224,6 +224,11 @@ are removed in the release after 0.3.1:
 
 ### Fixed
 
+- PM GUI: the Orchestration drawer lists leaf groups in the outline's row order (parents before children, siblings in
+  sibling order), then No leaf, instead of the Gantt's dependency-step order. Outline badges are requested with the
+  roadmap and again on each roadmap reload, so a fresh page shows them without opening the drawer; they still refresh
+  when the drawer loads, stay absent when `GET /api/orchestration` is 404, and have no timer of their own. See
+  `docs/pm-gui.md` (Orchestration drawer).
 - PM GUI orchestration view: the drawer, the outline badges and the edit dialog's Orchestration section join
   `GET /api/orchestration`'s leaves on the outline node's id, as the snapshot keys them, so a leaf in the outline
   shows under its id and title instead of as missing from the outline, and its badge renders. The worker status is

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import appSource from "./App.tsx?raw";
 import drawerSource from "./components/OrchestrationDrawer.tsx?raw";
 import mockJson from "./fixtures/orchestration_snapshot_mock.json";
 import {
@@ -8,6 +9,7 @@ import {
   loadOrchestration,
   optionalKeys,
   outlineBadge,
+  outlineNodesInRowOrder,
   pollOrchestration,
   requiredKeys,
   subscribeOrchestration,
@@ -389,6 +391,54 @@ describe("buildOrchestrationView", () => {
     expect(view.map((g) => g.displayId)).toEqual(["M1.10", "M1.2", "2"]);
   });
 
+  // M17.9 item 3: the node array is the Gantt's dependency-step order (M0.2
+  // depends on M0.3). Groups follow the outline rows, then No leaf. M0.10
+  // would sort before M0.2 if the order were the ids.
+  it("lists groups in the outline's row order, not the Gantt node array (M0.2 depends on M0.3)", () => {
+    const ganttOrder = [
+      outlineNode("M0.1"),
+      outlineNode("M0.3"),
+      outlineNode("M2"),
+      outlineNode("M0.2"),
+    ];
+    const rowOrder = ["M0.1", "M0.2", "M0.3", "M2"];
+    const snap: OrchestrationSnapshot = {
+      schema: 1,
+      leaves: {
+        "M0.1": emptyLeaf(),
+        "M0.2": emptyLeaf(),
+        "M0.3": emptyLeaf(),
+        M2: emptyLeaf(),
+      },
+      leafless_workers: [worker({ id: "w-9" })],
+    };
+    const view = buildOrchestrationView(snap, outlineNodesInRowOrder(ganttOrder, rowOrder), NOW);
+    expect(view.map((g) => (g.key === null ? g.title : g.displayId))).toEqual([
+      "M0.1",
+      "M0.2",
+      "M0.3",
+      "M2",
+      "No leaf",
+    ]);
+    expect(
+      outlineNodesInRowOrder(
+        [outlineNode("M0.10"), outlineNode("M0.2"), outlineNode("M0.1")],
+        ["M0.1", "M0.2", "M0.10"],
+      ).map((n) => n.id),
+    ).toEqual(["M0.1", "M0.2", "M0.10"]);
+    expect(outlineNodesInRowOrder([outlineNode("M0.1")], ["missing", "M0.1"]).map((n) => n.id)).toEqual([
+      "M0.1",
+    ]);
+    expect(appSource).toMatch(
+      /outlineNodesInRowOrder\(\s*displayData\.nodes,\s*displayData\.ordered_ids\s*\)/,
+    );
+    const drawerAt = appSource.indexOf("<OrchestrationDrawer");
+    const drawer = appSource.slice(drawerAt, appSource.indexOf("/>", drawerAt) + 2);
+    expect(drawer).toContain("nodes={orchestrationOutline}");
+    expect(drawer).not.toContain("displayData?.nodes");
+    expect(drawer).not.toContain("displayData.nodes");
+  });
+
   it("formats mock rows: ages from now, null account empty, stale review, two worktrees, flags verbatim", () => {
     const g = buildOrchestrationView(mock, outline, NOW).find((x) => x.key === "M10")!;
     expect(g.claim).toEqual({ codename: "alpha", branch: "feature/rm-alpha", registered: "3h ago" });
@@ -615,6 +665,40 @@ describe("loadOrchestration", () => {
     const r = await loadOrchestration(recordingFetch(reply).fetchImpl);
     expect(r.kind).toBe("error");
     expect(r.kind === "error" && r.message).toContain(message);
+  });
+});
+
+describe("roadmap load delivers the outline snapshot", () => {
+  // M17.9 item 12: the outline painted with no snapshot because only the
+  // drawer's poll fetched it. The roadmap load (first paint and each reload)
+  // waits on the same GET; a 404 still leaves the outline without a badge.
+  it("requests the snapshot with the roadmap, before the drawer opens, and a 404 leaves no badge", async () => {
+    const start = appSource.indexOf("const loadSnapshot = useCallback");
+    const body = appSource.slice(start, appSource.indexOf("const handlePublishRoadmap"));
+    expect(body).toMatch(/await Promise\.all\(\s*\[[\s\S]*?fetchOrchestration\(\)/);
+    expect(body).not.toMatch(/void fetchOrchestration\(\)/);
+    expect(body).not.toMatch(/setInterval|pollOrchestration/);
+
+    const seen: string[] = [];
+    const stop = subscribeOrchestration((notice) => seen.push(notice.load.kind));
+    try {
+      const ok = recordingFetch(respond(JSON.stringify(mockJson), 200));
+      const [, load] = await Promise.all([Promise.resolve("roadmap"), loadOrchestration(ok.fetchImpl)]);
+      expect(ok.requests).toEqual(["GET /api/orchestration"]);
+      expect(load.kind).toBe("ok");
+      expect(seen).toEqual(["ok"]);
+
+      const missing = recordingFetch(respond("Not Found", 404));
+      const [, gone] = await Promise.all([
+        Promise.resolve("roadmap"),
+        loadOrchestration(missing.fetchImpl),
+      ]);
+      expect(missing.requests).toEqual(["GET /api/orchestration"]);
+      expect(gone).toEqual({ kind: "unavailable" });
+      expect(outlineBadge(gone, "M10", NOW)).toBeNull();
+    } finally {
+      stop();
+    }
   });
 });
 
