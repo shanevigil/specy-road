@@ -173,7 +173,7 @@ Each **open** entry carries:
 | `asked` | ISO date when opened |
 | `needed_by` | Optional ISO date by which an answer is needed |
 
-**CLI:** `specy-road decisions add|list|close`. Schema validation runs before `add` writes the file
+**CLI:** `specy-road decisions add`, `specy-road decisions list` and `specy-road decisions close`. Schema validation runs before `add` writes the file
 and before `list` prints it. `list` prints every open entry, those with `needed_by` first in ascending
 date order and those without a deadline last. `close <ID> --answer ...` records the answer and the
 closed time in the ledger; no planning-sheet line is needed. A person's decision on a leaf's `human:`

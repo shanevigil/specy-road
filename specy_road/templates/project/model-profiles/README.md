@@ -16,7 +16,7 @@ reports, and confidence gaps — is in
 > the sources. Confirm a price, limit, or command with the vendor before you
 > depend on it.
 
-`specy-road models list|show|stale` read these files, `specy-road prompt` folds a
+`specy-road models list`, `models show` and `models stale` read these files, `specy-road prompt` folds a
 profile's rules into a role prompt, and `prompt --channel cli` and a `generic`
 worker run its `access.cli` (`<prompt>` or `{prompt}` is the placeholder; a roster
 `channels.cli` overrides it). A worker on `claude-code`, `codex` or `cursor` uses

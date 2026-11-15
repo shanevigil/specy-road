@@ -130,3 +130,50 @@ def test_project_templates_cite_toolkit_docs_by_url() -> None:
                     if not (REPO / m.group(1)).is_file()]
     assert bare == []
     assert missing == []
+
+
+_SHELL_CMD = re.compile(r"^(?:specyrd|specy-road|pip|pipx|uv)\s")
+_REAL_PIPE = re.compile(r"\|\s*(?:grep|head|tail|sha256sum|sh|bash|jq|less|sort|tee|xargs|wc)\b")
+_PLACEHOLDER = re.compile(r"<[^>]*>|(?:^|\s)\[[^\]]*\]|…|\.\.\.")
+
+
+def _commands(text: str) -> list[str]:
+    """Each command a reader may copy: a fenced-block line, or an inline code span, minus a ``#`` comment."""
+    out, fence = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        elif fence:
+            out.append(line.strip())
+        else:
+            out += [m.group(1).strip() for m in re.finditer(r"`([^`\n]+)`", line)]
+    return [c.split(" #")[0].rstrip() for c in out]
+
+
+def _alternation_offenders(text: str) -> list[str]:
+    """The rule: a ``specyrd``/``specy-road``/``pip``/``pipx``/``uv`` command with no placeholder
+    (``<…>``, `` […]``, ``…``) is runnable as written, so a ``|`` in it must be a real pipe into
+    another program; ``a|b`` alternatives belong in prose. A synopsis with a placeholder is not
+    runnable and may use ``|``. Limits: only those five command names, and only the pipe targets in
+    ``_REAL_PIPE`` count as pipes."""
+    return [c for c in _commands(text)
+            if _SHELL_CMD.match(c) and "|" in _REAL_PIPE.sub("", c) and not _PLACEHOLDER.search(c)]
+
+
+def test_alternation_rule_clauses() -> None:
+    assert _alternation_offenders("Run `specyrd init . --ai cursor|codex`.") == ["specyrd init . --ai cursor|codex"]
+    assert _alternation_offenders("```bash\npip install x|y  # note\n```\n") == ["pip install x|y"]
+    assert _alternation_offenders("`specy-road worker list --json | jq .` and `pip download x | sha256sum`") == []
+    assert _alternation_offenders("`specy-road prompt <NODE_ID> --role executor|reviewer`") == []
+    assert _alternation_offenders("`specyrd init [PATH] --ai cursor|codex`") == []
+    assert _alternation_offenders('`pip install "specy-road[gui]" --x a|b`') == ['pip install "specy-road[gui]" --x a|b']
+
+
+def test_no_runnable_doc_command_uses_a_bar_for_alternatives() -> None:
+    """A shell reads ``a|b`` as a pipe, so a copied command would run a pipeline: README.md, docs/ and the
+    Markdown templates ``init project`` and ``specyrd init`` copy into a consumer repo."""
+    templates = REPO / "specy_road" / "templates"
+    files = [*_docs(), *sorted((templates / "project").rglob("*.md")), *sorted((templates / "specyrd").rglob("*.md"))]
+    hits = [f"{path.relative_to(REPO)}: {c}" for path in files
+            for c in _alternation_offenders(path.read_text(encoding="utf-8"))]
+    assert hits == [], "write one runnable example and name the alternatives in prose:\n" + "\n".join(hits)

@@ -91,7 +91,7 @@ Typical path in an **application** repository after `specy-road init project`: r
 4. **Publish views** — `specy-road export` regenerates `roadmap.md` from the merged graph.
 5. **Focus a task** — `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`, then implement against `shared/` contracts cited for that node.
 6. **Branches** — Follow [docs/git-workflow.md](https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md): register in `roadmap/registry.yaml` on the **integration branch** from `roadmap/git-workflow.yaml`, then `feature/rm-<codename>` (or use `specy-road do-next-available-task`).
-7. **Optional agent skills** — `specyrd init . --ai cursor|claude-code|codex` installs one skill per command under `.agents/skills/<name>/SKILL.md` (Claude Code reads them through `.claude/skills/` links); each skill runs the `specy-road` CLI. See [docs/install-and-usage.md](https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md#skills-specyrd-init).
+7. **Optional agent skills** — `specyrd init . --ai claude-code` (or `--ai cursor`, `--ai codex`, one run per harness you use) installs one skill per command under `.agents/skills/<name>/SKILL.md` (Claude Code reads them through `.claude/skills/` links); each skill runs the `specy-road` CLI. See [docs/install-and-usage.md](https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md#skills-specyrd-init).
 
 ## Where to read next
 

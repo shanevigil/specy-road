@@ -10,7 +10,7 @@
 - New project: `specy-road init project` (it also writes `roadmap.md` and `roadmap-context.md`) prints the next steps: set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, commit the scaffold, then `specy-road validate`.
 - After `pip install -U specy-road`: `specy-road upgrade --prune` (refreshes `schemas/`, `model-profiles/`, missing load-order docs and the stubs, prints one report of what changed, then runs `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
-- Dev loop: `specy-road do-next-available-task` → implement → `review packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
+- Dev loop: `specy-road do-next-available-task` → implement → `review packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge` (or `--on-complete pr`).
 
 **Read further for:**
 - prerequisites, PyPI, pipx and uv tool, TestPyPI RCs, `uv pip`, source checkout → "Requirements", "Install", "Install a release candidate (TestPyPI)", "Install from source (toolkit contributors)"
@@ -204,7 +204,7 @@ Paths sit under the project root (`sr/.specyrd/…` in the nested layout). Codex
 
 The **`specyrd`** CLI (installed with this package) lays down **thin** markdown skills that tell the agent to run **`specy-road`** from the repo root — they are not a second source of truth. Each command is **one file**, `.agents/skills/<name>/SKILL.md`: Cursor and Codex read that directory natively, and the `claude-code` pack adds a symlink per skill under `.claude/skills/` so Claude Code reads the same file. `--ai generic` writes flat `.md` files into a directory you choose.
 
-- **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits`.
+- **CLI-first:** Canonical invocations remain `specy-road validate`, `specy-road brief`, `specy-road export` and `specy-road file-limits`.
 - **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. **specy-road** uses flat **`planning/*.md`** feature sheets per node — not that tool.
 - **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value.
 - **After upgrading specy-road:** Run **`specy-road upgrade`** (or just **`specy-road upgrade --only stubs`**), not `init --force`. It rewrites exactly the paths `.specyrd/manifest.json` records, adds stubs that shipped since you initialized, and leaves everything else alone. See [Keeping a consumer repo current](#keeping-a-consumer-repo-current-after-an-upgrade).
