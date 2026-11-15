@@ -14,8 +14,8 @@ from specy_road.orchestration.workers.worker_cli_render import sync_event_lines
 from specy_road.orchestration.workers.worker_runner_ready import READY_ONLY_PROMPT
 from tests.review_repo_helpers import git
 from tests.test_rework_findings_in_prompt import file_review
-from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import make_worker_repo, wait_for_worker
 
 _UNTIL_VALUES = ("completion", "error", "intervention", "completion,error", "error,intervention")
 

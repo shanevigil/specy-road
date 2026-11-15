@@ -10,7 +10,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import commit_file, git, make_review_repo
-from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
+from tests.support.cli import run_worker_cli
+from tests.support.harness import FAKE, wait_for_worker, worker_roster
 
 from specy_road import review_delegate as rd
 from specy_road.orchestration.workers import worker_ops as ops

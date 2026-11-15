@@ -13,7 +13,7 @@ import yaml
 from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
 from tests.milestone_repo_helpers import land_leaf, make_milestone_repo, merge_leaf, set_status
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
-from tests.test_models_and_prompt import ROSTER, make_profile_repo
+from tests.support.profiles import make_profile_repo, ROSTER
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp

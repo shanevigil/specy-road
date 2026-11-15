@@ -11,7 +11,7 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_worker_adapters import CODEX_TURN, CURSOR_RESULT, RECORDED
-from tests.worker_repo_helpers import reset_cursor_adapter_via_init
+from tests.support.harness import reset_cursor_adapter_via_init
 
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_state as ws

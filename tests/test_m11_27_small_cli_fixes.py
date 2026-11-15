@@ -13,8 +13,8 @@ import pytest
 from tests.helpers import REPO, SCHEMAS
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_review_round6_runner import _launch
-from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import FAKE, make_worker_repo, wait_for_worker, worker_roster
 
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws

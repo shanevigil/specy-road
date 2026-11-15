@@ -3,75 +3,15 @@
 from __future__ import annotations
 
 import json
-import shutil
 from datetime import date
 from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.plan import ROSTER, only_assignment, plan_repo
 
 from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli, role_prompt
-
-REPO = Path(__file__).resolve().parent.parent
-PROFILES = REPO / "specy_road" / "templates" / "project" / "model-profiles"
-
-ROSTER = """version: 1
-roster:
-  - {id: human, family: human, roles: [coordinator, reviewer]}
-  - id: opus
-    family: anthropic
-    profile: model-profiles/anthropic-claude/claude-opus-5-5.md
-    roles: [coordinator, executor, reviewer]
-    class: senior
-    subagent_family_lock: anthropic
-  - id: sol
-    family: openai
-    profile: model-profiles/openai-gpt/gpt-6.1-sol.md
-    roles: [executor, reviewer]
-  - id: flash
-    family: google
-    profile: model-profiles/google-gemini/gemini-3.8-flash.md
-    roles: [executor]
-    may_process: [public, internal]
-  - id: local
-    family: local
-    roles: [executor]
-    may_process: [public, internal, restricted]
-    preflight: "true"
-policy: {reviewers_required: 2, reviewers_distinct_families: true}
-"""
-
-
-def plan_repo(tmp_path: Path, roster: str = ROSTER, node_extra: str = "", *, ready: bool = True) -> Path:
-    """``ready``: free the leaf (no claim, Not Started) so the planner sees it.
-
-    ``prompt`` needs the opposite — a claimed leaf with its branch — so the
-    enforcement tests pass ``ready=False`` and keep the helper's claim.
-    """
-    repo = make_review_repo(tmp_path, orchestration=roster)
-    for rel in ("anthropic-claude/claude-opus-5-5.md", "openai-gpt/gpt-6.1-sol.md", "google-gemini/gemini-3.8-flash.md"):
-        dest = repo / "model-profiles" / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(PROFILES / rel, dest)
-    git(repo, "checkout", "-q", "dev")
-    chunk = repo / "roadmap" / "phases" / "M1.json"
-    text = chunk.read_text()
-    if ready:
-        (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
-        text = text.replace('"status": "In Progress"', '"status": "Not Started"')
-    if node_extra:
-        text = text.replace('"id": "M1.1",', f'"id": "M1.1", {node_extra},')
-    chunk.write_text(text)
-    git(repo, "add", "-A")
-    git(repo, "commit", "-qm", "ready" if ready else "claimed")
-    return repo
-
-
-def only_assignment(plan: op.OrchestrationPlan) -> op.Assignment:
-    assert len(plan.batches) == 1 and len(plan.batches[0]) == 1
-    return plan.batches[0][0]
 
 
 def test_default_leaf_gets_cheapest_executor_and_two_families(tmp_path: Path) -> None:

@@ -8,7 +8,7 @@ import pytest
 
 from specy_road.roadmap_load import load_roadmap
 from specy_road.cli_usage import USAGE_TEXT
-from tests.test_roadmap_crud import crud_fixture_repo, run_crud
+from tests.support.crud import crud_fixture_repo, run_crud
 
 _NK991 = "10000000-0000-4000-8000-000000009902"
 

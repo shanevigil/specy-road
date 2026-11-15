@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import CAPACITY, delegate_repo, set_steps, verdict_step
-from tests.test_models_and_prompt import run_main
+from tests.support.cli import run_main
 from tests.test_review_record_write import GENERIC
 
 from specy_road import review_files as rf

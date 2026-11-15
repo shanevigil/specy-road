@@ -12,11 +12,7 @@ from starlette.testclient import TestClient
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.roadmap_load import load_roadmap
 from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
-from tests.test_roadmap_crud import (
-    crud_fixture_repo,
-    run_crud,
-    write_registry_claim,
-)
+from tests.support.crud import crud_fixture_repo, run_crud, write_registry_claim
 
 
 def _tree_bytes(repo: Path) -> bytes:

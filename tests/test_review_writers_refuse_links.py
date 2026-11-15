@@ -13,7 +13,7 @@ import yaml
 
 from tests.review_delegate_helpers import delegate_repo, run_review_cli, set_steps, verdict_step
 from tests.review_repo_helpers import git, make_review_repo, review_text
-from tests.test_models_and_prompt import run_main
+from tests.support.cli import run_main
 from tests.test_review_cli import ONE_AI
 from tests.test_review_gate import TWO_FAMILIES
 

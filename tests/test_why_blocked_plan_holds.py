@@ -15,7 +15,7 @@ from specy_road.bundled_scripts import roadmap_query_cli as rq
 from specy_road.orchestration.grind.session_plan_git import gather_session_plan
 from specy_road.orchestration.grind.session_plan_render import zone_overlaps
 from tests.review_repo_helpers import git
-from tests.test_orchestrate_plan import plan_repo
+from tests.support.plan import plan_repo
 
 # plan_repo's M1.1 is ready with touch zone `src`.
 M1_1_KEY = "11111111-1111-5111-8111-111111111111"

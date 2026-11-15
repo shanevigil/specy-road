@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from tests.test_cursor_usage_cost import _api_id_for, _codex_repo
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.harness import make_worker_repo
 
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws

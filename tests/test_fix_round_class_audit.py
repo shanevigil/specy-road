@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from tests.review_repo_helpers import git
-from tests.test_models_and_prompt import make_profile_repo
+from tests.support.profiles import make_profile_repo
 from tests.test_rework_findings_in_prompt import executor_prompt, file_review, stopped_worker
-from tests.test_worker_cli import run_worker_cli, wait_for_worker
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import make_worker_repo, wait_for_worker
 
 from specy_road.orchestration.role_prompt_rework import CLASS_AUDIT_LINES
 

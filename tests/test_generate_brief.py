@@ -26,7 +26,7 @@ def test_render_brief_m02_contains_title() -> None:
 
 
 def test_render_brief_shows_registry_claim_next_to_status(tmp_path: Path) -> None:
-    from tests.test_roadmap_crud import crud_fixture_repo, write_registry_claim
+    from tests.support.crud import crud_fixture_repo, write_registry_claim
 
     crud_fixture_repo(tmp_path)
     write_registry_claim(tmp_path, "M99.1", "one", "feature/rm-one", "Pat Example")

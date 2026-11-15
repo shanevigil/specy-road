@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.test_models_and_prompt import run_main
-from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
+from tests.support.cli import run_main
+from tests.support.plan import only_assignment, plan_repo, ROSTER
 
 from specy_road.orchestration import orchestrate_plan as op
 from specy_road.orchestration.workers import worker_ops as ops

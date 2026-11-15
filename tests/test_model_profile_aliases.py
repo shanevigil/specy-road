@@ -19,7 +19,8 @@ from specy_road.orchestration.orchestrate_plan import guidance_bypass_refusal
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 
 from tests.review_repo_helpers import git, shipped_anthropic_opus_cli_yaml_line
-from tests.test_models_and_prompt import ROSTER, TEMPLATE_PROFILES, commit_profile, make_profile_repo, run_main
+from tests.support.cli import run_main
+from tests.support.profiles import commit_profile, make_profile_repo, ROSTER, TEMPLATE_PROFILES
 
 
 def test_shipped_cursor_family_profiles_list_effort_suffix_aliases() -> None:

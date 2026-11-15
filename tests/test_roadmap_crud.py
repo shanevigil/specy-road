@@ -3,105 +3,14 @@
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 from specy_road.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.roadmap_crud_ops import append_node_to_chunk
-from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
-
-
-def _sheet_stub(nid: str, _nk: str) -> str:
-    return f"# {nid}\n"
-
-
-def _m99_crud_nodes(nk99: str, nk991: str, nk992: str) -> list[dict]:
-    # Post F-003/F-007: execution_subtask/agentic_checklist are gone.
-    # Every leaf is agentic by design; no per-node opt-in.
-    return [
-        {
-            "id": "M99",
-            "node_key": nk99,
-            "parent_id": None,
-            "type": "phase",
-            "title": "P",
-            "codename": None,
-            "planning_dir": f"planning/M99_unnamed_{nk99}.md",
-            "execution_milestone": "Human-led",
-            "status": "Complete",
-            "touch_zones": [],
-            "dependencies": [],
-            "parallel_tracks": 1,
-        },
-        {
-            "id": "M99.1",
-            "node_key": nk991,
-            "parent_id": "M99",
-            "type": "task",
-            "title": "One",
-            "codename": "one",
-            "planning_dir": f"planning/M99.1_one_{nk991}.md",
-            "execution_milestone": "Agentic-led",
-            "status": "Not Started",
-            "touch_zones": [],
-            "dependencies": [],
-            "parallel_tracks": 1,
-        },
-        {
-            "id": "M99.2",
-            "node_key": nk992,
-            "parent_id": "M99",
-            "type": "task",
-            "title": "Two",
-            "codename": "two",
-            "planning_dir": f"planning/M99.2_two_{nk992}.md",
-            "execution_milestone": "Agentic-led",
-            "status": "Not Started",
-            "touch_zones": [],
-            "dependencies": [nk991],
-            "parallel_tracks": 1,
-        },
-    ]
-
-
-def crud_fixture_repo(dest: Path) -> None:
-    shutil.copytree(SCHEMAS, dest / "schemas")
-    shutil.copytree(REPO / "constraints", dest / "constraints")
-    (dest / "roadmap" / "phases").mkdir(parents=True)
-    (dest / "shared").mkdir(parents=True)
-    (dest / "shared" / "README.md").write_text("# Shared\n", encoding="utf-8")
-    (dest / "roadmap" / "registry.yaml").write_text(
-        "version: 1\nentries: []\n",
-        encoding="utf-8",
-    )
-    (dest / "roadmap" / "manifest.json").write_text(
-        json.dumps({"version": 1, "includes": ["phases/T.json"]}) + "\n",
-        encoding="utf-8",
-    )
-    nk99 = "10000000-0000-4000-8000-000000009901"
-    nk991 = "10000000-0000-4000-8000-000000009902"
-    nk992 = "10000000-0000-4000-8000-000000009903"
-    nodes = _m99_crud_nodes(nk99, nk991, nk992)
-    pl = dest / "planning"
-    pl.mkdir(parents=True)
-    (pl / f"M99_unnamed_{nk99}.md").write_text(_sheet_stub("M99", nk99), encoding="utf-8")
-    (pl / f"M99.1_one_{nk991}.md").write_text(
-        _sheet_stub("M99.1", nk991), encoding="utf-8"
-    )
-    (pl / f"M99.2_two_{nk992}.md").write_text(_sheet_stub("M99.2", nk992), encoding="utf-8")
-    write_json_chunk(dest / "roadmap" / "phases" / "T.json", nodes)
-
-
-def run_crud(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(BUNDLED_SCRIPTS / "roadmap_crud.py"), *args],
-        cwd=tmp,
-        capture_output=True,
-        text=True,
-        env=script_subprocess_env(),
-    )
+from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
+from tests.support.crud import crud_fixture_repo, edit_m99_1, run_crud, write_registry_claim
 
 
 def test_find_chunk_path(tmp_path: Path) -> None:
@@ -235,19 +144,6 @@ def test_list_nodes_cli(tmp_path: Path) -> None:
     r = run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes")
     assert r.returncode == 0
     assert "M99.1" in r.stdout
-
-
-def write_registry_claim(tmp_path: Path, node_id: str, codename: str, branch: str, owner: str) -> None:
-    (tmp_path / "roadmap" / "registry.yaml").write_text(
-        f"""version: 1
-entries:
-  - codename: {codename}
-    node_id: {node_id}
-    branch: {branch}
-    owner: {owner}
-""",
-        encoding="utf-8",
-    )
 
 
 def test_list_nodes_marks_a_claimed_leaf_in_the_table_and_json(tmp_path: Path) -> None:
@@ -534,16 +430,12 @@ def test_add_node_refuses_when_parent_in_locked_milestone(tmp_path: Path) -> Non
     assert all(n["id"] != "M99.4" for n in nodes_after)
 
 
-def _edit(tmp_path: Path, *args: str):
-    return run_crud(tmp_path, "--repo-root", str(tmp_path), "edit-node", "M99.1", *args)
-
-
 def test_edit_node_cli_keeps_a_hand_picked_codename(tmp_path: Path) -> None:
     """A retitle must not silently move the node off feature/rm-<codename>."""
     crud_fixture_repo(tmp_path)
-    assert _edit(tmp_path, "--set", "codename=custom-slug").returncode == 0
+    assert edit_m99_1(tmp_path, "--set", "codename=custom-slug").returncode == 0
 
-    r = _edit(tmp_path, "--set", "title=Renamed One Task")
+    r = edit_m99_1(tmp_path, "--set", "title=Renamed One Task")
 
     assert r.returncode == 0, r.stderr
     assert "codename kept: 'custom-slug'" in r.stderr
@@ -554,9 +446,9 @@ def test_edit_node_cli_keeps_a_hand_picked_codename(tmp_path: Path) -> None:
 
 def test_edit_node_cli_sync_codename_rewrites_it(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
-    assert _edit(tmp_path, "--set", "codename=custom-slug").returncode == 0
+    assert edit_m99_1(tmp_path, "--set", "codename=custom-slug").returncode == 0
 
-    r = _edit(tmp_path, "--sync-codename", "--set", "title=Renamed One Task")
+    r = edit_m99_1(tmp_path, "--sync-codename", "--set", "title=Renamed One Task")
 
     assert r.returncode == 0, r.stderr
     shown = run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
@@ -567,7 +459,7 @@ def test_edit_node_cli_still_derives_a_title_derived_codename(tmp_path: Path) ->
     """M99.1 ships codename 'one' for title 'One' — derived, so it follows along."""
     crud_fixture_repo(tmp_path)
 
-    r = _edit(tmp_path, "--set", "title=Renamed One Task")
+    r = edit_m99_1(tmp_path, "--set", "title=Renamed One Task")
 
     assert r.returncode == 0, r.stderr
     assert "codename kept" not in r.stderr
@@ -579,7 +471,9 @@ def test_edit_node_cli_repeated_list_key_appends_items(tmp_path: Path) -> None:
     """rc1 feedback: `acceptance=a|b` was believed to set two criteria; it sets one."""
     crud_fixture_repo(tmp_path)
 
-    r = _edit(tmp_path, "--set", "acceptance=Saves offline", "--set", "acceptance=Syncs | merges")
+    r = edit_m99_1(
+        tmp_path, "--set", "acceptance=Saves offline", "--set", "acceptance=Syncs | merges"
+    )
 
     assert r.returncode == 0, r.stderr
     shown = run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
@@ -589,7 +483,7 @@ def test_edit_node_cli_repeated_list_key_appends_items(tmp_path: Path) -> None:
 def test_edit_node_cli_refuses_a_repeated_scalar_key(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
 
-    r = _edit(tmp_path, "--set", "title=One", "--set", "title=Two")
+    r = edit_m99_1(tmp_path, "--set", "title=One", "--set", "title=Two")
 
     assert r.returncode == 1
     assert "given twice" in r.stderr

@@ -16,6 +16,12 @@ from tests.fixture_guard import (
     record_session_start,
 )
 from tests.helpers import REPO
+from tests.support.fixtures import (  # noqa: F401 — registered for every test
+    api_client,
+    dogfood_copy,
+    git_remote_repo,
+    git_template,
+)
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

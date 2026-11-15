@@ -197,6 +197,7 @@
     "tests/review_delegate_helpers.py": 31,
     "tests/review_repo_helpers.py": 14,
     "tests/rework_rca_helpers.py": 8,
+    "tests/support/harness.py": 8,
     "tests/test_abort_task_pickup.py": 5,
     "tests/test_agent_ignores.py": 1,
     "tests/test_agent_start_up_reading.py": 6,
@@ -490,7 +491,6 @@
     "tests/test_worktree_prune_foreign.py": 36,
     "tests/test_writers_refuse_links_out.py": 8,
     "tests/unauthored_repo_helpers.py": 3,
-    "tests/worker_lease_helpers.py": 2,
-    "tests/worker_repo_helpers.py": 8
+    "tests/worker_lease_helpers.py": 2
   }
 }
