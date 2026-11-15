@@ -46,10 +46,19 @@ class Ctx:
         self.sb, self.page, self.aux, self.shoot = sb, page, aux, page
         self.s = sb.seeded
 
-    def fresh(self, url: str | None = None) -> Page:
-        """Load the app and wait for the outline; every item starts here."""
+    def fresh(self, url: str | None = None, *, snapshot: bool = False) -> Page:
+        """Load the app and wait for the outline; every item starts here.
+
+        ``snapshot`` also waits for the page load's own GET /api/orchestration answer (200 or a routed 404),
+        so an outline badge check reads the outline after the snapshot arrived, not before.
+        """
         self.shoot = self.page
-        self.page.goto(url or self.sb.server.url)
+        if snapshot:
+            with self.page.expect_response(lambda r: r.url.endswith("/api/orchestration")
+                                           and r.request.method == "GET"):
+                self.page.goto(url or self.sb.server.url)
+        else:
+            self.page.goto(url or self.sb.server.url)
         expect(self.page.get_by_text(TITLES["M0.2"]).first).to_be_visible()
         return self.page
 
@@ -206,9 +215,10 @@ def no_leaf(c: Ctx) -> str:
 
 @check("Outline badges, hover and click-through")
 def outline_badges(c: Ctx) -> str:
-    page = c.fresh()
+    page = c.fresh(snapshot=True)
     badge = {leaf: page.locator(".outline-title-row", has_text=title).locator("button.worker-stall-badge")
              for leaf, title in TITLES.items()}
+    expect(page.locator(".outline-title-row button.worker-stall-badge")).to_have_count(len(BADGES))
     got = {leaf: b.inner_text() if b.count() else None for leaf, b in badge.items()}
     same(got, BADGES, "outline badges")
     hover = badge["M0.2"].get_attribute("title") or ""
@@ -229,7 +239,7 @@ def not_found(c: Ctx) -> str:
     c.page.route("**/api/orchestration", lambda r: r.fulfill(
         status=404, content_type="application/json", body='{"detail":"no API route /api/orchestration"}'))
     try:
-        page = c.fresh()
+        page = c.fresh(snapshot=True)
         same(page.locator(".outline-title-row button.worker-stall-badge").count(), 0, "outline badges")
         page.get_by_role("button", name="Orchestration", exact=True).click()
         msg = page.get_by_role("dialog", name="Orchestration").locator(".workspace-empty")
