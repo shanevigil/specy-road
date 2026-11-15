@@ -153,6 +153,7 @@ entries:
       - specy_road/pm_gantt_static/
       - docs/pm-gui.md
       - CHANGELOG.md
+      - tests/test_gui_app_orchestration.py
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending

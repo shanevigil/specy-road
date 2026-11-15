@@ -29,7 +29,8 @@
         "gui/pm-gantt/src/App.tsx",
         "specy_road/pm_gantt_static/",
         "docs/pm-gui.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_gui_app_orchestration.py"
       ],
       "type": "task"
     }
