@@ -131,7 +131,7 @@ Default CI does not install optional extras. If you use them, run a separate aud
 ```bash
 python -m venv .venv-audit-extras
 source .venv-audit-extras/bin/activate
-pip install -e ".[review,gui-next]"
+pip install -e ".[review,gui]"
 python -m pip install --upgrade 'pip>=25.3'
 pip install pip-audit
 pip-audit -f json

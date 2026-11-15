@@ -6,7 +6,7 @@
 **Not for:** toolkit-contributor topics — branching, PR workflow, npm build, audits ([`contributor-guide.md`](contributor-guide.md)) — or the detail behind each workflow ([`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md)).
 
 **Must know without reading on:**
-- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui]`, `[gui-next]`, `[review]`); pipx and uv tool work too. An RC is one exact wheel from TestPyPI, sha256-checked, with dependencies from PyPI only; TestPyPI is never an index ("Install a release candidate (TestPyPI)").
+- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui]`, `[review]`); pipx and uv tool work too. An RC is one exact wheel from TestPyPI, sha256-checked, with dependencies from PyPI only; TestPyPI is never an index ("Install a release candidate (TestPyPI)").
 - New project: `specy-road init project` (it also writes `roadmap.md` and `roadmap-context.md`) prints the next steps: set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, commit the scaffold, then `specy-road validate`.
 - After `pip install -U specy-road`: `specy-road upgrade --prune` (refreshes `schemas/`, `model-profiles/`, missing load-order docs and the stubs, prints one report of what changed, then runs `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
@@ -51,9 +51,10 @@ Optional extras (pipx and uv tool take the same quoted spec):
 
 ```bash
 pip install "specy-road[gui]"       # PM Gantt UI deps
-pip install "specy-road[gui-next]"  # PM Gantt UI deps (same set as [gui])
 pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
+
+`[gui-next]` is a deprecated alias of `[gui]` (the same dependencies), kept for one release and removed in the release after 0.3.1; install `[gui]`.
 
 Upgrade to a new final release with the tool that installed it: `pip install -U specy-road`, `pipx upgrade specy-road` or `uv tool upgrade specy-road`.
 Commands (not `--version`) warn when running older than `.specyrd/manifest.json` / `AGENTS.md`.
@@ -74,7 +75,7 @@ A repo virtualenv, `pip install --user`, pipx and uv tool can each put a `specy-
 
 An RC is one exact wheel from TestPyPI, sha256-checked against the RC announcement, with its dependencies and extras from PyPI only; TestPyPI is never an index for extras or dependencies, whatever the flag or index strategy. Publishing an RC is the [release runbook](release-runbook.md)'s section A.3.
 
-Prereleases (`X.Y.ZrcN`) publish to **TestPyPI**, not PyPI. The examples use `0.3.1rc1` and the `[gui]` extra; put in the version, wheel URL and sha256 from the RC announcement, and any extra from [Install](#install) (`[gui]`, `[gui-next]`, `[review]`).
+Prereleases (`X.Y.ZrcN`) publish to **TestPyPI**, not PyPI. The examples use `0.3.1rc1` and the `[gui]` extra; put in the version, wheel URL and sha256 from the RC announcement, and any extra from [Install](#install) (`[gui]`, `[review]`).
 
 #### Never an index
 
@@ -146,7 +147,7 @@ cd specy-road
 git switch dev               # main is reserved for tagged releases
 python3 -m venv .venv
 source .venv/bin/activate    # Windows: .venv\Scripts\activate
-pip install -e ".[dev,gui-next]"
+pip install -e ".[dev,gui]"
 # Optional extras:
 #   - 'review'   : enables `specy-road review-node` (requires LLM API key)
 ```

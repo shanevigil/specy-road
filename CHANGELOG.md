@@ -205,6 +205,10 @@ are set:
 - `grind_session_limit_wait_grace_seconds` -> `grind.limit_wait_grace_seconds`.
 - `grind_session_max_empty_retries` -> `grind.max_empty_retries`.
 - `grind_session_status_interval_minutes` -> `grind.status_interval_minutes`.
+The `[gui-next]` extra -> `[gui]` (the same dependencies). `pip install "specy-road[gui-next]"` still works
+until the release after 0.3.1, which removes it; `--help`, the `gui` and `init gui` messages, `self-update` and the
+install docs name only `[gui]`.
+
 These toolkit docs were merged into the doc that owns their topic. The old files are gone from this release (a
 link to them on an earlier tag still works); each line is old path -> new place:
 

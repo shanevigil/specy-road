@@ -231,7 +231,7 @@ def test_specy_road_init_install_gui_dry_run() -> None:
     )
     assert "Would run:" in r.stdout
     assert "pip" in r.stdout
-    assert "gui-next" in r.stdout
+    assert "[gui]" in r.stdout
     assert "--upgrade" in r.stdout
     assert "npm" in r.stdout
     assert "npm run build" in r.stdout
@@ -255,7 +255,7 @@ def test_specy_road_init_reinstall_gui_dry_run() -> None:
     )
     assert "Would run:" in r.stdout
     assert "--force-reinstall" in r.stdout
-    assert "gui-next" in r.stdout
+    assert "[gui]" in r.stdout
     assert "npm run build" in r.stdout
 
 
@@ -276,7 +276,7 @@ def test_specy_road_init_install_gui_skip_npm_dry_run() -> None:
         text=True,
         check=True,
     )
-    assert "gui-next" in r.stdout
+    assert "[gui]" in r.stdout
     assert "Would skip npm build" in r.stdout
     assert "npm run build" not in r.stdout
 
@@ -301,7 +301,7 @@ def test_specy_road_init_build_gui_only_dry_run() -> None:
     assert "pm-gantt" in r.stdout
     assert "npm run build" in r.stdout
     assert "pip" not in r.stdout
-    assert "gui-next" not in r.stdout
+    assert "[gui]" not in r.stdout
 
 
 def test_specy_road_finish_this_task_help() -> None:

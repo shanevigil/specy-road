@@ -49,7 +49,7 @@ by default).
 ```bash
 pip install specy-road
 # optional extras:
-#   pip install "specy-road[gui-next]"  # PM Gantt UI deps
+#   pip install "specy-road[gui]"       # PM Gantt UI deps
 #   pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
