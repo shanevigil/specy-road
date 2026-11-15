@@ -120,7 +120,7 @@ def test_r5_an_empty_second_title_fails_before_any_node_is_written(tmp_path: Pat
 
 
 def test_r5_a_failed_roadmap_write_is_rolled_back(tmp_path: Path, capsys, human, monkeypatch) -> None:
-    from specy_road import review_defer
+    from specy_road import review_defer_cli
 
     repo = make_review_repo(tmp_path, orchestration=ROSTER + BUDGET)
     _block_round(repo, 1)
@@ -130,7 +130,7 @@ def test_r5_a_failed_roadmap_write_is_rolled_back(tmp_path: Path, capsys, human,
 
     def boom(*_a, **_k):
         raise ValueError("ledger write failed")
-    monkeypatch.setattr(review_defer, "close_entry", boom)   # after the follow-up leaf and the open entry
+    monkeypatch.setattr(review_defer_cli, "close_entry", boom)   # after the follow-up leaf and the open entry
     assert _run("review", "defer", "M1.1", "--rca", str(rca), "--repo-root", str(repo)) == 1
     assert "could not apply RCA-2.md; nothing was written: ledger write failed" in capsys.readouterr().err
     assert {p: p.read_bytes() for p in (repo / "roadmap").rglob("*") if p.is_file()} == before

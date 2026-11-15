@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -16,7 +18,7 @@ from tests.test_review_cli import _ready
 from tests.test_review_rca import ROSTER, _block_round, _run, _status
 
 from specy_road.roadmap_load import load_roadmap
-from specy_road.review_deferral import answer_item
+from specy_road.review_defer_rules import answer_item
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.rework_rca import governing_rca
@@ -339,3 +341,46 @@ def test_a_marker_not_bound_to_its_decision_and_rca_resolves_nothing(tmp_path: P
     b = _status(repo, capsys)[1].get("fix_round_budget") or {}
     assert not str(b.get("state")).startswith("spent_defer_applied"), b
     assert governing_rca(repo, "M1.1", [b.review for b in gate.blocks]) is None
+
+
+# Every public name each old module defined before the rename or fold, by its new home. A name
+# that moved into a CLI entry point is not served (a package module never imports one): see
+# test_old_path_does_not_serve_names_that_moved_into_the_cli.
+@pytest.mark.parametrize(("old", "new", "names"), [
+    ("review_defer", "review_defer_cli", "add_parser applicable_record cmd_review_defer"),
+    ("review_deferral", "review_defer_rules", "CATEGORIES DEFERRAL_PREFIX Evidence MARKER_SCHEMA "
+     "Marker answer_item apply_deferrals deferral_evidence deferral_in_effect load_markers "
+     "marker_path normalise_input_class qualify_deferral rca_deferral round_of write_marker"),
+    ("review_strong", "review_gate", "applicable_items human_closes_strong item_label "
+     "strong_problem touch_zones unmet_strong zones_meet"),
+    ("review_resumed_delta", "review_gate", "FRESH_SESSION RESUMED_KEY fresh_only_note "
+     "fresh_session_problem resumed_delta_on"),
+    ("review_eligible", "review_gate", "Identity reviews_to_judge writers"),
+    ("review_ready_merge", "review_gate_ready", "add_ready_parser cmd_ready trial_merge_warning"),
+    ("changelog_check", "review_gate_ready", "missing_entry_warning"),
+    ("review_bookkeeping", "review_override", "CARRY_NOTE count_at_later_commit heads_problem "
+     "only_planning_or_review_bookkeeping_since policy_line review_commit"),
+    ("review_gate_agreement", "review_policy_pin", "GATE_FIX GATE_KEY gate_config_mismatch "
+     "report_gate_mismatch"),
+    ("review_policy_ref", "review_policy_pin", "WORKFLOW_REL committed_yaml integration_name "
+     "policy_source review_required trusted_integration_ref"),
+])
+def test_renamed_module_old_path_warns_and_serves_the_same_names(monkeypatch, old, new, names):
+    """A renamed or folded module's old import path serves its public names until its removal
+    (the release after 0.3.1), and says so on import."""
+    monkeypatch.delitem(sys.modules, f"specy_road.{old}", raising=False)
+    with pytest.warns(DeprecationWarning, match="removed in the release after 0.3.1"):
+        module = importlib.import_module(f"specy_road.{old}")
+    target = importlib.import_module(f"specy_road.{new}")
+    for name in names.split():
+        assert getattr(module, name) is getattr(target, name)
+
+
+def test_old_path_does_not_serve_names_that_moved_into_the_cli(monkeypatch) -> None:
+    """``review_eligible``'s two CLI names live only in the ``review`` CLI entry point."""
+    monkeypatch.delitem(sys.modules, "specy_road.review_eligible", raising=False)
+    with pytest.warns(DeprecationWarning):
+        module = importlib.import_module("specy_road.review_eligible")
+    cli = importlib.import_module("specy_road.bundled_scripts.review_cli")
+    for name in ("eligibility_lines", "reviewer_eligibility"):
+        assert not hasattr(module, name) and callable(getattr(cli, name))

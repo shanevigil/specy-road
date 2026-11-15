@@ -12,7 +12,7 @@ from tests.review_delegate_helpers import handoff_status_node, run_review_cli
 from tests.test_review_cli import ONE_AI
 
 from specy_road.bundled_scripts import validate_roadmap
-from specy_road.review_bookkeeping import policy_line
+from specy_road.review_override import policy_line
 from specy_road.review_files import load_ready, load_review, review_path, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.sibling_repos import sibling_repos

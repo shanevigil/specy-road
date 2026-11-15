@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.orchestration_config import effective_config
-from specy_road.review_policy_ref import policy_source, review_required
+from specy_road.review_policy_pin import policy_source, review_required
 from specy_road.review_target import ReviewTargetError, is_milestone, resolve_target
 from specy_road.roadmap_graph import compute_rollup_status
 

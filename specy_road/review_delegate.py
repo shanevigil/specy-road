@@ -58,7 +58,7 @@ from specy_road.orchestration.orchestrate_assign import (
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_delegate_harness import HarnessSetupError, _Harness
 from specy_road.review_delegate_packet import ensure_packet
-from specy_road.review_eligible import writers
+from specy_road.review_gate import writers
 from specy_road.review_files import reviews_dir, reviews_listing
 from specy_road.review_answer import stream_lines
 from specy_road.review_model_check import check_note, check_run, rostered

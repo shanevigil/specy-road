@@ -18,7 +18,7 @@ from pathlib import Path, PurePosixPath
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_bytes, git_stdout
 from specy_road.orchestration_config import effective_config
-from specy_road.review_policy_ref import policy_source
+from specy_road.review_policy_pin import policy_source
 
 _CONFIG_NAMES = frozenset({"pytest.ini", "tox.ini", "setup.cfg"})
 # Lint and coverage suppression markers of Python, TypeScript/JavaScript and Go linters,

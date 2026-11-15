@@ -19,7 +19,7 @@ from specy_road.bundled_scripts import orchestrate_cli, review_cli
 from specy_road.orchestration_config import parse_orchestration_text
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, human_approval_completes
-from specy_road.review_strong import applicable_items, zones_meet
+from specy_road.review_gate import applicable_items, zones_meet
 
 #: The leaf's zone is ``src``; ``sonnet`` is the strong reviewer, so opus + sol meet the count but not the item.
 STRONG = TWO_FAMILIES.replace(

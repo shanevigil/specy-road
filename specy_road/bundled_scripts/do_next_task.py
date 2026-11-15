@@ -463,7 +463,7 @@ def _finalize_pickup(
 # Pickup used to register, push and switch to a second leaf while the first was
 # still checked out, so one checkout silently owned two leaves. grind-session
 # already refused that case with exit 6; refuse_second_claim applies the same test,
-# :func:`~specy_road.bundled_scripts.grind_session_in_flight.own_in_flight_claims`,
+# :func:`~specy_road.orchestration.grind.grind_session_in_flight.own_in_flight_claims`,
 # before pickup changes anything.
 #
 # A claim is this checkout's when the registry names its branch *and* that branch

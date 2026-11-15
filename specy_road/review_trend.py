@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from specy_road.review_deferral import CATEGORIES
+from specy_road.review_defer_rules import CATEGORIES
 
 
 def round_findings(rnd: Any) -> int | None:

@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "leaves": {
-    "k-blocked": {
+    "M10": {
       "status": "running",
       "claim": { "codename": "alpha", "branch": "feature/rm-alpha", "registered_at": "2026-11-08T09:00:00Z" },
       "workers": [
@@ -22,12 +22,12 @@
       "gate": { "state": "blocked", "approvals": 0, "blocks": 1, "fresh_for_head": false },
       "holds": []
     },
-    "k-exec-blocked": {
+    "M12": {
       "status": "exited_failed",
       "claim": { "codename": "beta", "branch": "feature/rm-beta", "registered_at": "2026-11-07T12:00:00Z" },
       "workers": [
         {
-          "id": "w-0002", "harness": "codex", "model": "gpt", "status": "exited_failed", "pid_alive": false,
+          "id": "w-0002", "harness": "codex", "model": "gpt", "status": "failed", "pid_alive": false,
           "started_at": "2026-11-08T08:00:00Z", "ended_at": "2026-11-08T09:00:00Z",
           "account": "work", "last_activity": "2026-11-08T09:00:00Z", "flags": []
         }
@@ -43,12 +43,12 @@
       "gate": { "state": "executor_blocked", "approvals": 0, "blocks": 0, "fresh_for_head": true },
       "holds": []
     },
-    "k-held-list": {
+    "M9.4": {
       "status": "exited_ok",
       "claim": { "codename": "gamma", "branch": "feature/rm-gamma", "registered_at": "2026-11-06T12:00:00Z" },
       "workers": [
         {
-          "id": "w-0003", "harness": "claude", "model": "sonnet", "status": "exited_ok", "pid_alive": false,
+          "id": "w-0003", "harness": "claude", "model": "sonnet", "status": "completed", "pid_alive": false,
           "started_at": "2026-11-08T07:00:00Z", "ended_at": "2026-11-08T07:40:00Z",
           "account": "personal", "last_activity": "2026-11-08T07:40:00Z", "flags": ["paused_by_limit"]
         }
@@ -61,12 +61,12 @@
       "gate": null,
       "holds": [{ "source": "hold_list", "id": "M9.4", "reason": "waiting on the maintainer" }]
     },
-    "k-held-gate": {
+    "M9.3": {
       "status": "abandoned",
       "claim": { "codename": "delta", "branch": "feature/rm-delta", "registered_at": "2026-11-05T12:00:00Z" },
       "workers": [
         {
-          "id": "w-0004", "harness": "claude", "model": "opus", "status": "abandoned", "pid_alive": false,
+          "id": "w-0004", "harness": "claude", "model": "opus", "status": "terminated", "pid_alive": false,
           "started_at": "2026-11-05T12:00:00Z", "ended_at": null
         }
       ],
@@ -74,7 +74,7 @@
       "reviews": [],
       "holds": [{ "source": "gate", "id": "M9.3", "reason": null }]
     },
-    "k-unknown": {
+    "M13": {
       "status": "unknown",
       "claim": null,
       "workers": [
@@ -83,7 +83,7 @@
           "started_at": "unknown", "ended_at": "unknown", "last_activity": "unknown"
         },
         {
-          "id": "w-0006", "harness": "manual", "model": "unknown", "status": "claimed", "pid_alive": false,
+          "id": "w-0006", "harness": "manual", "model": "unknown", "status": "idle", "pid_alive": false,
           "started_at": null, "ended_at": null
         }
       ],
@@ -98,9 +98,14 @@
   },
   "leafless_workers": [
     {
-      "id": "w-0007", "harness": "claude", "model": "haiku", "status": "running", "pid_alive": true,
+      "id": "w-0007", "harness": "claude", "model": "haiku", "status": "starting", "pid_alive": true,
       "started_at": "2026-11-08T11:50:00Z", "ended_at": null,
       "account": "work", "last_activity": "2026-11-08T11:55:00Z", "flags": []
+    },
+    {
+      "id": "w-0008", "harness": "claude", "model": "opus", "status": "paused_by_limit", "pid_alive": true,
+      "started_at": "2026-11-08T11:00:00Z", "ended_at": null,
+      "account": "personal", "last_activity": "2026-11-08T11:40:00Z", "flags": ["paused_by_limit"]
     }
   ]
 }

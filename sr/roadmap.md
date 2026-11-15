@@ -57,8 +57,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.5.7` | Shared-checkout guard and session presence move into orchestration | task | Agentic-led | Complete |
 | `M16.5.9` | Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings | task | Agentic-led | Complete |
 | `M16.5.10` | Chore, decision and lesson records share internal adapters and keep their files byte for byte | task | Agentic-led | Complete |
-| `M16.5.11` | Grind settings move under grind: in git-workflow.yaml, migrated by upgrade | task | Agentic-led | Not Started |
-| `M16.5.12` | Fold the review gate fragments; no review policy is deprecated | task | Agentic-led | Not Started |
+| `M16.5.11` | Grind settings move under grind: in git-workflow.yaml, migrated by upgrade | task | Agentic-led | Complete |
+| `M16.5.12` | Fold the review gate fragments; no review policy is deprecated | task | Agentic-led | Complete |
 | `M16.5.13` | The review packet fragments fold into review_packet | task | Agentic-led | Not Started |
 | `M16.6` | Docs and tests reorganised by topic | milestone | — | Not Started |
 | `M16.6.1` | Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra | task | Agentic-led | Not Started |
@@ -98,6 +98,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M17.13` | PM GUI: a row click selects at once, so a toolbar action right after it acts on that row | task | Agentic-led | Complete |
 | `M17.14` | PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon | task | Agentic-led | Complete |
 | `M17.15` | PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it | task | Agentic-led | Complete |
+| `M17.16` | Orchestration view joins the snapshot by node id, and the docs name the worker states it sends | task | Agentic-led | Complete |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
 | `M18.1` | Reviewers check that code is well-formed and that fixes do not degrade it | task | — | Not Started |
 | `M18.2` | Harness-facts records for the Copilot CLI and Antigravity agy | task | Agentic-led | Not Started |

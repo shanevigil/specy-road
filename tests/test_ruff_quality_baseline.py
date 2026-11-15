@@ -264,6 +264,11 @@ _MOVED_FROM.update({
     "specy_road/orchestration/grind/session_plan_render.py":
         "specy_road/bundled_scripts/session_plan_render.py",
 })
+# Renamed by the review-gate fold: new path -> path at pickup.
+_MOVED_FROM.update({
+    "specy_road/review_defer_cli.py": "specy_road/bundled_scripts/review_defer.py",
+    "specy_road/review_defer_rules.py": "specy_road/review_deferral.py",
+})
 
 
 def _in_pickup_tree(path: str, present: set[str], moved_from: dict[str, str]) -> bool:

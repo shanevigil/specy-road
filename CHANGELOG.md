@@ -148,6 +148,14 @@ body. Keep section bodies focused; link to PRs for detail.
   packet` in their descriptions. Only descriptions changed, so validation is unchanged; `upgrade` rewrites a
   project's copy once.
 
+- The review gate's internal modules are folded, with no change to any command, output or review
+  policy: `review_strong`, `review_resumed_delta` and the gate half of `review_eligible` (`Identity`,
+  `writers`, `reviews_to_judge`) into `review_gate`; `review_ready_merge` and `changelog_check` into
+  `review_gate_ready`; `review_bookkeeping` into `review_override`; `review_policy_ref` and
+  `review_gate_agreement` into `review_policy_pin`; and `reviewer_eligibility` and
+  `eligibility_lines` into the `review` CLI. Each old module path stays as a deprecated alias (listed
+  under Deprecated).
+
 ### Deprecated
 
 Each alias below prints one line naming its replacement, is hidden from `specy-road --help`, and is removed in the
@@ -187,8 +195,41 @@ them wins:
 - `land_check_cmd: CMD` -> `checks: [{name: land check, run: CMD, when: land}]`.
 - `verify_cmd: CMD` -> `checks: [{name: verify, run: CMD, when: prompt}]`.
 
+These top-level `roadmap/git-workflow.yaml` keys moved under `grind:` and keep their values; the old names are read
+until the release after 0.3.1, which removes them. `specy-road validate` prints one notice while one is present,
+`specy-road upgrade` moves them (adding them to an existing `grind:` block), and the `grind:` value wins where both
+are set:
+
+- `grind_session_max_limit_waits` -> `grind.max_limit_waits`.
+- `grind_session_max_limit_wait_hours` -> `grind.max_limit_wait_hours`.
+- `grind_session_limit_wait_grace_seconds` -> `grind.limit_wait_grace_seconds`.
+- `grind_session_max_empty_retries` -> `grind.max_empty_retries`.
+- `grind_session_status_interval_minutes` -> `grind.status_interval_minutes`.
+These import paths, renamed or folded by the review-gate fold, warn on import (`DeprecationWarning`) and
+are removed in the release after 0.3.1:
+
+- `specy_road.review_defer` -> `specy_road.review_defer_cli` (the `review defer` command).
+- `specy_road.review_deferral` -> `specy_road.review_defer_rules` (the deferral rules the gate applies).
+- `specy_road.review_strong` -> `specy_road.review_gate`.
+- `specy_road.review_resumed_delta` -> `specy_road.review_gate`.
+- `specy_road.review_eligible` -> `specy_road.review_gate` (`Identity`, `writers`, `reviews_to_judge`).
+  `reviewer_eligibility` and `eligibility_lines` moved into the `review` CLI entry point,
+  `specy_road.bundled_scripts.review_cli`; the old path does not serve them, because a package module
+  never imports a CLI entry point. Import them from the CLI module.
+- `specy_road.review_ready_merge` -> `specy_road.review_gate_ready`.
+- `specy_road.changelog_check` -> `specy_road.review_gate_ready`.
+- `specy_road.review_bookkeeping` -> `specy_road.review_override`.
+- `specy_road.review_gate_agreement` -> `specy_road.review_policy_pin`.
+- `specy_road.review_policy_ref` -> `specy_road.review_policy_pin`.
+
 ### Fixed
 
+- PM GUI orchestration view: the drawer, the outline badges and the edit dialog's Orchestration section join
+  `GET /api/orchestration`'s leaves on the outline node's id, as the snapshot keys them, so a leaf in the outline
+  shows under its id and title instead of as missing from the outline, and its badge renders. The worker status is
+  the record state the snapshot sends (`starting`, `running`, `idle`, `paused_by_limit`, `completed`, `failed`,
+  `terminated`); the failed-worker badge, now `failed`, fires on state `failed` at its old precedence. See
+  `docs/pm-gui.md`.
 - `specy-road review-packet` reads `work/implementation-summary-<NODE_ID>.md` from the reviewed commit, then from the leaf's own worktree (the worktree `git worktree list` shows with that leaf's `feature/rm-<codename>` branch checked out), then from the working tree of the checkout running the command. The section names which copy it used; the leaf worktree's label includes that file's path. When none has the file, the missing line names every path checked. A milestone packet still says each leaf's summary was reviewed with that leaf. See `docs/orchestration-review.md` (Implementation summary in the review packet).
 - `specy-road review record` refuses a record whose notes body is empty or whitespace only after normalisation, and a record whose body matches another model's REVIEW record for the same leaf at the same commit. The refusal says the notes go in the body below the front matter and that `notes_sha256` covers only that body, not `findings` or `commands_rerun`. The same model re-filing at that commit, and the same body at another commit, are filed as before. The gate is unchanged, so a record already filed still counts. See `docs/orchestration-reviewer-output.md`.
 - An approval still counts across later commits that change only roadmap or planning files, other than `roadmap/orchestration.yaml` and `roadmap/git-workflow.yaml`, or this leaf's implementation summary and review files, and across a two-parent merge from the integration branch whose non-bookkeeping diff is unchanged. It is refused, and `handoff status` gives the reason, when this leaf's acceptance, touch zones or `## Tier` value changed, when the sheet has no tier value, or when the graph or sheet cannot be read. An operator decision still ends on a policy commit. See `docs/orchestration-review.md`.

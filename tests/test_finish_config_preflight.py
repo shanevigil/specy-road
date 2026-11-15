@@ -17,7 +17,7 @@ import pytest
 import yaml
 
 from specy_road.finish_bookkeeping_undo import restore_pre_commit, snapshot_pre_commit
-from specy_road.review_gate_agreement import GATE_FIX
+from specy_road.review_policy_pin import GATE_FIX
 from tests.helpers import REPO
 from tests.review_repo_helpers import commit_file, git
 from tests.test_finish_merge_mode import merge_mode_finish_repo

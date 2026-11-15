@@ -16,7 +16,7 @@ from tests.test_models_and_prompt import OPUS, commit_profile, make_profile_repo
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.orchestration.model_profiles import load_profile
-from specy_road.review_eligible import reviewer_eligibility
+from specy_road.bundled_scripts.review_cli import reviewer_eligibility
 from specy_road.review_gate import evaluate_gate
 from specy_road.orchestration.role_prompt_cli import bypass_problem
 from specy_road.review_model_check import MISMATCH_REASON, check, check_run, normalise, reported_models

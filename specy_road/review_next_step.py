@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
 from specy_road.orchestration.orchestrate_plan import guidance_problem, is_available
-from specy_road.review_deferral import rca_deferral
+from specy_road.review_defer_rules import rca_deferral
 from specy_road.review_files import HUMAN, PACKET_NAME, ReviewFile, latest_ready, reviews_dir
 
 if TYPE_CHECKING:
@@ -141,7 +141,7 @@ def _available(repo_root: Path, config: dict[str, Any], role: str, exclude: set[
 
 def facts(repo_root: Path, config: dict[str, Any], loop: LoopState, node_id: str, blocked: bool) -> Facts:
     """What the step depends on; the costlier reads happen only once the budget is set."""
-    from specy_road.review_defer import applicable_record   # it imports review_deferral
+    from specy_road.review_defer_cli import applicable_record   # it imports review_defer_rules
     from specy_road.review_rca import rca_parties
 
     budget = (config.get("policy") or {}).get("max_fix_rounds")
