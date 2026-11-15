@@ -1,3 +1,4 @@
+import { act, createElement as createReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import appSource from "./App.tsx?raw";
 import drawerSource from "./components/OrchestrationDrawer.tsx?raw";
@@ -668,38 +669,504 @@ describe("loadOrchestration", () => {
   });
 });
 
-describe("roadmap load delivers the outline snapshot", () => {
-  // M17.9 item 12: the outline painted with no snapshot because only the
-  // drawer's poll fetched it. The roadmap load (first paint and each reload)
-  // waits on the same GET; a 404 still leaves the outline without a badge.
-  it("requests the snapshot with the roadmap, before the drawer opens, and a 404 leaves no badge", async () => {
-    const start = appSource.indexOf("const loadSnapshot = useCallback");
-    const body = appSource.slice(start, appSource.indexOf("const handlePublishRoadmap"));
-    expect(body).toMatch(/await Promise\.all\(\s*\[[\s\S]*?fetchOrchestration\(\)/);
-    expect(body).not.toMatch(/void fetchOrchestration\(\)/);
-    expect(body).not.toMatch(/setInterval|pollOrchestration/);
+/** Enough of a document for React to mount `App` and for the test to read a badge. */
+class OutlineEl {
+  nodeType = 1;
+  nodeName = "DIV";
+  parentNode: OutlineEl | null = null;
+  childNodes: OutlineEl[] = [];
+  ownerDocument: OutlineEl | null = null;
+  nodeValue: string | null = null;
+  namespaceURI: string | null = "http://www.w3.org/1999/xhtml";
+  attrs = new Map<string, string>();
+  style = outlineStyle();
+  private listeners = new Map<string, ((event: { type: string; target: OutlineEl }) => void)[]>();
 
-    const seen: string[] = [];
-    const stop = subscribeOrchestration((notice) => seen.push(notice.load.kind));
-    try {
-      const ok = recordingFetch(respond(JSON.stringify(mockJson), 200));
-      const [, load] = await Promise.all([Promise.resolve("roadmap"), loadOrchestration(ok.fetchImpl)]);
-      expect(ok.requests).toEqual(["GET /api/orchestration"]);
-      expect(load.kind).toBe("ok");
-      expect(seen).toEqual(["ok"]);
-
-      const missing = recordingFetch(respond("Not Found", 404));
-      const [, gone] = await Promise.all([
-        Promise.resolve("roadmap"),
-        loadOrchestration(missing.fetchImpl),
-      ]);
-      expect(missing.requests).toEqual(["GET /api/orchestration"]);
-      expect(gone).toEqual({ kind: "unavailable" });
-      expect(outlineBadge(gone, "M10", NOW)).toBeNull();
-    } finally {
-      stop();
+  get tagName() {
+    return this.nodeName;
+  }
+  get children() {
+    return this.childNodes.filter((n) => n.nodeType === 1);
+  }
+  get firstChild() {
+    return this.childNodes[0] ?? null;
+  }
+  get lastChild() {
+    return this.childNodes[this.childNodes.length - 1] ?? null;
+  }
+  get nextSibling(): OutlineEl | null {
+    const kids = this.parentNode?.childNodes ?? [];
+    const i = kids.indexOf(this);
+    return i >= 0 ? (kids[i + 1] ?? null) : null;
+  }
+  get previousSibling(): OutlineEl | null {
+    const kids = this.parentNode?.childNodes ?? [];
+    const i = kids.indexOf(this);
+    return i > 0 ? (kids[i - 1] ?? null) : null;
+  }
+  get parentElement(): OutlineEl | null {
+    return this.parentNode?.nodeType === 1 ? this.parentNode : null;
+  }
+  get isConnected() {
+    return this.nodeType === 9 || (this.parentNode?.isConnected ?? false);
+  }
+  get className() {
+    return this.attrs.get("class") ?? "";
+  }
+  set className(value: string) {
+    this.attrs.set("class", value);
+  }
+  get id() {
+    return this.attrs.get("id") ?? "";
+  }
+  set id(value: string) {
+    this.attrs.set("id", value);
+  }
+  get textContent(): string {
+    if (this.nodeType === 3) return this.nodeValue ?? "";
+    return this.childNodes.map((c) => c.textContent).join("");
+  }
+  set textContent(value: string) {
+    if (this.nodeType === 3) {
+      this.nodeValue = value;
+      return;
     }
+    this.childNodes = [];
+    if (value) this.appendChild(this.ownerDocument!.createText(value));
+  }
+  get classList() {
+    const names = () => this.className.split(/\s+/).filter(Boolean);
+    return {
+      add: (...xs: string[]) => {
+        this.className = [...new Set([...names(), ...xs])].join(" ");
+      },
+      remove: (...xs: string[]) => {
+        const drop = new Set(xs);
+        this.className = names().filter((n) => !drop.has(n)).join(" ");
+      },
+      contains: (n: string) => names().includes(n),
+      toggle: (n: string) => {
+        if (names().includes(n)) this.classList.remove(n);
+        else this.classList.add(n);
+      },
+      get length() {
+        return names().length;
+      },
+    };
+  }
+  setAttribute(name: string, value: string) {
+    this.attrs.set(name, String(value));
+  }
+  getAttribute(name: string) {
+    return this.attrs.has(name) ? this.attrs.get(name)! : null;
+  }
+  removeAttribute(name: string) {
+    this.attrs.delete(name);
+  }
+  hasAttribute(name: string) {
+    return this.attrs.has(name);
+  }
+  appendChild<T extends OutlineEl>(child: T): T {
+    child.parentNode?.removeChild(child);
+    child.parentNode = this;
+    child.ownerDocument = this.nodeType === 9 ? this : this.ownerDocument;
+    this.childNodes.push(child);
+    return child;
+  }
+  insertBefore<T extends OutlineEl>(child: T, before: OutlineEl | null): T {
+    if (!before) return this.appendChild(child);
+    child.parentNode?.removeChild(child);
+    child.parentNode = this;
+    child.ownerDocument = this.nodeType === 9 ? this : this.ownerDocument;
+    const i = this.childNodes.indexOf(before);
+    if (i < 0) this.childNodes.push(child);
+    else this.childNodes.splice(i, 0, child);
+    return child;
+  }
+  removeChild<T extends OutlineEl>(child: T): T {
+    const i = this.childNodes.indexOf(child);
+    if (i >= 0) this.childNodes.splice(i, 1);
+    child.parentNode = null;
+    return child;
+  }
+  addEventListener(type: string, fn: (event: { type: string; target: OutlineEl }) => void) {
+    const list = this.listeners.get(type) ?? [];
+    list.push(fn);
+    this.listeners.set(type, list);
+  }
+  removeEventListener(type: string, fn: (event: { type: string; target: OutlineEl }) => void) {
+    const list = (this.listeners.get(type) ?? []).filter((f) => f !== fn);
+    this.listeners.set(type, list);
+  }
+  getBoundingClientRect() {
+    return { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, toJSON: () => ({}) };
+  }
+  contains(node: OutlineEl | null): boolean {
+    let cur: OutlineEl | null = node;
+    while (cur) {
+      if (cur === this) return true;
+      cur = cur.parentNode;
+    }
+    return false;
+  }
+  focus() {
+    return undefined;
+  }
+  blur() {
+    return undefined;
+  }
+  querySelector(selector: string) {
+    return this.querySelectorAll(selector)[0] ?? null;
+  }
+  querySelectorAll(selector: string): OutlineEl[] {
+    const steps = selector.trim().split(/\s+/);
+    let matched = outlineDescendants(this).filter((el) => outlineMatches(el, steps[0] ?? ""));
+    for (const step of steps.slice(1)) {
+      const next: OutlineEl[] = [];
+      for (const el of matched) {
+        for (const desc of outlineDescendants(el)) {
+          if (outlineMatches(desc, step)) next.push(desc);
+        }
+      }
+      matched = next;
+    }
+    return matched;
+  }
+  closest(selector: string): OutlineEl | null {
+    if (this.nodeType === 1 && outlineMatches(this, selector)) return this;
+    return this.parentNode?.closest(selector) ?? null;
+  }
+  createElement(name: string) {
+    const el = new OutlineEl();
+    el.nodeName = name.toUpperCase();
+    el.ownerDocument = this.nodeType === 9 ? this : this.ownerDocument;
+    return el;
+  }
+  createElementNS(_ns: string, name: string) {
+    return this.createElement(name);
+  }
+  createText(value: string) {
+    const text = new OutlineEl();
+    text.nodeType = 3;
+    text.nodeName = "#text";
+    text.nodeValue = value;
+    text.ownerDocument = this.nodeType === 9 ? this : this.ownerDocument;
+    return text;
+  }
+  getElementById(id: string) {
+    return this.querySelector(`#${id}`);
+  }
+}
+
+function outlineStyle() {
+  const values = new Map<string, string>();
+  const api = {
+    setProperty(name: string, value: string) {
+      values.set(name, value);
+    },
+    removeProperty(name: string) {
+      values.delete(name);
+    },
+    getPropertyValue(name: string) {
+      return values.get(name) ?? "";
+    },
+    get cssText() {
+      return [...values.entries()].map(([k, v]) => `${k}: ${v}`).join("; ");
+    },
+    set cssText(value: string) {
+      values.clear();
+      for (const part of value.split(";")) {
+        const [k, v] = part.split(":");
+        if (k && v) values.set(k.trim(), v.trim());
+      }
+    },
+  };
+  return new Proxy(api, {
+    get(target, prop) {
+      if (typeof prop !== "string") return undefined;
+      if (prop in target) return target[prop as keyof typeof target];
+      return values.get(prop) ?? "";
+    },
+    set(_target, prop, value) {
+      if (typeof prop === "string") values.set(prop, String(value));
+      return true;
+    },
   });
+}
+
+function outlineDescendants(root: OutlineEl): OutlineEl[] {
+  const out: OutlineEl[] = [];
+  const walk = (node: OutlineEl) => {
+    for (const child of node.childNodes) {
+      if (child.nodeType === 1) out.push(child);
+      walk(child);
+    }
+  };
+  walk(root);
+  return out;
+}
+
+function outlineMatches(el: OutlineEl, part: string): boolean {
+  if (part === "*") return el.nodeType === 1;
+  let rest = part;
+  let tag: string | null = null;
+  if (rest[0] !== "." && rest[0] !== "#") {
+    const found = /^[a-zA-Z][\w-]*/.exec(rest);
+    if (found) {
+      tag = found[0].toUpperCase();
+      rest = rest.slice(found[0].length);
+    }
+  }
+  if (tag && el.nodeName !== tag) return false;
+  const classes: string[] = [];
+  let id: string | null = null;
+  for (const piece of rest.matchAll(/([.#])([\w-]+)/g)) {
+    if (piece[1] === ".") classes.push(piece[2] ?? "");
+    else id = piece[2] ?? null;
+  }
+  if (id && el.id !== id) return false;
+  const have = new Set(el.className.split(/\s+/).filter(Boolean));
+  return classes.every((c) => have.has(c));
+}
+
+function installOutlineDocument(): OutlineEl {
+  const doc = new OutlineEl();
+  doc.nodeType = 9;
+  doc.nodeName = "#document";
+  doc.ownerDocument = doc;
+  const html = doc.createElement("html");
+  const head = doc.createElement("head");
+  const body = doc.createElement("body");
+  doc.appendChild(html);
+  html.appendChild(head);
+  html.appendChild(body);
+  const storage = new Map<string, string>();
+  const localStorage = {
+    getItem: (key: string) => (storage.has(key) ? storage.get(key)! : null),
+    setItem: (key: string, value: string) => {
+      storage.set(key, String(value));
+    },
+    removeItem: (key: string) => {
+      storage.delete(key);
+    },
+    clear: () => storage.clear(),
+    key: (index: number) => [...storage.keys()][index] ?? null,
+    get length() {
+      return storage.size;
+    },
+  };
+  const win = {
+    document: doc,
+    console,
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval,
+    queueMicrotask,
+    localStorage,
+    sessionStorage: localStorage,
+    innerWidth: 1200,
+    innerHeight: 800,
+    devicePixelRatio: 1,
+    location: { protocol: "http:", href: "http://127.0.0.1/", search: "", hostname: "127.0.0.1" },
+    navigator: { userAgent: "vitest" },
+    getComputedStyle: () => outlineStyle(),
+    requestAnimationFrame: (cb: (time: number) => void) => setTimeout(() => cb(Date.now()), 0),
+    cancelAnimationFrame: (id: ReturnType<typeof setTimeout>) => clearTimeout(id),
+    addEventListener() {
+      return undefined;
+    },
+    removeEventListener() {
+      return undefined;
+    },
+    getSelection: () => ({ removeAllRanges() { return undefined; } }),
+    matchMedia: () => ({
+      matches: false,
+      addEventListener() {
+        return undefined;
+      },
+      removeEventListener() {
+        return undefined;
+      },
+    }),
+    scrollTo() {
+      return undefined;
+    },
+    HTMLIFrameElement: class {},
+    ResizeObserver: class {
+      observe() {
+        return undefined;
+      }
+      unobserve() {
+        return undefined;
+      }
+      disconnect() {
+        return undefined;
+      }
+    },
+  };
+  const g = globalThis as unknown as Record<string, unknown>;
+  for (const [key, value] of [
+    ["window", win],
+    ["document", doc],
+    ["localStorage", localStorage],
+    ["getComputedStyle", win.getComputedStyle],
+    ["requestAnimationFrame", win.requestAnimationFrame],
+    ["cancelAnimationFrame", win.cancelAnimationFrame],
+    ["ResizeObserver", win.ResizeObserver],
+    ["IS_REACT_ACT_ENVIRONMENT", true],
+  ] as const) {
+    try {
+      g[key] = value;
+    } catch {
+      Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+    }
+  }
+  if ((globalThis as { window?: unknown }).window !== win) {
+    throw new Error("window was not installed");
+  }
+  Object.assign(doc, {
+    documentElement: html,
+    head,
+    body,
+    defaultView: win,
+    scrollingElement: html,
+    compatMode: "CSS1Compat",
+    readyState: "complete",
+    visibilityState: "visible",
+    hidden: false,
+    activeElement: body,
+    createTextNode: (value: string) => doc.createText(value),
+    elementFromPoint: () => null,
+  });
+  return doc;
+}
+
+type OutlineDoc = OutlineEl & {
+  body: OutlineEl;
+  documentElement: OutlineEl;
+};
+
+function outlineRoadmap(view: string) {
+  return {
+    version: 1,
+    fingerprint: view,
+    view_fingerprint: view,
+    nodes: [
+      {
+        id: "M0.2",
+        node_key: "nk-m02",
+        type: "task",
+        title: "Roadmap validator in CI",
+        status: "In Progress",
+        parent_id: null,
+        dependencies: [],
+        sibling_order: 0,
+      },
+    ],
+    registry: {},
+    registry_by_node: {},
+    tree: [{ id: "M0.2", outline_depth: 0, row_index: 0 }],
+    dependency_depths: { "M0.2": 0 },
+    dependency_spans: { "M0.2": 1 },
+    edges: [],
+    ordered_ids: ["M0.2"],
+    row_depths: [0],
+    git_enrichment: {},
+    dependency_inheritance: {},
+    activity: {},
+  };
+}
+
+function outlineSnapshot(phase: "running" | "held") {
+  return {
+    schema: 2,
+    leaves: {
+      "M0.2": {
+        status: "running",
+        claim: null,
+        workers:
+          phase === "running"
+            ? [{ id: "w-1", harness: "claude", model: "opus", status: "running", pid_alive: true }]
+            : [],
+        worktrees: [],
+        reviews: [],
+        holds: phase === "held" ? [{ source: "hold_list", id: "M0.2", reason: "wait" }] : [],
+      },
+    },
+    leafless_workers: [],
+  };
+}
+
+describe("roadmap load shows an outline badge before the drawer opens", () => {
+  // A fresh page and a later roadmap reload. Source text of loadSnapshot stays
+  // green if that effect or the outline subscription is removed.
+  it("shows the leaf badge once the roadmap loads, and the reloaded badge, with the drawer closed", async () => {
+    const doc = installOutlineDocument() as OutlineDoc;
+    localStorage.setItem("pmGanttRefreshSec", "1");
+    let view = "1";
+    let phase: "running" | "held" = "running";
+    let fingerprintCalls = 0;
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/api/orchestration")) return json(outlineSnapshot(phase));
+      if (url.includes("/api/roadmap/fingerprint")) {
+        fingerprintCalls += 1;
+        return json({ fingerprint: view, view_fingerprint: view });
+      }
+      if (url.includes("/api/roadmap")) return json(outlineRoadmap(view));
+      if (url.includes("/api/repo")) return json({ repo_root: "/repo", repo_id: "repo-1" });
+      return json({}, 404);
+    }) as typeof fetch;
+
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const host = doc.createElement("div");
+    doc.body.appendChild(host);
+    const root = createRoot(host as unknown as Element);
+    const badge = () => doc.querySelector("button.worker-stall-badge")?.textContent ?? null;
+    const drawerOpen = () => doc.textContent.includes("Workers on each leaf");
+    const waitFor = async (pred: () => boolean, label: string) => {
+      const start = Date.now();
+      while (Date.now() - start < 4000) {
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        });
+        if (pred()) return;
+      }
+      throw new Error(`${label}; outline text: ${doc.body.textContent.slice(0, 400)}`);
+    };
+    try {
+      await act(async () => {
+        root.render(createReactElement(App));
+      });
+      await waitFor(() => badge() === "running" && doc.body.textContent.includes("Roadmap validator in CI"), "badge");
+      expect(drawerOpen()).toBe(false);
+      let settled = -1;
+      const settleStart = Date.now();
+      while (Date.now() - settleStart < 1000) {
+        if (badge() === "running" && fingerprintCalls === settled && settled > 0) break;
+        settled = fingerprintCalls;
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 40));
+        });
+      }
+      expect(badge()).toBe("running");
+      const beforeReload = fingerprintCalls;
+      view = "2";
+      phase = "held";
+      await waitFor(() => fingerprintCalls > beforeReload && badge() === "held", "reloaded badge");
+      expect(drawerOpen()).toBe(false);
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      globalThis.fetch = previousFetch;
+    }
+  }, 15000);
 });
 
 describe("pollOrchestration (15 s, only while open)", () => {
