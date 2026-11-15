@@ -1361,9 +1361,9 @@ export function OutlineTable({
             ),
       titleEditLocked: titlePlanLocked,
       orchBadge:
-        !orchestration || parentNodeIds?.has(rowId) || !node.node_key
+        !orchestration || parentNodeIds?.has(rowId)
           ? null
-          : outlineBadge(orchestration.load, node.node_key, orchestration.at),
+          : outlineBadge(orchestration.load, node.id, orchestration.at),
       onOpenOrchestration,
       isDepCandidate: isCandidate,
       titleEditing: editingTitleId === rowId,

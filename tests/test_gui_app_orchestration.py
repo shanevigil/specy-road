@@ -289,9 +289,11 @@ def test_read_only_serves_the_get_and_refuses_the_post(tmp_path: Path, monkeypat
 
 
 def test_shipped_bundle_reads_the_route_and_cannot_render_the_mock() -> None:
-    """The production assets fetch ``/api/orchestration`` and carry none of the mock's leaf keys or its switch.
+    """The production assets fetch ``/api/orchestration`` and carry none of the mock's worker ids or its switch.
 
-    The mock loads only behind ``import.meta.env.DEV``, so ``npm run build`` drops it.
+    The mock loads only behind ``import.meta.env.DEV``, so ``npm run build`` drops it. Its leaf keys are
+    node ids (``M12``), which also occur in SVG path data, so each mock leaf is checked by its worker ids
+    (``w-0001`` …), which only the mock carries.
     """
     bundle = "".join(
         p.read_text(encoding="utf-8")
@@ -300,5 +302,9 @@ def test_shipped_bundle_reads_the_route_and_cannot_render_the_mock() -> None:
     mock = json.loads(MOCK.read_text(encoding="utf-8"))
     assert "/api/orchestration" in bundle
     assert mock["leaves"]
-    for marker in [*mock["leaves"], "orchestration_snapshot_mock", "mock=orchestration"]:
+    for key, leaf in mock["leaves"].items():
+        assert leaf["workers"], key
+        for w in leaf["workers"]:
+            assert w["id"] not in bundle, (key, w["id"])
+    for marker in [*(w["id"] for w in mock["leafless_workers"]), "orchestration_snapshot_mock", "mock=orchestration"]:
         assert marker not in bundle, marker

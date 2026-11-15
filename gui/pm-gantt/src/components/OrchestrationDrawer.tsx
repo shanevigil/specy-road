@@ -21,7 +21,7 @@ type Props = {
   onOpenNode: (id: string) => void;
   /** Open the Workers drawer on a worker id. */
   onOpenWorker: (id: string) => void;
-  /** Show only the group of this leaf `node_key`; null or absent shows every group. */
+  /** Show only the group of this leaf node id; null or absent shows every group. */
   filterLeafId?: string | null;
 };
 
@@ -210,7 +210,6 @@ export function OrchestrationDrawer({
           (g) => filterLeafId === null || g.key === filterLeafId,
         )
       : [];
-  const outlineKeys = new Set(nodes.map((n) => n.node_key));
 
   return (
     <ModalFrame
@@ -244,7 +243,7 @@ export function OrchestrationDrawer({
         <GroupView
           key={g.key ?? "(no leaf)"}
           g={g}
-          inOutline={g.key !== null && outlineKeys.has(g.key)}
+          inOutline={g.inOutline}
           detailOpen={g.key !== null && g.key === selectedKey}
           onToggleDetail={() =>
             setSelectedKey((cur) => (g.key !== null && cur === g.key ? null : g.key))

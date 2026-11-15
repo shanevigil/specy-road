@@ -8,7 +8,7 @@
  * literal `"unknown"` when its source could not be read.
  *
  * `buildOrchestrationView` takes the clock as a parameter (no `Date.now()`),
- * joins leaf keys to the outline the GUI already loads, and returns display
+ * joins leaf keys (node ids) to the outline the GUI already loads, and returns display
  * text only: no React, no fetch. The drawer's loader, poll and copy commands
  * (M17.3) sit below it, with the fetch and the timer injected or owned here
  * so vitest drives them without a DOM.
@@ -18,7 +18,19 @@ import type { RoadmapNode } from "./types";
 
 export type Unknown = "unknown";
 
+/** A worker record's state, as the snapshot sends it; `"unknown"` for an unreadable record. */
 export type WorkerStatus =
+  | "starting"
+  | "running"
+  | "idle"
+  | "paused_by_limit"
+  | "completed"
+  | "failed"
+  | "terminated"
+  | "unknown";
+
+/** A leaf's schema 1 status: the snapshot's truth table, not a worker record state. */
+export type LeafStatus =
   | "claimed"
   | "running"
   | "exited_ok"
@@ -86,8 +98,8 @@ export type SnapshotHold = {
 };
 
 export type SnapshotLeaf = {
-  /** Schema 1. The vocabulary is the same set as a worker's displayed status. */
-  status: WorkerStatus;
+  /** Schema 1. */
+  status: LeafStatus;
   claim: SnapshotClaim | null | Unknown;
   workers: SnapshotWorker[];
   worktrees: SnapshotWorktree[];
@@ -100,7 +112,7 @@ export type SnapshotLeaf = {
 
 export type OrchestrationSnapshot = {
   schema: number;
-  /** Keyed by the outline's `node_key`. */
+  /** Keyed by node id: the outline node's `id`. */
   leaves: Record<string, SnapshotLeaf>;
   leafless_workers: SnapshotWorker[];
 };
@@ -149,7 +161,7 @@ export const optionalKeys: readonly string[] = [
 export type LeafBadgeKind =
   | "blocked"
   | "held"
-  | "exited_failed"
+  | "failed"
   | "stalled"
   | "running"
   | "ready"
@@ -182,8 +194,10 @@ export type WorktreeRowView = {
 export type ReviewRowView = { model: string; verdict: string; commit: string; fresh: string };
 
 export type OrchestrationGroupView = {
-  /** Leaf `node_key`; null for the "No leaf" group. */
+  /** Leaf node id; null for the "No leaf" group. */
   key: string | null;
+  /** False for a leaf id absent from the outline and for the "No leaf" group. */
+  inOutline: boolean;
   displayId: string;
   title: string;
   badge: LeafBadge | null;
@@ -196,7 +210,7 @@ export type OrchestrationGroupView = {
   holds: { source: string; id: string; reason: string }[];
 };
 
-export type OutlineNodeRef = Pick<RoadmapNode, "id" | "node_key" | "title">;
+export type OutlineNodeRef = Pick<RoadmapNode, "id" | "title">;
 
 const MISSING = "—";
 
@@ -292,7 +306,7 @@ export function leafBadge(leaf: SnapshotLeaf): LeafBadge | null {
     return { kind: "held", text: holds.length > 1 ? `held (${holds.length})` : "held" };
   }
   const ws = leaf.workers;
-  if (ws.some((w) => w.status === "exited_failed")) return { kind: "exited_failed", text: "exited_failed" };
+  if (ws.some((w) => w.status === "failed")) return { kind: "failed", text: "failed" };
   if (ws.some((w) => Array.isArray(w.flags) && w.flags.includes("stalled"))) {
     return { kind: "stalled", text: "stalled" };
   }
@@ -300,8 +314,8 @@ export function leafBadge(leaf: SnapshotLeaf): LeafBadge | null {
   const approved = isGate(leaf.gate) && leaf.gate.state === "approved";
   if (isReady(leaf.ready) && !approved) return { kind: "ready", text: "READY awaiting review" };
   if (approved) return { kind: "approved", text: "approved" };
-  if (isClaim(leaf.claim) || ws.some((w) => w.status === "claimed")) return { kind: "claimed", text: "claimed" };
-  if (ws.some((w) => w.status === "abandoned")) return { kind: "abandoned", text: "abandoned" };
+  if (isClaim(leaf.claim)) return { kind: "claimed", text: "claimed" };
+  if (leaf.status === "abandoned") return { kind: "abandoned", text: "abandoned" };
   if (ws.some((w) => w.status === "unknown")) return { kind: "unknown", text: "unknown" };
   return null;
 }
@@ -311,7 +325,7 @@ export type OutlineBadgeView = {
   text: string;
   /** Claim, workers, worktree count, READY, reviews, and each hold. */
   hover: string;
-  /** Leaf `node_key` a click passes to the drawer's `filterLeafId`. */
+  /** Leaf node id a click passes to the drawer's `filterLeafId`. */
   leafKey: string;
 };
 
@@ -381,6 +395,7 @@ function leafGroup(
   const { claim, ready, gate } = leaf;
   return {
     key,
+    inOutline: node !== undefined,
     displayId: node?.id ?? key,
     title: node?.title ?? MISSING,
     badge: leafBadge(leaf),
@@ -442,8 +457,8 @@ export function buildOrchestrationView(
   now: Date,
 ): OrchestrationGroupView[] {
   const leaves = snapshot.leaves ?? {};
-  const byKey = new Map(outline.map((n) => [n.node_key, n]));
-  const inOutline = outline.map((n) => n.node_key).filter((k) => Object.hasOwn(leaves, k));
+  const byKey = new Map(outline.map((n) => [n.id, n]));
+  const inOutline = outline.map((n) => n.id).filter((k) => Object.hasOwn(leaves, k));
   const orphans = Object.keys(leaves)
     .filter((k) => !byKey.has(k))
     .sort();
@@ -452,6 +467,7 @@ export function buildOrchestrationView(
   if (leafless.length > 0) {
     groups.push({
       key: null,
+      inOutline: false,
       displayId: "",
       title: "No leaf",
       badge: null,
