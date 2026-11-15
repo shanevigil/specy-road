@@ -468,7 +468,6 @@
     "tests/test_specyrd_skills.py": 7,
     "tests/test_steering_file_guard.py": 7,
     "tests/test_strong_review.py": 20,
-    "tests/test_support_boundary.py": 2,
     "tests/test_tool_call_guard.py": 13,
     "tests/test_touch_zone_tracked.py": 10,
     "tests/test_unauthored_leaf_guard.py": 15,
