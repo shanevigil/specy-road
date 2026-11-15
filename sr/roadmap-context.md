@@ -209,6 +209,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M17.14` PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon `gui-grind-status-modal` — task — **Complete**
   - `M17.15` PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it `gui-pm-decisions` — task — **Complete**
   - `M17.16` Orchestration view joins the snapshot by node id, and the docs name the worker states it sends `orchestration-view-joins-the-snapshot-by-node-id-and-the-docs` — task — **Complete**
+  - `M17.17` Orchestration drawer follows the outline's order, and outline badges load with the roadmap `orchestration-drawer-outline-order-badges-load-with-roadmap` — task — **Not Started**
 - `M18` Orchestration and review-loop features (after 0.3.1) `orch-review-loop` — phase — **Not Started**
   - `M18.1` Reviewers check that code is well-formed and that fixes do not degrade it `review-code-quality` — task — **Not Started**
   - `M18.2` Harness-facts records for the Copilot CLI and Antigravity agy `harness-facts-copilot-agy` — task — **Not Started**
