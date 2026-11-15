@@ -50,7 +50,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.17_orchestration-drawer-outline-order-badges-load-with-roadmap_26c0652b-8220-4b08-8449-cf69ea48bcca.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Orchestration drawer follows the outline's order",
       "touch_zones": [
         "gui/pm-gantt/src/orchestrationSnapshot.ts",

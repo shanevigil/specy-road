@@ -143,19 +143,3 @@ entries:
     started: '2026-11-15'
     owner: savigil
     implementation_review: pending
-  - codename: orchestration-drawer-outline-order-badges-load-with-roadmap
-    node_id: M17.17
-    branch: feature/rm-orchestration-drawer-outline-order-badges-load-with-roadmap
-    touch_zones:
-      - gui/pm-gantt/src/orchestrationSnapshot.ts
-      - gui/pm-gantt/src/orchestrationSnapshot.test.ts
-      - gui/pm-gantt/src/components/OrchestrationDrawer.tsx
-      - gui/pm-gantt/src/components/OutlineTable.tsx
-      - gui/pm-gantt/src/App.tsx
-      - gui/pm-gantt/src/api.ts
-      - specy_road/pm_gantt_static/
-      - CHANGELOG.md
-    started: '2026-11-15'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-15T16:39:17+00:00'
