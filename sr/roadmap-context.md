@@ -57,7 +57,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.5.7` Shared-checkout guard and session presence move into orchestration `shared-checkout-guard-and-session-presence-move-into-orchestration` — task — **Complete**
     - `M16.5.9` Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings `grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings` — task — **Complete**
     - `M16.5.10` Chore, decision and lesson records share internal adapters and keep their files byte for byte `chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte` — task — **Complete**
-    - `M16.5.11` Grind settings move under grind: in git-workflow.yaml, migrated by upgrade `grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade` — task — **Not Started**
+    - `M16.5.11` Grind settings move under grind: in git-workflow.yaml, migrated by upgrade `grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade` — task — **Complete**
     - `M16.5.12` Fold the review gate fragments; no review policy is deprecated `fold-the-review-gate-fragments-no-review-policy-is-deprecated` — task — **Not Started**
     - `M16.5.13` The review packet fragments fold into review_packet `the-review-packet-fragments-fold-into-review-packet` — task — **Not Started**
   - `M16.6` Docs and tests reorganised by topic `docs-and-tests-reorganised-by-topic` — milestone — **Not Started**
@@ -340,7 +340,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.5.11` on `feature/rm-grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade` since 2026-11-14
 - `M16.5.12` on `feature/rm-fold-the-review-gate-fragments-no-review-policy-is-deprecated` since 2026-11-14
 - `M17.9` on `feature/rm-gui-orch-sandbox-acceptance` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04

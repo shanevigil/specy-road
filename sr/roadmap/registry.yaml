@@ -92,32 +92,6 @@ entries:
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
-  - codename: grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade
-    node_id: M16.5.11
-    branch: feature/rm-grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade
-    touch_zones:
-      - specy_road/git_workflow_config.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - specy_road/templates/project/roadmap/git-workflow.yaml
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/grind-session.md
-      - tests/
-      - CHANGELOG.md
-      - specy_road/bundled_scripts/grind_session_args.py
-      - specy_road/orchestration/grind/grind_session_args.py
-      - docs/git-workflow.md
-      - specy_road/validate_roadmap_runner.py
-      - specy_road/bundled_scripts/grind_session_limits.py
-      - specy_road/orchestration/grind/grind_session.py
-      - specy_road/grind_status.py
-      - specy_road/templates/specyrd/commands/specyrd-grind-session.md
-      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
-      - specy_road/orchestration/grind/grind_session_implement.py
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-15T00:14:31+00:00'
   - codename: gui-orch-sandbox-acceptance
     node_id: M17.9
     branch: feature/rm-gui-orch-sandbox-acceptance
