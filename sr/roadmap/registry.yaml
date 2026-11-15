@@ -142,7 +142,8 @@ entries:
       - constraints/test-private-imports-baseline.txt
     started: '2026-11-15'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-15T16:13:14+00:00'
   - codename: orchestration-drawer-outline-order-badges-load-with-roadmap
     node_id: M17.17
     branch: feature/rm-orchestration-drawer-outline-order-badges-load-with-roadmap
