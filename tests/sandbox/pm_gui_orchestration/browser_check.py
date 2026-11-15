@@ -214,7 +214,9 @@ def outline_badges(c: Ctx) -> str:
     hover = badge["M0.2"].get_attribute("title") or ""
     expected = [f"claim: roadmap-ci · feature/rm-roadmap-ci · ", f"workers: {c.s.workers['terminated']} terminated, "
                 f"{c.s.workers['running']} running", "worktrees: 2", "READY: —", "reviews: —", "holds: —"]
-    for line, want in zip(hover.splitlines(), expected):
+    lines = hover.splitlines()
+    assert len(lines) == len(expected), f"hover has {len(lines)} lines, want {len(expected)}: {hover!r}"
+    for line, want in zip(lines, expected, strict=True):
         assert line.startswith(want), f"hover line {line!r} does not start with {want!r}"
     badge["M0.2"].click()
     dialog = page.get_by_role("dialog", name="Orchestration")
