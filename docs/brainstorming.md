@@ -3,7 +3,7 @@
 ## Agent quickstart
 
 **Use this doc when:** running `specy-road brainstorm` as the agent, or deciding which pass a session is in.
-**Not for:** the browser panel and its search providers — [`pm-gui-brainstorm.md`](pm-gui-brainstorm.md).
+**Not for:** the browser panel and its search providers — [`pm-gui.md`](pm-gui.md#brainstorm-panel).
 
 **Must know without reading on:**
 - Run `specy-road brainstorm start` before reading anything else — the digest and the roadmap anchor round 1 — then open the prompt it writes. Every command prints the next step.
@@ -23,7 +23,7 @@
 - what promotion writes → "5. Promote"
 - `--slug` with several sessions → "Several sessions at once"
 
-**Related:** [`pm-gui-brainstorm.md`](pm-gui-brainstorm.md), [`pm-workflow.md`](pm-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`orchestration.md`](orchestration.md).
+**Related:** [`pm-gui.md`](pm-gui.md#brainstorm-panel), [`pm-workflow.md`](pm-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`orchestration.md`](orchestration.md).
 
 For **product managers** and **developers** who want to widen the option space before committing to a roadmap, with an agent doing the generating and the research.
 
@@ -52,7 +52,7 @@ network call the CLI can make is `brainstorm verify`, and it asks first.
 
 The **PM GUI** panel runs the same prompt text against its own **configured
 LLM** and **configured search provider** (see
-[pm-gui-brainstorm.md](pm-gui-brainstorm.md)), because a browser panel has no
+[pm-gui.md](pm-gui.md#brainstorm-panel)), because a browser panel has no
 IDE agent to lean on. Same session file, same triage, same promotion.
 
 ---
@@ -387,5 +387,5 @@ session file carries what they need: `origin` per idea, `cluster_id`, and
 
 - [pm-workflow.md](pm-workflow.md) — the rest of the PM day-to-day
 - [roadmap-authoring.md](roadmap-authoring.md) — what promotion is writing into
-- [pm-gui-brainstorm.md](pm-gui-brainstorm.md) — the same flow in the browser
+- [pm-gui.md](pm-gui.md#brainstorm-panel) — the same flow in the browser
 - [orchestration.md](orchestration.md) — the roster a panel can draw on

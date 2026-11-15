@@ -175,3 +175,6 @@ rows:
   - old: specy-road grind-session
     new: specy-road grind-session
     allowed: "M16.4.5: `--baseline-cmd` help names the checks: entries with when: baseline as its default instead of baseline_cmd"
+  - old: specy-road
+    new: specy-road
+    allowed: "M16.6.1: top-level help's chore line cites docs/orchestration-workers.md (orchestration-chores.md was merged into it)"

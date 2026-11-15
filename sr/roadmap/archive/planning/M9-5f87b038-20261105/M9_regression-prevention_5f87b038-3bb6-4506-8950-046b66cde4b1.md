@@ -1,10 +1,10 @@
 ## Intent
 
-What **this** slice delivers and how it fits the parent phase or vision. Do not repeat the node title, display id, or `node_key`. Do not paraphrase what dependencies deliver — `specy-road brief` inlines each dependency's own `## Intent` under section 6.
+Stop regressions reaching the integration branch.
 
 ## Approach
 
-Constraints, major steps, and how you will verify done.
+The leaves added a land check on the merge commit, a fixture-pollution guard, test-integrity reports with a gate and waivers, suppression and ratchet findings, verified pre-existing failures, tests-at-risk, red-green evidence, `blocked_on` for executors, and nested-layout tests with zone-path fixes.
 
 ## Tasks / checklist
 

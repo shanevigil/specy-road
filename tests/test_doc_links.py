@@ -39,3 +39,92 @@ def test_rendered_skill_and_block_carry_no_bare_toolkit_doc_path() -> None:
     bare = [m for m in re.findall(r"(?<![\w/.-])docs/([\w-]+\.md)", rendered) if m not in SHIPPED_DOCS]
     assert bare == []
     assert "/docs/brainstorming.md" in rendered
+
+
+_RC_PIN = re.compile(r"\d+\.\d+\.\d+rc\d+")
+_LINK = re.compile(r"\]\(([^)\s]+)\)")
+_CODE = re.compile(r"^```.*?^```|`[^`\n]*`", re.M | re.S)
+_TOOLKIT_URL = re.compile(r"https://github\.com/shanevigil/specy-road/blob/main/(docs/[\w-]+\.md)(#[\w-]+)?")
+
+
+def _docs() -> list[Path]:
+    return [REPO / "README.md", *sorted((REPO / "docs").rglob("*.md"))]
+
+
+def _without_install_section(text: str) -> str:
+    """docs/install-and-usage.md's ``## Install`` section keeps its worked release-candidate commands."""
+    start = text.index("\n## Install\n")
+    end = text.index("\n## ", start + 1)
+    return text[:start] + text[end:]
+
+
+def test_no_doc_pins_a_release_candidate() -> None:
+    """A pinned ``X.Y.ZrcN`` goes stale with the next candidate; the release runbook's worked examples
+    and the install section of install-and-usage.md are the only places one belongs."""
+    hits = []
+    for path in _docs():
+        rel = path.relative_to(REPO).as_posix()
+        if rel == "docs/release-runbook.md":
+            continue
+        text = path.read_text(encoding="utf-8")
+        if rel == "docs/install-and-usage.md":
+            text = _without_install_section(text)
+        hits += [f"{rel}: {m.group(0)}" for m in _RC_PIN.finditer(text)]
+    assert hits == [], "write X.Y.ZrcN instead of a release candidate's number:\n" + "\n".join(hits)
+
+
+def _anchors(path: Path) -> set[str]:
+    """GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens, repeats numbered."""
+    seen: dict[str, int] = {}
+    fence = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("```"):
+            fence = not fence
+        if fence or not (m := re.match(r"#{1,6} (.+)", line)):
+            continue
+        slug = re.sub(r"[^\w\- ]", "", m.group(1).strip().lower()).replace(" ", "-")
+        n = seen.get(slug, 0)
+        seen[slug] = n + 1
+        seen.setdefault(slug if n == 0 else f"{slug}-{n}", 1)
+    return set(seen)
+
+
+def _broken(source: Path, target: Path, anchor: str) -> str | None:
+    if not target.exists():
+        return f"{source.relative_to(REPO)}: no {target.relative_to(REPO) if target.is_relative_to(REPO) else target}"
+    if anchor and target.suffix == ".md" and anchor not in _anchors(target):
+        return f"{source.relative_to(REPO)}: no #{anchor} in {target.relative_to(REPO)}"
+    return None
+
+
+def test_doc_links_resolve() -> None:
+    """Every relative link in README.md and docs/, and every toolkit-docs URL there, names a file that
+    exists and a heading it has, so a moved or merged doc leaves no dead inbound link."""
+    broken = []
+    for path in _docs():
+        text = _CODE.sub("", path.read_text(encoding="utf-8"))
+        for m in _TOOLKIT_URL.finditer(text):
+            broken.append(_broken(path, REPO / m.group(1), (m.group(2) or "#")[1:]))
+        for m in _LINK.finditer(text):
+            target = m.group(1)
+            if re.match(r"[a-z]+:", target):
+                continue
+            name, _, anchor = target.partition("#")
+            broken.append(_broken(path, (path.parent / name).resolve() if name else path, anchor))
+    assert [b for b in broken if b] == []
+
+
+def test_project_templates_cite_toolkit_docs_by_url() -> None:
+    """``init project`` copies templates/project verbatim: a doc the consumer does not get is cited by
+    its toolkit URL, and that doc exists."""
+    project = REPO / "specy_road" / "templates" / "project"
+    bare, missing = [], []
+    for path in sorted(p for p in project.rglob("*") if p.is_file()):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        rel = path.relative_to(REPO)
+        bare += [f"{rel}: docs/{n}" for n in re.findall(r"(?<![\w/.-])docs/([\w-]+\.md)", text)
+                 if n not in SHIPPED_DOCS]
+        missing += [f"{rel}: {m.group(1)}" for m in _TOOLKIT_URL.finditer(text)
+                    if not (REPO / m.group(1)).is_file()]
+    assert bare == []
+    assert missing == []

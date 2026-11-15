@@ -31,7 +31,7 @@ Install the CLI (**Python 3.11+**) and **git**, then follow **[Install](#install
 2. Shape what goes on the roadmap with **`specy-road brainstorm`** — diverge in rounds with an agent, gather quote-anchored evidence, converge with critics, then promote what you keep ([docs/brainstorming.md](https://github.com/shanevigil/specy-road/blob/main/docs/brainstorming.md)).
 3. Run **`specy-road export`** and **`specy-road validate`** before you commit.
 
-More detail: [docs/pm-workflow.md](https://github.com/shanevigil/specy-road/blob/main/docs/pm-workflow.md). Optional **LLM Review** in the Gantt UI: [docs/pm-llm-review.md](https://github.com/shanevigil/specy-road/blob/main/docs/pm-llm-review.md).
+More detail: [docs/pm-workflow.md](https://github.com/shanevigil/specy-road/blob/main/docs/pm-workflow.md). Optional **LLM Review** in the Gantt UI: [docs/pm-gui.md](https://github.com/shanevigil/specy-road/blob/main/docs/pm-gui.md#llm-review).
 
 ### For developers
 
@@ -72,14 +72,14 @@ If those disagree, or `specy-road --version` is older than your project's
 
 Release candidates (`X.Y.ZrcN`) publish to **TestPyPI**: download the pinned
 wheel alone, check its sha256, and install its dependencies from PyPI only. See
-[docs/install-release-candidates.md](https://github.com/shanevigil/specy-road/blob/main/docs/install-release-candidates.md).
+[docs/install-and-usage.md](https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md#install-a-release-candidate-testpypi).
 
 The full install + everyday usage guide is at
 **[docs/install-and-usage.md](https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md)**. Building from
 source is documented in
 **[docs/contributor-guide.md](https://github.com/shanevigil/specy-road/blob/main/docs/contributor-guide.md)**.
 
-Consumer **`init project`**, `roadmap/git-workflow.yaml`, optional **`specyrd`** stubs, and bootstrap prompts are covered in **[docs/install-and-usage.md](https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md)**. Toolkit contributors (tests, pre-commit, releases): **[docs/contributor-guide.md](https://github.com/shanevigil/specy-road/blob/main/docs/contributor-guide.md)**.
+Consumer **`init project`**, `roadmap/git-workflow.yaml`, optional **`specyrd`** skills, and bootstrap prompts are covered in **[docs/install-and-usage.md](https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md)**. Toolkit contributors (tests, pre-commit, releases): **[docs/contributor-guide.md](https://github.com/shanevigil/specy-road/blob/main/docs/contributor-guide.md)**.
 
 ## More on how to work with it
 
@@ -91,7 +91,7 @@ Typical path in an **application** repository after `specy-road init project`: r
 4. **Publish views** — `specy-road export` regenerates `roadmap.md` from the merged graph.
 5. **Focus a task** — `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`, then implement against `shared/` contracts cited for that node.
 6. **Branches** — Follow [docs/git-workflow.md](https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md): register in `roadmap/registry.yaml` on the **integration branch** from `roadmap/git-workflow.yaml`, then `feature/rm-<codename>` (or use `specy-road do-next-available-task`).
-7. **Optional IDE commands** — `specyrd` installs stubs that invoke the CLI; see [docs/contributor-guide.md#ide-command-stubs-specyrd](https://github.com/shanevigil/specy-road/blob/main/docs/contributor-guide.md#ide-command-stubs-specyrd).
+7. **Optional agent skills** — `specyrd init . --ai cursor|claude-code|codex` installs one skill per command under `.agents/skills/<name>/SKILL.md` (Claude Code reads them through `.claude/skills/` links); each skill runs the `specy-road` CLI. See [docs/install-and-usage.md](https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md#skills-specyrd-init).
 
 ## Where to read next
 
@@ -100,28 +100,25 @@ Typical path in an **application** repository after `specy-road init project`: r
 | [docs/install-and-usage.md](https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md) | Install from source, `init project`, everyday PM/dev/GUI flows |
 | [docs/contributor-guide.md](https://github.com/shanevigil/specy-road/blob/main/docs/contributor-guide.md) | Toolkit contributors: CI parity, pre-commit, releases, `specyrd` |
 | [docs/philosophy-and-scope.md](https://github.com/shanevigil/specy-road/blob/main/docs/philosophy-and-scope.md) | What the kit promises and what it leaves to you |
-| [docs/architecture.md](https://github.com/shanevigil/specy-road/blob/main/docs/architecture.md) | End-to-end flow: manifest, chunks, validation, briefs |
-| [docs/roadmap-authoring.md](https://github.com/shanevigil/specy-road/blob/main/docs/roadmap-authoring.md) | JSON chunks, manifest order, generated `roadmap.md` |
+| [docs/roadmap-authoring.md](https://github.com/shanevigil/specy-road/blob/main/docs/roadmap-authoring.md) | Project layout and end-to-end flow; JSON chunks, manifest order, generated `roadmap.md` |
 | [docs/brainstorming.md](https://github.com/shanevigil/specy-road/blob/main/docs/brainstorming.md) | Roadmap brainstorming with an agent (`brainstorm`): diverge in rounds, evidence pass with `verify`, converge with critics, cluster-first triage, promote to nodes |
-| [docs/pm-gui-brainstorm.md](https://github.com/shanevigil/specy-road/blob/main/docs/pm-gui-brainstorm.md) | The same flow in the browser: chat panel, idea triage, search-provider settings |
+| [docs/pm-gui.md](https://github.com/shanevigil/specy-road/blob/main/docs/pm-gui.md#brainstorm-panel) | The same flow in the browser: chat panel, idea triage, search-provider settings |
 | [docs/archiving.md](https://github.com/shanevigil/specy-road/blob/main/docs/archiving.md) | Move completed subtrees out of the live roadmap (`archive`, `restore-archive`) |
 | [docs/agent-search.md](https://github.com/shanevigil/specy-road/blob/main/docs/agent-search.md) | Generated agent context (`digest`) and ranked corpus search (`search`) |
 | [docs/roadmap-history.md](https://github.com/shanevigil/specy-road/blob/main/docs/roadmap-history.md) | Per-node timelines derived from git (`history`) |
 | [docs/git-workflow.md](https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md) | Consumer workflow contract (`git-workflow.yaml`), branches, registry, merge-back |
 | [docs/orchestration.md](https://github.com/shanevigil/specy-road/blob/main/docs/orchestration.md) | Coordinator / executor / reviewer roles, review hand-offs (`review packet`, `review record`, `review status`), the review gate, signed reviews, presence (`session`) and the tool-call guard |
 | [docs/orchestration-models.md](https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-models.md) | Choosing and prompting models: profiles, `models`, `prompt`, `orchestrate plan` |
-| [docs/orchestration-workers.md](https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md) | Workers on other harnesses: `worker delegate|sync|message|handoff|reclaim`, leases, intervention hooks |
+| [docs/orchestration-workers.md](https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md) | Workers on other harnesses: `worker delegate|sync|message|handoff|reclaim`, leases, intervention hooks; the roster (`models roster`, `roster_add`, `--spread`); chores |
 | [docs/grind-session.md](https://github.com/shanevigil/specy-road/blob/main/docs/grind-session.md) | Agent-driven loop + read-only planner (`grind-session`): waves, exit codes, JSON events |
 | [docs/agentic-sandbox-runbook.md](https://github.com/shanevigil/specy-road/blob/main/docs/agentic-sandbox-runbook.md) | Real-harness checks (workers, brainstorm, gate, skills) that must pass before an rc of the 0.3 line |
 | [docs/toolkit-development.md](https://github.com/shanevigil/specy-road/blob/main/docs/toolkit-development.md) | Short maintainer notes (this repo vs consumer contract) |
-| [docs/optional-ai-tooling-patterns.md](https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md) | Optional patterns (CLAUDE.md, Cursor rules, MCP) for app repos |
 | [suggested_prompts/](https://github.com/shanevigil/specy-road/tree/main/suggested_prompts) | Adoption prompts (clone this repo; not shipped on PyPI) |
 | [AGENTS.md](https://github.com/shanevigil/specy-road/blob/main/AGENTS.md) | Short entry for coding agents |
 
 ## Related material
 
 - [Spec-Kit](https://github.com/github/spec-kit) — inspiration only
-- [docs/optional-ai-tooling-patterns.md](https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md) — optional AI tooling ideas for application repositories
 
 ## Contributing to this repository
 

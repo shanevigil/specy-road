@@ -58,7 +58,7 @@ non-string evidence) makes the profile invalid. `models show` prints the date, h
 `composer-2.5-fast` too), from the 2026-11-05/06 replay through Cursor; the finding is about that model,
 not the Cursor harness, and `composer-2` is not flagged. While `policy.signed_reviews` is on, an entry
 that launches a flagged model is excluded from the executor and reviewer roles unless it opts in:
-[orchestration-roster.md](orchestration-roster.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
+[orchestration-workers.md](orchestration-workers.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
 
 A profile's `access.launch_mode` pins how much of its harness a Claude Code
 worker gets: `full` (the default when absent) or `bare`. Any other value makes
@@ -168,7 +168,7 @@ log's name.
   you can roster them.
 - `specy-road models roster --executor <profile-id> --reviewer <profile-id> [--write]`
   — roster entries filled from the shipped profiles, in the form `validate`
-  accepts; see [orchestration-roster.md](orchestration-roster.md).
+  accepts; see [orchestration-workers.md](orchestration-workers.md#the-roster-building-and-trying-it).
 - `specy-road models show <id> [--section <name>]` — one profile's machine
   fields and a body section (default: Prompting rules).
 - `specy-road models stale [--max-age-days N]` — profiles researched too long
@@ -378,10 +378,10 @@ order:
   two for this working tree only ([orchestration.md](orchestration.md#roadmaporchestrationyaml),
   "Local availability overlay"). A substitution says who stands in meanwhile.
   The same file can add entries for this clone under `roster_add`, labelled
-  `[local]` ([orchestration-roster.md](orchestration-roster.md#local-roster-entries-roster_add)).
+  `[local]` ([orchestration-workers.md](orchestration-workers.md#local-roster-entries-roster_add)).
 - **Cost.** Among capable executors (profile executor score 3 or more, or no
   profile) the cheapest list price wins; `--spread` instead takes them
-  round-robin by leaf order ([orchestration-roster.md](orchestration-roster.md)).
+  round-robin by leaf order ([orchestration-workers.md](orchestration-workers.md#the-roster-building-and-trying-it)).
   Reviewers rank by reviewer score, then cost; the coordinator by coordinator
   score, and with no rostered coordinator the plan prints `coordinator: this session`.
 - **Independence.** The executor's model is never offered as its own
@@ -391,7 +391,7 @@ order:
 
 `--roster-from-worktree` plans with the working tree's roster as a dry run that
 nothing may launch from, and `models list` names the ref it read and any
-uncommitted roster changes ([orchestration-roster.md](orchestration-roster.md)).
+uncommitted roster changes ([orchestration-workers.md](orchestration-workers.md#the-roster-building-and-trying-it)).
 
 Exit 1 when any ready leaf cannot be staffed, with the reason under `!`, so a
 coordinator script stops before dispatching. A roster entry whose profile is

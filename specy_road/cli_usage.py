@@ -163,7 +163,7 @@ USAGE_TEXT = (
     "    lessons in constraints/review-lessons.md, which every reviewer prompt carries\n"
     "  chore start <SLUG> --task TEXT --zone PATH [--review] [--model ID --harness H] |\n"
     "    close <SLUG> --summary TEXT — work outside the roadmap: worker delegate, message, sync,\n"
-    "    usage, reconcile and review delegate take the slug (see docs/orchestration-chores.md)\n"
+    "    usage, reconcile and review delegate take the slug (see docs/orchestration-workers.md)\n"
     "  orchestrate plan [PARENT] — per ready leaf, which roster model should coordinate,\n"
     "    execute, and review, from sensitivity, eligibility, availability, cost and\n"
     "    profile scores; exit 1 when a leaf cannot be staffed (optional: --json --today)\n"

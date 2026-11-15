@@ -6,7 +6,7 @@ import tomllib
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-INSTALL_DOCS = ("docs/install-and-usage.md", "docs/install-release-candidates.md")
+INSTALL_DOCS = ("docs/install-and-usage.md",)
 
 
 def test_install_docs_name_every_extra() -> None:

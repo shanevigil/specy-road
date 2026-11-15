@@ -3,7 +3,7 @@
 ## Agent quickstart
 
 **Use this doc when:** the user asks to publish a specy-road RC or final release, or a release workflow failed and you need the recovery step.
-**Not for:** day-to-day branching and PR conventions ([`contributor-guide.md`](contributor-guide.md)) or installing an RC as a consumer ([`install-release-candidates.md`](install-release-candidates.md)).
+**Not for:** day-to-day branching and PR conventions ([`contributor-guide.md`](contributor-guide.md)) or installing an RC as a consumer ([`install-and-usage.md`](install-and-usage.md#install-a-release-candidate-testpypi)).
 
 **Must know without reading on:**
 - The user chooses the version (step 2.2): see [`AGENTS.md`](../AGENTS.md#version-numbers-human-owned) (Version numbers).
@@ -316,7 +316,7 @@ dependency resolve from TestPyPI ([supply-chain-security.md](supply-chain-securi
 An exact prerelease pin needs no `--pre`; asking for the *latest* prerelease
 does, which is why §A.1 uses it against an unpinned name. The consumer-facing
 recipe (pip, uv, pipx and uv tool) is
-[install-release-candidates.md](install-release-candidates.md).
+[install-and-usage.md](install-and-usage.md#install-a-release-candidate-testpypi).
 Point adopters there rather than at this runbook; A.3 step 5 announces it.
 
 ### A.1 Pre-flight verification (the verify-then-cut pattern)
@@ -380,7 +380,7 @@ Add a CHANGELOG block at the top (above `## [Unreleased]`):
 
 First prerelease for v0.2.0. Routed to TestPyPI by
 release-publish.yml. Install with the TestPyPI recipe in
-docs/install-release-candidates.md;
+docs/install-and-usage.md (Install a release candidate);
 wheel sha256 `<from A.3 step 4>`.
 
 ### Headline changes vs v0.1.0
@@ -524,7 +524,7 @@ After the landing:
 5. **Announce the RC.** The human publishing the release posts the
    announcement (GitHub Release notes, chat, or mail). It carries the
    filled-in pip, pipx and uv tool commands, with `[gui]`, from
-   [install-release-candidates.md](install-release-candidates.md), and the
+   [install-and-usage.md](install-and-usage.md#install-a-release-candidate-testpypi), and the
    wheel's direct `test-files.pythonhosted.org` URL and its sha256 from
    step 4, so adopters copy them and never use TestPyPI as an index.
 

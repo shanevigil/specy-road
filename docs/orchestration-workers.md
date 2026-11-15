@@ -1,14 +1,14 @@
-# Workers: leaves implemented on other harnesses
+# Workers: leaves and chores on other harnesses, and the roster
 
 ## Agent quickstart
 
-**Use this doc when:** delegating a claimed leaf to a session on another harness (`specy-road worker …`), or taking one over by hand.
+**Use this doc when:** delegating a claimed leaf or a chore to a session on another harness (`specy-road worker …`), taking one over by hand, or building and trying the roster (`models roster`, `roster_add`, `orchestrate plan --spread`).
 **Not for:** the review gate, roster roles and hand-off files — [`orchestration.md`](orchestration.md).
 
 **Must know without reading on:**
 - Run `specy-road worker sync` at the start of every turn; `specy-road worker sync --ack` once you have acted on the events. To wait for a worker, `specy-road worker sync --wait` (see [orchestration-worker-sync.md](orchestration-worker-sync.md) for `--until` and compact output), never a sleep loop.
 - One writer per worker (`lease.holder`): `specy-road worker handoff <W>` before a human opens the native session, `specy-road worker reclaim <W>` after. While leased to a human, `message` and `resume` fail with `WORKER_LEASED_BY_HUMAN`.
-- `delegate` runs after pickup only: `specy-road worker delegate M2.3 --model claude-opus-5-5` needs the leaf's registry claim and branch. Work outside the roadmap runs as a chore instead: [`orchestration-chores.md`](orchestration-chores.md).
+- `delegate` runs after pickup only: `specy-road worker delegate M2.3 --model claude-opus-5-5` needs the leaf's registry claim and branch. Work outside the roadmap runs as a chore instead ("Chores" below).
 - A `completion` event and a READY file approve nothing; the review path is unchanged. `interrupt` is unsupported on every adapter; `terminate` loses the turn.
 - A worker whose wrapper died but whose harness lives is flagged `wrapper_gone_harness_alive` and still owns its leaf: `terminate` it (kills the recorded process group) before delegating again. To take a leaf over when its worker was terminated or cannot be resumed (its model became unavailable, say), `specy-road worker delegate M2.3 --model <another> --rework`: the prompt carries the blocking reviewers' required changes and the previous worker's last message ("The loop").
 - Records live in `work/.workers/` (gitignored); the event log is authoritative, the transcript is evidence. With `track_worker_logs: "events"` (or `"full"`) in `roadmap/git-workflow.yaml`, each turn's end also copies the event log (and, under `full`, the raw log) to `work/worker-logs/<NODE_ID>/` in the worker's checkout, which `finish-this-task` commits with the leaf; the default `"off"` writes nothing outside `work/.workers/`.
@@ -22,6 +22,9 @@
 - manual checks before relying on it → "Checks that need a real installation"
 - stalled workers and `worker recover` → "Stalled workers"
 - the presence guard and finishing the leaf → "Working alongside sessions and the gate"
+- `worker list` / `worker status` JSON for watchers, and what a claim locks → "Interfaces and limits"
+- dry-run plans, `roster_add`, `models roster`, the coordinator and `--spread` → "The roster: building and trying it"
+- chores (`chore start|close|garden`) → "Chores: worker-run work outside the roadmap"
 
 **Related:** [`orchestration.md`](orchestration.md), [`agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md), [`grind-session.md`](grind-session.md).
 
@@ -98,7 +101,7 @@ is on it also refuses an entry whose model's profile records guidance bypass
 harness) unless the committed entry sets `allow_guidance_bypass_model: true`:
 before the preflight and the harness, for chores, `message` and `resume` too.
 An opted-in entry prints one `warning: <id> (model <api_id>) opted in at its own
-risk: …` per launch. See [orchestration-roster.md](orchestration-roster.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
+risk: …` per launch. See [Models observed to bypass the guidance](#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model).
 
 ```yaml
 roster:
@@ -505,6 +508,16 @@ harness refreshes its login under these binds is a smoke check, not a test: befo
 leaf on Claude Code and on Cursor with `worker_sandbox: bwrap` and check that the turn authenticates, commits and
 hands off READY. A resumed turn should find its session.
 
+## Interfaces and limits
+
+**`worker list --json` and `worker status W --json` are a stable interface** for watchers (a dashboard, a coordinator script): read them instead of the files under `work/.workers/`, whose layout may change. `worker list --json` prints `{"workers": [...]}`, one object per worker (the active ones; `--all` adds closed ones): the record's fields from "The model" (`worker_id`, `node_id`, `harness`, `model`, `state`, `worktree`, `lease`, `flags`, …), plus `alive` (the wrapper is running) and `orphaned` (`null`, or why its leaf is over); a `stalled` list is added when a worker is stalled (see "Stalled workers"). `worker status W --json` prints one such object, without `orphaned`, plus `recent_events`, the last few events in the event-log shape. Fields are only added, never renamed or removed, within a release line; the text output is for people and may change.
+
+**A claim locks development work, not a runtime resource.** A leaf's registry claim and its branch say who is changing which touch zones; they reserve nothing the code uses when it runs (a port, a database, a device, a staging environment, an API quota). `orchestrate plan` and `grind-session --plan` schedule leaves by their dependencies and their touch zones only: two ready leaves that share a zone never go in one parallel batch, but two leaves that both start a server on port 8000 can. Where leaves contend for a runtime resource, say so in the graph (a dependency between them, or a shared touch zone such as the resource's config file), or set `policy.max_workers` low enough.
+
+**A gitignored `roadmap/` needs a force-added `roadmap/orchestration.yaml`.** Routing (`orchestrate plan`, `prompt`, `worker delegate`, `review delegate`, `grind-session`) reads the roster from the integration branch (`origin/<integration>`), never from the working tree. In a repo whose `.gitignore` covers `roadmap/`, the roster you wrote locally is not on that branch, so routing finds no roster. Add it past the ignore rule and push it to the integration branch: `git add -f roadmap/orchestration.yaml`, commit and push. A model profile under an ignored path needs the same, since routing reads the committed profiles too.
+
+**A Codex executor needs `channels.cli` to commit.** Under the default command, codex-cli's `workspace-write` sandbox keeps git metadata read-only, so the worker implements and tests but cannot commit; give the roster entry a `channels.cli` and `cli_resume` that grant both git directories ("Known limitation" under "Roster setup").
+
 ## Optional: refuse push from a linked worktree
 
 `specyrd init --install-pre-push-hook` installs `specy_road/templates/specyrd/hooks/pre-push` as `.git/hooks/pre-push`; it refuses push when the repo toplevel is under `work/.worktrees/` and allows push from the main checkout. `worker delegate` and `review delegate` export `SPECY_ROAD_ORCHESTRATION_ROLE` (`executor` / `reviewer`) into the harness environment so the shipped orchestration hooks apply without pinning the role in the command.
@@ -512,3 +525,330 @@ hands off READY. A resumed turn should find its session.
 ## Working alongside sessions and the gate
 
 `review status` prints active workers beside live sessions. A session whose recorded worktree is no longer a directory, or whose recorded branch has no local ref, no longer counts as live (guard, overlap warnings, `review status`); `session list --all` shows it as `stale: worktree gone` or `stale: branch gone`. Both are judged only when the record names both: a session missing either, or holding a value that is not a string, still lasts until it expires. A worker in a linked worktree does not touch the coordinator's branch; one in the same checkout (the claim's branch was checked out here) does, so the coordinator must not edit files in that leaf's touch zones while the worker runs — the presence guard (`session guard`) already refuses the git operations that would collide. Finishing the leaf is still `finish-this-task` from the leaf's branch after the gate; it terminates the leaf's own `idle` and `completed` workers (a `terminated` event each; a running one is left alone), so their records close and their slots free. With `--on-complete merge`, finish merges into the integration branch and **pushes that branch** (after stating how many local integration commits are not on the remote yet); `--push` only pushes the feature branch. From a linked worktree with `on_complete: merge`, finish cannot check the integration branch out while the coordinator's checkout holds it, so it merges and pushes **in that checkout** instead. That checkout must have no uncommitted changes to tracked files (untracked files are fine): otherwise finish refuses before its bookkeeping commit and names the checkout to commit or stash in.
+
+## The roster: building and trying it
+
+Beside [orchestration.md](orchestration.md) (roles, the review gate, the
+`roadmap/orchestration.yaml` reference) and
+[orchestration-models.md](orchestration-models.md) (profiles, `prompt`,
+`orchestrate plan`). Routing reads `roadmap/orchestration.yaml` from the
+integration branch (`origin/<integration>`), never from the working tree: a
+roster entry's `channels.cli` and its profile's `access.cli` are executed, so
+the copy that runs is the one that was reviewed and merged. This part covers
+trying a roster change on your own clone before it lands, building a roster in
+one command, and the two `orchestrate plan` choices that depend on it.
+
+### A dry-run plan from the working tree
+
+```bash
+specy-road orchestrate plan --roster-from-worktree
+```
+
+plans with the working tree's `roadmap/orchestration.yaml` and the working
+tree's model profiles. The first line is
+
+```text
+DRY RUN: roster from the working tree, nothing may launch from this plan
+```
+
+and `--json` carries `"roster_ref": "worktree"` (the banner goes to stderr so
+stdout stays JSON). Only `orchestrate plan` accepts the flag: `prompt`,
+`worker delegate`, `review delegate` and `grind-session` always read the
+integration branch's roster, so a dry run cannot launch anything.
+
+### `models list` names the ref and the uncommitted diff
+
+`specy-road models list` starts with the ref it read the roster from
+(`roster: roadmap/orchestration.yaml at origin/dev`). When the working tree's
+roster differs from that ref, it ends with `uncommitted roster changes`: the
+entry ids added, removed and changed, each changed id with the fields that
+differ. `--json` has the same as `roster_ref` and `uncommitted_roster_changes`
+(`{added, removed, changed: {id: [fields]}}`, or `null` when they agree). The
+rows themselves stay the roster routing reads.
+
+### Local roster entries (`roster_add`)
+
+`roadmap/orchestration.local.yaml` is gitignored and already overlays
+availability (`roster:` with `available` / `paused_until` by `id`; see
+[orchestration.md](orchestration.md#roadmaporchestrationyaml)). It can also add
+whole entries for this clone only:
+
+```yaml
+roster_add:
+  - {id: local-qwen, family: qwen, roles: [executor], class: cheap}
+# allow_local_cli: true   # channels.cli, cli_resume, preflight, harness_bin, cursor_force, or a profile access.cli
+```
+
+- Each entry is checked against the roster entry schema. Added entries follow the
+  integration branch's, and `orchestrate plan`, `prompt`, `worker delegate` and
+  `review delegate` on this clone use them; `orchestrate plan` labels them
+  `[local]` and lists them on a `local roster entries` line (`local_roster` in
+  `--json`).
+- An added entry never overrides a committed one: an `id` the pinned roster
+  already has is refused, and routing stops with that error until it is renamed
+  or removed. Use `roster:` in the same file to change a committed entry's
+  availability.
+- An added entry that would run a command on this clone is refused unless the
+  same file sets `allow_local_cli: true`. That is a non-empty `channels.cli`,
+  `channels.cli_resume`, `preflight` or `harness_bin`, `cursor_force: true`, or
+  a profile whose `access.cli` is set.
+- The review gate reads only the committed roster, so a review by a local
+  entry does not count toward it.
+- An added entry may not set `allow_guidance_bypass_model` (below): routing
+  stops with that error, and nothing is launched.
+
+Out of scope: sharing local entries between clones. Commit them to the
+integration branch to share them.
+
+### A roster in one command: `models roster`
+
+```bash
+specy-road models roster --executor claude-opus-5-5 --reviewer gpt-6.1-sol
+specy-road models roster --executor composer-2.5 --reviewer claude-opus-5-5 --write
+```
+
+Each `--executor`, `--reviewer` or `--coordinator` names a shipped profile by
+its file name (`specy-road models list` lists the profiles; an `api_id` or alias
+works too) and may be repeated. A profile named for several roles becomes one
+entry with all of them. Each entry is filled from the profile:
+
+```yaml
+  - id: claude-opus-5-5
+    family: anthropic
+    profile: model-profiles/anthropic-claude/claude-opus-5-5.md
+    harness: claude-code
+    roles: [executor, reviewer]
+```
+
+- `id` is the profile's file name, so review records and the gate count the
+  same id the profile carries;
+- `family` is the roster family the profiles README gives that vendor (the gate
+  counts distinct families by it);
+- `profile` is the path form `validate` accepts;
+- `harness` is the harness whose executor template renders the profile's
+  family (`claude-code`, `codex`, `cursor`), else `generic`, which runs the
+  profile's `access.cli`.
+
+Without `--write` the entries are printed for you to paste under `roster:`.
+With `--write` they are added to the end of the `roster:` block of
+`roadmap/orchestration.yaml`, keeping its comments; an id already rostered is
+left alone. Run `specy-road validate --generate-orchestration` first when the
+file does not exist. An unknown profile id is refused with the nearest ids. When
+the repo lacks a profile file the entry points at, the command says to run
+`specy-road refresh-profiles --only <id>`, the deprecated alias of
+`specy-road upgrade --only profiles --profile <id>`. Commit the roster (and the profiles)
+to the integration branch: routing reads the committed copy.
+
+### `profile:` is checked locally
+
+`validate` resolves every roster `profile:` against `model-profiles/` in the
+working tree. A value that is not a `.md` file there, such as
+`anthropic/claude-opus-5-5`, is a warning naming the accepted form, with the
+concrete path when the value's last part names a known profile:
+
+```text
+warning: roster entry 'opus' in roadmap/orchestration.yaml: invalid profile: anthropic/claude-opus-5-5, accepted form model-profiles/anthropic-claude/claude-opus-5-5.md
+```
+
+`orchestrate plan` reports such an entry the same way (`invalid profile: <value>,
+accepted form <form>`) rather than as a profile "not committed on the
+integration branch", and leaves out the `no eligible executor … may_process`
+hint when that drop is the only reason no executor is left.
+
+An entry without `profile:` gets the first profile whose `api_id`, file name or
+alias equals its `id`; only when none does, the first that equals its
+`harness_model` (an id match wins). Matching neither, `validate` warns that
+its model notes never reach its prompts.
+
+### The coordinator
+
+With no roster entry holding the `coordinator` role, `orchestrate plan` prints
+`coordinator: this session` for each leaf: the session that runs the plan
+coordinates, and the plan does not count that as a staffing problem. To roster a
+model coordinator instead, give an entry the role, for example
+`specy-road models roster --coordinator claude-opus-5-5 --write`, or add
+`coordinator` to an existing entry's `roles`, and commit the roster. The plan
+then picks the rostered coordinator with the highest coordinator score that is
+available and may process the leaf's `sensitivity`; when coordinators are
+rostered but none qualifies, the leaf is reported as unstaffable.
+
+### Models observed to bypass the guidance (`allow_guidance_bypass_model`)
+
+A model profile can record `guidance_bypass_observed` ([orchestration-models.md](orchestration-models.md#guidance-bypass-observed)):
+the model was seen going around specy-road's guidance. The shipped flag is on **composer-2.5**
+(its alias `composer-2.5-fast` too), from the 2026-11-05/06 replay through Cursor; it is a finding
+about that model, not about the Cursor harness, and `composer-2` is not flagged.
+
+While `policy.signed_reviews` is on, an entry is flagged when any model it can launch (its profile's
+`api_id` or alias, `harness_model`, the roster id, or a literal `--model` / `-m` in `channels.cli`,
+`cli_resume` or the profile's `access.cli`) matches a flagged profile on the integration branch or in
+the bundled set; a project or branch copy
+without the field does not clear it, and the committed copy of the entry's profile names its model even
+when the working tree's copy differs. A git or file read that fails while reading those profiles
+refuses the entry rather than reading as "not flagged"; a committed profile whose front matter does not
+parse flags nothing and is refused as an invalid profile wherever it is routed. A flagged entry is excluded from the executor and reviewer roles
+and stays eligible as coordinator. `validate` and `doctor` print one warning per flagged executor or
+reviewer entry:
+
+```text
+warning: composer-2.5 (model composer-2.5) is excluded: set allow_guidance_bypass_model: true on its roster entry to use it at your own risk
+```
+
+The rule is bounded: it covers declared configuration, not a model hidden in a custom command. It
+reads the profile's `api_id` and aliases, `harness_model`, the roster id, and the literal model flag of
+`channels.cli`, `channels.cli_resume` and the profile's `access.cli` (every committed copy included),
+and compares names after normalising (case and separators, and Cursor's `cursor-` prefix, so
+`COMPOSER-2.5`, `Composer_2.5` and `cursor-composer-2.5` all match `composer-2.5`). A model flag it
+cannot read is refused as `<id> (model unreadable in <field>)`: a command readable for this is one
+simple command with one literal `--model <id>`, `--model=<id>` or `-m <id>`, so a flag inside a list
+or pipeline (`cd . && agent --model …`), a substitution or variable (`"$(printf …)"`, `"$M"`), an
+attached `-m<id>`, two model flags, or a command that cannot be split (an unbalanced quote) is
+refused, and only the committed opt-in admits it. A `family: human` entry is exempt only without
+launch configuration: one that sets `harness`, `harness_model`, `harness_bin`, `profile`,
+`channels.cli` or `channels.cli_resume`, or whose id finds a profile, is judged like a model entry,
+committed or `roster_add` alike (`channels.paste`, `channels.subagent` and `preflight` launch no
+model). The exemption is decided only from a successful read of the integration branch's profiles:
+while that read fails, a human entry is refused like every other, since whether a profile answers to
+its id is unknown. The rule does not see a model chosen inside a script, wrapper or alias the command runs, by
+an environment variable, by a harness's own config file, or by a harness's default when no model is
+passed; nor an abbreviated long option (`--mod`). The coordinator role, how signatures are verified,
+and the roster schema are unchanged.
+
+To use it anyway, at your own risk, set the opt-in on its entry in the committed roster:
+
+```yaml
+  - id: composer-2.5
+    family: cursor
+    roles: [executor]
+    harness: cursor
+    allow_guidance_bypass_model: true   # boolean, default false
+```
+
+Only the committed `roadmap/orchestration.yaml` on the integration branch counts (a `roster_add`
+entry is refused, and `orchestrate plan --roster-from-worktree` ignores an uncommitted opt-in);
+protect that file with a code owner, since an executor that can push there could
+set it. `validate` and `doctor` then print `warning: <id> (model <api_id>) opted in at its own risk`,
+`orchestrate plan` adds the same warning to its notes, and every executor or reviewer launch prints it
+once. With `signed_reviews` off none of this applies.
+
+### Spreading executors: `orchestrate plan --spread`
+
+By default every leaf goes to the cheapest capable executor (the ranking in
+[orchestration.md](orchestration.md), "Executor ranking"), so one model can
+receive every leaf of a long grind. `--spread` assigns executors round-robin
+instead: the capable, available entries for a leaf are ranked the same way, and
+the leaf at position *i* in the plan (batches in order, then leaves within a
+batch) takes entry *i* modulo their number. The assignment is deterministic for
+a given roadmap and roster. It does not weigh cost or current load.
+
+## Chores: worker-run work outside the roadmap
+
+A chore is environment repair or other ad-hoc work that should run on a worker, with its usage and review recorded, but has no roadmap leaf. `specy-road chore start <slug> --task TEXT --zone PATH` writes `work/chores/<slug>.json` in the main checkout: no roadmap node, branch or registry row. The chore runs in this checkout (or `--worktree`) on the branch checked out there, and `base` is that branch's head at start. `worker delegate <slug>`, `worker usage <slug>` and `review delegate <slug>` take the slug where they take a node id; `worker message`, `resume`, `sync`, `reconcile` and the rest work on its worker id as for a leaf. `--zone` (repeatable) declares touch zones as a leaf does: `worker reconcile` flags a change outside them (`needs_reconcile`).
+
+### Starting
+
+```bash
+specy-road chore start fix-env --task "Repair the pinned toolchain" --zone scripts/ --zone .tool-versions --review
+```
+
+The slug is lower-case letters, digits and `-`, never a node id and never
+starting with `w-` (a worker id). The checkout must be on a branch, not a
+detached head. `--model` and `--harness` set the defaults `worker delegate
+<slug>` uses. The model may be off the roster (`roadmap/orchestration.yaml`) when
+`--harness` names where it runs (`claude-code`, `codex`, `cursor`); such a
+model runs with the harness's default command and no roster checks. A rostered
+model keeps its roster harness, profile and executor-role checks.
+
+### Running
+
+```bash
+specy-road worker delegate fix-env            # the chore's --model, or pass --model ID
+specy-road worker sync                        # as for any worker
+specy-road worker reconcile w-0007            # changed paths since base vs the chore's zones
+specy-road worker usage fix-env               # tokens and cost per attempt, and the total
+```
+
+The executor's prompt is the task, the zones and the commit rules; it has no
+brief. The tree must be clean, as for a leaf: delegate refuses uncommitted
+changes. A chore's worker is never reported orphaned for lack of a claim; once
+the chore is closed, a worker still held on it is.
+
+### Review
+
+With `--review`, `specy-road review delegate fix-env --model <reviewer>` runs a
+rostered reviewer in the chore's worktree on `git diff <base>..<head>`. Its
+prompt names `work/reviews/<slug>/REVIEW-<model>.md` and the record's form, with
+the task as acceptance `A1`. The run is `complete` once a valid record for the
+current head is on file. There is no gate: the verdict is recorded, not enforced.
+
+### Closing
+
+```bash
+specy-road chore close fix-env --summary "Pinned toolchain repaired; make check passes"
+```
+
+`work/chores/<slug>.md` holds the task, worktree, branch and `base..head`, the
+zones, the summary, `worker usage`'s lines for every attempt, and one line per
+valid review record (`<model>: approve|block at <commit>`), or `unreviewed`.
+The chore's JSON keeps `closed_at`, so the slug cannot be started again.
+
+### Gardening
+
+```bash
+specy-road chore garden                                   # report: one finding per line
+specy-road chore garden --json                            # the same, for machines
+specy-road chore garden --open-chores --under M12         # also file each finding class as a leaf
+```
+
+`chore garden` finds drift between what the toolkit enforces and what the docs
+and agent files claim. Each finding is one line, `<class>: <path>:<line>: <detail>`,
+with paths relative to the git root; the exit code is 0 whether or not there are
+findings, because it is a report. It edits nothing tracked.
+
+| Class | What it reports |
+| --- | --- |
+| `stale-command` | A `specy-road` or `specyrd` command this version does not register, named in `docs/**/*.md`, `AGENTS.md`, `CLAUDE.md` (project and git roots), `.specyrd/AGENTS.md` or `.specyrd/AGENTS.team.md`. It is the scanner `validate` runs on the agent files, over more files and over whole files, managed blocks included (`validate` skips those); it checks command names, not flags. |
+| `advisory-rule` | A provenance comment (`<!-- prevents: … \| enforced: advisory … \| ref: … -->`) in a managed agent file, or in `specy_road/agent_rule_provenance.md` (the maintainers' copy of the templates those files are rendered from, which no wheel ships) when it is in this checkout: one line per rule nothing checks. |
+| `ratchet-grew` | A `policy.ratchet_paths` baseline with lines added since the newest tag (`git describe --tags --abbrev=0`), reported as `<path>: +N line(s) since <tag>`. With no tag, or no integration branch to read the policy from, the scan reports nothing and says why once on stderr. |
+
+`--open-chores --under <PARENT>` adds at most one leaf under `PARENT` per class
+with findings by running `add-node` itself, so every check `add-node` makes
+applies (parent exists, milestone lock, unique id, title and codename, chunk
+routing). The leaf gets its title from the class (for example `Garden: stale
+command mentions`), codename `garden-<class>`, one acceptance line per finding
+path (the first 10, then a count of the rest) and the finding paths as touch
+zones. A node belongs to a class when its codename (`garden-<class>` or
+`garden-<class>-N`) or its title (`<title>` or `<title> (N)`) says so, under
+any parent. While a live leaf of the class is not Complete, a run adds nothing
+for it and prints that leaf's id. Otherwise the new leaf is generation N + 1,
+where N is the highest generation any live or archived node of the class
+carries, so a number is never reused. When `add-node` refuses, the run exits 1
+with its reason. The leaves are picked up,
+delegated and reviewed like any other; gardening never fixes a finding itself.
+
+#### Cadence
+
+```yaml
+# roadmap/orchestration.yaml
+policy:
+  garden_cadence_days: 14
+```
+
+Each run records its date in `work/chores/.garden.json`, which the managed
+`.gitignore` block ignores (`specy-road upgrade` adds the line to an older block). With `policy.garden_cadence_days` set, `specy-road validate`
+warns "gardening due: last run <date>, every N days; run `specy-road chore garden`"
+once more than N days have passed, or `never run` when there is no record. The
+warning is never fatal; unset, there is none.
+
+#### Unattended
+
+Run the report on a schedule and let a person or coordinator decide what to file:
+
+```bash
+# cron or a scheduled CI job, from the checkout root
+specy-road chore garden --json > work/garden-report.json
+# then, after reading it
+specy-road chore garden --open-chores --under <PARENT>
+```
+
+Each run, report or not, resets the cadence clock.

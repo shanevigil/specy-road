@@ -1,6 +1,6 @@
 # Machine-readable git defaults for specy-road CLI and PM Gantt.
 # Edit integration_branch to match your team's daily trunk (e.g. dev instead of main).
-# Precedence: CLI --base / --remote overrides this file; see docs/git-workflow.md
+# Precedence: CLI --base / --remote overrides this file; see https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md
 
 version: 1
 integration_branch: main
@@ -30,11 +30,11 @@ implementation_summary: local
 # than left to the built-in default so the mode is never implicit. Change this to
 # merge (or auto) before running grind-session: the loop refuses to start in pr
 # mode, because pr never merges between cycles and the next pickup cannot see the
-# work the last one finished. See docs/git-workflow.md and docs/grind-session.md.
+# work the last one finished. See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md and https://github.com/shanevigil/specy-road/blob/main/docs/grind-session.md.
 on_complete: pr
 # Optional: check commands, each named once with when: baseline (before a pickup claims),
 # ready (specy-road ready runs it), land (on the merge commit before finish lands it) or
-# prompt (the leaf test command briefs and reviewer prompts give). See docs/git-workflow.md (Checks).
+# prompt (the leaf test command briefs and reviewer prompts give). See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md (Checks).
 # checks:
 #   - {name: suite, run: python -m pytest -n auto -p no:cacheprovider, when: [baseline, land]}
 #   - {name: leaf tests, run: python -m pytest -n 4 -p no:cacheprovider, when: prompt}

@@ -41,7 +41,7 @@ or if you want independent review before work lands. The review gate is a
   [Read more](brainstorming.md)
 - **One set of agent rules everywhere.** A managed block in `AGENTS.md`
   and `CLAUDE.md`, and skills that Claude Code, Codex and Cursor all load.
-  [Read more](optional-ai-tooling-patterns.md)
+  [Read more](install-and-usage.md#agent-rules-agentsmd-and-specyrd)
 
 ### Review gate and hand-offs
 
