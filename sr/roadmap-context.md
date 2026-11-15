@@ -58,7 +58,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.5.9` Grind session and its plan move into orchestration, read the index and the snapshot, and fold their cap siblings `grind-session-and-its-plan-move-into-orchestration-read-the-index-and-the-snapshot-and-fold-their-cap-siblings` — task — **Complete**
     - `M16.5.10` Chore, decision and lesson records share internal adapters and keep their files byte for byte `chore-decision-and-lesson-records-share-internal-adapters-and-keep-their-files-byte-for-byte` — task — **Complete**
     - `M16.5.11` Grind settings move under grind: in git-workflow.yaml, migrated by upgrade `grind-settings-move-under-grind-in-git-workflow-yaml-migrated-by-upgrade` — task — **Not Started**
-    - `M16.5.12` Fold the review gate fragments; no review policy is deprecated `fold-the-review-gate-fragments-no-review-policy-is-deprecated` — task — **Not Started**
+    - `M16.5.12` Fold the review gate fragments; no review policy is deprecated `fold-the-review-gate-fragments-no-review-policy-is-deprecated` — task — **Complete**
     - `M16.5.13` The review packet fragments fold into review_packet `the-review-packet-fragments-fold-into-review-packet` — task — **Not Started**
   - `M16.6` Docs and tests reorganised by topic `docs-and-tests-reorganised-by-topic` — milestone — **Not Started**
     - `M16.6.1` Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra `docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` — task — **Not Started**
@@ -340,7 +340,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.5.12` on `feature/rm-fold-the-review-gate-fragments-no-review-policy-is-deprecated` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -353,12 +352,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `.github` **flagged** | 2 | 0 | 3.00 | 100% | 16 | 0 |
+| `.github` **flagged** | 3 | 0 | 2.33 | 67% | 18 | 0 |
 | `.gitignore` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `CHANGELOG.md` **flagged** | 21 | 0 | 2.19 | 71% | 9 | 1 |
 | `README.md` **flagged** | 1 | 0 | 2.00 | 100% | 0 | 0 |
 | `constitution` **flagged** | 1 | 0 | 2.00 | 100% | 1 | 0 |
-| `docs` **flagged** | 25 | 0 | 2.40 | 72% | 41 | 1 |
+| `docs` **flagged** | 27 | 0 | 2.37 | 70% | 56 | 1 |
 | `gui` **flagged** | 6 | 0 | 2.17 | 67% | 1 | 0 |
 | `planning` **flagged** | 3 | 0 | 3.00 | 67% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
@@ -366,12 +365,14 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `requirements-ci.in` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `requirements-ci.txt` **flagged** | 1 | 0 | 4.00 | 100% | 16 | 0 |
 | `schemas` **flagged** | 2 | 0 | 2.00 | 100% | 4 | 0 |
-| `specy_road` **flagged** | 48 | 0 | 2.17 | 54% | 118 | 1 |
+| `specy_road` **flagged** | 47 | 0 | 2.09 | 51% | 116 | 1 |
 | `suggested_prompts` **flagged** | 5 | 0 | 2.60 | 100% | 4 | 0 |
-| `tests` **flagged** | 50 | 0 | 2.14 | 54% | 118 | 1 |
+| `tests` **flagged** | 50 | 0 | 2.08 | 52% | 129 | 1 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `constraints` | 18 | 0 | 1.94 | 33% | 82 | 0 |
-| `scripts` | 17 | 0 | 2.24 | 47% | 93 | 0 |
+| `.pre-commit-config.yaml` | 1 | 0 | 1.00 | 0% | 2 | 0 |
+| `AGENTS.md` | 1 | 0 | 1.00 | 0% | 2 | 0 |
+| `constraints` | 16 | 0 | 1.75 | 25% | 78 | 0 |
+| `scripts` | 17 | 0 | 2.06 | 41% | 104 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
