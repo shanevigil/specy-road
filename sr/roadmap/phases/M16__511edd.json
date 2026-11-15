@@ -236,7 +236,7 @@
       "parent_id": "M16.5",
       "planning_dir": "planning/M16.5.13_the-review-packet-fragments-fold-into-review-packet_93190765-913e-4da9-b5c5-70c258e2c285.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The review packet fragments fold into review_packet",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet*.py",
