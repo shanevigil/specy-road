@@ -5,7 +5,8 @@ from pathlib import Path
 from tests.support.review import review_text, git
 from specy_road.review_files import reviews_dir
 
-def _review(repo: Path, model: str, **kw) -> None:
+def review(repo: Path, model: str, **kw) -> None:
+    """Shared test helper."""
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True, exist_ok=True)
     (d / f"REVIEW-{model}.md").write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, **kw))

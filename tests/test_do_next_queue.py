@@ -7,7 +7,7 @@ import pytest
 from specy_road.bundled_scripts import do_next_available as dna
 from specy_road.bundled_scripts import do_next_task as dnt
 from specy_road.bundled_scripts import do_next_task_interactive as dnti
-from tests.support.same.reg_a9a54adad38e import _reg
+from tests.support.same.reg_a9a54adad38e import reg
 
 # dependencies[] reference node_key UUIDs (not display ids)
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
@@ -30,7 +30,7 @@ _BASE_NODE = {
 
 def test_available_returns_unclaimed_agentic() -> None:
     nodes = [_BASE_NODE]
-    result = dnt._available(nodes, _reg(), {})
+    result = dnt._available(nodes, reg(), {})
     assert len(result) == 1
     assert result[0]["id"] == "M1.1"
 
@@ -53,18 +53,18 @@ def test_available_picks_leaf_not_parent_when_descendant_is_ready() -> None:
         "parent_id": "M1",
         "codename": "leaf-node",
     }
-    result = dnt._available([parent, leaf], _reg(), {})
+    result = dnt._available([parent, leaf], reg(), {})
     assert [n["id"] for n in result] == ["M1.1"]
 
 
 def test_available_excludes_claimed() -> None:
     nodes = [_BASE_NODE]
-    assert dnt._available(nodes, _reg("M1.1"), {}) == []
+    assert dnt._available(nodes, reg("M1.1"), {}) == []
 
 
 def test_available_excludes_complete() -> None:
     node = {**_BASE_NODE, "status": "Complete"}
-    assert dnt._available([node], _reg(), {}) == []
+    assert dnt._available([node], reg(), {}) == []
 
 
 def test_available_excludes_unmet_deps() -> None:
@@ -81,7 +81,7 @@ def test_available_excludes_unmet_deps() -> None:
         "dependencies": [],
     }
     node = {**_BASE_NODE, "dependencies": [_NK_PREREQ]}
-    result = dnt._available([dep, node], _reg(), {})
+    result = dnt._available([dep, node], reg(), {})
     assert "M1.1" not in [n["id"] for n in result]
 
 
@@ -96,7 +96,7 @@ def test_available_includes_when_deps_complete() -> None:
         "dependencies": [],
     }
     node = {**_BASE_NODE, "dependencies": [_NK_PREREQ]}
-    result = dnt._available([dep, node], _reg(), {})
+    result = dnt._available([dep, node], reg(), {})
     assert len(result) == 1
 
 
@@ -104,7 +104,7 @@ def test_available_includes_human_led_now_that_all_leaves_are_agentic() -> None:
     # Per F-003/F-007, every leaf is considered agentic by design regardless
     # of execution_milestone. This used to be excluded; now it's included.
     node = {**_BASE_NODE, "execution_milestone": "Human-led"}
-    result = dnt._available([node], _reg(), {})
+    result = dnt._available([node], reg(), {})
     assert [n["id"] for n in result] == ["M1.1"]
 
 
@@ -112,7 +112,7 @@ def test_available_excludes_no_codename() -> None:
     # A leaf without a codename is still not eligible (validate auto-heals,
     # but if a node slips through without one, do-next will not pick it).
     node = {**_BASE_NODE, "codename": None}
-    assert dnt._available([node], _reg(), {}) == []
+    assert dnt._available([node], reg(), {}) == []
 
 
 def test_available_prioritizes_blocked_before_not_started() -> None:
@@ -124,7 +124,7 @@ def test_available_prioritizes_blocked_before_not_started() -> None:
         "codename": "b",
         "status": "Blocked",
     }
-    result = dnt._available([a, b], _reg(), {})
+    result = dnt._available([a, b], reg(), {})
     assert [n["id"] for n in result] == ["M1.3", "M1.2"]
 
 
@@ -157,7 +157,7 @@ def test_available_orders_blocked_then_mr_rejected_then_not_started() -> None:
     enrich = {
         "M1.4": {"kind": "github_pr", "pr_state": "rejected", "merged": False},
     }
-    result = dnt._available([a, b, c], _reg(), enrich)
+    result = dnt._available([a, b, c], reg(), enrich)
     assert [n["id"] for n in result] == ["M1.3", "M1.4", "M1.2"]
 
 
@@ -173,7 +173,7 @@ def test_available_prioritizes_mr_rejected_before_not_started() -> None:
     enrich = {
         "M1.3": {"kind": "github_pr", "pr_state": "rejected", "merged": False},
     }
-    result = dnt._available([a, b], _reg(), enrich)
+    result = dnt._available([a, b], reg(), enrich)
     assert [n["id"] for n in result] == ["M1.3", "M1.2"]
 
 
@@ -219,7 +219,7 @@ def test_available_orders_eligible_by_outline_not_merged_chunk_order() -> None:
         "touch_zones": [],
     }
     nodes = [root, first_in_array, second_in_array]
-    result = dnt._available(nodes, _reg(), {})
+    result = dnt._available(nodes, reg(), {})
     assert [n["id"] for n in result] == ["M0.2", "M0.1"]
 
 
@@ -302,7 +302,7 @@ def test_exit_no_actionable_leaves_has_deterministic_diagnostics(
     with pytest.raises(SystemExit) as ei:
         dnt._exit_no_actionable_leaves(
             [parent, leaf],
-            _reg("M2.1"),
+            reg("M2.1"),
             after_sync=False,
         )
     assert ei.value.code == 1
@@ -321,7 +321,7 @@ def test_exit_no_actionable_leaves_names_the_integration_branch(
     with pytest.raises(SystemExit):
         dnt._exit_no_actionable_leaves(
             [leaf],
-            _reg("M2.1"),
+            reg("M2.1"),
             after_sync=True,
             integration_branch="trunk",
         )
@@ -335,7 +335,7 @@ def test_exit_no_actionable_leaves_hint_without_a_known_branch(
 ) -> None:
     leaf = {**_BASE_NODE, "id": "M2.1", "codename": "leaf-node"}
     with pytest.raises(SystemExit):
-        dnt._exit_no_actionable_leaves([leaf], _reg("M2.1"), after_sync=True)
+        dnt._exit_no_actionable_leaves([leaf], reg("M2.1"), after_sync=True)
     assert "the integration branch" in capsys.readouterr().err
 
 
@@ -346,7 +346,7 @@ def test_hint_comes_after_the_diagnostics(
     leaf = {**_BASE_NODE, "id": "M2.1", "codename": "leaf-node"}
     with pytest.raises(SystemExit):
         dnt._exit_no_actionable_leaves(
-            [leaf], _reg("M2.1"), after_sync=True, integration_branch="trunk"
+            [leaf], reg("M2.1"), after_sync=True, integration_branch="trunk"
         )
     err = capsys.readouterr().err
     assert err.index("already claimed leaves") < err.index("pickup reads the roadmap")

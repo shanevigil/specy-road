@@ -6,7 +6,8 @@ from specy_road.bundled_scripts import brainstorm_cli
 import contextlib
 import io
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
+def cli(repo: Path, *args: str) -> tuple[int, str, str]:
+    """Shared test helper."""
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         try:

@@ -34,8 +34,8 @@ from specy_road.brainstorm_prompt import (
     render_shard_prompt,
 )
 from specy_road.brainstorm_session import BrainstormSession, add_idea, read_session
-from tests.support.same.cli_4bb09fdf3883 import _cli
-from tests.support.same.prompt_26b6cb7fef04 import _prompt
+from tests.support.same.cli_4bb09fdf3883 import cli
+from tests.support.same.prompt_26b6cb7fef04 import prompt
 
 SLUG = "how-do-we-expand-payments"
 
@@ -68,11 +68,11 @@ def test_round_one_says_the_personas_are_placeholders_until_served_is_recorded(r
 
 
 def test_recorded_served_answer_drives_personas_and_directions(repo: Path) -> None:
-    code, _out, err = _cli(repo, "start", "--topic", "How do we expand payments?", "--panel", "2")
+    code, _out, err = cli(repo, "start", "--topic", "How do we expand payments?", "--panel", "2")
     assert code == 0, err
-    code, _out, err = _cli(repo, "frame", "--answer", "served=assumed: night-market stall owners; not banks")
+    code, _out, err = cli(repo, "frame", "--answer", "served=assumed: night-market stall owners; not banks")
     assert code == 0, err
-    shard = _prompt(repo, "r1-s1")   # `frame` rewrites the shard prompts
+    shard = prompt(repo, "r1-s1")   # `frame` rewrites the shard prompts
     assert "drawn from who the frame says is served — night-market stall owners; not banks —" in shard
     assert "procurement officer" not in shard
     assert "**Directions:** segments of who is served (night-market stall owners; not banks);" in shard
@@ -82,10 +82,10 @@ def test_recorded_served_answer_drives_personas_and_directions(repo: Path) -> No
 
 
 def test_personal_profile_is_a_lens_set_for_single_author_tools(repo: Path) -> None:
-    code, out, err = _cli(repo, "start", "--topic", "How do we expand payments?", "--profile", "personal")
+    code, out, err = cli(repo, "start", "--topic", "How do we expand payments?", "--profile", "personal")
     assert code == 0 and "profile personal" in out, err
     assert read_session(repo, SLUG).profile == "personal"
-    text = _prompt(repo)
+    text = prompt(repo)
     assert "Friction log" in text and "Future self" in text and "SCAMPER" not in text
     assert "the author six months from now" in text and "procurement officer" not in text
     assert "**Directions:** daily use; setup and maintenance; the author's future self;" in text

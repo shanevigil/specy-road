@@ -10,7 +10,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
-from tests.support.same.client_2447f1fd9143 import _client
+from tests.support.same.client_2447f1fd9143 import client as client_fn
 from tests.support.same.dogfood_copy_46daf68d3795 import dogfood_copy
 
 
@@ -40,7 +40,7 @@ def test_second_concurrent_rename_is_refused_with_409(
         return real_edit(*args, **kwargs)
 
     monkeypatch.setattr(routes, "edit_node_set_pairs", slow_edit)
-    client = _client()
+    client = client_fn()
     token = str(client.get("/api/roadmap").json()["fingerprint"])
     first: dict[str, object] = {}
     t = threading.Thread(
@@ -65,7 +65,7 @@ def test_second_concurrent_rename_is_refused_with_409(
 
 @pytest.mark.slow
 def test_write_after_the_slot_frees_needs_the_new_token(dogfood_copy: Path) -> None:
-    client = _client()
+    client = client_fn()
     token = str(client.get("/api/roadmap").json()["fingerprint"])
     assert _patch_title(client, token, "Test harness checks").status_code == 200
     stale = _patch_title(client, token, "Test harness checks")

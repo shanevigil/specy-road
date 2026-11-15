@@ -17,10 +17,10 @@ from tests.support.extracted.grind_session_implement import (
     CLAUDE,
     LIMIT,
     SESSION,
-    _Emitter,
-    _empty_claude_home,
-    _limit_text,
-    _runs,
+    Emitter,
+    empty_claude_home,
+    limit_text,
+    runs,
 )
 
 NOW = datetime(2026, 9, 6, 20, 0, tzinfo=timezone.utc)
@@ -81,9 +81,9 @@ def test_a_generic_hook_runs_exactly_once_through_the_old_runner(monkeypatch) ->
 
 
 def test_a_timed_limit_is_waited_out_and_the_session_resumed(monkeypatch) -> None:
-    seen = _runs(monkeypatch, [(1, LIMIT), (0, "done")])
+    seen = runs(monkeypatch, [(1, LIMIT), (0, "done")])
     slept: list[float] = []
-    emitter = _Emitter()
+    emitter = Emitter()
 
     rc = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"), emitter=emitter, node_id="M1.1",
@@ -104,8 +104,8 @@ def test_a_timed_limit_is_waited_out_and_the_session_resumed(monkeypatch) -> Non
 
 
 def test_a_successful_run_never_waits(monkeypatch) -> None:
-    seen = _runs(monkeypatch, [(0, "all done")])
-    emitter = _Emitter()
+    seen = runs(monkeypatch, [(0, "all done")])
+    emitter = Emitter()
 
     rc = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"), emitter=emitter, sleep=lambda _s: pytest.fail("slept")
@@ -116,7 +116,7 @@ def test_a_successful_run_never_waits(monkeypatch) -> None:
 
 def test_native_auto_continue_exiting_zero_is_left_alone(monkeypatch) -> None:
     """Claude 2.1.234+ can ride out the limit itself and still exit 0."""
-    seen = _runs(monkeypatch, [(0, LIMIT + "resumed automatically\n")])
+    seen = runs(monkeypatch, [(0, LIMIT + "resumed automatically\n")])
 
     rc = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"), sleep=lambda _s: pytest.fail("slept")
@@ -126,7 +126,7 @@ def test_native_auto_continue_exiting_zero_is_left_alone(monkeypatch) -> None:
 
 
 def test_repeated_limits_stop_rather_than_loop(monkeypatch, capsys) -> None:
-    seen = _runs(monkeypatch, [(1, _limit_text())] * (gsi.MAX_RESUMES + 1))
+    seen = runs(monkeypatch, [(1, limit_text())] * (gsi.MAX_RESUMES + 1))
 
     rc = gsi.run_implement_hook(CLAUDE, {}, Path("/repo"), sleep=lambda _s: None)
 
@@ -141,7 +141,7 @@ def test_repeated_limits_stop_rather_than_loop(monkeypatch, capsys) -> None:
 
 
 def test_a_spend_limit_stops_immediately(monkeypatch, capsys) -> None:
-    _runs(monkeypatch, [(1, "You have reached your monthly spend limit.")])
+    runs(monkeypatch, [(1, "You have reached your monthly spend limit.")])
 
     rc = gsi.run_implement_hook(CLAUDE, {}, Path("/repo"), sleep=lambda _s: pytest.fail("slept"))
 
@@ -151,7 +151,7 @@ def test_a_spend_limit_stops_immediately(monkeypatch, capsys) -> None:
 
 def test_an_unrecognized_limit_stops_loudly(monkeypatch, capsys) -> None:
     """A format change must be visible, not absorbed as a normal failure."""
-    _runs(monkeypatch, [(1, "API error 429: too many requests.")])
+    runs(monkeypatch, [(1, "API error 429: too many requests.")])
 
     rc = gsi.run_implement_hook(CLAUDE, {}, Path("/repo"), sleep=lambda _s: pytest.fail("slept"))
 
@@ -162,7 +162,7 @@ def test_an_unrecognized_limit_stops_loudly(monkeypatch, capsys) -> None:
 
 
 def test_an_ordinary_failure_is_reported_as_itself(monkeypatch) -> None:
-    _runs(monkeypatch, [(3, "TypeError: cannot add str to int")])
+    runs(monkeypatch, [(3, "TypeError: cannot add str to int")])
 
     rc = gsi.run_implement_hook(CLAUDE, {}, Path("/repo"), sleep=lambda _s: pytest.fail("slept"))
 
@@ -171,7 +171,7 @@ def test_an_ordinary_failure_is_reported_as_itself(monkeypatch) -> None:
 
 def test_a_timed_limit_with_no_session_id_stops_loudly(monkeypatch, capsys) -> None:
     """Resuming the wrong session would abandon the work already done."""
-    _runs(monkeypatch, [(1, _limit_text(session=None))])
+    runs(monkeypatch, [(1, limit_text(session=None))])
 
     rc = gsi.run_implement_hook(CLAUDE, {}, Path("/repo"), sleep=lambda _s: pytest.fail("slept"))
 
@@ -180,7 +180,7 @@ def test_a_timed_limit_with_no_session_id_stops_loudly(monkeypatch, capsys) -> N
 
 
 def test_a_reset_beyond_the_wait_ceiling_stops(monkeypatch, capsys) -> None:
-    _runs(monkeypatch, [(1, _limit_text(minutes_ahead=9 * 60))])
+    runs(monkeypatch, [(1, limit_text(minutes_ahead=9 * 60))])
 
     rc = gsi.run_implement_hook(CLAUDE, {}, Path("/repo"), sleep=lambda _s: pytest.fail("slept"))
 

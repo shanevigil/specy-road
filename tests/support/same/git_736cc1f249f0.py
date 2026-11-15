@@ -4,5 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 
-def _git(root: Path, *args: str) -> None:
+def git(root: Path, *args: str) -> None:
+    """Shared test helper."""
     subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)

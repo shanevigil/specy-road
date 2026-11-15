@@ -8,7 +8,8 @@ import json
 import shutil
 from specy_road.roadmap_chunk_utils import write_json_chunk
 
-def _sheet(nid: str, _nk: str) -> str:
+def sheet(nid: str, _nk: str) -> str:
+    """Shared test helper."""
     return f"# {nid}\n"
 
 def _gate_nodes() -> list[dict]:
@@ -95,8 +96,8 @@ def repo_with_gate(dest: Path) -> None:
     nk99, nk991, nk992, nk993 = keys["M99"], keys["M99.1"], keys["M99.2"], keys["M99.4"]
     pl = dest / "planning"
     pl.mkdir(parents=True)
-    (pl / f"M99_unnamed_{nk99}.md").write_text(_sheet("M99", nk99), encoding="utf-8")
-    (pl / f"M99.1_one_{nk991}.md").write_text(_sheet("M99.1", nk991), encoding="utf-8")
-    (pl / f"M99.2_two_{nk992}.md").write_text(_sheet("M99.2", nk992), encoding="utf-8")
-    (pl / f"M99.4_pytest-gate_{nk993}.md").write_text(_sheet("M99.4", nk993), encoding="utf-8")
+    (pl / f"M99_unnamed_{nk99}.md").write_text(sheet("M99", nk99), encoding="utf-8")
+    (pl / f"M99.1_one_{nk991}.md").write_text(sheet("M99.1", nk991), encoding="utf-8")
+    (pl / f"M99.2_two_{nk992}.md").write_text(sheet("M99.2", nk992), encoding="utf-8")
+    (pl / f"M99.4_pytest-gate_{nk993}.md").write_text(sheet("M99.4", nk993), encoding="utf-8")
     write_json_chunk(dest / "roadmap" / "phases" / "T.json", nodes)

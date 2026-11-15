@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import REPO, script_subprocess_env
-from tests.support.same.git_ba787a68f973 import _git
+from tests.support.same.git_ba787a68f973 import git
 
 _GUARD = REPO / "tests" / "fixture_guard.py"
 _MINI_CONFTEST = '''\
@@ -58,11 +58,11 @@ def _mini_repo(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     (root / "tests" / "test_ok.py").write_text("def test_ok():\n    assert True\n", encoding="utf-8")
-    _git(root, "init", "-q", "-b", "main")
-    _git(root, "config", "user.email", "t@e.com")
-    _git(root, "config", "user.name", "T")
-    _git(root, "add", "-A")
-    _git(root, "commit", "-qm", "init")
+    git(root, "init", "-q", "-b", "main")
+    git(root, "config", "user.email", "t@e.com")
+    git(root, "config", "user.name", "T")
+    git(root, "add", "-A")
+    git(root, "commit", "-qm", "init")
     return root
 
 

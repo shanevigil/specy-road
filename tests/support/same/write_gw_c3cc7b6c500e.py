@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-def _write_gw(repo: Path) -> None:
+def write_gw(repo: Path) -> None:
+    """Shared test helper."""
     p = repo / "roadmap" / "git-workflow.yaml"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(

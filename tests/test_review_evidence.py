@@ -20,7 +20,7 @@ from specy_road.orchestration_config import parse_orchestration_text
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_target import resolve_target
-from tests.support.same.run_651387813ee4 import _run
+from tests.support.same.run_651387813ee4 import run
 
 ONE_AI = """version: 1
 roster:
@@ -42,7 +42,7 @@ def _ready(repo: Path, verify: str) -> None:
 
 def _status(repo: Path, capsys) -> dict:
     capsys.readouterr()
-    code = _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    code = run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
     st = json.loads(capsys.readouterr().out)["nodes"][0]
     assert code == (0 if st["policy_met"] else 1), st["state"]
     return st
@@ -140,11 +140,11 @@ def test_review_record_refuses_an_approval_without_a_rerun(tmp_path: Path, capsy
     repo = make_review_repo(tmp_path, orchestration=RERUNS_ON)
     notes = repo.parent / "notes.md"
     notes.write_text(_review(repo))
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+    assert run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(notes), "--repo-root", str(repo)) == 1
     assert "approved without re-running a command" in capsys.readouterr().err
     notes.write_text(_review(repo, rerun=["pytest"]))
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+    assert run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 
 
@@ -178,7 +178,7 @@ def test_pre_existing_marker_on_approve_clears_verifier_block(tmp_path: Path, ca
     _ready(repo, FAILED)
     gate = _gate(repo, _review_with_preexisting(repo, pre=["false"]))
     assert "READY-exec.md (executor-reported): verifier `false` exited 1 (unverified)" in gate.problems()
-    assert _run("review", "check-pre-existing", "M1.1", "--repo-root", str(repo)) == 0
+    assert run("review", "check-pre-existing", "M1.1", "--repo-root", str(repo)) == 0
     st = _status(repo, capsys)
     assert st["policy_met"]
     assert not any("verifier `false`" in p for p in st["problems"])
@@ -233,7 +233,7 @@ def test_handoff_status_executor_blocked_lists_entries_and_exits_one(
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _ready_blocked(repo)
     capsys.readouterr()
-    code = _run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    code = run("handoff", "status", "M1.1", "--repo-root", str(repo))
     out = capsys.readouterr().out
     assert code == 1
     assert "executor_blocked" in out
@@ -245,7 +245,7 @@ def test_handoff_status_executor_blocked_json(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _ready_blocked(repo)
     capsys.readouterr()
-    code = _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    code = run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
     st = json.loads(capsys.readouterr().out)["nodes"][0]
     assert code == 1
     assert st["state"] == "executor_blocked"
@@ -282,7 +282,7 @@ def test_executor_blocked_outranks_a_reviewer_block_and_escalation(tmp_path: Pat
     notes = repo.parent / "notes.md"
     text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", a1="fail")
     notes.write_text(text.replace("notes\n", "round 1: the heading case still warns\n"))
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
+    assert run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
     _ready_blocked(repo)
     st = _status(repo, capsys)

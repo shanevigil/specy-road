@@ -23,7 +23,7 @@ from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_delegate import load_run
 from specy_road.review_files import review_path, reviews_dir
 from specy_road.review_lock import ReviewRunBusy, review_run_lock
-from tests.support.same.snapshot_3fe0117d744f import _snapshot
+from tests.support.same.snapshot_3fe0117d744f import snapshot
 
 # The reviewer harness: say it started, wait for the test to release it, then run the usual fake.
 GATE = '''
@@ -70,7 +70,7 @@ def test_filings_wait_for_and_refuse_during_a_reviewer_run(tmp_path: Path, monke
     try:
         _wait_for(ready)
         handoff = reviews_dir(repo, "M1.1")
-        before = _snapshot(handoff)
+        before = snapshot(handoff)
         monkeypatch.setattr(review_lock, "FILING_WAIT", 0)
         capsys.readouterr()
         assert _record(repo, "plain") == 1
@@ -83,7 +83,7 @@ def test_filings_wait_for_and_refuse_during_a_reviewer_run(tmp_path: Path, monke
         assert e.value.code == 1
         err = capsys.readouterr().err
         assert BUSY in err and "Traceback" not in err
-        assert _snapshot(handoff) == before
+        assert snapshot(handoff) == before
     finally:
         release.write_text("go")
         run.join(120)

@@ -11,10 +11,11 @@ from tests.helpers import REPO
 
 TS = "2026-09-06T00:00:00Z"
 
-def _node(nid, codename=None):
+def node(nid, codename=None):
+    """Shared test helper."""
     return {"id": nid, "codename": codename or f"cn-{nid.lower().replace('.', '-')}"}
 
-class _Harness:
+class Harness:
     """Drives a scripted sequence of plans and records subprocess calls."""
 
     def __init__(self, monkeypatch, plans, *, pickup_rc=0, finish_rc=0,
@@ -35,7 +36,7 @@ class _Harness:
         def fake_gather(repo_root, under, *, allow_unauthored=False, prefer_agentic=None):
             self.gather_allow.append(allow_unauthored)
             plan = self.plans[min(self.idx, len(self.plans) - 1)]
-            nodes = [_node(nid) for nid in plan.ready]
+            nodes = [node(nid) for nid in plan.ready]
             return nodes, {"version": 1, "entries": []}, plan
 
         def fake_run_cli(repo_root, cli_args):
@@ -82,12 +83,13 @@ class _Harness:
             return 0, "a" * 40
         return self.git_rc.get(git_args[0], 0), ""
 
-def _run(argv):
+def run(argv):
+    """Shared test helper."""
     from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 
     args = parse_grind_session_args(argv)
     return gs.run_session(args)
 
-def _event(evs, name):
+def event(evs, name):
     """The last event of one kind. `cleanup` now trails `stopped`."""
     return [e for e in evs if e["event"] == name][-1]

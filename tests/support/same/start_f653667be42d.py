@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from tests.support.same.cli_4bb09fdf3883 import _cli
+from tests.support.same.cli_4bb09fdf3883 import cli
 
-def _start(repo: Path, *extra: str) -> tuple[int, str, str]:
-    return _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
+def start(repo: Path, *extra: str) -> tuple[int, str, str]:
+    """Shared test helper."""
+    return cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)

@@ -15,9 +15,9 @@ from specy_road.finish_land_integration import (
 )
 from tests.helpers import REPO
 from tests.support.review import commit_file, make_review_repo, git
-from tests.support.same.commit_553cf5f7a1bf import _commit
-from tests.support.same.git_df16ee62bf81 import _git
-from tests.support.extracted.finish_merge_mode import _bootstrap, merge_mode_finish_repo
+from tests.support.same.commit_553cf5f7a1bf import commit
+from tests.support.same.git_df16ee62bf81 import git as git_cmd
+from tests.support.extracted.finish_merge_mode import bootstrap, merge_mode_finish_repo
 import pytest
 
 BR = "feature/rm-x"
@@ -30,7 +30,7 @@ BR = "feature/rm-x"
 
 
 def test_land_merge_succeeds_when_integration_branch_is_master(tmp_path: Path) -> None:
-    repo, _bare = _bootstrap(tmp_path)
+    repo, _bare = bootstrap(tmp_path)
     ok, err = land_merge_feature_into_integration(
         repo,
         remote="origin",
@@ -44,7 +44,7 @@ def test_land_merge_returns_clear_error_when_integration_branch_missing(
     tmp_path: Path,
 ) -> None:
     """F-012: misconfigured integration_branch should fail loudly, not silently fall through."""
-    repo, _bare = _bootstrap(tmp_path)
+    repo, _bare = bootstrap(tmp_path)
     # Real branch is master; misconfigure as 'main' which doesn't exist.
     ok, err = land_merge_feature_into_integration(
         repo,
@@ -58,7 +58,7 @@ def test_land_merge_returns_clear_error_when_integration_branch_missing(
 
 
 def test_integration_branch_present_finds_local_branch(tmp_path: Path) -> None:
-    repo, _bare = _bootstrap(tmp_path)
+    repo, _bare = bootstrap(tmp_path)
     ok, where = _integration_branch_present(repo, "origin", "master")
     assert ok
     assert where == "refs/heads/master"
@@ -95,10 +95,10 @@ def test_merge_push_disclosure_counts_when_local_integration_branch_is_absent(
     tmp_path: Path, capsys,
 ) -> None:
     """A1: still disclose when ``refs/heads/<integration>`` is missing (tracking ref after fetch)."""
-    repo, _bare = _bootstrap(tmp_path)
-    _git(repo, "checkout", "-q", "master")
-    _git(repo, "update-ref", "-d", "refs/heads/master")
-    _git(repo, "update-ref", "-d", "refs/remotes/origin/master")
+    repo, _bare = bootstrap(tmp_path)
+    git_cmd(repo, "checkout", "-q", "master")
+    git_cmd(repo, "update-ref", "-d", "refs/heads/master")
+    git_cmd(repo, "update-ref", "-d", "refs/remotes/origin/master")
     print_merge_push_notice(
         repo, remote="origin", integration_branch="master", feature_branch=BR,
     )
@@ -110,11 +110,11 @@ def test_merge_push_disclosure_counts_when_tracking_ref_is_absent(
     tmp_path: Path, capsys,
 ) -> None:
     """A1: still disclose when ``refs/remotes/<remote>/<integration>`` is absent."""
-    repo, _bare = _bootstrap(tmp_path)
-    _git(repo, "checkout", "-q", "master")
-    _git(repo, "commit", "--allow-empty", "-qm", "only local integration")
-    _git(repo, "remote", "remove", "origin")
-    _git(repo, "update-ref", "-d", "refs/remotes/origin/master")
+    repo, _bare = bootstrap(tmp_path)
+    git_cmd(repo, "checkout", "-q", "master")
+    git_cmd(repo, "commit", "--allow-empty", "-qm", "only local integration")
+    git_cmd(repo, "remote", "remove", "origin")
+    git_cmd(repo, "update-ref", "-d", "refs/remotes/origin/master")
     print_merge_push_notice(
         repo, remote="origin", integration_branch="master", feature_branch=BR,
     )

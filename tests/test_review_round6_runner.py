@@ -29,7 +29,7 @@ from specy_road.orchestration.workers import worker_process as wp
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.review_files import reviews_root
-from tests.support.extracted.review_round6_runner import OK, _launch
+from tests.support.extracted.review_round6_runner import OK, launch
 
 
 
@@ -50,13 +50,13 @@ def test_a_ready_written_just_before_the_turn_does_not_complete_it_and_a_rewritt
     ready = d / "READY-x.md"
     ready.write_text(_ready_text(repo, head))           # 0 s before the turn: the mtime window accepted this
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
-    assert wr.run(repo, rec.worker_id, _launch(tmp_path, script, repo, "quiet")) == 0
+    assert wr.run(repo, rec.worker_id, launch(tmp_path, script, repo, "quiet")) == 0
     assert ws.load_record(repo, rec.worker_id).state == "idle"
     # The same path rewritten with new content during the turn is a new READY, whatever the clock says.
     old = time.time() - 3600
     os.utime(ready, (old, old))
     rewrite = {"path": str(ready), "text": _ready_text(repo, head, agent="y")}
-    wr.run(repo, rec.worker_id, _launch(tmp_path, script, repo, "writes", write=rewrite), resumed=True)
+    wr.run(repo, rec.worker_id, launch(tmp_path, script, repo, "writes", write=rewrite), resumed=True)
     assert ws.load_record(repo, rec.worker_id).state == "completed"
     assert wp.ready_fingerprints(repo, "M1.1") == [f"READY-x.md:{__import__('hashlib').sha256(ready.read_bytes()).hexdigest()}"]
 
@@ -202,7 +202,7 @@ def test_completion_resume_and_reclaim_check_the_branch_actually_checked_out(tmp
     git(repo, "checkout", "-q", "dev")
     head = git(repo, "rev-parse", "HEAD")
     write = {"path": str(d / "READY-x.md"), "text": _ready_text(repo, head)}   # declares the branch, at dev's HEAD
-    assert wr.run(repo, rec.worker_id, _launch(tmp_path, script, repo, "w", write=write)) == 0
+    assert wr.run(repo, rec.worker_id, launch(tmp_path, script, repo, "w", write=write)) == 0
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.state == "idle"
     why = [e for e in ws.events_since(repo, rec.worker_id) if "READY-x.md ignored" in e.summary]

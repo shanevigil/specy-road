@@ -8,7 +8,7 @@ from tests.support.review import make_review_repo
 
 BR = "feature/rm-thing"
 
-def _merge_mode_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
+def merge_mode_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     """The claimed leaf, mergeable into ``dev``, with a bare origin holding both branches."""
     monkeypatch.setenv("PYTHONPATH", str(REPO))   # finish runs validate/export/digest as subprocesses
     repo = make_review_repo(tmp_path)

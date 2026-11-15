@@ -16,8 +16,8 @@ from specy_road.bundled_scripts import review_cli, review_packet as rp
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, review_required
 from specy_road.review_target import ReviewTargetError, resolve_target, same_commit
-from tests.support.same.cli_02173e685269 import _cli
-from tests.support.same.head_efa27b25c0a5 import _head
+from tests.support.same.cli_02173e685269 import cli
+from tests.support.same.head_efa27b25c0a5 import head as head_fn
 
 
 
@@ -25,7 +25,7 @@ from tests.support.same.head_efa27b25c0a5 import _head
 def _record(repo: Path, model: str, *, name: str | None = None, **kw) -> None:
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True, exist_ok=True)
-    commit = kw.pop("commit", None) or _head(repo)
+    commit = kw.pop("commit", None) or head_fn(repo)
     text = review_text(commit, model=model, **kw)
     (d / (name or f"REVIEW-{model}.md")).write_text(text)
 
@@ -44,7 +44,7 @@ def test_a_merge_after_approval_is_new_work(tmp_path: Path) -> None:
     git(repo, "checkout", "-q", "feature/rm-thing")
     git(repo, "merge", "-q", "--no-ff", "-m", "merge side", "side")
     g = _gate(repo)
-    assert g.commit == _head(repo)
+    assert g.commit == head_fn(repo)
     assert not g.passed and g.stale
 
 
@@ -102,7 +102,7 @@ def test_reviews_live_in_the_main_worktree(tmp_path: Path) -> None:
 
 def test_remote_only_branch_is_reviewed_and_a_missing_one_is_an_error(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    tip = _head(repo)
+    tip = head_fn(repo)
     bare = tmp_path / "remote.git"
     subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
     git(repo, "remote", "add", "origin", str(bare))
@@ -124,7 +124,7 @@ def test_one_vote_per_model_and_records_must_match_the_node(tmp_path: Path) -> N
     g = _gate(repo)
     assert len(g.approvals) == 1 and not g.passed
     assert any("already counts" in why for _r, why in g.ineligible)
-    other = review_text(_head(repo)).replace("node_id: M1.1", "node_id: M7.7")
+    other = review_text(head_fn(repo)).replace("node_id: M1.1", "node_id: M7.7")
     (reviews_dir(repo, "M1.1") / "REVIEW-human-again.md").write_text(other)
     assert any("not 'M1.1'" in " ".join(r.errors) for r in _gate(repo).invalid)
 
@@ -140,7 +140,7 @@ def test_a_block_beats_the_same_models_approval(tmp_path: Path) -> None:
 def test_substitute_family_comes_from_the_roster(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
     _record(repo, "opus")
-    text = review_text(_head(repo), model="astra").replace("model: astra", "model: astra\nfamily: google")
+    text = review_text(head_fn(repo), model="astra").replace("model: astra", "model: astra\nfamily: google")
     (reviews_dir(repo, "M1.1") / "REVIEW-astra.md").write_text(text)
     g = _gate(repo)
     assert {a.family for a in g.approvals} == {"anthropic", "openai"}
@@ -148,7 +148,7 @@ def test_substitute_family_comes_from_the_roster(tmp_path: Path) -> None:
 
 def test_same_commit_asks_git(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    head = _head(repo)
+    head = head_fn(repo)
     assert same_commit(repo, head[:7], head)
     assert not same_commit(repo, head[:7] + "0000", head)
     assert not same_commit(repo, "abcdef1", "abcdef12deadbeef")
@@ -158,11 +158,11 @@ def test_same_commit_asks_git(tmp_path: Path) -> None:
 
 def test_status_exit_codes_and_leftover_directories(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
-    assert _cli("handoff", "status", "NOPE", "--repo-root", str(repo)) == 2
+    assert cli("handoff", "status", "NOPE", "--repo-root", str(repo)) == 2
     reviews_dir(repo, "M1.1").mkdir(parents=True)
     (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
     capsys.readouterr()
-    assert _cli("handoff", "status", "--repo-root", str(repo)) == 0
+    assert cli("handoff", "status", "--repo-root", str(repo)) == 0
     assert "M1.1: unclaimed" in capsys.readouterr().out
 
 
@@ -195,7 +195,7 @@ def test_an_ours_merge_after_approval_is_new_work(tmp_path: Path) -> None:
     git(repo, "checkout", "-q", "feature/rm-thing")
     git(repo, "merge", "-q", "-s", "ours", "--no-ff", "-m", "discard upstream", "side")
     g = _gate(repo)
-    assert g.commit == _head(repo) and g.stale and not g.passed
+    assert g.commit == head_fn(repo) and g.stale and not g.passed
 
 
 def test_policy_branch_cannot_be_redirected_from_the_working_tree(tmp_path: Path, monkeypatch) -> None:
@@ -248,7 +248,7 @@ def test_interactive_human_approval_from_a_linked_worktree(tmp_path: Path, monke
 def test_naming_an_unclaimed_node_exits_2(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
-    assert _cli("handoff", "status", "M1.1", "--repo-root", str(repo)) == 2
+    assert cli("handoff", "status", "M1.1", "--repo-root", str(repo)) == 2
 
 
 def test_a_sha_lookalike_inside_a_multiline_string_is_not_the_sha(tmp_path: Path) -> None:

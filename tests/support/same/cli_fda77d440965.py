@@ -7,6 +7,7 @@ from tests.helpers import script_subprocess_env
 import subprocess
 import sys
 
-def _cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    """Shared test helper."""
     return subprocess.run([sys.executable, "-m", "specy_road.cli", *args, "--repo-root", str(root)],
                           cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True)

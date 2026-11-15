@@ -18,7 +18,7 @@ from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import chore_cli
 from specy_road.orchestration.workers.worker_orphans import orphans
-from tests.support.extracted.chore_mode import _RULES, _roadmap_bytes, garden_repo, run_chore_cli
+from tests.support.extracted.chore_mode import RULES, roadmap_bytes, garden_repo, run_chore_cli
 
 
 def chore_repo(tmp_path: Path) -> Path:
@@ -222,10 +222,10 @@ def test_open_chores_adds_one_leaf_per_class_then_nothing(tmp_path: Path, capsys
         "`docs/guide.md` names no specy-road command this version does not register (now: line 3)",
         "`AGENTS.md` names no specy-road command this version does not register (now: line 3)"]
     assert added["garden-ratchet-grew"]["acceptance"][0].endswith("(now: +2 line(s) since v1)")
-    before = _roadmap_bytes(repo)
+    before = roadmap_bytes(repo)
     capsys.readouterr()
     assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 0
-    assert _roadmap_bytes(repo) == before
+    assert roadmap_bytes(repo) == before
     assert f"stale-command: {stale['id']} is still open; added nothing" in capsys.readouterr().out
 
 
@@ -270,7 +270,7 @@ def test_garden_reports_stale_commands_in_the_managed_rules_file(tmp_path: Path,
     from specy_road.validate_stale_commands import agent_files  # noqa: PLC0415
 
     repo = garden_repo(tmp_path)
-    commit_file(repo, ".specyrd/AGENTS.md", _RULES + "Run `specy-road nonexistent-garden-probe`.\n", "probe")
+    commit_file(repo, ".specyrd/AGENTS.md", RULES + "Run `specy-road nonexistent-garden-probe`.\n", "probe")
     capsys.readouterr()
     assert run_chore_cli("chore", "garden", "--json", "--repo-root", str(repo)) == 0
     stale = [f for f in json.loads(capsys.readouterr().out)["findings"] if f["cls"] == "stale-command"]
@@ -306,7 +306,7 @@ def test_garden_line_numbers_count_only_newlines(tmp_path: Path, capsys) -> None
     """Coverage audit: a U+2028, form feed or lone CR inside a line does not shift later line numbers."""
     repo = garden_repo(tmp_path)
     commit_file(repo, "docs/guide.md", "a b\x0cc\rd\r\nRun `specy-road grind` now.\n", "odd breaks")
-    commit_file(repo, ".specyrd/AGENTS.md", "x y\n" + _RULES, "odd breaks")
+    commit_file(repo, ".specyrd/AGENTS.md", "x y\n" + RULES, "odd breaks")
     lines = {(f["cls"], f["path"], f["line"]) for f in _garden_json(repo, capsys)["findings"]}
     assert ("stale-command", "docs/guide.md", 2) in lines
     assert ("advisory-rule", ".specyrd/AGENTS.md", 5) in lines

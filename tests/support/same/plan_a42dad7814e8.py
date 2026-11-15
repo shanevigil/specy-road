@@ -4,7 +4,8 @@ from __future__ import annotations
 from specy_road.orchestration.grind.session_plan import SessionPlan
 from specy_road.orchestration.grind.session_plan import Wave
 
-def _plan(ready=None, blocked=None, active=None):
+def plan(ready=None, blocked=None, active=None):
+    """Shared test helper."""
     ready = ready or []
     return SessionPlan(
         under=None,

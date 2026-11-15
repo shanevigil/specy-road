@@ -5,19 +5,23 @@ from tests.support.pickup import FEATURE
 from pathlib import Path
 import subprocess
 
-def _git(root: Path, *args: str) -> str:
+def git(root: Path, *args: str) -> str:
+    """Shared test helper."""
     return subprocess.run(
         ["git", "-C", str(root), *args], check=True, capture_output=True, text=True
     ).stdout.strip()
 
-def _claimed_on(root: Path, ref: str) -> bool:
-    return "leaf-one" in _git(root, "show", f"{ref}:roadmap/registry.yaml")
+def claimed_on(root: Path, ref: str) -> bool:
+    """Shared test helper."""
+    return "leaf-one" in git(root, "show", f"{ref}:roadmap/registry.yaml")
 
-def _branches(root: Path) -> list[str]:
-    return _git(root, "branch", "--format=%(refname:short)").split()
+def branches(root: Path) -> list[str]:
+    """Shared test helper."""
+    return git(root, "branch", "--format=%(refname:short)").split()
 
-def _assert_nothing_claimed(root: Path, main_before: str) -> None:
-    assert _git(root, "rev-parse", "main") == main_before
-    assert _git(root, "rev-parse", "origin/main") == main_before
-    assert not _claimed_on(root, "main")
-    assert FEATURE not in _branches(root)
+def assert_nothing_claimed(root: Path, main_before: str) -> None:
+    """Shared test helper."""
+    assert git(root, "rev-parse", "main") == main_before
+    assert git(root, "rev-parse", "origin/main") == main_before
+    assert not claimed_on(root, "main")
+    assert FEATURE not in branches(root)

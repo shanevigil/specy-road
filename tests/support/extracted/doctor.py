@@ -12,13 +12,14 @@ import yaml
 
 TOOLKIT_STASH = "specy-road: temp stash work/ around pickup"
 
-def _branch_with_commits(repo: Path, branch: str, *rels: str) -> None:
+def branch_with_commits(repo: Path, branch: str, *rels: str) -> None:
+    """Shared test helper."""
     git(repo, "checkout", "-q", "-b", branch, "dev")
     for rel in rels:
         commit_file(repo, rel, f"{rel}\n", rel)
     git(repo, "checkout", "-q", "dev")
 
-def _graph_and_registry(repo: Path) -> None:
+def graph_and_registry(repo: Path) -> None:
     """Complete leaves ``finished`` and ``settled`` (still registered), an open rollup
     ``roll``, a claim ``ghost`` with no branch."""
     chunk = repo / "roadmap" / "phases" / "M1.json"
@@ -39,11 +40,11 @@ def _graph_and_registry(repo: Path) -> None:
 def doctor_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     repo = make_review_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
-    _graph_and_registry(repo)
+    graph_and_registry(repo)
     git(repo, "branch", "feature/rm-roll")
     for name in ("done", "rebased", "finished", "open", "gone", "settled"):
-        _branch_with_commits(repo, f"feature/rm-{name}", f"src/{name}.py")
-    _branch_with_commits(repo, "feature/rm-squash", "src/s1.py", "src/s2.py")
+        branch_with_commits(repo, f"feature/rm-{name}", f"src/{name}.py")
+    branch_with_commits(repo, "feature/rm-squash", "src/s1.py", "src/s2.py")
     for branch in ("feature/rm-done", "feature/rm-gone", "feature/rm-thing", "feature/rm-settled"):
         git(repo, "merge", "-q", "--no-ff", "--no-edit", branch)
     git(repo, "merge", "-q", "--squash", "feature/rm-squash")

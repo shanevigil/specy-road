@@ -10,7 +10,7 @@ from pathlib import Path
 
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
-from tests.support.extracted.set_gate_status import _sheet, repo_with_gate
+from tests.support.extracted.set_gate_status import sheet, repo_with_gate
 
 
 

@@ -25,7 +25,7 @@ TEST_FILE = "src/tests/test_a.py"
 
 TEST_SRC = "def test_a():\n    assert 1\n"
 
-def _file(repo: Path, model: str, commit: str, verdict: str = "approve", delta_from: str | None = None,
+def file(repo: Path, model: str, commit: str, verdict: str = "approve", delta_from: str | None = None,
           drop: str | None = None, findings: dict | None = None) -> None:
     """File a record as `review record` does: the live REVIEW-<model>.md plus a copy under history/.
     ``drop`` leaves out that acceptance id's result, so the record is incomplete for the brief."""
@@ -46,7 +46,7 @@ FINDING = "src/b.py divides by zero"
 
 SHEET = "# M1.1 Thing\n\n## Intent\n\nDo the thing.\n\n## Tier\n\n%s: a small change.\n"
 
-def _ready(repo: Path, fix_of: str | None) -> int:
+def ready(repo: Path, fix_of: str | None) -> int:
     """composer's READY at HEAD via `specy-road ready`, naming ``fix_of`` when given."""
     with pytest.raises(SystemExit) as e:
         review_cli.main(["ready", "M1.1", "--model", "composer", "--verify", "true=0",
@@ -66,12 +66,12 @@ def fix_round(tmp_path: Path, *, fix: Callable[[Path], object] | None = None, fi
         commit_file(repo, NODE["planning_dir"], SHEET % branch_tier, "branch sheet")
     basis = git(repo, "rev-parse", "HEAD")
     if delta:
-        _file(repo, "opus", basis)
+        file(repo, "opus", basis)
     approved = commit_file(repo, TEST_FILE, TEST_SRC, "first round")
-    _file(repo, "opus", approved, delta_from=basis if delta else None)
-    _file(repo, "sol", approved, verdict="block", findings={"correctness": [FINDING]})
+    file(repo, "opus", approved, delta_from=basis if delta else None)
+    file(repo, "sol", approved, verdict="block", findings={"correctness": [FINDING]})
     if tier:
         advance_dev(repo, NODE["planning_dir"], SHEET % tier)
     (fix or (lambda r: commit_file(r, "src/b.py", "x = 1\n", "fix")))(repo)
-    assert _ready(repo, fix_of and f"{fix_of}@{approved}") == 0
+    assert ready(repo, fix_of and f"{fix_of}@{approved}") == 0
     return repo, approved, git(repo, "rev-parse", "HEAD")

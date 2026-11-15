@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from tests.support.extracted.cursor_usage_cost import _api_id_for, _codex_repo
+from tests.support.extracted.cursor_usage_cost import api_id_for, codex_repo
 from tests.support.harness import make_worker_repo
 
 from specy_road.orchestration.workers import worker_runner as wr
@@ -30,8 +30,8 @@ def _codex_turn(usage: dict) -> dict:
 def test_a_resumed_codex_turn_counts_its_own_tokens_not_the_thread_total(tmp_path: Path) -> None:
     """`codex exec resume` reports the thread's running total: the usage event keeps it as session_usage and
     records the difference, so `worker usage` sums to the thread's total instead of counting turn 1 twice."""
-    repo = _codex_repo(tmp_path)
-    api_id = _api_id_for(repo, "priced")
+    repo = codex_repo(tmp_path)
+    api_id = api_id_for(repo, "priced")
     script = tmp_path / "echo.py"
     script.write_text(ECHO)
     rec = ws.create_record(repo, "M1.1", "codex", "priced", repo)

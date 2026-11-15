@@ -4,5 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from specy_road.roadmap_load import load_roadmap
 
-def _by_id(root: Path) -> dict[str, dict]:
+def by_id(root: Path) -> dict[str, dict]:
+    """Shared test helper."""
     return {n["id"]: n for n in load_roadmap(root)["nodes"]}

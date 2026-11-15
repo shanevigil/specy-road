@@ -31,7 +31,7 @@ from specy_road.git_changed_paths import diff_paths, parse_name_status
 from specy_road.review_files import latest_ready, load_review, render_front_matter, review_path, reviews_dir
 from specy_road.review_gate import SigningError, evaluate_gate, write_human_approval
 from specy_road.review_target import resolve_target
-from tests.support.same.key_5acf3bfe8b72 import _key
+from tests.support.same.key_5acf3bfe8b72 import key as key_fn
 
 needs_keygen = pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="needs OpenSSH ssh-keygen")
 
@@ -156,7 +156,7 @@ def test_notes_digest_normalises_line_endings_and_trailing_whitespace() -> None:
 
 @needs_keygen
 def test_a_signed_record_binds_its_notes(tmp_path: Path) -> None:
-    key, pub = _key(tmp_path, "opus")
+    key, pub = key_fn(tmp_path, "opus")
     repo = make_review_repo(tmp_path, orchestration=_roster(pub))
     head = git(repo, "rev-parse", "HEAD")
     notes = tmp_path / "notes.md"
@@ -199,7 +199,7 @@ def test_unsigned_records_keep_working_without_the_hash_but_a_present_one_is_che
 
 @needs_keygen
 def test_verify_rejects_a_mismatched_identity_on_its_own(tmp_path: Path) -> None:
-    key, pub = _key(tmp_path, "opus")
+    key, pub = key_fn(tmp_path, "opus")
     data = {"node_id": "M1.1", "model": "opus", "verdict": "approve", "commit": "abc1234"}
     sig = rs.sign(data, key)
     assert rs.verify(data, sig, pub, "opus") == (True, "")
@@ -228,9 +228,9 @@ def test_packet_labels_committed_working_tree_and_missing_summaries(tmp_path: Pa
 
 @needs_keygen
 def test_a_wrong_human_key_writes_no_record_and_the_reason_is_printed(tmp_path: Path, monkeypatch, capsys) -> None:
-    _human_key, human_pub = _key(tmp_path, "human")
-    wrong_key, _wrong_pub = _key(tmp_path, "wrong")
-    _opus_key, opus_pub = _key(tmp_path, "opus")
+    _human_key, human_pub = key_fn(tmp_path, "human")
+    wrong_key, _wrong_pub = key_fn(tmp_path, "wrong")
+    _opus_key, opus_pub = key_fn(tmp_path, "opus")
     repo = make_review_repo(tmp_path, orchestration=_roster(opus_pub, human_pub=human_pub))
     head = git(repo, "rev-parse", "HEAD")
     with pytest.raises(SigningError, match="does not verify against the roster public_key for 'human'"):

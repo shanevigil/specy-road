@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from specy_road.roadmap_load import load_roadmap
 
-def _sheet(root: Path, node_id: str) -> str:
+def sheet(root: Path, node_id: str) -> str:
+    """Shared test helper."""
     node = next(n for n in load_roadmap(root)["nodes"] if n["id"] == node_id)
     return (root / node["planning_dir"]).read_text(encoding="utf-8")

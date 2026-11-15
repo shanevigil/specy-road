@@ -35,5 +35,6 @@ def add_nested_repo(project: Path, rel: str, branch: str) -> Path:
     git(project, "commit", "-qm", "nested repo")
     return nested
 
-def _cfg(extra: dict) -> str | None:
+def cfg(extra: dict) -> str | None:
+    """Shared test helper."""
     return validate_git_workflow_dict({"version": 1, "integration_branch": "main", "remote": "origin", **extra})

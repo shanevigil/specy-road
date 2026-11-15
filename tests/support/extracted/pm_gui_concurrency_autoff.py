@@ -9,7 +9,8 @@ import pytest
 import shutil
 import subprocess
 
-def _git(args: list[str], cwd: Path) -> str:
+def git(args: list[str], cwd: Path) -> str:
+    """Shared test helper."""
     out = subprocess.run(
         ["git", *args],
         cwd=cwd,
@@ -43,10 +44,10 @@ def autoff_repo(tmp_path: Path) -> tuple[Path, Path]:
     # fixture ever pushes. Left to the git build's init.defaultBranch it
     # can point at main, and the clone below then lands on an unborn
     # main with no local master to push.
-    _git(["init", "--bare", "-q", "-b", "master", str(bare)], tmp_path)
-    _git(["init", "-q", "-b", "master"], work)
-    _git(["add", "-A"], work)
-    _git(["commit", "-q", "-m", "initial"], work)
+    git(["init", "--bare", "-q", "-b", "master", str(bare)], tmp_path)
+    git(["init", "-q", "-b", "master"], work)
+    git(["add", "-A"], work)
+    git(["commit", "-q", "-m", "initial"], work)
     gw = work / "roadmap" / "git-workflow.yaml"
     gw.write_text(
         gw.read_text(encoding="utf-8").replace(
@@ -54,17 +55,18 @@ def autoff_repo(tmp_path: Path) -> tuple[Path, Path]:
         ),
         encoding="utf-8",
     )
-    _git(["commit", "-q", "-am", "use master"], work)
-    _git(["remote", "add", "origin", str(bare)], work)
-    _git(["push", "-q", "-u", "origin", "master"], work)
+    git(["commit", "-q", "-am", "use master"], work)
+    git(["remote", "add", "origin", str(bare)], work)
+    git(["push", "-q", "-u", "origin", "master"], work)
     helper = tmp_path / "helper"
-    _git(["clone", "-q", str(bare), str(helper)], tmp_path)
-    _git(["commit", "-q", "--allow-empty", "-m", "ahead-1"], helper)
-    _git(["commit", "-q", "--allow-empty", "-m", "ahead-2"], helper)
-    _git(["push", "-q", "origin", "master"], helper)
+    git(["clone", "-q", str(bare), str(helper)], tmp_path)
+    git(["commit", "-q", "--allow-empty", "-m", "ahead-1"], helper)
+    git(["commit", "-q", "--allow-empty", "-m", "ahead-2"], helper)
+    git(["push", "-q", "origin", "master"], helper)
     return work, bare
 
-def _siblings_of(work: Path, parent: str) -> list[str]:
+def siblings_of(work: Path, parent: str) -> list[str]:
+    """Shared test helper."""
     out: list[tuple[int, str]] = []
     for chunk in (work / "roadmap" / "phases").glob("*.json"):
         doc = json.loads(chunk.read_text(encoding="utf-8"))

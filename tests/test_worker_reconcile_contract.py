@@ -20,7 +20,7 @@ from tests.support.extracted.worker_m310_reconcile_status import worker_repo
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.roadmap_crud_ops import cmd_edit
-from tests.support.same.edit_70b56ec19282 import _edit
+from tests.support.same.edit_70b56ec19282 import edit
 
 
 
@@ -41,7 +41,7 @@ def test_reconcile_reads_the_zones_edit_node_widened_after_delegation(tmp_path: 
     commit_file(wt, "docs/new.md", "# new\n", "worker writes docs")
     _r, delta = ops.reconcile(repo, rec.worker_id)
     assert delta["outside_touch_zones"] == ["docs/new.md"]
-    _edit(repo, "touch_zones=src", "touch_zones=docs")
+    edit(repo, "touch_zones=src", "touch_zones=docs")
     _r, delta = ops.reconcile(repo, rec.worker_id)
     assert delta["outside_touch_zones"] == []
     assert delta["contract_changed"]   # the zones are the leaf's own contract
@@ -107,7 +107,7 @@ def test_a_rename_folded_into_a_merge_counts_on_both_sides(tmp_path: Path) -> No
 def test_the_integration_branch_moving_is_not_a_contract_change(tmp_path: Path) -> None:
     repo, rec, _wt = _linked(tmp_path)
     commit_file(repo, "shared/README.md", "# Shared\n\nA new contract index.\n", "dev moves on")
-    _edit(repo, "status=Blocked")   # progress, not contract
+    edit(repo, "status=Blocked")   # progress, not contract
     _r, delta = ops.reconcile(repo, rec.worker_id)
     assert not delta["contract_changed"] and not delta["needs_reconcile"], delta
 
@@ -120,8 +120,8 @@ def test_a_change_to_the_leafs_own_contract_is_reported(tmp_path: Path, change: 
         sheet = repo / NODE["planning_dir"]
         sheet.write_text(sheet.read_text(encoding="utf-8") + "\nAlso do the other thing.\n", encoding="utf-8")
     elif change == "acceptance":
-        _edit(repo, "acceptance=a.py exists", "acceptance=b.py exists")
+        edit(repo, "acceptance=a.py exists", "acceptance=b.py exists")
     else:
-        _edit(repo, "touch_zones=src", "touch_zones=lib")
+        edit(repo, "touch_zones=src", "touch_zones=lib")
     _r, delta = ops.reconcile(repo, rec.worker_id)
     assert delta["contract_changed"] and delta["needs_reconcile"]

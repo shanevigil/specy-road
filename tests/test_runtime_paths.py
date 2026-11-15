@@ -23,7 +23,7 @@ from specy_road.runtime_paths import (
     recorded_project_root,
     source_scan_root,
 )
-from tests.support.same.git_736cc1f249f0 import _git
+from tests.support.same.git_736cc1f249f0 import git
 
 
 
@@ -32,7 +32,7 @@ def _repo(tmp_path: Path, project: str = ".") -> tuple[Path, Path]:
     """A git checkout, plus its project tree — embedded or nested."""
     top = tmp_path / "checkout"
     top.mkdir()
-    _git(top, "init", "-q", "-b", "main")
+    git(top, "init", "-q", "-b", "main")
     proj = (top / project).resolve() if project != "." else top.resolve()
     (proj / "roadmap").mkdir(parents=True)
     (proj / "roadmap" / "manifest.json").write_text(
@@ -110,7 +110,7 @@ def test_falls_back_to_the_git_root_with_no_roadmap_anywhere(
 ) -> None:
     top = tmp_path / "checkout"
     (top / "src").mkdir(parents=True)
-    _git(top, "init", "-q", "-b", "main")
+    git(top, "init", "-q", "-b", "main")
     monkeypatch.chdir(top / "src")
 
     assert project_root() == top.resolve()
@@ -148,8 +148,8 @@ def test_the_gui_resolves_exactly_what_the_cli_resolves(
 
 def test_project_prefix_bridges_the_two_roots(tmp_path: Path) -> None:
     top, proj = _repo(tmp_path, "sr")
-    _git(top, "add", "-A")
-    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "x")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "x")
 
     assert project_prefix(proj) == "sr/"
     assert project_prefix(top) == ""

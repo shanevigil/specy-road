@@ -15,8 +15,8 @@ import pytest
 import yaml
 
 from tests.support.review import NODE, commit_file, git
-from tests.support.same.exit_a673d831c5ea import _exit
-from tests.support.extracted.branch_cleanup import BR, _merge_mode_repo
+from tests.support.same.exit_a673d831c5ea import exit_fn
+from tests.support.extracted.branch_cleanup import BR, merge_mode_repo
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker
 
@@ -357,12 +357,12 @@ def test_terminate_one_worker_still_works(tmp_path: Path, capsys) -> None:
 
 @pytest.mark.slow
 def test_finish_terminates_the_finished_leafs_idle_and_completed_workers(tmp_path: Path, monkeypatch, capsys) -> None:
-    repo, _bare = _merge_mode_repo(tmp_path, monkeypatch)
+    repo, _bare = merge_mode_repo(tmp_path, monkeypatch)
     done = _worker(repo, "M1.1", "completed", branch=BR)
     idle = _worker(repo, "M1.1", "idle", branch=BR)
     running = _worker(repo, "M1.1", "running", branch=BR)   # mid-turn: finish leaves it alone
     other = _worker(repo, "M1.2", "idle", branch=OTHER)     # another leaf's
-    assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 0
+    assert exit_fn(finish_task.main, ["--repo-root", str(repo)]) == 0
     out = capsys.readouterr().out
     assert f"[ok] terminated worker {done.worker_id}: M1.1 finished while {done.worker_id} was completed" in out
     assert f"[ok] terminated worker {idle.worker_id}: M1.1 finished while {idle.worker_id} was idle" in out

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from specy_road.bundled_scripts import do_next_task as dnt
-from tests.support.same.reg_a9a54adad38e import _reg
+from tests.support.same.reg_a9a54adad38e import reg
 
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
 _NK_GATE = "55555555-5555-4555-8555-555555555555"
@@ -58,9 +58,9 @@ def test_available_respects_effective_ancestor_dependencies() -> None:
         "dependencies": [],
         "codename": "leaf-node",
     }
-    assert dnt._available([phase, prereq, leaf], _reg(), {}) == []
+    assert dnt._available([phase, prereq, leaf], reg(), {}) == []
     prereq_done = {**prereq, "status": "Complete"}
-    result = dnt._available([phase, prereq_done, leaf], _reg(), {})
+    result = dnt._available([phase, prereq_done, leaf], reg(), {})
     assert len(result) == 1
     assert result[0]["id"] == "M0.1"
 
@@ -98,7 +98,7 @@ def test_available_gate_incomplete_blocks_descendant_leaf() -> None:
         "dependencies": [],
         "codename": "leaf-node",
     }
-    assert dnt._available([phase, gate, leaf], _reg(), {}) == []
+    assert dnt._available([phase, gate, leaf], reg(), {}) == []
 
 
 def test_available_gate_complete_allows_descendant_leaf() -> None:
@@ -134,7 +134,7 @@ def test_available_gate_complete_allows_descendant_leaf() -> None:
         "dependencies": [],
         "codename": "leaf-node",
     }
-    result = dnt._available([phase, gate, leaf], _reg(), {})
+    result = dnt._available([phase, gate, leaf], reg(), {})
     assert len(result) == 1
     assert result[0]["id"] == "M0.2"
 
@@ -161,4 +161,4 @@ def test_available_excludes_type_gate_even_if_agentic() -> None:
         "dependencies": [],
         "planning_dir": "planning/p.md",
     }
-    assert dnt._available([phase, gate], _reg(), {}) == []
+    assert dnt._available([phase, gate], reg(), {}) == []

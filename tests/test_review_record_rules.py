@@ -21,7 +21,7 @@ from specy_road.review_record_rules import (
     note_problem,
     unexplained_defects,
 )
-from tests.support.same.run_651387813ee4 import _run
+from tests.support.same.run_651387813ee4 import run
 
 
 def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
@@ -57,7 +57,7 @@ def _record(repo: Path, verdict: str = "approve", findings: dict | None = None, 
         data["required_changes"] = required
     p = repo.parent / "notes-opus.md"
     p.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\n" + notes)
-    return _run("review", "record", "M1.1", "--model", "opus", "--verdict", verdict, "--file", str(p),
+    return run("review", "record", "M1.1", "--model", "opus", "--verdict", verdict, "--file", str(p),
                 "--repo-root", str(repo))
 
 

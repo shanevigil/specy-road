@@ -12,9 +12,9 @@ from tests.support.extracted.review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import reviews_dir
-from tests.support.same.ready_cddba06c620f import _ready
-from tests.support.same.review_434036b364c2 import _review
-from tests.support.same.run_651387813ee4 import _run
+from tests.support.same.ready_cddba06c620f import ready
+from tests.support.same.review_434036b364c2 import review
+from tests.support.same.run_651387813ee4 import run
 
 
 
@@ -25,14 +25,14 @@ from tests.support.same.run_651387813ee4 import _run
 
 def _rows(repo: Path, capsys) -> dict[str, dict]:
     capsys.readouterr()
-    _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
     st = json.loads(capsys.readouterr().out)["nodes"][0]
     return {r["model"]: r for r in st["reviewer_eligibility"]}
 
 
 def test_human_is_listed_as_able_to_supply_the_missing_approval(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
-    _review(repo, "opus")
+    review(repo, "opus")
     rows = _rows(repo, capsys)
     assert list(rows) == ["human", "opus", "sonnet", "sol", "composer", "astra"]
     assert rows["human"]["eligible"] and rows["human"]["reason"] == (
@@ -44,7 +44,7 @@ def test_human_is_listed_as_able_to_supply_the_missing_approval(tmp_path: Path, 
 
 def test_same_family_reviewer_is_excluded(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
-    _review(repo, "opus")
+    review(repo, "opus")
     sonnet = _rows(repo, capsys)["sonnet"]
     assert not sonnet["eligible"]
     assert sonnet["reason"] == "same family (anthropic) as opus's approval, which already counts"
@@ -52,13 +52,13 @@ def test_same_family_reviewer_is_excluded(tmp_path: Path, capsys) -> None:
 
 def test_executor_and_fix_author_are_excluded(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
-    _ready(repo, "opus")   # opus implemented the leaf
+    ready(repo, "opus")   # opus implemented the leaf
     notes = repo.parent / "notes-sol.md"
     notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="sol", verdict="block", a1="fail"))
-    assert _run("review", "record", "M1.1", "--model", "sol", "--verdict", "block",
+    assert run("review", "record", "M1.1", "--model", "sol", "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
     commit_file(repo, "src/b.py", "x\n", "fix")
-    _ready(repo, "sol")   # sol, having reviewed, wrote the fix
+    ready(repo, "sol")   # sol, having reviewed, wrote the fix
     rows = _rows(repo, capsys)
     assert not rows["opus"]["eligible"] and rows["opus"]["reason"] == "executor of the leaf (READY-opus.md)"
     assert not rows["sol"]["eligible"]
@@ -68,16 +68,16 @@ def test_executor_and_fix_author_are_excluded(tmp_path: Path, capsys) -> None:
 
 def test_ready_author_with_a_counting_approval_is_still_excluded(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
-    _ready(repo, "opus")
-    _review(repo, "opus")   # the gate counts it: it trusts the record's authored_fix: false
+    ready(repo, "opus")
+    review(repo, "opus")   # the gate counts it: it trusts the record's authored_fix: false
     opus = _rows(repo, capsys)["opus"]
     assert not opus["eligible"] and opus["reason"] == "executor of the leaf (READY-opus.md)"
 
 
 def test_second_same_family_approval_is_excluded_not_counting(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
-    _review(repo, "opus")
-    _review(repo, "sonnet")   # both counted by the gate, one family toward the policy
+    review(repo, "opus")
+    review(repo, "sonnet")   # both counted by the gate, one family toward the policy
     rows = _rows(repo, capsys)
     assert rows["opus"]["eligible"] and rows["opus"]["reason"] == "its approval counts"
     assert not rows["sonnet"]["eligible"]
@@ -86,7 +86,7 @@ def test_second_same_family_approval_is_excluded_not_counting(tmp_path: Path, ca
 
 def test_rejected_record_is_excluded_with_the_gates_reason(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
-    _review(repo, "sol", fresh=False)
+    review(repo, "sol", fresh=False)
     sol = _rows(repo, capsys)["sol"]
     assert not sol["eligible"]
     assert sol["reason"].startswith("rejected record REVIEW-sol.md: ") and "fresh reviewer session" in sol["reason"]
@@ -94,15 +94,15 @@ def test_rejected_record_is_excluded_with_the_gates_reason(tmp_path: Path, capsy
 
 def test_text_lists_reviewers_below_the_policy_line_until_the_gate_is_met(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
-    _review(repo, "opus")
+    review(repo, "opus")
     capsys.readouterr()
-    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
+    assert run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
     lines = capsys.readouterr().out.splitlines()
     at = next(i for i, line in enumerate(lines) if line.startswith("  policy: 1/2"))
     assert lines[at + 1] == "  who can still supply a counting approval at this commit:"
     assert lines[at + 2].startswith("    human (human): can approve, interactively")
     assert "    sonnet (anthropic): excluded — same family (anthropic) as opus's approval, which already counts" in lines
-    _review(repo, "sol")
+    review(repo, "sol")
     assert _rows(repo, capsys) == {}
 
 
@@ -125,7 +125,7 @@ def test_the_human_row_says_whether_it_approves_over_the_blocks(tmp_path: Path, 
         record = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict="block", a1="fail")
         front, _body = record.rsplit("---\n", 1)
         notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
-        assert _run("review", "record", "M1.1", "--model", model, "--verdict", "block",
+        assert run("review", "record", "M1.1", "--model", model, "--verdict", "block",
                     "--file", str(notes), "--repo-root", str(repo)) == 0
     human = _rows(repo, capsys)["human"]
     assert human["eligible"] and human["reason"].startswith(text)

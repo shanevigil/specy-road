@@ -14,9 +14,9 @@ from specy_road.orchestration.grind import grind_session as gs
 from specy_road.orchestration.grind import grind_session_cleanup as gsc
 from specy_road import merged_branch
 from specy_road.orchestration.grind import grind_session_events as gse
-from tests.support.same.events_bc2d3e84325c import _events
-from tests.support.same.plan_a42dad7814e8 import _plan
-from tests.support.extracted.grind_session import REPO, TS, _Harness, _event, _node, _run
+from tests.support.same.events_bc2d3e84325c import events
+from tests.support.same.plan_a42dad7814e8 import plan as plan_fn
+from tests.support.extracted.grind_session import REPO, TS, Harness, event, node, run
 
 DOGFOOD = REPO / "tests" / "fixtures" / "specy_road_dogfood"
 from specy_road.orchestration.grind.grind_session_events import (
@@ -50,11 +50,11 @@ from specy_road.orchestration.grind.session_plan import BlockedLeaf, SessionPlan
 
 
 def test_plan_mode_emits_plan_and_no_git(monkeypatch, capsys):
-    h = _Harness(monkeypatch, [_plan(ready=["M1.1"], blocked=[
+    h = Harness(monkeypatch, [plan_fn(ready=["M1.1"], blocked=[
         BlockedLeaf("M1.2", "cn", ["M1.1"], "dependency")])])
-    code = _run(["--plan", "--json", "--repo-root", "/tmp/x"])
+    code = run(["--plan", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_OK
-    evs = _events(capsys)
+    evs = events(capsys)
     assert evs[0]["event"] == "plan"
     assert evs[0]["ready"] == ["M1.1"]
     assert h.cli_calls == []  # no pickup/finish in plan mode
@@ -66,15 +66,15 @@ def test_plan_mode_emits_plan_and_no_git(monkeypatch, capsys):
 
 
 def test_loop_hook_mode_max_leaves(monkeypatch, capsys):
-    plans = [_plan(ready=["M1.1"]), _plan(ready=["M1.2"]), _plan(ready=["M1.3"])]
-    h = _Harness(monkeypatch, plans)
-    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
+    plans = [plan_fn(ready=["M1.1"]), plan_fn(ready=["M1.2"]), plan_fn(ready=["M1.3"])]
+    h = Harness(monkeypatch, plans)
+    code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--max-leaves", "2", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_OK
-    evs = _events(capsys)
+    evs = events(capsys)
     finished = [e for e in evs if e["event"] == "finished"]
     assert [e["node_id"] for e in finished] == ["M1.1", "M1.2"]
-    assert _event(evs, "stopped") == {
+    assert event(evs, "stopped") == {
         "event": "stopped", "ts": TS, "reason": "max_leaves", "node_id": "M1.2",
     }
     pickups = [c for c in h.cli_calls if c[0] == "do-next-available-task"]
@@ -82,25 +82,25 @@ def test_loop_hook_mode_max_leaves(monkeypatch, capsys):
 
 
 def test_loop_until_stops_after_node(monkeypatch, capsys):
-    plans = [_plan(ready=["M1.1"]), _plan(ready=["M1.2"]), _plan(ready=["M1.3"])]
-    _Harness(monkeypatch, plans)
-    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
+    plans = [plan_fn(ready=["M1.1"]), plan_fn(ready=["M1.2"]), plan_fn(ready=["M1.3"])]
+    Harness(monkeypatch, plans)
+    code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--until", "M1.2", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_OK
-    evs = _events(capsys)
-    assert _event(evs, "stopped") == {
+    evs = events(capsys)
+    assert event(evs, "stopped") == {
         "event": "stopped", "ts": TS, "reason": "until_reached", "node_id": "M1.2",
     }
 
 
 def test_loop_runs_until_no_work(monkeypatch, capsys):
-    plans = [_plan(ready=["M1.1"]), _plan(ready=[])]
-    _Harness(monkeypatch, plans)
-    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
+    plans = [plan_fn(ready=["M1.1"]), plan_fn(ready=[])]
+    Harness(monkeypatch, plans)
+    code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_OK
-    evs = _events(capsys)
-    assert _event(evs, "stopped")["reason"] == "no_work"
+    evs = events(capsys)
+    assert event(evs, "stopped")["reason"] == "no_work"
 
 
 # ---------------------------------------------------------------------------
@@ -109,63 +109,63 @@ def test_loop_runs_until_no_work(monkeypatch, capsys):
 
 
 def test_blocked_only_exits_3(monkeypatch, capsys):
-    plan = _plan(ready=[], blocked=[BlockedLeaf("M11.1", "cn", ["M10.5"], "dependency")])
-    h = _Harness(monkeypatch, [plan])
-    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
+    plan = plan_fn(ready=[], blocked=[BlockedLeaf("M11.1", "cn", ["M10.5"], "dependency")])
+    h = Harness(monkeypatch, [plan])
+    code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_BLOCKED
-    evs = _events(capsys)
+    evs = events(capsys)
     assert evs[-1]["event"] == "blocked"
     assert evs[-1]["waiting_on"] == ["M10.5"]
     assert h.cli_calls == []  # never attempted pickup
 
 
 def test_no_actionable_leaves_exits_2(monkeypatch, capsys):
-    _Harness(monkeypatch, [_plan(ready=[])])
-    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
+    Harness(monkeypatch, [plan_fn(ready=[])])
+    code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_NO_LEAVES
 
 
 def test_pre_finish_failure_exits_4_and_skips_finish(monkeypatch, capsys):
-    h = _Harness(monkeypatch, [_plan(ready=["M1.1"])])
+    h = Harness(monkeypatch, [plan_fn(ready=["M1.1"])])
 
     def failing_shell(cmd, env, repo_root):
         h.shell_calls.append(cmd)
         return 2 if cmd == "make test" else 0  # only the pre-finish hook fails
 
     monkeypatch.setattr(gs, "_run_shell", failing_shell)
-    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
+    code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--pre-finish-cmd", "make test", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_PRE_FINISH_FAILED
     # finish-this-task must NOT have been called.
     assert not any(c[0] == "finish-this-task" for c in h.cli_calls)
-    evs = _events(capsys)
+    evs = events(capsys)
     assert evs[-1]["event"] == "hook_failed"
     assert evs[-1]["phase"] == "pre_finish"
 
 
 def test_pickup_failure_exits_5(monkeypatch, capsys):
-    h = _Harness(monkeypatch, [_plan(ready=["M1.1"])], pickup_rc=1)
-    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
+    h = Harness(monkeypatch, [plan_fn(ready=["M1.1"])], pickup_rc=1)
+    code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_PICKUP_FAILED
-    evs = _events(capsys)
+    evs = events(capsys)
     assert evs[-1]["event"] == "hook_failed"
     assert evs[-1]["phase"] == "pickup"
 
 
 def test_implement_hook_failure_exits_1(monkeypatch, capsys):
-    h = _Harness(monkeypatch, [_plan(ready=["M1.1"])])
+    h = Harness(monkeypatch, [plan_fn(ready=["M1.1"])])
 
     def failing_shell(cmd, env, repo_root):
         return 3  # implement-cmd fails
 
     monkeypatch.setattr(gs, "_run_shell", failing_shell)
-    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "false",
+    code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "false",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_GENERIC
-    evs = _events(capsys)
+    evs = events(capsys)
     assert evs[-1]["event"] == "hook_failed"
     assert evs[-1]["phase"] == "implement"
     assert not any(c[0] == "finish-this-task" for c in h.cli_calls)
@@ -185,8 +185,8 @@ def test_hook_mode_requires_implement_cmd():
 
 
 def test_pickup_and_finish_pass_through_flags(monkeypatch, capsys):
-    h = _Harness(monkeypatch, [_plan(ready=["M1.1"]), _plan(ready=[])])
-    _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    h = Harness(monkeypatch, [plan_fn(ready=["M1.1"]), plan_fn(ready=[])])
+    run(["--implement-mode", "hook", "--implement-cmd", "true",
           "--on-complete", "merge", "--base", "dev", "--remote", "up",
           "--json", "--repo-root", "/tmp/x"])
     pickup = next(c for c in h.cli_calls if c[0] == "do-next-available-task")
@@ -209,8 +209,8 @@ def test_loop_refuses_implicit_pr_mode(monkeypatch, capsys):
     omits `on_complete` opens a PR per leaf and strands every finish on its
     feature branch, where the next pickup cannot see it.
     """
-    h = _Harness(monkeypatch, [_plan(ready=["M1.1"])])
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    h = Harness(monkeypatch, [plan_fn(ready=["M1.1"])])
+    code = run(["--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_GENERIC
     assert h.cli_calls == []  # refused before any pickup
@@ -218,8 +218,8 @@ def test_loop_refuses_implicit_pr_mode(monkeypatch, capsys):
 
 
 def test_loop_refuses_explicit_pr_mode(monkeypatch, capsys):
-    h = _Harness(monkeypatch, [_plan(ready=["M1.1"])])
-    code = _run(["--on-complete", "pr", "--implement-mode", "hook",
+    h = Harness(monkeypatch, [plan_fn(ready=["M1.1"])])
+    code = run(["--on-complete", "pr", "--implement-mode", "hook",
                  "--implement-cmd", "true", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_GENERIC
     assert h.cli_calls == []
@@ -227,8 +227,8 @@ def test_loop_refuses_explicit_pr_mode(monkeypatch, capsys):
 
 def test_plan_mode_is_allowed_in_pr_mode(monkeypatch, capsys):
     """--plan is read-only, so the merge requirement does not apply."""
-    _Harness(monkeypatch, [_plan(ready=["M1.1"])])
-    assert _run(["--plan", "--json", "--repo-root", "/tmp/x"]) == EXIT_OK
+    Harness(monkeypatch, [plan_fn(ready=["M1.1"])])
+    assert run(["--plan", "--json", "--repo-root", "/tmp/x"]) == EXIT_OK
 
 
 def test_git_workflow_on_complete_satisfies_the_guard(monkeypatch, capsys, tmp_path):
@@ -238,8 +238,8 @@ def test_git_workflow_on_complete_satisfies_the_guard(monkeypatch, capsys, tmp_p
         "version: 1\nintegration_branch: main\nremote: origin\non_complete: merge\n",
         encoding="utf-8",
     )
-    _Harness(monkeypatch, [_plan(ready=["M1.1"]), _plan(ready=[])])
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    Harness(monkeypatch, [plan_fn(ready=["M1.1"]), plan_fn(ready=[])])
+    code = run(["--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", str(tmp_path)])
     assert code == EXIT_OK
 
@@ -256,8 +256,8 @@ def test_resolved_mode_is_forwarded_to_every_cycle(monkeypatch, capsys, tmp_path
         "version: 1\nintegration_branch: main\nremote: origin\non_complete: merge\n",
         encoding="utf-8",
     )
-    h = _Harness(monkeypatch, [_plan(ready=["M1.1"]), _plan(ready=[])])
-    _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    h = Harness(monkeypatch, [plan_fn(ready=["M1.1"]), plan_fn(ready=[])])
+    run(["--implement-mode", "hook", "--implement-cmd", "true",
           "--json", "--repo-root", str(tmp_path)])
     pickup = next(c for c in h.cli_calls if c[0] == "do-next-available-task")
     finish = next(c for c in h.cli_calls if c[0] == "finish-this-task")

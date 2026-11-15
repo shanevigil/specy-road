@@ -5,5 +5,6 @@ from specy_road.history_index import clear_memo
 import pytest
 
 @pytest.fixture(autouse=True)
-def _no_memo() -> None:
+def no_memo() -> None:
+    """Shared test helper."""
     clear_memo()

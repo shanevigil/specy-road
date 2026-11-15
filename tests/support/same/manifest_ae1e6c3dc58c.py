@@ -4,5 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 import json
 
-def _manifest(root: Path) -> dict:
+def manifest(root: Path) -> dict:
+    """Shared test helper."""
     return json.loads((root / ".specyrd" / "manifest.json").read_text(encoding="utf-8"))

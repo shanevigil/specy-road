@@ -7,5 +7,6 @@ from specy_road.brainstorm_session import read_session
 
 SLUG = "how-do-we-expand-payments"
 
-def _session(repo: Path) -> BrainstormSession:
+def session(repo: Path) -> BrainstormSession:
+    """Shared test helper."""
     return read_session(repo, SLUG)

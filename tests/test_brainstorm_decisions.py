@@ -23,9 +23,9 @@ from specy_road.brainstorm_session import (
 )
 from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
-from tests.support.same.cli_3c7fcb2cc75e import _cli
-from tests.support.same.section_01bb84fed3e3 import _section
-from tests.support.same.sheet_6e3ca8bf910b import _sheet
+from tests.support.same.cli_3c7fcb2cc75e import cli
+from tests.support.same.section_01bb84fed3e3 import section
+from tests.support.same.sheet_6e3ca8bf910b import sheet
 
 SLUG = "how-do-we-expand-payments"
 
@@ -35,9 +35,9 @@ SLUG = "how-do-we-expand-payments"
 
 
 def _start(repo: Path, *titles: str, under: str = "M1") -> None:
-    assert _cli(repo, "start", "--topic", "How do we expand payments?", "--under", under)[0] == 0
+    assert cli(repo, "start", "--topic", "How do we expand payments?", "--under", under)[0] == 0
     for title in titles:
-        assert _cli(repo, "add-idea", "--title", title)[0] == 0
+        assert cli(repo, "add-idea", "--title", title)[0] == 0
 
 
 
@@ -53,7 +53,7 @@ def _node_count(root: Path) -> int:
 
 def test_add_idea_accepts_kind_policy(repo: Path) -> None:
     _start(repo)
-    code, _out, err = _cli(repo, "add-idea", "--title", "No card data at rest", "--kind", "policy")
+    code, _out, err = cli(repo, "add-idea", "--title", "No card data at rest", "--kind", "policy")
 
     assert code == 0, err
     assert read_session(repo, SLUG).by_id("B1").kind == "policy"
@@ -62,7 +62,7 @@ def test_add_idea_accepts_kind_policy(repo: Path) -> None:
 def test_decide_sets_status_decided_and_records_the_decision(repo: Path) -> None:
     _start(repo, "Store card data?")
 
-    code, out, err = _cli(repo, "decide", "B1", "--decision", "We never store card numbers")
+    code, out, err = cli(repo, "decide", "B1", "--decision", "We never store card numbers")
 
     assert code == 0, err
     assert "[ok] B1 decided: We never store card numbers" in out
@@ -70,24 +70,24 @@ def test_decide_sets_status_decided_and_records_the_decision(repo: Path) -> None
     assert idea.status == "decided"
     assert idea.decision["decision"] == "We never store card numbers"
     assert idea.decision["status"] == "decided" and idea.decision["decided_at"]
-    assert "decision: We never store card numbers" in _cli(repo, "list")[1]
-    assert "decided: 1" in _cli(repo, "list", "--summary")[1]
+    assert "decision: We never store card numbers" in cli(repo, "list")[1]
+    assert "decided: 1" in cli(repo, "list", "--summary")[1]
 
 
 def test_decide_needs_a_decision(repo: Path) -> None:
     _start(repo, "Store card data?")
 
-    assert _cli(repo, "decide", "B1")[0] == 2
-    code, _out, err = _cli(repo, "decide", "B1", "--decision", "  ")
+    assert cli(repo, "decide", "B1")[0] == 2
+    code, _out, err = cli(repo, "decide", "B1", "--decision", "  ")
     assert code == 1 and "--decision" in err
     assert read_session(repo, SLUG).by_id("B1").status == "proposed"
 
 
 def test_decide_refuses_a_merged_idea(repo: Path) -> None:
     _start(repo, "Vault", "Token vault")
-    assert _cli(repo, "merge", "B1", "--into", "B2")[0] == 0
+    assert cli(repo, "merge", "B1", "--into", "B2")[0] == 0
 
-    code, _out, err = _cli(repo, "decide", "B1", "--decision", "x")
+    code, _out, err = cli(repo, "decide", "B1", "--decision", "x")
 
     assert code == 1 and "merged" in err
 
@@ -97,17 +97,17 @@ def test_decide_refuses_a_merged_idea(repo: Path) -> None:
 
 def test_promote_writes_decided_ideas_into_the_anchor_sheet_not_as_nodes(repo: Path) -> None:
     _start(repo, "Store card data?", "Stored payment vault")
-    _cli(repo, "decide", "B1", "--decision", "We never store card numbers")
-    _cli(repo, "accept", "B2")
+    cli(repo, "decide", "B1", "--decision", "We never store card numbers")
+    cli(repo, "accept", "B2")
     before = _node_count(repo)
 
-    code, out, err = _cli(repo, "promote")
+    code, out, err = cli(repo, "promote")
 
     assert code == 0, err
     assert _node_count(repo) == before + 1
     assert "Stored payment vault" in out and "Store card data?" not in out
     assert "## Decided policies" in err
-    policies = _section(_sheet(repo, "M1"), "Decided policies")
+    policies = section(sheet(repo, "M1"), "Decided policies")
     assert f"- **Store card data?:** We never store card numbers (brainstorm `{SLUG}`, B1)" in policies
     assert "Stored payment vault" not in policies
     assert read_session(repo, SLUG).by_id("B1").promoted_node_key is None
@@ -115,25 +115,25 @@ def test_promote_writes_decided_ideas_into_the_anchor_sheet_not_as_nodes(repo: P
 
 def test_promote_with_only_decided_ideas_writes_the_section(repo: Path) -> None:
     _start(repo, "Store card data?")
-    _cli(repo, "decide", "B1", "--decision", "Never")
+    cli(repo, "decide", "B1", "--decision", "Never")
     before = _node_count(repo)
 
-    code, out, _err = _cli(repo, "promote")
+    code, out, _err = cli(repo, "promote")
 
     assert code == 0 and "nothing to promote" not in out
     assert _node_count(repo) == before
-    assert "Never (brainstorm" in _section(_sheet(repo, "M1"), "Decided policies")
+    assert "Never (brainstorm" in section(sheet(repo, "M1"), "Decided policies")
 
 
 def test_promote_dry_run_writes_no_policies(repo: Path) -> None:
     _start(repo, "Store card data?")
-    _cli(repo, "decide", "B1", "--decision", "Never")
-    sheet_before = _sheet(repo, "M1")
+    cli(repo, "decide", "B1", "--decision", "Never")
+    sheet_before = sheet(repo, "M1")
 
-    code, _out, err = _cli(repo, "promote", "--dry-run")
+    code, _out, err = cli(repo, "promote", "--dry-run")
 
     assert code == 0 and "would write 1 decided idea(s)" in err
-    assert _sheet(repo, "M1") == sheet_before
+    assert sheet(repo, "M1") == sheet_before
 
 
 def test_a_rerun_replaces_this_sessions_policies_and_keeps_other_sessions(repo: Path) -> None:
@@ -141,33 +141,33 @@ def test_a_rerun_replaces_this_sessions_policies_and_keeps_other_sessions(repo: 
     add_idea(other, title="Refund window", status="decided", decision={"decision": "30 days"})
     promote_session(repo, other)
     _start(repo, "Store card data?", "Retry failed charges")
-    _cli(repo, "decide", "B1", "--decision", "Never")
-    _cli(repo, "decide", "B2", "--decision", "Three retries")
-    _cli(repo, "promote")
-    _cli(repo, "reject", "B2", "--reason", "too early")
+    cli(repo, "decide", "B1", "--decision", "Never")
+    cli(repo, "decide", "B2", "--decision", "Three retries")
+    cli(repo, "promote")
+    cli(repo, "reject", "B2", "--reason", "too early")
 
-    _cli(repo, "promote")
+    cli(repo, "promote")
 
-    policies = _section(_sheet(repo, "M1"), "Decided policies")
+    policies = section(sheet(repo, "M1"), "Decided policies")
     assert "30 days (brainstorm `refunds`, B1)" in policies
     assert policies.count(f"(brainstorm `{SLUG}`") == 1 and "Never" in policies
     assert "Three retries" not in policies
 
-    _cli(repo, "reject", "B1", "--reason", "superseded")   # the session's last decision
-    code, out, err = _cli(repo, "promote")
+    cli(repo, "reject", "B1", "--reason", "superseded")   # the session's last decision
+    code, out, err = cli(repo, "promote")
 
     assert code == 0 and "nothing to promote" not in out and "wrote 0 decided idea(s)" in err
-    policies = _section(_sheet(repo, "M1"), "Decided policies")
+    policies = section(sheet(repo, "M1"), "Decided policies")
     assert f"(brainstorm `{SLUG}`" not in policies
     assert "30 days (brainstorm `refunds`, B1)" in policies
-    assert "nothing to promote" in _cli(repo, "promote")[1]   # reconciled: a further run has nothing to do
+    assert "nothing to promote" in cli(repo, "promote")[1]   # reconciled: a further run has nothing to do
 
 
 def test_removing_a_policy_is_refused_under_a_locked_anchor(repo: Path) -> None:
     _start(repo, "Store card data?")
-    _cli(repo, "decide", "B1", "--decision", "Never")
-    _cli(repo, "promote")
-    _cli(repo, "reject", "B1", "--reason", "superseded")
+    cli(repo, "decide", "B1", "--decision", "Never")
+    cli(repo, "promote")
+    cli(repo, "reject", "B1", "--reason", "superseded")
     chunk = repo / "roadmap" / "phases" / "M1.json"
     data = json.loads(chunk.read_text(encoding="utf-8"))
     anchor = next(n for n in data["nodes"] if n["id"] == "M1")
@@ -175,10 +175,10 @@ def test_removing_a_policy_is_refused_under_a_locked_anchor(repo: Path) -> None:
                                      "integration_branch": "dev", "remote": "origin"}
     chunk.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
-    code, _out, err = _cli(repo, "promote")
+    code, _out, err = cli(repo, "promote")
 
     assert code == 1 and "milestone execution" in err
-    assert "Never (brainstorm" in _section(_sheet(repo, "M1"), "Decided policies")
+    assert "Never (brainstorm" in section(sheet(repo, "M1"), "Decided policies")
 
 
 def test_decided_ideas_without_an_anchor_sheet_are_reported_not_written(
@@ -199,9 +199,9 @@ def test_decided_ideas_without_an_anchor_sheet_are_reported_not_written(
 
 def test_amend_keeps_the_previous_answer_in_history(repo: Path) -> None:
     _start(repo)
-    _cli(repo, "frame", "--answer", "served=assumed: SMBs")
+    cli(repo, "frame", "--answer", "served=assumed: SMBs")
 
-    code, out, err = _cli(repo, "frame", "--amend", "served", "--answer", "SMBs and marketplaces")
+    code, out, err = cli(repo, "frame", "--amend", "served", "--answer", "SMBs and marketplaces")
 
     assert code == 0, err
     assert "served amended" in out
@@ -215,53 +215,53 @@ def test_amend_keeps_the_previous_answer_in_history(repo: Path) -> None:
 
 def test_amend_takes_key_equals_text_too(repo: Path) -> None:
     _start(repo)
-    _cli(repo, "frame", "--answer", "outcome=fewer failures")
+    cli(repo, "frame", "--answer", "outcome=fewer failures")
 
-    assert _cli(repo, "frame", "--amend", "outcome", "--answer", "outcome=fewer retries")[0] == 0
+    assert cli(repo, "frame", "--amend", "outcome", "--answer", "outcome=fewer retries")[0] == 0
 
     assert read_session(repo, SLUG).frame["outcome"] == "fewer retries"
 
 
 def test_amend_refuses_an_unrecorded_key_or_several_answers(repo: Path) -> None:
     _start(repo)
-    _cli(repo, "frame", "--answer", "outcome=x")
+    cli(repo, "frame", "--answer", "outcome=x")
 
-    code, _out, err = _cli(repo, "frame", "--amend", "budget", "--answer", "small")
+    code, _out, err = cli(repo, "frame", "--amend", "budget", "--answer", "small")
     assert code == 1 and "--answer budget=TEXT" in err
-    code, _out, err = _cli(repo, "frame", "--amend", "outcome", "--answer", "a", "--answer", "b")
+    code, _out, err = cli(repo, "frame", "--amend", "outcome", "--answer", "a", "--answer", "b")
     assert code == 1 and "exactly one --answer" in err
     assert read_session(repo, SLUG).frame_history == []
 
 
 def test_re_answering_a_key_keeps_only_changed_answers_in_history(repo: Path) -> None:
     _start(repo)
-    _cli(repo, "frame", "--answer", "outcome=x")
-    _cli(repo, "frame", "--answer", "outcome=x")
-    _cli(repo, "frame", "--answer", "outcome=y")
+    cli(repo, "frame", "--answer", "outcome=x")
+    cli(repo, "frame", "--answer", "outcome=x")
+    cli(repo, "frame", "--answer", "outcome=y")
 
     assert [h["answer"] for h in read_session(repo, SLUG).frame_history] == ["x"]
 
 
 def test_provisional_and_confirm_mark_the_frame_and_later_prompts_show_it(repo: Path) -> None:
     _start(repo, "Vault")
-    _cli(repo, "frame", "--answer", "outcome=x", "--provisional")
+    cli(repo, "frame", "--answer", "outcome=x", "--provisional")
     assert read_session(repo, SLUG).frame_state == "provisional"
-    assert _cli(repo, "next-round")[0] == 0
+    assert cli(repo, "next-round")[0] == 0
     assert "Frame state: provisional" in prompt_path(repo, SLUG, "r2").read_text(encoding="utf-8")
 
-    code, out, _err = _cli(repo, "frame", "--confirm")
+    code, out, _err = cli(repo, "frame", "--confirm")
 
     assert code == 0 and ", confirmed" in out
     assert read_session(repo, SLUG).frame_state == "confirmed"
-    assert _cli(repo, "next-round")[0] == 0
+    assert cli(repo, "next-round")[0] == 0
     text = prompt_path(repo, SLUG, "r3").read_text(encoding="utf-8")
     assert "Frame state: confirmed" in text and "provisional" not in text
 
 
 def test_shard_prompts_show_the_frame_state(repo: Path) -> None:
-    assert _cli(repo, "start", "--topic", "How do we expand payments?", "--panel", "2")[0] == 0
+    assert cli(repo, "start", "--topic", "How do we expand payments?", "--panel", "2")[0] == 0
 
-    assert _cli(repo, "frame", "--answer", "outcome=x", "--provisional")[0] == 0
+    assert cli(repo, "frame", "--answer", "outcome=x", "--provisional")[0] == 0
 
     assert "Frame state: provisional" in prompt_path(repo, SLUG, "r1-s1").read_text(encoding="utf-8")
 
@@ -269,16 +269,16 @@ def test_shard_prompts_show_the_frame_state(repo: Path) -> None:
 def test_provisional_and_confirm_are_exclusive_and_need_a_frame(repo: Path) -> None:
     _start(repo)
 
-    assert _cli(repo, "frame", "--provisional", "--confirm")[0] == 2
-    code, _out, err = _cli(repo, "frame", "--confirm")
+    assert cli(repo, "frame", "--provisional", "--confirm")[0] == 2
+    code, _out, err = cli(repo, "frame", "--confirm")
     assert code == 1 and "no frame recorded" in err
     assert read_session(repo, SLUG).frame_state == ""
 
 
 def test_an_unmarked_frame_adds_no_state_line(repo: Path) -> None:
     _start(repo, "Vault")
-    _cli(repo, "frame", "--answer", "outcome=x")
-    _cli(repo, "next-round")
+    cli(repo, "frame", "--answer", "outcome=x")
+    cli(repo, "next-round")
 
     assert "Frame state" not in prompt_path(repo, SLUG, "r2").read_text(encoding="utf-8")
 

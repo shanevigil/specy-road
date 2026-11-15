@@ -8,9 +8,9 @@ import json
 import shutil
 from specy_road.roadmap_chunk_utils import write_json_chunk
 
-_NK = "{tail:08d}-0000-4000-8000-000000000001"
+NK = "{tail:08d}-0000-4000-8000-000000000001"
 
-def _node(
+def node(
     nid: str,
     parent: str | None,
     *,
@@ -20,7 +20,8 @@ def _node(
     n_index: int = 1,
     deps: list[str] | None = None,
 ) -> dict:
-    nk = _NK.format(tail=n_index)
+    """Shared test helper."""
+    nk = NK.format(tail=n_index)
     cn = codename
     if cn is None and type_ == "task":
         cn = f"{title.lower().replace(' ', '-')}-{n_index:03d}"
@@ -45,7 +46,8 @@ def _node(
     }
     return {k: v for k, v in out.items() if v is not None}
 
-def _write_planning(root: Path, node: dict) -> None:
+def write_planning(root: Path, node: dict) -> None:
+    """Shared test helper."""
     pd = node.get("planning_dir")
     if not isinstance(pd, str):
         return
@@ -53,7 +55,7 @@ def _write_planning(root: Path, node: dict) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(f"# {node['id']}\n", encoding="utf-8")
 
-def _seed_repo(root: Path, chunks: dict[str, list[dict]]) -> None:
+def seed_repo(root: Path, chunks: dict[str, list[dict]]) -> None:
     """Build a minimal-but-complete repo: schemas, constraints, planning, manifest, chunks."""
     shutil.copytree(SCHEMAS, root / "schemas")
     shutil.copytree(REPO / "constraints", root / "constraints")
@@ -73,10 +75,12 @@ def _seed_repo(root: Path, chunks: dict[str, list[dict]]) -> None:
     for rel, nodes in chunks.items():
         write_json_chunk(root / "roadmap" / rel, nodes)
         for n in nodes:
-            _write_planning(root, n)
+            write_planning(root, n)
 
-def _phase_M0(parent: str | None = None) -> dict:
-    return _node("M0", None, type_="phase", title="phase0", codename=None, n_index=1)
+def phase_m0(parent: str | None = None) -> dict:
+    """Shared test helper."""
+    return node("M0", None, type_="phase", title="phase0", codename=None, n_index=1)
 
-def _milestone(nid: str, parent: str, *, n_index: int) -> dict:
-    return _node(nid, parent, type_="milestone", title=f"m{n_index}", n_index=n_index)
+def milestone(nid: str, parent: str, *, n_index: int) -> dict:
+    """Shared test helper."""
+    return node(nid, parent, type_="milestone", title=f"m{n_index}", n_index=n_index)

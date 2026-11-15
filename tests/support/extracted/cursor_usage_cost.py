@@ -34,10 +34,11 @@ def priced_repo(tmp_path: Path, roster: str, profiles: tuple[str, ...]) -> Path:
     git(repo, "commit", "-qm", "priced profiles")
     return repo
 
-def _codex_repo(tmp_path: Path) -> Path:
+def codex_repo(tmp_path: Path) -> Path:
+    """Shared test helper."""
     return priced_repo(tmp_path, CODEX_ROSTER, ("openai-gpt/gpt-6.1-sol.md",))
 
-def _api_id_for(repo: Path, roster_id: str) -> str | None:
+def api_id_for(repo: Path, roster_id: str) -> str | None:
     """The id ``worker_ops._cli_for`` puts on argv: profile api_id, or none when unknown."""
     config, err = pinned_config(repo)
     assert err is None

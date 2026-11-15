@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from tests.support.review import make_review_repo
-from tests.support.extracted.hook_adapters import DENY, PAYLOADS, _run
+from tests.support.extracted.hook_adapters import DENY, PAYLOADS, run
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard import tool_call_guard as g
@@ -55,7 +55,7 @@ def test_env_config_check_leaves_ordinary_commands_alone(command: str) -> None:
 def test_every_harness_form_denies_env_alias_with_a_live_peer(tmp_path: Path, fmt: str) -> None:
     repo = make_review_repo(tmp_path)
     sp.start_session(repo, "alice", paths=["src"])
-    r = _run(repo, fmt, PAYLOADS[fmt](ENV_ALIAS))
+    r = run(repo, fmt, PAYLOADS[fmt](ENV_ALIAS))
     code, channel = DENY[fmt]
     assert r.returncode == code, (fmt, r.stdout, r.stderr)
     text = r.stdout if channel == "stdout" else r.stderr

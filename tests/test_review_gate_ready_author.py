@@ -21,7 +21,7 @@ from specy_road.bundled_scripts.review_cli import eligibility_lines, reviewer_el
 from specy_road.review_files import load_review, render_front_matter, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.toolkit_version import stamp_review_toolkit_version
-from tests.support.same.ready_cddba06c620f import _ready
+from tests.support.same.ready_cddba06c620f import ready
 
 
 def _sentence(model: str) -> str:
@@ -50,7 +50,7 @@ def test_rc4_shape_executor_approval_does_not_count_and_gets_no_trailer(tmp_path
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
     (repo / "work").mkdir()
     (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nDid it.\n")
-    _ready(repo, "opus")   # opus executed the leaf
+    ready(repo, "opus")   # opus executed the leaf
     _review(repo, "opus")  # then a fresh opus session approved it
     _review(repo, "sol")
     g = _gate(repo)
@@ -70,7 +70,7 @@ def test_rc4_shape_executor_approval_does_not_count_and_gets_no_trailer(tmp_path
 
 def test_executor_block_is_ineligible_and_does_not_hold_the_gate(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
-    _ready(repo, "opus")
+    ready(repo, "opus")
     _review(repo, "opus", verdict="block", a1="fail")
     g = _gate(repo)
     assert _why(g, "opus") == [_sentence("opus")]
@@ -90,7 +90,7 @@ def test_executor_signed_approval_is_ineligible(tmp_path: Path) -> None:
     data["signature"] = rs.sign(data, key)
     p.write_text(render_front_matter(data, "notes\n"))
     assert [a.model for a in _gate(repo).approvals] == ["opus"]   # the signature verifies: it counts without a READY
-    _ready(repo, "opus")
+    ready(repo, "opus")
     g = _gate(repo)
     assert not g.approvals and _why(g, "opus") == [_sentence("opus")]
 
@@ -100,7 +100,7 @@ def test_another_model_of_the_executors_family_counts(tmp_path: Path, distinct: 
     roster = TWO_FAMILIES if distinct else TWO_FAMILIES.replace("reviewers_distinct_families: true",
                                                                 "reviewers_distinct_families: false")
     repo = make_review_repo(tmp_path, orchestration=roster)
-    _ready(repo, "opus")
+    ready(repo, "opus")
     _review(repo, "sonnet")
     _review(repo, "sol")
     g = _gate(repo)
@@ -110,7 +110,7 @@ def test_another_model_of_the_executors_family_counts(tmp_path: Path, distinct: 
 
 def test_a_fix_author_is_excluded(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
-    _ready(repo, "opus")
+    ready(repo, "opus")
     notes = repo.parent / "notes-sol.md"
     notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="sol", verdict="block", a1="fail"))
     with pytest.raises(SystemExit) as e:
@@ -118,7 +118,7 @@ def test_a_fix_author_is_excluded(tmp_path: Path) -> None:
                          "--file", str(notes), "--repo-root", str(repo)])
     assert e.value.code == 0
     commit_file(repo, "src/b.py", "x\n", "fix")
-    _ready(repo, "sol")   # sol, having reviewed, wrote the fix
+    ready(repo, "sol")   # sol, having reviewed, wrote the fix
     _review(repo, "sol")
     _review(repo, "sonnet")
     g = _gate(repo)
@@ -136,7 +136,7 @@ def test_no_ready_leaves_the_gate_unchanged(tmp_path: Path) -> None:
 
 def test_delegate_refuses_a_ready_author_and_writes_nothing(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
-    _ready(repo, "opus")
+    ready(repo, "opus")
     before = sorted(p.name for p in reviews_dir(repo, "M1.1").rglob("*"))
     with pytest.raises(SystemExit) as e:
         review_cli.main(["review", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)])
@@ -181,7 +181,7 @@ def test_ready_author_and_record_model_are_compared_after_case_folding_and_roste
         tmp_path: Path, roster: str, agent: str, model: str) -> None:
     """M22.19: a case variant or an entry's name on either side still excludes the executor; others still count."""
     repo = _profiled_repo(tmp_path, roster)
-    _ready(repo, agent)
+    ready(repo, agent)
     _review(repo, model)
     _review(repo, "sonnet")
     _review(repo, "sol")
@@ -227,7 +227,7 @@ def test_a_shared_name_closes_the_gate_only_when_it_could_be_the_writer(
         (repo / CUSTOM).parent.mkdir(parents=True)
         (repo / CUSTOM).write_text("---\napi_id: something-else\n---\n", encoding="utf-8")
     if agent:
-        _ready(repo, agent)
+        ready(repo, agent)
     _review(repo, "opus")
     _review(repo, "sol")
     g = _gate(repo)

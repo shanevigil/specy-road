@@ -17,7 +17,7 @@ from specy_road.pm_publish import (
 )
 
 from tests.helpers import DOGFOOD
-from tests.support.same.git_04549aebf210 import _git
+from tests.support.same.git_04549aebf210 import git
 
 
 def test_path_in_publish_scope() -> None:
@@ -42,8 +42,8 @@ def _git_out(repo: Path, *args: str) -> str:
 def _add_bare_remote(repo: Path) -> Path:
     bare = repo.parent / "remote.git"
     subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
-    _git(repo, "remote", "add", "origin", str(bare))
-    _git(repo, "push", "-u", "origin", "HEAD")
+    git(repo, "remote", "add", "origin", str(bare))
+    git(repo, "push", "-u", "origin", "HEAD")
     return bare
 
 
@@ -66,13 +66,13 @@ def _state(repo: Path) -> tuple[str, str, bytes | None, bytes | None]:
 def tmp_git_repo(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
-    _git(repo, "init")
-    _git(repo, "config", "user.email", "t@example.com")
-    _git(repo, "config", "user.name", "Test")
+    git(repo, "init")
+    git(repo, "config", "user.email", "t@example.com")
+    git(repo, "config", "user.name", "Test")
     # Initial commit so HEAD exists
     (repo / "README.md").write_text("x\n", encoding="utf-8")
-    _git(repo, "add", "README.md")
-    _git(repo, "commit", "-m", "init")
+    git(repo, "add", "README.md")
+    git(repo, "commit", "-m", "init")
     return repo
 
 
@@ -88,8 +88,8 @@ def test_classify_scope_dirty(tmp_git_repo: Path) -> None:
     d = tmp_git_repo / "roadmap"
     d.mkdir()
     (d / "manifest.json").write_text("{}\n", encoding="utf-8")
-    _git(tmp_git_repo, "add", "roadmap/manifest.json")
-    _git(tmp_git_repo, "commit", "-m", "add roadmap")
+    git(tmp_git_repo, "add", "roadmap/manifest.json")
+    git(tmp_git_repo, "commit", "-m", "add roadmap")
     _add_bare_remote(tmp_git_repo)
 
     (d / "chunk.json").write_text("[]\n", encoding="utf-8")
@@ -113,7 +113,7 @@ def test_classify_blocked_staged_out_of_scope(tmp_git_repo: Path) -> None:
     (tmp_git_repo / "roadmap").mkdir()
     (tmp_git_repo / "roadmap" / "x.json").write_text("{}\n", encoding="utf-8")
     (tmp_git_repo / "other.txt").write_text("y\n", encoding="utf-8")
-    _git(tmp_git_repo, "add", "other.txt")
+    git(tmp_git_repo, "add", "other.txt")
     st = classify_publish_status(tmp_git_repo)
     assert st.blocked is True
     assert st.blocked_reason == "staged_out_of_scope"
@@ -125,15 +125,15 @@ def test_publish_roadmap_refuses_without_remote(
 ) -> None:
     (tmp_git_repo / "roadmap").mkdir()
     (tmp_git_repo / "roadmap" / "manifest.json").write_text("{}\n", encoding="utf-8")
-    _git(tmp_git_repo, "add", "roadmap/manifest.json")
-    _git(tmp_git_repo, "commit", "-m", "r")
+    git(tmp_git_repo, "add", "roadmap/manifest.json")
+    git(tmp_git_repo, "commit", "-m", "r")
     if remote == "push_remote_gone":
         _add_bare_remote(tmp_git_repo)
-        _git(tmp_git_repo, "config", "remote.pushDefault", "gone")
+        git(tmp_git_repo, "config", "remote.pushDefault", "gone")
 
     (tmp_git_repo / "roadmap" / "chunk.json").write_text("[]\n", encoding="utf-8")
     (tmp_git_repo / "roadmap-context.md").write_text("# ctx\n", encoding="utf-8")
-    _git(tmp_git_repo, "add", "roadmap-context.md")
+    git(tmp_git_repo, "add", "roadmap-context.md")
     before = _state(tmp_git_repo)
     st = classify_publish_status(tmp_git_repo)
     assert st.blocked is True
@@ -211,11 +211,11 @@ def dogfood_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """The dogfood fixture committed in a git repo with a bare remote, served by the GUI."""
     repo = tmp_path / "dogfood"
     shutil.copytree(DOGFOOD, repo)
-    _git(repo, "init")
-    _git(repo, "config", "user.email", "t@example.com")
-    _git(repo, "config", "user.name", "Test")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-m", "init")
+    git(repo, "init")
+    git(repo, "config", "user.email", "t@example.com")
+    git(repo, "config", "user.name", "Test")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-m", "init")
     _add_bare_remote(repo)
     monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(repo))
     return repo

@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-def _exit(fn, argv: list[str]) -> int:
+def exit_fn(fn, argv: list[str]) -> int:
+    """Shared test helper."""
     with pytest.raises(SystemExit) as e:
         fn(argv)
         raise SystemExit(0)

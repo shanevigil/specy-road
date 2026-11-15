@@ -4,7 +4,8 @@ from __future__ import annotations
 import pytest
 from specy_road.bundled_scripts import session_cli
 
-def _cli(*args: str) -> int:
+def cli(*args: str) -> int:
+    """Shared test helper."""
     with pytest.raises(SystemExit) as e:
         session_cli.main(list(args))
     return e.value.code or 0

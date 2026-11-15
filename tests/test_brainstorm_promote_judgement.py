@@ -19,8 +19,8 @@ from specy_road.brainstorm_session import (
 from specy_road.planning_sheet_bootstrap import placeholder_sheet, promote_placeholder
 from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
-from tests.support.same.section_01bb84fed3e3 import _section
-from tests.support.same.sheet_6e3ca8bf910b import _sheet
+from tests.support.same.section_01bb84fed3e3 import section
+from tests.support.same.sheet_6e3ca8bf910b import sheet
 
 
 
@@ -45,7 +45,7 @@ def _judged_session(**kw) -> BrainstormSession:
 def test_references_list_overlaps_by_id_and_relation(repo: Path) -> None:
     node_id = promote_session(repo, _judged_session())[0].node_id
 
-    refs = _section(_sheet(repo, node_id), "References")
+    refs = section(sheet(repo, node_id), "References")
 
     assert "- Overlaps existing node M0.1 (adjacent)" in refs
     assert "- Overlaps existing node M0.2 (prerequisite)" in refs
@@ -55,14 +55,14 @@ def test_references_list_overlaps_by_id_and_relation(repo: Path) -> None:
 def test_approach_lists_critics_and_verdict_as_constraints(repo: Path) -> None:
     node_id = promote_session(repo, _judged_session())[0].node_id
 
-    approach = _section(_sheet(repo, node_id), "Approach")
+    approach = section(sheet(repo, node_id), "Approach")
 
     assert "Constraints from the brainstorm's converge pass:" in approach
     assert "- feasibility critic: needs the token service first" in approach
     assert "- value critic: only large merchants gain" in approach
     assert "- Verdict (strong): Principle 3; overlap with M0.1 is adjacent only" in approach
     assert approach.strip().endswith(promote_placeholder(node_id))
-    assert node_id not in _sheet(repo, node_id)
+    assert node_id not in sheet(repo, node_id)
 
 
 def test_approach_is_only_the_placeholder_without_critics_or_verdict(repo: Path) -> None:
@@ -71,8 +71,8 @@ def test_approach_is_only_the_placeholder_without_critics_or_verdict(repo: Path)
 
     node_id = promote_session(repo, s)[0].node_id
 
-    text = _sheet(repo, node_id)
-    approach = _section(text, "Approach")
+    text = sheet(repo, node_id)
+    approach = section(text, "Approach")
     assert "converge pass" not in approach
     assert approach.strip() == promote_placeholder(node_id)
     assert node_id not in text
@@ -91,7 +91,7 @@ def test_the_anchor_sheet_gains_the_recorded_frame(repo: Path) -> None:
 
     promote_session(repo, s)
 
-    frame = _section(_sheet(repo, "M1"), "Brainstorm frame")
+    frame = section(sheet(repo, "M1"), "Brainstorm frame")
     assert "brainstorm session `pay`" in frame
     assert "- **problem:** checkout drops" in frame
     assert "- **who:** returning buyers" in frame
@@ -105,26 +105,26 @@ def test_a_second_promote_replaces_the_frame_section(repo: Path) -> None:
 
     promote_session(repo, s)
 
-    text = _sheet(repo, "M1")
+    text = sheet(repo, "M1")
     assert text.count("## Brainstorm frame") == 1
     assert "refunds are slow" in text and "checkout drops" not in text
     assert text.endswith("\n")
 
 
 def test_no_frame_leaves_the_anchor_sheet_alone(repo: Path) -> None:
-    before = _sheet(repo, "M1")
+    before = sheet(repo, "M1")
 
     promote_session(repo, _judged_session())
 
-    assert _sheet(repo, "M1") == before
+    assert sheet(repo, "M1") == before
 
 
 def test_a_dry_run_writes_no_frame(repo: Path) -> None:
-    before = _sheet(repo, "M1")
+    before = sheet(repo, "M1")
 
     promote_session(repo, _judged_session(frame={"problem": "x"}), dry_run=True)
 
-    assert _sheet(repo, "M1") == before
+    assert sheet(repo, "M1") == before
 
 
 def test_promote_writes_the_authoring_prompt(
@@ -161,7 +161,7 @@ def test_a_dry_run_writes_no_authoring_prompt(repo: Path) -> None:
 def test_a_failed_validation_writes_no_authoring_prompt_or_frame(
     repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    before = _sheet(repo, "M1")
+    before = sheet(repo, "M1")
 
     def boom(_root: Path) -> None:
         raise RuntimeError("validate failed")
@@ -171,7 +171,7 @@ def test_a_failed_validation_writes_no_authoring_prompt_or_frame(
         promote_session(repo, _judged_session(frame={"problem": "x"}))
 
     assert not prompt_path(repo, "pay", "authoring").exists()
-    assert _sheet(repo, "M1") == before
+    assert sheet(repo, "M1") == before
 
 
 def test_close_archives_the_authoring_prompt_with_its_session(repo: Path) -> None:

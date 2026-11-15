@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from tests.support.extracted.review_rca import ROSTER
-from tests.support.same.run_651387813ee4 import _run
+from tests.support.same.run_651387813ee4 import run
 from specy_road.review_defer_rules import answer_item
 from tests.support.review import commit_file, git
 from specy_road.roadmap_load import load_roadmap
@@ -16,12 +16,14 @@ ROSTER4 = ROSTER + "  - {id: sonnet, family: anthropic, roles: [reviewer]}\n"
 
 BUDGET = "policy: {max_fix_rounds: 2}\n"
 
-def _item(commit: str, **kw) -> dict:
+def item(commit: str, **kw) -> dict:
+    """Shared test helper."""
     return {"finding": "round 2/opus: CRLF input still warns", "reviewer": "opus", "commit": commit,
             "category": "boundary", "acceptance_id": "A1", "input_class": "CRLF line endings",
             "follow_up_title": "Handle CRLF input", "follow_up_acceptance": "CRLF input parses like LF", **kw}
 
-def _record(round_: int, items: list[dict] | None, *, action: str = "defer_findings", disposition_class=None) -> dict:
+def record(round_: int, items: list[dict] | None, *, action: str = "defer_findings", disposition_class=None) -> dict:
+    """Shared test helper."""
     data = {
         "node_id": "M1.1", "model": "sol", "date": "2026-11-04",
         "trigger": {"rule": "forced", "acceptance_ids": [], "round": round_, "reason": "fix-round budget spent"},
@@ -40,36 +42,40 @@ def _record(round_: int, items: list[dict] | None, *, action: str = "defer_findi
                                      "input_class": disposition_class}]}
     return data
 
-def _write_rca(repo: Path, data: dict) -> Path:
+def write_rca(repo: Path, data: dict) -> Path:
+    """Shared test helper."""
     path = reviews_dir(repo, "M1.1") / f"RCA-{data['trigger']['round']}.md"
     path.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nreasoning\n")
     return path
 
-def _review(repo: Path, model: str, verdict: str = "block") -> None:
+def review(repo: Path, model: str, verdict: str = "block") -> None:
+    """Shared test helper."""
     notes = repo.parent / f"notes-{model}.md"
     text = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
                        a1="fail" if verdict == "block" else "pass")
     front, _body = text.rsplit("---\n", 1)
     notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
-    assert _run("review", "record", "M1.1", "--model", model, "--verdict", verdict,
+    assert run("review", "record", "M1.1", "--model", model, "--verdict", verdict,
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 
-class _Tty:
+class Tty:
     def isatty(self) -> bool:
+        """Report a terminal, so the prompt is offered."""
         return True
 
 @pytest.fixture
 def human(monkeypatch):
     """A person at a terminal answering ``y``."""
-    monkeypatch.setattr("sys.stdin", _Tty())
+    monkeypatch.setattr("sys.stdin", Tty())
     monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
 
-def _untouched(repo: Path) -> None:
+def untouched(repo: Path) -> None:
+    """Shared test helper."""
     assert not (repo / "roadmap" / "decisions.yaml").exists()
     assert not list(reviews_dir(repo, "M1.1").glob("DEFERRAL-*"))
     assert [n["id"] for n in load_roadmap(repo)["nodes"]] == ["M1.1"]
 
-def _two_fail_round(repo: Path, n: int, *, correctness: bool) -> None:
+def two_fail_round(repo: Path, n: int, *, correctness: bool) -> None:
     """opus blocks on A1 (boundary) and, when ``correctness``, on A2 with a correctness finding."""
     commit_file(repo, f"src/m{n}.py", f"m = {n}\n", f"mixed {n}")
     text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", a1="fail")
@@ -77,11 +83,11 @@ def _two_fail_round(repo: Path, n: int, *, correctness: bool) -> None:
         text = text.replace("A2: pass", "A2: fail").replace("correctness: []", "correctness:\n  - A2 regressed")
     notes = repo.parent / "notes.md"
     notes.write_text(text.replace("boundary: []", "boundary:\n  - CRLF input still warns"))
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
+    assert run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 
 def bound_ledger(rca: str, marker_items: list[dict], did: str = "D9") -> dict:
-    """A ledger whose one closed decision is worded as ``review defer``'s ``_record`` words it."""
+    """A ledger whose one closed decision is worded as ``review defer``'s ``record`` words it."""
     return {"version": 1, "entries": [{
         "id": did, "node": "M1.1", "kind": "decision", "summary": "s",
         "why_now": f"{rca} recommends defer_findings: defer the new class",
@@ -90,10 +96,10 @@ def bound_ledger(rca: str, marker_items: list[dict], did: str = "D9") -> dict:
         "answer": f"Deferred by T <t@e.com> from {rca}: " + "; ".join(f"{answer_item(x)} -> M1.2"
                                                                      for x in marker_items)}]}
 
-def _forge_closed_deferral(repo: Path, items: list[dict], round_: int = 2) -> None:
+def forge_closed_deferral(repo: Path, items: list[dict], round_: int = 2) -> None:
     """An RCA, a closed decision in ``review defer``'s shape and a marker, all written by hand: the gate must
     still re-check the items against the history."""
-    _write_rca(repo, _record(round_, items))
+    write_rca(repo, record(round_, items))
     marker = [{k: x[k] for k in ("reviewer", "commit", "finding", "category", "acceptance_id", "input_class")}
               for x in items]
     (repo / "roadmap" / "decisions.yaml").write_text(yaml.safe_dump(bound_ledger(f"RCA-{round_}.md", marker)))

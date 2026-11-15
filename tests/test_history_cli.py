@@ -13,7 +13,7 @@ import pytest
 
 from specy_road.history_index import clear_memo
 from tests.support.extracted.history_walk import M01_KEY, commit, edit_node, git, repo
-from tests.support.same.no_memo_7c8ae8741ef9 import _no_memo
+from tests.support.same.no_memo_7c8ae8741ef9 import no_memo
 
 __all__ = ["repo"]  # re-exported fixture
 

@@ -12,8 +12,8 @@ from tests.support.extracted.nested_repo_worktrees import add_nested_repo
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import render_front_matter, reviews_dir
-from tests.support.same.cli_02173e685269 import _cli
-from tests.support.same.status_54517de2b19f import _status
+from tests.support.same.cli_02173e685269 import cli
+from tests.support.same.status_54517de2b19f import status
 
 #: Rows of one table: dirty in-zone paths are refused and named; the boundary rows and nested-only work are not.
 _LEAF = {
@@ -68,7 +68,7 @@ def test_ready_refuses_only_in_zone_dirt_and_an_empty_leaf(tmp_path: Path, capsy
     repo = _prepare(tmp_path, kind)
     named, code = _LEAF[kind]
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == code
+    assert cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == code
     err = capsys.readouterr().err
     ready = _ready_path(repo)
     if code:
@@ -102,7 +102,7 @@ def test_ready_names_a_covered_nested_repo_it_cannot_assess(
             f"  - {{path: src/engine, integration_branch: {integration_branch}}}\n",
         ), encoding="utf-8")
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == code
+    assert cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == code
     err = capsys.readouterr().err
     ready = _ready_path(repo)
     if code:
@@ -119,7 +119,7 @@ def test_a_preflight_refusal_runs_no_command(tmp_path: Path, monkeypatch, capsys
     monkeypatch.chdir(repo)
     marker = tmp_path / "marker"
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--run", f"touch {marker}", "--repo-root", str(repo)) == 1
+    assert cli("ready", "M1.1", "--model", "opus", "--run", f"touch {marker}", "--repo-root", str(repo)) == 1
     assert not marker.exists()
     assert not _ready_path(repo).exists()
 
@@ -131,12 +131,12 @@ def test_a_preflight_refusal_runs_no_command(tmp_path: Path, monkeypatch, capsys
 def test_a_run_that_dirties_a_zone_or_moves_head_keeps_the_existing_ready(
         tmp_path: Path, monkeypatch, capsys, cmd: str) -> None:
     repo = make_review_repo(tmp_path)
-    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == 0
+    assert cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == 0
     ready = _ready_path(repo)
     before = ready.read_bytes()
     monkeypatch.chdir(repo)
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--repo-root", str(repo)) == 1
+    assert cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--repo-root", str(repo)) == 1
     assert ready.read_bytes() == before
     err = capsys.readouterr().err
     assert "src/from-run.py" in err or "HEAD moved during --run" in err
@@ -161,14 +161,14 @@ def _hand_ready(repo: Path, *, blocked: bool) -> None:
 def test_status_rows_for_an_empty_a_blocked_and_a_nonempty_ready(tmp_path: Path, capsys, kind: str) -> None:
     repo = make_review_repo(tmp_path)
     if kind == "nonempty":
-        assert _cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == 0
+        assert cli("ready", "M1.1", "--model", "opus", "--verify", "true=0", "--repo-root", str(repo)) == 0
     else:
         git(repo, "reset", "--hard", "dev")
         _hand_ready(repo, blocked=kind == "blocked")
     capsys.readouterr()
-    text_code = _cli("handoff", "status", "M1.1", "--repo-root", str(repo))
+    text_code = cli("handoff", "status", "M1.1", "--repo-root", str(repo))
     text = capsys.readouterr().out
-    st = _status(repo, capsys)
+    st = status(repo, capsys)
     if kind == "empty":
         assert text_code == 1 and st["state"] == "waiting"
         assert "INVALID" in text and "commit resolves to its base" in text

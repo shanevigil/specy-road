@@ -15,7 +15,7 @@ from tests.support.review import make_review_repo
 from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
 from specy_road.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
-from tests.support.same.crud_87ad31dc4313 import _crud
+from tests.support.same.crud_87ad31dc4313 import crud
 
 NK = "11111111-1111-5111-8111-111111111111"
 
@@ -32,10 +32,10 @@ def _claim_zones(repo: Path) -> list[str]:
 
 def test_add_and_remove_a_zone_keep_the_rest_and_the_claim_follows(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
-    _crud(repo, "edit-node", "M1.1", "--add", "touch_zones=docs")
+    crud(repo, "edit-node", "M1.1", "--add", "touch_zones=docs")
     assert _node(repo)["touch_zones"] == ["src", "docs"]
     assert _claim_zones(repo) == ["src", "docs"]
-    _crud(repo, "edit-node", "M1.1", "--remove", "touch_zones=src")
+    crud(repo, "edit-node", "M1.1", "--remove", "touch_zones=src")
     assert _node(repo)["touch_zones"] == ["docs"]
     assert _claim_zones(repo) == ["docs"]
     assert "touch_zones now match M1.1" in capsys.readouterr().err
@@ -43,16 +43,16 @@ def test_add_and_remove_a_zone_keep_the_rest_and_the_claim_follows(tmp_path: Pat
 
 def test_acceptance_entries_add_and_remove(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    _crud(repo, "edit-node", "M1.1", "--add", "acceptance=Works, offline too", "--remove", "acceptance=a.py exists")
+    crud(repo, "edit-node", "M1.1", "--add", "acceptance=Works, offline too", "--remove", "acceptance=a.py exists")
     assert _node(repo)["acceptance"] == ["nothing else breaks", "Works, offline too"]
 
 
 def test_dependencies_take_an_id_or_a_key(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    _crud(repo, "add-node", "--id", "M1.2", "--type", "task", "--title", "Other", "--parent-id", "null")
-    _crud(repo, "edit-node", "M1.2", "--add", "dependencies=M1.1")
+    crud(repo, "add-node", "--id", "M1.2", "--type", "task", "--title", "Other", "--parent-id", "null")
+    crud(repo, "edit-node", "M1.2", "--add", "dependencies=M1.1")
     assert _node(repo, "M1.2")["dependencies"] == [NK]
-    _crud(repo, "edit-node", "M1.2", "--remove", f"dependencies={NK}")
+    crud(repo, "edit-node", "M1.2", "--remove", f"dependencies={NK}")
     assert _node(repo, "M1.2")["dependencies"] == []
 
 
@@ -60,7 +60,7 @@ def test_duplicate_add_leaves_the_list_and_writes_nothing(tmp_path: Path, capsys
     repo = make_review_repo(tmp_path)
     chunk = repo / "roadmap" / "phases" / "M1.json"
     before = chunk.read_bytes(), registry_path(repo).read_bytes()
-    _crud(repo, "edit-node", "M1.1", "--add", "touch_zones=src")
+    crud(repo, "edit-node", "M1.1", "--add", "touch_zones=src")
     assert (chunk.read_bytes(), registry_path(repo).read_bytes()) == before
     out = capsys.readouterr()
     assert "[note] M1.1 already lists touch_zones entry 'src'; left as is" in out.err
@@ -69,7 +69,7 @@ def test_duplicate_add_leaves_the_list_and_writes_nothing(tmp_path: Path, capsys
 
 def test_removing_a_missing_entry_leaves_the_list(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
-    _crud(repo, "edit-node", "M1.1", "--remove", "touch_zones=lib", "--add", "touch_zones=docs")
+    crud(repo, "edit-node", "M1.1", "--remove", "touch_zones=lib", "--add", "touch_zones=docs")
     assert _node(repo)["touch_zones"] == ["src", "docs"]
     assert "[note] M1.1 does not list touch_zones entry 'lib'; left as is" in capsys.readouterr().err
 
@@ -88,6 +88,6 @@ def test_bad_list_edits_are_refused_before_writing(tmp_path: Path, capsys, argv,
     chunk = repo / "roadmap" / "phases" / "M1.json"
     before = chunk.read_bytes()
     with pytest.raises(SystemExit):
-        _crud(repo, "edit-node", "M1.1", *argv)
+        crud(repo, "edit-node", "M1.1", *argv)
     assert chunk.read_bytes() == before
     assert message in capsys.readouterr().err

@@ -8,7 +8,8 @@ import subprocess
 import sys
 from tests.helpers import REPO
 
-def _pre_tool_use(cmd: str) -> dict:
+def pre_tool_use(cmd: str) -> dict:
+    """Shared test helper."""
     return {
         "session_id": "abc", "transcript_path": "/tmp/t.jsonl", "cwd": "/tmp", "permission_mode": "default",
         "hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_use_id": "toolu_1",
@@ -17,8 +18,8 @@ def _pre_tool_use(cmd: str) -> dict:
 
 PAYLOADS = {
     "generic": lambda cmd: {"command": cmd},
-    "claude-code": _pre_tool_use,
-    "codex": _pre_tool_use,
+    "claude-code": pre_tool_use,
+    "codex": pre_tool_use,
     "cursor": lambda cmd: {"conversation_id": "c", "generation_id": "g", "hook_event_name": "beforeShellExecution",
                            "workspace_roots": ["/tmp"], "command": cmd, "cwd": "/tmp", "sandbox": False},
 }
@@ -27,7 +28,8 @@ DENY = {   # (exit code, where the reason appears)
     "generic": (2, "stderr"), "claude-code": (2, "stderr"), "codex": (2, "stderr"), "cursor": (0, "stdout"),
 }
 
-def _run(repo: Path, fmt: str, payload: dict, *extra: str) -> subprocess.CompletedProcess[str]:
+def run(repo: Path, fmt: str, payload: dict, *extra: str) -> subprocess.CompletedProcess[str]:
+    """Shared test helper."""
     env = script_subprocess_env()
     env["SPECY_ROAD_AGENT_ID"] = "me"
     return subprocess.run(

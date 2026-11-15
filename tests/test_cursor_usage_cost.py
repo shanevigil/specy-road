@@ -24,8 +24,8 @@ from tests.support.extracted.cursor_usage_cost import (
     CODEX_ROSTER,
     PROFILES,
     REPO_ROOT,
-    _api_id_for,
-    _codex_repo,
+    api_id_for,
+    codex_repo,
     priced_repo,
 )
 
@@ -103,7 +103,7 @@ def test_cursor_parse_events_estimates_cost_for_cached_input(tmp_path: Path, lay
     if layout == "nested":
         assert workspace != project and (workspace / ".specyrd" / "manifest.json").is_file()
         assert (project / "roadmap" / "orchestration.yaml").is_file()
-    api_id = _api_id_for(project, "priced")
+    api_id = api_id_for(project, "priced")
     assert api_id == "composer-2.5" and api_id != "priced"
     cu = wa.adapter_for("cursor")
     reset_cursor_adapter_via_init(cu)
@@ -117,7 +117,7 @@ def test_cursor_parse_events_estimates_cost_for_cached_input(tmp_path: Path, lay
 
 def test_cursor_resume_parse_events_estimates_cost_for_cached_input(tmp_path: Path) -> None:
     repo = _cursor_repo(tmp_path)
-    api_id = _api_id_for(repo, "priced")
+    api_id = api_id_for(repo, "priced")
     cu = wa.adapter_for("cursor")
     reset_cursor_adapter_via_init(cu)
     resumed = cu.resume("c1", _prompt(tmp_path), repo, api_id, None)
@@ -128,8 +128,8 @@ def test_cursor_resume_parse_events_estimates_cost_for_cached_input(tmp_path: Pa
 
 def test_codex_parse_events_estimates_cost_for_cached_input_on_launch_and_resume(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    repo = _codex_repo(tmp_path)
-    api_id = _api_id_for(repo, "priced")
+    repo = codex_repo(tmp_path)
+    api_id = api_id_for(repo, "priced")
     assert api_id == "gpt-6.1-sol" and api_id != "priced"
     cx = wa.adapter_for("codex")
     launch = cx.launch(_prompt(tmp_path), repo, api_id, None)
@@ -145,7 +145,7 @@ def test_codex_parse_events_estimates_cost_for_cached_input_on_launch_and_resume
 
 def test_cursor_parse_events_leaves_cost_null_when_profile_has_no_price(tmp_path: Path) -> None:
     repo = _cursor_repo(tmp_path)
-    api_id = _api_id_for(repo, "unpriced")
+    api_id = api_id_for(repo, "unpriced")
     cu = wa.adapter_for("cursor")
     reset_cursor_adapter_via_init(cu)
     launch = cu.launch(_prompt(tmp_path), repo, api_id, None)
@@ -157,7 +157,7 @@ def test_worker_usage_shows_estimated_cursor_cost(tmp_path: Path, capsys) -> Non
     from specy_road.orchestration.workers import worker_runner as wr
 
     repo = _cursor_repo(tmp_path)
-    api_id = _api_id_for(repo, "priced")
+    api_id = api_id_for(repo, "priced")
     script = tmp_path / "fake-cursor.py"
     script.write_text(
         "import json, sys\n"

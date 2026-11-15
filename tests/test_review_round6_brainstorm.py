@@ -36,7 +36,7 @@ from specy_road.brainstorm_session import (
     read_session,
 )
 from specy_road.gui_app_routes_brainstorm import _payload
-from tests.support.same.cli_4bb09fdf3883 import _cli
+from tests.support.same.cli_4bb09fdf3883 import cli
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = "how-do-we-expand-payments"
@@ -48,7 +48,7 @@ FORBIDDEN = ("planning/", "roadmap/", "registry.yaml", "shared/", "Do not edit c
 
 
 def _started(repo: Path, *extra: str) -> BrainstormSession:
-    code, _out, err = _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
+    code, _out, err = cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
     assert code == 0, err
     return read_session(repo, SLUG)
 
@@ -156,7 +156,7 @@ def test_revise_rejects_an_overlap_without_a_node_id(repo: Path) -> None:
 
     write_session(repo, session)
 
-    code, _out, err = _cli(repo, "revise", "B1", "--overlap", ":adjacent")
+    code, _out, err = cli(repo, "revise", "B1", "--overlap", ":adjacent")
 
     assert code == 1
     assert "node id" in err
@@ -176,7 +176,7 @@ def test_add_evidence_with_an_empty_url_is_a_brainstorm_error(repo: Path) -> Non
 
     write_session(repo, session)
 
-    code, _out, err = _cli(repo, "add-evidence", "B1", "--url", "", "--quote", "q")
+    code, _out, err = cli(repo, "add-evidence", "B1", "--url", "", "--quote", "q")
 
     assert code == 1
     assert "--url is required" in err
@@ -197,7 +197,7 @@ def test_a_loaded_source_with_an_unknown_stance_is_rejected() -> None:
 
 
 def test_start_help_no_longer_claims_research(repo: Path) -> None:
-    _code, out, _err = _cli(repo, "-h")
+    _code, out, _err = cli(repo, "-h")
     flat = " ".join(out.split())   # argparse wraps the description
     assert "no research in round 1" in flat
     assert "Socratic questioning, research)" not in flat

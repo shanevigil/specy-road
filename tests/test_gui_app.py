@@ -10,7 +10,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
-from tests.support.same.mutation_headers_1fdfef6b66c9 import _mutation_headers
+from tests.support.same.mutation_headers_1fdfef6b66c9 import mutation_headers
 
 
 def _expected_gui_repo_id(path: Path) -> str:
@@ -298,7 +298,7 @@ def test_api_workspace_upload_shared_ok(
     r = api_client.post(
         "/api/workspace/upload",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json=payload,
@@ -318,7 +318,7 @@ def test_api_workspace_upload_rejects_non_shared(
     r = api_client.post(
         "/api/workspace/upload",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json=payload,
@@ -334,7 +334,7 @@ def test_api_workspace_upload_rejects_invalid_base64(
     r = api_client.post(
         "/api/workspace/upload",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json=payload,

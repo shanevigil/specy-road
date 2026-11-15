@@ -14,7 +14,7 @@ import pytest
 import fnmatch
 import tomllib
 from pathlib import Path
-from tests.support.same.declared_package_data_d6ce072f444e import _declared_package_data
+from tests.support.same.declared_package_data_d6ce072f444e import declared_package_data
 pytestmark = pytest.mark.repo
 
 REPO = Path(__file__).resolve().parent.parent
@@ -31,7 +31,7 @@ def _bundled_schemas() -> list[str]:
 
 
 def test_bundled_schemas_are_covered_by_package_data() -> None:
-    patterns = _declared_package_data()
+    patterns = declared_package_data()
     uncovered = [
         rel
         for rel in _bundled_schemas()

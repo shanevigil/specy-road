@@ -3,5 +3,6 @@ from __future__ import annotations
 
 import re
 
-def _quoted(block: str) -> list[str]:
+def quoted(block: str) -> list[str]:
+    """Shared test helper."""
     return re.findall(r'"([^"]*)"', block)

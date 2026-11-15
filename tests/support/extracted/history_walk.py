@@ -9,7 +9,7 @@ import pytest
 import shutil
 import subprocess
 
-_ENV = {
+ENV = {
     "GIT_AUTHOR_NAME": "pat",
     "GIT_AUTHOR_EMAIL": "pat@example.com",
     "GIT_COMMITTER_NAME": "pat",
@@ -24,7 +24,7 @@ M03_KEY = "cd44fef1-715a-5b8d-b03f-1752a61a47cc"
 
 def git(repo: Path, *args: str) -> str:
     env = os.environ.copy()
-    env.update(_ENV)
+    env.update(ENV)
     r = subprocess.run(
         ["git", *args], cwd=repo, capture_output=True, text=True, check=True, env=env
     )

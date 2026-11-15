@@ -13,7 +13,7 @@ def run_chore_cli(*args: str) -> int:
         chore_cli.main(list(args))
     return e.value.code or 0
 
-_RULES = ("# Rules\n\nRead the docs.\n<!-- prevents: drift | enforced: advisory | ref: x -->\n"
+RULES = ("# Rules\n\nRead the docs.\n<!-- prevents: drift | enforced: advisory | ref: x -->\n"
           "Run validate.\n<!-- prevents: bad graphs | enforced: specy-road validate | ref: y -->\n")
 
 def garden_repo(tmp_path: Path, *, tag: bool = True, cadence: int | None = None) -> Path:
@@ -32,11 +32,12 @@ def garden_repo(tmp_path: Path, *, tag: bool = True, cadence: int | None = None)
         git(repo, "tag", "v1")
     for rel, text in (("constraints/base.txt", "a\nb\nc\n"),
                       ("docs/guide.md", "# Guide\n\nRun `specy-road grind` then run `specy-road validate`.\n"),
-                      ("AGENTS.md", "# Agents\n\n- specy-road nope --flag\n"), (".specyrd/AGENTS.md", _RULES)):
+                      ("AGENTS.md", "# Agents\n\n- specy-road nope --flag\n"), (".specyrd/AGENTS.md", RULES)):
         commit_file(repo, rel, text, f"drift in {rel}")
     return repo
 
-def _roadmap_bytes(repo: Path) -> dict[str, bytes]:
+def roadmap_bytes(repo: Path) -> dict[str, bytes]:
+    """Shared test helper."""
     return {p.relative_to(repo).as_posix(): p.read_bytes()
             for base in ("roadmap", "planning") if (repo / base).is_dir()
             for p in sorted((repo / base).rglob("*")) if p.is_file()}

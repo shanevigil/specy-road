@@ -9,7 +9,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
-from tests.support.same.mutation_headers_1fdfef6b66c9 import _mutation_headers
+from tests.support.same.mutation_headers_1fdfef6b66c9 import mutation_headers
 
 
 
@@ -70,7 +70,7 @@ def test_api_workspace_file_put_roundtrip(
         "/api/workspace/file",
         params={"path": path},
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={"content": content},
@@ -105,7 +105,7 @@ def test_api_workspace_file_put_rejects_non_shared(
         "/api/workspace/file",
         params={"path": "work/x.md"},
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={"content": "x"},

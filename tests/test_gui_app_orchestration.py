@@ -19,7 +19,7 @@ from specy_road.orchestration.workers.worker_sandbox import state_home
 from specy_road.orchestration.workers.worker_state import create_record, set_state, workers_dir
 from tests.helpers import REPO
 from tests.support.review import make_review_repo, review_text, git
-from tests.support.same.quoted_aa331427ddf7 import _quoted
+from tests.support.same.quoted_aa331427ddf7 import quoted
 
 NODE = "M1.1"
 ROSTER = (
@@ -66,17 +66,17 @@ def required_key_paths() -> set[str]:
     src = TS.read_text(encoding="utf-8")
     match = re.search(r"export const requiredKeys:.*?= \[(.*?)\];", src, re.S)
     assert match is not None
-    known = {"WORKER_REQUIRED": _quoted(re.search(r"const WORKER_REQUIRED = \[(.*?)\];", src, re.S).group(1))}
+    known = {"WORKER_REQUIRED": quoted(re.search(r"const WORKER_REQUIRED = \[(.*?)\];", src, re.S).group(1))}
     out: list[str] = []
     for raw in match.group(1).splitlines():
         line = raw.strip().rstrip(",")
         spread = re.match(r"\.\.\.under\(\"([^\"]+)\",\s*(\[[^\]]*\]|[A-Z_]+)\)", line)
         if spread:
             prefix, keys = spread.group(1), spread.group(2)
-            names = _quoted(keys) if keys.startswith("[") else known[keys]
+            names = quoted(keys) if keys.startswith("[") else known[keys]
             out.extend(f"{prefix}.{item}" for item in names)
-        elif _quoted(line):
-            out.append(_quoted(line)[0])
+        elif quoted(line):
+            out.append(quoted(line)[0])
     return set(out)
 
 

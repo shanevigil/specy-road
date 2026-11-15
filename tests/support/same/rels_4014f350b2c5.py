@@ -4,5 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from specy_road.agents_md_block import injected_context
 
-def _rels(root: Path, harness: str) -> list[str]:
+def rels(root: Path, harness: str) -> list[str]:
+    """Shared test helper."""
     return [f.rel for f in injected_context(root)[harness]]

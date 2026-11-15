@@ -19,8 +19,8 @@ import specy_road.ready_run_checks as ready_run_checks
 from specy_road.ready_run_checks import parse_run_argv, run_argv, run_check
 from specy_road.review_files import load_ready, reviews_dir
 from specy_road.review_gate_ready import add_ready_parser
-from tests.support.same.cli_02173e685269 import _cli
-from tests.support.same.status_54517de2b19f import _status
+from tests.support.same.cli_02173e685269 import cli
+from tests.support.same.status_54517de2b19f import status
 
 # Examples named in ``--run-argv`` help (must stay in sync with ``add_ready_parser``).
 RUN_ARGV_HELP_REFUSED = ("not-json", "[]", "{}", "[1]", '[""]')
@@ -46,7 +46,7 @@ def test_ready_writes_a_valid_hand_off_from_a_worktree(tmp_path: Path, capsys) -
     wt = tmp_path / "wt"
     git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
     assert "ready" in registered_agent_command_names()["specy-road"]
-    assert _cli("ready", "M1.1", "--model", "opus", "--verify", 'pytest -k "a=b"=0', "--verify", "ruff .=0",
+    assert cli("ready", "M1.1", "--model", "opus", "--verify", 'pytest -k "a=b"=0', "--verify", "ruff .=0",
                 "--red-green", "pytest tests/test_a.py=1", "--repo-root", str(wt)) == 0
     path = reviews_dir(repo, "M1.1") / "READY-opus.md"   # the main checkout's directory
     r = load_ready(path, "M1.1", "feature/rm-thing")
@@ -56,7 +56,7 @@ def test_ready_writes_a_valid_hand_off_from_a_worktree(tmp_path: Path, capsys) -
     assert r.data["changed_paths"] == ["docs/x.md", "src/a.py"]
     assert r.data["verify"] == [{"cmd": 'pytest -k "a=b"', "exit": 0}, {"cmd": "ruff .", "exit": 0}]
     assert "## Red-green evidence" in r.body and "- `pytest tests/test_a.py` exited 1" in r.body
-    st = _status(wt, capsys)
+    st = status(wt, capsys)
     assert st["state"] == "in-review" and st["ready"][0]["errors"] == []
     assert not any("exited" in p or "verif" in p for p in st["problems"])   # red-green evidence does not gate
 
@@ -64,7 +64,7 @@ def test_ready_writes_a_valid_hand_off_from_a_worktree(tmp_path: Path, capsys) -
 def test_ready_refuses_a_failing_verifier_and_writes_nothing(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--verify", "pytest tests/t.py=1",
+    assert cli("ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--verify", "pytest tests/t.py=1",
                 "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
     assert "failing verifier: `pytest tests/t.py` exited 1" in err and "--red-green" in err
@@ -74,10 +74,10 @@ def test_ready_refuses_a_failing_verifier_and_writes_nothing(tmp_path: Path, cap
 def test_ready_refuses_a_bad_spec_and_an_unregistered_branch(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "pytest", "--repo-root", str(repo)) == 1
+    assert cli("ready", "M1.1", "--model", "opus", "--verify", "pytest", "--repo-root", str(repo)) == 1
     assert "expected '<cmd>=<exit>'" in capsys.readouterr().err
     git(repo, "checkout", "-q", "-b", "feature/other")
-    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)) == 1
+    assert cli("ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)) == 1
     assert "not the registered 'feature/rm-thing'" in capsys.readouterr().err
     assert not reviews_dir(repo, "M1.1").exists()
 
@@ -87,10 +87,10 @@ def test_ready_warns_when_the_trial_merge_handoff_status_makes_conflicts(tmp_pat
     repo = make_review_repo(tmp_path)
     path = diverge(repo, case)
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)) == 0
+    assert cli("ready", "M1.1", "--model", "opus", "--verify", "pytest=0", "--repo-root", str(repo)) == 0
     err = capsys.readouterr().err
     assert (reviews_dir(repo, "M1.1") / "READY-opus.md").exists()   # a warning, not a refusal
-    st = _status(repo, capsys)
+    st = status(repo, capsys)
     if case == "code":
         assert st["trial_merge"]["blocking"] == [path]
         assert f"warning: refs/heads/dev is 1 commit(s) ahead and a trial merge conflicts on {path}" in err
@@ -107,7 +107,7 @@ def test_handoff_status_still_validates_a_hand_written_ready(tmp_path: Path, cap
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True)
     (d / "READY-composer.md").write_text("node_id: M1.1\nagent: composer\n")   # no front matter
-    st = _status(repo, capsys)
+    st = status(repo, capsys)
     assert st["state"] == "waiting"
     assert st["ready"][0]["errors"] == ["missing YAML front matter (--- … ---) at the top of the file"]
 
@@ -126,7 +126,7 @@ def test_ready_run_records_the_tail_and_the_packet_shows_it(tmp_path: Path, monk
     monkeypatch.chdir(repo)   # --run runs from the current directory, as the executor would
     script = "import sys; print('noise', flush=True); print('12 passed', file=sys.stderr)"
     cmd = f'python3 -c "{script}"'
-    assert _cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--verify", "ruff .=0",
+    assert cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--verify", "ruff .=0",
                 "--repo-root", str(repo)) == 0
     assert f"running: {cmd}" in capsys.readouterr().err
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
@@ -147,7 +147,7 @@ def test_ready_runs_the_checks_ready_entries_before_its_run_commands(tmp_path: P
     checks = ("checks:\n  - {name: suite, run: echo suite ok, when: ready}\n"
               "  - {name: leaf, run: echo leaf, when: prompt}\n")
     gw.write_text(gw.read_text(encoding="utf-8") + checks, encoding="utf-8")
-    assert _cli("ready", "M1.1", "--model", "opus", "--run", "echo mine",
+    assert cli("ready", "M1.1", "--model", "opus", "--run", "echo mine",
                 "--repo-root", str(repo)) == 0
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
     assert r.data["verify"] == [{"cmd": "echo suite ok", "exit": 0, "tail": "suite ok"},
@@ -160,12 +160,12 @@ def test_ready_run_refuses_a_failing_command_with_its_tail_and_writes_nothing(tm
     monkeypatch.chdir(tmp_path)
     capsys.readouterr()
     cmd = "python3 -c \"import sys; print('1 failed'); sys.exit(3)\""
-    assert _cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--repo-root", str(repo)) == 1
+    assert cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
     assert f"failing verifier: `{cmd}` exited 3; its last lines:\n1 failed" in err and "--red-green" in err
     assert not (reviews_dir(repo, "M1.1") / "READY-opus.md").exists()
     git(repo, "checkout", "-q", "-b", "feature/other")   # a cheap refusal comes before any command runs
-    assert _cli("ready", "M1.1", "--model", "opus", "--run", "touch ran", "--repo-root", str(repo)) == 1
+    assert cli("ready", "M1.1", "--model", "opus", "--run", "touch ran", "--repo-root", str(repo)) == 1
     assert "not the registered" in capsys.readouterr().err and not (tmp_path / "ran").exists()
 
 
@@ -178,7 +178,7 @@ def test_ready_run_warns_when_exit_zero_but_tail_shows_cannot_open(tmp_path: Pat
         'bash -c \'for step in fail ok; do '
         'if [ "$step" = fail ]; then sh -c ": < /no/such/file" 2>&1 || true; else echo all_ok; fi; done\''
     )
-    assert _cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--verify", "ruff .=0",
+    assert cli("ready", "M1.1", "--model", "opus", "--run", cmd, "--verify", "ruff .=0",
                 "--repo-root", str(repo)) == 0
     err = capsys.readouterr().err
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
@@ -195,7 +195,7 @@ def test_ready_run_clean_tail_has_no_warning(tmp_path: Path, monkeypatch, capsys
     repo = make_review_repo(tmp_path)
     monkeypatch.chdir(repo)
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--run", "echo clean", "--verify", "ruff .=0",
+    assert cli("ready", "M1.1", "--model", "opus", "--run", "echo clean", "--verify", "ruff .=0",
                 "--repo-root", str(repo)) == 0
     err = capsys.readouterr().err
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
@@ -212,7 +212,7 @@ def test_ready_run_argv_without_shell_and_refuses_bad_json(tmp_path: Path, monke
     script = "import sys; print(sys.argv[1:])"
     argv_json = json.dumps(["python3", "-c", script, "$f has spaces"])
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", argv_json, "--verify", "ruff .=0",
+    assert cli("ready", "M1.1", "--model", "opus", "--run-argv", argv_json, "--verify", "ruff .=0",
                 "--repo-root", str(repo)) == 0
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
     assert r.ok, r.errors
@@ -221,11 +221,11 @@ def test_ready_run_argv_without_shell_and_refuses_bad_json(tmp_path: Path, monke
     assert "$f has spaces" in row["tail"]
     before_verify = r.data["verify"]
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", "not-json", "--repo-root", str(repo)) == 1
+    assert cli("ready", "M1.1", "--model", "opus", "--run-argv", "not-json", "--repo-root", str(repo)) == 1
     assert "not valid JSON" in capsys.readouterr().err
     assert load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing").data["verify"] == before_verify
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", "[]", "--repo-root", str(repo)) == 1
+    assert cli("ready", "M1.1", "--model", "opus", "--run-argv", "[]", "--repo-root", str(repo)) == 1
     assert "non-empty JSON array" in capsys.readouterr().err
 
 
@@ -267,7 +267,7 @@ def test_ready_run_argv_passes_empty_later_argument(tmp_path: Path, monkeypatch,
     monkeypatch.chdir(repo)
     spec = json.dumps(["python3", "-c", "import sys; print(repr(sys.argv[1:]))", ""])
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", spec, "--verify", "ruff .=0",
+    assert cli("ready", "M1.1", "--model", "opus", "--run-argv", spec, "--verify", "ruff .=0",
                 "--repo-root", str(repo)) == 0
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
     assert r.ok, r.errors
@@ -278,7 +278,7 @@ def test_ready_run_argv_help_accepted_example_runs(tmp_path: Path, monkeypatch, 
     repo = make_review_repo(tmp_path)
     monkeypatch.chdir(repo)
     capsys.readouterr()
-    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", RUN_ARGV_HELP_ACCEPTED[0], "--verify", "ruff .=0",
+    assert cli("ready", "M1.1", "--model", "opus", "--run-argv", RUN_ARGV_HELP_ACCEPTED[0], "--verify", "ruff .=0",
                 "--repo-root", str(repo)) == 0
     r = load_ready(reviews_dir(repo, "M1.1") / "READY-opus.md", "M1.1", "feature/rm-thing")
     assert r.ok, r.errors
@@ -306,7 +306,7 @@ def test_ready_validates_every_run_and_run_argv_before_executing(
     monkeypatch.chdir(repo)
     capsys.readouterr()
     ready_path = reviews_dir(repo, "M1.1") / "READY-opus.md"
-    code = _cli("ready", "M1.1", "--model", "opus", *extra_args, "--repo-root", str(repo))
+    code = cli("ready", "M1.1", "--model", "opus", *extra_args, "--repo-root", str(repo))
     assert code == expect_code
     err = capsys.readouterr().err
     if err_needle:
@@ -363,7 +363,7 @@ def test_ready_run_argv_missing_executable_refuses_without_writing_ready(tmp_pat
     capsys.readouterr()
     spec = json.dumps(["/definitely/missing/program"])
     ready_path = reviews_dir(repo, "M1.1") / "READY-opus.md"
-    assert _cli("ready", "M1.1", "--model", "opus", "--run-argv", spec, "--repo-root", str(repo)) == 1
+    assert cli("ready", "M1.1", "--model", "opus", "--run-argv", spec, "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
     assert "failing verifier" in err and "127" in err
     assert not ready_path.exists()
@@ -389,7 +389,7 @@ def test_ready_run_argv_embedded_nul_refuses_before_any_live_run(tmp_path: Path,
     spec = json.dumps(["echo", "\u0000"])
     capsys.readouterr()
     ready_path = reviews_dir(repo, "M1.1") / "READY-opus.md"
-    assert _cli("ready", "M1.1", "--model", "opus", "--run", f"touch {marker.name}", "--run-argv", spec,
+    assert cli("ready", "M1.1", "--model", "opus", "--run", f"touch {marker.name}", "--run-argv", spec,
                 "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
     assert "embedded NUL" in err and "argv[1]" in err

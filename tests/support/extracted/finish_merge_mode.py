@@ -3,26 +3,26 @@ from __future__ import annotations
 
 from pathlib import Path
 from tests.helpers import REPO
-from tests.support.same.commit_553cf5f7a1bf import _commit
-from tests.support.same.git_df16ee62bf81 import _git
+from tests.support.same.commit_553cf5f7a1bf import commit
+from tests.support.same.git_df16ee62bf81 import git as git_cmd
 from tests.support.review import commit_file, git
 from tests.support.review import make_review_repo
 import subprocess
 
-def _bootstrap(tmp_path: Path) -> tuple[Path, Path]:
+def bootstrap(tmp_path: Path) -> tuple[Path, Path]:
     """Init a sandbox repo with a bare 'origin', and master + feature branches."""
     bare = tmp_path / "remote.git"
     subprocess.check_call(["git", "init", "--bare", "-q", str(bare)])
     repo = tmp_path / "work"
     subprocess.check_call(["git", "init", "-q", "-b", "master", str(repo)])
-    _git(repo, "config", "user.email", "t@e.com")
-    _git(repo, "config", "user.name", "T")
-    _git(repo, "remote", "add", "origin", str(bare))
-    _commit(repo, "init")
-    _git(repo, "push", "-q", "-u", "origin", "master")
-    _git(repo, "checkout", "-b", "feature/rm-x")
-    _commit(repo, "feature work")
-    _git(repo, "push", "-q", "-u", "origin", "feature/rm-x")
+    git_cmd(repo, "config", "user.email", "t@e.com")
+    git_cmd(repo, "config", "user.name", "T")
+    git_cmd(repo, "remote", "add", "origin", str(bare))
+    commit(repo, "init")
+    git_cmd(repo, "push", "-q", "-u", "origin", "master")
+    git_cmd(repo, "checkout", "-b", "feature/rm-x")
+    commit(repo, "feature work")
+    git_cmd(repo, "push", "-q", "-u", "origin", "feature/rm-x")
     return repo, bare
 
 def merge_mode_finish_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:

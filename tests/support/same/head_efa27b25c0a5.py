@@ -4,5 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from tests.support.same.git_84c8ad8f55f9 import git
 
-def _head(repo: Path) -> str:
+def head(repo: Path) -> str:
+    """Shared test helper."""
     return git(repo, "rev-parse", "HEAD")

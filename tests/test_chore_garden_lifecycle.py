@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from tests.support.same.git_84c8ad8f55f9 import git
-from tests.support.extracted.chore_mode import _roadmap_bytes, garden_repo, run_chore_cli
+from tests.support.extracted.chore_mode import roadmap_bytes, garden_repo, run_chore_cli
 
 from specy_road.bundled_scripts import archive_cli, roadmap_crud
 from specy_road.roadmap_load import load_roadmap
@@ -60,10 +60,10 @@ def test_in_progress_leaf_is_skipped(tmp_path: Path, capsys) -> None:
     repo = garden_repo(tmp_path)
     first = _added(_open(repo, capsys)[1])
     _set(repo, first, "status=In Progress")
-    before = _roadmap_bytes(repo)
+    before = roadmap_bytes(repo)
     code, out, _ = _open(repo, capsys)
     assert code == 0 and f"stale-command: {first} is still open; added nothing" in out
-    assert _roadmap_bytes(repo) == before
+    assert roadmap_bytes(repo) == before
 
 
 @pytest.mark.slow
@@ -83,10 +83,10 @@ def test_complete_then_archived_takes_the_next_unused_number(tmp_path: Path, cap
     assert code == 0 and f"added {third} ({TITLE} (3))" in out
     assert [row for row in _stale(repo) if row[3] != "Complete"] == [
         (third, "garden-stale-command-3", f"{TITLE} (3)", "Not Started")]
-    before = _roadmap_bytes(repo)
+    before = roadmap_bytes(repo)
     code, out, _ = _open(repo, capsys)
     assert code == 0 and f"stale-command: {third} is still open; added nothing" in out
-    assert _roadmap_bytes(repo) == before
+    assert roadmap_bytes(repo) == before
 
 
 @pytest.mark.slow
@@ -142,19 +142,19 @@ def test_milestone_locked_parent_is_refused(tmp_path: Path, capsys, state: str) 
     doc["nodes"][0]["milestone_execution"] = {"state": state, "rollup_branch": "feature/rm-thing",
                                               "integration_branch": "dev", "remote": "origin"}
     chunk.write_text(json.dumps(doc))
-    before = _roadmap_bytes(repo)
+    before = roadmap_bytes(repo)
     code, _, err = _open(repo, capsys)
     assert code == 1
     assert "error: --under M1.1: add-node refused the stale-command leaf: roadmap node 'M1.1' is inside milestone " \
            "subtree 'M1.1'" in err
     assert "Pass another --under parent, or fix what add-node names, then run again." in err
-    assert _roadmap_bytes(repo) == before
+    assert roadmap_bytes(repo) == before
 
 
 def test_missing_parent_is_refused(tmp_path: Path, capsys) -> None:
     """Row: parent missing -> refuse (exit 1, names the fix); graph and planning unchanged."""
     repo = garden_repo(tmp_path)
-    before = _roadmap_bytes(repo)
+    before = roadmap_bytes(repo)
     code, _, err = _open(repo, capsys, under="M9")
     assert code == 1 and "add-node refused the stale-command leaf: parent_id 'M9' not found in roadmap" in err
-    assert "Pass another --under parent" in err and _roadmap_bytes(repo) == before
+    assert "Pass another --under parent" in err and roadmap_bytes(repo) == before

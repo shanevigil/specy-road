@@ -4,5 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 
-def _git(repo: Path, *args: str) -> None:
+def git(repo: Path, *args: str) -> None:
+    """Shared test helper."""
     subprocess.check_call(["git", *args], cwd=repo)

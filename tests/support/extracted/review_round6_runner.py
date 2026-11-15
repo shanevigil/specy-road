@@ -8,7 +8,8 @@ from specy_road.orchestration.workers import worker_adapters as wa
 
 OK = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
 
-def _launch(tmp_path: Path, script: Path, repo: Path, name: str, **spec):
+def launch(tmp_path: Path, script: Path, repo: Path, name: str, **spec):
+    """Shared test helper."""
     p = tmp_path / f"{name}.json"
     p.write_text(json.dumps({"lines": OK, **spec}))
     return wa.adapter_for("claude-code").launch(p, repo, "opus", f"{sys.executable} {script} {{prompt}}")

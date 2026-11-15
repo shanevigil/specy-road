@@ -17,7 +17,7 @@ from specy_road.review_override import policy_line
 from specy_road.review_files import load_ready, load_review, review_path, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.sibling_repos import sibling_repos
-from tests.support.same.gate_9f3572d00caf import _gate
+from tests.support.same.gate_9f3572d00caf import gate
 
 
 def _glob_escaped(rel: str) -> str:
@@ -80,10 +80,10 @@ def test_reported_case_sibling_code_and_root_summary_only_does_not_carry(tmp_pat
                 "# M1.1 Thing\n\n## Tier\n\ntrust boundary: the gate\n\n## Intent\n\nDo the thing.\n\n## References\n",
                 "tier")
     approved = _approve(repo)
-    assert _gate(repo).passed
+    assert gate(repo).passed
     commit_file(sib, "code.py", "x = 'unreviewed'\n", "rework in sibling only")
     commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n\nReworked.\n", "summary only")
-    g = _gate(repo)
+    g = gate(repo)
     assert not g.passed and not g.bookkeeping_carry and len(g.stale) == 1
     st = handoff_status_node(repo, capsys)
     assert not st["policy_met"]
@@ -101,11 +101,11 @@ def test_recorded_sibling_heads_must_still_hold_at_the_same_root_commit(tmp_path
     rec = load_review(review_path(repo, "M1.1", "opus"))
     assert rec.ok, rec.errors
     assert rec.data["sibling_heads"] == {"app": git(sib, "rev-parse", "HEAD")}
-    assert _gate(repo).passed
+    assert gate(repo).passed
     (sib / "code.py").write_text("x = 'dirty'\n")
-    assert not _gate(repo).passed                        # a sibling now dirty
+    assert not gate(repo).passed                        # a sibling now dirty
     commit_file(sib, "code.py", "x = 'moved'\n", "sibling moves")
-    g = _gate(repo)
+    g = gate(repo)
     assert not g.passed and len(g.stale) == 1
     assert "sibling repositories changed since the review (app)" in policy_line(g)
 
@@ -132,11 +132,11 @@ def test_an_approval_counts_only_while_the_recorded_sibling_map_holds(tmp_path: 
     assert run_review_cli("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                           "--file", str(notes_file(repo)), "--repo-root", str(repo)) == 0
     approved = git(repo, "rev-parse", "HEAD")
-    assert _gate(repo).passed
+    assert gate(repo).passed
     _change_siblings(repo, change)
     if root == "summary-only":
         commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
-    g = _gate(repo)
+    g = gate(repo)
     counts = change == "unchanged" and root == "same"
     assert g.passed is counts and len(g.stale) == (0 if counts else 1) and not g.bookkeeping_carry
     if change != "unchanged":
@@ -154,7 +154,7 @@ def test_a_record_without_sibling_heads_carries_when_no_sibling_remains(tmp_path
     _approve(repo)
     shutil.rmtree(repo / "app")
     commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
-    g = _gate(repo)
+    g = gate(repo)
     assert g.passed and g.bookkeeping_carry
 
 
@@ -163,9 +163,9 @@ def test_a_record_without_sibling_heads_counts_only_at_the_same_root_commit(tmp_
     sib = _sibling(repo)
     _approve(repo)
     commit_file(sib, "code.py", "x = 'moved'\n", "sibling moves")
-    assert _gate(repo).passed                            # no recorded heads: same root commit counts, as before
+    assert gate(repo).passed                            # no recorded heads: same root commit counts, as before
     commit_file(repo, NODE["planning_dir"], "# M1.1 Thing\n\n## Intent\n\nNew.\n\n## References\n", "sheet")
-    assert not _gate(repo).passed
+    assert not gate(repo).passed
 
 
 def test_ready_writes_sibling_heads(tmp_path: Path) -> None:
@@ -200,7 +200,7 @@ def test_policy_line_lists_each_approval_and_marks_a_carried_one(tmp_path: Path,
     old = _approve(repo, "opus")
     commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
     new = _approve(repo, "gpt")
-    g = _gate(repo)
+    g = gate(repo)
     assert g.passed and g.bookkeeping_carry
     line = (f"2/1 approvals (gpt@{new[:12]}, opus@{old[:12]} carried from an older commit), 0 block(s): met; "
             "approvals still count")
@@ -252,7 +252,7 @@ def test_a_sibling_named_with_glob_characters_beside_a_tracked_match(tmp_path: P
     assert len(lines) == 1 and f"({name})" in lines[0]
     commit_file(sib, "code.py", "x = 'unreviewed'\n", "rework in sibling only")
     commit_file(repo, "work/implementation-summary-M1.1.md", "# Summary\n", "summary only")
-    g = _gate(repo)
+    g = gate(repo)
     assert not g.passed and len(g.stale) == 1
 
 
@@ -273,7 +273,7 @@ def test_a_seven_character_legacy_commit_shows_twelve_characters(tmp_path: Path,
     _approve(repo, "opus")
     p = review_path(repo, "M1.1", "opus")
     p.write_text(p.read_text().replace(full, full[:7]))
-    g = _gate(repo)
+    g = gate(repo)
     assert g.passed
     assert policy_line(g).startswith(f"1/1 approvals (opus@{full[:12]}), 0 block(s): met")
     assert handoff_status_node(repo, capsys)["policy"].startswith(f"1/1 approvals (opus@{full[:12]})")
@@ -284,6 +284,6 @@ def test_a_record_whose_commit_does_not_resolve_says_so(tmp_path: Path) -> None:
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True, exist_ok=True)
     (d / "REVIEW-opus.md").write_text(review_text("deadbee", model="opus"))
-    g = _gate(repo)
+    g = gate(repo)
     assert not g.passed and len(g.stale) == 1
     assert "opus's approve at deadbee (not a commit in this repository) is stale: re-review" in policy_line(g)

@@ -19,8 +19,8 @@ from specy_road.bundled_scripts import doctor
 from tests.support.review import NODE, commit_file, make_review_repo, git
 from tests.support.extracted.doctor import (
     TOOLKIT_STASH,
-    _branch_with_commits,
-    _graph_and_registry,
+    branch_with_commits,
+    graph_and_registry,
     doctor_repo,
 )
 
@@ -294,7 +294,7 @@ def test_merged_how_needs_the_patch_upstream_not_just_the_files(tmp_path: Path) 
     """A branch whose diff differs from what landed is not merged, even with shared files."""
     repo = make_review_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
-    _branch_with_commits(repo, "feature/rm-x", "src/x.py")
+    branch_with_commits(repo, "feature/rm-x", "src/x.py")
     commit_file(repo, "src/x.py", "something else\n", "different content, same path")
     git(repo, "checkout", "-q", "--orphan", "feature/rm-orphan")
     commit_file(repo, "src/x.py", "something else\n", "same file, no shared history")

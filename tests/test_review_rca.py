@@ -12,8 +12,8 @@ from tests.support.review import commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.review_files import PACKET_NAME, reviews_dir
-from tests.support.same.run_651387813ee4 import _run
-from tests.support.extracted.review_rca import ROSTER, _block_round, _status
+from tests.support.same.run_651387813ee4 import run
+from tests.support.extracted.review_rca import ROSTER, block_round, status
 
 
 
@@ -26,20 +26,20 @@ from tests.support.extracted.review_rca import ROSTER, _block_round, _status
 @pytest.mark.slow
 def test_three_rounds_blocking_on_one_id_escalate_status_and_list(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
-    _block_round(repo, 1)
-    _block_round(repo, 2)
-    code, st = _status(repo, capsys)
+    block_round(repo, 1)
+    block_round(repo, 2)
+    code, st = status(repo, capsys)
     assert (code, st["state"], st["escalation"]) == (1, "blocked", None)
-    _block_round(repo, 3)
-    code, st = _status(repo, capsys)
+    block_round(repo, 3)
+    code, st = status(repo, capsys)
     assert (code, st["state"]) == (1, "escalated")
     assert st["escalation"]["rule"] == "same_acceptance" and st["escalation"]["acceptance_ids"] == ["A1"]
     assert st["escalation"]["round"] == 3
-    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
+    assert run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
     out = capsys.readouterr().out
     assert "M1.1: escalated" in out and "the last 3 review rounds all block on A1" in out
     assert "specy-road prompt M1.1 --role rca" in out
-    assert _run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
+    assert run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
     assert "escalated: the last 3 review rounds all block on A1" in capsys.readouterr().out
 
 
@@ -47,10 +47,10 @@ def test_three_rounds_blocking_on_one_id_escalate_status_and_list(tmp_path: Path
 def test_total_rounds_threshold_comes_from_policy(tmp_path: Path, capsys) -> None:
     policy = "policy: {escalate_same_acceptance_blocks: 3, escalate_review_rounds: 2}\n"
     repo = make_review_repo(tmp_path, orchestration=ROSTER + policy)
-    _block_round(repo, 1, a1="pass")
-    assert _status(repo, capsys)[1]["state"] == "blocked"
-    _block_round(repo, 2, a1="pass")
-    st = _status(repo, capsys)[1]
+    block_round(repo, 1, a1="pass")
+    assert status(repo, capsys)[1]["state"] == "blocked"
+    block_round(repo, 2, a1="pass")
+    st = status(repo, capsys)[1]
     assert st["state"] == "escalated" and st["escalation"]["rule"] == "review_rounds"
     assert "2 review rounds without converging" in st["escalation"]["describe"]
 
@@ -58,7 +58,7 @@ def test_total_rounds_threshold_comes_from_policy(tmp_path: Path, capsys) -> Non
 def _escalated_repo(tmp_path: Path) -> Path:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     for n in (1, 2, 3):
-        _block_round(repo, n)
+        block_round(repo, n)
     return repo
 
 
@@ -85,11 +85,11 @@ def test_rca_prompt_carries_history_diffs_and_protocol(tmp_path: Path) -> None:
 @pytest.mark.slow
 def test_rca_prompt_refuses_when_not_escalated_and_for_a_party(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
-    _block_round(repo, 1)
+    block_round(repo, 1)
     err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="sol")[2]
     assert "not escalated; no root-cause analysis is due" in err
     for n in (2, 3):
-        _block_round(repo, n)
+        block_round(repo, n)
     err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="opus")[2]
     assert "'opus' implemented or reviewed M1.1" in err
 
@@ -118,24 +118,24 @@ def _rca(repo: Path, *, primary: str = "specification", round_: int = 3, rewrite
 def test_rca_record_validates_and_resolves_the_escalation(tmp_path: Path, capsys) -> None:
     repo = _escalated_repo(tmp_path)
     bad = _rca(repo, rewrite=False)
-    st = _status(repo, capsys)[1]
+    st = status(repo, capsys)[1]
     assert st["state"] == "escalated"
     assert any("RCA-3.md: invalid" in p and "criterion_rewrite" in p for p in st["problems"])
     bad.unlink()
     _rca(repo, round_=4)
-    st = _status(repo, capsys)[1]
+    st = status(repo, capsys)[1]
     assert st["state"] == "escalated" and any("the history has 3 round(s)" in p for p in st["problems"])
     (reviews_dir(repo, "M1.1") / "RCA-4.md").unlink()
     _rca(repo)
-    code, st = _status(repo, capsys)
+    code, st = status(repo, capsys)
     assert (code, st["state"], st["escalation"]) == (1, "blocked", None)
     assert not any("RCA" in p for p in st["problems"])
-    assert _run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
+    assert run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "RCA-3.md: specification (0.8) by sol, through round 3 — amend_criterion" in out
     assert "escalated" not in out
-    _block_round(repo, 4)
-    assert _status(repo, capsys)[1]["state"] == "blocked"   # counting restarts after the analysis
+    block_round(repo, 4)
+    assert status(repo, capsys)[1]["state"] == "blocked"   # counting restarts after the analysis
 
 
 @pytest.mark.slow
@@ -153,14 +153,14 @@ def test_mismatched_or_non_independent_rca_keeps_escalation(tmp_path: Path, caps
             "acceptance_id": "A1", "original_text": "a.py exists", "proposed_text": "src/a.py exists",
             "finding_disposition": [{"finding": "round 2/opus", "label": "out_of_scope_now"}]},
     }, sort_keys=False) + "---\nreasoning\n")
-    code, st = _status(repo, capsys)
+    code, st = status(repo, capsys)
     assert code == 1 and st["state"] == "escalated" and st["escalation"]["rule"] == "same_acceptance"
     problems = " ".join(st["problems"])
     assert "RCA-3.md: invalid" in problems and "trigger.rule" in problems
     assert "implemented or reviewed" in problems or "review_rounds" in problems
     path.unlink()
     _rca(repo)
-    assert _status(repo, capsys)[1]["state"] == "blocked"
+    assert status(repo, capsys)[1]["state"] == "blocked"
 
 
 @pytest.mark.slow
@@ -168,7 +168,7 @@ def test_schema_invalid_rca_is_reported_without_crashing_status(tmp_path: Path, 
     repo = _escalated_repo(tmp_path)
     (reviews_dir(repo, "M1.1") / "RCA-3.md").write_text(
         "---\nnode_id: M1.1\ntrigger: {rule: same_acceptance, round: three}\n---\nmalformed analyst record\n")
-    code, st = _status(repo, capsys)
+    code, st = status(repo, capsys)
     assert code == 1 and st["state"] == "escalated" and st["escalation"] is not None
     assert any("RCA-3.md: invalid" in p for p in st["problems"])
 
@@ -189,7 +189,7 @@ def test_two_spellings_of_one_commit_are_one_round(tmp_path: Path, capsys) -> No
     put("2.md", second[:12], verdict="approve", a1="pass")   # earlier spelling of the second commit
     put("3.md", second, verdict="block", a1="fail")          # later spelling is the one that counts
     put("4.md", third, verdict="block", a1="fail")
-    st = _status(repo, capsys)[1]
+    st = status(repo, capsys)[1]
     assert st["state"] == "escalated" and st["escalation"]["round"] == 3
     assert st["escalation"]["acceptance_ids"] == ["A1"]
 
@@ -216,7 +216,7 @@ def _family_round(repo: Path, n: int, model: str, verdict: str = "block", fails:
                        a1="fail" if blocks and fails == "A1" else "pass")
     notes = repo.parent / "notes.md"
     notes.write_text(text.replace("A2: pass", "A2: fail") if blocks and fails == "A2" else text)
-    assert _run("review", "record", "M1.1", "--model", model, "--verdict", verdict,
+    assert run("review", "record", "M1.1", "--model", model, "--verdict", verdict,
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 
 
@@ -225,9 +225,9 @@ def test_one_family_blocking_three_rounds_escalates_across_ids_and_models(tmp_pa
     repo = make_review_repo(tmp_path, orchestration=FAMILY_ROSTER)
     _family_round(repo, 1, "opus", fails="A1")
     _family_round(repo, 2, "sonnet", fails="A2")
-    assert _status(repo, capsys)[1]["state"] == "blocked"
+    assert status(repo, capsys)[1]["state"] == "blocked"
     _family_round(repo, 3, "opus", fails="A2")   # A1, A2, A2: no id fails in all three rounds
-    code, st = _status(repo, capsys)
+    code, st = status(repo, capsys)
     assert (code, st["state"]) == (1, "escalated")
     esc = st["escalation"]
     assert (esc["rule"], esc["family"], esc["acceptance_ids"], esc["round"]) == ("same_family", "anthropic", [], 3)
@@ -235,7 +235,7 @@ def test_one_family_blocking_three_rounds_escalates_across_ids_and_models(tmp_pa
     text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="sol")
     assert err is None and "trigger: {rule: same_family, acceptance_ids: [], round: 3}" in text
     _rca(repo, trigger={"rule": "same_family", "acceptance_ids": [], "round": 3})
-    code, st = _status(repo, capsys)
+    code, st = status(repo, capsys)
     assert (code, st["state"]) == (1, "blocked") and not any("RCA" in p for p in st["problems"])
 
 
@@ -246,14 +246,14 @@ def test_a_family_approval_resets_its_count_and_families_count_apart(tmp_path: P
     _family_round(repo, 2, "sonnet", fails="A2")
     _family_round(repo, 3, "opus", verdict="approve")
     _family_round(repo, 4, "sol", fails="A2")   # three blocks in a row, but from two families
-    code, st = _status(repo, capsys)
+    code, st = status(repo, capsys)
     assert (code, st["state"], st["escalation"]) == (1, "blocked", None)
 
 
 @pytest.mark.slow
 def test_force_starts_an_rca_with_a_recorded_reason(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
-    _block_round(repo, 1)
+    block_round(repo, 1)
     reason = "each round names a new input class"
     text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="sol", force_reason=reason)
     assert err is None
@@ -269,9 +269,9 @@ def test_force_starts_an_rca_with_a_recorded_reason(tmp_path: Path, capsys) -> N
     assert e.value.code == 0 and "rule: forced" in out.read_text()
     trigger = {"rule": "forced", "acceptance_ids": [], "round": 1}
     _rca(repo, round_=1, trigger=trigger)   # the reason is required
-    assert any("RCA-1.md: invalid" in p and "reason" in p for p in _status(repo, capsys)[1]["problems"])
+    assert any("RCA-1.md: invalid" in p and "reason" in p for p in status(repo, capsys)[1]["problems"])
     _rca(repo, round_=1, trigger={**trigger, "reason": reason})
-    code, st = _status(repo, capsys)
+    code, st = status(repo, capsys)
     assert (code, st["state"]) == (1, "blocked") and not any("RCA" in p for p in st["problems"])
     err = role_prompt.build_prompt(repo, "M1.1", role="rca", model="sol", force_reason=reason)[2]
     assert "no review round since the last root-cause analysis" in err
@@ -294,5 +294,5 @@ def test_an_active_escalation_wins_over_force(tmp_path: Path, capsys) -> None:
     assert err is None and "rule: same_acceptance" in text and "rule: forced" not in text
     assert "--force is ignored" in capsys.readouterr().err
     _rca(repo, trigger={"rule": "forced", "acceptance_ids": [], "round": 3, "reason": "why"})
-    st = _status(repo, capsys)[1]
+    st = status(repo, capsys)[1]
     assert st["state"] == "escalated" and any("trigger.rule is 'forced'" in p for p in st["problems"])

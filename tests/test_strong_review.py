@@ -20,8 +20,8 @@ from specy_road.orchestration_config import parse_orchestration_text
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, human_approval_completes
 from specy_road.review_gate import applicable_items, zones_meet
-from tests.support.same.gate_9f3572d00caf import _gate
-from tests.support.same.review_434036b364c2 import _review
+from tests.support.same.gate_9f3572d00caf import gate
+from tests.support.same.review_434036b364c2 import review
 
 #: The leaf's zone is ``src``; ``sonnet`` is the strong reviewer, so opus + sol meet the count but not the item.
 STRONG = TWO_FAMILIES.replace(
@@ -60,45 +60,45 @@ def test_applicable_items_lists_only_the_items_a_zone_meets() -> None:
 
 def test_leaf_inside_a_strong_zone_refuses_without_an_approval_from_the_set(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=STRONG)
-    _review(repo, "opus")
-    _review(repo, "sol")
-    g = _gate(repo)
+    review(repo, "opus")
+    review(repo, "sol")
+    g = gate(repo)
     assert g.approval_count == 2 and not g.passed   # the count is met; the item is not
     assert UNMET in g.problems()
 
 
 def test_an_approval_from_the_set_satisfies_the_item(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=STRONG)
-    _review(repo, "sonnet")
-    _review(repo, "sol")
-    g = _gate(repo)
+    review(repo, "sonnet")
+    review(repo, "sol")
+    g = gate(repo)
     assert g.passed, g.problems()
     assert g.strong_unmet == []
 
 
 def test_a_block_from_the_set_does_not_satisfy_the_item(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=STRONG)
-    _review(repo, "opus")
-    _review(repo, "sol")
-    _review(repo, "sonnet", verdict="block", a1="fail")
-    assert UNMET in _gate(repo).problems()
+    review(repo, "opus")
+    review(repo, "sol")
+    review(repo, "sonnet", verdict="block", a1="fail")
+    assert UNMET in gate(repo).problems()
 
 
 def test_an_ineligible_approval_from_the_set_does_not_satisfy_the_item(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=STRONG)
-    _review(repo, "opus")
-    _review(repo, "sol")
-    _review(repo, "sonnet", fresh=False)
-    g = _gate(repo)
+    review(repo, "opus")
+    review(repo, "sol")
+    review(repo, "sonnet", fresh=False)
+    g = gate(repo)
     assert any(r.path.name == "REVIEW-sonnet.md" for r, _ in g.ineligible)
     assert UNMET in g.problems() and not g.passed
 
 
 def test_leaf_outside_every_strong_zone_needs_only_the_usual_approvals(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=OUTSIDE)
-    _review(repo, "opus")
-    _review(repo, "sol")
-    assert _gate(repo).passed
+    review(repo, "opus")
+    review(repo, "sol")
+    assert gate(repo).passed
 
 
 def test_policy_on_the_feature_branch_alone_does_not_add_the_item(tmp_path: Path) -> None:
@@ -106,18 +106,18 @@ def test_policy_on_the_feature_branch_alone_does_not_add_the_item(tmp_path: Path
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
     (repo / "roadmap" / "orchestration.yaml").write_text(STRONG)
     git(repo, "commit", "-qam", "strong review on the branch only")
-    _review(repo, "opus")
-    _review(repo, "sol")
-    assert _gate(repo).passed
+    review(repo, "opus")
+    review(repo, "sol")
+    assert gate(repo).passed
 
 
 def test_human_completes_only_an_item_that_lists_the_human(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=STRONG)
-    _review(repo, "opus")
-    assert not human_approval_completes(repo, _gate(repo), NODE)
+    review(repo, "opus")
+    assert not human_approval_completes(repo, gate(repo), NODE)
     repo = make_review_repo(tmp_path / "h", orchestration=WITH_HUMAN)
-    _review(repo, "opus")
-    assert human_approval_completes(repo, _gate(repo), NODE)
+    review(repo, "opus")
+    assert human_approval_completes(repo, gate(repo), NODE)
 
 
 def test_unknown_require_one_of_id_is_a_config_error() -> None:
@@ -129,8 +129,8 @@ def test_unknown_require_one_of_id_is_a_config_error() -> None:
 
 def test_handoff_status_names_the_unmet_item_and_who_satisfies_it(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=STRONG)
-    _review(repo, "opus")
-    _review(repo, "sol")
+    review(repo, "opus")
+    review(repo, "sol")
     capsys.readouterr()
     with pytest.raises(SystemExit) as e:
         review_cli.main(["handoff", "status", "M1.1", "--json", "--repo-root", str(repo)])
@@ -147,8 +147,8 @@ def test_mark_implementation_reviewed_refuses_naming_the_item(tmp_path: Path, ca
     repo = make_review_repo(tmp_path, orchestration=STRONG)
     (repo / "work").mkdir()
     (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nDid it.\n")
-    _review(repo, "opus")
-    _review(repo, "sol")
+    review(repo, "opus")
+    review(repo, "sol")
     with pytest.raises(SystemExit) as e:
         mir.main(["--yes", "--repo-root", str(repo)])
     assert e.value.code == 1

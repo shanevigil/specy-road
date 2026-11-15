@@ -13,9 +13,9 @@ from specy_road import roadmap_gui_settings as _rgs
 
 from specy_road.pm_integration_registry import describe_integration_branch_auto_ff
 from specy_road.registry_remote_overlay import merge_registry_with_remote_overlay
-from tests.support.same.isolate_gui_settings_f1cfb6733460 import _isolate_gui_settings
-from tests.support.same.run_git_e7b46ac47b3e import _run_git
-from tests.support.same.write_gw_c3cc7b6c500e import _write_gw
+from tests.support.same.isolate_gui_settings_f1cfb6733460 import isolate_gui_settings
+from tests.support.same.run_git_e7b46ac47b3e import run_git
+from tests.support.same.write_gw_c3cc7b6c500e import write_gw
 
 
 
@@ -37,16 +37,16 @@ def integration_only_registry_repo(tmp_path: Path) -> Path:
     """``main`` at HEAD has empty registry; ``refs/remotes/origin/main`` has a claim."""
     repo = tmp_path / "integ"
     repo.mkdir()
-    _run_git(repo, "init", "-b", "main")
-    _run_git(repo, "config", "user.email", "t@example.com")
-    _run_git(repo, "config", "user.name", "T")
+    run_git(repo, "init", "-b", "main")
+    run_git(repo, "config", "user.email", "t@example.com")
+    run_git(repo, "config", "user.name", "T")
     roadmap = repo / "roadmap"
     roadmap.mkdir(parents=True, exist_ok=True)
-    _write_gw(repo)
+    write_gw(repo)
     (roadmap / "manifest.json").write_text('{"version":1,"includes":[]}\n', encoding="utf-8")
     (roadmap / "registry.yaml").write_text(_minimal_registry([]), encoding="utf-8")
-    _run_git(repo, "add", "roadmap")
-    _run_git(repo, "commit", "-m", "init")
+    run_git(repo, "add", "roadmap")
+    run_git(repo, "commit", "-m", "init")
     entry = {
         "codename": "trunk",
         "node_id": "M1.0",
@@ -54,8 +54,8 @@ def integration_only_registry_repo(tmp_path: Path) -> Path:
         "touch_zones": ["a/"],
     }
     (roadmap / "registry.yaml").write_text(_minimal_registry([entry]), encoding="utf-8")
-    _run_git(repo, "add", "roadmap/registry.yaml")
-    _run_git(repo, "commit", "-m", "register on trunk")
+    run_git(repo, "add", "roadmap/registry.yaml")
+    run_git(repo, "commit", "-m", "register on trunk")
     tip_remote = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=repo,
@@ -63,8 +63,8 @@ def integration_only_registry_repo(tmp_path: Path) -> Path:
         capture_output=True,
         text=True,
     ).stdout.strip()
-    _run_git(repo, "reset", "--hard", "HEAD~1")
-    _run_git(repo, "update-ref", "refs/remotes/origin/main", tip_remote)
+    run_git(repo, "reset", "--hard", "HEAD~1")
+    run_git(repo, "update-ref", "refs/remotes/origin/main", tip_remote)
     return repo
 
 
@@ -91,7 +91,7 @@ def _init_integration_ff_repo(tmp_path: Path) -> Path:
     )
     roadmap = repo / "roadmap"
     roadmap.mkdir(parents=True)
-    _write_gw(repo)
+    write_gw(repo)
     (roadmap / "manifest.json").write_text(
         '{"version":1,"includes":[]}\n',
         encoding="utf-8",
@@ -121,7 +121,7 @@ def test_describe_integration_branch_auto_ff_dirty(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    _isolate_gui_settings(monkeypatch, tmp_path)
+    isolate_gui_settings(monkeypatch, tmp_path)
     monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
     repo = _init_integration_ff_repo(tmp_path)
     (repo / "dirty.txt").write_text("z", encoding="utf-8")
@@ -135,7 +135,7 @@ def test_describe_integration_branch_auto_ff_up_to_date(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    _isolate_gui_settings(monkeypatch, tmp_path)
+    isolate_gui_settings(monkeypatch, tmp_path)
     monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
     repo = _init_integration_ff_repo(tmp_path)
     tip = subprocess.run(

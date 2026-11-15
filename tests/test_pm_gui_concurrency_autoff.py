@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import DOGFOOD
-from tests.support.extracted.pm_gui_concurrency_autoff import _git, _siblings_of, autoff_repo
+from tests.support.extracted.pm_gui_concurrency_autoff import git, siblings_of, autoff_repo
 
 _ROOT = Path(__file__).resolve().parent.parent
 from specy_road.roadmap_layout import natural_id_sort_key
@@ -64,13 +64,13 @@ def _sibling_keys_of(work: Path, parent: str) -> list[str]:
 def _force_local_head_drift(work: Path) -> None:
     """Push two commits to the remote and FF-merge them into local HEAD."""
     helper = work.parent / "helper"
-    _git(["fetch", "-q"], helper)
-    _git(["reset", "--hard", "origin/master", "-q"], helper)
-    _git(["commit", "-q", "--allow-empty", "-m", "race-1"], helper)
-    _git(["commit", "-q", "--allow-empty", "-m", "race-2"], helper)
-    _git(["push", "-q", "origin", "master"], helper)
-    _git(["fetch", "-q", "origin"], work)
-    _git(["merge", "-q", "--ff-only", "origin/master"], work)
+    git(["fetch", "-q"], helper)
+    git(["reset", "--hard", "origin/master", "-q"], helper)
+    git(["commit", "-q", "--allow-empty", "-m", "race-1"], helper)
+    git(["commit", "-q", "--allow-empty", "-m", "race-2"], helper)
+    git(["push", "-q", "origin", "master"], helper)
+    git(["fetch", "-q", "origin"], work)
+    git(["merge", "-q", "--ff-only", "origin/master"], work)
     from specy_road import registry_remote_overlay as rro
 
     rro._LAST_FETCH_MONO.clear()
@@ -112,7 +112,7 @@ def test_outline_reorder_succeeds_despite_planning_autosave_storm(
     # Hammer the planning tree the way Cursor / IDE autosave would.
     for _ in range(20):
         _touch_planning(work)
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     keys_target = _sibling_keys_of(work, "M0")[-1:] + _sibling_keys_of(work, "M0")[:-1]
     r = client.post(
@@ -140,7 +140,7 @@ def test_outline_reorder_succeeds_despite_head_movement(
     fp = client.get("/api/roadmap").json()["fingerprint"]
     _force_local_head_drift(work)  # local HEAD now points 2 commits ahead
 
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     keys_before = _sibling_keys_of(work, "M0")
     keys_target = keys_before[-1:] + keys_before[:-1]
@@ -175,7 +175,7 @@ def test_outline_reorder_412_when_chunk_actually_changed(
 
     os.utime(chunk, (time.time(), time.time() + 1))
 
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     r = client.post(
         "/api/outline/reorder",
@@ -217,7 +217,7 @@ def test_passthrough_when_token_matches(
 
     client = TestClient(create_app())
     fp = client.get("/api/roadmap").json()["fingerprint"]
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     keys_target = _sibling_keys_of(work, "M0")[-1:] + _sibling_keys_of(work, "M0")[:-1]
     r = client.post(
@@ -244,7 +244,7 @@ def test_outline_move_succeeds_despite_head_movement(
     client = TestClient(create_app())
     payload = client.get("/api/roadmap").json()
     nodes_by_id = {n["id"]: n for n in payload["nodes"]}
-    sibs_m0 = _siblings_of(work, "M0")
+    sibs_m0 = siblings_of(work, "M0")
     assert sibs_m0, "fixture must have children under M0"
     moved_display = sibs_m0[-1]
     moved_key = nodes_by_id[moved_display]["node_key"]

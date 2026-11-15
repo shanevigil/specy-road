@@ -33,7 +33,7 @@ from tests.support.extracted.history_walk import (
     M01_KEY,
     M03_KEY,
     M2_KEY,
-    _ENV,
+    ENV,
     commit,
     edit_node,
     git,

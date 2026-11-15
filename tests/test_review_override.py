@@ -23,7 +23,7 @@ from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_override import block_item, shortfall_text
 from specy_road.review_policy_pin import pinned_message
-from tests.support.same.head_efa27b25c0a5 import _head
+from tests.support.same.head_efa27b25c0a5 import head as head_fn
 from tests.support.extracted.review_override import ROSTER, STRONG
 
 LEDGER = Path("roadmap") / "decisions.yaml"
@@ -49,7 +49,7 @@ def _cli(module, *args: str) -> int:
 
 def _block(repo: Path, model: str = "opus", findings: dict | None = None, extra: tuple[str, ...] = ()) -> None:
     """``model`` files a block of HEAD on A1 with ``findings`` (default: one correctness finding)."""
-    data = yaml.safe_load(review_text(_head(repo), model=model, verdict="block", a1="fail").split("---\n")[1])
+    data = yaml.safe_load(review_text(head_fn(repo), model=model, verdict="block", a1="fail").split("---\n")[1])
     data["findings"].update(findings or {"correctness": ["A1 regressed"]})
     notes = repo.parent / f"notes-{model}.md"
     notes.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + f"---\n# {model} notes\n")
@@ -63,7 +63,7 @@ def _ready(repo: Path) -> None:
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True, exist_ok=True)
     (d / "READY-composer.md").write_text(
-        f"---\nnode_id: M1.1\nagent: composer\nbranch: feature/rm-thing\ncommit: {_head(repo)}\n"
+        f"---\nnode_id: M1.1\nagent: composer\nbranch: feature/rm-thing\ncommit: {head_fn(repo)}\n"
         f"base: {git(repo, 'rev-parse', 'dev')}\nchanged_paths: [src/a.py]\n---\n")
 
 
@@ -87,7 +87,7 @@ def _ledger(repo: Path) -> list[dict]:
 
 
 def _blockers(repo: Path) -> list[str]:
-    return [b.model for b in evaluate_gate(repo, NODE, _head(repo)).blocks]
+    return [b.model for b in evaluate_gate(repo, NODE, head_fn(repo)).blocks]
 
 
 def _on_dev(repo: Path, rel: str, text: str) -> None:
@@ -108,7 +108,7 @@ def test_the_operator_form_records_the_decision_and_the_gate_honours_it(tmp_path
         _block(repo)
     if role:
         monkeypatch.setenv(ROLE_ENV, role)
-    head = _head(repo)
+    head = head_fn(repo)
     assert _decide(repo, quote="accept as-is") == 0
     (entry,) = _ledger(repo)
     assert (entry["kind"], entry["status"], entry["node"], entry["decided_by"]) == (
@@ -282,7 +282,7 @@ def _coordinate(repo: Path, rule: str = "R1", rcas=("sol", "gem"), aligns=("sonn
 @pytest.mark.slow
 def test_the_coordinator_form_accepts_with_limits_under_a_standing_rule(tmp_path: Path, capsys) -> None:
     repo = _coordinator_repo(tmp_path)
-    head = _head(repo)
+    head = head_fn(repo)
     assert _coordinate(repo) == 0
     entry = next(e for e in _ledger(repo) if e["kind"] == "decision")
     assert entry["decided_by"] == "coordinator"

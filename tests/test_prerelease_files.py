@@ -11,7 +11,7 @@ import pytest
 import yaml
 
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
-from tests.support.same.snapshot_3fe0117d744f import _snapshot
+from tests.support.same.snapshot_3fe0117d744f import snapshot
 
 
 def _brainstorm(repo: Path, *args: str) -> subprocess.Popen[str]:
@@ -71,7 +71,7 @@ def test_managed_writes_refuse_a_symlink_out_of_the_repo(tmp_path: Path, link: s
         shutil.rmtree(dest)
     dest.unlink(missing_ok=True)
     dest.symlink_to(target, target_is_directory=outside_kind == "dir")
-    before = _snapshot(outside)
+    before = snapshot(outside)
 
     r = {"init": lambda: _cli(repo, "init", "project", "."),
          "refresh": lambda: _cli(repo, "refresh-stubs"),
@@ -82,5 +82,5 @@ def test_managed_writes_refuse_a_symlink_out_of_the_repo(tmp_path: Path, link: s
         assert "refused: a symlink leads outside the repository" in r.stdout
     else:   # M21.37: a stub, skill file or skill link refused for a link is an error, exit 1
         assert r.returncode == 1 and f"error: {dest} is a symlink" in r.stderr, r.stderr
-    assert _snapshot(outside) == before
+    assert snapshot(outside) == before
     assert not any(p.is_symlink() for p in outside.rglob("*"))

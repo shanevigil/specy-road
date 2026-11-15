@@ -24,7 +24,13 @@ from specy_road.bundled_scripts import review_packet as rp
 from specy_road.finish_implementation_check import implementation_paths
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.nested_repos import land_nested_branches
-from tests.support.extracted.nested_repo_finish import BRANCH, _land, _origin_tip, _repo, _repos
+from tests.support.extracted.nested_repo_finish import (
+    BRANCH,
+    land,
+    origin_tip,
+    repo as repo_fn,
+    repos,
+)
 
 
 
@@ -37,28 +43,28 @@ from tests.support.extracted.nested_repo_finish import BRANCH, _land, _origin_ti
 
 
 def test_merge_mode_lands_the_nested_branch_then_the_main_repository(tmp_path: Path) -> None:
-    repo, nested = _repo(tmp_path)
-    ok, err = _land(repo)
+    repo, nested = repo_fn(tmp_path)
+    ok, err = land(repo)
     assert ok, err
     git(nested, "fetch", "-q", "origin")
     assert git(nested, "merge-base", "--is-ancestor", BRANCH, "origin/dev") == ""
     assert git(nested, "branch", "--show-current") == "dev"   # no checkout of the nested repo moved
-    assert git(repo, "merge-base", "--is-ancestor", BRANCH, _origin_tip(repo)) == ""
+    assert git(repo, "merge-base", "--is-ancestor", BRANCH, origin_tip(repo)) == ""
     # A re-run lands nothing twice in the nested repository.
-    tip = _origin_tip(nested)
+    tip = origin_tip(nested)
     assert land_nested_branches(repo, BRANCH) == (True, "")
-    assert _origin_tip(nested) == tip
+    assert origin_tip(nested) == tip
 
 
 def test_a_nested_conflict_stops_before_the_main_repository_moves(tmp_path: Path) -> None:
-    repo, nested = _repo(tmp_path)
+    repo, nested = repo_fn(tmp_path)
     commit_file(nested, "core.py", "x = 99\n", "dev moves on in the nested repo")
     git(nested, "push", "-q", "origin", "dev")
-    nested_before, main_before = _origin_tip(nested), _origin_tip(repo)
-    ok, err = _land(repo)
+    nested_before, main_before = origin_tip(nested), origin_tip(repo)
+    ok, err = land(repo)
     assert not ok
     assert f"nested repo {COVERED!r}" in err and "main repository was not merged" in err
-    assert _origin_tip(nested) == nested_before and _origin_tip(repo) == main_before
+    assert origin_tip(nested) == nested_before and origin_tip(repo) == main_before
     assert git(repo, "branch", "--show-current") == BRANCH
     assert len(git(nested, "worktree", "list").splitlines()) == 1   # the temporary worktree is gone
 
@@ -81,10 +87,10 @@ def test_delegate_in_the_checkout_on_the_claim_branch_puts_the_nested_repo_on_it
     assert git(nested, "branch", "--show-current") == BRANCH
     wait_for_worker(repo, rec.worker_id)
     commit_file(nested, "core.py", "x = 7\n", "the worker's nested change")   # as the worker would
-    main_before, nested_before = _origin_tip(repo), _origin_tip(nested)
-    ok, err = _land(repo)
+    main_before, nested_before = origin_tip(repo), origin_tip(nested)
+    ok, err = land(repo)
     assert ok, err
-    assert _origin_tip(nested) != nested_before and _origin_tip(repo) != main_before
+    assert origin_tip(nested) != nested_before and origin_tip(repo) != main_before
     git(nested, "fetch", "-q", "origin")
     assert git(nested, "show", "origin/dev:core.py") == "x = 7"
 
@@ -110,27 +116,27 @@ def test_direct_checkout_delegate_detaches_an_uncovered_nested_repo_at_the_tip(t
 
 
 def test_a_configured_repo_that_is_gone_stops_the_landing_before_the_main_repository(tmp_path: Path) -> None:
-    repo, nested = _repo(tmp_path)
-    main_before = _origin_tip(repo)
+    repo, nested = repo_fn(tmp_path)
+    main_before = origin_tip(repo)
     shutil.rmtree(nested)   # whether it held the leaf's work can no longer be told
-    ok, err = _land(repo)
+    ok, err = land(repo)
     assert not ok
     assert f"nested repo {COVERED!r}" in err and "not the top of a git repository" in err
     assert "main repository was not merged" in err
-    assert _origin_tip(repo) == main_before
+    assert origin_tip(repo) == main_before
     assert git(repo, "branch", "--show-current") == BRANCH
 
 
 def test_a_repo_without_the_leaf_branch_is_left_alone(tmp_path: Path) -> None:
-    repo, nested = _repo(tmp_path)
+    repo, nested = repo_fn(tmp_path)
     git(nested, "branch", "-q", "-D", BRANCH)
-    tip = _origin_tip(nested)
+    tip = origin_tip(nested)
     assert land_nested_branches(repo, BRANCH) == (True, "")
-    assert _origin_tip(nested) == tip
+    assert origin_tip(nested) == tip
 
 
 def test_the_implementation_gate_counts_in_zone_work_in_a_nested_repo(tmp_path: Path) -> None:
-    repo, _nested = _repo(tmp_path)
+    repo, _nested = repo_fn(tmp_path)
     # src/a.py on the main branch is outside this zone: only the nested work matches.
     assert implementation_paths(repo, zones=[COVERED], remote="origin", integration_branch="dev") == [
         f"{COVERED}/core.py"]
@@ -138,7 +144,7 @@ def test_the_implementation_gate_counts_in_zone_work_in_a_nested_repo(tmp_path: 
 
 @pytest.mark.parametrize(("rel", "outside"), [(COVERED, False), (UNCOVERED, True)])
 def test_review_packet_includes_the_nested_diff(tmp_path: Path, rel: str, outside: bool) -> None:
-    repo, _nested = _repo(tmp_path, rel)
+    repo, _nested = repo_fn(tmp_path, rel)
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     section = text.split("## Nested repositories", 1)[1].split("## Verifier output", 1)[0]
     line = next(ln for ln in section.splitlines() if ln.startswith(f"- `{rel}/core.py`"))
@@ -147,7 +153,7 @@ def test_review_packet_includes_the_nested_diff(tmp_path: Path, rel: str, outsid
 
 
 def test_review_packet_caps_a_long_nested_diff(tmp_path: Path) -> None:
-    repo, _nested = _repo(tmp_path)
+    repo, _nested = repo_fn(tmp_path)
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=2)
     section = text.split("## Nested repositories", 1)[1]
     assert "Diff capped at 2 lines" in section
@@ -156,7 +162,7 @@ def test_review_packet_caps_a_long_nested_diff(tmp_path: Path) -> None:
 
 
 def test_review_packet_caps_a_long_single_line_nested_diff_by_bytes(tmp_path: Path) -> None:
-    repo, _nested = _repo(tmp_path, text="x = '" + "a" * 5000 + "'\n")
+    repo, _nested = repo_fn(tmp_path, text="x = '" + "a" * 5000 + "'\n")
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=0, max_diff_bytes=100)
     section = text.split("## Nested repositories", 1)[1].split("## Verifier output", 1)[0]
     assert "Diff capped at 100 bytes" in section and "a" * 200 not in section
@@ -165,7 +171,7 @@ def test_review_packet_caps_a_long_single_line_nested_diff_by_bytes(tmp_path: Pa
 
 
 def test_capped_nested_diffs_of_paths_that_flatten_alike_keep_their_own_patch(tmp_path: Path) -> None:
-    repo, _nested = _repos(tmp_path, "a/b", "a-b")
+    repo, _nested = repos(tmp_path, "a/b", "a-b")
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=1)
     reviews = repo / "work" / "reviews" / "M1.1"
     for rel, name in (("a/b", "DIFF-nested-a+b.patch"), ("a-b", "DIFF-nested-a-b.patch")):

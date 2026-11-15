@@ -26,8 +26,8 @@ from specy_road.bundled_scripts.roadmap_crud_prepare import next_sibling_order
 from specy_road.roadmap_layout import ordered_tree_rows
 from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
-from tests.support.same.by_id_a6a5bf211114 import _by_id
-from tests.support.same.cli_3c7fcb2cc75e import _cli
+from tests.support.same.by_id_a6a5bf211114 import by_id
+from tests.support.same.cli_3c7fcb2cc75e import cli
 
 
 
@@ -60,7 +60,7 @@ def test_promote_derives_codename_from_the_first_four_title_words(repo: Path) ->
 
     node_id = promote_session(repo, s)[0].node_id
 
-    assert _by_id(repo)[node_id]["codename"] == "-".join(words[:PROMOTE_CODENAME_MAX_WORDS])
+    assert by_id(repo)[node_id]["codename"] == "-".join(words[:PROMOTE_CODENAME_MAX_WORDS])
 
 
 def test_promote_caps_codename_when_the_title_starts_with_punctuation(repo: Path) -> None:
@@ -70,7 +70,7 @@ def test_promote_caps_codename_when_the_title_starts_with_punctuation(repo: Path
 
     node_id = promote_session(repo, s)[0].node_id
 
-    assert _by_id(repo)[node_id]["codename"] == "five-six-seven-eight"
+    assert by_id(repo)[node_id]["codename"] == "five-six-seven-eight"
 
 
 def test_revise_codename_on_the_idea_wins_over_title_derivation(repo: Path) -> None:
@@ -81,7 +81,7 @@ def test_revise_codename_on_the_idea_wins_over_title_derivation(repo: Path) -> N
 
     node_id = promote_session(repo, s)[0].node_id
 
-    assert _by_id(repo)[node_id]["codename"] == "pm-picked-slug"
+    assert by_id(repo)[node_id]["codename"] == "pm-picked-slug"
 
 
 def test_promote_copies_hypothesis_to_goal_and_orders_siblings_by_accept_time(
@@ -100,7 +100,7 @@ def test_promote_copies_hypothesis_to_goal_and_orders_siblings_by_accept_time(
     results = promote_session(repo, s)
 
     assert len(results) == 2
-    nodes = _by_id(repo)
+    nodes = by_id(repo)
     second_id = next(r.node_id for r in results if r.title == "Second")
     first_id = next(r.node_id for r in results if r.title == "First")
     assert nodes[second_id]["sibling_order"] == base
@@ -110,17 +110,17 @@ def test_promote_copies_hypothesis_to_goal_and_orders_siblings_by_accept_time(
 
 def test_cli_accept_without_reason_preserves_accept_order(repo: Path) -> None:
     slug = "how-do-we-expand-payments"
-    assert _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1")[0] == 0
-    assert _cli(repo, "add-idea", "--title", "Created first")[0] == 0
-    assert _cli(repo, "add-idea", "--title", "Created second")[0] == 0
-    assert _cli(repo, "accept", "B2")[0] == 0
-    assert _cli(repo, "accept", "B1")[0] == 0
+    assert cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1")[0] == 0
+    assert cli(repo, "add-idea", "--title", "Created first")[0] == 0
+    assert cli(repo, "add-idea", "--title", "Created second")[0] == 0
+    assert cli(repo, "accept", "B2")[0] == 0
+    assert cli(repo, "accept", "B1")[0] == 0
     session = read_session(repo, slug)
     assert [i.id for i in session.ideas] == ["B1", "B2"]
     assert int(session.by_id("B2").decision["seq"]) < int(session.by_id("B1").decision["seq"])
 
     results = promote_session(repo, session)
-    nodes = _by_id(repo)
+    nodes = by_id(repo)
     b2 = next(r.node_id for r in results if r.idea_id == "B2")
     b1 = next(r.node_id for r in results if r.idea_id == "B1")
     assert nodes[b2]["sibling_order"] < nodes[b1]["sibling_order"]
@@ -135,14 +135,14 @@ def test_successive_promote_appends_after_existing_siblings(repo: Path) -> None:
     two.status = "accepted"
     two.decision = {"status": "accepted", "seq": "2"}
     first = promote_session(repo, s)
-    last_order = max(_by_id(repo)[r.node_id]["sibling_order"] for r in first)
+    last_order = max(by_id(repo)[r.node_id]["sibling_order"] for r in first)
 
     three = add_idea(s, title="Batch two last")
     three.status = "accepted"
     three.decision = {"status": "accepted", "seq": "3"}
     second = promote_session(repo, s)
     assert len(second) == 1
-    assert _by_id(repo)[second[0].node_id]["sibling_order"] == last_order + 1
+    assert by_id(repo)[second[0].node_id]["sibling_order"] == last_order + 1
     under_m1 = [
         (n["title"], n.get("sibling_order"))
         for n, _depth in ordered_tree_rows(load_roadmap(repo)["nodes"])

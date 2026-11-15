@@ -5,7 +5,8 @@ from pathlib import Path
 from tests.support.same.git_84c8ad8f55f9 import git
 from specy_road.review_files import reviews_dir
 
-def _ready(repo: Path, agent: str) -> None:
+def ready(repo: Path, agent: str) -> None:
+    """Shared test helper."""
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True, exist_ok=True)
     (d / f"READY-{agent}.md").write_text(

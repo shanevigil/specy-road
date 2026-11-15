@@ -11,7 +11,7 @@ from tests.support.review import make_review_repo, git
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.bundled_scripts import session_cli
-from tests.support.same.cli_9a8b40e70510 import _cli
+from tests.support.same.cli_9a8b40e70510 import cli
 
 
 
@@ -25,7 +25,7 @@ def _other_worktree(tmp_path: Path, repo: Path, branch: str = "feature/other") -
 
 def _start_as(monkeypatch, user: str, repo: Path, *args: str, cmd: str = "start") -> int:
     monkeypatch.setenv("USER", user)
-    return _cli("session", cmd, *args, "--repo-root", str(repo))
+    return cli("session", cmd, *args, "--repo-root", str(repo))
 
 
 def test_warning_names_worktree_branch_and_uncommitted_edits(tmp_path: Path, capsys, monkeypatch) -> None:

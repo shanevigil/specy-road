@@ -12,7 +12,7 @@ from specy_road.finish_implementation_check import (
     implementation_paths,
     zone_matches,
 )
-from tests.support.same.git_04549aebf210 import _git
+from tests.support.same.git_04549aebf210 import git
 
 
 # ---------------------------------------------------------------------------
@@ -50,13 +50,13 @@ def test_zone_matching(zone, path, expected):
 def repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     root.mkdir()
-    _git(root, "init", "-b", "main")
-    _git(root, "config", "user.email", "t@example.com")
-    _git(root, "config", "user.name", "Test")
+    git(root, "init", "-b", "main")
+    git(root, "config", "user.email", "t@example.com")
+    git(root, "config", "user.name", "Test")
     (root / "seed.txt").write_text("seed", encoding="utf-8")
-    _git(root, "add", "-A")
-    _git(root, "commit", "-m", "seed")
-    _git(root, "checkout", "-b", "feature/rm-cn")
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "seed")
+    git(root, "checkout", "-b", "feature/rm-cn")
     return root
 
 
@@ -64,8 +64,8 @@ def _commit(repo: Path, rel: str, body: str = "x") -> None:
     path = repo / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-m", f"add {rel}")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-m", f"add {rel}")
 
 
 def _paths(repo: Path, zones):
@@ -153,9 +153,9 @@ def test_outside_a_worktree_allows_the_finish(tmp_path):
 
 def test_commits_that_landed_on_main_afterwards_are_not_this_branchs_work(repo):
     """`...` diffs from the merge base, so main moving on does not count."""
-    _git(repo, "checkout", "main")
+    git(repo, "checkout", "main")
     _commit(repo, "src/api/someone_else.py")
-    _git(repo, "checkout", "feature/rm-cn")
+    git(repo, "checkout", "feature/rm-cn")
 
     assert _paths(repo, ["src/api"]) == []
     assert _error(repo, ["src/api"]) is not None
@@ -164,9 +164,9 @@ def test_commits_that_landed_on_main_afterwards_are_not_this_branchs_work(repo):
 def test_the_remote_tracking_ref_is_preferred_over_a_stale_local(repo):
     """A clone that has been picking work up for a while has a stale local base."""
     _commit(repo, "src/api/routes.py")
-    _git(repo, "update-ref", "refs/remotes/origin/main", "main")
-    _git(repo, "checkout", "main")
+    git(repo, "update-ref", "refs/remotes/origin/main", "main")
+    git(repo, "checkout", "main")
     _commit(repo, "src/api/later.py")
-    _git(repo, "checkout", "feature/rm-cn")
+    git(repo, "checkout", "feature/rm-cn")
 
     assert _paths(repo, ["src/api"]) == ["src/api/routes.py"]

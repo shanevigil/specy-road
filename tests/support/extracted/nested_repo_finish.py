@@ -10,7 +10,7 @@ from tests.support.review import make_review_repo
 
 BRANCH = "feature/rm-thing"
 
-def _repos(tmp_path: Path, *rels: str, text: str = "x = 2\n") -> tuple[Path, list[Path]]:
+def repos(tmp_path: Path, *rels: str, text: str = "x = 2\n") -> tuple[Path, list[Path]]:
     """``(repo on the feature branch, each nested repo on dev with the leaf branch committed)``; the leaf's
     ``core.py`` is ``text``, prefixed with the repository's path so each diff is its own."""
     repo = make_review_repo(tmp_path)
@@ -28,13 +28,16 @@ def _repos(tmp_path: Path, *rels: str, text: str = "x = 2\n") -> tuple[Path, lis
         git(n, "checkout", "-q", "dev")
     return repo, nested
 
-def _repo(tmp_path: Path, rel: str = COVERED, text: str = "x = 2\n") -> tuple[Path, Path]:
-    repo, (nested,) = _repos(tmp_path, rel, text=text)
+def repo(tmp_path: Path, rel: str = COVERED, text: str = "x = 2\n") -> tuple[Path, Path]:
+    """Shared test helper."""
+    repo, (nested,) = repos(tmp_path, rel, text=text)
     return repo, nested
 
-def _origin_tip(repo: Path, branch: str = "dev") -> str:
+def origin_tip(repo: Path, branch: str = "dev") -> str:
+    """Shared test helper."""
     return git(repo, "ls-remote", "origin", f"refs/heads/{branch}").split()[0]
 
-def _land(repo: Path) -> tuple[bool, str]:
+def land(repo: Path) -> tuple[bool, str]:
+    """Shared test helper."""
     return land_merge_feature_into_integration(repo, remote="origin", integration_branch="dev",
                                                feature_branch=BRANCH, land_check_cmd="")

@@ -29,7 +29,7 @@ from specy_road.orchestration.workers.worker_state import (
 )
 from tests.helpers import REPO
 from tests.support.review import advance_dev, commit_file, make_review_repo, review_text, git
-from tests.support.same.quoted_aa331427ddf7 import _quoted
+from tests.support.same.quoted_aa331427ddf7 import quoted
 
 ONE = """version: 1
 roster:
@@ -451,7 +451,7 @@ def _write_gate(repo: Path) -> None:
 def _const_list(src: str, name: str) -> list[str]:
     match = re.search(rf"const {name} = \[(.*?)\];", src, re.S)
     assert match is not None
-    return _quoted(match.group(1))
+    return quoted(match.group(1))
 
 
 def _export_keys(src: str, name: str) -> list[str]:
@@ -464,10 +464,10 @@ def _export_keys(src: str, name: str) -> list[str]:
         spread = re.match(r"\.\.\.under\(\"([^\"]+)\",\s*(\[[^\]]*\]|[A-Z_]+)\)", line)
         if spread:
             prefix, keys = spread.group(1), spread.group(2)
-            names = _quoted(keys) if keys.startswith("[") else known[keys]
+            names = quoted(keys) if keys.startswith("[") else known[keys]
             out.extend(f"{prefix}.{item}" for item in names)
-        elif _quoted(line):
-            out.append(_quoted(line)[0])
+        elif quoted(line):
+            out.append(quoted(line)[0])
     return out
 
 

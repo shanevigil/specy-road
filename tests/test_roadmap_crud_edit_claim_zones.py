@@ -20,7 +20,7 @@ from specy_road.bundled_scripts import roadmap_chunk_router
 from specy_road.roadmap_crud_ops import cmd_edit, edit_node_set_pairs
 from specy_road.finish_implementation_check import implementation_gate_error
 from specy_road.registry_yaml import read_registry, registry_path
-from tests.support.same.edit_70b56ec19282 import _edit
+from tests.support.same.edit_70b56ec19282 import edit
 
 
 
@@ -31,7 +31,7 @@ def _claim(repo: Path) -> dict:
 
 def test_edit_rewrites_claim_zones_and_names_the_claim(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
-    _edit(repo, "touch_zones=src", "touch_zones=docs")
+    edit(repo, "touch_zones=src", "touch_zones=docs")
     assert _claim(repo)["touch_zones"] == ["src", "docs"]
     err = capsys.readouterr().err
     notes = [ln for ln in err.splitlines() if "claim" in ln]
@@ -41,7 +41,7 @@ def test_edit_rewrites_claim_zones_and_names_the_claim(tmp_path: Path, capsys) -
 def test_edit_without_zones_leaves_the_claim_alone(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     before = registry_path(repo).read_bytes()
-    _edit(repo, "title=Renamed thing")
+    edit(repo, "title=Renamed thing")
     assert registry_path(repo).read_bytes() == before
     assert "claim" not in capsys.readouterr().err
 
@@ -51,7 +51,7 @@ def test_edit_of_an_unclaimed_node_leaves_the_registry_alone(tmp_path: Path, cap
     reg = registry_path(repo)
     reg.write_text("version: 1\nentries: []\n", encoding="utf-8")
     before = reg.read_bytes()
-    _edit(repo, "touch_zones=lib")
+    edit(repo, "touch_zones=lib")
     assert reg.read_bytes() == before
     assert "claim" not in capsys.readouterr().err
 
@@ -74,7 +74,7 @@ def test_packet_reads_widened_zones(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
     assert "- `docs/x.md`  **← outside touch zones**" in rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
-    _edit(repo, "touch_zones=src", "touch_zones=docs")
+    edit(repo, "touch_zones=src", "touch_zones=docs")
     git(repo, "commit", "-qam", "widen M1.1 zones")
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     assert "- `docs/x.md`\n" in text
@@ -84,7 +84,7 @@ def test_packet_reads_widened_zones(tmp_path: Path) -> None:
 def test_finish_check_reads_edited_zones(tmp_path: Path) -> None:
     """A2/A3: the finish gate judges the claim's new zones, and its hint says why edit-node suffices."""
     repo = make_review_repo(tmp_path)
-    _edit(repo, "touch_zones=lib")
+    edit(repo, "touch_zones=lib")
     error = implementation_gate_error(
         repo, node_id="M1.1", zones=_claim(repo)["touch_zones"], remote="origin", integration_branch="dev"
     )

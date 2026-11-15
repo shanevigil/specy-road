@@ -28,8 +28,8 @@ from pathlib import Path
 import pytest
 
 from tests.support.review import make_review_repo, git
-from tests.support.same.key_5acf3bfe8b72 import _key
-from tests.support.extracted.review_signing import _roster
+from tests.support.same.key_5acf3bfe8b72 import key as key_fn
+from tests.support.extracted.review_signing import roster
 from tests.support.harness import make_worker_repo, wait_for_worker
 
 from specy_road.orchestration.guard import session_presence as sp
@@ -255,8 +255,8 @@ def test_an_op_id_binds_its_arguments(tmp_path: Path) -> None:
 # --- F3, F18 ------------------------------------------------------------------
 
 def test_signing_without_a_roster_key_is_refused_early(tmp_path: Path, capsys) -> None:
-    key, _pub = _key(tmp_path, "opus")
-    repo = make_review_repo(tmp_path, orchestration=_roster("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", signed=False)
+    key, _pub = key_fn(tmp_path, "opus")
+    repo = make_review_repo(tmp_path, orchestration=roster("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", signed=False)
                             .replace('public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"', ""))
     from tests.support.review import review_text
 
@@ -269,9 +269,9 @@ def test_signing_without_a_roster_key_is_refused_early(tmp_path: Path, capsys) -
 
 
 def test_a_wrong_key_is_an_error_not_a_written_record(tmp_path: Path, capsys) -> None:
-    key, _pub = _key(tmp_path, "opus")
-    _other, other_pub = _key(tmp_path, "other")
-    repo = make_review_repo(tmp_path, orchestration=_roster(other_pub))
+    key, _pub = key_fn(tmp_path, "opus")
+    _other, other_pub = key_fn(tmp_path, "other")
+    repo = make_review_repo(tmp_path, orchestration=roster(other_pub))
     from tests.support.review import review_text
 
     notes = tmp_path / "notes.md"

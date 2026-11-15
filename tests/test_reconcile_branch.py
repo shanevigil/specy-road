@@ -19,7 +19,7 @@ from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_land_deterministic import merge_feature_deterministically
 from specy_road.bundled_scripts.reconcile_branch_cli import reconcile_branch
 from specy_road.registry_yaml import registry_path, write_registry
-from tests.support.same.cli_fda77d440965 import _cli
+from tests.support.same.cli_fda77d440965 import cli
 import pytest
 
 LEAVES = (("M1.1", "one", "11111111-1111-5111-8111-111111111111"),
@@ -117,7 +117,7 @@ def test_reconcile_resolves_bookkeeping_and_pushes(tmp_path: Path, capsys) -> No
     changed = set(git(wt, "diff", "--name-only", "HEAD^1", "HEAD").splitlines())
     assert changed <= {"src/one.py", "roadmap/registry.yaml", "roadmap.md", "roadmap-context.md"}
     for check in (("validate",), ("export", "--check"), ("digest", "--check")):
-        r = _cli(wt, *check)
+        r = cli(wt, *check)
         assert r.returncode == 0, (check, r.stdout, r.stderr)
     assert git(wt, "status", "--porcelain", "--untracked-files=no") == ""
     # a forge merge of the PR is now clean
@@ -150,7 +150,7 @@ def _pushed_app(tmp_path: Path) -> Path:
         cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
     )
     assert r.returncode == 0, r.stderr
-    assert _cli(app, "export").returncode == 0 and _cli(app, "digest").returncode == 0
+    assert cli(app, "export").returncode == 0 and cli(app, "digest").returncode == 0
     git(app, "config", "user.email", "t@e.com")
     git(app, "config", "user.name", "T")
     git(app, "checkout", "-q", "-b", "main")
@@ -165,7 +165,7 @@ def _pushed_app(tmp_path: Path) -> Path:
 def test_reconcile_keeps_a_local_only_claim_when_the_remote_moves(tmp_path: Path, capsys) -> None:
     """A1: a ``--local`` claim never pushed is still the row finish finds after the integration branch moves."""
     app = _pushed_app(tmp_path)
-    picked = _cli(app, "do-next-available-task", "--local")
+    picked = cli(app, "do-next-available-task", "--local")
     assert picked.returncode == 0, picked.stderr
     branch = git(app, "branch", "--show-current")
     codename = branch.removeprefix("feature/rm-")
@@ -210,7 +210,7 @@ def test_reconcile_refuses_off_a_leaf_branch_and_on_the_wrong_leaf(tmp_path: Pat
     assert "not a feature/rm-<codename> branch" in capsys.readouterr().err
     assert reconcile_branch(wt, ib="dev", remote="origin", codename="one") == 1
     assert "feature/rm-one" in capsys.readouterr().err
-    r = _cli(wt, "reconcile-branch", "M1.2")
+    r = cli(wt, "reconcile-branch", "M1.2")
     assert r.returncode == 0, r.stderr
 
 

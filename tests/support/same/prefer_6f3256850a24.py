@@ -3,5 +3,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-def _prefer(repo: Path, *extra: str) -> list[str]:
+def prefer(repo: Path, *extra: str) -> list[str]:
+    """Shared test helper."""
     return ["decisions", "add", "--repo-root", str(repo), "--kind", "preference", *extra]

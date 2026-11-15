@@ -5,7 +5,8 @@ from pathlib import Path
 from specy_road import roadmap_gui_settings as _rgs
 import pytest
 
-def _isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Shared test helper."""
     gui = tmp_path / ".specy-road"
     gui.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(_rgs, "SETTINGS_DIR", gui)

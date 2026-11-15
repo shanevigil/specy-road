@@ -32,12 +32,12 @@ from specy_road.roadmap_chunk_utils import (
     write_json_chunk,
 )
 from tests.support.extracted.roadmap_chunk_router import (
-    _NK,
-    _milestone,
-    _node,
-    _phase_M0,
-    _seed_repo,
-    _write_planning,
+    NK,
+    milestone,
+    node,
+    phase_m0,
+    seed_repo,
+    write_planning,
 )
 
 
@@ -54,7 +54,7 @@ from tests.support.extracted.roadmap_chunk_router import (
 
 
 def _task(nid: str, parent: str, *, n_index: int) -> dict:
-    return _node(nid, parent, type_="task", title=f"t{n_index}", n_index=n_index)
+    return node(nid, parent, type_="task", title=f"t{n_index}", n_index=n_index)
 
 
 @pytest.fixture()
@@ -62,12 +62,12 @@ def small_repo(tmp_path: Path) -> Path:
     """Single-phase repo with three nodes living in one chunk."""
     chunks = {
         "phases/M0.json": [
-            _phase_M0(),
-            _milestone("M0.1", "M0", n_index=2),
+            phase_m0(),
+            milestone("M0.1", "M0", n_index=2),
             _task("M0.1.1", "M0.1", n_index=3),
         ],
     }
-    _seed_repo(tmp_path, chunks)
+    seed_repo(tmp_path, chunks)
     return tmp_path
 
 
@@ -92,10 +92,10 @@ def test_pick_target_chunk_uses_hint_when_room(small_repo: Path) -> None:
 
 def _seed_with_cap(tmp_path: Path, cap_lines: int, fat_count: int) -> None:
     """Seed a fixture where ``phases/M0.json`` is *just below* ``cap_lines``."""
-    fat = [_phase_M0()] + [
-        _milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, fat_count + 1)
+    fat = [phase_m0()] + [
+        milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, fat_count + 1)
     ]
-    _seed_repo(tmp_path, {"phases/M0.json": fat})
+    seed_repo(tmp_path, {"phases/M0.json": fat})
     (tmp_path / "constraints" / "file-limits.yaml").write_text(
         f"roadmap_json_chunk_max_lines: {cap_lines}\n", encoding="utf-8"
     )
@@ -105,9 +105,9 @@ def test_pick_target_chunk_falls_back_when_hint_full(tmp_path: Path) -> None:
     """Hint chunk full → router picks a same-phase chunk that fits."""
     # 15 milestones ≈ 227 lines; cap = 235 → adding one more pushes over.
     # Sibling chunk has 1 node, plenty of room.
-    fat = [_phase_M0()] + [_milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
-    sibling = [_milestone("M0.40", "M0", n_index=40)]
-    _seed_repo(tmp_path, {"phases/M0.json": fat, "phases/M0__sib.json": sibling})
+    fat = [phase_m0()] + [milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
+    sibling = [milestone("M0.40", "M0", n_index=40)]
+    seed_repo(tmp_path, {"phases/M0.json": fat, "phases/M0__sib.json": sibling})
     (tmp_path / "constraints" / "file-limits.yaml").write_text(
         "roadmap_json_chunk_max_lines: 215\n", encoding="utf-8"
     )
@@ -123,13 +123,13 @@ def test_pick_target_chunk_does_not_scatter_across_phases(tmp_path: Path) -> Non
     """Locality: when same-phase chunks are full, the router auto-creates a
     NEW chunk in the same phase rather than scattering the new node into
     some unrelated phase's chunk that happens to have room."""
-    fat = [_phase_M0()] + [_milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
-    other_phase = [_node("M1", None, type_="phase", title="phase1", n_index=200)]
+    fat = [phase_m0()] + [milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
+    other_phase = [node("M1", None, type_="phase", title="phase1", n_index=200)]
     chunks = {
         "phases/M0.json": fat,
         "phases/M1.json": other_phase,  # has plenty of room
     }
-    _seed_repo(tmp_path, chunks)
+    seed_repo(tmp_path, chunks)
     (tmp_path / "constraints" / "file-limits.yaml").write_text(
         "roadmap_json_chunk_max_lines: 215\n", encoding="utf-8"
     )
@@ -141,8 +141,8 @@ def test_pick_target_chunk_does_not_scatter_across_phases(tmp_path: Path) -> Non
 
 
 def test_pick_target_chunk_creates_new_chunk_when_none_fit(tmp_path: Path) -> None:
-    fat = [_phase_M0()] + [_milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
-    _seed_repo(tmp_path, {"phases/M0.json": fat})
+    fat = [phase_m0()] + [milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
+    seed_repo(tmp_path, {"phases/M0.json": fat})
     (tmp_path / "constraints" / "file-limits.yaml").write_text(
         "roadmap_json_chunk_max_lines: 215\n", encoding="utf-8"
     )
@@ -155,8 +155,8 @@ def test_pick_target_chunk_creates_new_chunk_when_none_fit(tmp_path: Path) -> No
 
 
 def test_derive_new_chunk_path_is_deterministic_per_node_key(tmp_path: Path) -> None:
-    chunks = {"phases/M0.json": [_phase_M0()]}
-    _seed_repo(tmp_path, chunks)
+    chunks = {"phases/M0.json": [phase_m0()]}
+    seed_repo(tmp_path, chunks)
     new = _task("M0.99", "M0", n_index=99)
     a = derive_new_chunk_path(tmp_path, "phases/M0.json", new)
     b = derive_new_chunk_path(tmp_path, "phases/M0.json", new)
@@ -167,13 +167,13 @@ def test_derive_new_chunk_path_is_deterministic_per_node_key(tmp_path: Path) -> 
 
 
 def test_write_with_routing_creates_chunk_and_updates_manifest(tmp_path: Path) -> None:
-    fat = [_phase_M0()] + [_milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
-    _seed_repo(tmp_path, {"phases/M0.json": fat})
+    fat = [phase_m0()] + [milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
+    seed_repo(tmp_path, {"phases/M0.json": fat})
     (tmp_path / "constraints" / "file-limits.yaml").write_text(
         "roadmap_json_chunk_max_lines: 215\n", encoding="utf-8"
     )
     new = _task("M0.99", "M0", n_index=99)
-    _write_planning(tmp_path, new)
+    write_planning(tmp_path, new)
     chunk = write_with_routing(tmp_path, "M0", "phases/M0.json", new)
     assert chunk.is_file()
     assert chunk.parent.name == "phases"
@@ -186,12 +186,12 @@ def test_write_with_routing_rolls_back_on_validation_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Validation failure must restore both pre-existing chunks and unlink any net-new file."""
-    _seed_repo(tmp_path, {"phases/M0.json": [_phase_M0()]})
+    seed_repo(tmp_path, {"phases/M0.json": [phase_m0()]})
     original_chunk = (tmp_path / "roadmap" / "phases" / "M0.json").read_bytes()
     original_manifest = (tmp_path / "roadmap" / "manifest.json").read_bytes()
 
     new = _task("M0.99", "M0", n_index=99)
-    _write_planning(tmp_path, new)
+    write_planning(tmp_path, new)
 
     # Force the router into the auto-create branch by simulating overflow on
     # any chunk. Easiest: monkeypatch chunk_max_lines low.
@@ -224,9 +224,9 @@ def test_write_with_routing_rolls_back_on_validation_failure(
 def test_write_with_routing_skip_validate_still_writes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _seed_repo(tmp_path, {"phases/M0.json": [_phase_M0()]})
+    seed_repo(tmp_path, {"phases/M0.json": [phase_m0()]})
     new = _task("M0.99", "M0", n_index=99)
-    _write_planning(tmp_path, new)
+    write_planning(tmp_path, new)
     from specy_road.bundled_scripts import roadmap_chunk_router as router_mod
 
     def boom(root):  # noqa: ANN001
@@ -243,8 +243,8 @@ def test_write_with_routing_skip_validate_still_writes(
 
 def test_write_node_update_relocates_on_overflow(tmp_path: Path) -> None:
     """When edit-node growth pushes a chunk over, the edited node moves out."""
-    nodes = [_phase_M0()] + [_milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 6)]
-    _seed_repo(tmp_path, {"phases/M0.json": nodes})
+    nodes = [phase_m0()] + [milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 6)]
+    seed_repo(tmp_path, {"phases/M0.json": nodes})
     chunk = tmp_path / "roadmap" / "phases" / "M0.json"
     # Tighten the cap below the post-edit size so relocation triggers.
     (tmp_path / "constraints" / "file-limits.yaml").write_text(
@@ -265,8 +265,8 @@ def test_write_node_update_relocates_on_overflow(tmp_path: Path) -> None:
 
 
 def test_write_node_update_stays_put_when_chunk_still_fits(tmp_path: Path) -> None:
-    nodes = [_phase_M0(), _milestone("M0.1", "M0", n_index=11)]
-    _seed_repo(tmp_path, {"phases/M0.json": nodes})
+    nodes = [phase_m0(), milestone("M0.1", "M0", n_index=11)]
+    seed_repo(tmp_path, {"phases/M0.json": nodes})
     chunk = tmp_path / "roadmap" / "phases" / "M0.json"
     nodes_after = load_json_chunk(chunk)
     nodes_after[-1]["status"] = "Complete"
@@ -277,13 +277,13 @@ def test_write_node_update_stays_put_when_chunk_still_fits(tmp_path: Path) -> No
 
 
 def test_atomic_plan_rollback_restores_existing_and_unlinks_new(tmp_path: Path) -> None:
-    _seed_repo(tmp_path, {"phases/M0.json": [_phase_M0()]})
+    seed_repo(tmp_path, {"phases/M0.json": [phase_m0()]})
     chunk_existing = tmp_path / "roadmap" / "phases" / "M0.json"
     chunk_new = tmp_path / "roadmap" / "phases" / "new.json"
     original = chunk_existing.read_bytes()
     plan = AtomicWritePlan(root=tmp_path)
-    plan.stage_chunk(chunk_existing, [_milestone("M0.1", "M0", n_index=2)])
-    plan.stage_chunk(chunk_new, [_milestone("M0.2", "M0", n_index=3)])
+    plan.stage_chunk(chunk_existing, [milestone("M0.1", "M0", n_index=2)])
+    plan.stage_chunk(chunk_new, [milestone("M0.2", "M0", n_index=3)])
     with pytest.raises(RuntimeError):
         plan.commit(_raise_runtime)
     assert chunk_existing.read_bytes() == original

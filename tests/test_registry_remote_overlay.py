@@ -22,8 +22,8 @@ from specy_road.registry_remote_overlay import (
 import specy_road.registry_remote_overlay as _registry_overlay
 from specy_road import roadmap_gui_settings as _rgs
 from specy_road.roadmap_gui_lib import roadmap_fingerprint
-from tests.support.same.run_git_e7b46ac47b3e import _run_git
-from tests.support.same.write_gw_c3cc7b6c500e import _write_gw
+from tests.support.same.run_git_e7b46ac47b3e import run_git
+from tests.support.same.write_gw_c3cc7b6c500e import write_gw
 
 
 def _isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -53,22 +53,22 @@ def overlay_repo(tmp_path: Path) -> Path:
     """Git repo: main has empty registry; feature/rm-x has a claim; remote ref simulated."""
     repo = tmp_path / "ov"
     repo.mkdir()
-    _run_git(repo, "init")
-    _run_git(repo, "config", "user.email", "t@example.com")
-    _run_git(repo, "config", "user.name", "T")
+    run_git(repo, "init")
+    run_git(repo, "config", "user.email", "t@example.com")
+    run_git(repo, "config", "user.name", "T")
     roadmap = repo / "roadmap"
     roadmap.mkdir(parents=True, exist_ok=True)
-    _write_gw(repo)
+    write_gw(repo)
     (roadmap / "manifest.json").write_text('{"version":1,"includes":[]}\n', encoding="utf-8")
     (roadmap / "registry.yaml").write_text(
         _minimal_registry([]),
         encoding="utf-8",
     )
-    _run_git(repo, "add", "roadmap")
-    _run_git(repo, "commit", "-m", "init")
-    _run_git(repo, "branch", "-M", "main")
+    run_git(repo, "add", "roadmap")
+    run_git(repo, "commit", "-m", "init")
+    run_git(repo, "branch", "-M", "main")
 
-    _run_git(repo, "checkout", "-b", "feature/rm-ovtest")
+    run_git(repo, "checkout", "-b", "feature/rm-ovtest")
     entry = {
         "codename": "ovtest",
         "node_id": "M9.9",
@@ -79,8 +79,8 @@ def overlay_repo(tmp_path: Path) -> Path:
         _minimal_registry([entry]),
         encoding="utf-8",
     )
-    _run_git(repo, "add", "roadmap/registry.yaml")
-    _run_git(repo, "commit", "-m", "claim")
+    run_git(repo, "add", "roadmap/registry.yaml")
+    run_git(repo, "commit", "-m", "claim")
 
     tip = subprocess.run(
         ["git", "rev-parse", "HEAD"],
@@ -89,8 +89,8 @@ def overlay_repo(tmp_path: Path) -> Path:
         capture_output=True,
         text=True,
     ).stdout.strip()
-    _run_git(repo, "checkout", "main")
-    _run_git(repo, "update-ref", f"refs/remotes/origin/feature/rm-ovtest", tip)
+    run_git(repo, "checkout", "main")
+    run_git(repo, "update-ref", f"refs/remotes/origin/feature/rm-ovtest", tip)
     return repo
 
 

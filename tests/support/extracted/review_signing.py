@@ -1,7 +1,8 @@
 """One shared copy of a helper that had identical definitions in several test modules."""
 from __future__ import annotations
 
-def _roster(opus_pub: str, human_pub: str | None = None, *, signed: bool = True) -> str:
+def roster(opus_pub: str, human_pub: str | None = None, *, signed: bool = True) -> str:
+    """Shared test helper."""
     human = f"  - {{id: human, family: human, roles: [coordinator, reviewer], public_key: \"{human_pub}\"}}\n" if human_pub \
         else "  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
     return ("version: 1\nroster:\n" + human +
