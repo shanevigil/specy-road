@@ -423,10 +423,10 @@ export default function App() {
   const loadSnapshot = useCallback(async () => {
     setErr(null);
     try {
+      void fetchOrchestration();
       const [r, repoRes] = await Promise.all([
         fetchRoadmap(),
         fetch("/api/repo").then((x) => x.json()),
-        fetchOrchestration(),
       ]);
       setData(r);
       lastFingerprintRef.current = r.fingerprint;
