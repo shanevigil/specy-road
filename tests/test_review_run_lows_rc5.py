@@ -170,3 +170,38 @@ def test_a_reviewer_that_leaves_nothing_gets_no_signal(tmp_path: Path, monkeypat
     finally:
         mine.kill()
         mine.wait()
+
+
+#: A reviewer that exits at once, leaving a group member that writes its last line only when the
+#: group's SIGTERM reaches it: a line that can arrive only after the direct child has gone.
+LATE_WRITER = '''
+import os, subprocess, sys
+member = """
+import os, signal, sys
+def bye(*_):
+    print("written after the reviewer exited", flush=True)
+    os._exit(0)
+signal.signal(signal.SIGTERM, bye)
+signal.alarm(60)   # bounded if no signal ever comes
+os.write(int(sys.argv[1]), b"k")
+signal.pause()
+"""
+r, w = os.pipe()
+subprocess.Popen([sys.executable, "-c", member, str(w)], pass_fds=(w,))   # same group, holds stdout
+os.close(w)
+os.read(r, 1)   # the handshake: its SIGTERM handler is installed
+print("reviewer exits", flush=True)
+'''
+
+
+@pytest.mark.skipif(not hasattr(os, "killpg"), reason="POSIX process groups")
+def test_output_the_group_writes_after_the_reviewer_exits_is_still_read() -> None:
+    """Once the direct child exits, its group is ended and the rest of its output read."""
+    from specy_road.review_record_write import reviewer_output
+
+    proc = subprocess.Popen([sys.executable, "-c", LATE_WRITER], text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            stdin=subprocess.DEVNULL, start_new_session=True)
+    with reviewer_output(proc) as lines:
+        read = list(lines)
+    assert read == ["reviewer exits\n", "written after the reviewer exited\n"]
