@@ -343,6 +343,7 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.6.1` on `feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` since 2026-11-14
+- `M16.6.4` on `feature/rm-tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support` since 2026-11-15
 - `M17.17` on `feature/rm-orchestration-drawer-outline-order-badges-load-with-roadmap` since 2026-11-15
 - `M17.9` on `feature/rm-gui-orch-sandbox-acceptance` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
