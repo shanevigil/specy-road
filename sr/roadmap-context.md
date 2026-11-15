@@ -63,7 +63,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.6` Docs and tests reorganised by topic `docs-and-tests-reorganised-by-topic` — milestone — **Not Started**
     - `M16.6.1` Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra `docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` — task — **Not Started**
     - `M16.6.2` suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout `suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` — task — **Not Started**
-    - `M16.6.3` Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them `tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` — task — **Not Started**
+    - `M16.6.3` Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them `tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` — task — **Complete**
     - `M16.6.4` Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support `tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support` — task — **Not Started**
     - `M16.6.5` Tests: files move into unit, flows, cli, gui and repo lanes, moves only `tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` — task — **Not Started**
     - `M16.6.6` Tests: per-leaf and per-round test files fold into the file for the module or flow they test `tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test` — task — **Not Started**
@@ -343,7 +343,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.6.1` on `feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` since 2026-11-14
-- `M16.6.3` on `feature/rm-tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` since 2026-11-15
 - `M17.17` on `feature/rm-orchestration-drawer-outline-order-badges-load-with-roadmap` since 2026-11-15
 - `M17.9` on `feature/rm-gui-orch-sandbox-acceptance` since 2026-11-14
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
