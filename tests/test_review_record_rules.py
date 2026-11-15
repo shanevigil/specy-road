@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from tests.review_repo_helpers import git, make_review_repo, review_text
-from tests.test_models_and_prompt import make_profile_repo
+from tests.support.profiles import make_profile_repo
 from tests.test_review_cli import ONE_AI
 
 from specy_road.bundled_scripts import review_cli, role_prompt

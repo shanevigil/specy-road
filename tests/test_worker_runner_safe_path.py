@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 from tests.review_repo_helpers import make_review_repo
-from tests.test_worker_cli import wait_for_worker
+from tests.support.harness import wait_for_worker
 
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_runner as wr

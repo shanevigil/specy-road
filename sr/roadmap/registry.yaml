@@ -126,23 +126,6 @@ entries:
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
-  - codename: tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them
-    node_id: M16.6.3
-    branch: feature/rm-tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them
-    touch_zones:
-      - tests/support/
-      - tests/conftest.py
-      - tests/test_worker_cli.py
-      - tests/test_models_and_prompt.py
-      - tests/test_orchestrate_plan.py
-      - tests/test_roadmap_crud.py
-      - tests/
-      - scripts/line_width_baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/test-private-imports-baseline.txt
-    started: '2026-11-15'
-    owner: savigil
-    implementation_review: pending
   - codename: orchestration-drawer-outline-order-badges-load-with-roadmap
     node_id: M17.17
     branch: feature/rm-orchestration-drawer-outline-order-badges-load-with-roadmap

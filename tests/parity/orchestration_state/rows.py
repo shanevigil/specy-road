@@ -1,6 +1,6 @@
 """The orchestration state table: one fixture repo per row, and what each reader said about it.
 
-Every row starts from :func:`tests.worker_repo_helpers.make_worker_repo` (leaf ``M1.1`` claimed on
+Every row starts from :func:`tests.support.harness.make_worker_repo` (leaf ``M1.1`` claimed on
 ``feature/rm-thing``, the main checkout on that branch, a roster with ``max_workers: 2``) and adds
 the workers, worktrees, review files and presence the row names, and pushes ``dev`` and the leaf's
 branch to a bare ``origin``. ``golden/<row>.txt`` holds, for
@@ -30,7 +30,7 @@ from specy_road.orchestration.workers.worker_orphans import holding_slots, orpha
 from tests.parity.process.corpus import corpus_env, step_transcript
 from tests.parity.support import run_cli
 from tests.review_repo_helpers import commit_file, git, review_text
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.harness import make_worker_repo
 
 GOLDEN = Path(__file__).resolve().parent / "golden"
 NODE, BRANCH = "M1.1", "feature/rm-thing"

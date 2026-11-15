@@ -18,8 +18,8 @@ from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli, worker_cli
 from specy_road.orchestration.workers import worker_cli_render as wcr
 
-from tests.worker_cli_helpers import run_worker_cli, wait_for_worker
-from tests.worker_repo_helpers import FAKE, make_worker_repo, run_fake_harness_turn, worker_roster  # noqa: F401
+from tests.support.cli import run_worker_cli
+from tests.support.harness import make_worker_repo, run_fake_harness_turn, wait_for_worker
 
 
 def test_delegate_returns_at_once_and_is_idempotent(tmp_path: Path, capsys) -> None:

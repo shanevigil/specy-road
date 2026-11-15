@@ -1,13 +1,14 @@
-"""A review repo whose roster runs a fake harness, for ``specy-road worker`` tests.
+"""The fake harness: a review repo whose roster runs a scripted stand-in for a real harness.
 
-Promoted from ``tests/test_worker_cli.py`` so worker tests in other modules
-share one setup through public names.
+``specy-road worker`` tests launch :data:`FAKE` instead of Claude Code, Codex or Cursor; it prints
+the stream lines a turn spec names and exits as told.
 """
 
 from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 
 from tests.review_repo_helpers import git, make_review_repo
@@ -15,7 +16,6 @@ from tests.review_repo_helpers import git, make_review_repo
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers.worker_adapters import Launch
-
 FAKE = '''
 import json, sys, time
 spec = json.loads(open(sys.argv[1]).read()) if sys.argv[1].endswith(".json") else {"lines": [
@@ -62,3 +62,13 @@ def reset_cursor_adapter_via_init(adapter=None):
     cu = adapter or wa.adapter_for("cursor")
     cu.parse(json.dumps({"type": "system", "subtype": "init", "session_id": "test-reset"}))
     return cu
+
+
+def wait_for_worker(repo: Path, wid: str, timeout: float = 10) -> ws.WorkerRecord:
+    """Poll until worker ``wid``'s wrapper has exited; return its record."""
+    for _ in range(int(timeout * 10)):
+        rec = ws.load_record(repo, wid)
+        if rec.pid is None:
+            return rec
+        time.sleep(0.1)
+    raise AssertionError("worker did not finish")

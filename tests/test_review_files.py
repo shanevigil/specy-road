@@ -227,7 +227,7 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
     from specy_road.bundled_scripts import role_prompt
     from specy_road.orchestration.workers.worker_adapters import STDIN_INSTRUCTION
     from tests.review_repo_helpers import git, review_output
-    from tests.test_models_and_prompt import run_main
+    from tests.support.cli import run_main
 
     repo = claude_code_reviewer_repo(tmp_path)
     secret = "sk-ant-m15-2-do-not-print"
@@ -275,7 +275,7 @@ def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, cap
 
 def test_claude_code_reviewer_with_channels_cli_runs_it_as_written(tmp_path: Path, capsys, monkeypatch) -> None:
     from specy_road.bundled_scripts import role_prompt
-    from tests.test_models_and_prompt import run_main
+    from tests.support.cli import run_main
 
     repo = claude_code_reviewer_repo(tmp_path, '    channels: {cli: "cat {prompt} | head -1"}\n')
     calls = fake_reviewer_run(monkeypatch)

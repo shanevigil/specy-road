@@ -9,7 +9,7 @@ import pytest
 from specy_road.roadmap_crud_ops import edit_node_set_pairs
 from specy_road.bundled_scripts.roadmap_edit_fields import apply_set, title_to_codename
 
-from tests.test_roadmap_crud import crud_fixture_repo
+from tests.support.crud import crud_fixture_repo
 
 _NK = "10000000-0000-4000-8000-000000009901"
 

@@ -63,7 +63,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.6` | Docs and tests reorganised by topic | milestone | — | Not Started |
 | `M16.6.1` | Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra | task | Agentic-led | Not Started |
 | `M16.6.2` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Not Started |
-| `M16.6.3` | Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them | task | Agentic-led | Not Started |
+| `M16.6.3` | Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them | task | Agentic-led | Complete |
 | `M16.6.4` | Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support | task | Agentic-led | Not Started |
 | `M16.6.5` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Not Started |
 | `M16.6.6` | Tests: per-leaf and per-round test files fold into the file for the module or flow they test | task | Agentic-led | Not Started |
@@ -99,7 +99,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M17.14` | PM GUI: a status modal shows the grind status from grind-session --status --json through one read-only route, with last updated, a refresh interval and a refresh icon | task | Agentic-led | Complete |
 | `M17.15` | PM GUI: the PM answers a ledger question or approves a leaf over a block from the status modal, recorded as a pm-gui operator decision behind a per-session code, and the coordinator processes it | task | Agentic-led | Complete |
 | `M17.16` | Orchestration view joins the snapshot by node id, and the docs name the worker states it sends | task | Agentic-led | Complete |
-| `M17.17` | Orchestration drawer follows the outline's order, and outline badges load with the roadmap | task | Agentic-led | Not Started |
+| `M17.17` | Orchestration drawer follows the outline's order | task | Agentic-led | Not Started |
 | `M18` | Orchestration and review-loop features (after 0.3.1) | phase | — | Not Started |
 | `M18.1` | Reviewers check that code is well-formed and that fixes do not degrade it | task | — | Not Started |
 | `M18.2` | Harness-facts records for the Copilot CLI and Antigravity agy | task | Agentic-led | Not Started |

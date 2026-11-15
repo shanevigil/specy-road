@@ -10,8 +10,8 @@ import yaml
 
 from tests.pickup_repo_helpers import make_pickup_project
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import run_worker_cli
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import make_worker_repo
 
 from specy_road.orchestration.workers import worker_ops
 from specy_road.bundled_scripts import doctor as des

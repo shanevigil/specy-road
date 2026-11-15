@@ -18,7 +18,7 @@ from tests.helpers import script_subprocess_env
 from tests.review_repo_helpers import delegate_layout, git, make_review_repo, review_text
 from tests.milestone_repo_helpers import make_milestone_repo
 from tests.test_review_gate import TWO_FAMILIES
-from tests.test_roadmap_crud import crud_fixture_repo, run_crud
+from tests.support.crud import crud_fixture_repo, run_crud
 
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_files import reviews_dir

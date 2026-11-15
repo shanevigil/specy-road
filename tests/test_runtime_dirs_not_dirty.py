@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import FAKE, wait_for_worker, worker_roster
+from tests.support.harness import FAKE, wait_for_worker, worker_roster
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws

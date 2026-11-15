@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import diverge, git, make_review_repo
-from tests.test_models_and_prompt import make_profile_repo
+from tests.support.profiles import make_profile_repo
 
 import argparse
 import subprocess

@@ -11,8 +11,8 @@ import pytest
 
 from tests.helpers import script_subprocess_env
 from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
-from tests.test_worker_cli import run_worker_cli, wait_for_worker
-from tests.worker_repo_helpers import FAKE, make_worker_repo, worker_roster
+from tests.support.cli import run_worker_cli
+from tests.support.harness import FAKE, make_worker_repo, wait_for_worker, worker_roster
 
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
@@ -100,7 +100,7 @@ def test_usage_keeps_requested_and_observed_model_and_sync_flags_a_mismatch(tmp_
 
 def test_claude_code_unknown_profile_api_id_routes_dynamic_and_names_harness_model(tmp_path: Path) -> None:
     """M15.31 A4: any harness whose resolved model is none is dynamic; the gate names harness_model before pinned."""
-    from tests.test_models_and_prompt import OPUS, commit_profile, make_profile_repo
+    from tests.support.profiles import commit_profile, make_profile_repo, OPUS
 
     repo = make_profile_repo(tmp_path)
     roster = repo / "roadmap" / "orchestration.yaml"

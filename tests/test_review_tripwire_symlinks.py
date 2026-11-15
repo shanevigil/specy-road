@@ -15,7 +15,7 @@ import pytest
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step, wrote_paths
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_models_and_prompt import run_main
+from tests.support.cli import run_main
 from tests.test_review_record_write import GENERIC
 
 from specy_road import review_files as rf

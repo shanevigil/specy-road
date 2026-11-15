@@ -16,8 +16,8 @@ import yaml
 
 from tests.review_repo_helpers import NODE, commit_file, git
 from tests.test_branch_cleanup import BR, _exit, _merge_mode_repo
-from tests.test_worker_cli import run_worker_cli, wait_for_worker
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import make_worker_repo, wait_for_worker
 
 from specy_road.orchestration.workers import worker_lease as lease
 from specy_road.orchestration.workers import worker_ops as ops
