@@ -1,9 +1,9 @@
 """The shared-checkout rule reaches every agent entry point, in one wording.
 
 The rules file ``.specyrd/AGENTS.md`` carries the full rule, the ``AGENTS.md`` stub
-its core (the only part a Codex session is sure to read), the CLAUDE.md managed
-block an import of the rules file, and the bootstrap prompt the same full rule,
-so an adopter who merges the prompt's bullets by hand gets the scaffold's text.
+its core (the only part a Codex session is sure to read), and the CLAUDE.md managed
+block an import of the rules file. The bootstrap prompt links that wording and does
+not restate it.
 """
 
 from __future__ import annotations
@@ -31,13 +31,18 @@ def test_scaffold_agents_md_carries_the_full_rule() -> None:
         assert s in AGENTS, s
 
 
-def test_bootstrap_prompt_carries_the_same_rule() -> None:
+def test_bootstrap_prompt_links_the_shared_checkout_rule() -> None:
+    """The prompt names the two rules-file paragraphs and does not copy them."""
+    prompt = PROMPT.read_text(encoding="utf-8")
+    assert ".specyrd/AGENTS.md" in prompt
     start = AGENTS.index("**Shared checkouts and other agents.**")
     rule = AGENTS[start:AGENTS.index("\n\n", start)]
-    assert rule in PROMPT.read_text(encoding="utf-8")
+    assert rule not in prompt
+    assert "**Shared checkouts and other agents.**" in prompt
     start = AGENTS.index("**Git in a shared tree:**")
     pointer = AGENTS[start:AGENTS.index("`https://", start)]
-    assert pointer in PROMPT.read_text(encoding="utf-8")
+    assert pointer not in prompt
+    assert "**Git in a shared tree:**" in prompt
 
 
 def test_suggested_prompts_index_lists_every_kept_prompt() -> None:

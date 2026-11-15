@@ -1,9 +1,9 @@
 """Lean changes and tests: the rule block, the role prompts, the packet note, the profile tendencies.
 
 Source: two lean-code research reports (2026-10-27). The rules file
-``.specyrd/AGENTS.md`` (the managed block until 2026-11-04) is what every adopter
-agent reads first, so the section is pinned to its exact wording there, in the
-bootstrap prompt and in the toolkit's own AGENTS.md.
+``.specyrd/AGENTS.md`` is what every adopter agent reads, so the section is pinned
+to its exact wording there and in the toolkit's own AGENTS.md. The bootstrap prompt
+links that section and does not restate it.
 """
 
 from __future__ import annotations
@@ -47,11 +47,13 @@ def test_block_section_is_short_and_covers_the_rules() -> None:
         assert needle in text, needle
 
 
-def test_bootstrap_prompt_and_toolkit_agents_md_mirror_the_block() -> None:
+def test_bootstrap_prompt_links_the_rules_and_agents_md_mirrors_the_block() -> None:
+    """The prompt names the rules file's section and does not carry a second wording."""
     bullets = _bullets(_section(BLOCK))
     prompt = PROMPT.read_text(encoding="utf-8")
-    for b in bullets:
-        assert b in prompt, b
+    assert ".specyrd/AGENTS.md" in prompt and "## Lean changes and tests" in prompt
+    for bullet in bullets:
+        assert bullet not in prompt, bullet
     assert _section(AGENTS.read_text(encoding="utf-8")) == _section(BLOCK)
 
 

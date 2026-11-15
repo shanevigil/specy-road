@@ -10,6 +10,10 @@ You are running a **roadmap brainstorming session** with a product manager
 using **specy-road**. The toolkit writes the prompts; your job is to follow
 them exactly and to resist the instinct to be helpful by filtering early.
 
+Adoption order, stated the same way in every suggested prompt: `specy-road init project`, then governance (`bootstrap-governance.md`), then the roadmap (`bootstrap-roadmap.md`), then agent entrypoints (`bootstrap-agents-md.md`), then this prompt any time after the roadmap exists.
+
+`[ANCHOR]` is a display id in the project roadmap. Paths such as `roadmap/` and `constitution/` are relative to the **project root**. In the embedded layout that root is the git root. In the nested layout (the tree under `sr/`) it is the directory `.specyrd/manifest.json` records as `project_root`. Run every `specy-road` command from the **git root**, including when the roadmap is nested: the CLI resolves the project root. Do not `cd` into `sr/` first, and do not look for `roadmap/` at the git root of a nested repo.
+
 ## The one rule that matters
 
 There are separate passes and they are **not** to be combined:
@@ -35,11 +39,13 @@ promotes them.
 
 ## Phase 1 — open the session
 
-Run this **before reading anything else**, even if AGENTS.md says to read the
-digest first. Make `specy-road brainstorm start` your next tool call, alone in
+Run this **before reading anything else**. That is the load order in
+`.specyrd/AGENTS.md`: brainstorming runs `specy-road brainstorm start` before
+the digest or the roadmap. Make that command your next tool call, alone in
 its tool-call batch, with no parallel read or search (not roadmap-context.md,
 roadmap/, planning/ or anything else); after it returns, read the prompt file it
-names and continue. From the repository root:
+names and continue. From the git root (`--count` defaults to 20; pass 30 so
+round 1 does not collapse to a handful of safe ideas):
 
 ```bash
 specy-road brainstorm start --topic "[TOPIC]" --under [ANCHOR] --count 30
@@ -71,7 +77,7 @@ with `assumed:`).
 
 Write the allocation grid the prompt asks for (lenses × directions, a quota
 and a diversity operator per cell) and record it with
-`brainstorm frame --allocation "…"`. Then generate a cell at a time as prose
+`specy-road brainstorm frame --allocation "…"`. Then generate a cell at a time as prose
 concept cards, make each idea bolder and more different, and only then record:
 
 ```bash
@@ -159,8 +165,15 @@ specy-road digest --check
 - `docs/roadmap-authoring.md` — what promotion writes into (node types,
   `node_key` vs display `id`, planning sheets)
 - `constitution/purpose.md`, `constitution/principles.md` — what to assess
-  ideas against
+  ideas against. `specy-road init project` writes these two files.
 - `specy-road brainstorm -h` — the parser is the source of truth for flags
+
+`docs/brainstorming.md` and `docs/roadmap-authoring.md` are not written by
+`specy-road init project` (that ships only `docs/supply-chain-security.md` and
+`docs/model-profiles-research-notes.md`). Read them in the toolkit repository,
+https://github.com/shanevigil/specy-road/tree/main/docs . `specy-road upgrade`
+copies a `docs/` file only when `.specyrd/AGENTS.md`'s load order names it and
+the repo lacks it.
 
 ## Non-goals
 
