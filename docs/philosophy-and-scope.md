@@ -27,6 +27,6 @@ Other tools also drive coding-agent CLIs as workers; specy-road does too, but wh
 - **How** an agent plans or implements inside a session; that stays with the user and their harness.
 - **Product-specific stacks** — stack choices belong in your application's ADRs and `shared/` contracts, not in the kit's core rules.
 
-Optional IDE rules, `CLAUDE.md` files or your own MCP servers are collected in [`optional-ai-tooling-patterns.md`](optional-ai-tooling-patterns.md); they are not part of specy-road's contract. Anything that defines roadmap truth, contracts or enforceable limits lives under `constitution/`, `constraints/`, `roadmap/` and `shared/` in your project and is driven by the `specy-road` CLI; `specyrd init` only installs thin skills that point at those commands.
+Optional IDE rules, `CLAUDE.md` files or your own MCP servers are yours to design ([agent rule files](install-and-usage.md#agent-rules-agentsmd-and-specyrd)); they are not part of specy-road's contract. Anything that defines roadmap truth, contracts or enforceable limits lives under `constitution/`, `constraints/`, `roadmap/` and `shared/` in your project and is driven by the `specy-road` CLI; `specyrd init` only installs thin skills that point at those commands.
 
 For the agent load order, see [`AGENTS.md`](../AGENTS.md) (toolkit contributors) or the `AGENTS.md` that `specy-road init project` writes (consumer projects).

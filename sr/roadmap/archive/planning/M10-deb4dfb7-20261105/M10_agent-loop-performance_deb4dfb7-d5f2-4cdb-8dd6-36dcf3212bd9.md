@@ -1,10 +1,10 @@
 ## Intent
 
-What **this** slice delivers and how it fits the parent phase or vision. Do not repeat the node title, display id, or `node_key`. Do not paraphrase what dependencies deliver — `specy-road brief` inlines each dependency's own `## Intent` under section 6.
+Make agent loops cheaper and faster, and make them observable; the leaves came from the agentic-performance brainstorm.
 
 ## Approach
 
-Constraints, major steps, and how you will verify done.
+The leaves added phase timestamps and timelines, normalised usage, mailbox waits, effort and output budgets, lean reviewer launches, stalled events, a log explorer in the GUI and the governance positioning in the docs; M10.15 to M10.20 were field fixes and pilots.
 
 ## Tasks / checklist
 

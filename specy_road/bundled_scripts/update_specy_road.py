@@ -7,7 +7,7 @@ A future mode may checkout the latest release tag instead; see --help.
 PyPI-only installs cannot use this command — use pip to upgrade.
 
 After a successful fast-forward, optional ``--install-gui-stack`` runs the same
-steps as ``specy-road init gui --install-gui`` (editable ``.[gui-next]`` pip
+steps as ``specy-road init gui --install-gui`` (editable ``.[gui]`` pip
 install and ``gui/pm-gantt`` npm build when sources exist).
 """
 
@@ -278,7 +278,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--install-gui-stack",
         action="store_true",
         help=(
-            "After git: run pip install -e '.[gui-next]' and build gui/pm-gantt "
+            "After git: run pip install -e '.[gui]' and build gui/pm-gantt "
             "(same as: specy-road init gui --install-gui). "
             "Use with --dry-run to print what would run."
         ),
@@ -328,7 +328,7 @@ def main(argv: list[str] | None = None) -> None:
 
         if not args.dry_run:
             print(
-                "Installing editable [gui-next] and PM Gantt UI build …",
+                "Installing editable [gui] and PM Gantt UI build …",
                 flush=True,
             )
         run_install_gui(
@@ -340,7 +340,7 @@ def main(argv: list[str] | None = None) -> None:
         )
         if not args.dry_run:
             print(
-                "[ok] gui-next stack refresh finished (see messages above).",
+                "[ok] gui stack refresh finished (see messages above).",
                 flush=True,
             )
 

@@ -26,7 +26,7 @@ def test_build_install_gui_command_editable_when_in_repo() -> None:
     cmd, cwd = build_install_gui_command()
     assert "--upgrade" in cmd
     assert "-e" in cmd
-    assert ".[gui-next]" in cmd
+    assert ".[gui]" in cmd
     assert cwd is not None
     assert (cwd / "pyproject.toml").is_file()
 
@@ -56,5 +56,5 @@ def test_build_install_gui_command_pypi_when_no_repo(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(cli_init_mod, "specy_road_repo_root_for_editable_install", fake_repo_root)
     cmd, cwd = cli_init_mod.build_install_gui_command()
-    assert "specy-road[gui-next]" in cmd
+    assert "specy-road[gui]" in cmd
     assert cwd is None

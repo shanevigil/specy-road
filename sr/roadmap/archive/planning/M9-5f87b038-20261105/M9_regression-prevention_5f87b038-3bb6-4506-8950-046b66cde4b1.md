@@ -1,14 +1,21 @@
 ## Intent
 
-What **this** slice delivers and how it fits the parent phase or vision. Do not repeat the node title, display id, or `node_key`. Do not paraphrase what dependencies deliver — `specy-road brief` inlines each dependency's own `## Intent` under section 6.
+Stop regressions reaching the integration branch.
 
 ## Approach
 
-Constraints, major steps, and how you will verify done.
+The leaves added a land check on the merge commit, a fixture-pollution guard, test-integrity reports with a gate and waivers, suppression and ratchet findings, verified pre-existing failures, tests-at-risk, red-green evidence, `blocked_on` for executors, and nested-layout tests with zone-path fixes.
 
 ## Tasks / checklist
 
 - [ ] …
+
+## Decisions and notes
+
+Settled (recorded 2026-11-15 by M16.6.1; the design note `docs/design-notes/regression-prevention.md` that held both as open was untracked by M22.55):
+
+- **"Open decision: what green means":** settled. M9.1 landed (e19e4005) running a configured command on the merge commit, and M16.4.5 then replaced `baseline_cmd`, `land_check_cmd` and `verify_cmd` with one `checks:` block in `roadmap/git-workflow.yaml`. Green at a point is every `checks:` entry for that point (`when: baseline`, `land` or `prompt`) passing.
+- **"M9.10 stays proposed":** settled. M9.10 (red-green evidence) was approved and landed (1b2a3d1f).
 
 ## References
 

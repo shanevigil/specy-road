@@ -448,6 +448,23 @@ function leafGroup(
 }
 
 /**
+ * `nodes` in the outline's row order (`orderedIds`: the order OutlineTable
+ * renders, parents before children, siblings by sibling order). An id with no
+ * node is skipped. This is that list, not a sort of the node ids: the Gantt
+ * `nodes` array follows dependency steps, and `M0.10` would sort before `M0.2`.
+ */
+export function outlineNodesInRowOrder<T extends OutlineNodeRef>(
+  nodes: readonly T[],
+  orderedIds: readonly string[],
+): T[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  return orderedIds.flatMap((id) => {
+    const node = byId.get(id);
+    return node ? [node] : [];
+  });
+}
+
+/**
  * Groups in outline order, then leaf keys absent from the outline (by key),
  * then one "No leaf" group for leafless workers.
  */

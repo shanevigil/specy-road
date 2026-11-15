@@ -140,7 +140,7 @@ def test_gui_converge_is_advisory_and_persists_nothing_structured(
 
 
 def test_gui_docs_say_converge_is_advisory_and_route_to_revise() -> None:
-    doc = (ROOT / "docs" / "pm-gui-brainstorm.md").read_text(encoding="utf-8")
+    doc = (ROOT / "docs" / "pm-gui.md").read_text(encoding="utf-8")
     assert "advisory only" in doc.lower()
     assert "specy-road brainstorm revise" in doc
     assert "ordered by the model's verdict" not in doc

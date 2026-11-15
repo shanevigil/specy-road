@@ -1,10 +1,10 @@
 ## Intent
 
-What **this** slice delivers and how it fits the parent phase or vision. Do not repeat the node title, display id, or `node_key`. Do not paraphrase what dependencies deliver — `specy-road brief` inlines each dependency's own `## Intent` under section 6.
+A research register under `research/` records each deep-research topic with its prompt, refresh cadence, last run and the roadmap nodes its findings fed, and the first harness-capabilities run is folded into the roadmap.
 
 ## Approach
 
-Constraints, major steps, and how you will verify done.
+M7.1 added the register and the overdue-research warning. M7.2 ran the harness-capabilities research by hand and fed its findings into M8, M10 and M11 leaves.
 
 ## Tasks / checklist
 

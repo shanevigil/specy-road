@@ -16,11 +16,11 @@
 - issue links, exemptions, the malicious-code policy, what a refusal must print → "Project stewardship"
 - branch names, release pointers, Trusted Publisher setup, review rounds → "Branching, tagging, and release process"
 - the exact gate commands → "Local CI parity"
-- building the SPA, updating a clone, hooks, IDE stubs → "PM Gantt UI: build and install", "Updating an editable clone", "Pre-commit hook", "IDE command stubs (`specyrd`)"
+- building the SPA, updating a clone, hooks, agent skills → "PM Gantt UI: build and install", "Updating an editable clone", "Pre-commit hook", "Agent skills (`specyrd`)"
 - pip and npm audits → "Supply-chain & dependency audits"
 - a safe scaffold target and further reading → "Trying `init project` safely", "Pointers to deeper docs"
 
-**Related:** [`release-runbook.md`](release-runbook.md), [`supply-chain-security.md`](supply-chain-security.md), [`architecture.md`](architecture.md), [`pm-gui.md`](pm-gui.md).
+**Related:** [`release-runbook.md`](release-runbook.md), [`supply-chain-security.md`](supply-chain-security.md), [`pm-gui.md`](pm-gui.md).
 
 > The link from README to this guide will only be added **post-release**
 > (per F-001 / F-002). Until then, open this file directly from the
@@ -218,7 +218,7 @@ The `--repo-root tests/fixtures/specy_road_dogfood` checks exercise the dogfood 
 
 ```bash
 source .venv/bin/activate
-pip install -e ".[dev,gui-next]"
+pip install -e ".[dev,gui]"
 specy-road --version   # which build you are actually running
 pytest -n auto -q
 specy-road validate    --repo-root tests/fixtures/specy_road_dogfood
@@ -364,19 +364,20 @@ they pass with no allow entry.
 
 ---
 
-## IDE command stubs (`specyrd`)
+## Agent skills (`specyrd`)
 
-`specyrd init` writes thin slash-command stubs into your IDE's command
-directory so you can call `specy-road` from the command palette.
+`specyrd init` installs one thin skill per command under
+`.agents/skills/<name>/SKILL.md` (Cursor and Codex read that directory;
+`--ai claude-code` adds `.claude/skills/` links), each running `specy-road`.
 
 ```bash
-specyrd init . --ai cursor               # or --ai claude-code
+specyrd init . --ai cursor               # or --ai claude-code, --ai codex
 specyrd init . --ai cursor --role dev    # validate, brief, claim, finish, …
 specyrd init . --ai cursor --role pm     # validate, export, author, …
 ```
 
 These are wrappers — the canonical behavior lives in `specy-road`, not
-the stubs.
+the skills. Details: [install-and-usage.md](install-and-usage.md#skills-specyrd-init).
 
 ---
 
@@ -435,7 +436,7 @@ Then validate against that sandbox: `specy-road validate --repo-root /tmp/specy-
   manifest order, generated `roadmap.md`.
 - [philosophy-and-scope.md](philosophy-and-scope.md) — what the toolkit
   promises and what it leaves to the consumer.
-- [architecture.md](architecture.md) — code-level architecture for
-  contributors.
+- [roadmap-authoring.md](roadmap-authoring.md#project-layout-and-flow) — the
+  project layout and the author → validate → brief flow.
 - [supply-chain-security.md](supply-chain-security.md) — dependency
   policy.

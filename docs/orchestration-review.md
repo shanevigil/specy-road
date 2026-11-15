@@ -230,6 +230,16 @@ review, no delta packet is built and no `delta_from` approval counts. Rebuilding
 the packet without `--full`, or a new commit, lifts the stamp. `delta_review:
 false` turns the rule off everywhere.
 
+## Review tiers
+
+A leaf's tier is the first word of the first line under its planning sheet's `## Tier` heading (`plain`, `behavioural` or `trust boundary`; any text after a `:` or `(` is a note). The gate uses it in three places, and each reads the sheet from its own commit:
+
+- **Fix check:** an approval carries to a one-commit fix of a block only when the sheet as committed on the integration branch (never the branch under review) names `plain` or `behavioural` ([Fix check after a block](#fix-check-after-a-block)).
+- **Bookkeeping carry:** an earlier approval survives later bookkeeping-only commits only when the sheet's tier at the approved commit equals its tier at the commit under review, and that tier is present (the opening list above).
+- **Accept with limits:** the coordinator's accept-with-limits form reads the sheet on the integration branch and refuses a `trust boundary` leaf and a sheet with no tier value; any other value is accepted ([Operator decision](#operator-decision)).
+
+A sheet without `## Tier` gets none of these. Any other value (not one of the three) gets no fix-check carry; the bookkeeping carry and accept-with-limits treat it like `plain`. The gate does not choose a tier from the paths a leaf touches; the planner writes it, and raising it is the planner's or coordinator's call.
+
 ## Fix check after a block
 
 A code fix after a block normally makes every approval stale, so each fix round
@@ -355,7 +365,7 @@ refuse it before any preflight or harness, `review status` lists it as excluded 
 the next step, and the gate does not count its records, signed or not. The shipped flag is on
 **composer-2.5** (and its alias `composer-2.5-fast`): the finding is about that model, not about the
 Cursor harness. Setting `allow_guidance_bypass_model: true` on its committed roster entry lets it back
-in at your own risk ([orchestration-roster.md](orchestration-roster.md)); each executor or reviewer
+in at your own risk ([orchestration-workers.md](orchestration-workers.md#models-observed-to-bypass-the-guidance-allow_guidance_bypass_model)); each executor or reviewer
 launch then warns. With `signed_reviews` off nothing changes.
 
 **What the gate cannot stop.** Without `signed_reviews`, an agent with shell access can
@@ -394,6 +404,8 @@ which also keeps such a model out of the executor and reviewer roles (above).
 An existing READY with no `blocked_on` whose `commit` resolves to its `base` is not a hand-off when the leaf's zones cover no configured nested repository. The text shows that file as INVALID, `--json` gives it a non-empty `errors` list, and with no independent review records the state is `waiting`, so no reviewer prompt is suggested. A READY that declares `blocked_on` still reports `executor_blocked`. A leaf whose zones cover a nested repository keeps the previous reading of such a READY.
 
 Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `executor_blocked`, `stale`, `escalated`, `fix_round_budget_spent`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0. **Review-loop escalation:** a round is one reviewed commit in `history/`; when the last `escalate_same_acceptance_blocks` rounds all block on one acceptance id (`same_acceptance`), when one reviewer family (from the roster) blocked that many of the rounds it reviewed in a row, whatever acceptance ids or models of that family it named (`same_family`; an approval from the family resets its count), or after `escalate_review_rounds` rounds (`review_rounds`), an unapproved leaf is `escalated` with its trigger named (`review status` prints it too, and reviewer prompts say so). `specy-road prompt <NODE_ID> --role rca --model <id>` (a rostered reviewer that neither implemented nor reviewed the leaf) then builds a root-cause prompt from the brief, every round's records side by side and the diffs between them. A coordinator can start one on a leaf that is not escalated with `--force --reason '<why>'` (rule `forced`; it needs a review round since the last analysis, and an active escalation wins over it); the reason is in the prompt and in the record's `trigger.reason`; the analyst writes `RCA-<round>.md` beside the reviews with a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence, the cheapest corrective action and, for a specification cause, a proposed acceptance rewrite for a human to approve. A valid record resolves the trigger and counting restarts; an invalid one is listed as a problem.
+
+**A root-cause analysis comes before every escalation step.** An `escalated` leaf stays escalated until a valid RCA record covers its trigger; `fix_round_budget_spent` names the next step from the next-step table (`STATES` in `specy_road/review_next_step.py`): an analysis when none covers the latest round, otherwise the step the covering record calls for (`review defer` for an unapplied `defer_findings` record, an executor fix, `review packet` then a new reviewer prompt, or a `decisions add` asking a person); `review defer` acts only on an RCA record of type `defer_findings`; and the coordinator's accept-with-limits form cites two RCA records. A leaf whose counted approvals meet the policy needs no RCA, and the operator's own words (`review operator-decision --quote`) decide a leaf without one ([Operator decision](#operator-decision)). The escalation keys `escalate_same_acceptance_blocks` (default 3), `escalate_review_rounds` (default 5) and `escalate_when_converging` (default `false`: a converging loop is not escalated by the `same_family` or `review_rounds` rule, and `review status` says `converging; escalation deferred`) are current policy keys in `roadmap/orchestration.yaml`, not deprecated ones.
 
 ## Fix-round budget and deferral
 

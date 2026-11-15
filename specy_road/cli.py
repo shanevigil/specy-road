@@ -418,11 +418,11 @@ def _cmd_gui(rest: list[str]) -> None:
     uvicorn_spec = importlib.util.find_spec("uvicorn")
     if uvicorn_spec is None:
         print(
-            "error: FastAPI Gantt UI needs uvicorn (included in specy-road[gui-next]). Run:\n"
+            "error: FastAPI Gantt UI needs uvicorn (included in specy-road[gui]). Run:\n"
             "  specy-road init gui --install-gui\n"
             "  specy-road init gui --reinstall-gui   # if deps are corrupted or stuck\n"
             "or:\n"
-            "  pip install 'specy-road[gui-next]'\n"
+            "  pip install 'specy-road[gui]'\n"
             "Use the same Python environment as this `specy-road` command.",
             file=sys.stderr,
         )
@@ -431,7 +431,7 @@ def _cmd_gui(rest: list[str]) -> None:
         print(
             "error: packaged Gantt UI assets are missing "
             f"({_PM_GANTT_INDEX}).\n"
-            "Reinstall or upgrade: pip install --upgrade 'specy-road[gui-next]'\n"
+            "Reinstall or upgrade: pip install --upgrade 'specy-road[gui]'\n"
             "If you develop the UI from git, rebuild once from the repo root:\n"
             "  cd gui/pm-gantt && npm install && npm run build",
             file=sys.stderr,

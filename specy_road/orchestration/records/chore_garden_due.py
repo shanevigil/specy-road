@@ -44,4 +44,4 @@ def warn_garden_due(root: Path, today: date | None = None) -> None:
     """One non-fatal ``validate`` line when gardening is due."""
     why = garden_due(root, today or date.today())
     if why:
-        print(f"garden: warning — {why} (see docs/orchestration-chores.md)", file=sys.stderr)
+        print(f"garden: warning — {why} (see docs/orchestration-workers.md)", file=sys.stderr)

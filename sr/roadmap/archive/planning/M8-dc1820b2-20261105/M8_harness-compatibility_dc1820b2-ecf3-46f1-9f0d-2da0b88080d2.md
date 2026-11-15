@@ -1,10 +1,10 @@
 ## Intent
 
-What **this** slice delivers and how it fits the parent phase or vision. Do not repeat the node title, display id, or `node_key`. Do not paraphrase what dependencies deliver — `specy-road brief` inlines each dependency's own `## Intent` under section 6.
+specy-road drives each harness correctly: a harness-facts fixture drives the model profiles and executor templates, and the facts are checked against installed binaries.
 
 ## Approach
 
-Constraints, major steps, and how you will verify done.
+The leaves hardened worker launches with a post-run check, made reviewer runs read-only with the review record written from structured output, shipped skills once with a meter over every injected file, added guard hooks per harness, and added candidate profiles for Copilot and agy.
 
 ## Tasks / checklist
 

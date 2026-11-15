@@ -20,7 +20,7 @@
 - the command table, `sync` flags, terminal LLM review, copy-paste commands → "Command line: when and what to run", "Quick reference (copy-paste)"
 - runway depth, human gates, monitoring, tags, contracts → "Your role in the system", "Runway maintenance (ongoing)", "Human-gate decisions", "Monitoring execution (not approving PRs)", "Human-led vs agentic (short guide)", "Writing implementable contracts"
 
-**Related:** [`dev-workflow.md`](dev-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`pm-gui.md`](pm-gui.md), [`pm-llm-review.md`](pm-llm-review.md).
+**Related:** [`dev-workflow.md`](dev-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`pm-gui.md`](pm-gui.md), [`pm-gui.md`](pm-gui.md#llm-review) (LLM Review).
 
 This guide is for **product managers, program leads, and tech leads** who shape what gets built and in what order. You do not need to be a developer; you need a copy of the project on your machine and a way to run a few commands (or use the visual dashboard).
 
@@ -48,7 +48,7 @@ Creates starter files if they are missing. Existing files are left unchanged unl
 
 **Via Gantt PM UI:** After `specy-road gui`, open **Constitution** in the toolbar. You can edit both files and **Save both**, or use **Create starter files** if either file is missing (same behavior as the CLI scaffold).
 
-**Via IDE (optional):** Run `specyrd init …` so your editor gets slash-command stubs; the PM-oriented set includes **`specyrd-constitution`**, which points at `specy-road scaffold-constitution` and this doc. **specyrd** is not [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI — canonical artifacts remain these paths plus the roadmap/registry model ([README.md](../README.md)).
+**Via IDE (optional):** Run `specyrd init …` so your agent gets one skill per command (`.agents/skills/`); the PM-oriented set includes **`specyrd-constitution`**, which points at `specy-road scaffold-constitution` and this doc. **specyrd** is not [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI — canonical artifacts remain these paths plus the roadmap/registry model ([README.md](../README.md)).
 
 ### PM glossary (graph `type` values)
 
@@ -129,7 +129,7 @@ Steps 2–4 are new in 0.2.1. Before that the GUI read the environment variable 
 specy-road init gui --install-gui
 ```
 
-Run the same command later to **upgrade** the stack when you update the package. Without Node on `PATH`, npm is skipped and the packaged UI is still used. Use **`specy-road init gui --reinstall-gui`** if the environment looks corrupted. Equivalent manual install: `pip install --upgrade 'specy-road[gui-next]'`.
+Run the same command later to **upgrade** the stack when you update the package. Without Node on `PATH`, npm is skipped and the packaged UI is still used. Use **`specy-road init gui --reinstall-gui`** if the environment looks corrupted. Equivalent manual install: `pip install --upgrade 'specy-road[gui]'`.
 
 **Every session:**
 
@@ -139,7 +139,7 @@ specy-road gui
 
 The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:8765)**). Options: `specy-road gui --help` for `--host`, `--port`, and `--repo-root`. If **address already in use** on port 8765, stop the other process or run `specy-road gui --port 8766` and open that port in the browser.
 
-**Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui-next]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
+**Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
 
 ### Multi-writer behavior (optimistic concurrency)
 
@@ -166,7 +166,7 @@ The PM UI does **not** take a global lock on the roadmap. Two people (or two bro
 
   This is **not** display-only elsewhere: the rollup is also what **dependency satisfaction** uses, so a phase whose leaves are all done never blocks the work downstream of it. And `specy-road finish-this-task` now closes rolled-up ancestors in the chunk file itself, so the stored value should stop lagging in the first place. If it does lag, `specy-road validate` warns and prints the `edit-node` command; `specy-road list-nodes` shows the stored `STATUS` and the computed `ROLLUP` side by side.
 
-- **Milestone rollup (`milestone_execution`)** — After **`specy-road milestone start`**, the parent node carries **`milestone_execution`** in the roadmap JSON. The API wires **`rollup_status`** into the Status column for all node types (see server `load_roadmap` + `_apply_rollup_on_wire`), but **editing** the outline or statuses under an **`active`** or **`pending_mr`** milestone is **blocked** until delivery is reconciled (rollup branch merged into integration, then **`specy-road milestone status --apply`**, or the documented `--fallback-head-delivery` backup). See [git-workflow.md](git-workflow.md#committed-milestone-state).
+- **Milestone rollup (`milestone_execution`)** — After **`specy-road milestone start`**, the parent node carries **`milestone_execution`** in the roadmap JSON. The API wires **`rollup_status`** into the Status column for all node types (see server `load_roadmap` + `_apply_rollup_on_wire`), but **editing** the outline or statuses under an **`active`** or **`pending_mr`** milestone is **blocked** until delivery is reconciled (rollup branch merged into integration, then **`specy-road milestone status --apply`**, or the documented `--fallback-head-delivery` backup). See [git-workflow.md](git-workflow.md#branch-naming).
 - **Registry** — When a developer has claimed work, you may see **branch names** or **timestamps** on the relevant item (from `roadmap/registry.yaml`). When they finish their task, that overlay usually clears after the next refresh.
 - **Dev column** — The cell shows **who** (not the branch name): explicit **`owner`** in the registry row; else **PR/MR author** from GitHub/GitLab when configured; else the **last commit author** on the **remote-tracking** branch (`refs/remotes/<remote>/<registered-branch>`) after `git fetch`, or on a **local** branch of the same name (`refs/heads/<registered-branch>`) when the remote-tracking ref is missing; else **local `git config user.name`** only when your **current branch** matches that row’s registered branch (typical for **developers** on `feature/rm-*`, not for **PMs** who stay on the integration branch); else **—**. **Hover** the cell for the **branch name** and other registry/Git hints.
 - **Git workflow status** — Next to the **settings** (gear) icon, a **read-only label** shows trunk/remote and current branch when healthy (**green**). **Red** means missing or invalid `roadmap/git-workflow.yaml`. **Yellow** means the folder is not a git clone, or the integration branch ref is not present locally yet (hover the label for details: edit the YAML, run `git fetch`, or set `SPECY_ROAD_REPO_ROOT` if the GUI resolved the wrong tree). When **Fast-forward integration branch** is enabled and the server skips fast-forward (e.g. dirty tree), the label may show **yellow** with a short reason; **merged registry** from remote overlay can still reflect **`origin/<integration_branch>`** after `git fetch`. When your **current branch** matches a task’s registered feature branch **in the `roadmap/registry.yaml` present in this checkout**, that outline row gets a **green left accent** (hover the row for the exact rule).
@@ -206,7 +206,7 @@ In the detail panel, choose a **status** from the dropdown and click **Save stat
 
 Configure credentials in **Settings** (gear area in the sidebar) under the **LLM** tab, or set the same **environment variables** your team documents (see below). Use **Test LLM** before relying on it.
 
-For a **PM-oriented walkthrough** of what is sent to the model, how the diff and merge buttons work, and token-related notes, see **[pm-llm-review.md](pm-llm-review.md)**.
+For a **PM-oriented walkthrough** of what is sent to the model, how the diff and merge buttons work, and token-related notes, see **[pm-gui.md](pm-gui.md#llm-review)**.
 
 ## Which checkout to run the GUI from
 

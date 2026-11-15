@@ -6,11 +6,11 @@
 **Not for:** toolkit-contributor topics — branching, PR workflow, npm build, audits ([`contributor-guide.md`](contributor-guide.md)) — or the detail behind each workflow ([`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md)).
 
 **Must know without reading on:**
-- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui]`, `[gui-next]`, `[review]`); pipx and uv tool work too. An RC is one exact wheel from TestPyPI, sha256-checked, with dependencies from PyPI only; TestPyPI is never an index ([`install-release-candidates.md`](install-release-candidates.md)).
+- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui]`, `[review]`); pipx and uv tool work too. An RC is one exact wheel from TestPyPI, sha256-checked, with dependencies from PyPI only; TestPyPI is never an index ("Install a release candidate (TestPyPI)").
 - New project: `specy-road init project` (it also writes `roadmap.md` and `roadmap-context.md`) prints the next steps: set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, commit the scaffold, then `specy-road validate`.
 - After `pip install -U specy-road`: `specy-road upgrade --prune` (refreshes `schemas/`, `model-profiles/`, missing load-order docs and the stubs, prints one report of what changed, then runs `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
-- Dev loop: `specy-road do-next-available-task` → implement → `review packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
+- Dev loop: `specy-road do-next-available-task` → implement → `review packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge` (or `--on-complete pr`).
 
 **Read further for:**
 - prerequisites, PyPI, pipx and uv tool, TestPyPI RCs, `uv pip`, source checkout → "Requirements", "Install", "Install a release candidate (TestPyPI)", "Install from source (toolkit contributors)"
@@ -20,7 +20,7 @@
 - what a brief contains → "Brief generation"
 - audits and the release pointers → "Optional dependency audit (consumer projects)", "Contributing & release process"
 
-**Related:** [`contributor-guide.md`](contributor-guide.md), [`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md), [`supply-chain-security.md`](supply-chain-security.md).
+**Related:** [`contributor-guide.md`](contributor-guide.md), [`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md), [`supply-chain-security.md`](supply-chain-security.md#release-candidates-from-testpypi), [`upgrading.md`](upgrading.md).
 
 ---
 
@@ -51,9 +51,10 @@ Optional extras (pipx and uv tool take the same quoted spec):
 
 ```bash
 pip install "specy-road[gui]"       # PM Gantt UI deps
-pip install "specy-road[gui-next]"  # PM Gantt UI deps (same set as [gui])
 pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
+
+`[gui-next]` is a deprecated alias of `[gui]` (the same dependencies), kept for one release and removed in the release after 0.3.1; install `[gui]`.
 
 Upgrade to a new final release with the tool that installed it: `pip install -U specy-road`, `pipx upgrade specy-road` or `uv tool upgrade specy-road`.
 Commands (not `--version`) warn when running older than `.specyrd/manifest.json` / `AGENTS.md`.
@@ -72,7 +73,71 @@ A repo virtualenv, `pip install --user`, pipx and uv tool can each put a `specy-
 
 ### Install a release candidate (TestPyPI)
 
-Release candidates (`X.Y.ZrcN`), with or without an extra, are installed from one sha256-checked wheel or its direct URL, never with TestPyPI as an index: see [install-release-candidates.md](install-release-candidates.md).
+An RC is one exact wheel from TestPyPI, sha256-checked against the RC announcement, with its dependencies and extras from PyPI only; TestPyPI is never an index for extras or dependencies, whatever the flag or index strategy. Publishing an RC is the [release runbook](release-runbook.md)'s section A.3.
+
+Prereleases (`X.Y.ZrcN`) publish to **TestPyPI**, not PyPI. The examples use `0.3.1rc1` and the `[gui]` extra; put in the version, wheel URL and sha256 from the RC announcement, and any extra from [Install](#install) (`[gui]`, `[review]`).
+
+#### Never an index
+
+TestPyPI is never an index for extras or dependencies, in any form: not as `--index-url`, not as `--extra-index-url`, not as uv's `--index` or `--extra-index-url`, and with no index strategy (`unsafe-best-match`, `first-index` or any other). Anyone can register a name on TestPyPI, so once it is an index a dependency name squatted there can be installed in place of the real one on PyPI, and installing a squatted sdist runs its build code on your machine. How depends on the form: `--index-url` makes TestPyPI the only index; pip's `--extra-index-url` and uv's `unsafe-best-match` take the highest version from either index; uv's default `first-index` takes each name from the first index that has it, and an index passed with `--index` or `--extra-index-url` is searched before PyPI, so TestPyPI wins every name it has. Listing PyPI first instead does not reach the RC: `first-index` then takes `specy-road` from PyPI, which has no RC, and the exact pin fails. Fetch only the pinned `specy-road` wheel from TestPyPI and let PyPI supply everything else ([supply-chain-security.md](supply-chain-security.md#release-candidates-from-testpypi)).
+
+#### Download and check the wheel
+
+```bash
+pip download --no-deps --only-binary :all: -d rc/ \
+    --index-url https://test.pypi.org/simple/ "specy-road==0.3.1rc1"
+sha256sum rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal the announced sha256
+pip install --no-deps rc/specy_road-0.3.1rc1-py3-none-any.whl
+pip install "rc/specy_road-0.3.1rc1-py3-none-any.whl[gui]"   # dependencies and the extra, from PyPI only
+```
+
+With uv (no pip needed in the virtualenv; `uv venv` and `uv sync` install none):
+
+```bash
+uvx pip download --no-deps --only-binary :all: -d rc/ \
+    --index-url https://test.pypi.org/simple/ "specy-road==0.3.1rc1"
+sha256sum rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal the announced sha256
+uv pip install "rc/specy_road-0.3.1rc1-py3-none-any.whl[gui]"   # PyPI, uv's default index
+```
+
+Drop `[gui]` for the bare package. These steps assume PyPI is your only configured index (no `PIP_EXTRA_INDEX_URL`, `UV_INDEX` or `UV_EXTRA_INDEX_URL`). An exact pin needs no `--pre`.
+
+#### Isolated CLI with an extra
+
+From the wheel checked above:
+
+```bash
+pipx install --force "rc/specy_road-0.3.1rc1-py3-none-any.whl[gui]"
+uv tool install --force "rc/specy_road-0.3.1rc1-py3-none-any.whl[gui]"
+```
+
+uv tool records that local path in its receipt, and the receipt breaks once `rc/` is deleted; the direct URL below avoids that.
+
+#### Direct wheel URL
+
+The announcement and TestPyPI's file listing (`https://test.pypi.org/project/specy-road/0.3.1rc1/#files`) give the wheel's full URL under `https://test-files.pythonhosted.org/`. Install that URL as a direct reference; only the wheel comes from TestPyPI and every dependency comes from PyPI:
+
+```bash
+URL="https://test-files.pythonhosted.org/.../specy_road-0.3.1rc1-py3-none-any.whl"   # full URL from the announcement
+SHA="<announced sha256>"
+
+# pipx (and pip) check a #sha256= fragment and refuse a wheel that does not match
+pipx install --force "specy-road[gui] @ $URL#sha256=$SHA"
+
+# uv tool ignores the fragment: check the URL's bytes first, then install
+curl -fsSL "$URL" | sha256sum                       # must equal $SHA
+uv tool install --force "specy-road[gui] @ $URL"
+```
+
+TestPyPI does not let a file be replaced under the same name, so the bytes you checked are the bytes uv installs. uv tool keeps the URL in its receipt, unlike a local wheel path that later disappears, so the receipt keeps pointing at a file that exists. That receipt pins the URL, so `uv tool upgrade specy-road` stays on it: moving to a newer RC is a fresh install of the new URL. Checked with pipx 1.18 and uv 0.13.7; a wrong fragment made pipx fail with a hash mismatch, while uv tool installed anyway.
+
+#### After installing
+
+Confirm the result with `specy-road --version` ([Which install is running](#which-install-is-running)). Go back to a final release with `pipx install --force "specy-road[gui]"` or `uv tool install --force "specy-road[gui]"`.
+
+Moving to a newer RC is a fresh install of that release's wheel URL (`uv tool install --force "specy-road[gui] @ <new URL>"`, or the pip and pipx forms under [Direct wheel URL](#direct-wheel-url)). `uv tool upgrade` stays on the URL pin from this install and does not fetch the newer wheel.
+
+RCs are for evaluation: pin a final release for day-to-day work. `specy-road validate` warns once when the running version is not the one your repo pins (`"pin": "<version>"` in `.specyrd/manifest.json`, else the first `specy-road==<version>` line in a `requirements*.txt` at the checkout root), so an accidental upgrade is not mistaken for a deliberate one. Expect an RC to warn too that IDE stubs and JSON schemas were written by an older version: once your team accepts the new version, update the pin and run `specy-road upgrade`.
 
 ## Install from source (toolkit contributors)
 
@@ -82,7 +147,7 @@ cd specy-road
 git switch dev               # main is reserved for tagged releases
 python3 -m venv .venv
 source .venv/bin/activate    # Windows: .venv\Scripts\activate
-pip install -e ".[dev,gui-next]"
+pip install -e ".[dev,gui]"
 # Optional extras:
 #   - 'review'   : enables `specy-road review-node` (requires LLM API key)
 ```
@@ -90,7 +155,7 @@ pip install -e ".[dev,gui-next]"
 You get two CLI commands:
 
 - **`specy-road`** — validate, brief, export, init project, do-next loop, GUI.
-- **`specyrd`** — optional IDE slash-command stubs (Cursor / Claude Code).
+- **`specyrd`** — optional agent skills for Cursor, Claude Code and Codex ([Skills](#skills-specyrd-init)).
 
 Verify the CLI from a source checkout. The `--repo-root` path below is this repository's dogfood test fixture; consumer projects validate their own initialized repo root instead.
 
@@ -116,8 +181,57 @@ specy-road validate
 
 `init project` writes `.gitignore`, `.cursorindexingignore`, `roadmap/`, `planning/`, `constitution/`, `constraints/`,
 `shared/`, `schemas/`, `work/`, `model-profiles/`, `research/`, `docs/` (`supply-chain-security.md`, `model-profiles-research-notes.md`), `vision.md`, the generated `roadmap.md` and `roadmap-context.md` (both committed; an existing one is left alone and neither is written, unless you pass `--force`), a specy-road stub in `AGENTS.md` (a managed block: an `AGENTS.md` you already have keeps everything outside the markers),
-the rules it points at in `.specyrd/AGENTS.md`, and `.specyrd/AGENTS.team.md` for your team's own ([agent rules](optional-ai-tooling-patterns.md#agent-rules-agentsmd-and-specyrd)).
+the rules it points at in `.specyrd/AGENTS.md`, and `.specyrd/AGENTS.team.md` for your team's own ([agent rules](#agent-rules-agentsmd-and-specyrd)).
 The roadmap starts with task M1.1, whose acceptance criteria and planning sheet are the setup steps above and more. It refuses to overwrite an existing scaffold unless you pass `--force` (`--dry-run` previews). Make the first commit before `validate`: until then it reports the untracked `vision.md` as an unknown touch zone.
+
+### Agent rules: `AGENTS.md` and `.specyrd/`
+
+specy-road keeps its agent rules in files it owns, and only a short marked stub in yours:
+
+| File | Whose | Written by |
+| ---- | ----- | ---------- |
+| `.specyrd/AGENTS.md` | specy-road's: the full rules (load order, task loop, review, lean changes) | `init project`, rewritten whole by every `upgrade` / `upgrade --only stubs` |
+| `AGENTS.md` | yours, except one managed block: a pointer to `.specyrd/AGENTS.md` and seven core rules | `init project`; `upgrade` rewrites only the block |
+| `CLAUDE.md` | yours, except one managed block: `@.specyrd/AGENTS.md` and `@.specyrd/AGENTS.team.md` imports | `specyrd init --ai claude-code` (the only command that creates the file); `upgrade` inserts or rewrites only the block in an existing file, whichever stub packs are installed |
+| `.specyrd/AGENTS.team.md` | yours (tracked): this repository's specy-road instructions from devs and PMs | created once when missing; never rewritten, not in `.specyrd/manifest.json` |
+| `.specyrd/AGENTS.local.md` | yours alone (gitignored): personal specy-road notes | never created; `init` adds it to `.gitignore` |
+
+Paths sit under the project root (`sr/.specyrd/…` in the nested layout). Codex loads only `AGENTS.md`, so the stub's core rules (the floor, the shared checkout, git writes, claims, no abort after finish, review, generated files) are all a Codex session is sure to see; Claude Code loads the rules through the import. Both addenda add to the rules and never relax their floor.
+
+**Upgrading from a full section.** Before 2026-11-04 the whole rule set sat in the `AGENTS.md` block, with a second copy in `CLAUDE.md`'s. The first `upgrade` after that prints a `migration:` line, replaces both blocks with the stubs, writes `.specyrd/AGENTS.md` and (when missing) `.specyrd/AGENTS.team.md`, and adds `.specyrd/AGENTS.local.md` to the `.gitignore` block. Text outside the markers is untouched, and a second run changes nothing. Anything you had added *inside* the old markers is replaced, as on every refresh: `git diff` shows it, and `.specyrd/AGENTS.team.md` is where it belongs now. Commit the two new files.
+
+### Skills: `specyrd init`
+
+The **`specyrd`** CLI (installed with this package) lays down **thin** markdown skills that tell the agent to run **`specy-road`** from the repo root — they are not a second source of truth. Each command is **one file**, `.agents/skills/<name>/SKILL.md`: Cursor and Codex read that directory natively, and the `claude-code` pack adds a symlink per skill under `.claude/skills/` so Claude Code reads the same file. `--ai generic` writes flat `.md` files into a directory you choose.
+
+- **CLI-first:** Canonical invocations remain `specy-road validate`, `specy-road brief`, `specy-road export` and `specy-road file-limits`.
+- **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. **specy-road** uses flat **`planning/*.md`** feature sheets per node — not that tool.
+- **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value.
+- **After upgrading specy-road:** Run **`specy-road upgrade`** (or just **`specy-road upgrade --only stubs`**), not `init --force`. It rewrites exactly the paths `.specyrd/manifest.json` records, adds stubs that shipped since you initialized, and leaves everything else alone. See [Keeping a consumer repo current](#keeping-a-consumer-repo-current-after-an-upgrade).
+- **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|codex|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root. Running it again for a second harness adds only that harness's links; the skill files are shared.
+
+#### What `--force` may touch
+
+`--force` overwrites the paths listed in `.specyrd/manifest.json` for the pack being installed — the command stubs and `.specyrd/README.md` — and nothing else.
+
+Three files belong to **you**, and `specyrd init` only maintains one delimited block inside each, marked `>>> specy-road managed block — do not edit inside <<<`:
+
+| File | Block contents |
+| --- | --- |
+| `.gitignore` | `.specyrd/cache/` (derived, disposable indexes) |
+| `.cursorindexingignore` | archived and duplicated material, excluded from the IDE index but still readable |
+| `CLAUDE.md` | `@` imports of `.specyrd/AGENTS.md` and `.specyrd/AGENTS.team.md` (`--ai claude-code`) |
+
+`specy-road init project` keeps the specy-road section of `AGENTS.md` the same way; what each block holds and which files specy-road owns is in [Agent rules](#agent-rules-agentsmd-and-specyrd). Everything outside those markers is never read and never rewritten, with or without `--force`. Re-running is a no-op when the block is already current, and `--dry-run` reports what each block would do.
+
+See `.specyrd/README.md` after init for a short pointer (and `manifest.json` for which packs were applied).
+
+**Skills, one source for every harness.** Cursor and Codex both read
+`.agents/skills/<name>/SKILL.md` natively and follow symlinked skill folders;
+Claude Code reads `.claude/skills/<name>/SKILL.md` and loads a skill directory
+that is a symlink. That is the layout `specyrd init` writes (verified against
+each harness's docs, 2026-10). Where a symlink cannot be created, the skill is
+copied into place and the manifest records the copy.
 
 ### Keeping a consumer repo current after an upgrade
 
@@ -229,7 +343,7 @@ Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any war
   the skills are untracked after the upgrade; add them.
 - **Text outside the managed blocks** (your `CLAUDE.md`, docs pinning a version
   or naming `.cursor/commands/`) is yours: search it for the old version.
-- **`AGENTS.md` keeps only a stub now.** The rules move to `.specyrd/AGENTS.md`; `upgrade` prints a `migration:` line and does it once ([what changes](optional-ai-tooling-patterns.md#agent-rules-agentsmd-and-specyrd)).
+- **`AGENTS.md` keeps only a stub now.** The rules move to `.specyrd/AGENTS.md`; `upgrade` prints a `migration:` line and does it once ([what changes](#agent-rules-agentsmd-and-specyrd)).
 - **A pointer-only `AGENTS.md` section; your own copy of the rules; context totals.** The default section (`"agents_block": "full"`) repeats the seven floor rules of `.specyrd/AGENTS.md`, so an agent that reads only `AGENTS.md` (Codex) still has them; set `"agents_block": "minimal"` in the git root's `.specyrd/manifest.json` and `upgrade` (and `upgrade --only stubs`) writes a 3-line section instead (one line between the markers) that only points at `.specyrd/AGENTS.md` and the two addenda. When either command first creates `.specyrd/AGENTS.md`, it prints that file's headings and a `rules:` line for each heading in your `AGENTS.md`, outside the specy-road section, that matches one (case and spacing ignored; a hint: ATX headings indented up to three spaces, outside fenced code and HTML comments, and no setext or other CommonMark forms), then says to compare them and drop the copy that is stale; it edits nothing outside the section. Each `context:` line of `validate` ends with that harness's total lines and bytes; a file Claude Code reaches twice (loaded directly or `@`-imported by two of its files, such as `.specyrd/AGENTS.team.md` imported by both `CLAUDE.md` and `.specyrd/AGENTS.md`) is counted once and named: `(… imported twice, counted once)`.
 
 **Neither `--force` is the tool for this.** `init project --force` overwrites

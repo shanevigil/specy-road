@@ -52,13 +52,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     pg = sub.add_parser(
         "gui",
-        help="Install FastAPI/uvicorn (gui-next) and optionally build the Vite SPA",
+        help="Install FastAPI/uvicorn ([gui]) and optionally build the Vite SPA",
     )
     mode = pg.add_mutually_exclusive_group(required=False)
     mode.add_argument(
         "--install-gui",
         action="store_true",
-        help="pip install --upgrade …[gui-next], then npm build in gui/pm-gantt when present",
+        help="pip install --upgrade …[gui], then npm build in gui/pm-gantt when present",
     )
     mode.add_argument(
         "--reinstall-gui",
