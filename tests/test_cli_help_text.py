@@ -50,13 +50,14 @@ def test_help_names_installed_commands(args: list[str], tmp_path) -> None:
             assert not _PY_FILE.search(line), line
     bare = [m.group(0) for m in _DOC_REF.finditer(out) if m.group(1) not in SHIPPED_DOCS]
     assert bare == []
+    assert "gui-next" not in out   # the GUI extra is [gui]; gui-next is only a deprecated alias
 
 
 def test_top_level_help_names_canonical_commands(tmp_path) -> None:
     out = _help(["--help"], tmp_path)
     for want in (
         "specy-road init gui --install-gui",
-        "pip install 'specy-road[gui-next]'",
+        "pip install 'specy-road[gui]'",
         "specy-road add-node -h",
         "specy-road planning scaffold -h",
     ):

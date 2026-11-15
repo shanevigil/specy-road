@@ -47,7 +47,7 @@ harnesses:
       value: [CLAUDE.md, .claude/CLAUDE.md, .claude/rules/*.md, CLAUDE.local.md]
       size_guidance: under 200 lines per file (vendor target); a file over 4 MiB is skipped and none of it loads; .claude/rules/ is read recursively; subdirectory CLAUDE.md files and path-scoped rules load on demand, when Claude touches a file there, with a smaller per-file limit; the managed policy CLAUDE.md and ~/.claude/CLAUDE.md (and ~/.claude/rules/) load on every machine-level session; AGENTS.md and .claude/AGENTS.md only when none of the project files exists; AGENTS.override.md is never read; --bare skips all of these
       label: documented
-      source: https://code.claude.com/docs/en/memory; docs/install-and-usage.md (validate context lines); 2026-11-02 triage F1
+      source: https://code.claude.com/docs/en/memory; https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md (validate context lines); 2026-11-02 triage F1
     skill_dirs:
       value: [.claude/skills, .claude/commands, .claude/agents]
       label: documented
@@ -55,7 +55,7 @@ harnesses:
     hooks:
       value: PreToolUse hooks in .claude/settings.json fire under claude -p and block with exit 2; --bare skips every hook. Exit 1 (or any code but 0 and 2) does not block; a hook that times out does not block unless it sets onFailure "block" (2.1.295+); hookSpecificOutput.permissionDecision "deny" on exit 0 also blocks; -p runs a project's hooks with no trust prompt, even in a folder never trusted
       label: documented
-      source: https://code.claude.com/docs/en/hooks; https://code.claude.com/docs/en/headless (bare mode); docs/optional-ai-tooling-patterns.md (exit 2 observed in the sandbox run 2026-10-28); 2026-11-02 triage F4
+      source: https://code.claude.com/docs/en/hooks; https://code.claude.com/docs/en/headless (bare mode); https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md (exit 2 observed in the sandbox run 2026-10-28); 2026-11-02 triage F4
     git_actions:
       - action: commits when asked, with an attribution trailer by default
         switch: unknown (attribution CLI setting not checked; Co-Authored-By trailer observed at runtime)
@@ -170,7 +170,7 @@ harnesses:
       value: [AGENTS.override.md, AGENTS.md]
       size_guidance: first non-empty of the two per directory from the git root down, truncated at project_doc_max_bytes (32 KiB) silently, with no warning; ~/.codex/AGENTS.override.md replaces the global file
       label: documented
-      source: docs/install-and-usage.md (validate context lines); https://github.com/openai/codex/issues/7138; 2026-11-02 triage F16
+      source: https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md (validate context lines); https://github.com/openai/codex/issues/7138; 2026-11-02 triage F16
     skill_dirs:
       value: [.agents/skills]
       label: runtime
@@ -178,7 +178,7 @@ harnesses:
     hooks:
       value: PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently. Hooks are on by default (features list shows hooks stable true on a fresh CODEX_HOME, 0.166.0; [features] hooks = false turns them off); --dangerously-bypass-hook-trust runs enabled hooks without persisted trust for one invocation
       label: documented
-      source: https://learn.chatgpt.com/docs/hooks; harness-captures/codex/inventory-features.txt and help-exec.txt (0.166.0); docs/optional-ai-tooling-patterns.md; 2026-11-02 triage F14
+      source: https://learn.chatgpt.com/docs/hooks; harness-captures/codex/inventory-features.txt and help-exec.txt (0.166.0); https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md; 2026-11-02 triage F14
     git_actions:
       - action: .git and the linked gitdir are read-only inside workspace-write, so the executor cannot commit
         switch: none; the adapter commits on the worker's behalf (decision 2026-10-29, M8.2)
@@ -316,7 +316,7 @@ harnesses:
       value: [AGENTS.md, CLAUDE.md, .cursor/rules]
       size_guidance: no documented limit; only .cursor/rules with alwaysApply true load every session; nested AGENTS.md files apply once the agent edits or creates a file in their directory (2026.10.22)
       label: documented
-      source: docs/install-and-usage.md (validate context lines); https://cursor.com/docs/cli/changelog; 2026-11-02 triage F19
+      source: https://github.com/shanevigil/specy-road/blob/main/docs/install-and-usage.md (validate context lines); https://cursor.com/docs/cli/changelog; 2026-11-02 triage F19
     skill_dirs:
       value: [.agents/skills, .cursor/skills, .claude/skills, .codex/skills]
       label: documented
@@ -324,7 +324,7 @@ harnesses:
     hooks:
       value: beforeShellExecution in .cursor/hooks.json answers allow or deny as JSON (failClosed true, or empty output fails open); also reads and merges .claude/settings.json hooks; preToolUse and postToolUse events also fire for subagents (2026.10.17); the preToolUse blocking contract is not documented. Project hooks load and block under agent -p --force, with or without --trust, an empty matcher matching every command; beforeShellExecution sees only the shell tool, so the agent's own file edit and delete tools pass it
       label: runtime
-      source: docs/optional-ai-tooling-patterns.md (Cursor CLI 2026.10.22, sandbox run 2026-10-28); https://cursor.com/docs/cli/changelog; 2026-11-02 triage F21; agent 2026.10.22-27dcf5f, composer-2.5, 2026-11-04 (a throwaway repo's appending hook fired under agent -p --force, and a deny hook blocked under -p --force --trust --workspace; the CR3 replay transcripts show the session guard rejecting git restore before the edit/delete tools discarded the files, 2026-11-04 context-regressions triage)
+      source: https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md (Cursor CLI 2026.10.22, sandbox run 2026-10-28); https://cursor.com/docs/cli/changelog; 2026-11-02 triage F21; agent 2026.10.22-27dcf5f, composer-2.5, 2026-11-04 (a throwaway repo's appending hook fired under agent -p --force, and a deny hook blocked under -p --force --trust --workspace; the CR3 replay transcripts show the session guard rejecting git restore before the edit/delete tools discarded the files, 2026-11-04 context-regressions triage)
     git_actions:
       - action: -w / --worktree makes its own worktrees under ~/.cursor/worktrees
         switch: never pass -w/--worktree
@@ -349,7 +349,7 @@ harnesses:
     model_families:
       value: [anthropic, openai, xai, cursor, google]
       label: documented
-      source: docs/orchestration-models.md (Cursor model ids carry vendor and effort); fresh CLI installs default to Auto model routing, so a launch without --model is routed dynamically (https://cursor.com/docs/cli/changelog, 2026.07.06; triage F21)
+      source: https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-models.md (Cursor model ids carry vendor and effort); fresh CLI installs default to Auto model routing, so a launch without --model is routed dynamically (https://cursor.com/docs/cli/changelog, 2026.07.06; triage F21)
     quota:
       value: unknown (no usage-limit event observed on this account during M8.7 runs)
       label: documented
@@ -396,16 +396,16 @@ harnesses:
     headless_command:
       value: the roster channels.cli, else the profile's access.cli, with {prompt} (the prompt file path) or <prompt> (the prompt text) substituted
       label: documented
-      source: docs/orchestration-workers.md (harness table); docs/orchestration-models.md
+      source: https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md (harness table); https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-models.md
     executor_template:
       value: the profile's own access.cli, written with "<prompt>" or {prompt}
       renders_cli_for: []
       label: documented
-      source: docs/orchestration-models.md (prompt --channel cli and generic workers run access.cli)
+      source: https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-models.md (prompt --channel cli and generic workers run access.cli)
     session_flags:
       value: none; a generic worker cannot resume, interrupt or hand off
       label: documented
-      source: docs/orchestration-workers.md (harness table); specy_road/worker_adapters.py (Adapter.caps)
+      source: https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md (harness table); specy_road/worker_adapters.py (Adapter.caps)
     permission_example:
       value: whatever the command's own flags grant; specy-road adds none
       label: documented
@@ -435,5 +435,5 @@ harnesses:
     quota:
       value: unknown; no usage is reported (every usage field is null)
       label: documented
-      source: docs/orchestration-workers.md (usage events)
+      source: https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md (usage events)
     relationships: {}

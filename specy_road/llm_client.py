@@ -248,7 +248,7 @@ def make_client():
         except ImportError as e:
             raise ReviewError(
                 "anthropic package not installed. Run: pip install "
-                "'specy-road[review]' or 'specy-road[gui-next]'",
+                "'specy-road[review]' or 'specy-road[gui]'",
             ) from e
         return Anthropic(api_key=ak)
 

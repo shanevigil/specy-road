@@ -205,6 +205,23 @@ are set:
 - `grind_session_limit_wait_grace_seconds` -> `grind.limit_wait_grace_seconds`.
 - `grind_session_max_empty_retries` -> `grind.max_empty_retries`.
 - `grind_session_status_interval_minutes` -> `grind.status_interval_minutes`.
+The `[gui-next]` extra -> `[gui]` (the same dependencies). `pip install "specy-road[gui-next]"` still works
+until the release after 0.3.1, which removes it; `--help`, the `gui` and `init gui` messages, `self-update` and the
+install docs name only `[gui]`.
+
+These toolkit docs were merged into the doc that owns their topic. Each old path is now a short pointer to the new
+place, and the pointers are removed in the release after 0.3.1; each line is old path -> new place:
+
+- `docs/orchestration-roster.md` -> `docs/orchestration-workers.md`, "The roster: building and trying it".
+- `docs/orchestration-chores.md` -> `docs/orchestration-workers.md`, "Chores: worker-run work outside the roadmap".
+- `docs/architecture.md` -> `docs/roadmap-authoring.md`, "Project layout and flow".
+- `docs/install-release-candidates.md` -> `docs/install-and-usage.md`, "Install a release candidate (TestPyPI)".
+- `docs/pm-gui-brainstorm.md` -> `docs/pm-gui.md`, "Brainstorm panel".
+- `docs/pm-llm-review.md` -> `docs/pm-gui.md`, "LLM Review".
+- `docs/optional-ai-tooling-patterns.md` -> `docs/install-and-usage.md` (`specyrd init` and the agent rule files) and
+  `docs/orchestration.md`, "Wiring the guard into a harness" (the shared-checkout guard hooks); the general advice is
+  dropped.
+
 These import paths, renamed or folded by the review-gate fold, warn on import (`DeprecationWarning`) and
 are removed in the release after 0.3.1:
 

@@ -35,7 +35,7 @@ def _npm_run(argv: list[str], *, cwd: Path) -> None:
 def specy_road_repo_root_for_editable_install() -> Path | None:
     """If ``specy_road`` is from a source checkout, return that repo root.
 
-    Used to run ``pip install -e ".[gui-next]"`` so contributors do not
+    Used to run ``pip install -e ".[gui]"`` so contributors do not
     pull a PyPI wheel over their editable tree.
     """
     import specy_road
@@ -147,8 +147,8 @@ def build_install_gui_command(*, reinstall: bool = False) -> tuple[list[str], Pa
     if reinstall:
         base.append("--force-reinstall")
     if repo is not None:
-        return base + ["-e", ".[gui-next]"], repo
-    return base + ["specy-road[gui-next]"], None
+        return base + ["-e", ".[gui]"], repo
+    return base + ["specy-road[gui]"], None
 
 
 def run_install_gui(
@@ -159,7 +159,7 @@ def run_install_gui(
     npm_only: bool = False,
     skip_npm_after_pip: bool = False,
 ) -> None:
-    """Install Python gui-next deps and/or run the Vite/npm build.
+    """Install Python [gui] deps and/or run the Vite/npm build.
 
     With ``--install-gui`` / ``--reinstall-gui``, pip runs first; the npm build
     runs automatically when ``gui/pm-gantt`` exists (unless ``skip_npm_after_pip``).

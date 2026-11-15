@@ -14,7 +14,7 @@
 
 ## Migrating to the split rules files
 
-Since the split, specy-road writes its full rule set to `.specyrd/AGENTS.md` (rewritten whole by every `upgrade`), keeps a short managed stub in your `AGENTS.md`, and creates `.specyrd/AGENTS.team.md` once for your team's own specy-road instructions ([agent rules](optional-ai-tooling-patterns.md#agent-rules-agentsmd-and-specyrd)). `upgrade` touches only the text inside the markers. Text you wrote outside them stays where it is until you move it. Sort it like this:
+Since the split, specy-road writes its full rule set to `.specyrd/AGENTS.md` (rewritten whole by every `upgrade`), keeps a short managed stub in your `AGENTS.md`, and creates `.specyrd/AGENTS.team.md` once for your team's own specy-road instructions ([agent rules](install-and-usage.md#agent-rules-agentsmd-and-specyrd)). `upgrade` touches only the text inside the markers. Text you wrote outside them stays where it is until you move it. Sort it like this:
 
 | Kind of text in your `AGENTS.md` | Where it goes | Example |
 | -------------------------------- | ------------- | ------- |
@@ -31,15 +31,15 @@ Since the split, specy-road writes its full rule set to `.specyrd/AGENTS.md` (re
 
 ## Preview a version you have not installed
 
-To see what a version would change in your repo without replacing the specy-road you use, install it into a scratch virtualenv and run that venv's `upgrade --dry-run`. Install it the same way as an RC ([install a release candidate](install-release-candidates.md)): the exact wheel with `--no-deps`, its sha256 checked, then its dependencies from PyPI only. Drop `--index-url` for a final release, which is on PyPI.
+To see what a version would change in your repo without replacing the specy-road you use, install it into a scratch virtualenv and run that venv's `upgrade --dry-run`. Install it the same way as an RC ([install a release candidate](install-and-usage.md#install-a-release-candidate-testpypi)): the exact wheel with `--no-deps`, its sha256 checked, then its dependencies from PyPI only. Drop `--index-url` for a final release, which is on PyPI.
 
 ```bash
-python3 -m venv /tmp/sr-preview
+python3 -m venv /tmp/sr-preview   # X.Y.ZrcN: the version from the RC announcement
 /tmp/sr-preview/bin/pip download --no-deps --only-binary :all: -d /tmp/sr-preview/rc/ \
-    --index-url https://test.pypi.org/simple/ "specy-road==0.3.1rc1"
-sha256sum /tmp/sr-preview/rc/specy_road-0.3.1rc1-py3-none-any.whl   # must equal the announced sha256
-/tmp/sr-preview/bin/pip install --no-deps /tmp/sr-preview/rc/specy_road-0.3.1rc1-py3-none-any.whl
-/tmp/sr-preview/bin/pip install /tmp/sr-preview/rc/specy_road-0.3.1rc1-py3-none-any.whl  # its dependencies, from PyPI only
+    --index-url https://test.pypi.org/simple/ "specy-road==X.Y.ZrcN"
+sha256sum /tmp/sr-preview/rc/specy_road-X.Y.ZrcN-py3-none-any.whl   # must equal the announced sha256
+/tmp/sr-preview/bin/pip install --no-deps /tmp/sr-preview/rc/specy_road-X.Y.ZrcN-py3-none-any.whl
+/tmp/sr-preview/bin/pip install /tmp/sr-preview/rc/specy_road-X.Y.ZrcN-py3-none-any.whl  # its dependencies, from PyPI only
 
 /tmp/sr-preview/bin/specy-road upgrade --dry-run --repo-root /path/to/your/repo
 

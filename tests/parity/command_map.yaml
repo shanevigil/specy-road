@@ -175,3 +175,21 @@ rows:
   - old: specy-road grind-session
     new: specy-road grind-session
     allowed: "M16.4.5: `--baseline-cmd` help names the checks: entries with when: baseline as its default instead of baseline_cmd"
+  - old: specy-road
+    new: specy-road
+    allowed: "M16.6.1: top-level help's chore line cites docs/orchestration-workers.md (orchestration-chores.md was merged into it)"
+  - old: specy-road
+    new: specy-road
+    allowed: "M16.6.1 (F5): top-level help's gui line names pip install 'specy-road[gui]' instead of [gui-next]"
+  - old: specy-road init
+    new: specy-road init
+    allowed: "M16.6.1 (F5): `init --help`'s gui line says ([gui]) instead of (gui-next)"
+  - old: specy-road init gui
+    new: specy-road init gui
+    allowed: "M16.6.1 (F5): `--install-gui` help names …[gui] instead of …[gui-next]"
+  - old: specy-road update
+    new: specy-road update
+    allowed: "M16.6.1 (F5): the deprecated alias's description and `--install-gui-stack` help name .[gui] instead of .[gui-next]"
+  - old: ""
+    new: specy-road self-update
+    allowed: "M16.6.1 (F5): the description and `--install-gui-stack` help name .[gui] instead of .[gui-next] (the golden's two passages are edited, since self-update is not in the golden inventory)"

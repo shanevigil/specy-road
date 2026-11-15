@@ -127,7 +127,7 @@ a feature branch is ignored by the gate, flagged in the review packet, and, like
 ## Choosing and prompting models
 
 Profiles, `models`, `prompt` and `orchestrate plan`: [orchestration-models.md](orchestration-models.md);
-`specy-road worker` (a leaf on another harness): [orchestration-workers.md](orchestration-workers.md); a roster in one command (`models roster`), a model coordinator and `orchestrate plan --spread`: [orchestration-roster.md](orchestration-roster.md).
+`specy-road worker` (a leaf or a chore on another harness), a roster in one command (`models roster`), a model coordinator and `orchestrate plan --spread`: [orchestration-workers.md](orchestration-workers.md).
 
 **One readiness rule.** `do-next-available-task`, `grind-session --plan` and `orchestrate plan` agree on
 which leaves are ready: the same dependency, claim and status check, minus leaves already Complete on an
@@ -173,7 +173,7 @@ Each **open** entry carries:
 | `asked` | ISO date when opened |
 | `needed_by` | Optional ISO date by which an answer is needed |
 
-**CLI:** `specy-road decisions add|list|close`. Schema validation runs before `add` writes the file
+**CLI:** `specy-road decisions add`, `specy-road decisions list` and `specy-road decisions close`. Schema validation runs before `add` writes the file
 and before `list` prints it. `list` prints every open entry, those with `needed_by` first in ascending
 date order and those without a deadline last. `close <ID> --answer ...` records the answer and the
 closed time in the ledger; no planning-sheet line is needed. A person's decision on a leaf's `human:`
@@ -436,7 +436,7 @@ what the guard cannot see is refused, not waved through: a shell function, a git
 that could be git (`$X`, `git${IFS}…`, `G=git; $G`; not `$HOME/bin/pytest`), `GIT_CONFIG*` in env, `--config-env=alias.*`, an interpreter one-liner.
 Working-tree commands count only sessions in the caller's worktree (`git -C`, `stash`, `rebase`,
 force-push count every session). The adapters (`--format`) know each harness's stdin shape;
-`docs/optional-ai-tooling-patterns.md` wires them. A non-denial never sets a harness permission
+[Wiring the guard into a harness](#wiring-the-guard-into-a-harness) wires them. A non-denial never sets a harness permission
 decision (Claude Code gets context only; Codex nothing), so the harness's own prompt policy still applies.
 
 Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry. The id is
@@ -444,6 +444,75 @@ Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch
 `start`, `touch`, `end` and the hook name one record; `--agent` names it; `touch` keeps the paths. A crashed record ages
 out; one that will not load counts as live to the guard until fixed or deleted. `session end` removes only the caller's own record (`$SPECY_ROAD_AGENT_ID`, else the derived id) or an expired one: `<id>` and `--agent` pick the target, never the caller. Another agent's live record is refused (it is kept, exit 1) unless a human passes `--force` from a terminal (stdin a TTY), so a closed terminal's record counts as a live peer to the guard until it expires; with no record for the caller's id, `end` names the id `session start` printed and ends nothing. A record keeps the `$USER` that started it, and one another user started is always refused. `review status` lists live sessions first,
 `do-next-available-task` warns on touch-zone overlap, `grind-session --plan` and `orchestrate plan` never put two ready leaves sharing a zone in one parallel batch, and `session check` refuses a commit on another live session's paths.
+
+### Wiring the guard into a harness
+
+When more than one agent session works in one checkout, `specy-road session
+guard` denies the git commands that move or discard another session's work
+(above). Wire it into the harness's
+"before a shell command runs" hook. `specy-road session guard --format <harness>
+--print-config` prints the snippet on stdout, pure JSON you can paste whole,
+and the harness's caveats on stderr.
+
+**Claude Code** (verified against the hooks docs, 2026-10): a `PreToolUse` hook
+matched to `Bash` in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {"type": "command", "command": "specy-road session guard --format claude-code", "timeout": 30}
+        ]
+      }
+    ]
+  }
+}
+```
+
+The hook reads `tool_input.command` from stdin; exit 2 blocks the call and the
+reason on stderr reaches the model; on a non-denial the guard emits context
+only (an `additionalContext` note, which is how it warns when a command
+would be refused if another session were live) and never an `allow`, so
+Claude's own permission policy still applies to the call. Any other exit code lets the
+call proceed, so the guard exits 2 on an internal error rather than fail
+open. Hooks run in `claude -p`; `claude --bare` skips every hook; a sandbox
+run (2026-10-28) saw the hook fire and block under
+`claude -p --dangerously-skip-permissions` (`bypassPermissions`). Export
+`SPECY_ROAD_AGENT_ID` in the session so the guard knows which presence record
+is its own.
+
+**Codex** (verified against the hooks docs, 2026-10): the same stdin shape,
+as a `PreToolUse` hook on `Bash` in `.codex/hooks.json` (or `[hooks]` in
+`.codex/config.toml`). Exit 2 with stderr denies; exit 0 with no output is
+the documented allow, and Codex marks a hook failed on keys it does not
+support, so the guard's allows are silent there. Project hooks load only
+when the project's `.codex/` layer is trusted, and each hook definition
+must be trusted in `/hooks` (or run with `--dangerously-bypass-hook-trust`).
+Codex skips an untrusted hook silently, with nothing in the output, so a
+headless run looks guarded when it is not. Hooks fire under `codex exec`; a
+sandbox run (2026-10-28) saw the guard block under
+`--dangerously-bypass-approvals-and-sandbox` too. The IDE extension is
+unverified.
+
+**Cursor** (verified against the hooks docs, 2026-10): a
+`beforeShellExecution` hook in `.cursor/hooks.json`. The command arrives as
+top-level `command` on stdin; the answer is JSON on stdout,
+`{"permission": "allow" | "deny", "agent_message": "…"}`. Empty output on exit
+0 counts as a hook *failure*, which fails open unless `failClosed: true`, so
+the guard answers every event explicitly and the printed snippet sets
+`failClosed: true`. Observed on Cursor CLI 2026.10.22 (sandbox run,
+2026-10-28): the hook fires under `agent -p`, with and without `--force`, and
+`deny` holds; the model saw the short `user_message`, not `agent_message`.
+Cursor also runs `.claude/settings.json` hooks, naming its shell tool `Shell`;
+the `claude-code` format judges those too, so either snippet guards Cursor.
+
+Get each snippet with `specy-road session guard --format cursor --print-config`
+(or `codex`). The repo's own test suite runs every adapter as a subprocess
+with its harness's documented payload (`tests/test_hook_adapters.py`), so an
+adapter that drifts from its contract fails in CI, not in someone's IDE.
 
 ## Working in one shared checkout
 

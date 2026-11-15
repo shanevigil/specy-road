@@ -57,7 +57,7 @@
     },
     "land": {
       "enum": ["push", "local"],
-      "description": "How finish-this-task in merge (and auto) mode lands the root repository, as nested_repos' land does for nested ones: push (default) merges onto <remote>/<integration_branch> and pushes; local merges into the local integration_branch (bookkeeping resolved and land_check_cmd run as for push), fetching and pushing nothing, and says so. See docs/git-workflow-preferences.md."
+      "description": "How finish-this-task in merge (and auto) mode lands the root repository, as nested_repos' land does for nested ones: push (default) merges onto <remote>/<integration_branch> and pushes; local merges into the local integration_branch (bookkeeping resolved and land_check_cmd run as for push), fetching and pushing nothing, and says so. See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow-preferences.md."
     },
     "pr_body_footer": {
       "type": "string",
@@ -74,11 +74,11 @@
     },
     "worker_sandbox": {
       "enum": ["bwrap", "auto", "off", false],
-      "description": "Whether unattended worker turns (worker delegate, message, resume) run their harness in a bubblewrap sandbox (default off when omitted: a project opts in). bwrap requires it: a host without bwrap, a turn outside a linked worktree, or a sandbox that fails to start stops the turn. auto uses bwrap on Linux where it is installed, with the same refusals, and elsewhere warns on each launch and runs unsandboxed. off (or YAML false) runs unsandboxed. See docs/orchestration-workers.md (Worker sandbox)."
+      "description": "Whether unattended worker turns (worker delegate, message, resume) run their harness in a bubblewrap sandbox (default off when omitted: a project opts in). bwrap requires it: a host without bwrap, a turn outside a linked worktree, or a sandbox that fails to start stops the turn. auto uses bwrap on Linux where it is installed, with the same refusals, and elsewhere warns on each launch and runs unsandboxed. off (or YAML false) runs unsandboxed. See https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-workers.md (Worker sandbox)."
     },
     "checks": {
       "type": "array",
-      "description": "The commands pickup, ready, landing and the prompts use, each named once with when: baseline (do-next-available-task and grind-session run it on the integration branch before a claim; CLI --baseline-cmd replaces it, an empty value runs none), ready (specy-road ready runs it like a --run command), land (finish-this-task in merge and auto mode runs it on the merge commit before it lands; CLI --land-check-cmd replaces it, an empty value runs none) and prompt (executor briefs and reviewer prompts give the first one for the leaf's tests, with the test paths appended). Entries of one stage run in file order. Replaces baseline_cmd, land_check_cmd and verify_cmd, which are ignored when checks is present. See docs/git-workflow.md (Checks).",
+      "description": "The commands pickup, ready, landing and the prompts use, each named once with when: baseline (do-next-available-task and grind-session run it on the integration branch before a claim; CLI --baseline-cmd replaces it, an empty value runs none), ready (specy-road ready runs it like a --run command), land (finish-this-task in merge and auto mode runs it on the merge commit before it lands; CLI --land-check-cmd replaces it, an empty value runs none) and prompt (executor briefs and reviewer prompts give the first one for the leaf's tests, with the test paths appended). Entries of one stage run in file order. Replaces baseline_cmd, land_check_cmd and verify_cmd, which are ignored when checks is present. See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md (Checks).",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -128,7 +128,7 @@
     },
     "nested_repos": {
       "type": "array",
-      "description": "Separately versioned git repositories under the project root, each a project-relative path or {path, integration_branch, remote, land, base, refuse_behind_remote} (integration_branch and remote default to this file's; land push, base remote). worker delegate and do-next-available-task --worktree give each one a worktree at the same path inside the leaf's worktree: on the leaf's branch when the leaf's touch zones cover it, detached at its integration tip otherwise. worker reconcile diffs them, finish-this-task in merge (and auto) mode lands each leaf branch (per land) before the main repository, and review packet includes their diffs. See docs/git-workflow.md.",
+      "description": "Separately versioned git repositories under the project root, each a project-relative path or {path, integration_branch, remote, land, base, refuse_behind_remote} (integration_branch and remote default to this file's; land push, base remote). worker delegate and do-next-available-task --worktree give each one a worktree at the same path inside the leaf's worktree: on the leaf's branch when the leaf's touch zones cover it, detached at its integration tip otherwise. worker reconcile diffs them, finish-this-task in merge (and auto) mode lands each leaf branch (per land) before the main repository, and review packet includes their diffs. See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md.",
       "uniqueItems": true,
       "items": {
         "oneOf": [
@@ -172,7 +172,7 @@
       "type": "object",
       "additionalProperties": false,
       "minProperties": 1,
-      "description": "What a new leaf worktree gets when do-next-available-task --worktree or worker delegate creates it: copy names files (usually ignored, so git does not bring them) copied from the main checkout's project root, link names paths symlinked from it, then cmd runs at the worktree's project root. A failure stops the pickup or launch with the command's output. doctor runs cmd in the main checkout. See docs/git-workflow.md.",
+      "description": "What a new leaf worktree gets when do-next-available-task --worktree or worker delegate creates it: copy names files (usually ignored, so git does not bring them) copied from the main checkout's project root, link names paths symlinked from it, then cmd runs at the worktree's project root. A failure stops the pickup or launch with the command's output. doctor runs cmd in the main checkout. See https://github.com/shanevigil/specy-road/blob/main/docs/git-workflow.md.",
       "properties": {
         "cmd": {
           "type": "string",
@@ -199,7 +199,7 @@
         },
         "link": {
           "type": "array",
-          "description": "Paths symlinked from the main checkout into the new worktree at the same project-relative path, before cmd runs (e.g. node_modules, .venv). Each is added to .git/info/exclude so a directory-only ignore pattern (node_modules/) does not leave the symlink untracked. See docs/orchestration-worktrees.md.",
+          "description": "Paths symlinked from the main checkout into the new worktree at the same project-relative path, before cmd runs (e.g. node_modules, .venv). Each is added to .git/info/exclude so a directory-only ignore pattern (node_modules/) does not leave the symlink untracked. See https://github.com/shanevigil/specy-road/blob/main/docs/orchestration-worktrees.md.",
           "items": { "$ref": "#/$defs/envSetupPath" }
         }
       }

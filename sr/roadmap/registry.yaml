@@ -78,54 +78,6 @@ entries:
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
-  - codename: docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra
-    node_id: M16.6.1
-    branch: feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra
-    touch_zones:
-      - docs/
-      - README.md
-      - pyproject.toml
-      - constraints/file-limits.yaml
-      - specy_road/templates/project/
-      - CHANGELOG.md
-      - sr/roadmap/phases/
-      - sr/planning/
-      - tests/test_review_rca.py
-      - tests/test_review_record_write.py
-      - tests/test_roster_generate.py
-      - tests/test_docs_install_extras.py
-      - sr/roadmap/archive/chunks/
-      - sr/roadmap/archive/planning/
-      - sr/roadmap.md
-      - sr/roadmap-context.md
-      - specy_road/cli_usage.py
-      - specy_road/cli.py
-      - specy_road/cli_init.py
-      - specy_road/cli_init_argparse.py
-      - specy_road/bundled_scripts/review_node.py
-      - specy_road/bundled_scripts/update_specy_road.py
-      - tests/test_cli_help_text.py
-      - tests/parity/command_map.yaml
-      - sr/constraints/file-limits.yaml
-      - specy_road/templates/specyrd/
-      - specy_road/agent_rule_provenance.md
-      - suggested_prompts/bootstrap-agents-md.md
-      - specy_road/worker_adapter_cursor.py
-      - specy_road/worker_sandbox.py
-      - tests/test_orchestrate_spread.py
-      - tests/test_worker_resume_permissions.py
-      - tests/test_review_round6_brainstorm.py
-      - specy_road/llm_client.py
-      - tests/test_cli.py
-      - tests/test_cli_init.py
-      - scripts/post_release_readme_cleanup.py
-      - tests/test_doc_links.py
-      - specy_road/orchestration/orchestrate_assign.py
-      - specy_road/orchestration/records/chore_garden_due.py
-      - tests/parity/golden/help/specy-road__self-update.txt
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: pending
   - codename: tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support
     node_id: M16.6.4
     branch: feature/rm-tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support

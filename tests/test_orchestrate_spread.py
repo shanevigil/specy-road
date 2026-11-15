@@ -69,7 +69,7 @@ def test_no_rostered_coordinator_means_this_session(tmp_path: Path, capsys) -> N
     assert run_main(orchestrate_cli, "orchestrate", "plan", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "coordinator: this session   executor: exec-a" in out
-    assert "to roster a model coordinator see docs/orchestration-roster.md" in out
+    assert "to roster a model coordinator see docs/orchestration-workers.md" in out
     plan, _ = op.build_orchestration_plan(repo)
     assert plan is not None and plan.batches[0][0].to_dict()["coordinator_is_session"] is True
 

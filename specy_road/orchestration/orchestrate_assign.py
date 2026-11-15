@@ -494,7 +494,7 @@ def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None)
     elif not any("coordinator" in (c.entry.get("roles") or []) for c in cands):
         a.coordinator_is_session = True
         a.notes.append("coordinator: this session (no roster entry has the coordinator role; to roster a "
-                       "model coordinator see docs/orchestration-roster.md)")
+                       "model coordinator see docs/orchestration-workers.md)")
     else:
         a.problems.append(f"no eligible coordinator: needs a rostered coordinator with may_process "
                           f"containing {a.sensitivity!r}")
