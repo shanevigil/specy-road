@@ -29,8 +29,7 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_review_signing import _key, _roster
-from tests.test_worker_cli import wait_for_worker
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.harness import make_worker_repo, wait_for_worker
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard import tool_call_guard as tg

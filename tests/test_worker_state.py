@@ -265,7 +265,7 @@ def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp
     """
     from specy_road.orchestration.workers import worker_ops as ops
     from specy_road.agent_ignores import apply_agent_ignores
-    from tests.test_worker_cli import FAKE, wait_for_worker, worker_roster
+    from tests.support.harness import FAKE, wait_for_worker, worker_roster
 
     script = tmp_path / "fake.py"
     script.write_text(FAKE)

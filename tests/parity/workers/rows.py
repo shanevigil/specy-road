@@ -1,6 +1,6 @@
 """The worker table: one fixture repo per row, each driven through ``specy-road worker``.
 
-Every row starts from :func:`tests.worker_repo_helpers.make_worker_repo` (leaf ``M1.1`` claimed on
+Every row starts from :func:`tests.support.harness.make_worker_repo` (leaf ``M1.1`` claimed on
 ``feature/rm-thing``, the main checkout on that branch, a roster whose ``opus`` runs a fake harness
 on ``claude-code``) and runs the steps of one existing worker test: delegate, sync, message,
 handoff, reclaim, terminate, reconcile, slot counting under ``max_workers``, a dead or closed
@@ -31,9 +31,9 @@ from specy_road.bundled_scripts import worker_cli
 from specy_road.orchestration.workers import worker_lease as lease
 from specy_road.orchestration.workers import worker_state as ws
 from tests.parity.process.corpus import step_transcript
-from tests.worker_cli_helpers import wait_for_worker
+from tests.support.harness import wait_for_worker
 from tests.worker_lease_helpers import idle_worker, remote_and_clone, remote_leases
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.harness import make_worker_repo
 
 GOLDEN = Path(__file__).resolve().parent / "golden"
 NODE = "M1.1"

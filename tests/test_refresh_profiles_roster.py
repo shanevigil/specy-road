@@ -10,7 +10,8 @@ from specy_road.orchestration import model_profiles as mp
 from specy_road.bundled_scripts import refresh_profiles as rp
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 
-from tests.test_models_and_prompt import ROSTER, TEMPLATE_PROFILES, make_profile_repo, run_main
+from tests.support.cli import run_main
+from tests.support.profiles import make_profile_repo, ROSTER, TEMPLATE_PROFILES
 
 README = "model-profiles/README.md"
 OPUS = "model-profiles/anthropic-claude/claude-opus-5-5.md"

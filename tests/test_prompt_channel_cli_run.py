@@ -11,7 +11,8 @@ import pytest
 
 from tests.review_delegate_helpers import fake_reviewer_run
 from tests.review_repo_helpers import NODE, git, review_output, review_text
-from tests.test_models_and_prompt import OPUS, commit_profile, make_profile_repo, run_main
+from tests.support.cli import run_main
+from tests.support.profiles import commit_profile, make_profile_repo, OPUS
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_cli, role_prompt

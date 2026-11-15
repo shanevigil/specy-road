@@ -7,54 +7,15 @@ import shutil
 from datetime import date
 from pathlib import Path
 
-import pytest
-
-from tests.review_repo_helpers import NODE, git, make_review_repo, shipped_anthropic_opus_cli_yaml_line
+from tests.review_repo_helpers import NODE, git, shipped_anthropic_opus_cli_yaml_line
+from tests.support.cli import run_main
+from tests.support.profiles import (OPUS, ROSTER, TEMPLATE_PROFILES, commit_profile,
+                                    make_profile_repo)
 
 from specy_road.orchestration import model_profiles as mp
 from specy_road.bundled_scripts import models_cli, role_prompt
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_files import PACKET_NAME, reviews_dir
-
-REPO = Path(__file__).resolve().parent.parent
-TEMPLATE_PROFILES = REPO / "specy_road" / "templates" / "project" / "model-profiles"
-OPUS = TEMPLATE_PROFILES / "anthropic-claude" / "claude-opus-5-5.md"
-
-ROSTER = """version: 1
-roster:
-  - {id: human, family: human, roles: [coordinator, reviewer]}
-  - id: opus
-    family: anthropic
-    profile: model-profiles/anthropic-claude/claude-opus-5-5.md
-    roles: [coordinator, executor, reviewer]
-  - {id: sol, family: openai, roles: [reviewer]}
-"""
-
-
-def make_profile_repo(tmp_path: Path) -> Path:
-    repo = make_review_repo(tmp_path, orchestration=ROSTER)
-    dest = repo / "model-profiles" / "anthropic-claude"
-    dest.mkdir(parents=True)
-    shutil.copy(OPUS, dest / OPUS.name)
-    git(repo, "add", "model-profiles", "roadmap/orchestration.yaml")
-    git(repo, "commit", "-qm", "roster + profile")
-    git(repo, "checkout", "-q", "dev")
-    git(repo, "merge", "-q", "feature/rm-thing")
-    git(repo, "checkout", "-q", "feature/rm-thing")
-    return repo
-
-
-def commit_profile(repo: Path) -> None:
-    """Profiles are read from the integration branch (round 6, B5): land the edit on ``dev``."""
-    git(repo, "commit", "-qam", "profile edit")
-    git(repo, "update-ref", "refs/heads/dev", "HEAD")
-
-
-def run_main(mod, *args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        mod.main(list(args))
-        raise SystemExit(0)
-    return e.value.code or 0
 
 
 # --- profiles -----------------------------------------------------------------

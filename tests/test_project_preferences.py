@@ -27,7 +27,7 @@ from specy_road.workflow_prefs import (
 )
 from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
 from tests.review_repo_helpers import git
-from tests.test_models_and_prompt import make_profile_repo
+from tests.support.profiles import make_profile_repo
 
 _ACCESSORS = {"pr_body_footer": pr_body_footer, "implementation_summary": implementation_summary_rule,
               "land": lambda root, _node_id: root_land(root)}

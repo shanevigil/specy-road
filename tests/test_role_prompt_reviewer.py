@@ -9,7 +9,7 @@ import pytest
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
 from tests.review_repo_helpers import git
 from tests.test_delta_review import FINDING, fix_round
-from tests.test_models_and_prompt import run_main
+from tests.support.cli import run_main
 
 from specy_road.bundled_scripts import review_packet, role_prompt
 from specy_road.review_delegate import delegate

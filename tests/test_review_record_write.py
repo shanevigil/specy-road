@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 from tests.review_delegate_helpers import (FAKE_AGY, FAKE_CODEX, delegate_repo, fake_reviewer_run, run_review_cli,
                                           set_steps, strict_problems, verdict_step, wrote_paths)
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_output, review_text
-from tests.test_models_and_prompt import run_main
+from tests.support.cli import run_main
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_cli, role_prompt

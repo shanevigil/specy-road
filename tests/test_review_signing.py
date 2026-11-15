@@ -206,7 +206,7 @@ def test_reviewer_prompt_and_handoff_status_name_the_sign_key(tmp_path: Path, ca
 
 def test_a_launched_reviewers_verdict_is_filed_signed_with_the_callers_key(tmp_path: Path) -> None:
     from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
-    from tests.test_models_and_prompt import run_main
+    from tests.support.cli import run_main
     from specy_road.review_delegate import delegate
 
     key, pub = _key(tmp_path, "opus")

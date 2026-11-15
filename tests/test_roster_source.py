@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git
-from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
+from tests.support.plan import only_assignment, plan_repo, ROSTER
 from tests.test_worker_cli_fixes import EXECUTORLESS
 
 from specy_road.orchestration import orchestrate_plan as op

@@ -11,7 +11,8 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 from tests.test_worker_adapters import CURSOR_RESULT
-from tests.worker_repo_helpers import make_worker_repo, reset_cursor_adapter_via_init, run_fake_harness_turn
+from tests.support.harness import (make_worker_repo, reset_cursor_adapter_via_init,
+                                   run_fake_harness_turn)
 
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers.worker_adapters import sum_cursor_turn_usage

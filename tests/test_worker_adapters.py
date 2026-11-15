@@ -11,9 +11,10 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import make_review_repo, shipped_anthropic_opus_cli_yaml_line
-from tests.test_models_and_prompt import commit_profile, make_profile_repo, run_main
-from tests.test_worker_cli import run_worker_cli
-from tests.worker_repo_helpers import reset_cursor_adapter_via_init
+from tests.support.cli import run_main
+from tests.support.profiles import commit_profile, make_profile_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import reset_cursor_adapter_via_init
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_reconcile as wrc

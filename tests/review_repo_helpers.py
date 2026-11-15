@@ -268,7 +268,7 @@ def claude_code_reviewer_repo(tmp_path: Path, channels: str = "") -> Path:
     ``channels`` is extra roster YAML inserted after ``harness: claude-code`` (a ``channels.cli`` line).
     """
     from specy_road import review_files as rf
-    from tests.test_models_and_prompt import commit_profile, make_profile_repo
+    from tests.support.profiles import commit_profile, make_profile_repo
 
     repo = make_profile_repo(tmp_path)
     roster = repo / "roadmap" / "orchestration.yaml"

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo, review_text
-from tests.test_models_and_prompt import run_main
+from tests.support.cli import run_main
 
 from specy_road.orchestration.harness import harness_binary as hb
 from specy_road.orchestration.workers import worker_ops as ops

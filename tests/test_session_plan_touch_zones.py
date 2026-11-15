@@ -18,7 +18,7 @@ from specy_road.orchestration.grind.session_plan_render import (
     zone_overlaps,
 )
 from tests.review_repo_helpers import git
-from tests.test_orchestrate_plan import plan_repo
+from tests.support.plan import plan_repo
 
 
 def _leaf(n: int, zones: list[str]) -> dict:

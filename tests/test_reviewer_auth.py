@@ -21,8 +21,9 @@ from specy_road.orchestration.workers.worker_adapter_base import REVIEWER_DISALL
 from specy_road.orchestration.workers.worker_adapters import ClaudeCode
 from tests.review_delegate_helpers import fake_reviewer_run
 from tests.review_repo_helpers import claude_code_reviewer_repo, git, review_output
-from tests.test_models_and_prompt import commit_profile, run_main
-from tests.test_orchestrate_plan import plan_repo
+from tests.support.cli import run_main
+from tests.support.profiles import commit_profile
+from tests.support.plan import plan_repo
 
 SECRET = "sk-ant-m15-2-do-not-print"
 HELPER = "echo sk-ant-HELPERSECRET"

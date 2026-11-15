@@ -6,7 +6,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts import do_next_prompt as dnp
 from specy_road.bundled_scripts import role_prompt
-from tests.test_models_and_prompt import commit_profile, make_profile_repo
+from tests.support.profiles import commit_profile, make_profile_repo
 
 
 def test_write_agent_prompt_includes_leaf_execution_contract(

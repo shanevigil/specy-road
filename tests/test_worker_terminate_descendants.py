@@ -25,8 +25,8 @@ from specy_road.orchestration.workers.worker_process import kill_group, start_to
 from specy_road.orchestration.workers.worker_runner import spawn
 from specy_road.orchestration.workers.worker_state import WorkerError
 
-from tests.worker_cli_helpers import run_worker_cli
-from tests.worker_repo_helpers import make_worker_repo
+from tests.support.cli import run_worker_cli
+from tests.support.harness import make_worker_repo
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups and sessions")
 

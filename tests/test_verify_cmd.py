@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from tests.review_repo_helpers import git
-from tests.test_models_and_prompt import make_profile_repo
+from tests.support.profiles import make_profile_repo
 
 from specy_road.bundled_scripts import role_prompt
 from specy_road.git_workflow_config import validate_git_workflow_dict

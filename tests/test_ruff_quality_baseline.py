@@ -269,6 +269,8 @@ _MOVED_FROM.update({
     "specy_road/review_defer_cli.py": "specy_road/bundled_scripts/review_defer.py",
     "specy_road/review_defer_rules.py": "specy_road/review_deferral.py",
 })
+# Moved into tests/support/ (the fake harness and worker CLI helpers): new path -> path at pickup.
+_MOVED_FROM["tests/support/harness.py"] = "tests/worker_repo_helpers.py"
 
 
 def _in_pickup_tree(path: str, present: set[str], moved_from: dict[str, str]) -> bool:

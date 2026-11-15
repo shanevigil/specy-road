@@ -20,8 +20,9 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
-from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
+from tests.support.plan import only_assignment, plan_repo, ROSTER
+from tests.support.cli import run_worker_cli
+from tests.support.harness import FAKE, wait_for_worker, worker_roster
 
 from specy_road.orchestration import orchestrate_plan as op
 from specy_road.orchestration.guard import tool_call_guard as tg

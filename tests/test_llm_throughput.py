@@ -82,6 +82,9 @@ def test_gate_adjust_last_reservation() -> None:
 
     g = llm_throughput.OpenAiChatThroughputGate(now_fn=fake_now, window_seconds=60.0)
     g.reserve(rpm_max=10, tpm_max=500, token_estimate=400)
+    g.adjust_last_reservation(None)   # usage unknown: the estimate stays reserved
+    with pytest.raises(llm_throughput.ThroughputExceeded, match="TPM"):
+        g.reserve(rpm_max=None, tpm_max=500, token_estimate=150)
     g.adjust_last_reservation(120)
     with pytest.raises(llm_throughput.ThroughputExceeded, match="TPM"):
         g.reserve(rpm_max=None, tpm_max=500, token_estimate=400)
@@ -90,6 +93,8 @@ def test_gate_adjust_last_reservation() -> None:
 def test_estimate_tokens_min_one() -> None:
     n = llm_throughput.estimate_openai_chat_request_tokens(model="x", messages=[])
     assert n >= 1
+    said = [{"role": "user", "content": "x" * 400}]
+    assert llm_throughput.estimate_openai_chat_request_tokens(model="x", messages=said) > n + 90
 
 
 def test_openai_chat_completions_create_respects_throughput(
@@ -157,6 +162,10 @@ def test_apply_llm_env_azure_throughput_explicit(
 ) -> None:
     from specy_road import roadmap_gui_lib as gl
 
+    # An endpoint and key already in the environment win over the GUI's saved ones.
+    monkeypatch.setenv("SPECY_ROAD_AZURE_OPENAI_ENDPOINT", "https://env.openai.azure.com")
+    monkeypatch.setenv("SPECY_ROAD_AZURE_OPENAI_API_KEY", "env-key")
+
     gl.apply_llm_env_from_settings(
         {
             "backend": "azure",
@@ -169,6 +178,8 @@ def test_apply_llm_env_azure_throughput_explicit(
     )
     assert os.environ["AZURE_OPENAI_MAX_REQUESTS_PER_MINUTE"] == "12"
     assert os.environ["AZURE_OPENAI_MAX_TOKENS_PER_MINUTE"] == "34000"
+    assert os.environ["SPECY_ROAD_AZURE_OPENAI_ENDPOINT"] == "https://env.openai.azure.com"
+    assert os.environ["SPECY_ROAD_AZURE_OPENAI_API_KEY"] == "env-key"
 
 
 def test_apply_llm_env_openai_clears_azure_throughput_env(
