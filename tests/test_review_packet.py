@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -10,10 +11,17 @@ import pytest
 from tests.review_repo_helpers import (
     NODE, commit_file, diverge, git, git_root_relative, make_layout_finish_repo, make_review_repo,
 )
+from tests.test_nested_repo_worktrees import COVERED, add_nested_repo
 
 from specy_road.bundled_scripts import review_packet as rp
-from specy_road.bundled_scripts.review_packet_uncommitted_refs import UNCOMMITTED_REF_NOTE
+from specy_road.bundled_scripts.review_packet import UNCOMMITTED_REF_NOTE
 from specy_road.review_files import PACKET_NAME, reviews_dir
+
+#: Goldens recorded before the packet fragments folded. Git dates and the
+#: packet's generated date are fixed; the fixture path is written ``<ROOT>``.
+PACKET_GOLDEN = Path(__file__).resolve().parent / "parity" / "golden" / "packet"
+_PACKET_DAY = date(2020, 1, 15)
+_GIT_DAY = "2020-01-15T00:00:00+00:00"
 
 
 def test_packet_names_commit_base_and_acceptance(tmp_path: Path) -> None:
@@ -425,3 +433,53 @@ def test_review_packet_cli_reads_the_leaf_worktree_summary(tmp_path: Path, where
         assert f"`{leaf_path}`" in section and f"`{checkout_path}`" in section
         assert section.index(leaf_path) < section.index(checkout_path)
         assert rp.ASSERTED not in section and rp.ASSERTED_WORKING_TREE not in section
+
+
+def _packet_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fixed git dates and a fixed ``date.today`` so a packet's bytes can be stored."""
+    monkeypatch.setenv("GIT_AUTHOR_DATE", _GIT_DAY)
+    monkeypatch.setenv("GIT_COMMITTER_DATE", _GIT_DAY)
+
+    class _Day:
+        @staticmethod
+        def today() -> date:
+            return _PACKET_DAY
+
+    monkeypatch.setattr(rp, "date", _Day)
+
+
+def _nested_leaf(tmp_path: Path) -> Path:
+    """A claimed leaf whose nested repository has one committed change on the leaf branch."""
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    nested = add_nested_repo(repo, COVERED, "dev")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "-q", "--no-edit", "dev")
+    bare = tmp_path / "remote.git"
+    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
+    git(repo, "remote", "add", "origin", str(bare))
+    git(repo, "fetch", "-q", "origin")
+    git(nested, "checkout", "-q", "-b", "feature/rm-thing")
+    commit_file(nested, "core.py", "x = 2\n", "leaf work in the nested repo")
+    git(nested, "checkout", "-q", "dev")
+    return repo
+
+
+def _packet_text(repo: Path, max_diff_lines: int) -> str:
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=max_diff_lines)
+    root = str(repo.resolve())
+    return text.replace(root, "<ROOT>").replace(str(repo), "<ROOT>")
+
+
+def test_nested_and_over_budget_packets_match_the_goldens(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A nested-repo section, and the same packet when that diff is over the line budget."""
+    _packet_clock(monkeypatch)
+    repo = _nested_leaf(tmp_path)
+    nested = _packet_text(repo, rp.MAX_DIFF_LINES)
+    over = _packet_text(repo, 2)
+    assert "## Nested repositories" in nested and "+x = 2" in nested
+    assert "Diff capped at 2 lines" in over and "DIFF-nested-src+engine.patch" in over
+    assert nested == (PACKET_GOLDEN / "nested-PACKET.md").read_text(encoding="utf-8")
+    assert over == (PACKET_GOLDEN / "over-budget-PACKET.md").read_text(encoding="utf-8")

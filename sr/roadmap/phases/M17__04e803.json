@@ -16,7 +16,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.16_orchestration-view-joins-the-snapshot-by-node-id-and-the-docs_04e80356-712f-4b73-8e45-d3f2ebcb96d4.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Orchestration view joins the snapshot by node id, and the docs name the worker states it sends",
       "touch_zones": [
         "gui/pm-gantt/src/orchestrationSnapshot.ts",
@@ -29,7 +29,8 @@
         "gui/pm-gantt/src/App.tsx",
         "specy_road/pm_gantt_static/",
         "docs/pm-gui.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/test_gui_app_orchestration.py"
       ],
       "type": "task"
     }

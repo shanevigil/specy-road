@@ -990,7 +990,7 @@ export function EditModal({
         ) : null}
       </div>
       {isLeaf ? (
-        <LeafOrchestrationSection nodeKey={node.node_key} nodes={allNodes ?? []} />
+        <LeafOrchestrationSection nodeId={node.id} nodes={allNodes ?? []} />
       ) : null}
       {sheetPath != null ? (
         <section className="modal-edit-planning-section">

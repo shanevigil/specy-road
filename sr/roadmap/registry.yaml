@@ -78,19 +78,6 @@ entries:
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
-  - codename: the-review-packet-fragments-fold-into-review-packet
-    node_id: M16.5.13
-    branch: feature/rm-the-review-packet-fragments-fold-into-review-packet
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet*.py
-      - scripts/line_width_baseline.json
-      - tests/
-      - constraints/clone-baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/import-layers-baseline.json
-    started: '2026-11-14'
-    owner: savigil
-    implementation_review: pending
   - codename: docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra
     node_id: M16.6.1
     branch: feature/rm-docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra
@@ -123,10 +110,8 @@ entries:
       - specy_road/templates/specyrd/
       - specy_road/agent_rule_provenance.md
       - suggested_prompts/bootstrap-agents-md.md
-      - specy_road/orchestrate_assign.py
       - specy_road/worker_adapter_cursor.py
       - specy_road/worker_sandbox.py
-      - specy_road/chore_garden_due.py
       - tests/test_orchestrate_spread.py
       - tests/test_worker_resume_permissions.py
       - tests/test_review_round6_brainstorm.py
@@ -135,6 +120,8 @@ entries:
       - tests/test_cli_init.py
       - scripts/post_release_readme_cleanup.py
       - tests/test_doc_links.py
+      - specy_road/orchestration/orchestrate_assign.py
+      - specy_road/orchestration/records/chore_garden_due.py
       - tests/parity/golden/help/specy-road__self-update.txt
     started: '2026-11-14'
     owner: savigil

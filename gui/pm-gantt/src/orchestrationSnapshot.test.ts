@@ -98,24 +98,24 @@ describe("snapshot key paths", () => {
       leaves: Record<string, { workers: Record<string, unknown>[] }>;
       leafless_workers?: unknown;
     };
-    const w = scratch.leaves["k-blocked"].workers[0];
+    const w = scratch.leaves["M10"].workers[0];
     w.stauts = w.status;
     delete w.status;
     delete scratch.leafless_workers;
     const { unlisted, missing } = contractProblems(scratch);
     expect(unlisted).toEqual(["leaves.*.workers[].stauts"]);
-    expect(missing).toEqual(["leafless_workers", "leaves.k-blocked.workers[0].status"]);
+    expect(missing).toEqual(["leafless_workers", "leaves.M10.workers[0].status"]);
   });
 
   // Each field is still present on a sibling entry, so only a per-object
   // check sees it missing.
   it.each([
-    ["leaves", "k-blocked", "workers", 0, "harness"],
-    ["leaves", "k-unknown", "workers", 1, "pid_alive"],
-    ["leaves", "k-blocked", "worktrees", 1, "dirty"],
-    ["leaves", "k-held-list", "reviews", 0, "fresh_for_head"],
-    ["leaves", "k-exec-blocked", "claim", "branch"],
-    ["leaves", "k-held-gate"],
+    ["leaves", "M10", "workers", 0, "harness"],
+    ["leaves", "M13", "workers", 1, "pid_alive"],
+    ["leaves", "M10", "worktrees", 1, "dirty"],
+    ["leaves", "M9.4", "reviews", 0, "fresh_for_head"],
+    ["leaves", "M12", "claim", "branch"],
+    ["leaves", "M9.3"],
     ["leafless_workers", 0, "started_at"],
   ] as (string | number)[][])("reports %s.%s… missing on that one entry", (...segs) => {
     const scratch = structuredClone(mockJson) as unknown as Record<string | number, unknown>;
@@ -141,7 +141,7 @@ describe("snapshot key paths", () => {
   it("the mock covers every worker status", () => {
     const all = [...Object.values(mock.leaves).flatMap((l) => l.workers), ...mock.leafless_workers];
     expect(new Set(all.map((w) => w.status))).toEqual(
-      new Set(["claimed", "running", "exited_ok", "exited_failed", "abandoned", "unknown"]),
+      new Set(["starting", "running", "idle", "paused_by_limit", "completed", "failed", "terminated", "unknown"]),
     );
   });
 });
@@ -150,7 +150,7 @@ const worker = (over: Partial<SnapshotWorker> = {}): SnapshotWorker => ({
   id: "w-1",
   harness: "claude",
   model: "opus",
-  status: "exited_ok",
+  status: "completed",
   pid_alive: false,
   started_at: "2026-11-08T10:00:00Z",
   ended_at: null,
@@ -165,13 +165,13 @@ const emptyLeaf = (): SnapshotLeaf => ({
 const CANDIDATES: [string, Partial<SnapshotLeaf>, string][] = [
   ["blocked", { gate: { state: "blocked", approvals: 0, blocks: 2, fresh_for_head: true } }, "blocked (2)"],
   ["held", { holds: [{ source: "hold_list", id: "M1", reason: "r" }] }, "held"],
-  ["exited_failed", { workers: [worker({ status: "exited_failed" })] }, "exited_failed"],
+  ["failed", { workers: [worker({ status: "failed" })] }, "failed"],
   ["stalled", { workers: [worker({ flags: ["stalled"] })] }, "stalled"],
   ["running", { workers: [worker({ status: "running" })] }, "running"],
   ["ready", { ready: { commit: "c", model: "m", at: "2026-11-08T11:00:00Z" } }, "READY awaiting review"],
   ["approved", { gate: { state: "approved", approvals: 2, blocks: 0, fresh_for_head: true } }, "approved"],
   ["claimed", { claim: { codename: "c", branch: "b", registered_at: "2026-11-08T09:00:00Z" } }, "claimed"],
-  ["abandoned", { workers: [worker({ status: "abandoned" })] }, "abandoned"],
+  ["abandoned", { status: "abandoned" }, "abandoned"],
   ["unknown", { workers: [worker({ status: "unknown" })] }, "unknown"],
 ];
 
@@ -222,18 +222,18 @@ describe("leafBadge", () => {
   });
 
   it("does not depend on worker order", () => {
-    const ws = [worker({ id: "a", status: "running" }), worker({ id: "b", status: "exited_failed" })];
-    expect(leafBadge(merge({ workers: ws }))?.kind).toBe("exited_failed");
-    expect(leafBadge(merge({ workers: [...ws].reverse() }))?.kind).toBe("exited_failed");
+    const ws = [worker({ id: "a", status: "running" }), worker({ id: "b", status: "failed" })];
+    expect(leafBadge(merge({ workers: ws }))?.kind).toBe("failed");
+    expect(leafBadge(merge({ workers: [...ws].reverse() }))?.kind).toBe("failed");
   });
 });
 
 describe("outlineBadge", () => {
   it("present, 404 and no state: badge text, hover and the leaf key a click passes", () => {
-    const present = outlineBadge({ kind: "ok", snapshot: mock }, "k-blocked", NOW);
+    const present = outlineBadge({ kind: "ok", snapshot: mock }, "M10", NOW);
     expect(present).toEqual({
       text: "blocked (1)",
-      leafKey: "k-blocked",
+      leafKey: "M10",
       hover: [
         "claim: alpha · feature/rm-alpha · 3h ago",
         "workers: w-0001 running",
@@ -244,20 +244,20 @@ describe("outlineBadge", () => {
       ].join("\n"),
     });
 
-    const heldList = outlineBadge({ kind: "ok", snapshot: mock }, "k-held-list", NOW);
+    const heldList = outlineBadge({ kind: "ok", snapshot: mock }, "M9.4", NOW);
     expect(heldList).toEqual({
       text: "held",
-      leafKey: "k-held-list",
+      leafKey: "M9.4",
       hover: [
         "claim: gamma · feature/rm-gamma · 2d ago",
-        "workers: w-0003 exited_ok",
+        "workers: w-0003 completed",
         "worktrees: 0",
         "READY: —",
         "reviews: grok approve",
         "holds: hold list: waiting on the maintainer",
       ].join("\n"),
     });
-    expect(outlineBadge({ kind: "ok", snapshot: mock }, "k-held-gate", NOW)?.hover).toContain(
+    expect(outlineBadge({ kind: "ok", snapshot: mock }, "M9.3", NOW)?.hover).toContain(
       "holds: M9.3",
     );
 
@@ -335,7 +335,7 @@ describe("outlineBadge", () => {
     expect(claimed?.hover).toContain("reviews: —");
     expect(claimed?.hover.endsWith("holds: —")).toBe(true);
 
-    expect(outlineBadge({ kind: "unavailable" }, "k-blocked", NOW)).toBeNull();
+    expect(outlineBadge({ kind: "unavailable" }, "M10", NOW)).toBeNull();
     expect(
       outlineBadge(
         { kind: "ok", snapshot: { schema: 1, leaves: { k: emptyLeaf() }, leafless_workers: [] } },
@@ -347,48 +347,50 @@ describe("outlineBadge", () => {
   });
 });
 
-const outlineNode = (id: string, node_key: string, title = `title ${id}`): OutlineNodeRef => ({
+/** An outline node as the GUI loads it: its `node_key` is a UUID, never the snapshot's key. */
+const outlineNode = (id: string, title = `title ${id}`): OutlineNodeRef & { node_key: string } => ({
   id,
-  node_key,
+  node_key: `0b7e-${id}-uuid`,
   title,
 });
 
 describe("buildOrchestrationView", () => {
   const outline = [
-    outlineNode("M9.3", "k-held-gate"),
-    outlineNode("M9.4", "k-held-list"),
-    outlineNode("M10", "k-blocked"),
-    outlineNode("M11", "k-no-state"),
+    outlineNode("M9.3"),
+    outlineNode("M9.4"),
+    outlineNode("M10"),
+    outlineNode("M11"),
   ];
 
-  it("orders groups by outline, then unlisted keys by key, then No leaf; badges from the mock", () => {
+  // The snapshot keys leaves by node id; joining on the outline's node_key renders every leaf as missing.
+  it("joins on node id: outline leaves keep their id and title, only absent ids are missing; badges from the mock", () => {
     const view = buildOrchestrationView(mock, outline, NOW);
-    expect(view.map((g) => [g.displayId, g.title, g.badge?.text ?? null])).toEqual([
-      ["M9.3", "title M9.3", "held"],
-      ["M9.4", "title M9.4", "held"],
-      ["M10", "title M10", "blocked (1)"],
-      ["k-exec-blocked", "—", "blocked (1)"],
-      ["k-unknown", "—", "claimed"],
-      ["", "No leaf", null],
+    expect(view.map((g) => [g.displayId, g.title, g.inOutline, g.badge?.text ?? null])).toEqual([
+      ["M9.3", "title M9.3", true, "held"],
+      ["M9.4", "title M9.4", true, "held"],
+      ["M10", "title M10", true, "blocked (1)"],
+      ["M12", "—", false, "blocked (1)"],
+      ["M13", "—", false, "unknown"],
+      ["", "No leaf", false, null],
     ]);
   });
 
   it("keeps numeric-looking display ids in outline order, not sorted", () => {
     const snap: OrchestrationSnapshot = {
       schema: 1,
-      leaves: { a: emptyLeaf(), b: emptyLeaf(), c: emptyLeaf() },
+      leaves: { "M1.2": emptyLeaf(), "2": emptyLeaf(), "M1.10": emptyLeaf() },
       leafless_workers: [],
     };
     const view = buildOrchestrationView(
       snap,
-      [outlineNode("M1.10", "c"), outlineNode("M1.2", "a"), outlineNode("2", "b")],
+      [outlineNode("M1.10"), outlineNode("M1.2"), outlineNode("2")],
       NOW,
     );
     expect(view.map((g) => g.displayId)).toEqual(["M1.10", "M1.2", "2"]);
   });
 
   it("formats mock rows: ages from now, null account empty, stale review, two worktrees, flags verbatim", () => {
-    const g = buildOrchestrationView(mock, outline, NOW).find((x) => x.key === "k-blocked")!;
+    const g = buildOrchestrationView(mock, outline, NOW).find((x) => x.key === "M10")!;
     expect(g.claim).toEqual({ codename: "alpha", branch: "feature/rm-alpha", registered: "3h ago" });
     expect(g.workers).toEqual([
       {
@@ -412,7 +414,7 @@ describe("buildOrchestrationView", () => {
 
   it("renders explicit unknown as unknown and a null hold reason as —", () => {
     const view = buildOrchestrationView(mock, outline, NOW);
-    const u = view.find((x) => x.key === "k-unknown")!;
+    const u = view.find((x) => x.key === "M13")!;
     expect(u.workers[0]).toMatchObject({
       harnessModel: "unknown / unknown",
       status: "unknown",
@@ -430,9 +432,9 @@ describe("buildOrchestrationView", () => {
     });
     expect(u.reviews[0].fresh).toBe("unknown");
     expect(u.gate).toEqual({ state: "unknown", approvals: "unknown", blocks: "unknown", fresh: "unknown" });
-    const held = view.find((x) => x.key === "k-held-gate")!;
+    const held = view.find((x) => x.key === "M9.3")!;
     expect(held.holds).toEqual([{ source: "gate", id: "M9.3", reason: "—" }]);
-    const ex = view.find((x) => x.key === "k-exec-blocked")!;
+    const ex = view.find((x) => x.key === "M12")!;
     expect(ex.ready?.blockedOn).toEqual(["A2: needs a path outside the touch zones"]);
   });
 
@@ -453,7 +455,7 @@ describe("buildOrchestrationView", () => {
       },
       leafless_workers: [],
     };
-    const [g] = buildOrchestrationView(snap, [outlineNode("M1", "k")], NOW);
+    const [g] = buildOrchestrationView(snap, [outlineNode("k")], NOW);
     expect(g.workers[0].flags).toEqual(["unknown"]);
     expect(g.holds).toEqual([{ source: "unknown", id: "unknown", reason: "unknown" }]);
     expect(g.ready).toEqual({ commit: "unknown", model: "unknown", age: "unknown", blockedOn: [] });
@@ -477,7 +479,7 @@ describe("buildOrchestrationView", () => {
       },
       leafless_workers: [],
     };
-    const [g] = buildOrchestrationView(snap, [outlineNode("M1", "k")], NOW);
+    const [g] = buildOrchestrationView(snap, [outlineNode("k")], NOW);
     expect(g.badge).toEqual({ kind: "running", text: "running" });
     expect(g.claim?.registered).toBe("now");
     expect(g.workers[0]).toMatchObject({ account: "", lastActivity: "—", flags: [], ended: "—" });
@@ -502,7 +504,7 @@ describe("buildOrchestrationView", () => {
       },
       leafless_workers: [],
     } as unknown as OrchestrationSnapshot;
-    const [g] = buildOrchestrationView(snap, [outlineNode("M1", "k")], NOW);
+    const [g] = buildOrchestrationView(snap, [outlineNode("k")], NOW);
     expect(g.claim).toEqual({ codename: "—", branch: "—", registered: "—" });
     expect(g.worktrees[0]).toEqual({
       path: "—",
@@ -530,7 +532,7 @@ describe("buildOrchestrationView", () => {
     });
     const [g] = buildOrchestrationView(
       { schema: 2, leaves: { k: leaf }, leafless_workers: [] },
-      [outlineNode("M1", "k")],
+      [outlineNode("k")],
       NOW,
     );
     expect(g.reviews).toEqual([
@@ -549,7 +551,7 @@ describe("buildOrchestrationView", () => {
 
   it("an empty snapshot has no groups; leafless workers alone make one No leaf group", () => {
     const empty: OrchestrationSnapshot = { schema: 1, leaves: {}, leafless_workers: [] };
-    expect(buildOrchestrationView(empty, [outlineNode("M1", "k")], NOW)).toEqual([]);
+    expect(buildOrchestrationView(empty, [outlineNode("k")], NOW)).toEqual([]);
     const only = buildOrchestrationView(
       { ...empty, leafless_workers: [worker({ id: "w-9", account: "work" })] },
       [],

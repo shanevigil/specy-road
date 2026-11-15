@@ -110,10 +110,8 @@
         "specy_road/templates/specyrd/",
         "specy_road/agent_rule_provenance.md",
         "suggested_prompts/bootstrap-agents-md.md",
-        "specy_road/orchestrate_assign.py",
         "specy_road/worker_adapter_cursor.py",
         "specy_road/worker_sandbox.py",
-        "specy_road/chore_garden_due.py",
         "tests/test_orchestrate_spread.py",
         "tests/test_worker_resume_permissions.py",
         "tests/test_review_round6_brainstorm.py",
@@ -122,6 +120,8 @@
         "tests/test_cli_init.py",
         "scripts/post_release_readme_cleanup.py",
         "tests/test_doc_links.py",
+        "specy_road/orchestration/orchestrate_assign.py",
+        "specy_road/orchestration/records/chore_garden_due.py",
         "tests/parity/golden/help/specy-road__self-update.txt"
       ],
       "type": "task"
