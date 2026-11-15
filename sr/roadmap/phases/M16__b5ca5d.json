@@ -121,7 +121,8 @@
         "tests/test_cli.py",
         "tests/test_cli_init.py",
         "scripts/post_release_readme_cleanup.py",
-        "tests/test_doc_links.py"
+        "tests/test_doc_links.py",
+        "tests/parity/golden/help/specy-road__self-update.txt"
       ],
       "type": "task"
     }

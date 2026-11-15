@@ -135,6 +135,7 @@ entries:
       - tests/test_cli_init.py
       - scripts/post_release_readme_cleanup.py
       - tests/test_doc_links.py
+      - tests/parity/golden/help/specy-road__self-update.txt
     started: '2026-11-14'
     owner: savigil
     implementation_review: pending
