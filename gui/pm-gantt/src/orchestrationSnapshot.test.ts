@@ -1,6 +1,5 @@
 import { act, createElement as createReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import appSource from "./App.tsx?raw";
 import drawerSource from "./components/OrchestrationDrawer.tsx?raw";
 import mockJson from "./fixtures/orchestration_snapshot_mock.json";
 import {
@@ -430,14 +429,6 @@ describe("buildOrchestrationView", () => {
     expect(outlineNodesInRowOrder([outlineNode("M0.1")], ["missing", "M0.1"]).map((n) => n.id)).toEqual([
       "M0.1",
     ]);
-    expect(appSource).toMatch(
-      /outlineNodesInRowOrder\(\s*displayData\.nodes,\s*displayData\.ordered_ids\s*\)/,
-    );
-    const drawerAt = appSource.indexOf("<OrchestrationDrawer");
-    const drawer = appSource.slice(drawerAt, appSource.indexOf("/>", drawerAt) + 2);
-    expect(drawer).toContain("nodes={orchestrationOutline}");
-    expect(drawer).not.toContain("displayData?.nodes");
-    expect(drawer).not.toContain("displayData.nodes");
   });
 
   it("formats mock rows: ages from now, null account empty, stale review, two worktrees, flags verbatim", () => {
@@ -669,7 +660,35 @@ describe("loadOrchestration", () => {
   });
 });
 
-/** Enough of a document for React to mount `App` and for the test to read a badge. */
+type OutlineClick = {
+  type: string;
+  target: OutlineEl;
+  currentTarget: OutlineEl | null;
+  bubbles: boolean;
+  cancelable: boolean;
+  defaultPrevented: boolean;
+  button: number;
+  detail: number;
+  timeStamp: number;
+  clientX: number;
+  clientY: number;
+  pageX: number;
+  pageY: number;
+  screenX: number;
+  screenY: number;
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+  isTrusted: boolean;
+  stopped: boolean;
+  preventDefault: () => void;
+  stopPropagation: () => void;
+  stopImmediatePropagation: () => void;
+  getModifierState: () => boolean;
+};
+
+/** Enough of a document for React to mount `App` and for the test to read a badge or a drawer group. */
 class OutlineEl {
   nodeType = 1;
   nodeName = "DIV";
@@ -707,7 +726,7 @@ class OutlineEl {
   get parentElement(): OutlineEl | null {
     return this.parentNode?.nodeType === 1 ? this.parentNode : null;
   }
-  get isConnected() {
+  get isConnected(): boolean {
     return this.nodeType === 9 || (this.parentNode?.isConnected ?? false);
   }
   get className() {
@@ -797,6 +816,49 @@ class OutlineEl {
   removeEventListener(type: string, fn: (event: { type: string; target: OutlineEl }) => void) {
     const list = (this.listeners.get(type) ?? []).filter((f) => f !== fn);
     this.listeners.set(type, list);
+  }
+  click() {
+    this.deliverClick({
+      type: "click",
+      target: this,
+      currentTarget: null,
+      bubbles: true,
+      cancelable: true,
+      defaultPrevented: false,
+      button: 0,
+      detail: 1,
+      timeStamp: Date.now(),
+      clientX: 0,
+      clientY: 0,
+      pageX: 0,
+      pageY: 0,
+      screenX: 0,
+      screenY: 0,
+      altKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      isTrusted: false,
+      stopped: false,
+      preventDefault() {
+        this.defaultPrevented = true;
+      },
+      stopPropagation() {
+        this.stopped = true;
+      },
+      stopImmediatePropagation() {
+        this.stopped = true;
+      },
+      getModifierState() {
+        return false;
+      },
+    });
+  }
+  private deliverClick(event: OutlineClick) {
+    if (event.stopped) return;
+    event.currentTarget = this;
+    for (const fn of [...(this.listeners.get("click") ?? [])]) fn(event);
+    this.parentNode?.deliverClick(event);
   }
   getBoundingClientRect() {
     return { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, toJSON: () => ({}) };
@@ -1057,7 +1119,7 @@ function outlineRoadmap(view: string) {
         id: "M0.2",
         node_key: "nk-m02",
         type: "task",
-        title: "Roadmap validator in CI",
+        title: view === "1" ? "Roadmap validator in CI" : "Roadmap validator reloaded",
         status: "In Progress",
         parent_id: null,
         dependencies: [],
@@ -1098,21 +1160,29 @@ function outlineSnapshot(phase: "running" | "held") {
   };
 }
 
+/** The base fetch is not awaited, so this stays pending after the roadmap body is ready. */
+const ORCH_HOLD_MS = 250;
+
 describe("roadmap load shows an outline badge before the drawer opens", () => {
-  // A fresh page and a later roadmap reload. Source text of loadSnapshot stays
-  // green if that effect or the outline subscription is removed.
-  it("shows the leaf badge once the roadmap loads, and the reloaded badge, with the drawer closed", async () => {
+  // The base already calls fetchOrchestration on every load. Holding that response
+  // makes the outline title show first, with no badge, unless the load waits for it.
+  it("shows the leaf badge with the roadmap text, and the reloaded badge with the reloaded text, drawer closed", async () => {
     const doc = installOutlineDocument() as OutlineDoc;
     localStorage.setItem("pmGanttRefreshSec", "1");
     let view = "1";
     let phase: "running" | "held" = "running";
     let fingerprintCalls = 0;
     const previousFetch = globalThis.fetch;
+    const json = (body: unknown, status = 200) =>
+      new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-      const json = (body: unknown, status = 200) =>
-        new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
-      if (url.includes("/api/orchestration")) return json(outlineSnapshot(phase));
+      if (url.includes("/api/orchestration")) {
+        const body = outlineSnapshot(phase);
+        return new Promise((resolve) => {
+          setTimeout(() => resolve(json(body)), ORCH_HOLD_MS);
+        });
+      }
       if (url.includes("/api/roadmap/fingerprint")) {
         fingerprintCalls += 1;
         return json({ fingerprint: view, view_fingerprint: view });
@@ -1122,28 +1192,21 @@ describe("roadmap load shows an outline badge before the drawer opens", () => {
       return json({}, 404);
     }) as typeof fetch;
 
-    const { createRoot } = await import("react-dom/client");
-    const { default: App } = await import("./App");
-    const host = doc.createElement("div");
-    doc.body.appendChild(host);
-    const root = createRoot(host as unknown as Element);
+    const root = await mountOutlineApp(doc);
     const badge = () => doc.querySelector("button.worker-stall-badge")?.textContent ?? null;
     const drawerOpen = () => doc.textContent.includes("Workers on each leaf");
-    const waitFor = async (pred: () => boolean, label: string) => {
+    const firstBadgeWith = async (title: string) => {
       const start = Date.now();
       while (Date.now() - start < 4000) {
         await act(async () => {
-          await new Promise((resolve) => setTimeout(resolve, 20));
+          await new Promise((resolve) => setTimeout(resolve, 15));
         });
-        if (pred()) return;
+        if (doc.body.textContent.includes(title)) return badge();
       }
-      throw new Error(`${label}; outline text: ${doc.body.textContent.slice(0, 400)}`);
+      throw new Error(`never saw ${title}; outline text: ${doc.body.textContent.slice(0, 400)}`);
     };
     try {
-      await act(async () => {
-        root.render(createReactElement(App));
-      });
-      await waitFor(() => badge() === "running" && doc.body.textContent.includes("Roadmap validator in CI"), "badge");
+      expect(await firstBadgeWith("Roadmap validator in CI")).toBe("running");
       expect(drawerOpen()).toBe(false);
       let settled = -1;
       const settleStart = Date.now();
@@ -1155,10 +1218,9 @@ describe("roadmap load shows an outline badge before the drawer opens", () => {
         });
       }
       expect(badge()).toBe("running");
-      const beforeReload = fingerprintCalls;
       view = "2";
       phase = "held";
-      await waitFor(() => fingerprintCalls > beforeReload && badge() === "held", "reloaded badge");
+      expect(await firstBadgeWith("Roadmap validator reloaded")).toBe("held");
       expect(drawerOpen()).toBe(false);
     } finally {
       await act(async () => {
@@ -1168,6 +1230,102 @@ describe("roadmap load shows an outline badge before the drawer opens", () => {
     }
   }, 15000);
 });
+
+describe("the open drawer lists groups in outline row order", () => {
+  it("shows M0.1, M0.2, M0.3, M2, M0.10, No leaf when the node array is the Gantt order", async () => {
+    const doc = installOutlineDocument() as OutlineDoc;
+    const previousFetch = globalThis.fetch;
+    const json = (body: unknown, status = 200) =>
+      new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+    const rowIds = ["M0.1", "M0.2", "M0.3", "M2", "M0.10"];
+    const ganttIds = ["M0.1", "M0.3", "M2", "M0.2", "M0.10"];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/api/orchestration")) {
+        return json({
+          schema: 2,
+          leaves: Object.fromEntries(rowIds.map((id) => [id, emptyLeaf()])),
+          leafless_workers: [worker({ id: "w-9" })],
+        });
+      }
+      if (url.includes("/api/roadmap/fingerprint")) return json({ fingerprint: "order", view_fingerprint: "order" });
+      if (url.includes("/api/roadmap")) {
+        const node = (id: string, i: number) => ({
+          id,
+          node_key: `nk-${id}`,
+          type: "task",
+          title: `title ${id}`,
+          status: "In Progress",
+          parent_id: null,
+          dependencies: [],
+          sibling_order: i,
+        });
+        return json({
+          version: 1,
+          fingerprint: "order",
+          view_fingerprint: "order",
+          nodes: ganttIds.map((id, i) => node(id, i)),
+          registry: {},
+          registry_by_node: {},
+          tree: rowIds.map((id, i) => ({ id, outline_depth: 0, row_index: i })),
+          dependency_depths: Object.fromEntries(rowIds.map((id) => [id, 0])),
+          dependency_spans: Object.fromEntries(rowIds.map((id) => [id, 1])),
+          edges: [],
+          ordered_ids: rowIds,
+          row_depths: rowIds.map(() => 0),
+          git_enrichment: {},
+          dependency_inheritance: {},
+          activity: {},
+        });
+      }
+      if (url.includes("/api/repo")) return json({ repo_root: "/repo", repo_id: "repo-1" });
+      return json({}, 404);
+    }) as typeof fetch;
+
+    const root = await mountOutlineApp(doc);
+    const groupIds = () =>
+      doc.querySelectorAll("h4.worker-section-title").map((heading) => {
+        const id = heading.querySelector("button.modal-dep-id-link") ?? heading.querySelector("code");
+        if (id) return id.textContent;
+        return heading.textContent.includes("No leaf") ? "No leaf" : "";
+      });
+    try {
+      const start = Date.now();
+      let opened = false;
+      while (Date.now() - start < 4000) {
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        });
+        const button = doc.querySelectorAll("button").find((b) => b.textContent === "Orchestration");
+        if (button && !opened) {
+          await act(async () => {
+            button.click();
+          });
+          opened = true;
+        }
+        if (opened && groupIds().includes("No leaf")) break;
+      }
+      expect(groupIds()).toEqual(["M0.1", "M0.2", "M0.3", "M2", "M0.10", "No leaf"]);
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      globalThis.fetch = previousFetch;
+    }
+  }, 15000);
+});
+
+async function mountOutlineApp(doc: OutlineDoc) {
+  const { createRoot } = await import("react-dom/client");
+  const { default: App } = await import("./App");
+  const host = doc.createElement("div");
+  doc.body.appendChild(host);
+  const root = createRoot(host as unknown as Element);
+  await act(async () => {
+    root.render(createReactElement(App));
+  });
+  return root;
+}
 
 describe("pollOrchestration (15 s, only while open)", () => {
   beforeEach(() => vi.useFakeTimers());
