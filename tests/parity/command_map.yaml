@@ -190,3 +190,6 @@ rows:
   - old: specy-road update
     new: specy-road update
     allowed: "M16.6.1 (F5): the deprecated alias's description and `--install-gui-stack` help name .[gui] instead of .[gui-next]"
+  - old: ""
+    new: specy-road self-update
+    allowed: "M16.6.1 (F5): the description and `--install-gui-stack` help name .[gui] instead of .[gui-next] (the golden's two passages are edited, since self-update is not in the golden inventory)"

@@ -1,6 +1,6 @@
 # Optional AI tooling patterns (moved)
 
-The material that was here now lives with the topic it belongs to:
+The material that was here now lives with the topic it belongs to. This pointer is removed in the release after 0.3.1.
 
 - `specyrd init`, the skills it installs and what `--force` may touch → [install-and-usage.md: Skills](install-and-usage.md#skills-specyrd-init)
 - `AGENTS.md`, `.specyrd/AGENTS.md`, the team and local addenda, and the `CLAUDE.md` imports → [install-and-usage.md: Agent rules](install-and-usage.md#agent-rules-agentsmd-and-specyrd)

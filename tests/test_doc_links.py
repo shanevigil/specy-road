@@ -60,9 +60,11 @@ def _without_install_section(text: str) -> str:
 
 def test_no_doc_pins_a_release_candidate() -> None:
     """A pinned ``X.Y.ZrcN`` goes stale with the next candidate; the release runbook's worked examples
-    and the install section of install-and-usage.md are the only places one belongs."""
+    and the install section of install-and-usage.md are the only places one belongs. Every file under
+    docs/ is scanned, whatever its type (Markdown, YAML, …), and README.md."""
     hits = []
-    for path in _docs():
+    files = [REPO / "README.md", *sorted(p for p in (REPO / "docs").rglob("*") if p.is_file())]
+    for path in files:
         rel = path.relative_to(REPO).as_posix()
         if rel == "docs/release-runbook.md":
             continue

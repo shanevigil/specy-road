@@ -209,8 +209,8 @@ The `[gui-next]` extra -> `[gui]` (the same dependencies). `pip install "specy-r
 until the release after 0.3.1, which removes it; `--help`, the `gui` and `init gui` messages, `self-update` and the
 install docs name only `[gui]`.
 
-These toolkit docs were merged into the doc that owns their topic. The old files are gone from this release (a
-link to them on an earlier tag still works); each line is old path -> new place:
+These toolkit docs were merged into the doc that owns their topic. Each old path is now a short pointer to the new
+place, and the pointers are removed in the release after 0.3.1; each line is old path -> new place:
 
 - `docs/orchestration-roster.md` -> `docs/orchestration-workers.md`, "The roster: building and trying it".
 - `docs/orchestration-chores.md` -> `docs/orchestration-workers.md`, "Chores: worker-run work outside the roadmap".
@@ -218,9 +218,9 @@ link to them on an earlier tag still works); each line is old path -> new place:
 - `docs/install-release-candidates.md` -> `docs/install-and-usage.md`, "Install a release candidate (TestPyPI)".
 - `docs/pm-gui-brainstorm.md` -> `docs/pm-gui.md`, "Brainstorm panel".
 - `docs/pm-llm-review.md` -> `docs/pm-gui.md`, "LLM Review".
-- `docs/optional-ai-tooling-patterns.md` is a short pointer: `specyrd init` and the agent rule files moved to
-  `docs/install-and-usage.md`, the shared-checkout guard hooks to `docs/orchestration.md` ("Wiring the guard into a
-  harness"); the general advice is dropped.
+- `docs/optional-ai-tooling-patterns.md` -> `docs/install-and-usage.md` (`specyrd init` and the agent rule files) and
+  `docs/orchestration.md`, "Wiring the guard into a harness" (the shared-checkout guard hooks); the general advice is
+  dropped.
 
 These import paths, renamed or folded by the review-gate fold, warn on import (`DeprecationWarning`) and
 are removed in the release after 0.3.1:
