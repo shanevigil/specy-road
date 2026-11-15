@@ -125,7 +125,8 @@ entries:
       - tests/parity/golden/help/specy-road__self-update.txt
     started: '2026-11-14'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-15T22:44:16+00:00'
   - codename: orchestration-drawer-outline-order-badges-load-with-roadmap
     node_id: M17.17
     branch: feature/rm-orchestration-drawer-outline-order-badges-load-with-roadmap
