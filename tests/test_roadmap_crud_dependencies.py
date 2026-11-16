@@ -50,6 +50,7 @@ def test_list_dependencies_empty_and_unknown(tmp_path: Path) -> None:
     assert "no roadmap node" in r404.stderr
 
 
+@pytest.mark.slow
 def test_add_remove_dependency_cli(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
     nk992 = "10000000-0000-4000-8000-000000009903"
@@ -153,6 +154,7 @@ def _tree(root: Path) -> dict[str, bytes]:
     return {str(p.relative_to(root)): p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()}
 
 
+@pytest.mark.slow
 def test_add_dependency_reports_descendant_leaves_that_now_wait(tmp_path: Path) -> None:
     _repo_with_milestone(tmp_path)
 
@@ -171,6 +173,7 @@ def _deps(tmp_path: Path, *args: str):
     return run_crud(tmp_path, "--repo-root", str(tmp_path), *args)
 
 
+@pytest.mark.slow
 def test_set_dependencies_accepts_display_ids_and_refuses_an_unknown(tmp_path: Path) -> None:
     """A display id and a node_key in one value are stored as keys; an unknown token writes nothing."""
     crud_fixture_repo(tmp_path)

@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
+from tests.support.review import NODE, commit_file, make_review_repo, git
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.integrity_gate import integrity_gate_problems
@@ -96,6 +96,7 @@ def test_tests_under_check_are_the_added_and_changed_test_functions(tmp_path: Pa
     assert red_green.tests_under_check(repo, t.base, t.commit) == UNDER_CHECK
 
 
+@pytest.mark.slow
 def test_record_has_one_outcome_per_test_at_base_and_head(ran) -> None:
     repo, code, before, after = ran
     assert code == 1

@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from tests.unauthored_repo_helpers import FILLED, unauthored_repo
+from tests.support.unauthored import FILLED, unauthored_repo
 
 from specy_road.bundled_scripts.brief_dependency_context import unwritten_sheet_line, without_placeholder_intent
 from specy_road.bundled_scripts.generate_brief import index, load_nodes, render_brief

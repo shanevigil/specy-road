@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 
 from specy_road.orchestration.workers import worker_lease as lease
 from specy_road.orchestration.workers import worker_state as ws

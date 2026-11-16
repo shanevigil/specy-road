@@ -14,8 +14,8 @@ from specy_road.milestone_chunk_io import (
     write_milestone_execution,
 )
 from specy_road.registry_yaml import registry_path, write_registry
-from tests.milestone_repo_helpers import KEYS, chunk_path, make_milestone_repo
-from tests.review_repo_helpers import git
+from tests.support.milestone import KEYS, chunk_path, make_milestone_repo
+from tests.support.same.git_84c8ad8f55f9 import git
 
 PARENT = "M2"
 CODENAME = "milestone-two"

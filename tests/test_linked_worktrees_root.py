@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.pickup_repo_helpers import make_pickup_project
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.pickup import make_pickup_project
+from tests.support.review import make_review_repo, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo
 

@@ -3,6 +3,8 @@ install lines name ``[gui]``, never its deprecated alias ``[gui-next]``."""
 
 from __future__ import annotations
 
+import pytest
+
 import tomllib
 from pathlib import Path
 
@@ -10,6 +12,7 @@ REPO = Path(__file__).resolve().parent.parent
 INSTALL_DOCS = ("docs/install-and-usage.md",)
 
 
+@pytest.mark.repo
 def test_install_docs_name_every_extra() -> None:
     pyproject = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
     extras = set(pyproject["project"]["optional-dependencies"]) - {"dev"}
@@ -23,6 +26,7 @@ GUI_INSTALL_DOCS = ("README.md", "docs/install-and-usage.md", "docs/pm-gui.md",
                     "docs/pm-workflow.md", "docs/contributor-guide.md")
 
 
+@pytest.mark.repo
 def test_gui_install_lines_name_gui_not_its_alias() -> None:
     """A line that installs (``pip install`` or a ``specy-road[...]`` spec) never names gui-next;
     the one line that does is install-and-usage's deprecation note, which installs nothing."""

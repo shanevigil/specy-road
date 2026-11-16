@@ -20,8 +20,8 @@ from typing import Any, Callable
 import pytest
 import yaml
 
-from tests.decisions_repo_helpers import decisions_repo
-from tests.review_repo_helpers import make_review_repo
+from tests.support.decisions import decisions_repo
+from tests.support.review import make_review_repo
 from tests.worker_lease_helpers import idle_worker
 
 from specy_road import clock
@@ -275,6 +275,7 @@ def test_a_failed_write_leaves_its_temporary_file(tmp_path: Path, monkeypatch, w
     ]
 
 
+@pytest.mark.repo
 def test_every_atomic_text_write_has_a_row() -> None:
     found = {
         site
@@ -336,6 +337,7 @@ def _sources() -> list[tuple[str, str]]:
     ]
 
 
+@pytest.mark.repo
 def test_the_wall_clock_is_read_only_in_clock_py() -> None:
     found = [
         f"{rel}:{text.count(chr(10), 0, m.start()) + 1}"
@@ -363,6 +365,7 @@ def _call_sites(rel: str, text: str, callee: str) -> list[str]:
     return sites
 
 
+@pytest.mark.repo
 def test_os_replace_is_only_in_fs_atomic_and_the_allowlist() -> None:
     found = {
         site

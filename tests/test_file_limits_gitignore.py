@@ -15,16 +15,15 @@ from specy_road.file_limits_engine import (
     git_ignored_paths,
     run_file_limits_scan,
 )
+from tests.support.same.git_736cc1f249f0 import git
 
 
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
 
 
 def _init_repo(root: Path) -> None:
-    _git(root, "init")
-    _git(root, "config", "user.email", "a@b.c")
-    _git(root, "config", "user.name", "t")
+    git(root, "init")
+    git(root, "config", "user.email", "a@b.c")
+    git(root, "config", "user.name", "t")
 
 
 def _write(root: Path, rel: str, lines: int) -> None:
@@ -62,8 +61,8 @@ def test_tracked_file_is_scanned_even_when_a_rule_matches(tmp_path: Path) -> Non
     """git check-ignore consults the index, so tracking wins over the rule."""
     _init_repo(tmp_path)
     _write(tmp_path, "docs/long.md", 900)
-    _git(tmp_path, "add", "-f", "docs/long.md")
-    _git(tmp_path, "commit", "-m", "add")
+    git(tmp_path, "add", "-f", "docs/long.md")
+    git(tmp_path, "commit", "-m", "add")
     (tmp_path / ".gitignore").write_text("docs/long.md\n", encoding="utf-8")
 
     failed, out = _scan(tmp_path, {"max_lines_per_file": 400, "applies_to_globs": ["**/*.md"]})
@@ -77,8 +76,8 @@ def test_session_artifacts_are_exempt_even_when_tracked(tmp_path: Path) -> None:
     _write(tmp_path, "work/pr-body-M1.1.md", 3500)
     _write(tmp_path, "work/brief-M1.1.md", 900)
     _write(tmp_path, "docs/real.md", 900)
-    _git(tmp_path, "add", "-f", "work", "docs")
-    _git(tmp_path, "commit", "-m", "add")
+    git(tmp_path, "add", "-f", "work", "docs")
+    git(tmp_path, "commit", "-m", "add")
 
     failed, out = _scan(tmp_path, {"max_lines_per_file": 400, "applies_to_globs": ["**/*.md"]})
     assert failed is True

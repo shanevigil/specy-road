@@ -9,35 +9,18 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
-from tests.test_set_gate_status import repo_with_gate
+from tests.support.extracted.set_gate_status import repo_with_gate
+from tests.support.same.mutation_headers_1fdfef6b66c9 import mutation_headers
 
 _M02_PLANNING = (
     "planning/M0.2_roadmap-ci_e7fcdb23-5d23-5bbf-a9b5-aaa0140ff208.md"
 )
 
 
-def _mutation_headers(client: TestClient) -> dict[str, str]:
-    r = client.get("/api/roadmap")
-    assert r.status_code == 200
-    return {"X-PM-Gui-Fingerprint": str(r.json()["fingerprint"])}
 
 
-@pytest.fixture()
-def dogfood_copy(tmp_path: Path) -> Path:
-    dest = tmp_path / "dogfood"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-@pytest.fixture()
-def api_client(
-    dogfood_copy: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> TestClient:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
 def test_api_planning_put_success_updates_file(
@@ -51,7 +34,7 @@ def test_api_planning_put_success_updates_file(
     r = api_client.put(
         "/api/planning/file",
         params={"path": path},
-        headers={**_mutation_headers(api_client), "Content-Type": "application/json"},
+        headers={**mutation_headers(api_client), "Content-Type": "application/json"},
         json={"content": updated},
     )
     assert r.status_code == 200
@@ -69,7 +52,7 @@ def test_api_planning_put_orphan_file_unlinked_on_validation_failure(
     r = api_client.put(
         "/api/planning/file",
         params={"path": rel},
-        headers={**_mutation_headers(api_client), "Content-Type": "application/json"},
+        headers={**mutation_headers(api_client), "Content-Type": "application/json"},
         json={"content": "# orphan\n"},
     )
     assert r.status_code == 400
@@ -98,7 +81,7 @@ def test_api_planning_put_restores_content_when_validate_fails(
     r = client.put(
         "/api/planning/file",
         params={"path": path},
-        headers={**_mutation_headers(client), "Content-Type": "application/json"},
+        headers={**mutation_headers(client), "Content-Type": "application/json"},
         json={"content": before + "\n# pytest touch\n"},
     )
     assert r.status_code == 400
@@ -121,7 +104,7 @@ def test_api_patch_gate_status_roundtrip(
     r1 = client.patch(
         "/api/nodes/M99.4",
         headers={
-            **_mutation_headers(client),
+            **mutation_headers(client),
             "Content-Type": "application/json",
         },
         json={"pairs": [{"key": "status", "value": "Complete"}]},
@@ -133,7 +116,7 @@ def test_api_patch_gate_status_roundtrip(
     r3 = client.patch(
         "/api/nodes/M99.4",
         headers={
-            **_mutation_headers(client),
+            **mutation_headers(client),
             "Content-Type": "application/json",
         },
         json={"pairs": [{"key": "status", "value": "Not Started"}]},
@@ -149,7 +132,7 @@ def test_api_patch_node_title_roundtrip(api_client: TestClient) -> None:
     r1 = api_client.patch(
         "/api/nodes/M0.2",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={"pairs": [{"key": "title", "value": f"{orig} [pytest]"}]},
@@ -158,7 +141,7 @@ def test_api_patch_node_title_roundtrip(api_client: TestClient) -> None:
     r2 = api_client.patch(
         "/api/nodes/M0.2",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={"pairs": [{"key": "title", "value": orig}]},
@@ -170,7 +153,7 @@ def test_api_patch_acceptance_reads_back(api_client: TestClient) -> None:
     def patch_and_read(value: str) -> list[str] | None:
         r = api_client.patch(
             "/api/nodes/M0.2",
-            headers={**_mutation_headers(api_client), "Content-Type": "application/json"},
+            headers={**mutation_headers(api_client), "Content-Type": "application/json"},
             json={"pairs": [{"key": "acceptance", "value": value}]},
         )
         assert r.status_code == 200, r.text
@@ -189,7 +172,7 @@ def test_api_patch_node_rejects_disallowed_key(api_client: TestClient) -> None:
     r = api_client.patch(
         "/api/nodes/M0.2",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={"pairs": [{"key": "not_whitelisted", "value": "x"}]},
@@ -216,7 +199,7 @@ def test_api_patch_dependencies_refuses_inherited_cycle(
     before = {p: p.read_bytes() for p in roadmap.rglob("*") if p.is_file()}
     r = api_client.patch(
         f"/api/nodes/{node_id}",
-        headers={**_mutation_headers(api_client), "Content-Type": "application/json"},
+        headers={**mutation_headers(api_client), "Content-Type": "application/json"},
         json={"pairs": [{"key": "dependencies", "value": deps}]},
     )
     assert r.status_code == 400
@@ -230,7 +213,7 @@ def test_api_outline_reorder_rejects_incomplete_child_set(
     r = api_client.post(
         "/api/outline/reorder",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={"parent_id": "M0", "ordered_child_ids": ["M0.1"]},
@@ -244,7 +227,7 @@ def test_api_outline_move_rejects_unknown_node_key(
     r = api_client.post(
         "/api/outline/move",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={
@@ -260,7 +243,7 @@ def test_api_post_nodes_add_task(api_client: TestClient) -> None:
     r = api_client.post(
         "/api/nodes/add",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={
@@ -290,7 +273,7 @@ def test_api_post_nodes_add_auto_routes_when_reference_chunk_full(
     r = api_client.post(
         "/api/nodes/add",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={
@@ -314,7 +297,7 @@ def test_api_post_nodes_add_auto_routes_when_reference_chunk_full(
 def test_api_delete_leaf_node(api_client: TestClient) -> None:
     r = api_client.delete(
         "/api/nodes/M2",
-        headers=_mutation_headers(api_client),
+        headers=mutation_headers(api_client),
     )
     assert r.status_code == 200
     assert r.json().get("node_id") == "M2"

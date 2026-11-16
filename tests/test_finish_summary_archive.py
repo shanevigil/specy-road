@@ -5,13 +5,14 @@ from __future__ import annotations
 import pytest
 
 from tests.helpers import REPO
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.support.review import make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import finish_task
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_files import reviews_dir
 
 
+@pytest.mark.slow
 def test_finish_still_commits_when_work_done_is_gitignored(
     tmp_path, monkeypatch, capsys,
 ) -> None:

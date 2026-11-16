@@ -18,7 +18,8 @@ from specy_road.review_files import reviews_dir
 from specy_road.orchestration.workers.worker_sandbox import state_home
 from specy_road.orchestration.workers.worker_state import create_record, set_state, workers_dir
 from tests.helpers import REPO
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.support.review import make_review_repo, review_text, git
+from tests.support.same.quoted_aa331427ddf7 import quoted
 
 NODE = "M1.1"
 ROSTER = (
@@ -58,8 +59,6 @@ def key_paths(value: object, path: str = "", found: set[str] | None = None) -> s
     return found
 
 
-def _quoted(block: str) -> list[str]:
-    return re.findall(r'"([^"]*)"', block)
 
 
 def required_key_paths() -> set[str]:
@@ -67,17 +66,17 @@ def required_key_paths() -> set[str]:
     src = TS.read_text(encoding="utf-8")
     match = re.search(r"export const requiredKeys:.*?= \[(.*?)\];", src, re.S)
     assert match is not None
-    known = {"WORKER_REQUIRED": _quoted(re.search(r"const WORKER_REQUIRED = \[(.*?)\];", src, re.S).group(1))}
+    known = {"WORKER_REQUIRED": quoted(re.search(r"const WORKER_REQUIRED = \[(.*?)\];", src, re.S).group(1))}
     out: list[str] = []
     for raw in match.group(1).splitlines():
         line = raw.strip().rstrip(",")
         spread = re.match(r"\.\.\.under\(\"([^\"]+)\",\s*(\[[^\]]*\]|[A-Z_]+)\)", line)
         if spread:
             prefix, keys = spread.group(1), spread.group(2)
-            names = _quoted(keys) if keys.startswith("[") else known[keys]
+            names = quoted(keys) if keys.startswith("[") else known[keys]
             out.extend(f"{prefix}.{item}" for item in names)
-        elif _quoted(line):
-            out.append(_quoted(line)[0])
+        elif quoted(line):
+            out.append(quoted(line)[0])
     return set(out)
 
 
@@ -237,6 +236,7 @@ def check_row(case: str, body: dict) -> None:
             assert "divergent-model" not in blob and "w-0099" not in blob
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", ["empty", "live", "unreadable", "secret", "nested", "linked"])
 def test_fixture_repos(case: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Each row is the snapshot of the main project, with nothing added."""
@@ -251,6 +251,7 @@ def test_fixture_repos(case: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     check_row(case, response.json())
 
 
+@pytest.mark.repo
 def test_contract_ties_response_fixture_and_mock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A response key outside the v2 fixture fails, and so does a mock key the fixture lacks or a missing required one.
 
@@ -288,6 +289,7 @@ def test_read_only_serves_the_get_and_refuses_the_post(tmp_path: Path, monkeypat
     assert post.status_code == 403 and "read-only" in post.json()["detail"]
 
 
+@pytest.mark.repo
 def test_shipped_bundle_reads_the_route_and_cannot_render_the_mock() -> None:
     """The production assets fetch ``/api/orchestration`` and carry none of the mock's worker ids or its switch.
 

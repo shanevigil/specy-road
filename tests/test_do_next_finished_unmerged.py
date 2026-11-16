@@ -13,12 +13,9 @@ from specy_road.bundled_scripts import do_next_task as dnt
 from specy_road.bundled_scripts.do_next_task_pickup_helpers import (
     assert_not_already_claimed,
 )
+from tests.support.same.git_81b020dd1411 import git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(
-        ["git", "-C", str(repo), *args], check=True, capture_output=True
-    )
 
 
 def _write_graph(repo: Path, status: str) -> None:
@@ -55,18 +52,18 @@ def repo(tmp_path: Path) -> Path:
     """A clone whose ``dev`` says Not Started and whose feature branch says Complete."""
     root = tmp_path / "r"
     root.mkdir()
-    _git(root, "init", "-q", "-b", "dev")
-    _git(root, "config", "user.email", "t@e.com")
-    _git(root, "config", "user.name", "T")
+    git(root, "init", "-q", "-b", "dev")
+    git(root, "config", "user.email", "t@e.com")
+    git(root, "config", "user.name", "T")
     _write_graph(root, "Not Started")
-    _git(root, "add", "-A")
-    _git(root, "commit", "-qm", "graph")
+    git(root, "add", "-A")
+    git(root, "commit", "-qm", "graph")
 
-    _git(root, "checkout", "-q", "-b", "feature/rm-trash-soft-delete")
+    git(root, "checkout", "-q", "-b", "feature/rm-trash-soft-delete")
     _write_graph(root, "Complete")
-    _git(root, "add", "-A")
-    _git(root, "commit", "-qm", "finish")
-    _git(root, "checkout", "-q", "dev")
+    git(root, "add", "-A")
+    git(root, "commit", "-qm", "finish")
+    git(root, "checkout", "-q", "dev")
     return root
 
 
@@ -85,11 +82,11 @@ def test_finished_leaf_on_unmerged_branch_is_dropped(repo: Path) -> None:
 
 def test_unfinished_branch_is_left_alone(repo: Path) -> None:
     """A branch that exists but has not finished the node stays pickable."""
-    _git(repo, "checkout", "-q", "feature/rm-trash-soft-delete")
+    git(repo, "checkout", "-q", "feature/rm-trash-soft-delete")
     _write_graph(repo, "In Progress")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-qm", "wip")
-    _git(repo, "checkout", "-q", "dev")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "wip")
+    git(repo, "checkout", "-q", "dev")
 
     ids, logs = fu.finished_unmerged_ids(
         CANDIDATE, repo_root=repo, remote="origin", integration_branch="dev"
@@ -99,7 +96,7 @@ def test_unfinished_branch_is_left_alone(repo: Path) -> None:
 
 
 def test_no_feature_branch_means_no_work(repo: Path) -> None:
-    _git(repo, "branch", "-q", "-D", "feature/rm-trash-soft-delete")
+    git(repo, "branch", "-q", "-D", "feature/rm-trash-soft-delete")
     ids, _ = fu.finished_unmerged_ids(
         CANDIDATE, repo_root=repo, remote="origin", integration_branch="dev"
     )
@@ -138,7 +135,7 @@ def test_local_ref_wins_over_remote_tracking(repo: Path) -> None:
         ["git", "-C", str(repo), "rev-parse", "feature/rm-trash-soft-delete"],
         check=True, capture_output=True, text=True,
     ).stdout.strip()
-    _git(
+    git(
         repo, "update-ref",
         "refs/remotes/origin/feature/rm-trash-soft-delete", sha,
     )
@@ -152,8 +149,8 @@ def test_remote_only_branch_is_still_seen(repo: Path) -> None:
         ["git", "-C", str(repo), "rev-parse", "feature/rm-trash-soft-delete"],
         check=True, capture_output=True, text=True,
     ).stdout.strip()
-    _git(repo, "branch", "-q", "-D", "feature/rm-trash-soft-delete")
-    _git(
+    git(repo, "branch", "-q", "-D", "feature/rm-trash-soft-delete")
+    git(
         repo, "update-ref",
         "refs/remotes/origin/feature/rm-trash-soft-delete", sha,
     )

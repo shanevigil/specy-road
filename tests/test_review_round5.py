@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.harness import make_worker_repo, wait_for_worker
 
 from specy_road.orchestration.guard import session_presence as sp

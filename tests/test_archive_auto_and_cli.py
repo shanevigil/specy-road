@@ -15,11 +15,6 @@ from specy_road.archive_plan import plan_archive
 from tests.helpers import REPO, DOGFOOD, script_subprocess_env
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def _patch_node(repo: Path, chunk: str, node_id: str, **fields) -> None:
@@ -150,6 +145,7 @@ def test_cli_archive_dry_run_writes_nothing(repo: Path) -> None:
     assert not (repo / "roadmap" / "archive").exists()
 
 
+@pytest.mark.slow
 def test_cli_archive_list_show_restore_round_trip(repo: Path) -> None:
     assert _cli(repo, "archive", "M0.1").returncode == 0
 
@@ -169,6 +165,7 @@ def test_cli_archive_list_show_restore_round_trip(repo: Path) -> None:
     assert json.loads(_cli(repo, "list-archives", "--json").stdout)["records"] == []
 
 
+@pytest.mark.slow
 def test_cli_archive_and_restore_regenerate_both_generated_files(repo: Path) -> None:
     """A stale roadmap.md or roadmap-context.md would fail the adopter's CI."""
     assert _cli(repo, "archive", "M0.1").returncode == 0

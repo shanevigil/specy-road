@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import wait_for_worker
 from tests.worker_lease_helpers import remote_and_clone
@@ -47,7 +47,7 @@ def _slow_repo(tmp_path: Path) -> Path:
     script = tmp_path / "slow.py"
     script.write_text(FAKE_SLOW)
     from tests.support.harness import worker_roster
-    from tests.review_repo_helpers import git, make_review_repo
+    from tests.support.review import make_review_repo, git
 
     repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
     (repo / ".gitignore").write_text("work/\n")
@@ -56,6 +56,7 @@ def _slow_repo(tmp_path: Path) -> Path:
     return repo
 
 
+@pytest.mark.slow
 def test_message_while_running_queues_and_delivers(tmp_path: Path, capsys) -> None:
     repo = _slow_repo(tmp_path)
     rec, _ = ops.delegate(repo, "M1.1", "opus")
@@ -87,6 +88,7 @@ def test_message_while_running_queues_and_delivers(tmp_path: Path, capsys) -> No
     assert prompt.is_file()
 
 
+@pytest.mark.slow
 def test_two_cli_messages_during_a_live_turn_are_appended_and_delivered(tmp_path: Path, capsys) -> None:
     repo = _slow_repo(tmp_path)
     rec, _ = ops.delegate(repo, "M1.1", "opus")
@@ -311,6 +313,7 @@ def _two_while_running(tmp_path: Path, capsys) -> None:
     _stuck(repo, wid, "one\n\ntwo", capsys)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", [
     "lease", "unsupported", "oserror", "message", "resume", "ready-only",
     "resume-rejected", "two-queued", "terminate",
@@ -375,6 +378,7 @@ print(json.dumps({"type": "result", "subtype": "success", "result": "done", "ses
 '''
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("caller_path", ["/caller", None])
 def test_a_queued_turn_gets_the_callers_pythonpath(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
                                                    caller_path: str | None) -> None:

@@ -20,14 +20,9 @@ from specy_road.archive_plan import plan_archive, planning_moves
 from specy_road.archive_restore import restore_archive
 from specy_road.safe_write import SafeWriteError
 from tests.helpers import DOGFOOD
-from tests.test_safe_write import swap_at_open
+from tests.support.extracted.safe_write import swap_at_open
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def _chunk(repo: Path, name: str) -> list[dict]:

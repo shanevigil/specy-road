@@ -14,12 +14,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo, review_output
+from tests.support.review import make_review_repo, review_output, git
 
 from specy_road import review_record_write
 from specy_road.bundled_scripts import review_cli, role_prompt
 from specy_road.orchestration import role_prompt_cli
 from specy_road.review_files import reviews_dir
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
 
 # Each call takes the next step of the spec (one answer per turn); the call's argv is appended to `calls`, and the
 # text of the prompt file it was given (argv[2], when it is a file) to `prompts`.
@@ -233,10 +234,6 @@ def files_record_step(repo: Path, verdict: str = "approve") -> dict:
     return verdict_step(repo, verdict)
 
 
-def run_review_cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def run_review_delegate(repo: Path, *extra: str) -> int:

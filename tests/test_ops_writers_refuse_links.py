@@ -19,8 +19,8 @@ from starlette.testclient import TestClient
 from specy_road.finish_land_deterministic import DeterministicResolveError, resolve_deterministic_paths
 from specy_road.on_complete_pickup import print_orchestration_hint
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
-from tests.review_repo_helpers import commit_file, git
-from tests.test_finish_merge_mode import merge_mode_finish_repo
+from tests.support.review import commit_file, git
+from tests.support.extracted.finish_merge_mode import merge_mode_finish_repo
 
 THEIRS = b"someone else's file\n"
 SUMMARY = "work/implementation-summary-M1.1.md"

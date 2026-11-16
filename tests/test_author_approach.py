@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unauthored_repo_helpers import FILLED, git, pick_leaf, unauthored_repo
+from tests.support.unauthored import FILLED, git, pick_leaf, unauthored_repo
 
 from specy_road.bundled_scripts import author_approach, orchestrate_cli
 from specy_road.brainstorm_promote import seed_planning_sheet

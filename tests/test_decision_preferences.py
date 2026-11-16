@@ -17,13 +17,12 @@ from specy_road.orchestration.records.decisions import (
     read_decisions,
     schema_errors,
 )
-from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
-from tests.test_decisions import SKILL
+from tests.support.decisions import add_args, decisions_repo, run_decisions
+from tests.support.extracted.decisions import SKILL
 from tests.support.plan import plan_repo, ROSTER
+from tests.support.same.prefer_6f3256850a24 import prefer
 
 
-def _prefer(repo: Path, *extra: str) -> list[str]:
-    return ["decisions", "add", "--repo-root", str(repo), "--kind", "preference", *extra]
 
 
 def _ledger(repo: Path) -> list[dict]:
@@ -32,7 +31,7 @@ def _ledger(repo: Path) -> list[dict]:
 
 def test_add_preference_writes_structured_fields_without_a_node(tmp_path: Path) -> None:
     repo = decisions_repo(tmp_path)
-    assert run_decisions(_prefer(
+    assert run_decisions(prefer(
         repo, "--summary", "Docs-only leaves go to sol while its budget lasts", "--role", "executor",
         "--model", "sol", "--model", "opus", "--applies-to", "docs", "--applies-to", "data",
         "--expires", "2026-11-07", "--why", "opus budget is low this week",
@@ -86,9 +85,9 @@ def test_expiry_is_inclusive_through_the_date_and_exact_for_a_datetime() -> None
 def test_list_shows_active_preferences_first_and_drops_expired(tmp_path: Path, capsys) -> None:
     repo = decisions_repo(tmp_path)
     assert run_decisions(add_args(repo, "--id", "Ddue", "--needed-by", "2026-11-05", "--summary", "Due question")) == 0
-    assert run_decisions(_prefer(repo, "--summary", "Expired rule", "--expires", "2020-01-01", "--id", "Pold")) == 0
-    assert run_decisions(_prefer(repo, "--summary", "Later rule", "--asked", "2026-11-02", "--id", "Plater")) == 0
-    assert run_decisions(_prefer(repo, "--summary", "Earlier rule", "--asked", "2026-11-01",
+    assert run_decisions(prefer(repo, "--summary", "Expired rule", "--expires", "2020-01-01", "--id", "Pold")) == 0
+    assert run_decisions(prefer(repo, "--summary", "Later rule", "--asked", "2026-11-02", "--id", "Plater")) == 0
+    assert run_decisions(prefer(repo, "--summary", "Earlier rule", "--asked", "2026-11-01",
                         "--expires", "2999-01-01", "--id", "Pearly")) == 0
     capsys.readouterr()
     assert run_decisions(["decisions", "list", "--repo-root", str(repo)]) == 0
@@ -102,12 +101,12 @@ def test_list_shows_active_preferences_first_and_drops_expired(tmp_path: Path, c
 
 def test_supersede_and_close_a_preference_without_a_sheet_record(tmp_path: Path, capsys) -> None:
     repo = decisions_repo(tmp_path)
-    assert run_decisions(_prefer(repo, "--summary", "Use sol for docs", "--model", "sol")) == 0
-    assert run_decisions(_prefer(repo, "--summary", "Use flash for docs", "--model", "flash", "--supersedes", "P1")) == 0
+    assert run_decisions(prefer(repo, "--summary", "Use sol for docs", "--model", "sol")) == 0
+    assert run_decisions(prefer(repo, "--summary", "Use flash for docs", "--model", "flash", "--supersedes", "P1")) == 0
     old, new = _ledger(repo)
     assert old["status"] == "closed" and old["answer"] == "superseded by P2" and old.get("closed")
     assert new["status"] == "open"
-    assert run_decisions(_prefer(repo, "--summary", "again", "--supersedes", "P1")) == 1
+    assert run_decisions(prefer(repo, "--summary", "again", "--supersedes", "P1")) == 1
     assert "not an open preference" in capsys.readouterr().err
     assert run_decisions(["decisions", "close", "P2", "--answer", "human dropped it", "--repo-root", str(repo)]) == 0
     assert _ledger(repo)[1]["status"] == "closed"

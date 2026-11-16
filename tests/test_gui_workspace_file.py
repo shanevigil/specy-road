@@ -9,30 +9,13 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
+from tests.support.same.mutation_headers_1fdfef6b66c9 import mutation_headers
 
 
-@pytest.fixture()
-def dogfood_copy(tmp_path: Path) -> Path:
-    dest = tmp_path / "dogfood"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-@pytest.fixture()
-def api_client(
-    dogfood_copy: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> TestClient:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
-def _mutation_headers(client: TestClient) -> dict[str, str]:
-    r = client.get("/api/roadmap")
-    assert r.status_code == 200
-    return {"X-PM-Gui-Fingerprint": str(r.json()["fingerprint"])}
 
 
 def test_api_workspace_file_get_reads_shared_md(api_client: TestClient) -> None:
@@ -87,7 +70,7 @@ def test_api_workspace_file_put_roundtrip(
         "/api/workspace/file",
         params={"path": path},
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={"content": content},
@@ -122,7 +105,7 @@ def test_api_workspace_file_put_rejects_non_shared(
         "/api/workspace/file",
         params={"path": "work/x.md"},
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={"content": "x"},

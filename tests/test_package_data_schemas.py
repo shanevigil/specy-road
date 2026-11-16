@@ -9,19 +9,19 @@ that shipped the scaffold without its ``.gitignore``.
 
 from __future__ import annotations
 
+import pytest
+
 import fnmatch
 import tomllib
 from pathlib import Path
+from tests.support.same.declared_package_data_d6ce072f444e import declared_package_data
+pytestmark = pytest.mark.repo
 
 REPO = Path(__file__).resolve().parent.parent
 PKG = REPO / "specy_road"
 SCHEMAS = PKG / "schemas"
 
 
-def _declared_package_data() -> list[str]:
-    with (REPO / "pyproject.toml").open("rb") as f:
-        cfg = tomllib.load(f)
-    return cfg["tool"]["setuptools"]["package-data"]["specy_road"]
 
 
 def _bundled_schemas() -> list[str]:
@@ -31,7 +31,7 @@ def _bundled_schemas() -> list[str]:
 
 
 def test_bundled_schemas_are_covered_by_package_data() -> None:
-    patterns = _declared_package_data()
+    patterns = declared_package_data()
     uncovered = [
         rel
         for rel in _bundled_schemas()

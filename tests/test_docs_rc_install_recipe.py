@@ -10,6 +10,8 @@ every line of every doc. A doc that shows the unsafe form on purpose, as a warni
 
 from __future__ import annotations
 
+import pytest
+
 import re
 from pathlib import Path
 
@@ -90,6 +92,7 @@ def test_the_recipe_and_a_marked_warning_pass() -> None:
     assert _offenders(f"{ALLOW}\n\n{_UNSAFE}\n")
 
 
+@pytest.mark.repo
 def test_no_doc_installs_from_testpypi_with_an_extra_index() -> None:
     docs = [REPO / "README.md", *sorted((REPO / "docs").rglob("*.md"))]
     offenders = [f"{path.relative_to(REPO)}:{hit}"

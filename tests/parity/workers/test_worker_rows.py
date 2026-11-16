@@ -12,13 +12,15 @@ from pathlib import Path
 import pytest
 
 from tests.parity.support import check_golden
-from tests.parity.workers.rows import ROWS, Row, golden_path, record
+from tests.support.parity import golden_file
+from tests.parity.workers.rows import GOLDEN, ROWS, Row, record
 
 pytestmark = pytest.mark.parity
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("row", ROWS, ids=lambda r: r.name)
 def test_worker_row_matches_its_golden(row: Row, tmp_path: Path) -> None:
     """The steps' exits and output, the worker records, event logs, interventions, ops and
     leases."""
-    check_golden(golden_path(row), record(row, tmp_path))
+    check_golden(golden_file(GOLDEN, row), record(row, tmp_path))

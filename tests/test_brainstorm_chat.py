@@ -25,6 +25,7 @@ from specy_road.brainstorm_research import (
     validate_endpoint,
 )
 from tests.helpers import use_fake_llm
+from tests.support.extracted.brainstorm_chat import REPLY_WITH_IDEAS
 
 RESEARCH_ON = {
     "enabled": True,
@@ -75,23 +76,6 @@ def test_the_system_prompt_states_which_research_exists() -> None:
     assert NO_RESEARCH_NOTICE in system_prompt_for("BASE", None)
 
 
-REPLY_WITH_IDEAS = """Three angles worth considering.
-
-IDEA: Stored payment vault
-WHY: Repeat buyers abandon at card entry.
-KIND: feature
-EFFORT: M
-SOURCE: https://example.com/cart-abandonment
-
-Some prose in between that is not part of any block.
-
-IDEA: Chargeback exposure review
-KIND: risk
-EFFORT: S
-
-IDEA:
-WHY: a block with no title should be dropped
-"""
 
 
 def test_idea_blocks_are_parsed_out_of_a_reply() -> None:

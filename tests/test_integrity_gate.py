@@ -9,7 +9,7 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import do_next_prompt as dnp
 from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed as mir, review_cli
@@ -143,6 +143,7 @@ def test_finish_refuses_once_the_integration_branch_turns_the_gate_on(tmp_path: 
     assert git(repo, "rev-parse", "HEAD") == before
 
 
+@pytest.mark.repo
 def test_schemas_accept_the_new_fields() -> None:
     roadmap = json.loads((SCHEMAS / "roadmap.schema.json").read_text())
     Draft202012Validator(roadmap).validate({"version": 1, "nodes": [{**NODE, "planned_test_changes": [FINDING]}]})

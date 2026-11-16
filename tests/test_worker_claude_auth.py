@@ -11,7 +11,7 @@ import pytest
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers.worker_adapters import Launch
-from tests.review_repo_helpers import claude_code_reviewer_repo
+from tests.support.review import claude_code_reviewer_repo
 from tests.support.profiles import commit_profile
 
 KEY = "sk-ant-m15-36-do-not-print"
@@ -104,6 +104,7 @@ def _delegated(repo: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ws.WorkerRe
     return rec, launches
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("channels", [
     {},                                                              # the default command throughout
     {"cli": "wrapper {prompt}"},                                     # no session placeholder: a resume runs the default

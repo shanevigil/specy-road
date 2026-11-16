@@ -20,7 +20,7 @@ from specy_road.reviewer_auth import (
 from specy_road.orchestration.workers.worker_adapter_base import REVIEWER_DISALLOWED, REVIEWER_NO_WRITES, STDIN_INSTRUCTION
 from specy_road.orchestration.workers.worker_adapters import ClaudeCode
 from tests.review_delegate_helpers import fake_reviewer_run
-from tests.review_repo_helpers import claude_code_reviewer_repo, git, review_output
+from tests.support.review import claude_code_reviewer_repo, review_output, git
 from tests.support.cli import run_main
 from tests.support.profiles import commit_profile
 from tests.support.plan import plan_repo
@@ -208,6 +208,7 @@ def test_forced_bare_without_a_key_refuses_before_a_run_record(
     assert not any(list(c.get("cmd", [])[:2]) == ["claude", "-p"] for c in prompt_calls)
 
 
+@pytest.mark.slow
 def test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_printing_it(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     from specy_road.bundled_scripts import role_prompt
@@ -244,6 +245,7 @@ def test_prompt_explicit_mode_is_recorded_and_a_helper_selects_bare_without_prin
     assert HELPER not in log and "running:" in captured.err
 
 
+@pytest.mark.slow
 def test_plan_prints_one_reviewer_auth_notice(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
                                              capsys: pytest.CaptureFixture[str]) -> None:
     from specy_road.bundled_scripts import orchestrate_cli

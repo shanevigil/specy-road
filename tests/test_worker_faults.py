@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 from tests.support.harness import make_worker_repo, wait_for_worker, worker_roster
 
 from specy_road.orchestration.workers import worker_adapters as wa
@@ -82,6 +82,7 @@ def _stall_repo(tmp_path: Path, seconds: int) -> Path:
     return make_review_repo(tmp_path, orchestration=roster)
 
 
+@pytest.mark.slow
 def test_last_output_at_is_written_at_most_every_five_seconds(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
@@ -130,6 +131,7 @@ def test_a_silent_running_worker_is_flagged_once_per_silence(tmp_path: Path) -> 
         assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags, state
 
 
+@pytest.mark.slow
 def test_output_clears_a_stall_shorter_than_the_write_window(tmp_path: Path) -> None:
     """stall_after_seconds 1: a sweep flags each 3 s silence, and the line after it clears the flag,
     although that line falls inside the five-second last_output_at window."""

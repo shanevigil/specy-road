@@ -15,10 +15,9 @@ import sys
 from pathlib import Path
 
 from tests.helpers import REPO, script_subprocess_env
+from tests.support.same.git_df16ee62bf81 import git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=repo)
 
 
 def _stage_dogfood_with_git(tmp_path: Path) -> Path:
@@ -29,13 +28,13 @@ def _stage_dogfood_with_git(tmp_path: Path) -> Path:
     src = REPO / "tests" / "fixtures" / "specy_road_dogfood"
     work = tmp_path / "repo"
     shutil.copytree(src, work)
-    _git(work, "init", "-q", "-b", "dev")
-    _git(work, "config", "user.email", "t@e.com")
-    _git(work, "config", "user.name", "T")
-    _git(work, "remote", "add", "origin", str(bare))
-    _git(work, "add", "-A")
-    _git(work, "commit", "-q", "-m", "init dogfood copy")
-    _git(work, "push", "-q", "-u", "origin", "dev")
+    git(work, "init", "-q", "-b", "dev")
+    git(work, "config", "user.email", "t@e.com")
+    git(work, "config", "user.name", "T")
+    git(work, "remote", "add", "origin", str(bare))
+    git(work, "add", "-A")
+    git(work, "commit", "-q", "-m", "init dogfood copy")
+    git(work, "push", "-q", "-u", "origin", "dev")
     return work
 
 
@@ -102,9 +101,9 @@ def test_start_milestone_session_refuses_when_already_active(tmp_path: Path) -> 
     # M0 has child phases — fine for a parent. Tag with active milestone.
     _set_codename_for(repo, "M0", "phase-zero")
     _attach_active_lock_to(repo, "M0")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "-m", "tag active milestone_execution on M0")
-    _git(repo, "push", "-q", "origin", "dev")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "tag active milestone_execution on M0")
+    git(repo, "push", "-q", "origin", "dev")
 
     r = _run_start(repo, "M0")
     assert r.returncode != 0, (

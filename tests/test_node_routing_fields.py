@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 
 from specy_road.bundled_scripts.roadmap_crud import main as crud_main
 from specy_road.bundled_scripts.roadmap_edit_fields import apply_set

@@ -8,10 +8,16 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import (
-    NODE, commit_file, diverge, git, git_root_relative, make_layout_finish_repo, make_review_repo,
+from tests.support.review import (
+    NODE,
+    commit_file,
+    diverge,
+    git_root_relative,
+    make_layout_finish_repo,
+    make_review_repo,
+    git,
 )
-from tests.test_nested_repo_worktrees import COVERED, add_nested_repo
+from tests.support.extracted.nested_repo_worktrees import COVERED, add_nested_repo
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts.review_packet import UNCOMMITTED_REF_NOTE

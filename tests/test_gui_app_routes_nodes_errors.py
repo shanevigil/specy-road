@@ -15,30 +15,13 @@ from starlette.testclient import TestClient
 
 from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
+from tests.support.same.mutation_headers_1fdfef6b66c9 import mutation_headers
 
 
-def _mutation_headers(client: TestClient) -> dict[str, str]:
-    r = client.get("/api/roadmap")
-    assert r.status_code == 200
-    return {"X-PM-Gui-Fingerprint": str(r.json()["fingerprint"])}
 
 
-@pytest.fixture()
-def dogfood_copy(tmp_path: Path) -> Path:
-    dest = tmp_path / "dogfood"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-@pytest.fixture()
-def api_client(
-    dogfood_copy: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> TestClient:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
 def test_pm_milestone_lock_guard_returns_409_when_roadmap_unreadable(
@@ -52,7 +35,7 @@ def test_pm_milestone_lock_guard_returns_409_when_roadmap_unreadable(
     ``load_roadmap`` and must absorb its failure modes (corrupt chunk,
     missing manifest, OS errors) into 409 with a human-readable hint.
     """
-    headers = _mutation_headers(api_client)
+    headers = mutation_headers(api_client)
 
     # Build the request first (fingerprint already captured), then break the
     # roadmap loader so the lock guard fails as soon as the route runs.
@@ -79,7 +62,7 @@ def test_pm_milestone_lock_guard_returns_409_for_value_error_in_roadmap_load(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``ValueError`` from the loader (bad JSON / schema mismatch) is also 409."""
-    headers = _mutation_headers(api_client)
+    headers = mutation_headers(api_client)
     from specy_road import gui_app_routes_nodes as routes
 
     def _boom(_root: Path) -> dict:
@@ -102,7 +85,7 @@ def test_outline_move_unknown_node_key_is_400_not_404(
     r = api_client.post(
         "/api/outline/move",
         headers={
-            **_mutation_headers(api_client),
+            **mutation_headers(api_client),
             "Content-Type": "application/json",
         },
         json={
@@ -132,7 +115,7 @@ def test_pm_gui_fingerprint_returns_409_when_manifest_unreadable(
     structured ``{message, error, retryable: false}`` body that points
     the user at ``specy-road validate``.
     """
-    headers = _mutation_headers(api_client)
+    headers = mutation_headers(api_client)
     manifest = dogfood_copy / "roadmap" / "manifest.json"
     saved = manifest.read_text(encoding="utf-8")
     try:
@@ -163,7 +146,7 @@ def test_patch_dependencies_stores_a_display_id_and_refuses_an_unknown(
     """PATCH stores a display id as its node_key; an unknown token is 400 and writes nothing."""
     roadmap = dogfood_copy / "roadmap"
     before = {p: p.read_bytes() for p in roadmap.rglob("*") if p.is_file()}
-    headers = {**_mutation_headers(api_client), "Content-Type": "application/json"}
+    headers = {**mutation_headers(api_client), "Content-Type": "application/json"}
     refused = api_client.patch(
         "/api/nodes/M2", headers=headers,
         json={"pairs": [{"key": "dependencies", "value": "NOPE"}]},

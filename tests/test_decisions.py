@@ -16,10 +16,10 @@ from specy_road.orchestration.records.decisions import (
 )
 from specy_road.runtime_paths import specy_road_package_dir
 from tests.helpers import DOGFOOD
-from tests.decisions_repo_helpers import SHEET, add_args, decisions_repo, run_decisions
+from tests.support.decisions import SHEET, add_args, decisions_repo, run_decisions
 from tests.move_node_helpers import base_fixture, commit_project, run_cli
+from tests.support.extracted.decisions import SKILL
 
-SKILL = specy_road_package_dir() / "templates" / "specyrd" / "commands" / "specyrd-orchestrate.md"
 
 
 def test_add_writes_schema_valid_open_entry(tmp_path: Path) -> None:

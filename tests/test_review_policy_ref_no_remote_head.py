@@ -12,7 +12,7 @@ import yaml
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.git_subprocess import git_text
 from specy_road.review_policy_pin import integration_name, policy_source
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
 
 _HINT = re.compile(r"`(git remote set-head [^`]+)`")
 _MAIN = "version: 1\nintegration_branch: main\nremote: origin\n"

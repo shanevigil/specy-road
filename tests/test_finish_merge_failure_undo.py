@@ -23,8 +23,8 @@ from specy_road.finish_bookkeeping_undo import (
 from specy_road.finish_modes import merge_landing_failed
 
 from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git
-from tests.test_finish_merge_mode import merge_mode_finish_repo
+from tests.support.review import commit_file, git
+from tests.support.extracted.finish_merge_mode import merge_mode_finish_repo
 
 BRANCH = "feature/rm-thing"
 CHECK = "echo LAND-CHECK-OUTPUT; echo '3 passed'"
@@ -109,6 +109,7 @@ def _assert_reported_last_and_undone(repo: Path, result, pre: str, reason: str) 
     assert not (repo / "work" / "done" / "implementation-summary-M1.1.md").exists()
 
 
+@pytest.mark.slow
 def test_push_rejected_by_remote_reports_last_and_undoes(tmp_path: Path, monkeypatch) -> None:
     """A4(a): a pre-receive hook rejects the push."""
     repo, bare = _repo(tmp_path, monkeypatch)
@@ -122,6 +123,7 @@ def test_push_rejected_by_remote_reports_last_and_undoes(tmp_path: Path, monkeyp
     assert git(bare, "rev-parse", "dev") == dev_before
 
 
+@pytest.mark.slow
 def test_landing_exception_reports_last_and_undoes(tmp_path: Path, monkeypatch) -> None:
     """A4(b): land_on_integration raises OSError."""
     repo, _bare = _repo(tmp_path, monkeypatch)
@@ -130,6 +132,7 @@ def test_landing_exception_reports_last_and_undoes(tmp_path: Path, monkeypatch) 
     _assert_reported_last_and_undone(repo, result, pre, "OSError: simulated landing crash")
 
 
+@pytest.mark.slow
 def test_symlinked_brief_target_is_restored(tmp_path: Path, monkeypatch) -> None:
     """Review round 1: cleanup deletes a brief symlink's in-repo target, so the undo restores the target."""
     repo, bare = _repo(tmp_path, monkeypatch, brief_link=True)
@@ -217,6 +220,7 @@ def _last_line(result) -> str:
     return [line for line in result.stdout.splitlines() if line.strip()][-1]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("options", [
     [],
     ["--delete-branch"],
@@ -239,6 +243,7 @@ def test_a_landed_finish_prints_its_outcome_last(tmp_path: Path, monkeypatch, op
         ), result.stdout
 
 
+@pytest.mark.slow
 def test_a_retried_landing_prints_its_outcome_last(tmp_path: Path, monkeypatch) -> None:
     """A retry prints its outcome. With no --delete-branch the checkout guidance is last; with it the outcome stays last."""
     repo, bare = _repo(tmp_path, monkeypatch)
@@ -259,6 +264,7 @@ def test_a_retried_landing_prints_its_outcome_last(tmp_path: Path, monkeypatch) 
     assert _last_line(again) == f"[ok] {BRANCH} is already merged into dev on origin", again.stdout
 
 
+@pytest.mark.slow
 def test_locally_modified_tracked_documents_come_back_as_they_were(tmp_path: Path, monkeypatch) -> None:
     """Review round 3: after a rejected push, tracked work documents carry their pre-finish bytes, not HEAD's."""
     repo, bare = _repo(tmp_path, monkeypatch)
@@ -383,6 +389,7 @@ def _node_status(repo: Path, ref: str) -> str:
     return next(n["status"] for n in nodes if n["id"] == "M1.1")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", ["local", "push", "merge-fails"])
 def test_feature_checkout_failure_keeps_a_landed_finish(tmp_path: Path, monkeypatch, case: str) -> None:
     """A2: a post-checkout failure after a successful landing warns and keeps the bookkeeping.

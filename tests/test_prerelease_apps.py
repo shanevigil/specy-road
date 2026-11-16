@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from tests.helpers import REPO, script_subprocess_env
+import pytest
 
 
 def _cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -31,6 +32,7 @@ def _scaffold(root: Path) -> None:
     assert r.returncode == 0, r.stderr
 
 
+@pytest.mark.slow
 def test_move_node_keeps_the_scaffold_m1_numbering(tmp_path: Path) -> None:
     """The scaffold starts at M1; a move used to renumber every root to M0."""
     _scaffold(tmp_path)
@@ -67,6 +69,7 @@ def _git(root: Path, *args: str) -> str:
     ).stdout.strip()
 
 
+@pytest.mark.slow
 def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path) -> None:
     """--local registers only in this checkout; abort used to refuse or push it."""
     remote, app = tmp_path / "remote.git", tmp_path / "app"
@@ -118,6 +121,7 @@ def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path)
     assert notes.read_text() == "lane plan\n"
 
 
+@pytest.mark.slow
 def test_local_abort_keeps_an_untracked_file_the_advanced_base_tracks(tmp_path: Path) -> None:
     """M11.64 review: untracked files no longer block abort, so its reset must not overwrite one."""
     remote, app, other = tmp_path / "remote.git", tmp_path / "app", tmp_path / "other"

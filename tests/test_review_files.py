@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import fake_reviewer_run
-from tests.review_repo_helpers import claude_code_reviewer_repo
+from tests.support.review import claude_code_reviewer_repo
 
 from specy_road import review_files as rf
 
@@ -197,7 +197,7 @@ def test_review_record_stores_launch_mode_and_status_prints_it(tmp_path: Path, c
     import json
 
     from specy_road.bundled_scripts import review_cli
-    from tests.review_repo_helpers import git, make_review_repo, review_text
+    from tests.support.review import make_review_repo, review_text, git
 
     repo = make_review_repo(tmp_path, orchestration=(
         "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
@@ -226,7 +226,7 @@ def test_review_record_stores_launch_mode_and_status_prints_it(tmp_path: Path, c
 def test_claude_code_reviewer_without_channels_cli_runs_bare(tmp_path: Path, capsys, monkeypatch) -> None:
     from specy_road.bundled_scripts import role_prompt
     from specy_road.orchestration.workers.worker_adapters import STDIN_INSTRUCTION
-    from tests.review_repo_helpers import git, review_output
+    from tests.support.review import review_output, git
     from tests.support.cli import run_main
 
     repo = claude_code_reviewer_repo(tmp_path)

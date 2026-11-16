@@ -7,7 +7,7 @@ import shutil
 from datetime import date
 from pathlib import Path
 
-from tests.review_repo_helpers import NODE, git, shipped_anthropic_opus_cli_yaml_line
+from tests.support.review import NODE, shipped_anthropic_opus_cli_yaml_line, git
 from tests.support.cli import run_main
 from tests.support.profiles import (OPUS, ROSTER, TEMPLATE_PROFILES, commit_profile,
                                     make_profile_repo)
@@ -16,6 +16,7 @@ from specy_road.orchestration import model_profiles as mp
 from specy_road.bundled_scripts import models_cli, role_prompt
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_files import PACKET_NAME, reviews_dir
+import pytest
 
 
 # --- profiles -----------------------------------------------------------------
@@ -96,6 +97,7 @@ def test_models_show_prints_fields_and_section(tmp_path: Path, capsys) -> None:
     assert run_main(models_cli, "models", "show", "nope", "--repo-root", str(repo)) == 1
 
 
+@pytest.mark.slow
 def test_models_show_prints_a_bad_launch_mode_and_delegate_reads_a_good_one(tmp_path: Path, capsys,
                                                                             monkeypatch) -> None:
     from specy_road.orchestration.workers import worker_ops as ops, worker_state as ws  # noqa: PLC0415 — only this test needs the worker side

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import run_review_delegate
-from tests.review_repo_helpers import git, make_review_repo, review_output
+from tests.support.review import make_review_repo, review_output, git
 
 from specy_road.review_delegate import load_run
 from specy_road.review_files import reviews_dir
@@ -53,6 +53,7 @@ def _repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, spec: dict) -> tuple[
     return repo, calls
 
 
+@pytest.mark.slow
 def test_the_inline_schema_is_the_file_less_its_dollar_schema(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo, calls = _repo(tmp_path, monkeypatch, {})
     (tmp_path / "spec.json").write_text(json.dumps(

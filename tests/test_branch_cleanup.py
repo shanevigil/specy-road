@@ -18,35 +18,14 @@ from specy_road import cli
 from specy_road.bundled_scripts import branches_cli, finish_task
 from specy_road.merged_branch import delete_remote_branch
 from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git, make_review_repo
-
-BR = "feature/rm-thing"
-
-
-def _exit(fn, argv: list[str]) -> int:
-    with pytest.raises(SystemExit) as e:
-        fn(argv)
-        raise SystemExit(0)
-    return e.value.code or 0
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.same.exit_a673d831c5ea import exit_fn
+from tests.support.extracted.branch_cleanup import BR, merge_mode_repo
 
 
-def _merge_mode_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
-    """The claimed leaf, mergeable into ``dev``, with a bare origin holding both branches."""
-    monkeypatch.setenv("PYTHONPATH", str(REPO))   # finish runs validate/export/digest as subprocesses
-    repo = make_review_repo(tmp_path)
-    git(repo, "checkout", "-q", "dev")
-    commit_file(repo, "roadmap/git-workflow.yaml",
-                "version: 1\nintegration_branch: dev\nremote: origin\non_complete: merge\n", "merge mode")
-    commit_file(repo, ".gitignore", "work/reviews/\n.specyrd/cache/\n", "as init project scaffolds")
-    git(repo, "checkout", "-q", BR)
-    git(repo, "merge", "-q", "--no-edit", "dev")
-    bare = tmp_path / "remote.git"
-    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
-    git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")   # a remote refuses to delete its HEAD branch
-    git(repo, "remote", "add", "origin", str(bare))
-    git(repo, "fetch", "-q", "origin")
-    git(repo, "remote", "set-head", "origin", "dev")   # as clone does; fetch does it only from git 2.48
-    return repo, bare
+
+
+
 
 
 def _has_branch(repo: Path, ref: str) -> bool:
@@ -56,6 +35,7 @@ def _has_branch(repo: Path, ref: str) -> bool:
 # --- finish-this-task --delete-branch ------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "delegated, on_remote",
     [(False, True), (True, True), (False, False)],
@@ -64,7 +44,7 @@ def _has_branch(repo: Path, ref: str) -> bool:
 def test_finish_delete_branch_deletes_it_locally_and_on_the_remote(
     tmp_path: Path, monkeypatch, capsys, delegated: bool, on_remote: bool
 ) -> None:
-    repo, bare = _merge_mode_repo(tmp_path, monkeypatch)
+    repo, bare = merge_mode_repo(tmp_path, monkeypatch)
     if not on_remote:
         git(bare, "branch", "-D", BR)
         git(repo, "fetch", "-q", "--prune", "origin")
@@ -74,7 +54,7 @@ def test_finish_delete_branch_deletes_it_locally_and_on_the_remote(
         here = tmp_path / "leaf"
         git(repo, "worktree", "add", "-q", str(here), BR)
 
-    assert _exit(finish_task.main, ["--delete-branch", "--repo-root", str(here)]) == 0
+    assert exit_fn(finish_task.main, ["--delete-branch", "--repo-root", str(here)]) == 0
 
     out, err = capsys.readouterr()
     assert f"[ok] merged {BR} into dev and pushed to origin" in out
@@ -90,16 +70,17 @@ def test_finish_delete_branch_deletes_it_locally_and_on_the_remote(
         assert git(repo, "branch", "--show-current") == "dev"
 
 
+@pytest.mark.slow
 def test_a_retried_landing_deletes_the_branch(tmp_path: Path, monkeypatch, capsys) -> None:
     """The bookkeeping commit already exists; the re-run only lands, and still deletes."""
-    repo, bare = _merge_mode_repo(tmp_path, monkeypatch)
+    repo, bare = merge_mode_repo(tmp_path, monkeypatch)
     # A branch an earlier finish (before M15.40's undo) left on its bookkeeping commit.
     monkeypatch.setattr(finish_task, "merge_undo_snapshot", lambda *_a: None)
     hook = bare / "hooks" / "pre-receive"
     hook.write_text("#!/bin/sh\nexit 1\n")
     hook.chmod(0o755)
 
-    assert _exit(finish_task.main, ["--delete-branch", "--repo-root", str(repo)]) == 1
+    assert exit_fn(finish_task.main, ["--delete-branch", "--repo-root", str(repo)]) == 1
 
     err = capsys.readouterr().err
     assert "finish-this-task --on-complete merge --delete-branch" in err
@@ -107,7 +88,7 @@ def test_a_retried_landing_deletes_the_branch(tmp_path: Path, monkeypatch, capsy
     assert _has_branch(bare, f"refs/heads/{BR}")
     hook.unlink()
 
-    assert _exit(finish_task.main, ["--delete-branch", "--repo-root", str(repo)]) == 0
+    assert exit_fn(finish_task.main, ["--delete-branch", "--repo-root", str(repo)]) == 0
 
     out = capsys.readouterr().out
     assert f"[ok] merged {BR} into dev and pushed to origin" in out
@@ -119,10 +100,10 @@ def test_a_retried_landing_deletes_the_branch(tmp_path: Path, monkeypatch, capsy
 def test_finish_delete_branch_is_refused_under_pr_before_any_bookkeeping(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
-    repo, _bare = _merge_mode_repo(tmp_path, monkeypatch)
+    repo, _bare = merge_mode_repo(tmp_path, monkeypatch)
     before = git(repo, "rev-parse", "HEAD")
 
-    code = _exit(finish_task.main, ["--on-complete", "pr", "--delete-branch", "--repo-root", str(repo)])
+    code = exit_fn(finish_task.main, ["--on-complete", "pr", "--delete-branch", "--repo-root", str(repo)])
 
     assert code == 1
     assert "--delete-branch needs a merge landing" in capsys.readouterr().err
@@ -168,7 +149,7 @@ KEPT = ("feature/rm-thing", "feature/rm-roll", "feature/rm-open", "fix/merged")
 def test_prune_lists_merged_unclaimed_branches_and_deletes_nothing(prune_repo, capfd) -> None:
     repo, bare = prune_repo
 
-    code = _exit(cli.main, ["branches", "prune", "--repo-root", str(repo)])
+    code = exit_fn(cli.main, ["branches", "prune", "--repo-root", str(repo)])
 
     out = capfd.readouterr().out
     assert code == 0
@@ -185,7 +166,7 @@ def test_prune_lists_merged_unclaimed_branches_and_deletes_nothing(prune_repo, c
 def test_prune_delete_removes_only_the_listed_branches(prune_repo, capsys) -> None:
     repo, bare = prune_repo
 
-    assert _exit(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)]) == 0
+    assert exit_fn(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)]) == 0
 
     out = capsys.readouterr().out
     assert "[ok] deleted local branch feature/rm-done" in out
@@ -196,7 +177,7 @@ def test_prune_delete_removes_only_the_listed_branches(prune_repo, capsys) -> No
     for branch in KEPT:
         assert _has_branch(repo, f"refs/heads/{branch}")
         assert _has_branch(bare, f"refs/heads/{branch}")
-    assert _exit(branches_cli.main, ["branches", "prune", "--repo-root", str(repo)]) == 0
+    assert exit_fn(branches_cli.main, ["branches", "prune", "--repo-root", str(repo)]) == 0
     assert "Nothing to prune" in capsys.readouterr().out
 
 
@@ -205,7 +186,7 @@ def test_prune_delete_reports_a_refused_delete_and_exits_1(prune_repo, capsys) -
     # git cannot lock the ref, so the delete is refused (a checked-out branch is no longer listed)
     (repo / ".git" / "refs" / "heads" / "feature" / "rm-done.lock").write_text("", encoding="utf-8")
 
-    code = _exit(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)])
+    code = exit_fn(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)])
 
     assert code == 1
     assert "[warn] feature/rm-done:" in capsys.readouterr().err
@@ -256,7 +237,7 @@ def test_prune_keeps_a_rollup_the_remote_still_marks_active(tmp_path: Path, caps
     git(repo, "push", "-q", "origin", "dev", "feature/rm-roll")
     git(repo, "reset", "-q", "--hard", "HEAD~1")
 
-    code = _exit(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)])
+    code = exit_fn(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)])
 
     assert code == 0
     out = capsys.readouterr().out
@@ -269,7 +250,7 @@ def test_prune_refuses_without_a_fresh_fetch(prune_repo, capsys) -> None:
     repo, bare = prune_repo
     git(repo, "remote", "set-url", "origin", str(bare.parent / "missing.git"))
 
-    code = _exit(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)])
+    code = exit_fn(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)])
 
     assert code == 1
     assert "git fetch --prune origin failed" in capsys.readouterr().err

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
@@ -84,6 +84,7 @@ def test_sync_delta_and_ack(tmp_path: Path, capsys) -> None:
     assert "No new worker events" in capsys.readouterr().out
 
 
+@pytest.mark.slow
 def test_sync_wait_ends_on_an_event_or_times_out_with_exit_2(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
@@ -96,6 +97,7 @@ def test_sync_wait_ends_on_an_event_or_times_out_with_exit_2(tmp_path: Path, cap
     assert [e["summary"] for e in json.loads(capsys.readouterr().out)["workers"][0]["events"]] == ["mid-wait"]
 
 
+@pytest.mark.slow
 def test_message_resume_lease_and_interrupt(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
@@ -162,6 +164,7 @@ def test_hook_print_config_names_the_harness(capsys) -> None:
         assert f"worker hook --format {fmt}" in json.dumps(json.loads(out.out)) and out.err.startswith("# ")
 
 
+@pytest.mark.slow
 def test_reconcile_flags_a_touch_zone_breach(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
@@ -188,6 +191,7 @@ def test_reconcile_flags_a_touch_zone_breach(tmp_path: Path, capsys) -> None:
     assert ws.FLAG_RECONCILE in ws.load_record(repo, "w-0001").flags
 
 
+@pytest.mark.slow
 def test_terminate_a_live_worker(tmp_path: Path) -> None:
     repo, script = make_worker_repo(tmp_path)
     spec = tmp_path / "slow.json"
@@ -231,6 +235,7 @@ def test_adopt_open_list_status_and_handoff_status(tmp_path: Path, capsys) -> No
     assert json.loads(capsys.readouterr().out)["workers"][0]["worker_id"] == "w-0001"
 
 
+@pytest.mark.slow
 def test_launch_events_ack_time_and_timeline(tmp_path: Path, capsys) -> None:
     """A1: launched and first_output bracket the harness; A2: the ack is timed; A3: timeline per turn."""
     repo, _ = make_worker_repo(tmp_path)

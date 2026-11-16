@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.support.review import make_review_repo, review_text, git
 from tests.support.cli import run_main
 
 from specy_road.orchestration.harness import harness_binary as hb
@@ -110,6 +110,7 @@ def _resumes(argv: list[str]) -> bool:
     return "--resume" in argv or argv[:2] == ["exec", "resume"]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(("harness", "flag"), [("claude-code", "--model"), ("codex", "-m"), ("cursor", "--model")])
 def test_a_reviewer_resume_passes_the_requested_model(harness: str, flag: str, prompt: Path, tmp_path: Path,
                                                       monkeypatch) -> None:
@@ -230,6 +231,7 @@ roster:
 """
 
 
+@pytest.mark.slow
 def test_worker_and_reviewer_launches_run_the_resolved_binary(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(hb, "resolve", REAL_RESOLVE)
     agent = _exe(tmp_path / "tools" / "agent")
@@ -258,6 +260,7 @@ def test_worker_and_reviewer_launches_run_the_resolved_binary(tmp_path: Path, mo
     assert ws.load_record(repo, rec.worker_id).harness == "cursor"
 
 
+@pytest.mark.slow
 def test_a_missing_binary_refuses_every_launch_before_anything_runs(tmp_path: Path, no_path: Path,
                                                                     monkeypatch) -> None:
     monkeypatch.setattr(hb, "resolve", REAL_RESOLVE)

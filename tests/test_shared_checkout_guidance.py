@@ -8,6 +8,8 @@ so an adopter who merges the prompt's bullets by hand gets the scaffold's text.
 
 from __future__ import annotations
 
+import pytest
+
 from pathlib import Path
 
 from specy_road.agent_guide_block import render_guide_lines
@@ -31,6 +33,7 @@ def test_scaffold_agents_md_carries_the_full_rule() -> None:
         assert s in AGENTS, s
 
 
+@pytest.mark.repo
 def test_bootstrap_prompt_carries_the_same_rule() -> None:
     start = AGENTS.index("**Shared checkouts and other agents.**")
     rule = AGENTS[start:AGENTS.index("\n\n", start)]
@@ -40,6 +43,7 @@ def test_bootstrap_prompt_carries_the_same_rule() -> None:
     assert pointer in PROMPT.read_text(encoding="utf-8")
 
 
+@pytest.mark.repo
 def test_suggested_prompts_index_lists_every_kept_prompt() -> None:
     """suggested_prompts/README.md is the index; generic review prompts are gone."""
     index = PROMPT.parent / "README.md"

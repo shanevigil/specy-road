@@ -21,6 +21,7 @@ from specy_road.agents_md_block import (
     warn_if_context_over_limits,
 )
 from specy_road.harness_instruction_files import CLAUDE_MAX_FILE_BYTES, claude_memory_loaded
+from tests.support.same.rels_4014f350b2c5 import rels
 
 SCOPED = "---\npaths:\n  - \"src/**/*.py\"\n---\n\n- Only for src.\n"
 
@@ -49,8 +50,6 @@ def _write(root: Path, rel: str, text: str) -> Path:
     return root / rel
 
 
-def _rels(root: Path, harness: str) -> list[str]:
-    return [f.rel for f in injected_context(root)[harness]]
 
 
 def _memory(home: Path, checkout: Path, text: str) -> Path:
@@ -65,12 +64,12 @@ def test_claude_counts_rules_recursively_beside_the_claude_md_family(repo: Path,
     _write(repo, ".claude/rules/scoped.md", SCOPED)
     _write(repo, ".claude/rules/notes.txt", "not a rule\n")
     _write(repo, "sr/.claude/rules/ours.md", "- Ours.\n")
-    assert _rels(repo, "Claude Code") == [AGENT_GUIDE, ".claude/rules/style.md", ".claude/rules/sub/deep.md"]
-    assert _rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, ".claude/rules/style.md",
+    assert rels(repo, "Claude Code") == [AGENT_GUIDE, ".claude/rules/style.md", ".claude/rules/sub/deep.md"]
+    assert rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, ".claude/rules/style.md",
                                                  ".claude/rules/sub/deep.md", "sr/.claude/rules/ours.md"]
     external = _write(repo.parent, "external.md", "- outside\n" * 201)
     (repo / ".claude/rules/linked.md").symlink_to(external)
-    assert _rels(repo, "Claude Code") == [AGENT_GUIDE, ".claude/rules/style.md", ".claude/rules/sub/deep.md"]
+    assert rels(repo, "Claude Code") == [AGENT_GUIDE, ".claude/rules/style.md", ".claude/rules/sub/deep.md"]
     warn_if_context_over_limits(repo)
     assert capsys.readouterr().err == ""
     print_injected_context(repo)
@@ -109,7 +108,7 @@ def test_cursor_notes_nested_agents_md_below_the_root(repo: Path, capsys) -> Non
     _write(repo, "pkg/deep/AGENTS.md", "# Deep\n")
     _write(repo, ".gitignore", "ignored/\n")
     _write(repo, "ignored/AGENTS.md", "# never applied\n")
-    assert _rels(repo / "sr", "Cursor") == [AGENTS_MD, "sr/AGENTS.md"]
+    assert rels(repo / "sr", "Cursor") == [AGENTS_MD, "sr/AGENTS.md"]
     print_injected_context(repo / "sr")
     out = capsys.readouterr().out
     assert ("context: note — Cursor also applies pkg/AGENTS.md 2 lines, 17 bytes; pkg/deep/AGENTS.md 1 lines, "
@@ -121,7 +120,7 @@ def test_copilot_counts_its_path_specific_instructions(repo: Path) -> None:
     _write(repo, ".github/instructions/python.instructions.md", "---\napplyTo: \"**/*.py\"\n---\n- Py.\n")
     _write(repo, ".github/instructions/web/ts.instructions.md", "- TS.\n")
     _write(repo, ".github/instructions/README.md", "# not an instructions file\n")
-    assert _rels(repo, "Copilot") == [AGENTS_MD, ".github/copilot-instructions.md",
+    assert rels(repo, "Copilot") == [AGENTS_MD, ".github/copilot-instructions.md",
                                       ".github/instructions/python.instructions.md",
                                       ".github/instructions/web/ts.instructions.md"]
 
@@ -133,7 +132,7 @@ def test_claude_file_over_4_mib_is_reported_not_loaded_never_counted(repo: Path,
     _write(repo, "CLAUDE.local.md", "@big.md\n")   # an import too large to load: skipped, and its own imports unread
     _write(repo, "big.md", "@child.md\n" + "x" * CLAUDE_MAX_FILE_BYTES)
     _write(repo, "child.md", "# never loaded\n")
-    assert _rels(repo, "Claude Code") == ["CLAUDE.local.md", ".claude/rules/at-cap.md"]
+    assert rels(repo, "Claude Code") == ["CLAUDE.local.md", ".claude/rules/at-cap.md"]
     warn_if_context_over_limits(repo)
     err = capsys.readouterr().err
     assert f"context: warning — big.md is {CLAUDE_MAX_FILE_BYTES + 10:,} bytes, over Claude Code's 4 MiB" in err

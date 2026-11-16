@@ -27,7 +27,7 @@ import pytest
 from specy_road import cli
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import reviews_dir
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
+from tests.support.review import commit_file, make_review_repo, review_text, git
 
 pytestmark = pytest.mark.parity
 

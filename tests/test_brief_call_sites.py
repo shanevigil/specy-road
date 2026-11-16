@@ -11,7 +11,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts import brief_call_sites as bcs
 from specy_road.bundled_scripts import generate_brief as gb
-from tests.integrity_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.crud import crud_fixture_repo
 
 SOURCES = {

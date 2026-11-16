@@ -22,37 +22,24 @@ from tests.helpers import DOGFOOD
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.brainstorm_prompt import render_brainstorm_prompt, render_recommend_prompt
 from specy_road.brainstorm_session import add_idea, read_session
+from tests.support.same.cli_4bb09fdf3883 import cli
+from tests.support.same.start_f653667be42d import start
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = "how-do-we-expand-payments"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code or 0)
-    return code, out.getvalue(), err.getvalue()
 
 
-def _start(repo: Path, *extra: str) -> tuple[int, str, str]:
-    return _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
 
 
 def _prompt(repo: Path, pass_name: str) -> str:
     return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
+@pytest.mark.repo
 def test_skill_and_agent_rules_say_to_start_before_reading_the_digest() -> None:
     skill = (ROOT / "specy_road/templates/specyrd/commands/specyrd-brainstorm.md").read_text(encoding="utf-8")
     block = (ROOT / "specy_road/templates/specyrd/agents-rules.md").read_text(encoding="utf-8")
@@ -64,7 +51,7 @@ def test_skill_and_agent_rules_say_to_start_before_reading_the_digest() -> None:
 
 
 def test_round_one_frame_proposes_answers_over_the_canonical_keys(repo: Path) -> None:
-    _start(repo)
+    start(repo)
     text = _prompt(repo, "r1")
     step1 = text.split("## Step 1")[1].split("## Step 2")[0]
     assert "Do not hand the PM a questionnaire" in step1 and "**propose an answer**" in step1
@@ -80,7 +67,7 @@ def test_round_one_frame_proposes_answers_over_the_canonical_keys(repo: Path) ->
 
 def test_a_run_nobody_can_answer_records_an_assumed_frame_and_goes_on(repo: Path) -> None:
     """CR5/codex: a one-shot run stopped after `start` waiting for frame answers, 0 ideas."""
-    _start(repo)
+    start(repo)
     step1 = " ".join(_prompt(repo, "r1").split("## Step 1")[1].split("## Step 2")[0].split())
     assert "ask them to correct it" in step1   # interactive use keeps the question
     headless = step1.split("**When no person can answer during this run**")[1]
@@ -89,6 +76,7 @@ def test_a_run_nobody_can_answer_records_an_assumed_frame_and_goes_on(repo: Path
     assert "listing the assumed answers" in headless
 
 
+@pytest.mark.repo
 def test_the_skill_description_says_start_comes_before_any_roadmap_read() -> None:
     """CR5/cursor read roadmap-context.md in the same step as the skill body."""
     skill = (ROOT / "specy_road/templates/specyrd/commands/specyrd-brainstorm.md").read_text(encoding="utf-8")
@@ -98,11 +86,11 @@ def test_the_skill_description_says_start_comes_before_any_roadmap_read() -> Non
 
 
 def test_frame_rewrites_panel_shards_with_their_allocation_cells_and_the_frame(repo: Path) -> None:
-    _start(repo, "--panel", "3", "--count", "12")
+    start(repo, "--panel", "3", "--count", "12")
     assert "label" in _prompt(repo, "r1") and "`s1:`" in _prompt(repo, "r1")
     assert "**outcome:**" not in _prompt(repo, "r1-s1")   # written before any frame
 
-    code, out, err = _cli(repo, "frame", "--answer", "outcome=fewer failed payments",
+    code, out, err = cli(repo, "frame", "--answer", "outcome=fewer failed payments",
                           "--allocation", "s1: Inversion x user segments, Random constraints, 4\n"
                                           "S2 = Pre-mortem x risk and compliance, Low typicality, 4")
     assert code == 0, err
@@ -118,21 +106,21 @@ def test_frame_rewrites_panel_shards_with_their_allocation_cells_and_the_frame(r
 
 def test_each_pass_keeps_its_own_prompt_and_names_the_next_command(repo: Path) -> None:
     nxt = f"--slug {SLUG}`"
-    _, out, _ = _start(repo)
+    _, out, _ = start(repo)
     assert f"next: when the agent has recorded its ideas, `specy-road brainstorm next-round {nxt} (round 2 of 2)" in out
-    _cli(repo, "add-idea", "--title", "Stored vault")
-    _, out, _ = _cli(repo, "next-round")
+    cli(repo, "add-idea", "--title", "Stored vault")
+    _, out, _ = cli(repo, "next-round")
     assert f"`specy-road brainstorm recommend {nxt}" in out
-    _, out, _ = _cli(repo, "recommend")
+    _, out, _ = cli(repo, "recommend")
     assert f"`specy-road brainstorm evidence {nxt} for the shortlist, then `specy-road brainstorm verify {nxt}" in out
-    _cli(repo, "revise", "B1", "--recommendation", "strong")
-    _, out, _ = _cli(repo, "evidence")
+    cli(repo, "revise", "B1", "--recommendation", "strong")
+    _, out, _ = cli(repo, "evidence")
     assert f"next: when the sources are recorded, `specy-road brainstorm verify {nxt}" in out
-    _, out, _ = _cli(repo, "verify")
+    _, out, _ = cli(repo, "verify")
     assert f"next: triage: `specy-road brainstorm list --by cluster {nxt}" in out
-    _, out, _ = _cli(repo, "accept", "B1")
+    _, out, _ = cli(repo, "accept", "B1")
     assert f"`specy-road brainstorm promote --dry-run {nxt}, then `specy-road brainstorm promote {nxt}" in out
-    code, out, err = _cli(repo, "promote")
+    code, out, err = cli(repo, "promote")
     assert code == 0, err
     assert f"next: `specy-road export && specy-road digest`, then `specy-road brainstorm close {nxt}" in out
 
@@ -145,33 +133,33 @@ def test_each_pass_keeps_its_own_prompt_and_names_the_next_command(repo: Path) -
 
 def test_in_pass_and_session_commands_name_the_step_too(repo: Path) -> None:
     nxt = f"--slug {SLUG}`"
-    _start(repo)
+    start(repo)
     for args in (("frame", "--answer", "outcome=fewer failed payments"), ("add-idea", "--title", "Stored vault"),
                  ("list",)):
-        code, out, err = _cli(repo, *args)
+        code, out, err = cli(repo, *args)
         assert code == 0, err
         assert f"next: when the agent has recorded its ideas, `specy-road brainstorm next-round {nxt}" in out, args
-    _, out, err = _cli(repo, "list", "--json")
+    _, out, err = cli(repo, "list", "--json")
     assert json.loads(out)["slug"] == SLUG and "next-round" in err   # stdout stays JSON
-    _cli(repo, "recommend")
-    _, out, _ = _cli(repo, "revise", "B1", "--recommendation", "strong")
+    cli(repo, "recommend")
+    _, out, _ = cli(repo, "revise", "B1", "--recommendation", "strong")
     assert f"next: when the verdicts are recorded, `specy-road brainstorm evidence {nxt}" in out
-    _, out, _ = _cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "a quote")
+    _, out, _ = cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "a quote")
     assert f"next: when the sources are recorded, `specy-road brainstorm verify {nxt}" in out
-    _cli(repo, "accept", "B1")
-    code, out, err = _cli(repo, "promote", "--dry-run")
+    cli(repo, "accept", "B1")
+    code, out, err = cli(repo, "promote", "--dry-run")
     assert code == 0, err
     assert "Dry run — nothing written." in out and f"next: `specy-road brainstorm promote {nxt} to apply" in out
-    _, out, _ = _cli(repo, "sessions")
+    _, out, _ = cli(repo, "sessions")
     assert "next: `specy-road brainstorm list --slug SLUG`" in out
-    _, out, _ = _cli(repo, "close")
+    _, out, _ = cli(repo, "close")
     assert out.splitlines()[-1].startswith("done: nothing follows for this session")
-    _, out, _ = _cli(repo, "sessions")
+    _, out, _ = cli(repo, "sessions")
     assert "next: `specy-road brainstorm start --topic '<question>'`" in out
 
 
 def test_prompts_omit_the_digest_line_when_there_is_no_digest(repo: Path) -> None:
-    _start(repo)
+    start(repo)
     session = read_session(repo, SLUG)
     add_idea(session, title="Stored vault")
     session.round = 2
@@ -185,10 +173,10 @@ def test_start_warns_on_the_integration_branch_only(repo: Path, monkeypatch: pyt
     monkeypatch.delenv("SPECY_ROAD_INTEGRATION_BRANCH", raising=False)
     subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)   # the fixture's integration branch
 
-    code, _out, err = _start(repo)
+    code, _out, err = start(repo)
     assert code == 0
     assert ("warning: on the integration branch 'main'; the session file is tracked, so brainstorm on a "
             f"branch of its own: git checkout -b chore/brainstorm-{SLUG}") in err
 
     subprocess.run(["git", "checkout", "-q", "-b", f"chore/brainstorm-{SLUG}"], cwd=repo, check=True)
-    assert "integration branch" not in _start(repo)[2]
+    assert "integration branch" not in start(repo)[2]

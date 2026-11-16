@@ -944,9 +944,6 @@
       "PL": 7,
       "D102/D103": 3
     },
-    "tests/decisions_repo_helpers.py": {
-      "D102/D103": 3
-    },
     "tests/fixture_guard.py": {
       "PL": 1,
       "D102/D103": 4
@@ -959,13 +956,7 @@
       "PL": 2,
       "D102/D103": 1
     },
-    "tests/integrity_repo_helpers.py": {
-      "D102/D103": 8
-    },
     "tests/m13_7_ignore_helpers.py": {
-      "D102/D103": 5
-    },
-    "tests/milestone_repo_helpers.py": {
       "D102/D103": 5
     },
     "tests/move_node_helpers.py": {
@@ -998,20 +989,12 @@
       "PL": 2,
       "D102/D103": 5
     },
-    "tests/pickup_repo_helpers.py": {
-      "PL": 1,
-      "D102/D103": 2
-    },
     "tests/review_delegate_helpers.py": {
       "PL": 4,
-      "D102/D103": 7
-    },
-    "tests/review_repo_helpers.py": {
-      "PL": 3,
-      "D102/D103": 7
+      "D102/D103": 6
     },
     "tests/rework_rca_helpers.py": {
-      "D102/D103": 2
+      "D102/D103": 1
     },
     "tests/scenarios/milestone/repos.py": {
       "D102/D103": 2
@@ -1025,9 +1008,103 @@
     "tests/scenarios/roadmap_edit/test_outline.py": {
       "D102/D103": 8
     },
+    "tests/support/decisions.py": {
+      "D102/D103": 3
+    },
+    "tests/support/extracted/chore_mode.py": {
+      "D102/D103": 1
+    },
+    "tests/support/extracted/cursor_usage_cost.py": {
+      "D102/D103": 1
+    },
+    "tests/support/extracted/delta_review.py": {
+      "PL": 3
+    },
+    "tests/support/extracted/digest.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "tests/support/extracted/doctor.py": {
+      "D102/D103": 1
+    },
+    "tests/support/extracted/finish_merge_mode.py": {
+      "D102/D103": 1
+    },
+    "tests/support/extracted/grind_session.py": {
+      "PL": 2
+    },
+    "tests/support/extracted/grind_status.py": {
+      "PL": 1,
+      "D102/D103": 9
+    },
+    "tests/support/extracted/harness_facts.py": {
+      "D102/D103": 1
+    },
+    "tests/support/extracted/history_walk.py": {
+      "D102/D103": 3
+    },
+    "tests/support/extracted/nested_repo_finish.py": {
+      "B": 1
+    },
+    "tests/support/extracted/review_defer_rounds.py": {
+      "PL": 5
+    },
+    "tests/support/extracted/rework_findings_in_prompt.py": {
+      "D102/D103": 3
+    },
+    "tests/support/extracted/roadmap_chunk_router.py": {
+      "PL": 1,
+      "N": 1
+    },
+    "tests/support/extracted/touch_zone_tracked.py": {
+      "D102/D103": 1
+    },
     "tests/support/harness.py": {
       "PL": 1,
       "D102/D103": 4
+    },
+    "tests/support/integrity.py": {
+      "D102/D103": 7
+    },
+    "tests/support/milestone.py": {
+      "D102/D103": 5
+    },
+    "tests/support/pickup.py": {
+      "PL": 1,
+      "D102/D103": 2
+    },
+    "tests/support/review.py": {
+      "PL": 3,
+      "D102/D103": 6
+    },
+    "tests/support/same/cli_fda77d440965.py": {
+      "PL": 1
+    },
+    "tests/support/same/client_218dbc43887f.py": {
+      "PL": 1,
+      "D102/D103": 1
+    },
+    "tests/support/same/client_2447f1fd9143.py": {
+      "PL": 1
+    },
+    "tests/support/same/dogfood_copy_46daf68d3795.py": {
+      "D102/D103": 1
+    },
+    "tests/support/same/git_84c8ad8f55f9.py": {
+      "D102/D103": 1
+    },
+    "tests/support/same/mutation_headers_1fdfef6b66c9.py": {
+      "PL": 1
+    },
+    "tests/support/same/repo_cbcea23f14ab.py": {
+      "D102/D103": 1
+    },
+    "tests/support/same/run_review_cli_5df07e4aaa50.py": {
+      "D102/D103": 1
+    },
+    "tests/support/unauthored.py": {
+      "N": 1,
+      "D102/D103": 2
     },
     "tests/test_abort_task_pickup.py": {
       "PL": 2,
@@ -1049,27 +1126,26 @@
       "D102/D103": 4
     },
     "tests/test_archive_auto_and_cli.py": {
-      "D102/D103": 7
+      "D102/D103": 6
     },
     "tests/test_archive_deep.py": {
       "PL": 2,
-      "D102/D103": 8
+      "D102/D103": 7
     },
     "tests/test_archive_dependencies.py": {
       "PL": 6,
-      "D102/D103": 6
+      "D102/D103": 5
     },
     "tests/test_archive_git_provenance.py": {
       "PL": 1,
       "D102/D103": 5
     },
     "tests/test_archive_limits_and_locks.py": {
-      "PL": 5,
-      "D102/D103": 1
+      "PL": 5
     },
     "tests/test_archive_ops.py": {
       "PL": 4,
-      "D102/D103": 6
+      "D102/D103": 5
     },
     "tests/test_author_approach.py": {
       "D102/D103": 11
@@ -1085,7 +1161,7 @@
       "D102/D103": 2
     },
     "tests/test_brainstorm_batch_io.py": {
-      "D102/D103": 20
+      "D102/D103": 19
     },
     "tests/test_brainstorm_chat.py": {
       "PL": 3,
@@ -1093,34 +1169,34 @@
     },
     "tests/test_brainstorm_cli.py": {
       "PL": 3,
-      "D102/D103": 23
+      "D102/D103": 22
     },
     "tests/test_brainstorm_decisions.py": {
       "PL": 2,
-      "D102/D103": 20
+      "D102/D103": 19
     },
     "tests/test_brainstorm_lenses.py": {
       "SIM": 2,
-      "D102/D103": 11
+      "D102/D103": 10
     },
     "tests/test_brainstorm_promote.py": {
       "PL": 6,
       "D102/D103": 15
     },
     "tests/test_brainstorm_promote_judgement.py": {
-      "D102/D103": 12
+      "D102/D103": 11
     },
     "tests/test_brainstorm_promote_m37.py": {
       "PL": 1,
-      "D102/D103": 9
+      "D102/D103": 8
     },
     "tests/test_brainstorm_promote_structured.py": {
       "PL": 2,
-      "D102/D103": 13
+      "D102/D103": 12
     },
     "tests/test_brainstorm_prompt_fixes.py": {
       "PL": 1,
-      "D102/D103": 8
+      "D102/D103": 7
     },
     "tests/test_brainstorm_repo_evidence.py": {
       "D102/D103": 15
@@ -1138,15 +1214,15 @@
     },
     "tests/test_brainstorm_triage_m36.py": {
       "PL": 1,
-      "D102/D103": 6
+      "D102/D103": 5
     },
     "tests/test_brainstorm_v2.py": {
-      "PL": 7,
-      "D102/D103": 20
+      "PL": 6,
+      "D102/D103": 19
     },
     "tests/test_brainstorm_verify.py": {
-      "PL": 6,
-      "D102/D103": 10
+      "PL": 5,
+      "D102/D103": 9
     },
     "tests/test_branch_cleanup.py": {
       "D102/D103": 6
@@ -1170,7 +1246,7 @@
     },
     "tests/test_chore_mode.py": {
       "PL": 2,
-      "D102/D103": 11
+      "D102/D103": 10
     },
     "tests/test_claim_traps.py": {
       "PL": 6,
@@ -1230,7 +1306,7 @@
     },
     "tests/test_cursor_usage_cost.py": {
       "PL": 9,
-      "D102/D103": 8
+      "D102/D103": 7
     },
     "tests/test_cursor_usage_segments.py": {
       "PL": 10,
@@ -1244,14 +1320,13 @@
       "D102/D103": 8
     },
     "tests/test_delta_review.py": {
-      "PL": 2,
       "D102/D103": 14
     },
     "tests/test_dependency_rollup_satisfaction.py": {
       "D102/D103": 5
     },
     "tests/test_digest.py": {
-      "PL": 5
+      "PL": 4
     },
     "tests/test_digest_cold_warm.py": {
       "D102/D103": 2
@@ -1300,7 +1375,7 @@
     },
     "tests/test_doctor.py": {
       "PL": 5,
-      "D102/D103": 9
+      "D102/D103": 8
     },
     "tests/test_doctor_classification.py": {
       "B": 1,
@@ -1360,7 +1435,7 @@
       "D102/D103": 1
     },
     "tests/test_finish_merge_mode.py": {
-      "D102/D103": 4
+      "D102/D103": 3
     },
     "tests/test_finish_modes_pr_body.py": {
       "D102/D103": 2
@@ -1414,7 +1489,7 @@
       "D102/D103": 6
     },
     "tests/test_grind_session.py": {
-      "PL": 7,
+      "PL": 5,
       "D102/D103": 15
     },
     "tests/test_grind_session_claude.py": {
@@ -1444,55 +1519,54 @@
       "D102/D103": 18
     },
     "tests/test_gui_app.py": {
-      "PL": 26,
-      "D102/D103": 16
+      "PL": 24,
+      "D102/D103": 14
     },
     "tests/test_gui_app_brainstorm.py": {
       "PL": 19,
       "D102/D103": 17
     },
     "tests/test_gui_app_milestone_lock.py": {
-      "PL": 7,
+      "PL": 6,
       "D102/D103": 5
     },
     "tests/test_gui_app_mutations.py": {
-      "PL": 22,
-      "D102/D103": 13
+      "PL": 20,
+      "D102/D103": 11
     },
     "tests/test_gui_app_routes_nodes_errors.py": {
-      "PL": 10,
-      "D102/D103": 2
+      "PL": 8
     },
     "tests/test_gui_app_workers.py": {
-      "PL": 12,
+      "PL": 11,
       "D102/D103": 6
     },
     "tests/test_gui_archive_routes.py": {
-      "PL": 18,
-      "D102/D103": 16
+      "PL": 17,
+      "D102/D103": 14
     },
     "tests/test_gui_node_write_slot.py": {
-      "PL": 7,
-      "D102/D103": 3
+      "PL": 6,
+      "D102/D103": 2
     },
     "tests/test_gui_outline_contract.py": {
-      "PL": 22,
-      "D102/D103": 20
+      "PL": 21,
+      "D102/D103": 18
     },
     "tests/test_gui_safe_saves.py": {
       "PL": 13,
-      "D102/D103": 6
+      "D102/D103": 5
     },
     "tests/test_gui_workspace_file.py": {
-      "PL": 10,
-      "D102/D103": 9
+      "PL": 8,
+      "D102/D103": 7
     },
     "tests/test_guidance_bypass_roles.py": {
       "PL": 6,
       "D102/D103": 24
     },
     "tests/test_harness_facts.py": {
-      "D102/D103": 27
+      "D102/D103": 26
     },
     "tests/test_harness_launch.py": {
       "D102/D103": 12
@@ -1511,7 +1585,7 @@
     },
     "tests/test_history_walk.py": {
       "PL": 3,
-      "D102/D103": 9
+      "D102/D103": 6
     },
     "tests/test_hook_adapters.py": {
       "PL": 4,
@@ -1632,7 +1706,6 @@
       "D102/D103": 7
     },
     "tests/test_nested_repo_finish.py": {
-      "B": 1,
       "D102/D103": 12
     },
     "tests/test_nested_repo_land_modes.py": {
@@ -1650,7 +1723,7 @@
     },
     "tests/test_node_activity.py": {
       "PL": 2,
-      "D102/D103": 7
+      "D102/D103": 6
     },
     "tests/test_node_routing_fields.py": {
       "D102/D103": 4
@@ -1687,7 +1760,7 @@
     },
     "tests/test_outline_group_cli.py": {
       "B": 1,
-      "D102/D103": 10
+      "D102/D103": 9
     },
     "tests/test_outline_renumber.py": {
       "D102/D103": 5
@@ -1709,7 +1782,7 @@
       "D102/D103": 3
     },
     "tests/test_pickup_register_digest.py": {
-      "PL": 2,
+      "PL": 1,
       "D102/D103": 2
     },
     "tests/test_pickup_second_claim_guard.py": {
@@ -1737,7 +1810,7 @@
     },
     "tests/test_pm_gui_fingerprint.py": {
       "PL": 12,
-      "D102/D103": 5
+      "D102/D103": 4
     },
     "tests/test_pm_gui_git_remote_verify.py": {
       "D102/D103": 5
@@ -1798,7 +1871,7 @@
       "D102/D103": 4
     },
     "tests/test_reconcile_branch.py": {
-      "PL": 5,
+      "PL": 4,
       "D102/D103": 4
     },
     "tests/test_reconcile_milestone_status.py": {
@@ -1858,8 +1931,8 @@
       "D102/D103": 9
     },
     "tests/test_rename_refs.py": {
-      "PL": 2,
-      "D102/D103": 7
+      "PL": 1,
+      "D102/D103": 6
     },
     "tests/test_repo_lock.py": {
       "PL": 1,
@@ -1894,7 +1967,7 @@
       "D102/D103": 10
     },
     "tests/test_review_defer_rounds.py": {
-      "PL": 10,
+      "PL": 5,
       "D102/D103": 12
     },
     "tests/test_review_delegate.py": {
@@ -1998,7 +2071,7 @@
     },
     "tests/test_review_round6_brainstorm.py": {
       "PL": 6,
-      "D102/D103": 13
+      "D102/D103": 12
     },
     "tests/test_review_round6_docs.py": {
       "D102/D103": 10
@@ -2067,7 +2140,7 @@
       "D102/D103": 9
     },
     "tests/test_rework_findings_in_prompt.py": {
-      "D102/D103": 10
+      "D102/D103": 7
     },
     "tests/test_rework_rca.py": {
       "D102/D103": 9
@@ -2077,8 +2150,7 @@
       "D102/D103": 16
     },
     "tests/test_roadmap_chunk_router.py": {
-      "PL": 6,
-      "N": 1,
+      "PL": 5,
       "D102/D103": 9
     },
     "tests/test_roadmap_crud.py": {
@@ -2192,15 +2264,15 @@
     },
     "tests/test_search_cli.py": {
       "PL": 5,
-      "D102/D103": 14
+      "D102/D103": 13
     },
     "tests/test_search_corpus.py": {
       "PL": 4,
-      "D102/D103": 17
+      "D102/D103": 16
     },
     "tests/test_search_index.py": {
       "PL": 4,
-      "D102/D103": 22
+      "D102/D103": 21
     },
     "tests/test_session_end_others.py": {
       "PL": 2,
@@ -2279,7 +2351,7 @@
     },
     "tests/test_touch_zone_tracked.py": {
       "PL": 1,
-      "D102/D103": 16
+      "D102/D103": 15
     },
     "tests/test_unauthored_leaf_guard.py": {
       "PL": 2,
@@ -2459,10 +2531,6 @@
     },
     "tests/test_writers_refuse_links_out.py": {
       "D102/D103": 3
-    },
-    "tests/unauthored_repo_helpers.py": {
-      "N": 1,
-      "D102/D103": 2
     },
     "tests/worker_lease_helpers.py": {
       "D102/D103": 3

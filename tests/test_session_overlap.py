@@ -7,16 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.bundled_scripts import session_cli
+from tests.support.same.cli_9a8b40e70510 import cli
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        session_cli.main(list(args))
-    return e.value.code or 0
 
 
 def _other_worktree(tmp_path: Path, repo: Path, branch: str = "feature/other") -> Path:
@@ -28,7 +25,7 @@ def _other_worktree(tmp_path: Path, repo: Path, branch: str = "feature/other") -
 
 def _start_as(monkeypatch, user: str, repo: Path, *args: str, cmd: str = "start") -> int:
     monkeypatch.setenv("USER", user)
-    return _cli("session", cmd, *args, "--repo-root", str(repo))
+    return cli("session", cmd, *args, "--repo-root", str(repo))
 
 
 def test_warning_names_worktree_branch_and_uncommitted_edits(tmp_path: Path, capsys, monkeypatch) -> None:

@@ -36,6 +36,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+pytestmark = pytest.mark.repo
 
 REPO = Path(__file__).resolve().parent.parent
 WORKFLOWS = REPO / ".github" / "workflows"

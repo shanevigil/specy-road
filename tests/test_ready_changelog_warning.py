@@ -9,7 +9,7 @@ import pytest
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_gate_ready import missing_entry_warning
 from specy_road.review_files import load_ready, reviews_dir
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
 
 _BASE = "## [Unreleased]\n\n### Added\n\n- old\n\n## [v0.1.0]\n\n- released\n"
 _ADDED = "## [Unreleased]\n\n### Added\n\n- old\n- new\n\n## [v0.1.0]\n\n- released\n"

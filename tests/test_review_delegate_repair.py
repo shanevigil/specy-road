@@ -14,8 +14,8 @@ import pytest
 
 from tests.review_delegate_helpers import (CAPACITY, delegate_repo, fake_prompts, run_review_delegate, set_steps,
                                            verdict_step)
-from tests.review_repo_helpers import NODE, git
-from tests.test_review_record_write import GENERIC
+from tests.support.review import NODE, git
+from tests.support.extracted.review_record_write import GENERIC
 
 from specy_road import review_files as rf
 from specy_road.review_delegate import RESUME_PROMPT, delegate, load_run
@@ -57,6 +57,7 @@ def _turns(spec: Path, run: dict, skip: int = 0) -> list[bool]:
     return flags
 
 
+@pytest.mark.slow
 def test_a_refused_answer_gets_one_repair_turn_then_files(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, refused_step(repo), verdict_step(repo))
@@ -136,6 +137,7 @@ def test_a_repair_turn_that_writes_a_tracked_file_is_a_review_failure(tmp_path: 
     assert not rf.review_path(repo, "M1.1", "opus").exists()
 
 
+@pytest.mark.slow
 def test_a_repair_turn_reporting_another_model_files_a_mismatch(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, refused_step(repo), {**verdict_step(repo), "model": "gpt-5.6-sol"})
@@ -146,6 +148,7 @@ def test_a_repair_turn_reporting_another_model_files_a_mismatch(tmp_path: Path) 
     assert rec.ok and rec.data["model_mismatch"] is True and rec.data["harness_model"] == "gpt-5.6-sol"
 
 
+@pytest.mark.slow
 def test_a_capacity_retry_inside_the_repair_turn_keeps_the_refusal(tmp_path: Path) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, refused_step(repo), {"error": CAPACITY, "exit": 1}, verdict_step(repo))
@@ -167,6 +170,7 @@ def test_a_non_resumable_harness_gets_one_fresh_launch_with_the_full_prompt_and_
     assert "## Your role: reviewer" in fake_prompts(spec)[1]   # one fresh launch: the full prompt plus the refusal
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("stored,repairs", [({}, True), ({"state": "complete"}, False), ({"refusal": 7}, False),
                                             ({"refusal": None}, False)],
                          ids=["incomplete-refused", "complete", "non-string", "no-refusal"])
@@ -186,6 +190,7 @@ def test_resume_sends_a_stored_refusal_only_on_an_incomplete_run(tmp_path: Path,
     assert all((p == RESUME_PROMPT) is not repairs for p in fake_prompts(spec)[calls:])
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("kind,then", [("parse", "files"), ("parse", "fails"), ("record", "files")],
                          ids=["parse", "parse-fails-again", "legacy-record"])
 def test_resume_sends_the_repair_pair_for_the_stored_kind(tmp_path: Path, kind: str, then: str) -> None:

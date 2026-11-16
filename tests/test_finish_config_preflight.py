@@ -19,8 +19,8 @@ import yaml
 from specy_road.finish_bookkeeping_undo import restore_pre_commit, snapshot_pre_commit
 from specy_road.review_policy_pin import GATE_FIX
 from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git
-from tests.test_finish_merge_mode import merge_mode_finish_repo
+from tests.support.review import commit_file, git
+from tests.support.extracted.finish_merge_mode import merge_mode_finish_repo
 
 ORCHESTRATION = (REPO / "specy_road" / "templates" / "project" / "roadmap" / "orchestration.yaml").read_text()
 AGAIN = "nothing was committed; fix it and run finish-this-task again"
@@ -199,6 +199,7 @@ def _pre_commit_hook(repo: Path, body: str) -> None:
     hook.chmod(0o755)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     ("inject", "named", "arrange", "wrote"),
     [
@@ -246,6 +247,7 @@ def test_failure_before_the_commit_restores_the_tree(
     assert _state(repo) == before
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("staged", ["notes.txt", "roadmap.md", "work/worker-logs/M1.1/hook.log"],
                          ids=["unrelated-path", "path-finish-writes", "worker-logs-directory"])
 def test_staging_by_the_hook_is_saved_and_named(tmp_path: Path, monkeypatch, staged: str) -> None:

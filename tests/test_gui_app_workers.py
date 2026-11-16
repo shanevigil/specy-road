@@ -8,7 +8,8 @@ import pytest
 from starlette.testclient import TestClient
 
 from specy_road.orchestration.workers import worker_state as ws
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
+from tests.support.same.client_2447f1fd9143 import client
 
 
 def _usage(cost: float | None) -> dict:
@@ -34,10 +35,6 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-def _client() -> TestClient:
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
 def _snapshot(root: Path) -> dict[str, bytes]:
@@ -46,7 +43,7 @@ def _snapshot(root: Path) -> dict[str, bytes]:
 
 
 def test_list_has_one_row_per_worker_with_cost_and_last_event(repo: Path) -> None:
-    r = _client().get("/api/workers")
+    r = client().get("/api/workers")
     assert r.status_code == 200
     rows = r.json()["workers"]
     assert [(w["worker_id"], w["node_id"], w["harness"], w["model"], w["state"], w["attempt"]) for w in rows] == [
@@ -58,7 +55,7 @@ def test_list_has_one_row_per_worker_with_cost_and_last_event(repo: Path) -> Non
 
 
 def test_events_route_returns_log_phases_and_usage_totals(repo: Path) -> None:
-    r = _client().get("/api/workers/w-0001/events")
+    r = client().get("/api/workers/w-0001/events")
     assert r.status_code == 200
     d = r.json()
     assert [e["type"] for e in d["events"]] == ["started", "launched", "first_output", "output", "stalled",
@@ -72,14 +69,14 @@ def test_events_route_returns_log_phases_and_usage_totals(repo: Path) -> None:
 
 
 def test_unknown_or_malformed_worker_id_is_404(repo: Path) -> None:
-    c = _client()
+    c = client()
     assert c.get("/api/workers/w-9999/events").status_code == 404
     assert c.get("/api/workers/sync/events").status_code == 404
 
 
 def test_routes_never_write_the_workers_directory(repo: Path) -> None:
     before = _snapshot(repo)
-    c = _client()
+    c = client()
     assert c.get("/api/workers").status_code == 200
     assert c.get("/api/workers/w-0001/events").status_code == 200
     assert _snapshot(repo) == before
@@ -88,5 +85,5 @@ def test_routes_never_write_the_workers_directory(repo: Path) -> None:
 def test_no_workers_directory_lists_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = make_review_repo(tmp_path)
     monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(root))
-    assert _client().get("/api/workers").json() == {"workers": []}
+    assert client().get("/api/workers").json() == {"workers": []}
     assert not ws.workers_dir(root).exists()

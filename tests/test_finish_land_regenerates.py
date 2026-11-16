@@ -22,18 +22,15 @@ from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.registry_yaml import registry_path, write_registry
 from tests.helpers import DOGFOOD
+from tests.support.same.commit_553cf5f7a1bf import commit
+from tests.support.same.git_df16ee62bf81 import git
 
 CODENAME = "contracts-bootstrap"
 BRANCH = f"feature/rm-{CODENAME}"
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=repo)
 
 
-def _commit(repo: Path, message: str) -> None:
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "--allow-empty", "-m", message)
 
 
 def _chunk_path(repo: Path) -> Path:
@@ -68,9 +65,9 @@ def repo(tmp_path: Path) -> Path:
     bare = tmp_path / "remote.git"
     subprocess.check_call(["git", "init", "--bare", "-q", str(bare)])
     subprocess.check_call(["git", "init", "-q", "-b", "master", str(dest)])
-    _git(dest, "config", "user.email", "t@e.com")
-    _git(dest, "config", "user.name", "T")
-    _git(dest, "remote", "add", "origin", str(bare))
+    git(dest, "config", "user.email", "t@e.com")
+    git(dest, "config", "user.name", "T")
+    git(dest, "remote", "add", "origin", str(bare))
     write_registry(
         registry_path(dest),
         {
@@ -89,18 +86,18 @@ def repo(tmp_path: Path) -> Path:
     # feature branch produces a real dep_removed event in git history.
     _set_dependencies(dest, "M0.3", ["M0.1"])
     _regenerate(dest)
-    _commit(dest, "init")
-    _git(dest, "push", "-q", "-u", "origin", "master")
+    commit(dest, "init")
+    git(dest, "push", "-q", "-u", "origin", "master")
     return dest
 
 
 def _finish_on_feature_branch(repo: Path) -> None:
     """The bookkeeping commit: drop the edge, deregister, regenerate."""
-    _git(repo, "checkout", "-q", "-b", BRANCH)
+    git(repo, "checkout", "-q", "-b", BRANCH)
     _set_dependencies(repo, "M0.3", None)
     write_registry(registry_path(repo), {"version": 1, "entries": []})
     _regenerate(repo)
-    _commit(repo, f"chore(rm-{CODENAME}): complete, deregister")
+    commit(repo, f"chore(rm-{CODENAME}): complete, deregister")
 
 
 def test_the_landed_generated_files_match_a_fresh_render(repo: Path) -> None:
@@ -116,7 +113,7 @@ def test_the_landed_generated_files_match_a_fresh_render(repo: Path) -> None:
         repo, remote="origin", integration_branch="master", feature_branch=BRANCH
     )
     assert ok, err
-    _git(repo, "checkout", "-q", "master")
+    git(repo, "checkout", "-q", "master")
 
     assert (repo / DEFAULT_OUTPUT).read_text(encoding="utf-8") == render_digest(repo)
     assert (repo / "roadmap.md").read_text(encoding="utf-8") == export_markdown(
@@ -131,7 +128,7 @@ def test_the_dropped_dependency_is_recorded_after_landing(repo: Path) -> None:
         repo, remote="origin", integration_branch="master", feature_branch=BRANCH
     )
     assert ok, err
-    _git(repo, "checkout", "-q", "master")
+    git(repo, "checkout", "-q", "master")
     assert "Dependencies that were removed" in (
         repo / DEFAULT_OUTPUT
     ).read_text(encoding="utf-8")
@@ -140,16 +137,16 @@ def test_the_dropped_dependency_is_recorded_after_landing(repo: Path) -> None:
 def test_a_stale_generated_file_on_the_feature_branch_is_overwritten(
     repo: Path,
 ) -> None:
-    _git(repo, "checkout", "-q", "-b", BRANCH)
+    git(repo, "checkout", "-q", "-b", BRANCH)
     write_registry(registry_path(repo), {"version": 1, "entries": []})
     (repo / "roadmap.md").write_text("STALE\n", encoding="utf-8")
     (repo / DEFAULT_OUTPUT).write_text("STALE\n", encoding="utf-8")
-    _commit(repo, f"chore(rm-{CODENAME}): complete, deregister")
+    commit(repo, f"chore(rm-{CODENAME}): complete, deregister")
 
     ok, err = land_merge_feature_into_integration(
         repo, remote="origin", integration_branch="master", feature_branch=BRANCH
     )
     assert ok, err
-    _git(repo, "checkout", "-q", "master")
+    git(repo, "checkout", "-q", "master")
     assert "STALE" not in (repo / "roadmap.md").read_text(encoding="utf-8")
     assert "STALE" not in (repo / DEFAULT_OUTPUT).read_text(encoding="utf-8")

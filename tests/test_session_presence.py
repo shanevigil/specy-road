@@ -12,19 +12,16 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, git, make_review_repo
+from tests.support.review import NODE, make_review_repo, git
 
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.workers import worker_ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli, session_cli
 from specy_road.bundled_scripts.do_next_prompt import print_pickup_header
+from tests.support.same.cli_9a8b40e70510 import cli
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        session_cli.main(list(args))
-    return e.value.code or 0
 
 
 def test_start_touch_end_round_trip(tmp_path: Path) -> None:
@@ -75,19 +72,19 @@ def test_bad_agent_id_is_rejected(tmp_path: Path) -> None:
 def test_cli_check_is_a_commit_guard(tmp_path: Path, capsys, monkeypatch) -> None:
     repo = make_review_repo(tmp_path)
     monkeypatch.setenv("SPECY_ROAD_AGENT_ID", "me")
-    assert _cli("session", "start", "--agent", "alice", "--path", "src", "--repo-root", str(repo)) == 0
+    assert cli("session", "start", "--agent", "alice", "--path", "src", "--repo-root", str(repo)) == 0
     (repo / "src" / "b.py").write_text("x\n")
     git(repo, "add", "src/b.py")
-    assert _cli("session", "check", "--repo-root", str(repo)) == 1
+    assert cli("session", "check", "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
     assert "overlap live session 'alice'" in err and "refuse" in err
-    assert _cli("session", "check", "--path", "docs/x.md", "--repo-root", str(repo)) == 0
+    assert cli("session", "check", "--path", "docs/x.md", "--repo-root", str(repo)) == 0
     # Alice herself is clear, and ends her own record.
-    assert _cli("session", "check", "--agent", "alice", "--repo-root", str(repo)) == 0
+    assert cli("session", "check", "--agent", "alice", "--repo-root", str(repo)) == 0
     monkeypatch.setenv("SPECY_ROAD_AGENT_ID", "alice")
-    assert _cli("session", "end", "--repo-root", str(repo)) == 0
+    assert cli("session", "end", "--repo-root", str(repo)) == 0
     monkeypatch.setenv("SPECY_ROAD_AGENT_ID", "me")
-    assert _cli("session", "check", "--repo-root", str(repo)) == 0
+    assert cli("session", "check", "--repo-root", str(repo)) == 0
 
 
 def test_cli_end_with_an_id_retires_only_the_same_users_session(tmp_path: Path, capsys, monkeypatch) -> None:
@@ -97,24 +94,24 @@ def test_cli_end_with_an_id_retires_only_the_same_users_session(tmp_path: Path, 
     sp.start_session(repo, "carol-s111", paths=["src"])      # a terminal of hers that has since closed
     monkeypatch.setenv("USER", "dave")
     sp.start_session(repo, "dave-s222", paths=["docs"])
-    assert _cli("session", "end", "carol-s111", "--repo-root", str(repo)) == 1
+    assert cli("session", "end", "carol-s111", "--repo-root", str(repo)) == 1
     assert "started by user 'carol', not 'dave'; only its owner may end it" in capsys.readouterr().err
     monkeypatch.setenv("SPECY_ROAD_AGENT_ID", "dave-s222")
-    assert _cli("session", "end", "dave-s222", "--repo-root", str(repo)) == 0
+    assert cli("session", "end", "dave-s222", "--repo-root", str(repo)) == 0
     assert "session dave-s222: ended" in capsys.readouterr().out
     assert [s.agent for s in sp.list_sessions(repo)] == ["carol-s111"]
-    assert _cli("session", "end", "dave-s222", "--repo-root", str(repo)) == 0
+    assert cli("session", "end", "dave-s222", "--repo-root", str(repo)) == 0
     assert "no record" in capsys.readouterr().out
-    assert _cli("session", "end", "../x", "--repo-root", str(repo)) == 1
+    assert cli("session", "end", "../x", "--repo-root", str(repo)) == 1
 
 
 def test_cli_start_warns_on_overlap_and_list_shows_sessions(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
-    assert _cli("session", "start", "--agent", "alice", "--path", "src", "--repo-root", str(repo)) == 0
+    assert cli("session", "start", "--agent", "alice", "--path", "src", "--repo-root", str(repo)) == 0
     capsys.readouterr()
-    assert _cli("session", "start", "--agent", "bob", "--path", "src/a.py", "--note", "fix", "--repo-root", str(repo)) == 0
+    assert cli("session", "start", "--agent", "bob", "--path", "src/a.py", "--note", "fix", "--repo-root", str(repo)) == 0
     assert "overlap live session 'alice'" in capsys.readouterr().err
-    assert _cli("session", "list", "--json", "--repo-root", str(repo)) == 0
+    assert cli("session", "list", "--json", "--repo-root", str(repo)) == 0
     rows = json.loads(capsys.readouterr().out)
     assert [r["agent"] for r in rows] == ["alice", "bob"] and rows[1]["note"] == "fix"
 
@@ -145,7 +142,7 @@ def _derived_end(repo: Path, monkeypatch, sid: int) -> int:
     """`session end` with no id from a shell whose POSIX session differs from start's."""
     monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
     monkeypatch.setattr(sp.os, "getsid", lambda _pid: sid)
-    return _cli("session", "end", "--repo-root", str(repo))
+    return cli("session", "end", "--repo-root", str(repo))
 
 
 def test_cli_start_prints_the_id_to_export(tmp_path: Path, capsys, monkeypatch) -> None:
@@ -153,7 +150,7 @@ def test_cli_start_prints_the_id_to_export(tmp_path: Path, capsys, monkeypatch) 
     monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
     monkeypatch.setenv("USER", "erin")
     monkeypatch.setattr(sp.os, "getsid", lambda _pid: 101)
-    assert _cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
+    assert cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert out.startswith("session erin-s101:")
     assert "export SPECY_ROAD_AGENT_ID=erin-s101\n" in out
@@ -195,12 +192,12 @@ def test_cli_touch_from_subdirectory_then_derived_end_with_another_worktree(
     monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
     monkeypatch.setattr(sp.os, "getsid", lambda _pid: 101)
     monkeypatch.chdir(repo)
-    assert _cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
+    assert cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
     capsys.readouterr()
     sp.start_session(repo, "iris-wt2", paths=["docs"], worktree=wt2)
     monkeypatch.setattr(sp.os, "getsid", lambda _pid: 202)
     monkeypatch.chdir(repo / "src")
-    assert _cli("session", "touch", "--repo-root", str(repo)) == 0
+    assert cli("session", "touch", "--repo-root", str(repo)) == 0
     capsys.readouterr()
     main = sp.load_session(sp.session_path(repo, "iris-s101"))
     assert main is not None and main.worktree == str(sp.git_worktree_top(repo))
@@ -218,7 +215,7 @@ def test_cli_start_from_subdirectory_then_derived_end(tmp_path: Path, capsys, mo
     monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
     monkeypatch.setattr(sp.os, "getsid", lambda _pid: 401)
     monkeypatch.chdir(repo / "src")
-    assert _cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
+    assert cli("session", "start", "--path", "src", "--repo-root", str(repo)) == 0
     capsys.readouterr()
     sp.start_session(repo, "jake-wt2", paths=["docs"], worktree=wt2)
     monkeypatch.chdir(repo / "docs")
@@ -237,7 +234,7 @@ def test_cli_touch_with_a_new_derived_id_renews_the_session_on_this_worktree(
     sp.start_session(repo, "helen-s101", paths=["src"], worktree=repo)
     monkeypatch.setattr(sp.os, "getsid", lambda _pid: 202)
     monkeypatch.chdir(repo)
-    assert _cli("session", "touch", "--repo-root", str(repo)) == 0
+    assert cli("session", "touch", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert out.startswith("session helen-s101:")
     assert [s.agent for s in sp.list_sessions(repo)] == ["helen-s101"]
@@ -248,8 +245,8 @@ def test_cli_end_with_an_explicit_id_never_falls_back(tmp_path: Path, capsys, mo
     monkeypatch.setenv("USER", "frank")
     sp.start_session(repo, "frank-s101", paths=["src"])
     monkeypatch.setenv("SPECY_ROAD_AGENT_ID", "frank-other")
-    assert _cli("session", "end", "--repo-root", str(repo)) == 0
-    assert _cli("session", "end", "--agent", "frank-x", "--repo-root", str(repo)) == 0
+    assert cli("session", "end", "--repo-root", str(repo)) == 0
+    assert cli("session", "end", "--agent", "frank-x", "--repo-root", str(repo)) == 0
     assert capsys.readouterr().out.count("no record") == 2
     assert [s.agent for s in sp.list_sessions(repo)] == ["frank-s101"]
 
@@ -272,7 +269,7 @@ def test_a_session_whose_worktree_or_branch_is_gone_stops_counting(
         git(repo, "branch", "-q", "-D", "feature/rm-thing")
     assert [s.agent for s in sp.list_sessions(repo)] == ["alice"]
     assert sp.conflicts(repo, ["src/a.py"]) == [] and sp.conflicts(repo, ["docs/x.md"])
-    assert _cli("session", "list", "--all", "--repo-root", str(repo)) == 0
+    assert cli("session", "list", "--all", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert f"(stale: {reason})" in out and out.count("stale:") == 1
 
@@ -288,7 +285,7 @@ def test_a_session_missing_either_field_keeps_the_expiry_rule(tmp_path: Path, ca
         worktree = str(tmp_path / "missing")
     s.path.write_text(yaml.safe_dump({**s.to_dict(), "worktree": worktree, "branch": branch}))
     assert [x.agent for x in sp.list_sessions(repo)] == ["alice"]
-    assert _cli("session", "list", "--all", "--repo-root", str(repo)) == 0
+    assert cli("session", "list", "--all", "--repo-root", str(repo)) == 0
     assert "stale:" not in capsys.readouterr().out
 
 

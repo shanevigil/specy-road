@@ -43,6 +43,7 @@ def _plan_cli(repo: Path, capsys, *extra: str) -> tuple[int, str, str]:
 # A1 ------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 def test_worktree_dry_run_plans_the_uncommitted_roster_with_a_banner(tmp_path: Path, capsys) -> None:
     repo = plan_repo(tmp_path, roster=OPUS_OFF)
     _roster(repo, ROSTER)   # uncommitted: opus available again
@@ -90,6 +91,7 @@ def test_grind_session_refuses_the_flag(capsys) -> None:
 # A2 ------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 def test_models_list_names_the_ref_and_the_uncommitted_diff(tmp_path: Path, capsys) -> None:
     repo = plan_repo(tmp_path)
     capsys.readouterr()
@@ -140,6 +142,7 @@ def test_models_list_diff_is_not_masked_by_the_local_availability_overlay(tmp_pa
 MINI = "  - {id: mini, family: mistral, roles: [executor], class: cheap}\n"
 
 
+@pytest.mark.slow
 def test_roster_add_is_planned_labelled_local_and_used_for_delegation(tmp_path: Path, capsys) -> None:
     repo = plan_repo(tmp_path)
     _local(repo, "roster:\n  - {id: sol, available: false}\nroster_add:\n" + MINI)

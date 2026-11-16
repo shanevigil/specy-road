@@ -16,9 +16,14 @@ import yaml
 
 from specy_road import cli
 from specy_road.bundled_scripts import doctor
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
+from tests.support.review import NODE, commit_file, make_review_repo, git
+from tests.support.extracted.doctor import (
+    TOOLKIT_STASH,
+    branch_with_commits,
+    graph_and_registry,
+    doctor_repo,
+)
 
-TOOLKIT_STASH = "specy-road: temp stash work/ around pickup"
 
 
 def _exit(argv: list[str]) -> int:
@@ -27,75 +32,14 @@ def _exit(argv: list[str]) -> int:
     return e.value.code or 0
 
 
-def _branch_with_commits(repo: Path, branch: str, *rels: str) -> None:
-    git(repo, "checkout", "-q", "-b", branch, "dev")
-    for rel in rels:
-        commit_file(repo, rel, f"{rel}\n", rel)
-    git(repo, "checkout", "-q", "dev")
 
 
 def _has(repo: Path, ref: str) -> bool:
     return bool(git(repo, "for-each-ref", "--format=%(refname)", ref))
 
 
-def _graph_and_registry(repo: Path) -> None:
-    """Complete leaves ``finished`` and ``settled`` (still registered), an open rollup
-    ``roll``, a claim ``ghost`` with no branch."""
-    chunk = repo / "roadmap" / "phases" / "M1.json"
-    doc = json.loads(chunk.read_text())
-    doc["nodes"][0]["milestone_execution"] = {"state": "active", "rollup_branch": "feature/rm-roll"}
-    doc["nodes"].append({**NODE, "id": "M1.2", "codename": "finished", "status": "Complete",
-                         "node_key": "22222222-2222-5222-8222-222222222222", "sibling_order": 2})
-    doc["nodes"].append({**NODE, "id": "M1.4", "codename": "settled", "status": "Complete",
-                         "node_key": "44444444-4444-5444-8444-444444444444", "sibling_order": 4})
-    commit_file(repo, "roadmap/phases/M1.json", json.dumps(doc), "graph")
-    reg = yaml.safe_load((repo / "roadmap" / "registry.yaml").read_text())
-    for codename, node_id in (("ghost", "M1.3"), ("settled", "M1.4")):
-        reg["entries"].append({"codename": codename, "node_id": node_id,
-                               "branch": f"feature/rm-{codename}", "touch_zones": [codename]})
-    commit_file(repo, "roadmap/registry.yaml", yaml.safe_dump(reg), "claims")
 
 
-@pytest.fixture
-def doctor_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
-    repo = make_review_repo(tmp_path)
-    git(repo, "checkout", "-q", "dev")
-    _graph_and_registry(repo)
-    git(repo, "branch", "feature/rm-roll")
-    for name in ("done", "rebased", "finished", "open", "gone", "settled"):
-        _branch_with_commits(repo, f"feature/rm-{name}", f"src/{name}.py")
-    _branch_with_commits(repo, "feature/rm-squash", "src/s1.py", "src/s2.py")
-    for branch in ("feature/rm-done", "feature/rm-gone", "feature/rm-thing", "feature/rm-settled"):
-        git(repo, "merge", "-q", "--no-ff", "--no-edit", branch)
-    git(repo, "merge", "-q", "--squash", "feature/rm-squash")
-    git(repo, "commit", "-qm", "squash")
-    git(repo, "cherry-pick", "feature/rm-rebased")   # same patch, new sha
-    bare = tmp_path / "remote.git"
-    git(tmp_path, "init", "-q", "--bare", str(bare))
-    git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
-    git(repo, "remote", "add", "origin", str(bare))
-    git(repo, "push", "-q", "origin", "--all")
-    git(repo, "branch", "-q", "-D", "feature/rm-gone")
-
-    git(repo, "worktree", "add", "-q", str(tmp_path / "wt-done"), "feature/rm-done")
-    (tmp_path / "wt-done" / "work" / "reviews").mkdir(parents=True)
-    (tmp_path / "wt-done" / "work" / "reviews" / "READY.md").write_text("x", encoding="utf-8")
-    git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-detached"), "dev")
-    git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-squash"), "feature/rm-squash")
-    git(repo, "worktree", "add", "-q", str(tmp_path / "wt-missing"), "feature/rm-squash")
-    shutil.rmtree(tmp_path / "wt-missing")
-    git(repo, "worktree", "add", "-q", str(tmp_path / "wt-thing"), "feature/rm-thing")
-    git(repo, "worktree", "add", "-q", str(tmp_path / "wt-settled"), "feature/rm-settled")
-    git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-wip"), "feature/rm-open")
-    (tmp_path / "wt-wip" / "src" / "wip.py").write_text("unsaved\n", encoding="utf-8")
-    git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-locked"), "dev")
-    git(repo, "worktree", "lock", str(tmp_path / "wt-locked"))
-
-    for msg in (TOOLKIT_STASH, "mine"):
-        (repo / "work").mkdir(exist_ok=True)
-        (repo / "work" / "note.md").write_text(msg, encoding="utf-8")
-        git(repo, "stash", "push", "-q", "-u", "-m", msg)
-    return repo, bare
 
 
 LISTED_LOCAL = {
@@ -155,6 +99,7 @@ def test_doctor_is_wired_into_the_cli(doctor_repo, capfd) -> None:
     assert "local     feature/rm-done  — merged" in capfd.readouterr().out
 
 
+@pytest.mark.slow
 def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> None:
     repo, bare = doctor_repo
     chunk = json.loads((repo / "roadmap" / "phases" / "M1.json").read_text())
@@ -248,6 +193,7 @@ def test_a_failed_registry_prune_warns_and_the_next_row_is_still_tried(doctor_re
     assert "settled" in git(bare, "show", "dev:roadmap/registry.yaml")
 
 
+@pytest.mark.slow
 def test_detached_worktrees_are_listed_and_fix_removes_only_clean_ones(doctor_repo, capsys) -> None:
     """A review recipe's clean detached worktree goes; one with uncommitted changes, or with
     commits no branch holds, stays and is reported."""
@@ -348,7 +294,7 @@ def test_merged_how_needs_the_patch_upstream_not_just_the_files(tmp_path: Path) 
     """A branch whose diff differs from what landed is not merged, even with shared files."""
     repo = make_review_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
-    _branch_with_commits(repo, "feature/rm-x", "src/x.py")
+    branch_with_commits(repo, "feature/rm-x", "src/x.py")
     commit_file(repo, "src/x.py", "something else\n", "different content, same path")
     git(repo, "checkout", "-q", "--orphan", "feature/rm-orphan")
     commit_file(repo, "src/x.py", "something else\n", "same file, no shared history")

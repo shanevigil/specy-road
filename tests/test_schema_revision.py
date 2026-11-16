@@ -14,7 +14,7 @@ from typing import Any, Callable
 import pytest
 import yaml
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
 
 from specy_road.git_workflow_config import load_git_workflow_config, require_implementation_review_before_finish
 from specy_road.orchestration_config import effective_config, load_orchestration_config, validate_orchestration_dict

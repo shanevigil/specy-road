@@ -9,18 +9,13 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
 
 from specy_road.bundled_scripts import finish_task
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.review_files import PACKET_NAME, reviews_dir
+from tests.support.extracted.prerelease_s2 import ROSTER
 
-ROSTER = """version: 1
-roster:
-  - {id: human, family: human, roles: [coordinator, reviewer]}
-  - {id: rev, family: openai, roles: [reviewer]}
-policy: {reviewers_required: 1}
-"""
 
 
 def test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes(tmp_path: Path) -> None:
@@ -63,6 +58,7 @@ def _finish(repo: Path, *args: str) -> int:
     return e.value.code or 0
 
 
+@pytest.mark.slow
 def test_rerunning_finish_retries_a_failed_merge_landing(tmp_path: Path, monkeypatch, capsys) -> None:
     monkeypatch.setenv("PYTHONPATH", str(REPO))   # finish runs validate/export/digest as subprocesses
     repo = make_review_repo(tmp_path)

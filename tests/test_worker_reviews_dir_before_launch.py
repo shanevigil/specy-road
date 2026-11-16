@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.harness import wait_for_worker
-from tests.test_worker_m310_reconcile_status import nested_project
+from tests.support.extracted.worker_m310_reconcile_status import nested_project
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
@@ -45,6 +45,7 @@ def strict_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PATH", f"{bin_dir}:{Path(sys.executable).parent}:/usr/bin:/bin")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("model", ["cur", "cc"])
 def test_a_fresh_leaf_launches_and_resumes_with_no_reviews_dir_yet(tmp_path: Path, strict_path, model: str) -> None:
     top, project = nested_project(tmp_path, ROSTER)

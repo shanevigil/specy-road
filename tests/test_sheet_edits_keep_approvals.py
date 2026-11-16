@@ -8,13 +8,20 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import (
-    NODE, commit_file, git, git_root_relative, make_layout_finish_repo, make_review_repo, review_text,
+from tests.support.review import (
+    NODE,
+    commit_file,
+    git_root_relative,
+    make_layout_finish_repo,
+    make_review_repo,
+    review_text,
+    git,
 )
-from tests.test_review_cli import ONE_AI, _status
+from tests.support.extracted.review_cli import ONE_AI, status
 
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
+from tests.support.same.gate_9f3572d00caf import gate as gate_fn
 
 
 def _review(repo: Path) -> str:
@@ -25,17 +32,15 @@ def _review(repo: Path) -> str:
     return commit
 
 
-def _gate(repo: Path):
-    return evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
 
 
 def test_sheet_only_delta_keeps_approval(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     commit_file(repo, NODE["planning_dir"], _with_tier(), "tier")
     _review(repo)
-    assert _gate(repo).passed
+    assert gate_fn(repo).passed
     commit_file(repo, NODE["planning_dir"], _with_tier("Updated."), "sheet")
-    g = _gate(repo)
+    g = gate_fn(repo)
     assert g.passed and g.bookkeeping_carry
     assert not g.stale
     assert "still count" in g.summary()
@@ -51,7 +56,7 @@ def test_summary_only_delta_keeps_approval(tmp_path: Path) -> None:
         "# Summary\n\nDone.\n",
         "summary",
     )
-    g = _gate(repo)
+    g = gate_fn(repo)
     assert g.passed and g.bookkeeping_carry
     assert not g.stale
 
@@ -61,7 +66,7 @@ def test_mixed_delta_stales_approval(tmp_path: Path) -> None:
     _review(repo)
     commit_file(repo, NODE["planning_dir"], "# M1.1 Thing\n\n## Intent\n\nAlso.\n\n## References\n", "sheet")
     commit_file(repo, "src/b.py", "x\n", "code")
-    g = _gate(repo)
+    g = gate_fn(repo)
     assert not g.passed
     assert len(g.stale) == 1
     assert not g.bookkeeping_carry
@@ -74,7 +79,7 @@ def test_ours_merge_stales_approval(tmp_path: Path) -> None:
     commit_file(repo, "other.txt", "x\n", "other")
     git(repo, "checkout", "-q", "feature/rm-thing")
     git(repo, "merge", "-q", "-s", "ours", "--no-edit", "other")
-    g = _gate(repo)
+    g = gate_fn(repo)
     assert not g.passed
     assert len(g.stale) == 1
     assert not g.bookkeeping_carry
@@ -115,7 +120,7 @@ def test_handoff_status_reports_bookkeeping_carry(tmp_path: Path, capsys) -> Non
     commit_file(repo, NODE["planning_dir"], _with_tier(), "tier")
     _review(repo)
     commit_file(repo, NODE["planning_dir"], _with_tier("Notes."), "sheet")
-    st = _status(repo, capsys)
+    st = status(repo, capsys)
     assert st["policy_met"]
     assert "still count" in st["policy"]
 
@@ -286,11 +291,11 @@ def test_wider_carry_on_a_nested_project(tmp_path: Path, capsys, row: str) -> No
     """Each row of the M22.53 table, through ``handoff status``, on a project under a prefix."""
     git_top, project = _prepare(tmp_path, tier=not row.startswith("no-tier"))
     _ROWS[row](git_top, project)
-    st = _status(project, capsys)
+    st = status(project, capsys)
     if row in _CARRY:
         assert st["policy_met"] and st["state"] == "approved", st["policy"]
         if row == "registry":
-            gate = _gate(project)
+            gate = gate_fn(project)
             assert gate.passed and gate.bookkeeping_carry and "still count" in gate.summary()
         else:
             assert "still count" in st["policy"]

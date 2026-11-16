@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from specy_road.bundled_scripts.roadmap_explain import explain, open_gates
+from tests.support.same.reg_506cecd4ff0e import reg as reg_fn
 
 
 def _node(nid, key, *, type_="task", status="Not Started", parent=None,
@@ -29,8 +30,6 @@ def _chain_graph():
     ]
 
 
-def _reg(*entries):
-    return {"version": 1, "entries": list(entries)}
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +39,7 @@ def _reg(*entries):
 
 def test_the_chain_is_transitive_not_just_the_immediate_dependency():
     """The actionable item is at the bottom, which --plan does not show."""
-    exp = explain(_chain_graph(), _reg(), "M1.3")
+    exp = explain(_chain_graph(), reg_fn(), "M1.3")
 
     assert exp.state == "blocked"
     assert [d.node_id for d in exp.waiting_on] == ["M1.2"]
@@ -51,7 +50,7 @@ def test_a_completed_hop_drops_out_of_the_chain():
     nodes = _chain_graph()
     next(n for n in nodes if n["id"] == "M1.1")["status"] = "Complete"
 
-    exp = explain(nodes, _reg(), "M1.3")
+    exp = explain(nodes, reg_fn(), "M1.3")
 
     assert [d.node_id for d in exp.waiting_on] == ["M1.2"]
     assert exp.waiting_on[0].waiting_on == []
@@ -62,7 +61,7 @@ def test_ready_when_every_dependency_is_complete():
     for nid in ("M1.1", "M1.2"):
         next(n for n in nodes if n["id"] == nid)["status"] = "Complete"
 
-    exp = explain(nodes, _reg(), "M1.3")
+    exp = explain(nodes, reg_fn(), "M1.3")
 
     assert exp.state == "ready"
     assert exp.waiting_on == []
@@ -75,7 +74,7 @@ def test_a_gate_in_the_chain_is_reported_as_gated():
         _node("M1.2", "beta", parent="M1", deps=["signoff"]),
     ]
 
-    exp = explain(nodes, _reg(), "M1.2")
+    exp = explain(nodes, reg_fn(), "M1.2")
 
     assert exp.state == "gated"
     assert exp.waiting_on[0].is_gate is True
@@ -83,7 +82,7 @@ def test_a_gate_in_the_chain_is_reported_as_gated():
 
 def test_a_claimed_node_reports_the_branch_holding_it():
     nodes = _chain_graph()
-    reg = _reg({"node_id": "M1.1", "codename": "alpha", "branch": "feature/rm-alpha"})
+    reg = reg_fn({"node_id": "M1.1", "codename": "alpha", "branch": "feature/rm-alpha"})
 
     exp = explain(nodes, reg, "M1.1")
 
@@ -93,7 +92,7 @@ def test_a_claimed_node_reports_the_branch_holding_it():
 
 def test_a_dependency_claimed_elsewhere_shows_its_branch_in_the_chain():
     nodes = _chain_graph()
-    reg = _reg({"node_id": "M1.1", "codename": "alpha", "branch": "feature/rm-alpha"})
+    reg = reg_fn({"node_id": "M1.1", "codename": "alpha", "branch": "feature/rm-alpha"})
 
     exp = explain(nodes, reg, "M1.3")
 
@@ -104,7 +103,7 @@ def test_a_dependency_claimed_elsewhere_shows_its_branch_in_the_chain():
 
 def test_a_parent_is_a_container_not_a_missing_codename():
     """Checked before the codename, or the parent reports the wrong reason."""
-    exp = explain(_chain_graph(), _reg(), "M1")
+    exp = explain(_chain_graph(), reg_fn(), "M1")
 
     assert exp.state == "container"
     assert "rolls up" in exp.summary
@@ -114,7 +113,7 @@ def test_a_leaf_without_a_codename_says_so():
     nodes = _chain_graph()
     next(n for n in nodes if n["id"] == "M1.1")["codename"] = ""
 
-    exp = explain(nodes, _reg(), "M1.1")
+    exp = explain(nodes, reg_fn(), "M1.1")
 
     assert exp.state == "needs_codename"
     assert "edit-node M1.1" in exp.summary
@@ -124,11 +123,11 @@ def test_a_complete_node_is_closed():
     nodes = _chain_graph()
     next(n for n in nodes if n["id"] == "M1.1")["status"] = "Complete"
 
-    assert explain(nodes, _reg(), "M1.1").state == "closed"
+    assert explain(nodes, reg_fn(), "M1.1").state == "closed"
 
 
 def test_an_unknown_id_is_reported_rather_than_crashing():
-    exp = explain(_chain_graph(), _reg(), "M9.9")
+    exp = explain(_chain_graph(), reg_fn(), "M9.9")
 
     assert exp.state == "unknown"
     assert "M9.9" in exp.summary
@@ -142,7 +141,7 @@ def test_a_dependency_cycle_terminates():
         _node("M1.2", "beta", parent="M1", deps=["alpha"]),
     ]
 
-    exp = explain(nodes, _reg(), "M1.1")
+    exp = explain(nodes, reg_fn(), "M1.1")
 
     assert exp.state == "blocked"
     assert [d.node_id for d in exp.waiting_on] == ["M1.2"]

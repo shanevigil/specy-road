@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import diverge, git, make_review_repo, review_text
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.review import diverge, make_review_repo, review_text, git
+from tests.support.extracted.review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_files import review_path, reviews_dir
@@ -124,7 +124,7 @@ def test_human_completes_the_second_family(tmp_path: Path, monkeypatch) -> None:
 def test_finish_refuses_work_committed_after_approval(tmp_path: Path, monkeypatch, capsys) -> None:
     """A fix restarts review: an approved registry row does not cover later commits."""
     from specy_road.bundled_scripts import finish_task as ft
-    from tests.review_repo_helpers import NODE, commit_file
+    from tests.support.review import NODE, commit_file
 
     repo = _repo(tmp_path)
     _record(repo, "human")
@@ -174,7 +174,7 @@ def test_yes_refuses_while_ready_declares_blocked_on(tmp_path: Path, capsys) -> 
 
 def test_finish_refuses_a_failing_ready_verifier(tmp_path: Path, monkeypatch, capsys) -> None:
     from specy_road.bundled_scripts import finish_task as ft
-    from tests.review_repo_helpers import NODE
+    from tests.support.review import NODE
 
     repo = _repo(tmp_path)
     _record(repo, "human")

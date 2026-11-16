@@ -17,7 +17,7 @@ from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import validate_roadmap as vr
 from specy_road.review_policy_pin import GATE_KEY, gate_config_mismatch
 from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
 
 ORCHESTRATION = (REPO / "specy_road" / "templates" / "project" / "roadmap" / "orchestration.yaml").read_text()
 GATE_OFF = f"version: 1\nintegration_branch: dev\nremote: origin\n{GATE_KEY}: false\n"

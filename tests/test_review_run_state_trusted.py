@@ -14,7 +14,7 @@ import pytest
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
 from tests.support.cli import run_main
-from tests.test_review_record_write import GENERIC
+from tests.support.extracted.review_record_write import GENERIC
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import role_prompt
@@ -52,6 +52,7 @@ def test_prompt_cli_never_writes_to_a_log_path_the_reviewer_put_in_its_run_file(
         assert not rf.review_path(repo, "M1.1", "gem").exists()
 
 
+@pytest.mark.slow
 def test_review_delegate_keeps_its_attempt_spans_and_log_in_memory(tmp_path: Path) -> None:
     """A run file forged mid-run (log path, attempt span) changes nothing: the answer is read from specy-road's
     own span, and the record written at the end is specy-road's."""
@@ -76,6 +77,7 @@ def test_specy_roads_writer_refuses_a_symlinked_directory(tmp_path: Path) -> Non
     assert not list((tmp_path / "elsewhere").iterdir())
 
 
+@pytest.mark.slow
 def test_review_usage_reads_an_unknown_harness_in_a_run_file_as_generic(tmp_path: Path) -> None:
     """A run file's ``harness`` only picks the usage parser: an unknown one reads as ``generic``, never a crash."""
     repo, spec = delegate_repo(tmp_path)

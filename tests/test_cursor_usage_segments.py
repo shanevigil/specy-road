@@ -7,10 +7,11 @@ import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import pytest
 
 sys.dont_write_bytecode = True
 
-from tests.test_worker_adapters import CURSOR_RESULT
+from tests.support.extracted.worker_adapters import CURSOR_RESULT
 from tests.support.harness import (make_worker_repo, reset_cursor_adapter_via_init,
                                    run_fake_harness_turn)
 
@@ -70,6 +71,7 @@ def test_a_single_result_with_num_turns_keeps_the_count() -> None:
     assert usage["output_tokens"] == 25 and usage["num_turns"] == 4
 
 
+@pytest.mark.slow
 def test_the_fixture_turn_records_result_usage_in_the_worker(tmp_path: Path) -> None:
     spec = json.loads(FIXTURE.read_text())
     lines = [{**ln, "session_id": "s-1"} for ln in spec["lines"]]

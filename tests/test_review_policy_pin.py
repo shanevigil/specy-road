@@ -14,8 +14,8 @@ import pytest
 import yaml
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
-from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.review import NODE, make_review_repo, review_text, git
+from tests.support.extracted.review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed, review_cli
 from specy_road.registration_pickup_commit import registration_commit_message
@@ -23,10 +23,12 @@ from specy_road.roadmap_load import load_roadmap
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_policy_pin import ACCEPTANCE_NAME, pin_of, pin_problem, pinned_message, policy_digest
+from tests.support.same.exit_a673d831c5ea import exit_fn
+from tests.support.same.gate_9f3572d00caf import gate as gate_fn
+from tests.support.extracted.review_policy_pin import SUBJECT
 
 ORCH = "roadmap/orchestration.yaml"
 WORKFLOW = "roadmap/git-workflow.yaml"
-SUBJECT = registration_commit_message("thing", include_ci_skip=True)
 #: CR1: an executor-only roster entry gains the reviewer role on the integration branch after the claim.
 CR1_ROSTER = TWO_FAMILIES.replace("{id: composer, family: cursor, roles: [executor]}",
                                   "{id: composer, family: cursor, roles: [executor, reviewer]}")
@@ -79,21 +81,14 @@ def _repo(tmp_path: Path, orchestration: str = TWO_FAMILIES, *, pin: str | None 
     return repo
 
 
-def _gate(repo: Path):
-    return evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
 
 
-def _exit(fn, argv: list[str]) -> int:
-    with pytest.raises(SystemExit) as e:
-        fn(argv)
-        raise SystemExit(0)
-    return e.value.code or 0
 
 
 def _accept(repo: Path, monkeypatch, *, tty: bool, typed: str = "M1.1") -> int:
     monkeypatch.setattr("sys.stdin.isatty", lambda: tty)
     monkeypatch.setattr("builtins.input", lambda _prompt="": typed)
-    return _exit(review_cli.main, ["review", "accept-policy", "M1.1", "--repo-root", str(repo)])
+    return exit_fn(review_cli.main, ["review", "accept-policy", "M1.1", "--repo-root", str(repo)])
 
 
 def _tree(repo: Path) -> tuple[str, str, str]:
@@ -129,7 +124,7 @@ def test_gate_judges_by_the_policy_pinned_at_claim(tmp_path: Path, case, orchest
     if edit:
         _on_dev(repo, *edit)
     _approve(repo)
-    gate = _gate(repo)
+    gate = gate_fn(repo)
     assert gate.passed is (problem is None), gate.problems()
     if problem:
         assert problem in gate.policy_pin and gate.policy_pin in gate.problems()
@@ -140,14 +135,14 @@ def test_cr1_change_refuses_mark_reviewed_and_finish_writing_nothing(tmp_path: P
     _on_dev(repo, ORCH, CR1_ROSTER)
     _approve(repo)
     before = _tree(repo)
-    assert _exit(mark_implementation_reviewed.main, ["--yes", "--repo-root", str(repo)]) == 1
+    assert exit_fn(mark_implementation_reviewed.main, ["--yes", "--repo-root", str(repo)]) == 1
     err = "".join(capsys.readouterr())   # the gate's problems print to stdout, the refusal to stderr
     assert "review policy changed on refs/heads/dev since M1.1 was claimed" in err
     assert "The review rules changed after this work started" in err
     assert "specy_road.review_policy_pin" in err
     assert err.index("The review rules changed after this work started") < err.index("roster composer.roles")
     assert "a human accepts it with `specy-road review accept-policy M1.1` in a terminal" in err
-    assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 1
+    assert exit_fn(finish_task.main, ["--repo-root", str(repo)]) == 1
     assert "roster composer.roles" in capsys.readouterr().err
     assert _tree(repo) == before
 
@@ -156,7 +151,7 @@ def test_review_switch_turned_off_after_claim_refuses_finish_before_bookkeeping(
     repo = _repo(tmp_path)
     _on_dev(repo, WORKFLOW, SWITCH_OFF, merge=True)   # off everywhere, so review_required alone would skip review
     before = _tree(repo)
-    assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 1
+    assert exit_fn(finish_task.main, ["--repo-root", str(repo)]) == 1
     assert "require_implementation_review_before_finish true -> false" in capsys.readouterr().err
     assert _tree(repo) == before
 
@@ -177,7 +172,7 @@ def test_accept_policy_needs_a_terminal_then_the_gate_passes(tmp_path: Path, mon
     assert "specy_road.review_policy_pin" in out
     assert out.index("The review rules changed after this work started") < out.index("roster composer.roles")
     assert yaml.safe_load(acceptance.read_text())["node_id"] == "M1.1"
-    assert _gate(repo).passed
+    assert gate_fn(repo).passed
 
 
 def _bad_digest(data: dict, key: str) -> dict:
@@ -216,10 +211,10 @@ def test_an_acceptance_counts_only_for_its_node_and_digests(tmp_path: Path, monk
         new = change(yaml.safe_load(acceptance.read_text()))
         new = new if isinstance(new, (str, bytes)) else yaml.safe_dump(new)
         acceptance.write_bytes(new if isinstance(new, bytes) else new.encode("utf-8"))
-    gate = _gate(repo)
+    gate = gate_fn(repo)
     assert not gate.passed and problem in gate.policy_pin
     before = _tree(repo)
-    assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 1
+    assert exit_fn(finish_task.main, ["--repo-root", str(repo)]) == 1
     assert _tree(repo) == before
 
 
@@ -263,6 +258,7 @@ def _plant_acceptance(path: Path, content: str | bytes | None, monkeypatch) -> N
         _write(path, content)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(("kind", "where", "content"), UNREADABLE_CASES,
                          ids=[f"{k} in {w}" for k, w, _ in UNREADABLE_CASES])
 def test_unreadable_input_is_a_problem_and_every_command_refuses_cleanly(tmp_path: Path, monkeypatch, capsys,
@@ -273,12 +269,12 @@ def test_unreadable_input_is_a_problem_and_every_command_refuses_cleanly(tmp_pat
     else:
         _plant_acceptance(reviews_dir(repo, "M1.1") / ACCEPTANCE_NAME, content, monkeypatch)
     _approve(repo)
-    gate = _gate(repo)
+    gate = gate_fn(repo)
     expected = "review policy pin of M1.1 cannot be checked" if where == "committed policy" else _INVALID
     assert not gate.passed and expected in gate.policy_pin
     before = _tree(repo)
-    assert _exit(mark_implementation_reviewed.main, ["--yes", "--repo-root", str(repo)]) == 1
-    assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 1
+    assert exit_fn(mark_implementation_reviewed.main, ["--yes", "--repo-root", str(repo)]) == 1
+    assert exit_fn(finish_task.main, ["--repo-root", str(repo)]) == 1
     if where == "committed policy":
         assert _accept(repo, monkeypatch, tty=True) == 1
         assert not (reviews_dir(repo, "M1.1") / ACCEPTANCE_NAME).exists()
@@ -299,7 +295,7 @@ def test_registration_commit_trailer(tmp_path: Path, case, message, problem) -> 
     repo = _repo(tmp_path, pin=message)
     _on_dev(repo, ORCH, CR1_ROSTER)
     _approve(repo)
-    gate = _gate(repo)
+    gate = gate_fn(repo)
     assert gate.passed is (problem is None), gate.problems()
     if problem:
         assert problem in gate.policy_pin
@@ -352,7 +348,7 @@ def _leaves_at_three_policies(tmp_path: Path) -> tuple[Path, dict[str, str]]:
 def _run_review(monkeypatch, argv: list[str], *, tty: bool, typed: str = "") -> int:
     monkeypatch.setattr("sys.stdin.isatty", lambda: tty)
     monkeypatch.setattr("builtins.input", lambda _prompt="": typed)
-    return _exit(review_cli.main, argv)
+    return exit_fn(review_cli.main, argv)
 
 
 def test_accept_policy_all_open_groups_each_change_once(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -393,5 +389,5 @@ def test_review_delegate_on_a_pinned_claim_is_unaffected(tmp_path: Path) -> None
     repo, spec = delegate_repo(tmp_path)
     _claim(repo)
     set_steps(repo, spec, verdict_step(repo))
-    assert _exit(review_cli.main, ["review", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)]) == 0
-    assert _gate(repo).policy_pin is None
+    assert exit_fn(review_cli.main, ["review", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)]) == 0
+    assert gate_fn(repo).policy_pin is None

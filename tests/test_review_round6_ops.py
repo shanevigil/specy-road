@@ -29,7 +29,7 @@ from unittest import mock
 import pytest
 import yaml
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker
 
@@ -132,6 +132,7 @@ def test_an_embedded_session_placeholder_is_refused_by_the_adapter(tmp_path: Pat
 
 # --- F2 ------------------------------------------------------------------------
 
+@pytest.mark.slow
 def test_message_op_id_binds_the_text_and_survives_a_missing_file(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
@@ -238,6 +239,7 @@ def test_sync_and_delegate_reap_dead_wrappers_on_any_leaf(tmp_path: Path) -> Non
 
 # --- F11 (b) ---------------------------------------------------------------------
 
+@pytest.mark.slow
 def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, capsys) -> None:
     # Pre-release review: the worker would edit the same tree, overwriting this
     # work, and `reconcile` could not tell its edits from it. Only the leaf's

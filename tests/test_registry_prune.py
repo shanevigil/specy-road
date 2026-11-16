@@ -15,10 +15,9 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import registry_prune as rp
+from tests.support.same.git_ba787a68f973 import git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
 
 
 def _reg(*entries: dict) -> dict:
@@ -39,12 +38,12 @@ def _entry(codename: str, node_id: str) -> dict:
 def repo(tmp_path: Path) -> Path:
     root = tmp_path / "r"
     (root / "roadmap").mkdir(parents=True)
-    _git(root, "init", "-q", "-b", "dev")
-    _git(root, "config", "user.email", "t@e.com")
-    _git(root, "config", "user.name", "T")
+    git(root, "init", "-q", "-b", "dev")
+    git(root, "config", "user.email", "t@e.com")
+    git(root, "config", "user.name", "T")
     (root / "README.md").write_text("# r\n", encoding="utf-8")
-    _git(root, "add", "-A")
-    _git(root, "commit", "-qm", "init")
+    git(root, "add", "-A")
+    git(root, "commit", "-qm", "init")
     return root
 
 
@@ -52,7 +51,7 @@ def repo(tmp_path: Path) -> Path:
 
 
 def test_report_is_quiet_when_every_branch_exists(repo: Path, capsys) -> None:
-    _git(repo, "branch", "feature/rm-alpha")
+    git(repo, "branch", "feature/rm-alpha")
 
     code = rp._report(repo, _reg(_entry("alpha", "M1.1")), "origin", "dev")
 
@@ -79,7 +78,7 @@ def test_report_warns_that_another_clone_looks_the_same(repo: Path, capsys) -> N
 
 
 def test_report_counts_only_missing_branches(repo: Path, capsys) -> None:
-    _git(repo, "branch", "feature/rm-alpha")
+    git(repo, "branch", "feature/rm-alpha")
 
     rp._report(repo, _reg(_entry("alpha", "M1.1"), _entry("beta", "M1.2")), "origin", "dev")
 
@@ -101,7 +100,7 @@ def test_unknown_codename_is_refused(repo: Path, capsys) -> None:
 
 def test_a_claim_whose_branch_is_here_is_refused(repo: Path, capsys) -> None:
     """That is not an orphan, and removing the row would orphan the work."""
-    _git(repo, "branch", "feature/rm-alpha")
+    git(repo, "branch", "feature/rm-alpha")
 
     with pytest.raises(SystemExit) as e:
         rp._resolve_removals(repo, _reg(_entry("alpha", "M1.1")), ["alpha"])

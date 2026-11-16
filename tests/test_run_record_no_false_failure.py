@@ -10,9 +10,9 @@ import json
 from pathlib import Path
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
-from tests.review_repo_helpers import commit_file
+from tests.support.review import commit_file
 from tests.support.cli import run_main
-from tests.test_review_record_write import GENERIC   # a generic entry whose channels.cli runs the fake
+from tests.support.extracted.review_record_write import GENERIC
 
 from specy_road.bundled_scripts import role_prompt
 from specy_road.review_delegate import delegate, load_run

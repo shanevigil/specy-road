@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import os
 import shutil
 import subprocess
@@ -13,6 +15,7 @@ from specy_road import __version__
 from specy_road.git_subprocess import git_root, head_sha, working_tree_clean
 from specy_road.runtime_paths import specy_road_package_dir
 from specy_road.version_skew import running_toolkit_version
+pytestmark = pytest.mark.repo
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -164,7 +167,7 @@ def test_dirty_checkout_marks_dirty(tmp_path: Path) -> None:
 
 
 def test_worker_record_stores_toolkit_version(tmp_path: Path) -> None:
-    from tests.review_repo_helpers import make_review_repo
+    from tests.support.review import make_review_repo
 
     from specy_road.orchestration.workers import worker_state as ws
 

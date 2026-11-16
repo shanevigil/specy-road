@@ -17,8 +17,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_m310_reconcile_status import nested_project
+from tests.support.review import make_review_repo, git
+from tests.support.extracted.worker_m310_reconcile_status import nested_project
 
 from specy_road.orchestration.workers import worker_adapter_codex as codex
 from specy_road.orchestration.workers import worker_adapters as wa
@@ -97,6 +97,7 @@ def _findings(repo: Path, wid: str) -> set[str]:
 # --- A1: Claude Code --------------------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 def test_claude_launch_and_resume_pass_mode_tools_and_no_prompts_and_a_denial_flags_the_worker(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = make_review_repo(tmp_path)
@@ -127,6 +128,7 @@ def test_claude_launch_and_resume_pass_mode_tools_and_no_prompts_and_a_denial_fl
     assert first.detail["findings"] and clean.detail == {"findings": []} and clean.summary == "post-run check: clean"
 
 
+@pytest.mark.slow
 def test_a_limit_reported_as_success_pauses_the_worker_and_resume_waits_for_the_reset(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = make_review_repo(tmp_path)
@@ -148,6 +150,7 @@ def test_a_limit_reported_as_success_pauses_the_worker_and_resume_waits_for_the_
     assert ws.load_record(repo, rec.worker_id).state == tc.PAUSED_BY_LIMIT   # the refusal changed nothing
 
 
+@pytest.mark.slow
 def test_a_limit_wins_over_a_fresh_ready_written_in_the_same_turn(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Sol R1: exit 0, a valid READY for this node at HEAD, and a timed limit: paused, not completed."""
     repo = make_review_repo(tmp_path)
@@ -412,6 +415,7 @@ def test_nested_close_turn_flags_a_commit_outside_git_root_and_project_zones(tmp
     assert outside and outside[0]["paths"] == ["outside/x.py"]
 
 
+@pytest.mark.slow
 def test_post_run_check_reports_branch_stash_porcelain_and_commits_outside_the_zones(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = make_review_repo(tmp_path)
@@ -433,6 +437,7 @@ def test_post_run_check_reports_branch_stash_porcelain_and_commits_outside_the_z
     assert git(repo, "branch", "--show-current") == "elsewhere"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("move", [
     "local move", "remote-tracking move", "absent to present", "present to absent", "unchanged",
 ])
@@ -470,6 +475,7 @@ def test_an_integration_ref_move_is_a_finding_and_the_workers_own_branch_is_not(
     assert flagged
 
 
+@pytest.mark.slow
 def test_a_failed_read_of_an_integration_ref_is_a_check_error(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A broken integration ref is a check error, not an absence and not a clean turn."""
@@ -503,6 +509,7 @@ def test_limit_text_is_read_from_the_turn_never_the_exit_code() -> None:
     assert [p.type for p in claude] == ["turn_completed", "usage_limited"]
 
 
+@pytest.mark.slow
 def test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_worker_flagged(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Sol R2: the second turn edits docs/x.md (outside the src zone), dirty since the first: still a finding."""
@@ -519,6 +526,7 @@ def test_a_further_edit_to_an_already_dirty_file_outside_the_zones_keeps_the_wor
     assert tc.FLAG_POST_RUN in ws.load_record(repo, rec.worker_id).flags
 
 
+@pytest.mark.slow
 def test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_terminated(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Sol (second review): the terminated return in _finish ran no check. The harness here marks its own record
@@ -539,6 +547,7 @@ def test_a_turn_whose_record_was_terminated_still_gets_the_check_and_stays_termi
     assert not _events(repo, rec.worker_id, "completion")   # the terminated path writes no exit record, as before
 
 
+@pytest.mark.slow
 def test_pre_turn_work_outside_the_zones_that_the_turn_restores_or_deletes_is_a_finding(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Sol (third review): a path dirty at the turn's start that is gone from porcelain at its end (a tracked edit

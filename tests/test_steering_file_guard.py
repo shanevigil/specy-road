@@ -13,12 +13,12 @@ import pytest
 import yaml
 
 from tests.helpers import REPO
-from tests.review_repo_helpers import (
+from tests.support.review import (
     commit_file,
-    git,
     git_root_relative,
     make_layout_finish_repo,
     prepare_layout_merge_mode_remote,
+    git,
 )
 
 from specy_road import steering_gate
@@ -62,6 +62,7 @@ def _set_zones(git_top: Path, project: Path, zones: list[str]) -> None:
     commit_file(git_top, rel, yaml.safe_dump(doc), "zones")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("shape", ["embedded", "nested"])
 @pytest.mark.parametrize(("cls", "kind"), CASES)
 def test_finish_lands_a_steering_file_only_under_an_exact_zone(
@@ -87,6 +88,7 @@ def test_finish_lands_a_steering_file_only_under_an_exact_zone(
     assert reg.read_text() == reg_before and not git(git_top, "status", "--porcelain", "--untracked-files=no")
 
 
+@pytest.mark.slow
 def test_a_registry_only_change_lands(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
                                       capsys: pytest.CaptureFixture[str]) -> None:
     git_top, project = _leaf(tmp_path, monkeypatch, "nested")

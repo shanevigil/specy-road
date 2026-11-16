@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.integrity_repo_helpers import commit, git, make_repo, merge_base, merge_dev, on_dev
+from tests.support.same.git_84c8ad8f55f9 import git
+from tests.support.integrity import commit, make_repo, merge_base, merge_dev, on_dev
 from specy_road.integrity import compare_integrity
 
 

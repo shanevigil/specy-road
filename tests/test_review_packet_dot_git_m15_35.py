@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
+from tests.support.review import NODE, commit_file, make_review_repo, git
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts.review_packet import UNCOMMITTED_REF_NOTE

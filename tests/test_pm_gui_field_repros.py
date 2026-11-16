@@ -27,10 +27,7 @@ import json
 
 import pytest
 
-from tests.test_pm_gui_concurrency_autoff import (  # noqa: F401 — fixture import
-    _siblings_of,
-    autoff_repo,
-)
+from tests.support.extracted.pm_gui_concurrency_autoff import siblings_of, autoff_repo
 
 
 def test_fingerprint_emitted_as_string_to_dodge_js_number_precision(
@@ -58,7 +55,7 @@ def test_fingerprint_emitted_as_string_to_dodge_js_number_precision(
     assert isinstance(fp_endpoint["fingerprint"], str)
     assert fp_endpoint["fingerprint"] == rm["fingerprint"]
 
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     r = client.post(
         "/api/outline/reorder",
@@ -98,7 +95,7 @@ def test_mutation_does_not_412_on_rollup_status_in_validate(
 
     client = TestClient(create_app())
     fp = client.get("/api/roadmap").json()["fingerprint"]
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     r = client.post(
         "/api/outline/reorder",

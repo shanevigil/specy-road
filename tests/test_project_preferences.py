@@ -25,9 +25,10 @@ from specy_road.workflow_prefs import (
     summary_rule_notice,
     warn_summary_rule,
 )
-from tests.decisions_repo_helpers import add_args, decisions_repo, run_decisions
-from tests.review_repo_helpers import git
+from tests.support.decisions import add_args, decisions_repo, run_decisions
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.profiles import make_profile_repo
+from tests.support.same.prefer_6f3256850a24 import prefer
 
 _ACCESSORS = {"pr_body_footer": pr_body_footer, "implementation_summary": implementation_summary_rule,
               "land": lambda root, _node_id: root_land(root)}
@@ -36,17 +37,15 @@ GW = "version: 1\nintegration_branch: master\nremote: origin\n"
 
 # --- A1: decisions add --local ---------------------------------------------------------------
 
-def _prefer(repo: Path, *extra: str) -> list[str]:
-    return ["decisions", "add", "--repo-root", str(repo), "--kind", "preference", *extra]
 
 
 def test_local_preference_is_merged_over_the_tracked_ledger(tmp_path: Path, capsys) -> None:
     repo = decisions_repo(tmp_path)
     shared, local = repo / "roadmap" / "decisions.yaml", repo / "roadmap" / "decisions.local.yaml"
-    assert run_decisions(_prefer(repo, "--summary", "Team rule: docs go to sol", "--id", "Pteam")) == 0
-    assert run_decisions(_prefer(repo, "--summary", "Shared rule", "--id", "Pboth")) == 0
-    assert run_decisions(_prefer(repo, "--local", "--summary", "My rule wins here", "--id", "Pboth")) == 0
-    assert run_decisions(_prefer(repo, "--local", "--summary", "Only mine")) == 0   # next id free in both ledgers
+    assert run_decisions(prefer(repo, "--summary", "Team rule: docs go to sol", "--id", "Pteam")) == 0
+    assert run_decisions(prefer(repo, "--summary", "Shared rule", "--id", "Pboth")) == 0
+    assert run_decisions(prefer(repo, "--local", "--summary", "My rule wins here", "--id", "Pboth")) == 0
+    assert run_decisions(prefer(repo, "--local", "--summary", "Only mine")) == 0   # next id free in both ledgers
     assert [e["id"] for e in read_decisions(shared)["entries"]] == ["Pteam", "Pboth"]
     assert [e["id"] for e in read_decisions(local)["entries"]] == ["Pboth", "P1"]
     capsys.readouterr()

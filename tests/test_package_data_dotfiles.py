@@ -14,17 +14,17 @@ wheel at release time; this catches it at PR time.
 
 from __future__ import annotations
 
+import pytest
+
 import tomllib
 from pathlib import Path
+from tests.support.same.declared_package_data_d6ce072f444e import declared_package_data
+pytestmark = pytest.mark.repo
 
 REPO = Path(__file__).resolve().parent.parent
 TEMPLATES = REPO / "specy_road" / "templates"
 
 
-def _declared_package_data() -> list[str]:
-    with (REPO / "pyproject.toml").open("rb") as f:
-        cfg = tomllib.load(f)
-    return cfg["tool"]["setuptools"]["package-data"]["specy_road"]
 
 
 def _template_dotfiles() -> list[str]:
@@ -36,7 +36,7 @@ def _template_dotfiles() -> list[str]:
 
 
 def test_template_dotfiles_are_explicitly_declared() -> None:
-    declared = set(_declared_package_data())
+    declared = set(declared_package_data())
     undeclared = [rel for rel in _template_dotfiles() if rel not in declared]
     assert not undeclared, (
         "these template dotfiles are not listed in [tool.setuptools.package-data] "

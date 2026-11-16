@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
-from tests.review_repo_helpers import git
-from tests.test_delta_review import FINDING, fix_round
+from tests.support.same.git_84c8ad8f55f9 import git
+from tests.support.extracted.delta_review import FINDING, fix_round
 from tests.support.cli import run_main
 
 from specy_road.bundled_scripts import review_packet, role_prompt

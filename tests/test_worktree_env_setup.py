@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.pickup_repo_helpers import make_pickup_project, run_pickup, run_specy_road
-from tests.review_repo_helpers import git
+from tests.support.pickup import make_pickup_project, run_pickup, run_specy_road
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker
 

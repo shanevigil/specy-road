@@ -25,7 +25,7 @@ from specy_road.history_index import (
     node_timeline,
     resolve_node_key,
 )
-from tests.test_history_walk import (
+from tests.support.extracted.history_walk import (
     M01_KEY,
     M03_KEY,
     M2_KEY,

@@ -7,8 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
-from tests.rework_rca_helpers import ROSTER, file_after, rca_record, run_review_cli, write_rca
+from tests.support.review import commit_file, make_review_repo, review_text, git
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
+from tests.rework_rca_helpers import ROSTER, file_after, rca_record, write_rca
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo
 

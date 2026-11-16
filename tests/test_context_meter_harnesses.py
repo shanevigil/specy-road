@@ -14,6 +14,7 @@ import pytest
 
 from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agents_md_block import AGENTS_MD, injected_context, print_injected_context
+from tests.support.same.rels_4014f350b2c5 import rels
 
 ALWAYS = "---\ndescription: house rule\nalwaysApply: true\n---\n\n- Always do this.\n"
 SCOPED = "---\ndescription: only for tests\nglobs: tests/**\nalwaysApply: false\n---\n\n- Scoped.\n"
@@ -35,8 +36,6 @@ def _write(root: Path, rel: str, text: str) -> None:
     (root / rel).write_text(text, encoding="utf-8")
 
 
-def _rels(root: Path, harness: str) -> list[str]:
-    return [f.rel for f in injected_context(root)[harness]]
 
 
 def test_cursor_reads_agents_claude_and_only_always_applied_rules(repo: Path) -> None:
@@ -49,7 +48,7 @@ def test_cursor_reads_agents_claude_and_only_always_applied_rules(repo: Path) ->
     _write(repo, ".cursor/rules/060-yaml-true.mdc", "---\nalwaysApply: True\n---\nRule body\n")
     _write(repo, ".cursor/rules/070-quoted.mdc", "---\nalwaysApply: \"true\"\n---\nRule body\n")
     _write(repo, ".cursor/rules/080-unparsable.mdc", "---\nalwaysApply: true\ndescription: [unclosed\n---\nRule body\n")
-    assert _rels(repo, "Cursor") == [AGENTS_MD, AGENT_GUIDE, ".cursor/rules/010-house.mdc",
+    assert rels(repo, "Cursor") == [AGENTS_MD, AGENT_GUIDE, ".cursor/rules/010-house.mdc",
                                      ".cursor/rules/050-inline-comment.mdc", ".cursor/rules/060-yaml-true.mdc",
                                      ".cursor/rules/nested/020-house.md"]
 
@@ -57,7 +56,7 @@ def test_cursor_reads_agents_claude_and_only_always_applied_rules(repo: Path) ->
 def test_cursor_walks_from_the_git_root_to_a_nested_project(repo: Path) -> None:
     _write(repo, "sr/AGENTS.md", "# Ours\n")
     _write(repo, "sr/.cursor/rules/house.mdc", ALWAYS)
-    assert _rels(repo / "sr", "Cursor") == [AGENTS_MD, "sr/AGENTS.md", "sr/.cursor/rules/house.mdc"]
+    assert rels(repo / "sr", "Cursor") == [AGENTS_MD, "sr/AGENTS.md", "sr/.cursor/rules/house.mdc"]
 
 
 def test_copilot_reads_agents_dot_claude_and_its_repo_instructions(repo: Path) -> None:
@@ -66,8 +65,8 @@ def test_copilot_reads_agents_dot_claude_and_its_repo_instructions(repo: Path) -
     _write(repo, ".github/copilot-instructions.md", "# Copilot\n- rule\n")
     _write(repo, "sr/AGENTS.md", "# Ours\n")
     _write(repo, "mid/AGENTS.md", "# not on the path\n")
-    assert _rels(repo, "Copilot") == [AGENTS_MD, ".claude/CLAUDE.md", ".github/copilot-instructions.md"]
-    assert _rels(repo / "sr", "Copilot") == [AGENTS_MD, ".claude/CLAUDE.md", "sr/AGENTS.md",
+    assert rels(repo, "Copilot") == [AGENTS_MD, ".claude/CLAUDE.md", ".github/copilot-instructions.md"]
+    assert rels(repo / "sr", "Copilot") == [AGENTS_MD, ".claude/CLAUDE.md", "sr/AGENTS.md",
                                              ".github/copilot-instructions.md"]
 
 
@@ -95,8 +94,8 @@ def test_claude_code_counts_what_claude_md_imports_and_notes_the_rest(repo: Path
     _write(repo, "sr/.specyrd/AGENTS.local.md", "# mine\n")
     _write(repo, "sr/fenced.md", "# not imported\n")
 
-    assert _rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, "sr/.specyrd/AGENTS.md", "sr/.specyrd/AGENTS.team.md"]
-    assert _rels(repo / "sr", "Codex") == [AGENTS_MD]
+    assert rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, "sr/.specyrd/AGENTS.md", "sr/.specyrd/AGENTS.team.md"]
+    assert rels(repo / "sr", "Codex") == [AGENTS_MD]
     print_injected_context(repo / "sr")
     out = capsys.readouterr().out
     assert ("context: note — sr/.specyrd/AGENTS.local.md 1 lines, 7 bytes, personal and gitignored; "
@@ -104,7 +103,7 @@ def test_claude_code_counts_what_claude_md_imports_and_notes_the_rest(repo: Path
     assert (f"context: note — {(home / 'notes.md').resolve().as_posix()} 1 lines, 11 bytes, imported by a "
             "Claude Code file; machine-local") in out
     (repo / "sr/.specyrd/AGENTS.md").write_bytes(b"\xff@AGENTS.team.md\n")   # unreadable: counted, imports nothing
-    assert _rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, "sr/.specyrd/AGENTS.md"]
+    assert rels(repo / "sr", "Claude Code") == [AGENT_GUIDE, "sr/.specyrd/AGENTS.md"]
 
 
 @pytest.mark.parametrize("example", [
@@ -119,4 +118,4 @@ def test_an_import_inside_a_fenced_example_is_not_counted(repo: Path, example: s
     _write(repo, AGENT_GUIDE, f"# Claude\n{example}@after.md\n")
     _write(repo, "example.md", "# example\n")
     _write(repo, "after.md", "# after\n")
-    assert _rels(repo, "Claude Code") == [AGENT_GUIDE, "after.md"]
+    assert rels(repo, "Claude Code") == [AGENT_GUIDE, "after.md"]

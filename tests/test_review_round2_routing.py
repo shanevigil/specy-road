@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.profiles import OPUS
 
 from specy_road.bundled_scripts import brainstorm_cli, models_cli, refresh_stubs as rs

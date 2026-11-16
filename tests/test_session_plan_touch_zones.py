@@ -17,7 +17,7 @@ from specy_road.orchestration.grind.session_plan_render import (
     session_plan_to_dict,
     zone_overlaps,
 )
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.plan import plan_repo
 
 

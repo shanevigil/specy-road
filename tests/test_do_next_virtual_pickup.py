@@ -12,6 +12,7 @@ import pytest
 from specy_road.bundled_scripts import do_next_available as dna
 from specy_road.bundled_scripts import do_next_task as dnt
 from specy_road.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from tests.support.same.run_git_e7b46ac47b3e import run_git
 
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
 _NK_A = "22222222-2222-4222-8222-222222222222"
@@ -41,8 +42,6 @@ _CHUNK_VR2_MAIN = {
 }
 
 
-def _run_git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
 def test_status_overrides_unblock_dependent_leaf() -> None:
@@ -218,9 +217,9 @@ def test_interactive_deps_blocked_entries_lists_integration_blocked() -> None:
 def test_load_roadmap_nodes_at_ref_reads_feature_tip(tmp_path: Path) -> None:
     repo = tmp_path / "r"
     repo.mkdir()
-    _run_git(repo, "init")
-    _run_git(repo, "config", "user.email", "t@e.com")
-    _run_git(repo, "config", "user.name", "T")
+    run_git(repo, "init")
+    run_git(repo, "config", "user.email", "t@e.com")
+    run_git(repo, "config", "user.name", "T")
     roadmap = repo / "roadmap"
     roadmap.mkdir(parents=True)
     (roadmap / "manifest.json").write_text(
@@ -245,10 +244,10 @@ def test_load_roadmap_nodes_at_ref_reads_feature_tip(tmp_path: Path) -> None:
         json.dumps(chunk_main, indent=2),
         encoding="utf-8",
     )
-    _run_git(repo, "add", "roadmap")
-    _run_git(repo, "commit", "-m", "main")
-    _run_git(repo, "branch", "-M", "main")
-    _run_git(repo, "checkout", "-b", "feature/rm-a")
+    run_git(repo, "add", "roadmap")
+    run_git(repo, "commit", "-m", "main")
+    run_git(repo, "branch", "-M", "main")
+    run_git(repo, "checkout", "-b", "feature/rm-a")
     chunk_feat = {
         "nodes": [
             {
@@ -266,8 +265,8 @@ def test_load_roadmap_nodes_at_ref_reads_feature_tip(tmp_path: Path) -> None:
         json.dumps(chunk_feat, indent=2),
         encoding="utf-8",
     )
-    _run_git(repo, "add", "roadmap/phases/t.json")
-    _run_git(repo, "commit", "-m", "finish")
+    run_git(repo, "add", "roadmap/phases/t.json")
+    run_git(repo, "commit", "-m", "finish")
     tip = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=repo,
@@ -275,8 +274,8 @@ def test_load_roadmap_nodes_at_ref_reads_feature_tip(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
     ).stdout.strip()
-    _run_git(repo, "checkout", "main")
-    _run_git(repo, "update-ref", "refs/remotes/origin/feature/rm-a", tip)
+    run_git(repo, "checkout", "main")
+    run_git(repo, "update-ref", "refs/remotes/origin/feature/rm-a", tip)
 
     main_nodes = load_roadmap_nodes_at_ref(repo, "main")
     assert main_nodes is not None
@@ -292,9 +291,9 @@ def _repo_registry_virtual_complete_pickup(tmp_path: Path) -> tuple[Path, dict]:
 
     repo = tmp_path / "vr2"
     repo.mkdir()
-    _run_git(repo, "init")
-    _run_git(repo, "config", "user.email", "t@e.com")
-    _run_git(repo, "config", "user.name", "T")
+    run_git(repo, "init")
+    run_git(repo, "config", "user.email", "t@e.com")
+    run_git(repo, "config", "user.name", "T")
     roadmap = repo / "roadmap"
     roadmap.mkdir(parents=True)
     (roadmap / "manifest.json").write_text(
@@ -324,19 +323,19 @@ def _repo_registry_virtual_complete_pickup(tmp_path: Path) -> tuple[Path, dict]:
         ),
         encoding="utf-8",
     )
-    _run_git(repo, "add", "roadmap")
-    _run_git(repo, "commit", "-m", "dev")
-    _run_git(repo, "branch", "-M", "dev")
+    run_git(repo, "add", "roadmap")
+    run_git(repo, "commit", "-m", "dev")
+    run_git(repo, "branch", "-M", "dev")
 
-    _run_git(repo, "checkout", "-b", "feature/rm-a")
+    run_git(repo, "checkout", "-b", "feature/rm-a")
     chunk_feat = json.loads(json.dumps(chunk_main))
     chunk_feat["nodes"][0]["status"] = "Complete"
     (roadmap / "phases" / "t.json").write_text(
         json.dumps(chunk_feat, indent=2),
         encoding="utf-8",
     )
-    _run_git(repo, "add", "roadmap/phases/t.json")
-    _run_git(repo, "commit", "-m", "done")
+    run_git(repo, "add", "roadmap/phases/t.json")
+    run_git(repo, "commit", "-m", "done")
     tip = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=repo,
@@ -344,8 +343,8 @@ def _repo_registry_virtual_complete_pickup(tmp_path: Path) -> tuple[Path, dict]:
         capture_output=True,
         text=True,
     ).stdout.strip()
-    _run_git(repo, "checkout", "dev")
-    _run_git(repo, "update-ref", "refs/remotes/origin/feature/rm-a", tip)
+    run_git(repo, "checkout", "dev")
+    run_git(repo, "update-ref", "refs/remotes/origin/feature/rm-a", tip)
 
     with (repo / "roadmap" / "registry.yaml").open(encoding="utf-8") as f:
         reg = yaml.safe_load(f)

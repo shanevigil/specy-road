@@ -11,13 +11,12 @@ import pytest
 from specy_road.bundled_scripts import do_next_task as dnt
 
 
-def _git_init(root: Path) -> None:
-    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 from specy_road.registration_pickup_commit import (
     REGISTRATION_COMMIT_CI_SKIP_SUFFIX,
     registration_commit_message,
 )
 from specy_road.review_policy_pin import policy_digest
+from tests.support.same.git_init_39224a6ae177 import git_init
 
 
 def _git_log(root: Path) -> str:
@@ -41,7 +40,7 @@ def _pickup_test_node() -> dict:
 
 def test_pickup_git_order_after_sync(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     """brief → register commit on integration → checkout -b feature (push mocked out)."""
-    _git_init(tmp_path)
+    git_init(tmp_path)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
@@ -94,7 +93,7 @@ def test_pickup_git_order_after_sync(monkeypatch: pytest.MonkeyPatch, tmp_path) 
 
 def test_pickup_git_order_pushes_by_default(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     """Default: add → commit (with CI skip suffix) → push integration → checkout -b feature."""
-    _git_init(tmp_path)
+    git_init(tmp_path)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
@@ -142,7 +141,7 @@ def test_pickup_registers_leaf_claim_only(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,
 ) -> None:
-    _git_init(tmp_path)
+    git_init(tmp_path)
     calls: list[list[str]] = []
 
     def fake_git(_root, *args: str) -> None:
@@ -201,7 +200,7 @@ def test_pickup_rejects_non_leaf_when_available_returns_parent(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Non-leaf from _available triggers assert_leaf_target before git."""
-    _git_init(tmp_path)
+    git_init(tmp_path)
 
     def fake_git(*_args: str) -> None:  # pragma: no cover
         pytest.fail(
@@ -281,7 +280,7 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
     """The subject is unchanged; a committed policy adds the pin trailer (M21.30), and one that does not parse
     refuses the claim before any registry write. With a committed policy git runs for real, and the claim is read
     back from git."""
-    _git_init(tmp_path)
+    git_init(tmp_path)
     if orchestration is not None:
         (tmp_path / "roadmap").mkdir(parents=True)
         (tmp_path / "roadmap" / "orchestration.yaml").write_text(orchestration, encoding="utf-8")

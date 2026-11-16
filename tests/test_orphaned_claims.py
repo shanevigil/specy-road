@@ -19,7 +19,7 @@ from specy_road.review_files import reviews_dir
 from specy_road.review_target import resolve_target
 from specy_road.orchestration.guard.session_presence import start_session
 from specy_road.orchestration.workers.worker_adapters import Unsupported
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.harness import make_worker_repo
 
 

@@ -17,7 +17,7 @@ import pytest
 from specy_road.bundled_scripts import finish_task
 from specy_road.milestone_session import milestone_session_path, write_milestone_session
 from tests.helpers import DOGFOOD, REPO
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
+from tests.support.review import NODE, commit_file, make_review_repo, git
 
 BR = "feature/rm-thing"
 
@@ -141,6 +141,7 @@ def _reject_rollup_push(bare: Path) -> Path:
     return hook
 
 
+@pytest.mark.slow
 def test_rollup_finish_deletes_the_leaf_once_it_is_in_the_rollup(
     tmp_path: Path, monkeypatch, capsys,
 ) -> None:
@@ -159,6 +160,7 @@ def test_rollup_finish_deletes_the_leaf_once_it_is_in_the_rollup(
     assert git(repo, "branch", "--show-current") == "dev"
 
 
+@pytest.mark.slow
 def test_a_retried_rollup_landing_deletes_the_leaf(tmp_path: Path, monkeypatch, capsys) -> None:
     """Bookkeeping is committed and the rollup merge failed; the re-run deletes."""
     repo, bare = _rollup_repo(tmp_path, monkeypatch)
@@ -178,6 +180,7 @@ def test_a_retried_rollup_landing_deletes_the_leaf(tmp_path: Path, monkeypatch, 
     assert _has_branch(repo, "refs/heads/feature/rm-roll")
 
 
+@pytest.mark.slow
 def test_a_retry_refuses_commits_added_after_the_finish_commit(
     tmp_path: Path, monkeypatch, capsys,
 ) -> None:
@@ -198,6 +201,7 @@ def test_a_retry_refuses_commits_added_after_the_finish_commit(
         git(repo, "merge-base", "--is-ancestor", late, "feature/rm-roll")
 
 
+@pytest.mark.slow
 def test_a_repeat_finish_with_no_milestone_rollup_does_not_land_the_rollup(
     tmp_path: Path, monkeypatch, capsys,
 ) -> None:
@@ -218,6 +222,7 @@ def test_a_repeat_finish_with_no_milestone_rollup_does_not_land_the_rollup(
     assert git(bare, "rev-parse", "feature/rm-roll") == remote_rollup
 
 
+@pytest.mark.slow
 def test_a_nested_rollup_finish_stays_on_the_integration_branch(
     tmp_path: Path, monkeypatch, capsys,
 ) -> None:

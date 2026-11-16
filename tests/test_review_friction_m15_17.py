@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp
@@ -17,16 +17,13 @@ from specy_road.integrity import compare_integrity
 from specy_road.review_delegate import load_run
 from specy_road.review_files import PACKET_NAME, review_path, reviews_dir
 from specy_road.review_record_rules import approve_defect_problem, clause_problem
+from tests.support.same.run_651387813ee4 import run
 
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def _delegate(repo: Path) -> int:
-    return _run("review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--retries", "0",
+    return run("review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--retries", "0",
                 "--repo-root", str(repo))
 
 
@@ -133,7 +130,7 @@ def test_suppression_line_numbers_are_those_at_the_commit(tmp_path: Path) -> Non
 def _record(repo: Path, notes: str) -> int:
     p = repo.parent / "notes-opus.md"
     p.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus").replace("---\nnotes\n", "---\n" + notes))
-    return _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(p),
+    return run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(p),
                 "--repo-root", str(repo))
 
 
@@ -193,30 +190,31 @@ def test_the_reported_shape_is_refused_with_the_word_and_both_parts() -> None:
 # A5 — a failed run superseded by a record filed later at the same commit
 
 
+@pytest.mark.slow
 def test_a_failed_run_is_marked_superseded_by_a_later_record(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, {"raw": "not a verdict"})
     assert _delegate(repo) == 1
     assert load_run(repo, "M1.1", "opus")["state"] == "incomplete"
     capsys.readouterr()
-    _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
     before = json.loads(capsys.readouterr().out)["nodes"][0]
     assert any("delegated review of this commit is incomplete" in p for p in before["problems"])
     notes = repo.parent / "notes-opus.md"
     notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus"))
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(notes),
+    assert run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(notes),
                 "--repo-root", str(repo)) == 0
     capsys.readouterr()
-    assert _run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
+    assert run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "RUN-opus.json: incomplete run by opus" in out
     assert "— superseded: REVIEW-opus.md was filed later at this commit" in out
-    _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
     st = json.loads(capsys.readouterr().out)["nodes"][0]
     assert st["review_runs"][0]["superseded"] == "REVIEW-opus.md"
     assert not any("delegated review of this commit is incomplete" in p for p in st["problems"])
     assert "reviewer failure" not in st["policy"]
-    _run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    run("handoff", "status", "M1.1", "--repo-root", str(repo))
     assert "— superseded: REVIEW-opus.md was filed later at this commit" in capsys.readouterr().out
 
 
@@ -229,7 +227,7 @@ def test_a_record_filed_before_the_failed_run_does_not_supersede_it(tmp_path: Pa
     set_steps(repo, spec, {"raw": "not a verdict"})
     _delegate(repo)
     capsys.readouterr()
-    _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
     st = json.loads(capsys.readouterr().out)["nodes"][0]
     assert st["review_runs"][0]["superseded"] is None
 

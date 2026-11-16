@@ -69,6 +69,7 @@ def test_full_and_minimal_sections_render_and_refresh_stubs_honours_the_setting(
     assert "(specy-road section 3 lines," in codex
 
 
+@pytest.mark.slow
 def test_upgrade_names_project_headings_the_new_rules_file_repeats(tmp_path: Path, capsys) -> None:
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     assert run_init_project(tmp_path) == 0

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo, shipped_anthropic_opus_cli_yaml_line
+from tests.support.review import make_review_repo, shipped_anthropic_opus_cli_yaml_line
 from tests.support.cli import run_main
 from tests.support.profiles import commit_profile, make_profile_repo
 from tests.support.cli import run_worker_cli
@@ -21,6 +21,13 @@ from specy_road.orchestration.workers import worker_reconcile as wrc
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import role_prompt
+from tests.support.extracted.worker_adapters import (
+    CLAUDE_RESULT,
+    CODEX_TURN,
+    CURSOR_RESULT,
+    FULL_INIT,
+    RECORDED,
+)
 
 FAKE = '''
 import json, sys
@@ -135,8 +142,6 @@ def test_parsers_map_each_harness_output_to_events() -> None:
     assert plain.summary == "plain line" and plain.detail == {"message": "plain line"}
 
 
-RECORDED = json.loads((Path(__file__).parent / "fixtures/worker_usage/turn_end_lines.json").read_text())   # real, sanitized (M10.2)
-CLAUDE_RESULT, CODEX_TURN, CURSOR_RESULT = (RECORDED[h]["lines"][i] for h, i in (("claude-code", 1), ("codex", -1), ("cursor", -1)))
 
 
 def test_each_adapter_reports_turn_usage_in_one_shape() -> None:
@@ -174,7 +179,7 @@ def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
 
 def test_run_marks_completed_when_ready_exists_and_failed_on_nonzero_exit(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    from tests.review_repo_helpers import git
+    from tests.support.same.git_84c8ad8f55f9 import git
     d = ws.reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
     ready = {"path": str(d / "READY-sol.md"),      # written by the harness during the turn (review round 6, B3)
@@ -237,9 +242,6 @@ def test_custom_cli_resume_needs_the_session_placeholder(tmp_path: Path) -> None
 
 # --- access.launch_mode (M10.4) -------------------------------------------------
 
-FULL_INIT = {"type": "system", "subtype": "init", "session_id": "s1", "model": "opus", "claude_code_version": "2.1.300",
-             "tools": ["Bash", "Read", "Edit", "Write", "Skill"], "mcp_servers": [{"name": "docs", "status": "connected"}],
-             "plugins": [{"name": "lint", "path": "/p"}]}
 BARE_INIT = {"type": "system", "subtype": "init", "session_id": "s1", "tools": ["Bash", "Read", "Edit"],
              "mcp_servers": [], "plugins": []}
 
@@ -397,6 +399,7 @@ def test_prompt_cli_channel_substitutes_the_roles_effort_or_notes_its_absence(tm
     assert "--effort" not in out.splitlines()[-1] and err.count("takes no effort") == 1 and "effort low" in err
 
 
+@pytest.mark.slow
 def test_delegate_passes_the_executor_effort_to_default_and_custom_commands(tmp_path: Path, capsys,
                                                                             monkeypatch) -> None:
     launches = []

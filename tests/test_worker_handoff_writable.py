@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git
-from tests.test_worker_m310_reconcile_status import nested_project
+from tests.support.same.git_84c8ad8f55f9 import git
+from tests.support.extracted.worker_m310_reconcile_status import nested_project
 
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.review_files import reviews_dir

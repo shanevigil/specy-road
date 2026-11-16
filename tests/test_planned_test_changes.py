@@ -11,8 +11,8 @@ import pytest
 import yaml
 
 from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
-from tests.milestone_repo_helpers import land_leaf, make_milestone_repo, merge_leaf, set_status
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
+from tests.support.milestone import land_leaf, make_milestone_repo, merge_leaf, set_status
+from tests.support.review import commit_file, make_review_repo, review_text, git
 from tests.support.profiles import make_profile_repo, ROSTER
 
 from specy_road.bundled_scripts import review_cli
@@ -22,14 +22,12 @@ from specy_road.bundled_scripts.roadmap_edit_list_fields import planned_test_cha
 from specy_road.roadmap_load import load_roadmap
 from specy_road.integrity_removals import REQUIRED_HEADING, unplanned_removals
 from specy_road.registry_yaml import read_registry, registry_path
+from tests.support.same.crud_87ad31dc4313 import crud
 
 OLD = "removed-test: tests/test_leaf.py::test_old"
 HEADING = f"## {REQUIRED_HEADING}"
 
 
-def _crud(repo: Path, *argv: str) -> None:
-    ns = build_parser().parse_args(["--repo-root", str(repo), *argv])
-    ns.func(ns)
 
 
 def _planned(repo: Path) -> list[str] | None:
@@ -44,25 +42,25 @@ def _validate(repo: Path) -> subprocess.CompletedProcess:
 def test_edit_node_sets_adds_and_removes_planned_test_changes_on_a_claimed_leaf(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     assert read_registry(registry_path(repo))["entries"][0]["node_id"] == "M1.1"   # claimed
-    _crud(repo, "edit-node", "M1.1", "--set", f"planned_test_changes={OLD}",
+    crud(repo, "edit-node", "M1.1", "--set", f"planned_test_changes={OLD}",
           "--set", "planned_test_changes=new-skip: tests/test_leaf.py::test_slow")
     assert _planned(repo) == [OLD, "new-skip: tests/test_leaf.py::test_slow"]
-    _crud(repo, "edit-node", "M1.1", "--add", "planned_test_changes=preserve: tests/test_leaf.py::test_keep",
+    crud(repo, "edit-node", "M1.1", "--add", "planned_test_changes=preserve: tests/test_leaf.py::test_keep",
           "--remove", "planned_test_changes=new-skip: tests/test_leaf.py::test_slow")
     assert _planned(repo) == [OLD, "preserve: tests/test_leaf.py::test_keep"]
     v = _validate(repo)
     assert v.returncode == 0, v.stderr + v.stdout
-    _crud(repo, "edit-node", "M1.1", "--set", "planned_test_changes=")
+    crud(repo, "edit-node", "M1.1", "--set", "planned_test_changes=")
     assert _planned(repo) is None
 
 
 def test_add_node_takes_planned_test_change(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    _crud(repo, "add-node", "--id", "M1.2", "--type", "task", "--title", "Other", "--parent-id", "null",
+    crud(repo, "add-node", "--id", "M1.2", "--type", "task", "--title", "Other", "--parent-id", "null",
           "--planned-test-change", OLD, "--planned-test-change", " new-skip: tests/test_leaf.py::test_slow ")
     node = next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.2")
     assert node["planned_test_changes"] == [OLD, "new-skip: tests/test_leaf.py::test_slow"]
-    _crud(repo, "add-node", "--id", "M1.3", "--type", "task", "--title", "Third", "--parent-id", "null")
+    crud(repo, "add-node", "--id", "M1.3", "--type", "task", "--title", "Third", "--parent-id", "null")
     assert "planned_test_changes" not in next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.3")
     v = _validate(repo)
     assert v.returncode == 0, v.stderr + v.stdout
@@ -90,7 +88,7 @@ def _remove_old_test(repo: Path) -> None:
 
 
 def _plan_on_branch(repo: Path) -> None:
-    _crud(repo, "edit-node", "M1.1", "--add", f"planned_test_changes={OLD}")
+    crud(repo, "edit-node", "M1.1", "--add", f"planned_test_changes={OLD}")
     git(repo, "commit", "-qam", "authorize removing test_old")
 
 
@@ -149,6 +147,7 @@ def test_record_files_a_block_without_the_entry_and_refuses_a_fail_on_it(tmp_pat
     assert "'pass' was expected" in capsys.readouterr().err
 
 
+@pytest.mark.slow
 def test_record_files_an_approve_when_the_removal_is_planned(tmp_path: Path) -> None:
     repo = make_profile_repo(tmp_path)
     _remove_old_test(repo)
@@ -170,6 +169,7 @@ def test_reviewer_prompt_requires_the_entry_whatever_integrity_gate_says(tmp_pat
     assert "whatever `policy.integrity_gate` says" in text
 
 
+@pytest.mark.slow
 def test_packet_with_an_explicit_base_still_reads_the_plan_from_the_integration_branch(tmp_path: Path) -> None:
     """``--base`` moves the diff range only; authorization made on dev after that base still counts (RC1)."""
     repo = make_profile_repo(tmp_path)
@@ -231,6 +231,7 @@ def _milestone_record(root: Path, tmp_path: Path, acceptance: dict[str, str]) ->
     return e.value.code or 0
 
 
+@pytest.mark.slow
 def test_milestone_review_gets_the_required_check_for_an_unplanned_removal(tmp_path: Path, capsys) -> None:
     """No milestone exception (RC2): the full review's packet and record enforce the check."""
     root = _milestone_with_a_removal(tmp_path)
@@ -242,9 +243,10 @@ def test_milestone_review_gets_the_required_check_for_an_unplanned_removal(tmp_p
     assert _milestone_record(root, tmp_path, {line: "pass"}) == 0
 
 
+@pytest.mark.slow
 def test_milestone_review_takes_a_leaf_plan_on_the_integration_branch(tmp_path: Path) -> None:
     root = _milestone_with_a_removal(tmp_path)
-    _crud(root, "edit-node", "M2.1", "--add", "planned_test_changes=removed-test: tests/test_ms.py::test_old")
+    crud(root, "edit-node", "M2.1", "--add", "planned_test_changes=removed-test: tests/test_ms.py::test_old")
     git(root, "commit", "-qam", "authorize removing test_old")
     assert HEADING not in rp.build_packet(root, "M2", ref=None, verify_cmds=[])
     assert _milestone_record(root, tmp_path, {}) == 0

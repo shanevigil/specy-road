@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import pytest
+
 import subprocess
 import sys
 from pathlib import Path
+pytestmark = pytest.mark.repo
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPT = REPO / "scripts" / "check_release_version.py"

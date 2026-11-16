@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts.upgrade import run_upgrade
-from tests.upgrade_repo_helpers import old_repo
+from tests.support.upgrade import old_repo
 
 RC3_CONSUMER = Path(__file__).parent / "parity" / "fixtures" / "rc3_consumer"
 NOTICE = (

@@ -16,7 +16,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from tests.review_delegate_helpers import FAKE_CODEX, strict_problems
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_output
+from tests.support.review import commit_file, make_review_repo, review_output, git
 
 from specy_road import review_files as rf
 from specy_road.integrity_removals import target_unplanned_removals
@@ -55,6 +55,7 @@ def _strict(answer: dict, schema: dict) -> dict:
     return {k: answer.get(k) for k in schema["properties"]}
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("verdict,removal", [("approve", "pass"), ("block", None)])
 def test_a_codex_reviewer_can_answer_every_required_removal_entry_and_review_record_files_it(
         tmp_path: Path, monkeypatch, verdict: str, removal: str | None) -> None:
@@ -78,6 +79,7 @@ def test_a_codex_reviewer_can_answer_every_required_removal_entry_and_review_rec
     assert rec.data["acceptance"].get(OLD) == removal                                # null dropped, not filed
 
 
+@pytest.mark.slow
 def test_an_approve_without_the_removal_entry_is_a_rerun_request(tmp_path: Path, monkeypatch) -> None:
     repo, spec = _codex_repo(tmp_path, monkeypatch)
     calls = tmp_path / "codex-calls.json"

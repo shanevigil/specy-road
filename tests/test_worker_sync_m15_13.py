@@ -12,8 +12,8 @@ import pytest
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers.worker_cli_render import sync_event_lines
 from specy_road.orchestration.workers.worker_runner_ready import READY_ONLY_PROMPT
-from tests.review_repo_helpers import git
-from tests.test_rework_findings_in_prompt import file_review
+from tests.support.same.git_84c8ad8f55f9 import git
+from tests.support.extracted.rework_findings_in_prompt import file_review
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker
 
@@ -121,6 +121,7 @@ def test_completion_missing_ready_offers_ready_only_resume() -> None:
     assert any("worker resume w-0001 --ready-only" in line for line in lines)
 
 
+@pytest.mark.slow
 def test_resume_ready_only_writes_the_prompt_file_via_the_cli(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
@@ -187,6 +188,7 @@ def test_rework_refuses_idle_worker_without_a_block(tmp_path: Path, capsys) -> N
     assert "still active on M1.1 (idle)" in capsys.readouterr().err
 
 
+@pytest.mark.slow
 def test_rework_offline_does_not_delete_completed_worker_leases(tmp_path: Path, monkeypatch) -> None:
     from specy_road.orchestration.workers import worker_lease as wl
     from tests.worker_lease_helpers import remote_and_clone, remote_leases
@@ -213,6 +215,7 @@ def test_rework_offline_does_not_delete_completed_worker_leases(tmp_path: Path, 
     wait_for_worker(repo, "w-0002")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     ("extra_first", "extra_second"),
     (

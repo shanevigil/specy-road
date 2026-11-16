@@ -19,7 +19,7 @@ from specy_road.bundled_scripts.upgrade import (
     work_template_skip_message,
 )
 from specy_road.runtime_paths import specy_road_package_dir
-from tests.upgrade_repo_helpers import old_repo
+from tests.support.upgrade import old_repo
 
 _README = (
     specy_road_package_dir() / "templates" / "specyrd" / "dot-specyrd" / "README.md"

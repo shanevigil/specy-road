@@ -17,9 +17,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_delegate_helpers import run_review_cli
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
 from tests.helpers import REPO
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.support.review import make_review_repo, review_text, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import wait_for_worker
 
@@ -142,6 +142,7 @@ def checks(repo: Path, capfd, monkeypatch) -> tuple[str, str]:
 
 # ---- the decision table: flag x signed_reviews x opt-in, per role ----
 
+@pytest.mark.slow
 @pytest.mark.parametrize("flagged, signed, cli", [
     (False, False, "{harness}"), (False, True, "{harness}"), (True, False, "{harness}"),
     (False, False, '{harness} --model "$(printf composer-2.5)"'),   # unreadable, but signed reviews are off
@@ -163,6 +164,7 @@ def test_unchanged_unless_a_flagged_model_meets_signed_reviews(tmp_path: Path, c
     assert "guidance bypass" not in err and launched(tmp_path) == (True, True)
 
 
+@pytest.mark.slow
 def test_flagged_model_is_refused_as_executor_and_reviewer_under_signed_reviews(tmp_path: Path, capfd, monkeypatch) -> None:
     repo = guidance_repo(tmp_path, roster())
     a = plan(tmp_path, roster(), capfd)
@@ -185,6 +187,7 @@ def test_flagged_model_is_refused_as_executor_and_reviewer_under_signed_reviews(
     assert v.count(line) == 1 and d.count(line) == 1
 
 
+@pytest.mark.slow
 def test_opted_in_flagged_model_is_used_and_warns_once_per_launch(tmp_path: Path, capfd, monkeypatch) -> None:
     repo = guidance_repo(tmp_path, roster(opt_in=True))
     a = plan(tmp_path, roster(opt_in=True), capfd)
@@ -201,6 +204,7 @@ def test_opted_in_flagged_model_is_used_and_warns_once_per_launch(tmp_path: Path
     assert v.count(line) == 1 and d.count(line) == 1
 
 
+@pytest.mark.slow
 def test_opted_in_reviewer_and_prompt_run_warn_once_per_launch(tmp_path: Path, capfd) -> None:
     repo = guidance_repo(tmp_path, roster(opt_in=True))
     review_delegate(repo)
@@ -225,15 +229,18 @@ def test_multi_role_entry_stays_coordinator_without_a_warning(tmp_path: Path, ca
 
 # ---- which copy of the profile flags, and which model an entry launches ----
 
+@pytest.mark.repo
 def test_flag_only_on_the_bundled_profile_still_flags(tmp_path: Path, capfd) -> None:
     repo = guidance_repo(tmp_path, roster(), profile=unflagged((BUNDLED / "composer-2.5.md").read_text()))
     assert prompt(repo, "executor") == 1
     assert EXCLUDED in capfd.readouterr().err
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="ssh-keygen not available")
 @pytest.mark.parametrize("how", ["feature branch", "working tree"])
 @pytest.mark.parametrize("change", ["removed", "malformed"])
+@pytest.mark.repo
 def test_a_branch_or_drifted_copy_never_clears_a_committed_flag(tmp_path: Path, capfd, how: str,
                                                                  change: str) -> None:
     """A model no bundled profile names, flagged only in the profile committed on ``dev``, in a file whose name is
@@ -262,6 +269,7 @@ def test_a_branch_or_drifted_copy_never_clears_a_committed_flag(tmp_path: Path, 
     ("\n    harness_model: cursor-composer-2.5", "{harness}", "my-cursor", "cursor-composer-2.5"),
     ("", "agent -p --model Composer_2.5 {prompt}", "my-cursor", "Composer_2.5"),
 ])
+@pytest.mark.repo
 def test_every_model_an_entry_launches_is_matched(tmp_path: Path, capfd, extra: str, cli: str, rid: str,
                                                   model: str) -> None:
     profile = unflagged((BUNDLED / "composer-2.5.md").read_text()).replace("composer-2.5", "my-cursor")
@@ -277,10 +285,12 @@ def test_an_uncommitted_opt_in_does_not_admit_the_model(tmp_path: Path, capfd) -
     assert a["executor"] == "sol" and any(EXCLUDED in n for n in a["notes"])
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("unreadable, why", [
     (COMPOSER, f"cannot read {COMPOSER} on the integration branch"),                  # a profile blob
     ("model-profiles/cursor-composer", "cannot list model-profiles/ on the integration branch"),   # the listing
 ])
+@pytest.mark.repo
 def test_an_unreadable_integration_branch_profile_refuses(tmp_path: Path, capfd, unreadable: str, why: str) -> None:
     """A git read that fails is a refusal, never a missing flag, for every entry: a human entry whose id the
     unreadable profile answers to (``my-model-fast``, its alias) and a person with no launch keys alike, since
@@ -328,6 +338,7 @@ def test_chore_executor_and_reviewer_are_refused_before_preflight_and_harness(tm
     assert launched(tmp_path) == (False, False)
 
 
+@pytest.mark.slow
 def test_worker_and_review_resume_are_refused(tmp_path: Path, capfd) -> None:
     repo = guidance_repo(tmp_path, roster(signed=False, harness="claude-code"))   # generic cannot resume
     assert worker_delegate(repo, "--json") == 0
@@ -379,6 +390,7 @@ def status(repo: Path, capfd) -> dict:
     return json.loads(capfd.readouterr().out)["nodes"][0]
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="ssh-keygen not available")
 @pytest.mark.parametrize("opt_in", [False, True])
 def test_gate_counts_a_signed_approval_only_from_an_opted_in_entry(tmp_path: Path, capfd, opt_in: bool) -> None:
@@ -401,6 +413,7 @@ def test_handoff_status_row_and_next_step_never_offer_the_excluded_id(tmp_path: 
 
 # ---- models show and malformed shapes ----
 
+@pytest.mark.repo
 def test_models_show_prints_the_record(tmp_path: Path, capfd) -> None:
     repo = guidance_repo(tmp_path, roster(), profile=(BUNDLED / "composer-2.5.md").read_text())
     capfd.readouterr()
@@ -418,6 +431,7 @@ def test_models_show_prints_the_record(tmp_path: Path, capfd) -> None:
     "{date: 2026-11-06, harness: vscode, evidence: x}", "{date: 2026-11-06, harness: cursor, evidence: '  '}",
     "{date: 2026-11-06, harness: cursor, evidence: 3}",
 ])
+@pytest.mark.repo
 def test_a_malformed_record_makes_the_profile_invalid(tmp_path: Path, capfd, value: str) -> None:
     text = unflagged((BUNDLED / "composer-2.5.md").read_text())   # signed_reviews off: no refusal comes first
     repo = guidance_repo(tmp_path, roster(signed=False), profile=text.replace("role_fit:", f"guidance_bypass_observed: {value}\n"
@@ -447,6 +461,7 @@ PERSON = "  - id: person\n    family: human\n    roles: [executor]\n    prefligh
     f"    profile: {COMPOSER}\n",
     "    channels: {cli: '{harness} --model composer-2.5'}\n",
 ])
+@pytest.mark.repo
 def test_a_human_entry_that_launches_a_model_is_judged_like_one(tmp_path: Path, capfd, via: str, local: bool,
                                                                 launch: str) -> None:
     """``family: human`` is exempt only as a person: any launch key makes it a model entry (a local one included)."""
@@ -477,6 +492,7 @@ def safe_profile(cli: str) -> str:
 
 @pytest.mark.parametrize("drift", [False, True])
 @pytest.mark.parametrize("via", ["worker delegate", "prompt"])
+@pytest.mark.repo
 def test_a_profile_access_cli_model_is_matched(tmp_path: Path, capfd, via: str, drift: bool) -> None:
     """A generic executor with no ``channels.cli`` runs its profile's ``access.cli``; the committed copy counts even
     when the working tree's copy sets ``access.cli: none``."""
@@ -495,6 +511,8 @@ def test_a_profile_access_cli_model_is_matched(tmp_path: Path, capfd, via: str, 
     assert launched(tmp_path) == (False, False)
 
 
+@pytest.mark.slow
+@pytest.mark.repo
 def test_a_flag_on_a_profile_at_a_quoted_path_is_found(tmp_path: Path, capfd, monkeypatch) -> None:
     """``core.quotePath`` (git's default, forced here over a developer's own config) quotes ``café.md`` in a plain
     listing; the flag of that explicitly routed, project-only profile must still be read."""
@@ -537,6 +555,7 @@ def test_an_unreadable_model_flag_is_refused(tmp_path: Path, capfd, cli: str, re
     assert launched(tmp_path) == (False, False)
 
 
+@pytest.mark.slow
 def test_an_unreadable_local_command_is_refused_and_a_committed_opt_in_admits_it(tmp_path: Path, capfd,
                                                                                   monkeypatch) -> None:
     """The review's case: a local ``roster_add`` entry with ``allow_local_cli`` and a substituted model."""
@@ -563,6 +582,8 @@ def test_an_unreadable_local_command_is_refused_and_a_committed_opt_in_admits_it
     assert v.count(line) == 1 and d.count(line) == 1
 
 
+@pytest.mark.slow
+@pytest.mark.repo
 def test_no_shipped_profile_is_refused_but_the_flagged_one(tmp_path: Path, capfd, monkeypatch) -> None:
     """One generic executor per bundled profile, each running its own ``access.cli``: only composer-2.5 is excluded."""
     root = BUNDLED.parent
