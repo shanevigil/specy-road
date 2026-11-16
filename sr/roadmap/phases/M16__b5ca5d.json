@@ -183,6 +183,29 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "tests/support/harness.py wait_for_worker reads the worker record while holding the public workers_lock the runner holds when it clears the pid and releases the lease (specy_road/orchestration/workers/worker_runner.py, the end-of-turn update), so a caller never sees a finished worker whose completed or failed lease is not yet released; it imports no _-prefixed name and adds no sleep beyond its existing poll interval",
+        "tests/test_worker_max_workers_global.py passes 20 consecutive runs with pytest -n 4 at this leaf's head (record the command and the 20/20 result in READY); at the merge base the same loop shows the flake (record the failure count, expected about 1 in 5), and no assertion in that file is removed or loosened",
+        "No product code changes; every other test that calls wait_for_worker still passes",
+        "Estimated net line change (informational, not a gate): tests about +5"
+      ],
+      "codename": "worker-tests-wait-under-the-workers-lock",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.6.8",
+      "node_key": "eebb31de-077f-4d0d-9ee3-3280973373f7",
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.8_worker-tests-wait-under-the-workers-lock_eebb31de-077f-4d0d-9ee3-3280973373f7.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates",
+      "touch_zones": [
+        "tests/support/harness.py",
+        "tests/test_worker_max_workers_global.py"
+      ],
+      "type": "task"
     }
   ]
 }

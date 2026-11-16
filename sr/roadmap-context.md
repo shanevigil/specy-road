@@ -68,6 +68,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.6.5` Tests: files move into unit, flows, cli, gui and repo lanes, moves only `tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` — task — **Not Started**
     - `M16.6.6` Tests: per-leaf and per-round test files fold into the file for the module or flow they test `tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test` — task — **Not Started**
     - `M16.6.7` Integrity follows moved test files: a renamed test file and its tests are not removals `integrity-follows-moved-test-files` — task — **Not Started**
+    - `M16.6.8` Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates `worker-tests-wait-under-the-workers-lock` — task — **Not Started**
   - `M16.7` Test dedupe, public seams, properties and the smoke lane `test-dedupe-public-seams-properties-and-the-smoke-lane` — milestone — **Not Started**
     - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Not Started**
     - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Not Started**
