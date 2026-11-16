@@ -10,6 +10,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+pytestmark = pytest.mark.repo
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPT = REPO / "scripts" / "verify_wheel_contents.py"

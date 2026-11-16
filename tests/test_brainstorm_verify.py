@@ -27,85 +27,67 @@ from specy_road.brainstorm_session import (
     Idea,
     read_session,
 )
+from tests.support.same.cli_11f0555f0fa9 import cli
+from tests.support.same.prompt_26b6cb7fef04 import prompt
+from tests.support.same.session_9301503dde8a import session
+from tests.support.same.start_f653667be42d import start
 
 SLUG = "how-do-we-expand-payments"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    import contextlib
-
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code or 0)
-    return code, out.getvalue(), err.getvalue()
 
 
-def _start(repo: Path, *extra: str) -> tuple[int, str, str]:
-    return _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
 
 
-def _prompt(repo: Path, pass_name: str = "r1") -> str:
-    return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
-def _session(repo: Path) -> BrainstormSession:
-    return read_session(repo, SLUG)
 
 
 # --- evidence and verify -----------------------------------------------------
 
 def test_evidence_prompt_covers_the_shortlist_only(repo: Path) -> None:
-    _start(repo)
+    start(repo)
     for t in ("One", "Two", "Three"):
-        _cli(repo, "add-idea", "--title", t)
-    code, _, err = _cli(repo, "evidence")
+        cli(repo, "add-idea", "--title", t)
+    code, _, err = cli(repo, "evidence")
     assert code == 1 and "nothing to source" in err
-    _cli(repo, "revise", "B1", "--recommendation", "strong")
-    _cli(repo, "revise", "B2", "--recommendation", "park")
-    _cli(repo, "revise", "B3", "--recommendation", "consider")
-    code, out, _ = _cli(repo, "evidence")
+    cli(repo, "revise", "B1", "--recommendation", "strong")
+    cli(repo, "revise", "B2", "--recommendation", "park")
+    cli(repo, "revise", "B3", "--recommendation", "consider")
+    code, out, _ = cli(repo, "evidence")
     assert code == 0 and "1 idea(s)" in out
-    ideas = _prompt(repo, "evidence").split("## Ideas")[1].split("## Record")[0]
+    ideas = prompt(repo, "evidence").split("## Ideas")[1].split("## Record")[0]
     assert "**B1** One" in ideas and "B2" not in ideas and "B3" not in ideas
-    text = _prompt(repo, "evidence")
+    text = prompt(repo, "evidence")
     assert "verbatim quote" in text and "disconfirm" in text
     assert "Never claim to have used a named research product" in text
-    code, out, err = _cli(repo, "evidence", "B3", "B2")
+    code, out, err = cli(repo, "evidence", "B3", "B2")
     assert code == 0 and "2 idea(s)" in out and "warning" not in err
     for n in range(4, 17):
-        _cli(repo, "add-idea", "--title", f"Idea {n}")
-    code, out, err = _cli(repo, "evidence", *[f"B{n}" for n in range(1, 16)])
+        cli(repo, "add-idea", "--title", f"Idea {n}")
+    code, out, err = cli(repo, "evidence", *[f"B{n}" for n in range(1, 16)])
     assert code == 0 and "15 idea(s)" in out and "warning" not in err
-    code, out, err = _cli(repo, "evidence", *[f"B{n}" for n in range(1, 17)])
+    code, out, err = cli(repo, "evidence", *[f"B{n}" for n in range(1, 17)])
     assert code == 0 and "16 idea(s)" in out and "warning: 16 ideas selected" in err
 
 
 def test_add_evidence_builds_a_source_record_and_mirrors_the_url(repo: Path) -> None:
-    _start(repo)
-    _cli(repo, "add-idea", "--title", "One", "--evidence", "https://example.com/a")
-    code, out, _ = _cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "exact words",
+    start(repo)
+    cli(repo, "add-idea", "--title", "One", "--evidence", "https://example.com/a")
+    code, out, _ = cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "exact words",
                         "--supports", "SMBs want links", "--stance", "for", "--tool", "claude WebFetch",
                         "--source-type", "official-doc", "--retrieved-at", "2026-10-27")
     assert code == 0 and "source 1" in out
-    code, _, err = _cli(repo, "add-evidence", "B1", "--url", "https://example.com/b", "--stance", "against")
+    code, _, err = cli(repo, "add-evidence", "B1", "--url", "https://example.com/b", "--stance", "against")
     assert code != 0 and "--quote is required" in err
-    _cli(repo, "add-evidence", "B1", "--url", "https://example.com/b", "--quote", "b words", "--stance", "against")
-    idea = _session(repo).by_id("B1")
+    cli(repo, "add-evidence", "B1", "--url", "https://example.com/b", "--quote", "b words", "--stance", "against")
+    idea = session(repo).by_id("B1")
     assert idea.evidence == ["https://example.com/a", "https://example.com/b"]
     assert idea.sources[0]["tool"] == "claude WebFetch" and idea.sources[0]["retrieved_at"] == "2026-10-27"
     assert idea.sources[1]["stance"] == "against" and idea.sources[1]["quote"] == "b words"
-    code, _, err = _cli(repo, "add-evidence", "B1", "--url", "https://x", "--quote", "x" * 301)
+    code, _, err = cli(repo, "add-evidence", "B1", "--url", "https://x", "--quote", "x" * 301)
     assert code == 1 and "300" in err
 
 
@@ -280,10 +262,10 @@ def test_repo_quotes_do_not_get_the_page_folds() -> None:
 
 
 def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch) -> None:
-    _start(repo)
-    _cli(repo, "add-idea", "--title", "One")
-    _cli(repo, "add-evidence", "B1", "--url", "https://example.com/ok", "--quote", "exact words")
-    _cli(repo, "add-evidence", "B1", "--url", "https://example.com/miss", "--quote", "exact words")
+    start(repo)
+    cli(repo, "add-idea", "--title", "One")
+    cli(repo, "add-evidence", "B1", "--url", "https://example.com/ok", "--quote", "exact words")
+    cli(repo, "add-evidence", "B1", "--url", "https://example.com/miss", "--quote", "exact words")
     calls: list[str] = []
 
     def fetch(url):
@@ -298,16 +280,16 @@ def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch)
     monkeypatch.setattr(bv, "default_fetch", fetch)
     monkeypatch.setattr(bv, "_is_off_host", lambda host: False)
     monkeypatch.setattr("sys.stdin", io.StringIO(""))          # not a TTY, no --yes: nothing fetched
-    code, out, _ = _cli(repo, "verify")
+    code, out, _ = cli(repo, "verify")
     assert code == 1 and "would fetch 2 URL(s)" in out and "pass --yes" in out and calls == []
-    assert all(s["verification"] == "unverified" for s in _session(repo).by_id("B1").sources)
-    code, out, _ = _cli(repo, "verify", "--yes")
+    assert all(s["verification"] == "unverified" for s in session(repo).by_id("B1").sources)
+    code, out, _ = cli(repo, "verify", "--yes")
     assert code == 0 and sorted(calls) == ["https://example.com/miss", "https://example.com/ok"]
-    states = {s["url"]: s["verification"] for s in _session(repo).by_id("B1").sources}
+    states = {s["url"]: s["verification"] for s in session(repo).by_id("B1").sources}
     assert states == {"https://example.com/ok": "matched", "https://example.com/miss": "not-found"}
-    assert [i.title for i in _session(repo).ideas] == ["One", "Two"]
+    assert [i.title for i in session(repo).ideas] == ["One", "Two"]
     assert "B1 matched" in out and "B1 not-found" in out
-    code, out, _ = _cli(repo, "verify", "--yes")
+    code, out, _ = cli(repo, "verify", "--yes")
     assert code == 0 and "nothing unverified" in out and len(calls) == 2
 
 

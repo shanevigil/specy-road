@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.pickup_repo_helpers import FEATURE, make_pickup_project, run_specy_road
-from tests.review_repo_helpers import commit_file, git
-from tests.test_nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
+from tests.support.pickup import FEATURE, make_pickup_project, run_specy_road
+from tests.support.review import commit_file, git
+from tests.support.extracted.nested_repo_worktrees import COVERED, UNCOVERED, add_nested_repo
 
 from specy_road.nested_repos import add_nested_worktrees
 from specy_road import worktree_prune

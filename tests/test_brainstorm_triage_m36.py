@@ -12,15 +12,11 @@ from tests.helpers import DOGFOOD
 
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.brainstorm_session import read_session
+from tests.support.same.session_9311e77aa0c8 import session
 
 SLUG = "how-do-we-expand-payments"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
@@ -40,8 +36,6 @@ def _start(repo: Path) -> None:
     assert _cli(repo, "start", "--topic", "How do we expand payments?")[0] == 0
 
 
-def _session(repo: Path):
-    return read_session(repo, SLUG)
 
 
 def test_triage_checks_every_id_before_printing_or_saving(repo: Path) -> None:
@@ -50,10 +44,10 @@ def test_triage_checks_every_id_before_printing_or_saving(repo: Path) -> None:
     _cli(repo, "add-idea", "--title", "Two")
     code, out, err = _cli(repo, "accept", "B1", "B9")
     assert code == 1 and not out.strip() and "B9" in err
-    assert _session(repo).by_id("B1").status == "proposed"
+    assert session(repo).by_id("B1").status == "proposed"
     code, out, err = _cli(repo, "park", "B1", "B9", "--reason", "later")
     assert code == 1 and not out.strip()
-    assert _session(repo).by_id("B1").status == "proposed"
+    assert session(repo).by_id("B1").status == "proposed"
 
 
 def test_triage_prints_nothing_when_a_batch_holds_a_promoted_idea(repo: Path) -> None:
@@ -61,17 +55,17 @@ def test_triage_prints_nothing_when_a_batch_holds_a_promoted_idea(repo: Path) ->
     _cli(repo, "add-idea", "--title", "One")
     _cli(repo, "add-idea", "--title", "Two")
     assert _cli(repo, "realize", "B2", "--node", "M1")[0] == 0
-    before = _session(repo)
+    before = session(repo)
     assert before.by_id("B1").status == "proposed" and before.by_id("B2").promoted_node_key
     code, out, err = _cli(repo, "accept", "B1", "B2")
     assert code == 1 and not out.strip() and "already on the roadmap" in err
-    assert _session(repo).by_id("B1").status == "proposed"
+    assert session(repo).by_id("B1").status == "proposed"
     code, out, err = _cli(repo, "park", "B1", "B2", "--reason", "later")
     assert code == 1 and not out.strip()
-    assert _session(repo).by_id("B1").status == "proposed"
+    assert session(repo).by_id("B1").status == "proposed"
     code, out, err = _cli(repo, "reject", "B1", "B2", "--reason", "no")
     assert code == 1 and not out.strip()
-    assert _session(repo).by_id("B1").status == "proposed"
+    assert session(repo).by_id("B1").status == "proposed"
 
 
 def test_realize_records_a_hand_built_node(repo: Path) -> None:
@@ -79,7 +73,7 @@ def test_realize_records_a_hand_built_node(repo: Path) -> None:
     _cli(repo, "add-idea", "--title", "Hand built")
     code, out, err = _cli(repo, "realize", "B1", "--node", "M1")
     assert code == 0, err
-    idea = _session(repo).by_id("B1")
+    idea = session(repo).by_id("B1")
     assert idea.promoted_node_key
     assert "M1" in out and idea.promoted_node_key[:8] in out
     code, _, err = _cli(repo, "realize", "B1", "--node", "M1.1")
@@ -91,7 +85,7 @@ def test_revise_append_why_adds_to_verdict_why(repo: Path) -> None:
     _cli(repo, "add-idea", "--title", "One")
     _cli(repo, "revise", "B1", "--why", "first line")
     _cli(repo, "revise", "B1", "--append-why", "second line")
-    assert _session(repo).by_id("B1").verdict_why == "first line\nsecond line"
+    assert session(repo).by_id("B1").verdict_why == "first line\nsecond line"
 
 
 def test_list_summary_prints_status_and_recommendation_counts(repo: Path) -> None:

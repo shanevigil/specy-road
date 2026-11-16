@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker, worker_roster
 
@@ -41,6 +41,7 @@ def _repo(tmp_path: Path, policy: str) -> Path:
         "policy: {max_workers: 2}", f"policy: {{max_workers: 2, {policy}}}"))
 
 
+@pytest.mark.slow
 def test_a_worker_that_never_wrote_output_is_flagged_from_its_launch(tmp_path: Path, capsys) -> None:
     repo = _repo(tmp_path, "stall_after_seconds: 1")
     rec = _running(repo)   # last_output_at never written: the harness has not started
@@ -79,6 +80,7 @@ def _silent_worker(tmp_path: Path) -> tuple[Path, ws.WorkerRecord]:
     return repo, ws.load_record(repo, rec.worker_id)
 
 
+@pytest.mark.slow
 def test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes(tmp_path: Path, capsys) -> None:
     repo, rec = _silent_worker(tmp_path)
     try:
@@ -119,6 +121,7 @@ def test_recover_ends_a_stalled_worker_keeps_its_work_and_resumes(tmp_path: Path
             ops.terminate(repo, rec.worker_id)
 
 
+@pytest.mark.slow
 def test_recover_ends_a_live_harness_whose_wrapper_died(tmp_path: Path, capsys) -> None:
     repo, rec = _silent_worker(tmp_path)
     try:
@@ -139,6 +142,7 @@ def test_recover_ends_a_live_harness_whose_wrapper_died(tmp_path: Path, capsys) 
             ops.terminate(repo, rec.worker_id)
 
 
+@pytest.mark.slow
 def test_a_recovery_whose_resume_was_refused_is_finished_by_the_next_call(tmp_path: Path, capsys) -> None:
     repo, rec = _silent_worker(tmp_path)
     try:

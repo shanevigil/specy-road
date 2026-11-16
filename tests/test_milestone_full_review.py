@@ -13,10 +13,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.milestone_repo_helpers import (
+from tests.support.milestone import (
     LEAVES, branch_leaf, chunk_path, land_leaf, make_milestone_repo, merge_leaf, set_status,
 )
-from tests.review_repo_helpers import commit_file, git
+from tests.support.review import commit_file, git
 
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.bundled_scripts import review_cli
@@ -27,8 +27,8 @@ from specy_road.roadmap_load import load_roadmap
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_target import resolve_target
+from tests.support.extracted.milestone_full_review import POLICY_OFF
 
-POLICY_OFF = "version: 1\npolicy: {milestone_full_review: false}\n"
 REVIEWER = "version: 1\nroster:\n  - {id: human, family: human, roles: [reviewer]}\n"
 
 
@@ -75,6 +75,7 @@ def test_milestone_target_is_the_integration_tip_from_the_first_leaf_branch_poin
         "roadmap/phases/M2.json", "roadmap/registry.yaml", "src/alpha.py", "src/beta.py"]
 
 
+@pytest.mark.slow
 def test_milestone_packet_covers_both_leaves_and_base_overrides(tmp_path: Path) -> None:
     root = make_milestone_repo(tmp_path, orchestration=REVIEWER)
     tip = git(root, "rev-parse", "dev")
@@ -174,6 +175,7 @@ def test_handoff_status_and_review_list_show_a_milestone_awaiting_its_full_revie
     assert "M2: approved" in out and "mark-implementation-reviewed M2 sets it Complete" in out
 
 
+@pytest.mark.slow
 def test_approval_through_mark_implementation_reviewed_releases_the_rollup(tmp_path: Path, capsys) -> None:
     root = make_milestone_repo(tmp_path)
     tip = git(root, "rev-parse", "dev")

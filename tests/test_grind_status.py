@@ -37,13 +37,35 @@ from specy_road.orchestration.workers.worker_state import (
 )
 from specy_road.orchestration.guard.orchestration_role_env import ROLE_ENV
 from specy_road.review_gate import evaluate_gate
-from tests.review_repo_helpers import NODE, commit_file, diverge, make_review_repo, review_text
-from tests import test_gui_app_pm_decisions as gui
-from tests.test_review_override import ROSTER as REVIEWERS, STRONG
-from tests.test_review_rca import ROSTER
+from tests.support.review import NODE, commit_file, diverge, make_review_repo, review_text
+from tests.support.extracted.gui_app_pm_decisions import (
+    answer,
+    approve,
+    block,
+    client,
+    layout,
+    leaf_offer,
+    question,
+    with_questions,
+)
+from tests.support.extracted.review_override import ROSTER as REVIEWERS, STRONG
+from tests.support.extracted.review_rca import ROSTER
+from tests.support.extracted.grind_status import (
+    D1,
+    D2,
+    NS,
+    branch_with,
+    claim,
+    commit,
+    git,
+    key,
+    make_repo,
+    node,
+    set_status,
+    write_graph,
+)
 
 NOW = datetime(2026, 11, 10, 12, 0, tzinfo=timezone.utc)
-NS = uuid.UUID("05b23f6c-3e4d-4ac9-b0a0-022b4fe7f7f1")
 
 
 @pytest.fixture(autouse=True)
@@ -51,64 +73,18 @@ def no_history_memo() -> None:
     clear_memo()
 
 
-def key(nid: str) -> str:
-    return str(uuid.uuid5(NS, nid))
 
 
-def node(nid: str, *, parent: str | None = None, typ: str = "task", status: str = "Not Started",
-         deps: tuple[str, ...] = (), codename: str | None = "", title: str | None = None) -> dict:
-    n = {"id": nid, "node_key": key(nid), "title": title or f"Leaf {nid}", "type": typ, "parent_id": parent,
-         "sibling_order": int(nid.rsplit(".", 1)[-1].lstrip("M")), "status": status,
-         "dependencies": [key(d) for d in deps], "touch_zones": [f"src/{nid}.py"], "acceptance": ["it works"],
-         "planning_dir": f"planning/{nid}.md"}
-    if codename is not None:
-        n["codename"] = codename or nid.lower().replace(".", "-")
-    return n
 
 
-def git(repo: Path, *args: str, when: datetime | None = None) -> str:
-    env = {**os.environ, "GIT_AUTHOR_NAME": "pat", "GIT_AUTHOR_EMAIL": "pat@example.com",
-           "GIT_COMMITTER_NAME": "pat", "GIT_COMMITTER_EMAIL": "pat@example.com"}
-    if when is not None:
-        env["GIT_AUTHOR_DATE"] = env["GIT_COMMITTER_DATE"] = when.isoformat()
-    return subprocess.run(["git", *args], cwd=repo, env=env, check=True, capture_output=True,
-                          text=True).stdout.strip()
 
 
-def write_graph(repo: Path, nodes: list[dict], unauthored: tuple[str, ...] = ()) -> None:
-    (repo / "roadmap" / "phases").mkdir(parents=True, exist_ok=True)
-    (repo / "roadmap" / "manifest.json").write_text(json.dumps({"version": 1, "includes": ["phases/M.json"]}))
-    (repo / "roadmap" / "phases" / "M.json").write_text(json.dumps({"nodes": nodes}, indent=1))
-    for n in nodes:
-        sheet = repo / n["planning_dir"]
-        sheet.parent.mkdir(parents=True, exist_ok=True)
-        approach = promote_placeholder(n["id"]) if n["id"] in unauthored else "Write it."
-        sheet.write_text(f"# {n['title']}\n\n## Intent\n\nDo it.\n\n## Approach\n\n{approach}\n")
 
 
-def commit(repo: Path, msg: str, when: datetime | None = None) -> None:
-    git(repo, "add", "-A")
-    git(repo, "commit", "-q", "--allow-empty", "-m", msg, when=when)
 
 
-def make_repo(tmp_path: Path, nodes: list[dict], *, entries: tuple[dict, ...] = (),
-              unauthored: tuple[str, ...] = (), when: datetime | None = None) -> Path:
-    repo = tmp_path / "r"
-    repo.mkdir()
-    git(repo, "init", "-q", "-b", "dev")
-    write_graph(repo, nodes, unauthored)
-    (repo / "roadmap" / "registry.yaml").write_text(yaml.safe_dump({"version": 1, "entries": list(entries)}))
-    (repo / "roadmap" / "git-workflow.yaml").write_text("version: 1\nintegration_branch: dev\nremote: origin\n")
-    (repo / ".gitignore").write_text("work/\n.specyrd/cache/\n")
-    commit(repo, "graph", when)
-    return repo
 
 
-def set_status(repo: Path, nid: str, status: str) -> None:
-    path = repo / "roadmap" / "phases" / "M.json"
-    doc = json.loads(path.read_text())
-    next(n for n in doc["nodes"] if n["id"] == nid)["status"] = status
-    path.write_text(json.dumps(doc, indent=1))
 
 
 def run(repo: Path, *argv: str, now: datetime = NOW, sleep=None) -> int:
@@ -178,22 +154,8 @@ def test_no_scope_or_an_unknown_node_exits_2(tmp_path: Path, capsys, argv, words
 # --- buckets -----------------------------------------------------------------
 
 
-def branch_with(repo: Path, codename: str, *, complete: str | None = None, path: str | None = None) -> str:
-    git(repo, "checkout", "-q", "-b", f"feature/rm-{codename}", "dev")
-    if complete:
-        set_status(repo, complete, "Complete")
-    if path:
-        (repo / path).parent.mkdir(parents=True, exist_ok=True)
-        (repo / path).write_text("x\n")
-    commit(repo, f"work on {codename}")
-    sha = git(repo, "rev-parse", "HEAD")
-    git(repo, "checkout", "-q", "dev")
-    return sha
 
 
-def claim(nid: str) -> dict:
-    c = nid.lower().replace(".", "-")
-    return {"codename": c, "node_id": nid, "branch": f"feature/rm-{c}", "touch_zones": [f"src/{nid}.py"]}
 
 
 def buckets_repo(tmp_path: Path) -> Path:
@@ -305,6 +267,7 @@ def policy_changed(tmp_path: Path) -> Path:
     return repo
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("build, kind, next_has", [
     (escalated, "escalated", "specy-road prompt M1.1 --role rca"),
     (budget_spent, "fix_round_budget_spent", None),   # the budget's own `next`
@@ -380,12 +343,6 @@ def test_live_workers_leased_to_a_person_or_needing_one_hold_their_leaf(tmp_path
 
 # --- decisions ---------------------------------------------------------------
 
-D1 = {"id": "D1", "kind": "decision", "node": "M1.1", "summary": "Pick the parser", "asked": "2026-11-01",
-      "status": "open", "why_now": "M1.1 cannot start without it",
-      "options": [{"label": "yaml", "effect": "one more dependency"}, {"label": "json", "effect": "no comments"}],
-      "recommendation": "yaml", "recommendation_reason": "people edit these files by hand",
-      "default_if_unanswered": "json after the deadline"}
-D2 = {**D1, "id": "D2", "node": "M2.1", "summary": "Somewhere else", "needed_by": "2026-12-01"}
 
 
 def test_ledger_entries_print_as_recorded_in_scope_and_one_line_outside(tmp_path: Path, capsys) -> None:
@@ -414,19 +371,20 @@ def pending(root: Path) -> dict:
     return {g["id"]: g for g in gst.build_report(root, "M1.1", None, NOW)["decisions"]["gui_pending"]}
 
 
+@pytest.mark.slow
 def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv(ROLE_ENV, raising=False)   # the manual coordinator
-    lay = gui.layout(tmp_path, monkeypatch)
-    gui.with_questions(lay, gui.question("D1"), gui.question("D4", kind="human-action", criterion="A2"))
+    lay = layout(tmp_path, monkeypatch)
+    with_questions(lay, question("D1"), question("D4", kind="human-action", criterion="A2"))
     git(lay.leaf, "merge", "-q", "--no-edit", "dev")
-    gui.block(lay)
+    block(lay)
     local = lay.run / "roadmap" / "decisions.local.yaml"   # a local-only D2: the approval must not take its id
-    local.write_text(yaml.safe_dump({"version": 1, "entries": [gui.question("D2")]}))
-    c = gui.client()
-    assert gui.answer(c, "D1", "A", "ship A\nnow").status_code == 400   # one line, so the sheet line can match
-    assert gui.answer(c, "D1", "A", "ship A").status_code == 200
-    assert gui.answer(c, "D4", "A", "wording approved").status_code == 200   # finish-this-task consumes it
-    assert gui.approve(c, gui.leaf_offer(c)).status_code == 200
+    local.write_text(yaml.safe_dump({"version": 1, "entries": [question("D2")]}))
+    c = client()
+    assert answer(c, "D1", "A", "ship A\nnow").status_code == 400   # one line, so the sheet line can match
+    assert answer(c, "D1", "A", "ship A").status_code == 200
+    assert answer(c, "D4", "A", "wording approved").status_code == 200   # finish-this-task consumes it
+    assert approve(c, leaf_offer(c)).status_code == 200
     git(lay.top, "merge", "-q", "--ff-only", "origin/dev")   # the coordinator pulls
     got = pending(lay.run)
     assert {k: (g["kind"], g["node"]) for k, g in got.items()} == {
@@ -448,12 +406,13 @@ def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_pat
     assert pending(lay.run) == {}   # before the leaf lands
 
 
+@pytest.mark.slow
 def test_another_clone_lists_the_approval_without_a_marker(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv(ROLE_ENV, raising=False)   # the manual coordinator
-    lay = gui.layout(tmp_path, monkeypatch)
-    gui.block(lay)
-    c = gui.client()
-    assert gui.approve(c, gui.leaf_offer(c)).status_code == 200
+    lay = layout(tmp_path, monkeypatch)
+    block(lay)
+    c = client()
+    assert approve(c, leaf_offer(c)).status_code == 200
     other = tmp_path / "other"
     git(tmp_path, "clone", "-q", "-b", "dev", str(lay.bare), str(other))
     assert pending(other)["D1"]["next"] == [gst.NO_MARKER]

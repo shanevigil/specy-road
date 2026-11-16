@@ -160,6 +160,7 @@ def _pickup_repo(tmp_path: Path, yaml_value: bool | None) -> Path:
     return root
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     ("cli", "yaml_value", "expected"),
     [

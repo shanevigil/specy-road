@@ -15,10 +15,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import commit_file, git
+from tests.support.review import commit_file, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import wait_for_worker
-from tests.test_worker_m310_reconcile_status import worker_repo
+from tests.support.extracted.worker_m310_reconcile_status import worker_repo
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
@@ -77,6 +77,7 @@ def test_reconcile_still_refuses_an_unknown_node(tmp_path: Path) -> None:
         ops.reconcile(repo, rec.worker_id)
 
 
+@pytest.mark.slow
 def test_dismiss_clears_the_flag_records_the_reason_and_list_and_sync_stop_showing_it(
     tmp_path: Path, capsys
 ) -> None:
@@ -113,6 +114,7 @@ def test_dismiss_needs_a_reason(tmp_path: Path, capsys) -> None:
     assert ws.FLAG_RECONCILE in ws.load_record(repo, rec.worker_id).flags
 
 
+@pytest.mark.slow
 def test_an_untracked_file_outside_the_zones_is_a_warning_not_a_breach(tmp_path: Path, capsys) -> None:
     repo, rec = _checkpointed(tmp_path)
     commit_file(repo, "src/b.py", "print('b')\n", "worker in zone")

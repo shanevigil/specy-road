@@ -6,7 +6,7 @@ import copy
 from pathlib import Path
 
 from specy_road.orchestration.harness import harness_facts as hf
-from tests.test_harness_facts import run_main
+from tests.support.extracted.harness_facts import run_main
 
 
 def test_the_scope_escape_words_are_watched() -> None:

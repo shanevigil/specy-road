@@ -32,40 +32,22 @@ from specy_road.brainstorm_session import (
     session_path,
     write_session,
 )
+from tests.support.same.cli_11f0555f0fa9 import cli
+from tests.support.same.prompt_26b6cb7fef04 import prompt
+from tests.support.same.session_9301503dde8a import session as session_fn
+from tests.support.same.start_f653667be42d import start as start_fn
 
 SLUG = "how-do-we-expand-payments"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    import contextlib
-
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code or 0)
-    return code, out.getvalue(), err.getvalue()
 
 
-def _start(repo: Path, *extra: str) -> tuple[int, str, str]:
-    return _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
 
 
-def _prompt(repo: Path, pass_name: str = "r1") -> str:
-    return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
-def _session(repo: Path) -> BrainstormSession:
-    return read_session(repo, SLUG)
 
 
 # --- session model ----------------------------------------------------------
@@ -161,9 +143,9 @@ def test_parsers_for_origin_overlap_and_sources() -> None:
 # --- diverge: round 1, rounds, shards, profiles -----------------------------
 
 def test_round_one_plans_then_generates_without_anchors(repo: Path) -> None:
-    code, out, _ = _start(repo, "--count", "30")
+    code, out, _ = start_fn(repo, "--count", "30")
     assert code == 0 and "round 1 of 2" in out
-    text = _prompt(repo)
+    text = prompt(repo)
     assert "What would make this topic the wrong thing to brainstorm at all?" in text
     assert "neutralise the frame" in text
     assert "## Step 2 — plan the search before generating" in text
@@ -176,58 +158,58 @@ def test_round_one_plans_then_generates_without_anchors(repo: Path) -> None:
     assert "Do not open `roadmap-context.md`, `roadmap.md`, anything under `roadmap/`" in text
     assert "this instruction overrides that rule" in text
     assert "the next round opens them" in text
-    _start(repo, "--rounds", "1")   # no next round: say what does open them
-    text = _prompt(repo)
+    start_fn(repo, "--rounds", "1")   # no next round: say what does open them
+    text = prompt(repo)
     assert "next round" not in text and "converge (`brainstorm recommend`) shows the roadmap" in text
     assert "--origin" in text and "--hypothesis" in text
     assert "specy-road calls no model and no search API from the CLI" in text
 
 
 def test_frame_answers_and_allocation_are_recorded_and_shown(repo: Path) -> None:
-    _start(repo)
-    code, out, _ = _cli(repo, "frame", "--answer", "outcome=fewer failed payments", "--answer", "served=SMBs",
+    start_fn(repo)
+    code, out, _ = cli(repo, "frame", "--answer", "outcome=fewer failed payments", "--answer", "served=SMBs",
                         "--allocation", "SCAMPER x segments: 6")
     assert code == 0 and "2 answer(s)" in out and "allocation recorded" in out
-    assert _session(repo).frame == {"outcome": "fewer failed payments", "served": "SMBs"}
-    _start(repo)
-    text = _prompt(repo)
+    assert session_fn(repo).frame == {"outcome": "fewer failed payments", "served": "SMBs"}
+    start_fn(repo)
+    text = prompt(repo)
     assert "**outcome:** fewer failed payments" in text and "SCAMPER x segments: 6" in text
-    code, _, err = _cli(repo, "frame", "--answer", "nonsense")
+    code, _, err = cli(repo, "frame", "--answer", "nonsense")
     assert code == 1 and "KEY=TEXT" in err
 
 
 def test_next_round_needs_ideas_and_then_regenerates(repo: Path) -> None:
-    _start(repo)
-    code, _, err = _cli(repo, "next-round")
+    start_fn(repo)
+    code, _, err = cli(repo, "next-round")
     assert code == 1 and "no ideas yet" in err
-    _cli(repo, "add-idea", "--title", "Stored vault", "--origin", "claude-code/opus/SCAMPER/1")
-    _cli(repo, "add-idea", "--title", "Pay by link")
-    _cli(repo, "frame", "--answer", "outcome=fewer failed payments")
-    code, out, _ = _cli(repo, "next-round", "--count", "15")
+    cli(repo, "add-idea", "--title", "Stored vault", "--origin", "claude-code/opus/SCAMPER/1")
+    cli(repo, "add-idea", "--title", "Pay by link")
+    cli(repo, "frame", "--answer", "outcome=fewer failed payments")
+    code, out, _ = cli(repo, "next-round", "--count", "15")
     assert code == 0 and "round 2" in out and "2 ideas in the pool" in out
-    text = _prompt(repo, "r2")
+    text = prompt(repo, "r2")
     assert "## The agreed frame" in text and "**outcome:** fewer failed payments" in text
     assert "- B1 Stored vault" in text and "- B2 Pay by link" in text
     assert "at least 15 more" in text and "Unoccupied regions" in text
     assert "Do not research yet" not in text
-    assert _session(repo).round == 2
-    _cli(repo, "next-round")
-    assert "Round 3" in _prompt(repo, "r3") and _session(repo).round == 3
+    assert session_fn(repo).round == 2
+    cli(repo, "next-round")
+    assert "Round 3" in prompt(repo, "r3") and session_fn(repo).round == 3
 
 
 def test_technical_profile_swaps_the_lenses_and_default_kind(repo: Path) -> None:
-    code, out, _ = _start(repo, "--profile", "technical")
+    code, out, _ = start_fn(repo, "--profile", "technical")
     assert code == 0 and "profile technical" in out
-    text = _prompt(repo)
+    text = prompt(repo)
     assert "Failure modes" in text and "Dependency risk" in text and "SCAMPER" not in text
     assert "--kind refactor" in text
-    assert _session(repo).profile == "technical"
+    assert session_fn(repo).profile == "technical"
 
 
 def test_panel_writes_independent_shards(repo: Path) -> None:
-    code, out, _ = _start(repo, "--panel", "3", "--count", "30")
+    code, out, _ = start_fn(repo, "--panel", "3", "--count", "30")
     assert code == 0 and out.count("shard:") == 3
-    s1, s3 = _prompt(repo, "r1-s1"), _prompt(repo, "r1-s3")
+    s1, s3 = prompt(repo, "r1-s1"), prompt(repo, "r1-s3")
     assert "Shard 1 of 3" in s1 and "Shard 3 of 3" in s3
     assert "Do not read the other shards" in s1
     assert "at least 10 distinct ideas" in s1
@@ -236,37 +218,37 @@ def test_panel_writes_independent_shards(repo: Path) -> None:
     assert "`M0.1`" not in s1 and "Do not open `roadmap-context.md`" in s1
     # One allocation per session, replaced by `frame --allocation`: only the
     # coordinator's prompt records it, so parallel shards cannot erase each other's.
-    assert "frame --slug" in _prompt(repo) and "--allocation \"" in _prompt(repo)
+    assert "frame --slug" in prompt(repo) and "--allocation \"" in prompt(repo)
     assert "--allocation \"" not in s1 and "do not run `brainstorm frame --allocation`" in s1
     # Round 2 writes no shards: regeneration needs the whole pool.
-    _cli(repo, "add-idea", "--title", "x")
-    _cli(repo, "next-round")
-    assert "Round 2" in _prompt(repo, "r2")
+    cli(repo, "add-idea", "--title", "x")
+    cli(repo, "next-round")
+    assert "Round 2" in prompt(repo, "r2")
     assert not (repo / "work" / f"brainstorm-{SLUG}-r2-s1-prompt.md").exists()
-    assert render_shard_prompt(repo, _session(repo), count=5, shard=1, total=1).startswith("# Brainstorm shard 1/1")
+    assert render_shard_prompt(repo, session_fn(repo), count=5, shard=1, total=1).startswith("# Brainstorm shard 1/1")
 
 
 def test_add_idea_records_origin_hypothesis_and_assumptions(repo: Path) -> None:
-    _start(repo)
-    code, _, _ = _cli(repo, "add-idea", "--title", "One", "--origin", "codex/sol/Inversion/1",
+    start_fn(repo)
+    code, _, _ = cli(repo, "add-idea", "--title", "One", "--origin", "codex/sol/Inversion/1",
                       "--hypothesis", "If we do this, churn drops", "--assumption", "SMBs pay by card",
                       "--assumption", "fees matter", "--kind", "platform")
     assert code == 0
-    idea = _session(repo).by_id("B1")
+    idea = session_fn(repo).by_id("B1")
     assert idea.origin["lens"] == "Inversion" and idea.hypothesis.startswith("If we")
     assert idea.assumptions == ["SMBs pay by card", "fees matter"] and idea.kind == "platform"
-    payload = json.loads(_cli(repo, "list", "--json")[1])
+    payload = json.loads(cli(repo, "list", "--json")[1])
     assert payload["round"] == 1 and payload["ideas"][0]["origin"]["harness"] == "codex"
 
 
 # --- converge ----------------------------------------------------------------
 
 def test_converge_prompt_plays_critics_and_names_overlap_relations(repo: Path) -> None:
-    _start(repo)
-    _cli(repo, "add-idea", "--title", "One", "--origin", "cursor/composer/SCAMPER/1")
-    _cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "q")
-    _cli(repo, "recommend")
-    text = _prompt(repo, "recommend")
+    start_fn(repo)
+    cli(repo, "add-idea", "--title", "One", "--origin", "cursor/composer/SCAMPER/1")
+    cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "q")
+    cli(repo, "recommend")
+    text = prompt(repo, "recommend")
     assert "three independent critics" in text and "keep dissent" in text
     assert "same-problem-same-solution" in text and "superseded" in text
     assert "must cite" in text
@@ -277,83 +259,83 @@ def test_converge_prompt_plays_critics_and_names_overlap_relations(repo: Path) -
 
 
 def test_revise_records_cluster_overlap_and_critics_without_triaging(repo: Path) -> None:
-    _start(repo)
-    _cli(repo, "add-idea", "--title", "One")
-    code, _, _ = _cli(repo, "revise", "B1", "--cluster", "C1", "--overlap", "M1.1:prerequisite",
+    start_fn(repo)
+    cli(repo, "add-idea", "--title", "One")
+    code, _, _ = cli(repo, "revise", "B1", "--cluster", "C1", "--overlap", "M1.1:prerequisite",
                       "--overlap", "M2", "--critic", "feasibility: billing first",
                       "--critic", "value: small segment", "--recommendation", "consider", "--why", "Principle 2")
     assert code == 0
-    idea = _session(repo).by_id("B1")
+    idea = session_fn(repo).by_id("B1")
     assert idea.cluster_id == "C1" and idea.status == "proposed" and idea.recommendation == "consider"
     assert idea.verdict_why == "Principle 2" and idea.rationale == ""
     assert idea.overlap == [{"node_id": "M1.1", "relation": "prerequisite"}, {"node_id": "M2", "relation": "adjacent"}]
     assert idea.critic == {"feasibility": "billing first", "value": "small segment"}
-    code, _, err = _cli(repo, "revise", "B1", "--overlap", "M2:near")
+    code, _, err = cli(repo, "revise", "B1", "--overlap", "M2:near")
     assert code == 1 and "relation" in err
 
 
 def test_recommend_check_lists_every_idea_the_converge_pass_missed(repo: Path) -> None:
-    _start(repo)
+    start_fn(repo)
     for t in ("One", "Two", "Three"):
-        _cli(repo, "add-idea", "--title", t)
-    _cli(repo, "revise", "B1", "--cluster", "C1", "--recommendation", "strong")
-    _cli(repo, "revise", "B2", "--cluster", "C1")
-    code, out, _ = _cli(repo, "recommend", "--check")
+        cli(repo, "add-idea", "--title", t)
+    cli(repo, "revise", "B1", "--cluster", "C1", "--recommendation", "strong")
+    cli(repo, "revise", "B2", "--cluster", "C1")
+    code, out, _ = cli(repo, "recommend", "--check")
     assert code == 1 and "2 of 3 idea(s) not converged" in out
     assert "B1" not in out and "B2    no recommendation  Two" in out
     assert "B3    no cluster and no recommendation  Three" in out
-    assert _session(repo).mode == "brainstorm"
+    assert session_fn(repo).mode == "brainstorm"
     assert not (repo / "work" / f"brainstorm-{SLUG}-recommend-prompt.md").exists()
-    _cli(repo, "revise", "B2", "--recommendation", "park")
-    _cli(repo, "revise", "B3", "--cluster", "C2", "--recommendation", "consider")
-    code, out, _ = _cli(repo, "recommend", "--check")
+    cli(repo, "revise", "B2", "--recommendation", "park")
+    cli(repo, "revise", "B3", "--cluster", "C2", "--recommendation", "consider")
+    code, out, _ = cli(repo, "recommend", "--check")
     assert code == 0 and "all 3 idea(s) have a cluster and a recommendation" in out and "next:" in out
 
 
 # --- triage ------------------------------------------------------------------
 
 def test_reject_requires_a_reason_and_park_records_a_decision(repo: Path) -> None:
-    _start(repo)
-    _cli(repo, "add-idea", "--title", "One")
-    _cli(repo, "add-idea", "--title", "Two")
-    code, _, err = _cli(repo, "reject", "B1")
-    assert code != 0 and "--reason" in err and _session(repo).by_id("B1").status == "proposed"
-    assert _cli(repo, "reject", "B1", "--reason", "duplicates M1.1")[0] == 0
-    d = _session(repo).by_id("B1").decision
+    start_fn(repo)
+    cli(repo, "add-idea", "--title", "One")
+    cli(repo, "add-idea", "--title", "Two")
+    code, _, err = cli(repo, "reject", "B1")
+    assert code != 0 and "--reason" in err and session_fn(repo).by_id("B1").status == "proposed"
+    assert cli(repo, "reject", "B1", "--reason", "duplicates M1.1")[0] == 0
+    d = session_fn(repo).by_id("B1").decision
     assert d["status"] == "rejected" and d["reason"] == "duplicates M1.1" and d["decided_at"]
-    assert _cli(repo, "park", "B2", "--reason", "after billing", "--revisit-when", "billing ships")[0] == 0
-    p = _session(repo).by_id("B2")
+    assert cli(repo, "park", "B2", "--reason", "after billing", "--revisit-when", "billing ships")[0] == 0
+    p = session_fn(repo).by_id("B2")
     assert p.status == "parked" and p.decision["revisit_when"] == "billing ships"
-    assert _cli(repo, "accept", "B2", "--reason", "changed my mind")[0] == 0
-    assert _session(repo).by_id("B2").decision["status"] == "accepted"
+    assert cli(repo, "accept", "B2", "--reason", "changed my mind")[0] == 0
+    assert session_fn(repo).by_id("B2").decision["status"] == "accepted"
 
 
 def test_list_by_cluster_hides_verdicts_unless_asked(repo: Path) -> None:
-    _start(repo)
+    start_fn(repo)
     for t in ("One", "Two", "Three"):
-        _cli(repo, "add-idea", "--title", t)
-    _cli(repo, "revise", "B1", "--cluster", "C1", "--recommendation", "strong", "--critic", "value: thin")
-    _cli(repo, "revise", "B2", "--cluster", "C1", "--recommendation", "park")
-    _, out, _ = _cli(repo, "list", "--by", "cluster")
+        cli(repo, "add-idea", "--title", t)
+    cli(repo, "revise", "B1", "--cluster", "C1", "--recommendation", "strong", "--critic", "value: thin")
+    cli(repo, "revise", "B2", "--cluster", "C1", "--recommendation", "park")
+    _, out, _ = cli(repo, "list", "--by", "cluster")
     assert out.index("C1  (2)") < out.index("(unclustered)  (1)")
     assert "strong" not in out and "value: thin" not in out
-    _, out, _ = _cli(repo, "list", "--by", "cluster", "--show-verdicts")
+    _, out, _ = cli(repo, "list", "--by", "cluster", "--show-verdicts")
     assert "strong" in out and "park" in out and "value: thin" in out
 
 
 # --- promote -----------------------------------------------------------------
 
 def test_promote_carries_evidence_hypothesis_and_alternatives_into_the_sheet(repo: Path) -> None:
-    _start(repo)
-    _cli(repo, "add-idea", "--title", "Stored vault", "--hypothesis", "PCI scope shrinks",
+    start_fn(repo)
+    cli(repo, "add-idea", "--title", "Stored vault", "--hypothesis", "PCI scope shrinks",
          "--assumption", "we keep cards", "--evidence", "https://example.com/plain")
-    _cli(repo, "add-idea", "--title", "Vault via vendor")
-    _cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "exact words")
-    _cli(repo, "revise", "B1", "--cluster", "C1")
-    _cli(repo, "revise", "B2", "--cluster", "C1")
-    _cli(repo, "reject", "B2", "--reason", "vendor lock-in")
-    _cli(repo, "accept", "B1")
-    code, out, err = _cli(repo, "promote")
+    cli(repo, "add-idea", "--title", "Vault via vendor")
+    cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "exact words")
+    cli(repo, "revise", "B1", "--cluster", "C1")
+    cli(repo, "revise", "B2", "--cluster", "C1")
+    cli(repo, "reject", "B2", "--reason", "vendor lock-in")
+    cli(repo, "accept", "B1")
+    code, out, err = cli(repo, "promote")
     assert code == 0, err
     node_id = out.split("[ok] added ")[1].split()[0]
     sheet = next((repo / "planning").glob(f"{node_id}_*.md"))
@@ -365,20 +347,20 @@ def test_promote_carries_evidence_hypothesis_and_alternatives_into_the_sheet(rep
 
 
 def test_promote_warns_for_each_strong_idea_no_matched_source_backs(repo: Path) -> None:
-    _start(repo)
+    start_fn(repo)
     for t in ("Unverified", "Unsourced", "Matched", "Not found", "Consider"):
-        _cli(repo, "add-idea", "--title", t)
+        cli(repo, "add-idea", "--title", t)
     for ident in ("B1", "B3", "B4"):
-        _cli(repo, "add-evidence", ident, "--url", f"https://example.com/{ident}", "--quote", "q")
-    session = _session(repo)
+        cli(repo, "add-evidence", ident, "--url", f"https://example.com/{ident}", "--quote", "q")
+    session = session_fn(repo)
     session.by_id("B3").sources[0]["verification"] = "matched"
     session.by_id("B4").sources[0]["verification"] = "not-found"
     write_session(repo, session)
     for ident, verdict in (("B1", "strong"), ("B2", "strong"), ("B3", "strong"),
                            ("B4", "strong"), ("B5", "consider")):
-        _cli(repo, "revise", ident, "--recommendation", verdict)
-    _cli(repo, "accept", "B1", "B2", "B3", "B4", "B5")
-    code, _, err = _cli(repo, "promote", "--dry-run")
+        cli(repo, "revise", ident, "--recommendation", verdict)
+    cli(repo, "accept", "B1", "B2", "B3", "B4", "B5")
+    code, _, err = cli(repo, "promote", "--dry-run")
     assert code == 0
     assert "warning: B1 is recommended strong but no source is matched (unverified)" in err
     assert f"brainstorm verify --slug {SLUG}" in err

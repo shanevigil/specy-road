@@ -10,9 +10,10 @@ from typing import Callable
 import pytest
 import yaml
 
-from tests.review_delegate_helpers import delegate_repo, run_review_cli, set_steps, verdict_step
-from tests.review_repo_helpers import git, make_review_repo, review_text
-from tests.test_review_cli import ONE_AI
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
+from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
+from tests.support.review import make_review_repo, review_text, git
+from tests.support.extracted.review_cli import ONE_AI
 
 from specy_road.finish_land_deterministic import DeterministicResolveError, resolve_deterministic_paths
 from specy_road.generated_files import regenerate_generated_files

@@ -26,8 +26,8 @@ from specy_road.file_limits_engine import collect_tracked_files, run_file_limits
 from specy_road.git_subprocess import GitResult
 from specy_road.init_project import run_init_project
 from specy_road.digest import render_digest
-from tests.test_digest_quality import land
-from tests.upgrade_repo_helpers import OLD_STUB, old_repo
+from tests.support.extracted.digest_quality import land
+from tests.support.upgrade import OLD_STUB, old_repo
 
 GIT_ID = ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"]
 
@@ -341,6 +341,7 @@ def _shallow_clone(root: Path, tmp_path: Path) -> Path:
     return clone
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("history", [lambda root, tmp: root, _shallow_clone], ids=["full", "shallow"])
 def test_dry_run_and_real_run_agree_on_a_current_digest(tmp_path: Path, capsys, history) -> None:
     """The dry run reads the checkout's history, so a digest with Quality by area is current in both."""
@@ -807,6 +808,7 @@ def test_a_tracked_read_only_directory_does_not_stop_either_run(tmp_path: Path, 
         locked.chmod(0o755)
 
 
+@pytest.mark.slow
 def test_an_ignored_current_digest_is_not_predicted_as_a_rewrite(tmp_path: Path, capsys) -> None:
     """An ignored ``roadmap-context.md`` that matches the roadmap is current in the preview and the real run."""
     root = old_repo(tmp_path)

@@ -16,7 +16,8 @@ from tests.parity.grind.fixture import (
     copy_project,
     offline_env,
 )
-from tests.parity.grind.rows import ROWS, Row, golden_path, record
+from tests.support.parity import golden_file
+from tests.parity.grind.rows import GOLDEN, ROWS, Row, record
 from tests.parity.support import check_golden
 
 pytestmark = pytest.mark.parity
@@ -32,7 +33,8 @@ def templates(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
     return {"base": base, "readiness": readiness}
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("row", ROWS, ids=lambda r: r.name)
 def test_grind_session_matches_the_row(row: Row, tmp_path: Path, templates: dict) -> None:
     """Exit code, events, refusals and the project's state are what they were at pickup."""
-    check_golden(golden_path(row), record(row, tmp_path, templates))
+    check_golden(golden_file(GOLDEN, row), record(row, tmp_path, templates))

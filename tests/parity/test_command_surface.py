@@ -47,6 +47,7 @@ def _regenerate(surface: dict[str, dict]) -> None:
     INVENTORY.write_text(json.dumps(inventory, indent=1) + "\n", encoding="utf-8")
 
 
+@pytest.mark.slow
 def test_inventory_matches_golden_both_ways() -> None:
     surface = crawl()
     if REGEN:

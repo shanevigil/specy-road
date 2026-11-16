@@ -8,6 +8,8 @@ not restate it.
 
 from __future__ import annotations
 
+import pytest
+
 from pathlib import Path
 
 from specy_road.agent_guide_block import render_guide_lines
@@ -31,6 +33,7 @@ def test_scaffold_agents_md_carries_the_full_rule() -> None:
         assert s in AGENTS, s
 
 
+@pytest.mark.repo
 def test_bootstrap_prompt_links_the_shared_checkout_rule() -> None:
     """The prompt names the two rules-file paragraphs and does not copy them."""
     prompt = PROMPT.read_text(encoding="utf-8")
@@ -45,6 +48,7 @@ def test_bootstrap_prompt_links_the_shared_checkout_rule() -> None:
     assert "**Git in a shared tree:**" in prompt
 
 
+@pytest.mark.repo
 def test_suggested_prompts_index_lists_every_kept_prompt() -> None:
     """suggested_prompts/README.md is the index; generic review prompts are gone."""
     index = PROMPT.parent / "README.md"

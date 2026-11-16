@@ -15,16 +15,12 @@ from specy_road.bundled_scripts import finish_task
 from specy_road.finish_on_complete_override import configured_on_complete, needs_override
 from specy_road.on_complete_session import on_complete_session_path, write_on_complete_session
 from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.same.exit_a673d831c5ea import exit_fn
 
 BR = "feature/rm-thing"
 
 
-def _exit(fn, argv: list[str]) -> int:
-    with pytest.raises(SystemExit) as e:
-        fn(argv)
-        raise SystemExit(0)
-    return e.value.code or 0
 
 
 def _repo(tmp_path: Path, monkeypatch, mode: str) -> tuple[Path, Path]:
@@ -53,7 +49,7 @@ def test_merge_over_a_committed_pr_is_refused_before_anything_changes(
     repo, bare = _repo(tmp_path, monkeypatch, "pr")
     tip, dev = git(repo, "rev-parse", BR), git(bare, "rev-parse", "dev")
 
-    code = _exit(finish_task.main, ["--on-complete", "merge", "--delete-branch", "--repo-root", str(repo)])
+    code = exit_fn(finish_task.main, ["--on-complete", "merge", "--delete-branch", "--repo-root", str(repo)])
 
     err = capsys.readouterr().err
     assert code == 1
@@ -64,57 +60,62 @@ def test_merge_over_a_committed_pr_is_refused_before_anything_changes(
     assert git(repo, "branch", "--show-current") == BR
 
 
+@pytest.mark.slow
 def test_a_repeat_finish_cannot_land_a_pr_mode_leaf_with_merge(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
     """CR9/cursor r1: finish (pr), then ``--on-complete merge`` to retry a 'landing'."""
     repo, bare = _repo(tmp_path, monkeypatch, "pr")
-    assert _exit(finish_task.main, ["--repo-root", str(repo)]) == 0
+    assert exit_fn(finish_task.main, ["--repo-root", str(repo)]) == 0
     tip, dev = git(repo, "rev-parse", BR), git(bare, "rev-parse", "dev")
     capsys.readouterr()
 
-    assert _exit(finish_task.main, ["--on-complete", "merge", "--repo-root", str(repo)]) == 1
+    assert exit_fn(finish_task.main, ["--on-complete", "merge", "--repo-root", str(repo)]) == 1
 
     assert "--override-on-complete" in capsys.readouterr().err
     assert git(repo, "rev-parse", BR) == tip
     assert git(bare, "rev-parse", "dev") == dev
 
 
+@pytest.mark.slow
 def test_the_configured_value_passed_explicitly_still_lands(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
     repo, bare = _repo(tmp_path, monkeypatch, "merge")
 
-    assert _exit(finish_task.main, ["--on-complete", "merge", "--repo-root", str(repo)]) == 0
+    assert exit_fn(finish_task.main, ["--on-complete", "merge", "--repo-root", str(repo)]) == 0
 
     assert f"[ok] merged {BR} into dev and pushed to origin" in capsys.readouterr().out
     assert git(bare, "merge-base", "--is-ancestor", git(repo, "rev-parse", BR), "dev") == ""
 
 
+@pytest.mark.slow
 def test_the_acknowledgement_lets_a_person_override(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
     repo, _bare = _repo(tmp_path, monkeypatch, "pr")
 
     argv = ["--on-complete", "merge", "--override-on-complete", "--repo-root", str(repo)]
-    assert _exit(finish_task.main, argv) == 0
+    assert exit_fn(finish_task.main, argv) == 0
 
     out, err = capsys.readouterr()
     assert "[warn] --on-complete merge overrides on_complete: pr" in err
     assert f"[ok] merged {BR} into dev and pushed to origin" in out
 
 
+@pytest.mark.slow
 def test_pr_is_never_refused(tmp_path: Path, monkeypatch, capsys) -> None:
     """pr lands nothing and keeps the branch: the safe direction needs no acknowledgement."""
     repo, bare = _repo(tmp_path, monkeypatch, "merge")
     dev = git(bare, "rev-parse", "dev")
 
-    assert _exit(finish_task.main, ["--on-complete", "pr", "--repo-root", str(repo)]) == 0
+    assert exit_fn(finish_task.main, ["--on-complete", "pr", "--repo-root", str(repo)]) == 0
 
     assert "on_complete: pr" in capsys.readouterr().out
     assert git(bare, "rev-parse", "dev") == dev
 
 
+@pytest.mark.slow
 def test_an_overridden_landing_that_fails_names_the_flag_on_its_re_run(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
@@ -124,11 +125,12 @@ def test_an_overridden_landing_that_fails_names_the_flag_on_its_re_run(
     hook.chmod(0o755)
 
     argv = ["--on-complete", "merge", "--override-on-complete", "--repo-root", str(repo)]
-    assert _exit(finish_task.main, argv) == 1
+    assert exit_fn(finish_task.main, argv) == 1
 
     assert "finish-this-task --on-complete merge --override-on-complete" in capsys.readouterr().err
 
 
+@pytest.mark.slow
 def test_the_pickup_session_counts_as_the_configured_mode(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
@@ -141,6 +143,6 @@ def test_the_pickup_session_counts_as_the_configured_mode(
     assert configured_on_complete(repo, session="merge")[0] == "merge"
     assert needs_override(repo, "merge") and not needs_override(repo, "merge", session="merge")
 
-    assert _exit(finish_task.main, ["--on-complete", "merge", "--repo-root", str(repo)]) == 0
+    assert exit_fn(finish_task.main, ["--on-complete", "merge", "--repo-root", str(repo)]) == 0
 
     assert f"[ok] merged {BR} into dev and pushed to origin" in capsys.readouterr().out

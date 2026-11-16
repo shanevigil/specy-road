@@ -20,28 +20,14 @@ from specy_road.brainstorm_session import (
 )
 from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
+from tests.support.same.by_id_a6a5bf211114 import by_id
+from tests.support.same.cli_3c7fcb2cc75e import cli
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-def _by_id(root: Path) -> dict[str, dict]:
-    return {n["id"]: n for n in load_roadmap(root)["nodes"]}
 
 
-def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
-    out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        try:
-            brainstorm_cli.main([*args, "--repo-root", str(repo)])
-            code = 0
-        except SystemExit as e:
-            code = int(e.code) if isinstance(e.code, int) else 1
-    return code, out.getvalue(), err.getvalue()
 
 
 def _session(*ideas: dict) -> BrainstormSession:
@@ -56,7 +42,7 @@ def _session(*ideas: dict) -> BrainstormSession:
 
 
 def _sheet(root: Path, node_id: str) -> str:
-    return (root / _by_id(root)[node_id]["planning_dir"]).read_text(encoding="utf-8")
+    return (root / by_id(root)[node_id]["planning_dir"]).read_text(encoding="utf-8")
 
 
 # A1 — target parent
@@ -65,11 +51,11 @@ def _sheet(root: Path, node_id: str) -> str:
 def test_revise_target_parent_is_stored_and_cleared(repo: Path) -> None:
     write_session(repo, _session({"title": "Vault"}))
 
-    assert _cli(repo, "revise", "B1", "--target-parent", "M0")[0] == 0
+    assert cli(repo, "revise", "B1", "--target-parent", "M0")[0] == 0
     assert read_session(repo, "pay").by_id("B1").target_parent == "M0"
     assert "target_parent: M0" in (repo / "work" / "brainstorm-pay.yaml").read_text(encoding="utf-8")
 
-    assert _cli(repo, "revise", "B1", "--target-parent", "")[0] == 0
+    assert cli(repo, "revise", "B1", "--target-parent", "")[0] == 0
     idea = read_session(repo, "pay").by_id("B1")
     assert idea.target_parent is None
     assert idea.status == "accepted"
@@ -81,7 +67,7 @@ def test_promote_honours_target_parent_and_falls_back_to_under(repo: Path) -> No
     results = promote_session(repo, s, under="M2")
 
     assert [(r.title, r.parent_id) for r in results] == [("Vault", "M0"), ("Refunds", "M2")]
-    nodes = _by_id(repo)
+    nodes = by_id(repo)
     assert nodes[results[0].node_id]["parent_id"] == "M0"
     assert nodes[results[1].node_id]["parent_id"] == "M2"
 
@@ -146,7 +132,7 @@ def test_cli_min_recommendation_reports_what_it_skipped(repo: Path) -> None:
     write_session(repo, _session({"title": "Vault", "recommendation": "consider"},
                                  {"title": "Refunds", "recommendation": "park"}))
 
-    code, out, err = _cli(repo, "promote", "--min-recommendation", "consider")
+    code, out, err = cli(repo, "promote", "--min-recommendation", "consider")
 
     assert code == 0
     assert "(from B1)" in out and "Refunds" not in out
@@ -184,7 +170,7 @@ def test_plan_creates_the_tree_and_links_ideas_by_id(repo: Path) -> None:
 
     results = promote_session(repo, s, plan=plan)
 
-    nodes = _by_id(repo)
+    nodes = by_id(repo)
     phase, vault, token = (nodes[r.node_id] for r in results)
     assert (phase["type"], phase["parent_id"]) == ("phase", "M1")
     assert vault["parent_id"] == token["parent_id"] == phase["id"]
@@ -201,7 +187,7 @@ def test_cli_plan_runs_with_no_pending_ideas(repo: Path) -> None:
     plan = repo / "plan.yaml"
     plan.write_text("nodes:\n  - title: Payments platform\n    type: phase\n", encoding="utf-8")
 
-    code, out, _err = _cli(repo, "promote", "--plan", str(plan))
+    code, out, _err = cli(repo, "promote", "--plan", str(plan))
 
     assert code == 0, out
     assert "under M1 — Payments platform  (plan)" in out

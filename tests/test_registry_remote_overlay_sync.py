@@ -23,22 +23,12 @@ from specy_road.registry_remote_overlay import (
     maybe_auto_integration_ff,
 )
 import specy_road.registry_remote_overlay as _registry_overlay
+from tests.support.same.isolate_gui_settings_f1cfb6733460 import isolate_gui_settings
+from tests.support.same.write_gw_c3cc7b6c500e import write_gw
 
 
-def _isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    gui = tmp_path / ".specy-road"
-    gui.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr(_rgs, "SETTINGS_DIR", gui)
-    monkeypatch.setattr(_rgs, "SETTINGS_PATH", gui / "gui-settings.json")
 
 
-def _write_gw(repo: Path) -> None:
-    p = repo / "roadmap" / "git-workflow.yaml"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(
-        "version: 1\nintegration_branch: main\nremote: origin\n",
-        encoding="utf-8",
-    )
 
 
 def _init_integration_ff_repo(tmp_path: Path) -> Path:
@@ -59,7 +49,7 @@ def _init_integration_ff_repo(tmp_path: Path) -> Path:
     )
     roadmap = repo / "roadmap"
     roadmap.mkdir(parents=True)
-    _write_gw(repo)
+    write_gw(repo)
     (roadmap / "manifest.json").write_text('{"version":1,"includes":[]}\n', encoding="utf-8")
     subprocess.run(["git", "add", "roadmap"], cwd=repo, check=True, capture_output=True)
     subprocess.run(["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True)
@@ -100,7 +90,7 @@ def test_integration_branch_auto_ff_enabled_env(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    _isolate_gui_settings(monkeypatch, tmp_path)
+    isolate_gui_settings(monkeypatch, tmp_path)
     monkeypatch.delenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", raising=False)
     root = tmp_path / "x"
     root.mkdir()
@@ -115,7 +105,7 @@ def test_maybe_auto_integration_ff_skips_without_env_or_settings(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    _isolate_gui_settings(monkeypatch, tmp_path)
+    isolate_gui_settings(monkeypatch, tmp_path)
     monkeypatch.delenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", raising=False)
     repo = _init_integration_ff_repo(tmp_path)
     calls: list[list[str]] = []

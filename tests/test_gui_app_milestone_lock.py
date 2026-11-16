@@ -19,12 +19,9 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
+from tests.support.same.mutation_headers_1fdfef6b66c9 import mutation_headers
 
 
-def _mutation_headers(client: TestClient) -> dict[str, str]:
-    r = client.get("/api/roadmap")
-    assert r.status_code == 200
-    return {"X-PM-Gui-Fingerprint": str(r.json()["fingerprint"])}
 
 
 def _attach_active_lock_to(repo_root: Path, parent_id: str) -> None:
@@ -82,7 +79,7 @@ def api_client_locked(
 def test_patch_node_under_locked_milestone_returns_409(
     api_client_locked: TestClient,
 ) -> None:
-    headers = _mutation_headers(api_client_locked)
+    headers = mutation_headers(api_client_locked)
     r = api_client_locked.patch(
         "/api/nodes/M0.1",
         headers={**headers, "Content-Type": "application/json"},
@@ -99,7 +96,7 @@ def test_patch_node_outside_locked_subtree_still_works(
     api_client_locked: TestClient,
 ) -> None:
     """M1 is not under the locked M0 subtree — edits must still go through."""
-    headers = _mutation_headers(api_client_locked)
+    headers = mutation_headers(api_client_locked)
     r = api_client_locked.patch(
         "/api/nodes/M1",
         headers={**headers, "Content-Type": "application/json"},
@@ -118,7 +115,7 @@ def test_outline_move_into_locked_subtree_returns_409(
 ) -> None:
     """Moving an unlocked node *into* the locked subtree is also blocked."""
     moved_key = _node_key_for(locked_dogfood, "M1")  # unlocked source
-    headers = _mutation_headers(api_client_locked)
+    headers = mutation_headers(api_client_locked)
     r = api_client_locked.post(
         "/api/outline/move",
         headers={**headers, "Content-Type": "application/json"},
@@ -135,7 +132,7 @@ def test_outline_move_into_locked_subtree_returns_409(
 def test_indent_inside_locked_subtree_returns_409(
     api_client_locked: TestClient,
 ) -> None:
-    headers = _mutation_headers(api_client_locked)
+    headers = mutation_headers(api_client_locked)
     r = api_client_locked.post(
         "/api/nodes/M0.1/indent",
         headers=headers,
@@ -147,7 +144,7 @@ def test_indent_inside_locked_subtree_returns_409(
 def test_delete_inside_locked_subtree_returns_409(
     api_client_locked: TestClient,
 ) -> None:
-    headers = _mutation_headers(api_client_locked)
+    headers = mutation_headers(api_client_locked)
     r = api_client_locked.delete("/api/nodes/M0.3", headers=headers)
     assert r.status_code == 409, r.text
     assert "milestone subtree" in r.json().get("detail", "")

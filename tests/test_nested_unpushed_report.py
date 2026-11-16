@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.pickup_repo_helpers import make_pickup_project
-from tests.review_repo_helpers import commit_file, git
-from tests.test_nested_repo_worktrees import add_nested_repo
+from tests.support.pickup import make_pickup_project
+from tests.support.review import commit_file, git
+from tests.support.extracted.nested_repo_worktrees import add_nested_repo
 
 from specy_road.bundled_scripts import doctor
 from specy_road.orchestration.grind import grind_session as gs

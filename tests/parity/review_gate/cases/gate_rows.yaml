@@ -1,6 +1,6 @@
 # Review-gate decision table (M16.1.2): today's verdicts, recorded at pickup (base 923ae573).
 #
-# Each row builds the claimed leaf of tests/review_repo_helpers.make_review_repo (M1.1 on feature/rm-thing,
+# Each row builds the claimed leaf of tests.support.review.make_review_repo (M1.1 on feature/rm-thing,
 # acceptance A1 and A2, touch zone src), runs its steps in order, then evaluates the gate the way
 # finish-this-task, mark-implementation-reviewed, `handoff status` and `review list` do:
 # resolve_target(repo, "M1.1", "HEAD"), then evaluate_gate(..., branch=<the registry branch>).

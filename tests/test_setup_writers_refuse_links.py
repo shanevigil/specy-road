@@ -27,7 +27,7 @@ from specy_road.bundled_scripts.upgrade_plan import Entry, Plan, apply_plan
 from specy_road.init_project import run_init_project
 from specy_road.specyrd_init import run_init
 from tests.helpers import DOGFOOD
-from tests.upgrade_repo_helpers import OLD_STUB, old_repo
+from tests.support.upgrade import OLD_STUB, old_repo
 
 SCHEMA = "schemas/roadmap.schema.json"
 

@@ -70,18 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support
-    node_id: M16.6.4
-    branch: feature/rm-tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support
-    touch_zones:
-      - tests/support/
-      - tests/
-      - scripts/line_width_baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/test-private-imports-baseline.txt
-    started: '2026-11-15'
-    owner: savigil
-    implementation_review: pending
   - codename: suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout
     node_id: M16.6.2
     branch: feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout
@@ -90,6 +78,20 @@ entries:
       - tests/test_suggested_prompts_commands.py
       - tests/test_lean_rules.py
       - tests/test_shared_checkout_guidance.py
+    started: '2026-11-15'
+    owner: savigil
+    implementation_review: pending
+  - codename: tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only
+    node_id: M16.6.5
+    branch: feature/rm-tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only
+    touch_zones:
+      - tests/
+      - scripts/line_width_baseline.json
+      - scripts/ruff_quality_baseline.json
+      - constraints/test-private-imports-baseline.txt
+      - docs/context-regressions.yaml
+      - constraints/file-limits.yaml
+      - sr/constraints/file-limits.yaml
     started: '2026-11-15'
     owner: savigil
     implementation_review: pending

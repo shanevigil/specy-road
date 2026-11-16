@@ -20,8 +20,15 @@ from specy_road.orchestration.role_prompt_rca import reviewer_preamble
 from specy_road.orchestration.records.decisions import read_decisions
 from specy_road.bundled_scripts.finish_task import human_acceptance_ids, undecided_human_items
 from specy_road.orchestration.guard.orchestration_role_env import ROLE_ENV
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
-from tests import test_gui_app_pm_decisions as gui
+from tests.support.review import NODE, commit_file, make_review_repo, git
+from tests.support.extracted.gui_app_pm_decisions import (
+    answer,
+    client,
+    layout,
+    ledger_at,
+    question,
+    with_questions,
+)
 
 HUMAN_NODE = {**NODE, "acceptance": ["a.py exists", "human: the maintainer approves the wording"]}
 SHEET = NODE["planning_dir"]
@@ -36,7 +43,7 @@ def _human_repo(tmp_path: Path) -> Path:
 
 
 def _entry(**extra) -> dict:
-    return {**gui.question("H1", kind="human-action", criterion="A2"), **extra}
+    return {**question("H1", kind="human-action", criterion="A2"), **extra}
 
 
 def _closed(**extra) -> dict:
@@ -133,11 +140,11 @@ def test_an_entry_committed_on_the_integration_branch_counts(tmp_path: Path) -> 
 def test_the_pm_gui_answer_decides_the_criterion(tmp_path: Path, monkeypatch, capsys) -> None:
     """F9: the GUI's own close path, committed and pushed on the integration branch only."""
     monkeypatch.delenv(ROLE_ENV, raising=False)   # the manual coordinator
-    lay = gui.layout(tmp_path, monkeypatch)
+    lay = layout(tmp_path, monkeypatch)
     commit_file(lay.leaf, CHUNK, json.dumps({"nodes": [HUMAN_NODE]}), "mark A2 human")
-    gui.with_questions(lay, _entry())
-    assert gui.answer(gui.client(), "H1", "A", "wording approved").status_code == 200
-    entry = gui.ledger_at(lay, "origin/dev")["H1"]
+    with_questions(lay, _entry())
+    assert answer(client(), "H1", "A", "wording approved").status_code == 200
+    entry = ledger_at(lay, "origin/dev")["H1"]
     assert (entry["decided_by"], entry["channel"]) == ("operator", "pm-gui")
     assert not (lay.leaf / LEDGER).exists()
     err = _finish_err(lay.leaf, capsys)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.profiles import TEMPLATE_PROFILES
 
 from specy_road.orchestration import orchestrate_plan as op

@@ -11,11 +11,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_delegate_helpers import delegate_repo, run_review_cli, set_steps, verdict_step
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.support.same.run_review_cli_5df07e4aaa50 import run_review_cli
+from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step
+from tests.support.review import make_review_repo, review_text, git
 from tests.support.cli import run_main
-from tests.test_review_cli import ONE_AI
-from tests.test_review_gate import TWO_FAMILIES
+from tests.support.extracted.review_cli import ONE_AI
+from tests.support.extracted.review_gate import TWO_FAMILIES
 
 from specy_road import safe_write
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir

@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 
 from tests.helpers import DOGFOOD
-from tests.review_repo_helpers import commit_file, git
+from tests.support.review import commit_file, git
 
 from specy_road.roadmap_chunk_utils import load_json_chunk
 

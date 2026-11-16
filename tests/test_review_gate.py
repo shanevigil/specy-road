@@ -7,23 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, advance_dev, commit_file, git, make_review_repo, review_text
+from tests.support.review import NODE, advance_dev, commit_file, make_review_repo, review_text, git
 
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, trial_merge
+from tests.support.extracted.review_gate import TWO_FAMILIES
 
-TWO_FAMILIES = """version: 1
-roster:
-  - {id: human, family: human, roles: [reviewer]}
-  - {id: opus, family: anthropic, roles: [reviewer]}
-  - {id: sonnet, family: anthropic, roles: [reviewer]}
-  - {id: sol, family: openai, roles: [reviewer]}
-  - {id: composer, family: cursor, roles: [executor]}
-  - {id: astra, family: openai, roles: [executor]}
-policy: {reviewers_required: 2, reviewers_distinct_families: true}
-substitutions:
-  - {slot: reviewer-openai, use: astra, scope: [M1.1], decided: 2026-01-01, expires: 2026-12-31}
-"""
 
 
 def _review(repo: Path, model: str, **kw) -> None:

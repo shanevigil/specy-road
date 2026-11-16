@@ -22,7 +22,17 @@ from specy_road.gui_app import create_app
 from specy_road.milestone_session import milestone_session_path, write_milestone_session
 from specy_road.orchestration.guard.session_presence import start_session
 from specy_road.orchestration.workers.worker_state import create_record
-from tests.test_grind_status import D1, D2, branch_with, claim, commit, git, make_repo, node, set_status
+from tests.support.extracted.grind_status import (
+    D1,
+    D2,
+    branch_with,
+    claim,
+    commit,
+    git,
+    make_repo,
+    node,
+    set_status,
+)
 
 MOCK = Path(__file__).resolve().parents[1] / "gui" / "pm-gantt" / "src" / "fixtures" / "grind_status_mock.json"
 # Every leaf the live clock can see: a presence session expires by the wall clock, so ``now`` is pinned near it.
@@ -110,6 +120,7 @@ def test_read_only_serves_the_get_refuses_a_post_and_changes_nothing(repo: Path)
     assert state() == before
 
 
+@pytest.mark.repo
 def test_the_gui_mock_has_the_routes_key_paths_both_ways(repo: Path) -> None:
     body = client().get("/api/grind-status", params={"until": "M1"}).json()
     mock = json.loads(MOCK.read_text())

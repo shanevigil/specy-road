@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import advance_dev, git, make_review_repo, review_text
+from tests.support.review import advance_dev, make_review_repo, review_text, git
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import reviews_dir

@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 
 from tests.helpers import SCHEMAS, script_subprocess_env
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 
 from specy_road.planning_artifacts import expected_planning_rel
 
@@ -61,6 +61,7 @@ def make_pickup_project(tmp_path: Path, git_workflow_extra: str = "") -> Path:
 
 
 def run_specy_road(root: Path, *argv: str) -> subprocess.CompletedProcess:
+    """Shared test helper."""
     return subprocess.run(
         [sys.executable, "-m", "specy_road.cli", *argv, "--repo-root", str(root)],
         cwd=root, env=script_subprocess_env(), capture_output=True, text=True,
@@ -68,4 +69,5 @@ def run_specy_road(root: Path, *argv: str) -> subprocess.CompletedProcess:
 
 
 def run_pickup(root: Path, *argv: str) -> subprocess.CompletedProcess:
+    """Shared test helper."""
     return run_specy_road(root, "do-next-available-task", "--on-complete", "merge", *argv)

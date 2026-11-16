@@ -14,9 +14,9 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step, wrote_paths
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.cli import run_main
-from tests.test_review_record_write import GENERIC
+from tests.support.extracted.review_record_write import GENERIC
 
 from specy_road import review_files as rf
 from specy_road.bundled_scripts import role_prompt

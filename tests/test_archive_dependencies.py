@@ -27,11 +27,6 @@ from tests.helpers import DOGFOOD
 M01_KEY = "44ef4a9d-923f-545c-8187-eaabc7ca86ba"
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def _live_nodes(repo: Path) -> list[dict]:

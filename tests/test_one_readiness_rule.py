@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unauthored_repo_helpers import FILLED, pick_leaf, plan_json, unauthored_repo
+from tests.support.unauthored import FILLED, pick_leaf, plan_json, unauthored_repo
 
 from specy_road.bundled_scripts import orchestrate_cli
 from specy_road.orchestration.orchestrate_plan import build_orchestration_plan

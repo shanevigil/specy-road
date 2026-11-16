@@ -24,42 +24,20 @@ from specy_road.orchestration.grind.grind_session_in_flight import (
     prepare_resume,
 )
 from specy_road.orchestration.grind.session_plan import BlockedLeaf, SessionPlan, Wave
+from tests.support.same.events_bc2d3e84325c import events as events_fn
+from tests.support.same.plan_a42dad7814e8 import plan as plan_fn
+from tests.support.same.reg_506cecd4ff0e import reg as reg_fn
+from tests.support.extracted.grind_session_in_flight import artifacts, entry
 
 TS = "2026-09-07T00:00:00Z"
 
 
-def _plan(ready=None, blocked=None, active=None):
-    ready = ready or []
-    return SessionPlan(
-        under=None,
-        ready=list(ready),
-        blocked=list(blocked or []),
-        active=list(active or []),
-        closed=[],
-        gated=[],
-        gates_open=[],
-        needs_codename=[],
-        waves=[Wave(index=0, node_ids=list(ready))] if ready else [],
-        parallel_batches=[list(ready)] if ready else [],
-        totals={"ready": len(ready)},
-    )
 
 
-def _reg(*entries):
-    return {"version": 1, "entries": list(entries)}
 
 
-def _entry(node_id, codename, branch=None):
-    return {
-        "node_id": node_id,
-        "codename": codename,
-        "branch": branch or f"feature/rm-{codename}",
-    }
 
 
-def _events(capsys):
-    out = capsys.readouterr().out.strip().splitlines()
-    return [json.loads(line) for line in out if line.strip()]
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +46,7 @@ def _events(capsys):
 
 
 def test_claim_needs_both_a_registry_row_and_a_local_branch(tmp_path):
-    reg = _reg(_entry("M1.1", "mine"), _entry("M1.2", "theirs"))
+    reg = reg_fn(entry("M1.1", "mine"), entry("M1.2", "theirs"))
     claims = own_in_flight_claims(
         tmp_path, reg, ["M1.1", "M1.2"],
         branch_exists=lambda _root, b: b == "feature/rm-mine",
@@ -80,7 +58,7 @@ def test_claim_needs_both_a_registry_row_and_a_local_branch(tmp_path):
 def test_in_progress_without_a_registry_row_is_not_a_claim(tmp_path):
     """Another lane's leaf reaches ``active`` via status alone; never resume it."""
     claims = own_in_flight_claims(
-        tmp_path, _reg(), ["M1.1"], branch_exists=lambda _root, _b: True
+        tmp_path, reg_fn(), ["M1.1"], branch_exists=lambda _root, _b: True
     )
     assert claims == []
 
@@ -88,7 +66,7 @@ def test_in_progress_without_a_registry_row_is_not_a_claim(tmp_path):
 def test_ownership_probe_is_resolved_at_call_time(monkeypatch, tmp_path):
     """Binding the probe as a default would freeze it at import."""
     monkeypatch.setattr(gsif, "local_branch_exists", lambda _root, _b: True)
-    claims = own_in_flight_claims(tmp_path, _reg(_entry("M1.1", "cn")), ["M1.1"])
+    claims = own_in_flight_claims(tmp_path, reg_fn(entry("M1.1", "cn")), ["M1.1"])
     assert [c.node_id for c in claims] == ["M1.1"]
 
 
@@ -100,18 +78,18 @@ def test_ownership_probe_is_resolved_at_call_time(monkeypatch, tmp_path):
 def test_own_claim_wins_over_a_blocked_leaf_waiting_on_it(monkeypatch, capsys, tmp_path):
     """The downstream leaf is blocked *on* the claim, so both buckets are full."""
     monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
-    plan = _plan(
+    plan = plan_fn(
         ready=[],
         blocked=[BlockedLeaf("M1.2", "cn2", ["M1.1"], "dependency")],
         active=["M1.1"],
     )
     code = handle_no_ready(
         EventEmitter(as_json=True), plan, 0,
-        repo_root=tmp_path, reg=_reg(_entry("M1.1", "mine")),
+        repo_root=tmp_path, reg=reg_fn(entry("M1.1", "mine")),
         claims_fn=lambda *_a, **_k: [InFlightClaim("M1.1", "mine", "feature/rm-mine")],
     )
     assert code == EXIT_IN_FLIGHT
-    event = _events(capsys)[-1]
+    event = events_fn(capsys)[-1]
     assert event["event"] == "in_flight"
     assert event["node_id"] == "M1.1"
     assert event["branch"] == "feature/rm-mine"
@@ -124,14 +102,14 @@ def test_in_flight_emits_branch_complete_when_tip_is_done(monkeypatch, capsys, t
         "node_complete_on_ref",
         lambda _root, _ref, _nid: True,
     )
-    plan = _plan(ready=[], active=["M1.1"])
+    plan = plan_fn(ready=[], active=["M1.1"])
     code = handle_no_ready(
         EventEmitter(as_json=True), plan, 0,
-        repo_root=tmp_path, reg=_reg(_entry("M1.1", "mine")),
+        repo_root=tmp_path, reg=reg_fn(entry("M1.1", "mine")),
         claims_fn=lambda *_a, **_k: [InFlightClaim("M1.1", "mine", "feature/rm-mine")],
     )
     assert code == EXIT_IN_FLIGHT
-    event = _events(capsys)[-1]
+    event = events_fn(capsys)[-1]
     assert event["branch_complete"] is True
 
 
@@ -148,17 +126,17 @@ def test_human_in_flight_branch_complete_mentions_merge_not_abort():
 
 
 def test_someone_elses_claim_still_reports_as_blocked(capsys, tmp_path):
-    plan = _plan(
+    plan = plan_fn(
         ready=[],
         blocked=[BlockedLeaf("M1.2", "cn2", ["M1.1"], "dependency")],
         active=["M1.1"],
     )
     code = handle_no_ready(
         EventEmitter(as_json=True), plan, 0,
-        repo_root=tmp_path, reg=_reg(), claims_fn=lambda *_a, **_k: [],
+        repo_root=tmp_path, reg=reg_fn(), claims_fn=lambda *_a, **_k: [],
     )
     assert code == EXIT_BLOCKED
-    assert _events(capsys)[-1]["event"] == "blocked"
+    assert events_fn(capsys)[-1]["event"] == "blocked"
 
 
 @pytest.mark.parametrize(
@@ -167,17 +145,17 @@ def test_someone_elses_claim_still_reports_as_blocked(capsys, tmp_path):
 )
 def test_nothing_in_flight_and_nothing_blocked(capsys, tmp_path, finished, expected, reason):
     code = handle_no_ready(
-        EventEmitter(as_json=True), _plan(), finished,
-        repo_root=tmp_path, reg=_reg(), claims_fn=lambda *_a, **_k: [],
+        EventEmitter(as_json=True), plan_fn(), finished,
+        repo_root=tmp_path, reg=reg_fn(), claims_fn=lambda *_a, **_k: [],
     )
     assert code == expected
-    assert _events(capsys)[-1]["reason"] == reason
+    assert events_fn(capsys)[-1]["reason"] == reason
 
 
 def test_human_message_names_the_node_the_branch_and_the_way_out(capsys, tmp_path):
     handle_no_ready(
-        EventEmitter(as_json=False), _plan(active=["M1.3.2"]), 0,
-        repo_root=tmp_path, reg=_reg(),
+        EventEmitter(as_json=False), plan_fn(active=["M1.3.2"]), 0,
+        repo_root=tmp_path, reg=reg_fn(),
         claims_fn=lambda *_a, **_k: [
             InFlightClaim("M1.3.2", "tradelog", "feature/rm-tradelog"),
         ],
@@ -191,8 +169,8 @@ def test_human_message_names_the_node_the_branch_and_the_way_out(capsys, tmp_pat
 
 def test_extra_claims_are_listed_but_only_one_is_named(capsys, tmp_path):
     handle_no_ready(
-        EventEmitter(as_json=False), _plan(active=["M1.1", "M1.2"]), 0,
-        repo_root=tmp_path, reg=_reg(),
+        EventEmitter(as_json=False), plan_fn(active=["M1.1", "M1.2"]), 0,
+        repo_root=tmp_path, reg=reg_fn(),
         claims_fn=lambda *_a, **_k: [
             InFlightClaim("M1.1", "a", "feature/rm-a"),
             InFlightClaim("M1.2", "b", "feature/rm-b"),
@@ -206,15 +184,10 @@ def test_extra_claims_are_listed_but_only_one_is_named(capsys, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _artifacts(repo_root, node_id, *, brief="brief", prompt="prompt"):
-    work = repo_root / "work"
-    work.mkdir(parents=True, exist_ok=True)
-    (work / f"brief-{node_id}.md").write_text(brief, encoding="utf-8")
-    (work / f"prompt-{node_id}.md").write_text(prompt, encoding="utf-8")
 
 
 def test_prepare_resume_checks_out_and_keeps_existing_artifacts(tmp_path):
-    _artifacts(tmp_path, "M1.1", prompt="hand-edited")
+    artifacts(tmp_path, "M1.1", prompt="hand-edited")
     seen = []
     error = prepare_resume(
         tmp_path,
@@ -230,7 +203,7 @@ def test_prepare_resume_checks_out_and_keeps_existing_artifacts(tmp_path):
 
 def test_prepare_resume_rewrites_a_deleted_prompt_from_the_current_sheet(tmp_path):
     """The documented refresh after a PM edits an in-flight leaf: delete the prompt, resume."""
-    _artifacts(tmp_path, "M1.1", prompt="stale copy")
+    artifacts(tmp_path, "M1.1", prompt="stale copy")
     sheet = "planning/M1.1_cn_11111111-1111-5111-8111-111111111111.md"
     (tmp_path / sheet).parent.mkdir()
     (tmp_path / sheet).write_text("# M1.1\n\n## Intent\n\nThe PM's edited intent.\n", encoding="utf-8")
@@ -273,14 +246,14 @@ def test_prepare_resume_rejects_a_claim_with_no_node(tmp_path):
 def test_loop_resumes_instead_of_exiting_six(monkeypatch, capsys, tmp_path):
     from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 
-    _artifacts(tmp_path, "M1.1")
+    artifacts(tmp_path, "M1.1")
     monkeypatch.setattr(gse, "utc_now", lambda: datetime.fromisoformat(TS.replace("Z", "+00:00")))
     monkeypatch.setattr(gsif, "local_branch_exists", lambda _root, _b: True)
     monkeypatch.setattr(gsif, "checkout_branch", lambda _root, _b: (0, ""))
 
     plans = [
-        (_plan(active=["M1.1"]), _reg(_entry("M1.1", "cn"))),
-        (_plan(), _reg()),
+        (plan_fn(active=["M1.1"]), reg_fn(entry("M1.1", "cn"))),
+        (plan_fn(), reg_fn()),
     ]
     calls: list[str] = []
 
@@ -304,7 +277,7 @@ def test_loop_resumes_instead_of_exiting_six(monkeypatch, capsys, tmp_path):
     code = gs.run_session(args)
 
     assert code == EXIT_OK
-    events = [e["event"] for e in _events(capsys)]
+    events = [e["event"] for e in events_fn(capsys)]
     assert "resumed" in events
     assert "finished" in events
     # Pickup is skipped: the claim is already registered and branched.
@@ -320,8 +293,8 @@ def test_loop_without_the_flag_stops_with_exit_six(monkeypatch, capsys, tmp_path
     monkeypatch.setattr(
         gs, "gather_plan",
         lambda _r, _u, **_kw: ([{"id": "M1.1", "codename": "cn"}],
-                        _reg(_entry("M1.1", "cn")),
-                        _plan(active=["M1.1"])),
+                        reg_fn(entry("M1.1", "cn")),
+                        plan_fn(active=["M1.1"])),
     )
     monkeypatch.setattr(gs, "_run_cli", lambda *_a, **_k: 0)
 
@@ -330,4 +303,4 @@ def test_loop_without_the_flag_stops_with_exit_six(monkeypatch, capsys, tmp_path
         "--implement-cmd", "true", "--json", "--repo-root", str(tmp_path),
     ])
     assert gs.run_session(args) == EXIT_IN_FLIGHT
-    assert _events(capsys)[-1]["event"] == "in_flight"
+    assert events_fn(capsys)[-1]["event"] == "in_flight"

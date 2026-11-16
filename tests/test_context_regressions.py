@@ -10,7 +10,7 @@ import jsonschema
 import pytest
 import yaml
 
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 from specy_road.bundled_scripts import role_prompt
 
@@ -74,6 +74,7 @@ def _distinct_rendered_prompts() -> list[dict]:
     return list(first.values())
 
 
+@pytest.mark.repo
 def test_the_set_validates_and_cites_sources_that_exist() -> None:
     data = _load()
     jsonschema.validate(data, SCHEMA)
@@ -101,6 +102,7 @@ def _prompt_from_another_command(data: dict) -> None:
 
 @pytest.mark.parametrize("break_it", [_eleven_cases, _no_pass_condition, _judged_by_the_model,
                                       _prompt_from_another_command])
+@pytest.mark.repo
 def test_the_schema_refuses_a_broken_set(break_it) -> None:
     data = copy.deepcopy(_load())
     break_it(data)
@@ -109,6 +111,7 @@ def test_the_schema_refuses_a_broken_set(break_it) -> None:
 
 
 @pytest.mark.parametrize("case", _distinct_rendered_prompts(), ids=lambda c: c["id"])
+@pytest.mark.repo
 def test_a_rendered_prompt_writes_the_file_it_sends_and_renders_the_same_twice(
     case: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

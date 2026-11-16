@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import script_subprocess_env
-from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
+from tests.support.review import NODE, make_review_repo, review_text, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import FAKE, make_worker_repo, wait_for_worker, worker_roster
 

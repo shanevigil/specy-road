@@ -30,6 +30,7 @@ from specy_road.orchestration.workers import worker_state as ws
 from specy_road.review_files import reviews_root
 
 
+@pytest.mark.slow
 def test_a_flag_set_while_the_wrapper_streams_survives(tmp_path: Path) -> None:
     repo, _script = make_worker_repo(tmp_path)
     spec = tmp_path / "slow.json"
@@ -70,6 +71,7 @@ def test_concurrent_delegates_on_one_leaf_launch_once(tmp_path: Path) -> None:
     wait_for_worker(repo, "w-0001")
 
 
+@pytest.mark.slow
 def test_terminate_reaches_the_harness_and_its_children(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)
     marker = tmp_path / "ticks"
@@ -118,7 +120,7 @@ def test_an_older_attempts_ready_does_not_complete_a_new_worker(tmp_path: Path) 
     repo, script = make_worker_repo(tmp_path)
     d = reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
-    from tests.review_repo_helpers import git
+    from tests.support.same.git_84c8ad8f55f9 import git
 
     head = git(repo, "rev-parse", "HEAD")
     ready = d / "READY-old.md"

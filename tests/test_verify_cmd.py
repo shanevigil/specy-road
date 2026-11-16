@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from pathlib import Path
 
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.profiles import make_profile_repo
 
 from specy_road.bundled_scripts import role_prompt

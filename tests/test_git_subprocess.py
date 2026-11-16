@@ -7,25 +7,24 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import advance_dev, git, make_review_repo
+from tests.support.review import advance_dev, make_review_repo, git
 
 import specy_road
 from specy_road.git_subprocess import git_ok, is_worktree_root, merge_conflicts, run
+from tests.support.same.git_04549aebf210 import git as git_cmd
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
 
 
 def test_git_ok_returns_stdout_for_success(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
-    _git(repo, "init", "-b", "main")
-    _git(repo, "config", "user.email", "t@example.com")
-    _git(repo, "config", "user.name", "T")
+    git_cmd(repo, "init", "-b", "main")
+    git_cmd(repo, "config", "user.email", "t@example.com")
+    git_cmd(repo, "config", "user.name", "T")
     (repo / "f.txt").write_text("ok\n", encoding="utf-8")
-    _git(repo, "add", "f.txt")
-    _git(repo, "commit", "-m", "init")
+    git_cmd(repo, "add", "f.txt")
+    git_cmd(repo, "commit", "-m", "init")
 
     ok, out = git_ok(["rev-parse", "--abbrev-ref", "HEAD"], repo, 10.0)
 
@@ -36,9 +35,9 @@ def test_git_ok_returns_stdout_for_success(tmp_path: Path) -> None:
 def test_git_ok_returns_false_and_stderr_on_failure(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
-    _git(repo, "init", "-b", "main")
-    _git(repo, "config", "user.email", "t@example.com")
-    _git(repo, "config", "user.name", "T")
+    git_cmd(repo, "init", "-b", "main")
+    git_cmd(repo, "config", "user.email", "t@example.com")
+    git_cmd(repo, "config", "user.name", "T")
 
     ok, out = git_ok(["show", "not-a-real-ref"], repo, 10.0)
 
@@ -94,6 +93,7 @@ def _asks_git_for_root_or_branch(source: str) -> bool:
                for n in ast.walk(ast.parse(source)))
 
 
+@pytest.mark.slow
 def test_only_git_subprocess_asks_git_for_the_root_or_the_branch() -> None:
     """Every other module calls git_root, current_branch_name or is_worktree_root instead."""
     assert _asks_git_for_root_or_branch('git_text(["branch", "--show-current"], here)')
@@ -117,7 +117,7 @@ def test_is_worktree_root(tmp_path: Path, where: str, branch: str | None, expect
     repo = tmp_path / "repo"
     (repo / "subdir").mkdir(parents=True)
     (tmp_path / "outside").mkdir()
-    _git(repo, "init", "-q", "-b", "main")
+    git_cmd(repo, "init", "-q", "-b", "main")
     path = {"top": repo, "subdir": repo / "subdir", "outside": tmp_path / "outside"}[where]
 
     assert is_worktree_root(path, branch) is expected

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import json
 import os
 import re
@@ -10,6 +12,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.specyrd_init import run_init
 from specy_road.specyrd_skills import generated_match, render_skill
+from tests.support.same.manifest_ae1e6c3dc58c import manifest as manifest_fn
 
 REPO = Path(__file__).resolve().parent.parent
 BLOCK = REPO / "specy_road" / "templates" / "specyrd" / "agents-rules.md"
@@ -23,8 +26,6 @@ def _init(root: Path, *, force: bool):
     return run_init(target=root, agent="claude-code", dry_run=False, force=force, ai_commands_dir=None, role="dev")
 
 
-def _manifest(root: Path) -> dict:
-    return json.loads((root / ".specyrd" / "manifest.json").read_text(encoding="utf-8"))
 
 
 # --- B18 (a): first-install --force and the text heuristic ---------------------
@@ -37,7 +38,7 @@ def test_force_on_a_first_install_does_not_delete_a_foreign_skill_dir_that_merel
     assert not (tmp_path / LINK).is_symlink()
     assert theirs.read_text(encoding="utf-8").endswith("my own specyrd notes\n")
     assert f"{LINK} (skipped (not ours))" in res.skipped
-    assert str(LINK) not in _manifest(tmp_path)["agents"]["claude-code"]
+    assert str(LINK) not in manifest_fn(tmp_path)["agents"]["claude-code"]
 
 
 def test_force_replaces_an_unrecorded_dir_only_when_it_is_verbatim_a_generated_stub(tmp_path: Path) -> None:
@@ -59,7 +60,7 @@ def test_force_refuses_a_foreign_canonical_skill_and_names_it(tmp_path: Path) ->
     assert mine.read_text(encoding="utf-8") == "USER SKILL\n"
     assert any(s.startswith(f"{SKILL} (not ours") and "--force refused" in s for s in res.skipped)
     assert not (tmp_path / LINK).exists() and not (tmp_path / LINK).is_symlink()
-    assert str(SKILL) not in _manifest(tmp_path)["agents"]["claude-code"]
+    assert str(SKILL) not in manifest_fn(tmp_path)["agents"]["claude-code"]
 
 
 def test_force_rewrites_what_the_manifest_owns(tmp_path: Path) -> None:
@@ -84,22 +85,23 @@ def test_refresh_skips_the_link_when_the_canonical_skill_is_not_ours(tmp_path: P
     assert f"{SKILL} (skipped (not ours))" in written
     assert f"{LINK} (skipped (not ours))" in written
     assert not (tmp_path / LINK).exists() and not (tmp_path / LINK).is_symlink()
-    recorded = _manifest(tmp_path)["agents"]["claude-code"]
+    recorded = manifest_fn(tmp_path)["agents"]["claude-code"]
     assert str(LINK) not in recorded and str(SKILL) not in recorded
 
 
 def test_refresh_links_a_canonical_skill_another_recorded_pack_owns(tmp_path: Path) -> None:
     run_init(target=tmp_path, agent="cursor", dry_run=False, force=False, ai_commands_dir=None, role="dev")
-    manifest = _manifest(tmp_path)
+    manifest = manifest_fn(tmp_path)
     manifest["agents"]["claude-code"] = [".specyrd/README.md"]   # a pack recorded without its paths
     (tmp_path / ".specyrd" / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     written, _ = refresh_stubs(tmp_path)
     assert f"{LINK} (created)" in written and os.readlink(tmp_path / LINK) == "../../.agents/skills/specyrd-validate"
-    assert str(LINK) in _manifest(tmp_path)["agents"]["claude-code"]
+    assert str(LINK) in manifest_fn(tmp_path)["agents"]["claude-code"]
 
 
 # --- F16: the block names who changes the registry -------------------------------
 
+@pytest.mark.repo
 def test_block_says_pickup_and_finish_change_the_registry() -> None:
     text = BLOCK.read_text(encoding="utf-8")
     assert "never edits the registry directly; pickup and finish make the registry changes" in text
@@ -108,6 +110,7 @@ def test_block_says_pickup_and_finish_change_the_registry() -> None:
 
 # --- F17: the bootstrap prompt merges the block and still names everything in it --
 
+@pytest.mark.repo
 def test_bootstrap_prompt_merges_the_block_verbatim_and_names_every_command_and_env_var() -> None:
     block = BLOCK.read_text(encoding="utf-8")
     prompt = PROMPT.read_text(encoding="utf-8")
@@ -127,6 +130,7 @@ def _description(name: str) -> str:
     return re.search(r'^description: "(.*)"$', text, re.M).group(1)
 
 
+@pytest.mark.repo
 def test_skill_descriptions_state_their_limits() -> None:
     assert "claims nothing" in _description("brief")
     assert "switches branches" in _description("sync")
@@ -137,6 +141,7 @@ def test_skill_descriptions_state_their_limits() -> None:
 
 # --- F5 / F15: the role and model-call claims match the code ---------------------
 
+@pytest.mark.repo
 def test_constitution_and_quickstarts_carry_the_exceptions() -> None:
     principles = (REPO / "constitution" / "principles.md").read_text(encoding="utf-8")
     assert "The coordination CLI never calls a model or search API" in principles
@@ -162,6 +167,6 @@ def test_refresh_with_two_packs_keeps_the_shared_skills_for_the_second_pack(tmp_
         "cursor": [".cursor/commands/specyrd-validate.md", ".specyrd/README.md"]}}), encoding="utf-8")
     written, _ = refresh_stubs(tmp_path)
     assert not [w for w in written if "skipped" in w]
-    agents = _manifest(tmp_path)["agents"]
+    agents = manifest_fn(tmp_path)["agents"]
     assert str(SKILL) in agents["cursor"] and str(SKILL) in agents["claude-code"]
     assert str(LINK) in agents["claude-code"] and (tmp_path / LINK).is_symlink()

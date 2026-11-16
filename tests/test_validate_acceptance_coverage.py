@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 from specy_road.brief_acceptance import warn_acceptance_missing
 from specy_road.bundled_scripts.validate_roadmap import validate_at

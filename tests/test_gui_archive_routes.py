@@ -14,21 +14,11 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
+from tests.support.same.client_218dbc43887f import client
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
-@pytest.fixture()
-def client(repo: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(repo))
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
 def _headers(client: TestClient) -> dict[str, str]:

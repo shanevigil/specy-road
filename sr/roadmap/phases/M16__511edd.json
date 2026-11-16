@@ -251,7 +251,7 @@
     {
       "acceptance": [
         "No test module imports a module whose name starts with `test_`; no file matches `*_repo_helpers.py`; outside tests/support's roadmap_repo builder and a committed allowlist of intentional malformed or raw-file manifest cases, no test file writes manifest.json via `write_text` or `json.dump`; a grep test fails on any of the three. The helper groups to replace (the report's 53 byte-identical groups) are listed in sr/work/M16.6.4-helper-groups.md with their tests/support destination before edits, and each row is replaced",
-        "Collected test ids unchanged apart from moved helpers; covered-arc set unchanged; slow (over 1 s) and repo-consistency tests carry markers",
+        "Collected test ids unchanged apart from moved helpers and the boundary tests in tests/test_support_boundary.py, one per behaviour that A1 and its review findings require (operator 2026-11-15); covered-arc set unchanged; slow (over 1 s) and repo-consistency tests carry markers",
         "Estimated net line change (informational, not a gate): tests about -1,400"
       ],
       "codename": "tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support",
@@ -264,7 +264,7 @@
       "parent_id": "M16.6",
       "planning_dir": "planning/M16.6.4_tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support_840167f3-ec33-428a-86cc-e6ea639f8d6b.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support",
       "touch_zones": [
         "tests/support/",

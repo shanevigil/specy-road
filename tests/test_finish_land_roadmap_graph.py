@@ -19,11 +19,15 @@ import yaml
 
 from specy_road.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from tests.helpers import REPO, script_subprocess_env
-from tests.review_repo_helpers import (
-    NODE, commit_file, git, git_root_relative, make_layout_finish_repo,
+from tests.support.review import (
+    NODE,
+    commit_file,
+    git_root_relative,
+    make_layout_finish_repo,
     prepare_layout_merge_mode_remote,
+    git,
 )
-from tests.test_finish_merge_mode import merge_mode_finish_repo
+from tests.support.extracted.finish_merge_mode import merge_mode_finish_repo
 
 
 def _cli(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -63,6 +67,7 @@ def _merge_dev_resolving_by_hand(repo: Path) -> None:
     git(repo, "commit", "-q", "--no-edit")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "branch_edit", [None, "commit", "merge", "manifest"],
     ids=["inherited-only", "own-commit", "own-merge-resolution", "own-edit-not-conflicting"],
@@ -131,6 +136,7 @@ PHASE = {
 }
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("leaf_status", ["In Progress", "Complete"])
 def test_an_ancestor_chunk_conflict_lands_with_the_ancestor_recomputed(
     tmp_path: Path, monkeypatch, leaf_status: str
@@ -237,6 +243,7 @@ def _hide_claim_from_parent(git_top: Path, project: Path) -> None:
     path.write_text(saved, encoding="utf-8")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("case", ["reapplied", "missing-row", "removed"])
 def test_a_conflicted_chunk_keeps_the_leaf_complete_or_stops(
     tmp_path: Path, monkeypatch, case: str,

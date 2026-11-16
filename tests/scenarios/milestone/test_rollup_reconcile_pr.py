@@ -12,8 +12,8 @@ from specy_road.milestone_rollup_git import (
 )
 from specy_road.milestone_session import milestone_session_path, write_milestone_session
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
-from tests.milestone_repo_helpers import make_milestone_repo
-from tests.review_repo_helpers import commit_file, git
+from tests.support.milestone import make_milestone_repo
+from tests.support.review import commit_file, git
 from tests.scenarios.milestone.repos import (
     INTEGRATION,
     LEAF,

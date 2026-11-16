@@ -1,6 +1,6 @@
 """M14.4.1: per nested repository ``land: push|local|manual`` and ``base: remote|local``.
 
-Fixture: :func:`tests.test_nested_repo_finish._repo` (the review repo with a bare
+Fixture: :func:`tests.support.extracted.nested_repo_finish.repo` (the review repo with a bare
 ``origin`` and one nested repository holding the leaf's branch), its
 ``nested_repos`` entry rewritten to the object form under test.
 """
@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo
-from tests.test_nested_repo_finish import BRANCH, _land, _origin_tip, _repo
-from tests.test_nested_repo_worktrees import COVERED, _cfg, add_nested_repo
+from tests.support.review import commit_file, make_review_repo, git
+from tests.support.extracted.nested_repo_finish import BRANCH, land, origin_tip, repo as repo_fn
+from tests.support.extracted.nested_repo_worktrees import COVERED, cfg as cfg_fn, add_nested_repo
 
 from specy_road.finish_modes import merge_landing_failed
 from specy_road.nested_repos import NestedRepo, NestedRepoError, add_nested_worktrees, nested_repos
@@ -33,78 +33,79 @@ def _configure(repo: Path, entry: str) -> None:
 
 def test_schema_accepts_land_and_base_and_refuses_other_values() -> None:
     ok = {"path": "svc", "land": "local", "base": "local", "refuse_behind_remote": True}
-    assert _cfg({"nested_repos": [ok, {"path": "web", "land": "manual", "base": "remote"}]}) is None
+    web = {"path": "web", "land": "manual", "base": "remote"}
+    assert cfg_fn({"nested_repos": [ok, web]}) is None
     for bad in ({"land": "pull"}, {"base": "upstream"}, {"refuse_behind_remote": "yes"}):
-        assert _cfg({"nested_repos": [{"path": "svc", **bad}]}) is not None, bad
+        assert cfg_fn({"nested_repos": [{"path": "svc", **bad}]}) is not None, bad
 
 
 def test_entries_default_to_push_and_remote(tmp_path: Path) -> None:
-    repo, _nested = _repo(tmp_path)
+    repo, _nested = repo_fn(tmp_path)
     assert nested_repos(repo) == [NestedRepo(COVERED, "dev", "origin", "push", "remote", False)]
     _configure(repo, f"{{path: {COVERED}, land: local, base: local, refuse_behind_remote: true}}")
     assert nested_repos(repo) == [NestedRepo(COVERED, "dev", "origin", "local", "local", True)]
 
 
 def test_land_local_merges_into_the_local_branch_and_pushes_nothing(tmp_path: Path) -> None:
-    repo, nested = _repo(tmp_path)
+    repo, nested = repo_fn(tmp_path)
     _configure(repo, f"{{path: {COVERED}, land: local}}")
-    nested_remote = _origin_tip(nested)
-    ok, err = _land(repo)
+    nested_remote = origin_tip(nested)
+    ok, err = land(repo)
     assert ok, err
-    assert _origin_tip(nested) == nested_remote   # no push in the nested repository
+    assert origin_tip(nested) == nested_remote   # no push in the nested repository
     assert git(nested, "merge-base", "--is-ancestor", BRANCH, "dev") == ""
     # dev is checked out (clean) there: the checkout moved with its ref.
     assert git(nested, "branch", "--show-current") == "dev" and git(nested, "status", "--porcelain") == ""
     assert (nested / "core.py").read_text(encoding="utf-8") == "x = 2\n"
-    assert git(repo, "merge-base", "--is-ancestor", BRANCH, _origin_tip(repo)) == ""   # main still pushes
+    assert git(repo, "merge-base", "--is-ancestor", BRANCH, origin_tip(repo)) == ""   # main still pushes
     assert len(git(nested, "worktree", "list").splitlines()) == 1
 
 
 def test_land_local_moves_the_ref_when_the_branch_is_not_checked_out(tmp_path: Path) -> None:
-    repo, nested = _repo(tmp_path)
+    repo, nested = repo_fn(tmp_path)
     _configure(repo, f"{{path: {COVERED}, land: local}}")
     git(nested, "checkout", "-q", "--detach")
-    nested_remote, before = _origin_tip(nested), git(nested, "rev-parse", "dev")
-    ok, err = _land(repo)
+    nested_remote, before = origin_tip(nested), git(nested, "rev-parse", "dev")
+    ok, err = land(repo)
     assert ok, err
-    assert _origin_tip(nested) == nested_remote
+    assert origin_tip(nested) == nested_remote
     merge = git(nested, "rev-parse", "dev")
     assert git(nested, "rev-parse", f"{merge}^1") == before and git(nested, "rev-parse", f"{merge}^2") == \
         git(nested, "rev-parse", BRANCH)
 
 
 def test_land_local_refuses_a_dirty_checkout_of_the_integration_branch(tmp_path: Path) -> None:
-    repo, nested = _repo(tmp_path)
+    repo, nested = repo_fn(tmp_path)
     _configure(repo, f"{{path: {COVERED}, land: local}}")
     (nested / "core.py").write_text("unsaved\n", encoding="utf-8")
-    nested_remote, main_remote, dev = _origin_tip(nested), _origin_tip(repo), git(nested, "rev-parse", "dev")
-    ok, err = _land(repo)
+    nested_remote, main_remote, dev = origin_tip(nested), origin_tip(repo), git(nested, "rev-parse", "dev")
+    ok, err = land(repo)
     assert not ok and "dev is checked out in" in err and "uncommitted changes" in err
     assert "main repository was not merged" in err
-    assert _origin_tip(nested) == nested_remote and _origin_tip(repo) == main_remote
+    assert origin_tip(nested) == nested_remote and origin_tip(repo) == main_remote
     assert git(nested, "rev-parse", "dev") == dev
 
 
 def test_land_manual_stops_with_the_merge_command_then_proceeds_after_the_merge(tmp_path: Path) -> None:
-    repo, nested = _repo(tmp_path)
+    repo, nested = repo_fn(tmp_path)
     _configure(repo, f"{{path: {COVERED}, land: manual}}")
-    nested_remote, main_remote, dev = _origin_tip(nested), _origin_tip(repo), git(nested, "rev-parse", "dev")
-    ok, err = _land(repo)
+    nested_remote, main_remote, dev = origin_tip(nested), origin_tip(repo), git(nested, "rev-parse", "dev")
+    ok, err = land(repo)
     assert not ok
     assert f"git -C {nested} merge --no-ff {BRANCH}" in err and "re-run finish-this-task after merging" in err
-    assert _origin_tip(nested) == nested_remote and _origin_tip(repo) == main_remote   # nothing pushed
+    assert origin_tip(nested) == nested_remote and origin_tip(repo) == main_remote   # nothing pushed
     assert git(nested, "rev-parse", "dev") == dev and git(repo, "branch", "--show-current") == BRANCH
     git(nested, "merge", "-q", "--no-ff", "--no-edit", BRANCH)   # the merge it asked for
-    ok, err = _land(repo)
+    ok, err = land(repo)
     assert ok, err
-    assert _origin_tip(nested) == nested_remote   # still never pushed
-    assert git(repo, "merge-base", "--is-ancestor", BRANCH, _origin_tip(repo)) == ""
+    assert origin_tip(nested) == nested_remote   # still never pushed
+    assert git(repo, "merge-base", "--is-ancestor", BRANCH, origin_tip(repo)) == ""
 
 
 def test_finish_exits_1_with_the_manual_message(tmp_path: Path, capsys) -> None:
-    repo, _nested = _repo(tmp_path)
+    repo, _nested = repo_fn(tmp_path)
     _configure(repo, f"{{path: {COVERED}, land: manual}}")
-    ok, err = _land(repo)
+    ok, err = land(repo)
     assert not ok
     with pytest.raises(SystemExit) as exc:
         merge_landing_failed("dev", err)
@@ -157,29 +158,29 @@ def test_land_local_refuses_when_the_checkout_leaves_the_integration_branch_duri
         tmp_path: Path, switch: list[str]) -> None:
     """Fix round 1 R1: the checkout switches to another branch (or detaches) at the same commit while the
     temporary merge runs; landing must not report success, and the main repository must not be pushed."""
-    repo, nested = _repo(tmp_path)
+    repo, nested = repo_fn(tmp_path)
     _configure(repo, f"{{path: {COVERED}, land: local}}")
     hook = Path(git(nested, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "hooks" / "pre-merge-commit"
     hook.parent.mkdir(exist_ok=True)
     hook.write_text("#!/bin/sh\nunset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR\n"
                     f"git -C {shlex.quote(str(nested))} {' '.join(switch)}\n", encoding="utf-8")
     hook.chmod(0o755)
-    nested_remote, main_remote, dev = _origin_tip(nested), _origin_tip(repo), git(nested, "rev-parse", "dev")
-    ok, err = _land(repo)
+    nested_remote, main_remote, dev = origin_tip(nested), origin_tip(repo), git(nested, "rev-parse", "dev")
+    ok, err = land(repo)
     assert not ok and "no longer has dev checked out" in err and "main repository was not merged" in err
     assert git(nested, "rev-parse", "dev") == dev   # the integration branch did not move
     assert git(nested, "branch", "--show-current") == ("another-branch" if "-b" in switch else "")
     assert git(nested, "rev-parse", "HEAD") == dev   # nor did the branch it switched to
-    assert _origin_tip(nested) == nested_remote and _origin_tip(repo) == main_remote   # nothing pushed
+    assert origin_tip(nested) == nested_remote and origin_tip(repo) == main_remote   # nothing pushed
 
 
 def test_the_printed_manual_command_runs_for_a_path_with_spaces(tmp_path: Path) -> None:
     """Fix round 1 R2: the repository path is shell-quoted, so the printed command merges as printed."""
     parent = tmp_path / "parent with spaces"
     parent.mkdir()
-    repo, nested = _repo(parent)
+    repo, nested = repo_fn(parent)
     _configure(repo, f"{{path: {COVERED}, land: manual}}")
-    ok, err = _land(repo)
+    ok, err = land(repo)
     assert not ok
     line = next(ln for ln in err.splitlines() if ln.lstrip().startswith("git -C "))
     assert shlex.quote(str(nested)) in line
@@ -187,5 +188,5 @@ def test_the_printed_manual_command_runs_for_a_path_with_spaces(tmp_path: Path) 
                        env={**os.environ, "GIT_MERGE_AUTOEDIT": "no"})
     assert r.returncode == 0, r.stderr
     assert git(nested, "merge-base", "--is-ancestor", BRANCH, "dev") == ""
-    ok, err = _land(repo)
+    ok, err = land(repo)
     assert ok, err

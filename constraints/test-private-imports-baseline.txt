@@ -1,5 +1,11 @@
 # Private specy_road names referenced from tests (file: dotted name).
 # Gate: scripts/check_test_private_imports.py; shrink as tests go public.
+tests/support/extracted/grind_session.py: specy_road.orchestration.grind.grind_session._resolve_picked
+tests/support/extracted/grind_session.py: specy_road.orchestration.grind.grind_session._run_cli
+tests/support/extracted/grind_session.py: specy_road.orchestration.grind.grind_session._run_shell
+tests/support/extracted/grind_session.py: specy_road.orchestration.grind.grind_session._wait_for_signal
+tests/support/extracted/grind_session_implement.py: specy_road.orchestration.grind.grind_session_implement._notify
+tests/support/extracted/grind_session_implement.py: specy_road.orchestration.grind.grind_session_implement._run_capturing
 tests/test_abort_task_pickup.py: specy_road.bundled_scripts.abort_task_pickup._count_commits_ahead_of_remote_base
 tests/test_abort_task_pickup.py: specy_road.bundled_scripts.abort_task_pickup._delete_feature_branch
 tests/test_abort_task_pickup.py: specy_road.bundled_scripts.abort_task_pickup._remove_pickup_work_files
@@ -38,10 +44,7 @@ tests/test_finish_task_commands.py: specy_road.bundled_scripts.finish_task._reso
 tests/test_finish_task_commands.py: specy_road.bundled_scripts.finish_task._update_chunk_status
 tests/test_finish_task_commands.py: specy_road.bundled_scripts.finish_task._validate_export_digest
 tests/test_finish_task_commands.py: specy_road.bundled_scripts.mark_implementation_reviewed._extract_walkthrough
-tests/test_grind_session.py: specy_road.orchestration.grind.grind_session._resolve_picked
-tests/test_grind_session.py: specy_road.orchestration.grind.grind_session._run_cli
 tests/test_grind_session.py: specy_road.orchestration.grind.grind_session._run_shell
-tests/test_grind_session.py: specy_road.orchestration.grind.grind_session._wait_for_signal
 tests/test_grind_session_claude.py: specy_road.orchestration.grind.grind_session._run_shell
 tests/test_grind_session_claude.py: specy_road.orchestration.grind.grind_session_implement._notify
 tests/test_grind_session_claude.py: specy_road.orchestration.grind.grind_session_implement._run_capturing

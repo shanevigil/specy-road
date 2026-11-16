@@ -276,6 +276,7 @@ def _opt_in_after_the_block(repo: Path) -> None:
         fh.write("!work/worker-logs/\n!work/implementation-summary-*.md\n!work/done/\n")
 
 
+@pytest.mark.slow
 def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, monkeypatch, capsys) -> None:
     """R1: the logs the wrapper mirrors after READY pass both clean-tree checks, and finish commits them."""
     import re
@@ -284,8 +285,8 @@ def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, mo
     import pytest
 
     from tests.helpers import REPO
-    from tests.review_repo_helpers import make_review_repo, review_text
-    from tests.test_prerelease_s2 import ROSTER
+    from tests.support.review import make_review_repo, review_text
+    from tests.support.extracted.prerelease_s2 import ROSTER
 
     from specy_road.orchestration.workers import worker_adapters as wa
     from specy_road.orchestration.workers import worker_runner as wr
@@ -355,6 +356,7 @@ def test_an_opted_in_completed_worker_goes_through_review_to_finish(tmp_path, mo
     assert "work/done/implementation-summary-M1.1.md" in committed.splitlines()
 
 
+@pytest.mark.slow
 def test_finish_archives_committed_summary_in_bookkeeping_commit(
     tmp_path, monkeypatch,
 ) -> None:
@@ -362,7 +364,7 @@ def test_finish_archives_committed_summary_in_bookkeeping_commit(
     import pytest
 
     from tests.helpers import REPO
-    from tests.review_repo_helpers import git, make_review_repo, review_text
+    from tests.support.review import make_review_repo, review_text, git
 
     from specy_road.bundled_scripts import finish_task
     from specy_road.bundled_scripts import mark_implementation_reviewed as mir
@@ -488,9 +490,10 @@ def test_linked_worktree_main_checkout_pickup_files(tmp_path, shape: str, kind: 
         assert "removed" not in out
 
 
+@pytest.mark.slow
 def test_finish_from_a_linked_worktree_removes_main_copies_after_landing(tmp_path, monkeypatch, capsys) -> None:
     """A landing that succeeds removes the main checkout's untracked brief and prompt."""
-    from tests.review_repo_helpers import delegate_layout
+    from tests.support.review import delegate_layout
 
     from specy_road.bundled_scripts import finish_task
 
@@ -513,9 +516,10 @@ def test_finish_from_a_linked_worktree_removes_main_copies_after_landing(tmp_pat
     )
 
 
+@pytest.mark.slow
 def test_pr_finish_from_a_linked_worktree_keeps_main_checkout_copies(tmp_path, monkeypatch, capsys) -> None:
     """A pr finish removes the main checkout's untracked brief and prompt and prints no checkout line."""
-    from tests.review_repo_helpers import commit_file, delegate_layout
+    from tests.support.review import commit_file, delegate_layout
 
     from specy_road.bundled_scripts import finish_task
 
@@ -542,9 +546,10 @@ def test_pr_finish_from_a_linked_worktree_keeps_main_checkout_copies(tmp_path, m
     assert "this checkout is still on" not in captured.out
 
 
+@pytest.mark.slow
 def test_finish_refused_at_landing_keeps_main_checkout_copies(tmp_path, monkeypatch, capsys) -> None:
     """A landing that fails leaves the main checkout's untracked brief and prompt."""
-    from tests.review_repo_helpers import delegate_layout
+    from tests.support.review import delegate_layout
 
     from specy_road.bundled_scripts import finish_task
 
@@ -573,6 +578,7 @@ def _finish(leaf, capsys, *extra: str) -> str:
     return out
 
 
+@pytest.mark.slow
 def test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch(
     tmp_path, monkeypatch, capsys,
 ) -> None:
@@ -581,7 +587,7 @@ def test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch(
     A ``--delete-branch`` retry against a stale local ``dev``, whose config turns cleanup off, leaves
     this checkout there; it still removes them, as the branch's config says, and prints no checkout line.
     """
-    from tests.review_repo_helpers import commit_file, delegate_layout, git
+    from tests.support.review import commit_file, delegate_layout, git
 
     from specy_road.bundled_scripts import finish_task
 
@@ -631,11 +637,12 @@ def test_linked_worktree_merge_retry_clears_main_copies_and_names_the_branch(
     assert "this checkout is still on" not in deleted
 
 
+@pytest.mark.slow
 def test_linked_worktree_rollup_retry_clears_main_copies(tmp_path, monkeypatch, capsys) -> None:
     """A rollup retry that lands removes the main copies and does not print the checkout line."""
     import json
 
-    from tests.review_repo_helpers import commit_file, delegate_layout, git
+    from tests.support.review import commit_file, delegate_layout, git
 
     from specy_road.bundled_scripts import finish_task
     from specy_road.milestone_session import milestone_session_path, write_milestone_session

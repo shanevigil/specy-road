@@ -20,14 +20,14 @@ from specy_road.finish_implementation_check import (
 from specy_road.review_target import resolve_target
 from specy_road.runtime_paths import project_prefix, rebase_to_project
 from tests.helpers import REPO, sorted_diff_paths_project_relative
-from tests.review_repo_helpers import (
+from tests.support.review import (
     LAYOUT_FINISH_SHAPES,
     OUTSIDE_ROOT_FILE,
-    git,
     git_root_relative,
     make_layout_finish_repo,
     prepare_layout_merge_mode_remote,
     touch_zones_for_layout,
+    git,
 )
 
 
@@ -90,6 +90,7 @@ def test_review_packet_lists_every_changed_path(layout) -> None:
     assert paths == expected
 
 
+@pytest.mark.slow
 def test_finish_merge_rerun_is_idempotent(layout, tmp_path, monkeypatch, capsys) -> None:
     git_top, project, shape = layout
     monkeypatch.setenv("PYTHONPATH", str(REPO))

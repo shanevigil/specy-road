@@ -30,20 +30,12 @@ from tests.move_node_helpers import (
     unchanged_except,
     wide_fixture,
 )
+from tests.support.same.client_218dbc43887f import client
+from tests.support.same.repo_cbcea23f14ab import repo
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    wide_fixture(tmp_path)
-    return tmp_path
 
 
-@pytest.fixture()
-def client(repo: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(repo))
-    from specy_road.gui_app import create_app
-
-    return TestClient(create_app())
 
 
 def _post(client: TestClient, url: str, body: dict | list | bytes | None = None):
@@ -313,6 +305,7 @@ def test_indent_noop_reports_unchanged(client: TestClient) -> None:
     assert r.json() == {"ok": True, "changed": False}
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     ("method", "url", "body"),
     [

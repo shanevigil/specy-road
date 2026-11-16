@@ -16,17 +16,17 @@ import yaml
 
 import specy_road.orchestration.grind.grind_session_implement as gsi
 from specy_road.orchestration.grind.grind_session import resolve_implement_limits
-from tests.test_grind_session_implement import (  # noqa: F401 - autouse fixture
+from tests.support.extracted.grind_session_implement import (
     CLAUDE,
     LIMIT,
-    _Emitter,
-    _empty_claude_home,
-    _limit_text,
-    _runs,
+    Emitter,
+    empty_claude_home,
+    limit_text,
+    runs,
 )
 
 
-def _events(emitter: _Emitter, name: str) -> list[dict]:
+def _events(emitter: Emitter, name: str) -> list[dict]:
     return [f for e, f in emitter.events if e == name]
 
 
@@ -36,8 +36,8 @@ def _events(emitter: _Emitter, name: str) -> list[dict]:
 
 def test_a_vanished_implementer_is_retried_with_a_fresh_run(monkeypatch) -> None:
     slept: list[float] = []
-    emitter = _Emitter()
-    seen = _runs(monkeypatch, [(137, ""), (0, "done")])
+    emitter = Emitter()
+    seen = runs(monkeypatch, [(137, ""), (0, "done")])
     code = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"), emitter=emitter, node_id="M9.1",
         sleep=slept.append,
@@ -55,7 +55,7 @@ def test_a_vanished_implementer_is_retried_with_a_fresh_run(monkeypatch) -> None
 
 def test_a_negative_return_code_counts_as_vanished(monkeypatch) -> None:
     """The shell execs a simple command directly, so a kill arrives negative."""
-    seen = _runs(monkeypatch, [(-9, ""), (0, "")])
+    seen = runs(monkeypatch, [(-9, ""), (0, "")])
     code = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"), sleep=lambda _s: None
     )
@@ -65,7 +65,7 @@ def test_a_negative_return_code_counts_as_vanished(monkeypatch) -> None:
 
 def test_repeated_vanishing_stops_after_the_bound(monkeypatch, capsys) -> None:
     attempts = gsi.MAX_EMPTY_RETRIES + 1
-    seen = _runs(monkeypatch, [(137, "")] * attempts)
+    seen = runs(monkeypatch, [(137, "")] * attempts)
     code = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"), sleep=lambda _s: None
     )
@@ -76,7 +76,7 @@ def test_repeated_vanishing_stops_after_the_bound(monkeypatch, capsys) -> None:
 
 def test_a_quiet_ordinary_failure_is_not_retried(monkeypatch) -> None:
     """The guard against this category widening: exit 1 with no output."""
-    seen = _runs(monkeypatch, [(1, "")])
+    seen = runs(monkeypatch, [(1, "")])
     code = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"), sleep=lambda _s: pytest.fail("must not sleep")
     )
@@ -85,7 +85,7 @@ def test_a_quiet_ordinary_failure_is_not_retried(monkeypatch) -> None:
 
 
 def test_a_signal_death_that_printed_something_is_not_a_vanish(monkeypatch) -> None:
-    seen = _runs(monkeypatch, [(137, "Traceback: boom")])
+    seen = runs(monkeypatch, [(137, "Traceback: boom")])
     code = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"), sleep=lambda _s: pytest.fail("must not sleep")
     )
@@ -95,8 +95,8 @@ def test_a_signal_death_that_printed_something_is_not_a_vanish(monkeypatch) -> N
 
 def test_a_vanish_does_not_consume_the_limit_wait_budget(monkeypatch) -> None:
     """The two categories are counted separately."""
-    emitter = _Emitter()
-    seen = _runs(monkeypatch, [(137, ""), (1, LIMIT), (0, "done")])
+    emitter = Emitter()
+    seen = runs(monkeypatch, [(137, ""), (1, LIMIT), (0, "done")])
     code = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"), emitter=emitter, sleep=lambda _s: None
     )
@@ -108,7 +108,7 @@ def test_a_vanish_does_not_consume_the_limit_wait_budget(monkeypatch) -> None:
 
 def test_the_vanish_backoff_grows_with_each_attempt(monkeypatch) -> None:
     slept: list[float] = []
-    _runs(monkeypatch, [(137, ""), (137, ""), (0, "")])
+    runs(monkeypatch, [(137, ""), (137, ""), (0, "")])
     gsi.run_implement_hook(CLAUDE, {}, Path("/repo"), sleep=slept.append)
     assert slept == [gsi.EMPTY_RETRY_SECONDS, gsi.EMPTY_RETRY_SECONDS * 2]
 
@@ -175,7 +175,7 @@ def test_an_eight_hour_reset_is_waited_out_when_the_ceiling_is_raised(
     monkeypatch,
 ) -> None:
     """The reporter's own case: a plan that resets on an 8-hour cadence."""
-    seen = _runs(monkeypatch, [(1, _limit_text(minutes_ahead=7 * 60)), (0, "done")])
+    seen = runs(monkeypatch, [(1, limit_text(minutes_ahead=7 * 60)), (0, "done")])
     code = gsi.run_implement_hook(
         CLAUDE, {}, Path("/repo"),
         sleep=lambda _s: None,
@@ -186,7 +186,7 @@ def test_an_eight_hour_reset_is_waited_out_when_the_ceiling_is_raised(
 
 
 def test_the_default_ceiling_still_refuses_that_reset(monkeypatch, capsys) -> None:
-    seen = _runs(monkeypatch, [(1, _limit_text(minutes_ahead=7 * 60))])
+    seen = runs(monkeypatch, [(1, limit_text(minutes_ahead=7 * 60))])
     code = gsi.run_implement_hook(CLAUDE, {}, Path("/repo"), sleep=lambda _s: None)
     assert code == 1
     assert len(seen) == 1

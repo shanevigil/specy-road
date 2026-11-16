@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import delegate_repo, set_steps, verdict_step, wrote_paths
-from tests.review_repo_helpers import commit_file, git, review_output
+from tests.support.review import commit_file, review_output, git
 
 from specy_road import review_files as rf
 from specy_road.review_answer import Rerun, final_answer
@@ -34,6 +34,7 @@ def _filed_block(tmp_path: Path) -> tuple[Path, Path, bytes, bytes]:
 
 # --- R1 -------------------------------------------------------------------------------------------------------------
 
+@pytest.mark.slow
 @pytest.mark.parametrize("name", ["REVIEW-opus.md", "notes-opus.md", "RUN-opus.json", "RUN-opus.log",
                                   ".review-run.lock", "RUN-opus.json.tmp"])
 def test_a_symlink_to_a_source_file_in_the_hand_off_directory_is_a_failure_and_never_written_through(
@@ -50,6 +51,7 @@ def test_a_symlink_to_a_source_file_in_the_hand_off_directory_is_a_failure_and_n
     assert not path.is_symlink() and path.read_bytes() == record          # the earlier block, a regular file
 
 
+@pytest.mark.slow
 def test_a_symlinked_history_directory_is_replaced_and_the_record_copies_restored(tmp_path: Path) -> None:
     repo, spec, record, source = _filed_block(tmp_path)
     reviews = rf.reviews_dir(repo, "M1.1")
@@ -88,7 +90,7 @@ def test_a_non_string_event_type_is_a_schema_rerun_on_every_adapter(harness: str
 @pytest.mark.parametrize("value", [[], {"x": 1}])
 def test_a_generic_reviewer_answering_a_non_string_type_is_a_rerun_through_delegate(tmp_path: Path,
                                                                                   value: object) -> None:
-    from tests.test_review_record_write import GENERIC
+    from tests.support.extracted.review_record_write import GENERIC
     repo, spec = delegate_repo(tmp_path, GENERIC)
     set_steps(repo, spec, {"plain": True, "raw": json.dumps({"type": value, "result": None})})
     run = delegate(repo, "M1.1", "gem", sleep=lambda s: None)

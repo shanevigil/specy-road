@@ -14,7 +14,7 @@ import pytest
 from specy_road.bundled_scripts import roadmap_query_cli as rq
 from specy_road.orchestration.grind.session_plan_git import gather_session_plan
 from specy_road.orchestration.grind.session_plan_render import zone_overlaps
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.plan import plan_repo
 
 # plan_repo's M1.1 is ready with touch zone `src`.

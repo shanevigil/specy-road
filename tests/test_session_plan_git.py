@@ -11,12 +11,9 @@ import pytest
 from specy_road.orchestration.grind.session_plan import compute_session_plan
 from specy_road.orchestration.grind.session_plan_git import enrich_session_plan_with_git
 from specy_road.orchestration.grind.session_plan_render import render_session_plan_text
+from tests.support.same.git_81b020dd1411 import git
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(
-        ["git", "-C", str(repo), *args], check=True, capture_output=True
-    )
 
 
 def _write_graph(repo: Path, status: str, *, node_id: str = "M1.1", codename: str = "leaf-a") -> None:
@@ -52,12 +49,12 @@ def _write_graph(repo: Path, status: str, *, node_id: str = "M1.1", codename: st
 def repo(tmp_path: Path) -> Path:
     root = tmp_path / "r"
     root.mkdir()
-    _git(root, "init", "-q", "-b", "dev")
-    _git(root, "config", "user.email", "t@e.com")
-    _git(root, "config", "user.name", "T")
+    git(root, "init", "-q", "-b", "dev")
+    git(root, "config", "user.email", "t@e.com")
+    git(root, "config", "user.name", "T")
     _write_graph(root, "Not Started")
-    _git(root, "add", "-A")
-    _git(root, "commit", "-qm", "graph")
+    git(root, "add", "-A")
+    git(root, "commit", "-qm", "graph")
     return root
 
 
@@ -74,11 +71,11 @@ def _node(codename: str, node_id: str = "M1.1") -> dict:
 
 
 def test_enrich_drops_finished_unmerged_from_ready(repo: Path) -> None:
-    _git(repo, "checkout", "-q", "-b", "feature/rm-leaf-a")
+    git(repo, "checkout", "-q", "-b", "feature/rm-leaf-a")
     _write_graph(repo, "Complete")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-qm", "done")
-    _git(repo, "checkout", "-q", "dev")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "done")
+    git(repo, "checkout", "-q", "dev")
 
     nodes = [_node("leaf-a")]
     plan = compute_session_plan(nodes, {"version": 1, "entries": []})
@@ -93,11 +90,11 @@ def test_enrich_drops_finished_unmerged_from_ready(repo: Path) -> None:
 
 
 def test_enrich_surfaces_finished_claimed_on_active(repo: Path) -> None:
-    _git(repo, "checkout", "-q", "-b", "feature/rm-leaf-a")
+    git(repo, "checkout", "-q", "-b", "feature/rm-leaf-a")
     _write_graph(repo, "Complete")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-qm", "done")
-    _git(repo, "checkout", "-q", "dev")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "done")
+    git(repo, "checkout", "-q", "dev")
 
     nodes = [_node("leaf-a")]
     reg = {
@@ -122,11 +119,11 @@ def test_enrich_surfaces_finished_claimed_on_active(repo: Path) -> None:
 
 
 def test_render_shows_finished_on_branch_sections(repo: Path) -> None:
-    _git(repo, "checkout", "-q", "-b", "feature/rm-leaf-a")
+    git(repo, "checkout", "-q", "-b", "feature/rm-leaf-a")
     _write_graph(repo, "Complete")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-qm", "done")
-    _git(repo, "checkout", "-q", "dev")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "done")
+    git(repo, "checkout", "-q", "dev")
 
     nodes = [
         _node("leaf-a", "M1.1"),
@@ -152,11 +149,11 @@ def test_render_shows_finished_on_branch_sections(repo: Path) -> None:
 
 
 def test_render_finished_claimed_says_merge_not_finish(repo: Path) -> None:
-    _git(repo, "checkout", "-q", "-b", "feature/rm-leaf-a")
+    git(repo, "checkout", "-q", "-b", "feature/rm-leaf-a")
     _write_graph(repo, "Complete")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-qm", "done")
-    _git(repo, "checkout", "-q", "dev")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "done")
+    git(repo, "checkout", "-q", "dev")
 
     nodes = [_node("leaf-a")]
     reg = {

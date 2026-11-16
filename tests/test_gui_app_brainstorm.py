@@ -17,7 +17,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD, script_subprocess_env, use_fake_llm
-from tests.test_brainstorm_chat import REPLY_WITH_IDEAS
+from tests.support.extracted.brainstorm_chat import REPLY_WITH_IDEAS
 
 RESEARCH_ON = {
     "enabled": True,

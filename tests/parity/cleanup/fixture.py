@@ -27,7 +27,7 @@ from pathlib import Path
 
 import yaml
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
+from tests.support.review import NODE, commit_file, make_review_repo, git
 
 TOOLKIT_STASH = "specy-road: temp stash work/ around pickup"
 FOREIGN_STASH = "mine"

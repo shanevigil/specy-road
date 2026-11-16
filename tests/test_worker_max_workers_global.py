@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, wait_for_worker
 from tests.worker_lease_helpers import checkout_id_file, idle_worker, remote_and_clone, remote_leases
@@ -125,6 +125,7 @@ def _rejecting(remote: Path) -> None:
     hook.chmod(0o755)
 
 
+@pytest.mark.slow
 def test_an_unreachable_remote_refuses_unless_offline(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)
     _unreachable(tmp_path, repo)
@@ -393,6 +394,7 @@ def test_a_completed_turn_releases_its_lease(tmp_path: Path) -> None:
     assert rec.state == "completed" and remote_leases(remote) == []
 
 
+@pytest.mark.slow
 def test_another_clone_is_not_held_by_a_completed_worker(tmp_path: Path) -> None:
     """Clone B at ``max_workers`` 1 can delegate when clone A's only worker has completed."""
     _repo, _remote, clone, _wid = _completed_worker(tmp_path, max_workers=1)
@@ -400,6 +402,7 @@ def test_another_clone_is_not_held_by_a_completed_worker(tmp_path: Path) -> None
     assert [r.node_id for r in ws.list_records(clone)] == ["M1.1"]
 
 
+@pytest.mark.slow
 def test_a_resumed_completed_worker_leases_only_while_its_turn_runs(tmp_path: Path) -> None:
     """``worker message`` pushes a new lease for the held turn and drops it when that turn completes."""
     repo, remote, _clone, wid = _completed_worker(tmp_path)
@@ -413,6 +416,7 @@ def test_a_resumed_completed_worker_leases_only_while_its_turn_runs(tmp_path: Pa
     assert wait_for_worker(repo, wid).state == "completed" and remote_leases(remote) == []
 
 
+@pytest.mark.slow
 def test_a_refused_resume_of_a_completed_worker_leaves_no_lease(tmp_path: Path, capsys) -> None:
     """Another clone holds the sole slot: resume is refused, the worker stays completed, and it has no lease ref."""
     repo, remote, clone, wid = _completed_worker(tmp_path, max_workers=1)

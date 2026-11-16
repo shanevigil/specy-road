@@ -13,7 +13,7 @@ import json
 import pytest
 
 from tests.review_delegate_helpers import delegate_repo, run_review_delegate, set_steps, verdict_step
-from tests.review_repo_helpers import review_output
+from tests.support.review import review_output
 
 from specy_road import review_files as rf
 from specy_road.review_answer import Rerun, events, final_answer

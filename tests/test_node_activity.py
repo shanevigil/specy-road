@@ -34,11 +34,6 @@ def _isolate_cache() -> None:
     clear_cache()
 
 
-@pytest.fixture()
-def repo(tmp_path: Path) -> Path:
-    dest = tmp_path / "repo"
-    shutil.copytree(DOGFOOD, dest)
-    return dest
 
 
 def _git(repo: Path, *args: str, date: str = "2024-06-01T12:00:00+00:00") -> str:

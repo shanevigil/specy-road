@@ -25,6 +25,7 @@ from specy_road.brainstorm_session import (
 )
 from specy_road.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
+from tests.support.same.by_id_a6a5bf211114 import by_id
 
 
 @pytest.fixture()
@@ -48,8 +49,6 @@ def _accepted_session(**kw) -> BrainstormSession:
     return s
 
 
-def _by_id(root: Path) -> dict[str, dict]:
-    return {n["id"]: n for n in load_roadmap(root)["nodes"]}
 
 
 def test_an_accepted_idea_becomes_a_node_under_the_anchor(repo: Path) -> None:
@@ -58,7 +57,7 @@ def test_an_accepted_idea_becomes_a_node_under_the_anchor(repo: Path) -> None:
     results = promote_session(repo, s)
 
     assert len(results) == 1
-    node = _by_id(repo)[results[0].node_id]
+    node = by_id(repo)[results[0].node_id]
     assert node["parent_id"] == "M1"
     assert node["title"] == "Stored payment vault"
     assert node["type"] == "milestone"
@@ -89,7 +88,7 @@ def test_the_idea_records_the_node_it_became(repo: Path) -> None:
     result = promote_session(repo, s)[0]
 
     assert s.ideas[0].promoted_node_key == result.node_key
-    assert _by_id(repo)[result.node_id]["node_key"] == result.node_key
+    assert by_id(repo)[result.node_id]["node_key"] == result.node_key
 
 
 def test_promotion_happens_once(repo: Path) -> None:
@@ -138,7 +137,7 @@ def test_a_failure_mid_batch_does_not_duplicate_on_the_next_run(
     again = promote_session(repo, reloaded)
 
     assert [r.title for r in again] == ["Third idea"]
-    titles = [n["title"] for n in _by_id(repo).values()]
+    titles = [n["title"] for n in by_id(repo).values()]
     for t in ("Second idea", "Third idea"):
         assert titles.count(t) == 1
 
@@ -180,12 +179,12 @@ def test_only_accepted_ideas_are_promoted(repo: Path) -> None:
 
 def test_a_dry_run_writes_nothing(repo: Path) -> None:
     s = _accepted_session(under="M1")
-    before = set(_by_id(repo))
+    before = set(by_id(repo))
 
     results = promote_session(repo, s, dry_run=True)
 
     assert len(results) == 1
-    assert set(_by_id(repo)) == before
+    assert set(by_id(repo)) == before
     assert s.ideas[0].promoted_node_key is None
 
 
@@ -200,12 +199,12 @@ def test_a_dry_run_still_allocates_distinct_ids(repo: Path) -> None:
 
 def test_an_unknown_anchor_promotes_nothing(repo: Path) -> None:
     s = _accepted_session(under="M404")
-    before = set(_by_id(repo))
+    before = set(by_id(repo))
 
     with pytest.raises(BrainstormError, match="M404"):
         promote_session(repo, s)
 
-    assert set(_by_id(repo)) == before
+    assert set(by_id(repo)) == before
     assert s.ideas[0].promoted_node_key is None
 
 
@@ -222,7 +221,7 @@ def test_under_overrides_the_session_anchor(repo: Path) -> None:
 
     result = promote_session(repo, s, under="M0")[0]
 
-    assert _by_id(repo)[result.node_id]["parent_id"] == "M0"
+    assert by_id(repo)[result.node_id]["parent_id"] == "M0"
 
 
 def test_promoting_to_the_root_makes_a_top_level_node(repo: Path) -> None:
@@ -230,7 +229,7 @@ def test_promoting_to_the_root_makes_a_top_level_node(repo: Path) -> None:
 
     result = promote_session(repo, s, node_type="phase")[0]
 
-    node = _by_id(repo)[result.node_id]
+    node = by_id(repo)[result.node_id]
     assert node.get("parent_id") is None
     assert "execution_milestone" not in node
 
@@ -240,7 +239,7 @@ def test_promoted_nodes_inherit_the_anchor_execution_milestone(repo: Path) -> No
 
     node_id = promote_session(repo, s)[0].node_id
 
-    assert _by_id(repo)[node_id]["execution_milestone"] == "Agentic-led"
+    assert by_id(repo)[node_id]["execution_milestone"] == "Agentic-led"
 
 
 def test_promoted_nodes_inherit_human_led_from_the_anchor(repo: Path) -> None:
@@ -248,7 +247,7 @@ def test_promoted_nodes_inherit_human_led_from_the_anchor(repo: Path) -> None:
 
     node_id = promote_session(repo, s)[0].node_id
 
-    assert _by_id(repo)[node_id]["execution_milestone"] == "Human-led"
+    assert by_id(repo)[node_id]["execution_milestone"] == "Human-led"
 
 
 def test_promoted_nodes_accept_execution_milestone_override(repo: Path) -> None:
@@ -256,7 +255,7 @@ def test_promoted_nodes_accept_execution_milestone_override(repo: Path) -> None:
 
     node_id = promote_session(repo, s, execution_milestone="Human-led")[0].node_id
 
-    assert _by_id(repo)[node_id]["execution_milestone"] == "Human-led"
+    assert by_id(repo)[node_id]["execution_milestone"] == "Human-led"
 
 
 def test_promoted_nodes_omit_execution_milestone_when_the_anchor_has_none(
@@ -266,4 +265,4 @@ def test_promoted_nodes_omit_execution_milestone_when_the_anchor_has_none(
 
     node_id = promote_session(repo, s)[0].node_id
 
-    assert "execution_milestone" not in _by_id(repo)[node_id]
+    assert "execution_milestone" not in by_id(repo)[node_id]

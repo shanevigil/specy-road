@@ -12,19 +12,16 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
-from tests.test_review_cli import ONE_AI
+from tests.support.review import NODE, commit_file, make_review_repo, review_text, git
+from tests.support.extracted.review_cli import ONE_AI
 
 from specy_road.bundled_scripts import finish_task, mark_implementation_reviewed, review_cli
 from specy_road.review_files import list_reviews, review_path, reviews_dir, write_review
 from specy_road.review_gate import evaluate_gate, write_human_approval
 from specy_road.review_rejected import rejected_state, unreadable_rejected_lines, write_rejected
+from tests.support.same.run_651387813ee4 import run
 
 
-def _run(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def _lowercase_record(repo: Path, name: str = "review-opus.md", commit: str | None = None) -> Path:
@@ -50,7 +47,7 @@ def test_review_record_writes_the_canonical_name_over_a_lowercase_file(tmp_path:
     _lowercase_record(repo)
     notes = repo.parent / "notes.md"
     notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus"), encoding="utf-8")
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+    assert run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
     d = reviews_dir(repo, "M1.1")
     assert sorted(p.name for p in d.iterdir() if p.is_file()) == [".review-run.lock", "REVIEW-opus.md"]   # M21.27 lock
@@ -82,12 +79,12 @@ def test_handoff_status_and_review_list_report_a_lowercase_record(tmp_path: Path
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _lowercase_record(repo)
     capsys.readouterr()
-    assert _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo)) == 0
+    assert run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo)) == 0
     st = json.loads(capsys.readouterr().out)["nodes"][0]
     assert st["state"] == "approved" and st["policy_met"]
     assert [r["file"] for r in st["reviews"]] == ["REVIEW-opus.md"]
     assert st["review_rounds"]["rounds"] == 1
-    assert _run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
+    assert run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "REVIEW-opus.md: approve by opus" in out and "review-opus.md" not in out
     assert "1/1 approvals, 0 block(s): met" in out
@@ -128,7 +125,7 @@ def test_a_ready_that_is_not_utf8_is_refused_naming_the_file(tmp_path: Path, cap
     gate = evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
     assert not gate.passed and any(p.startswith("READY-sol.md is unreadable") for p in gate.problems())
     capsys.readouterr()
-    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
+    assert run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
     assert "READY-sol.md is unreadable" in capsys.readouterr().out
     with pytest.raises(SystemExit) as e:
         mark_implementation_reviewed.main(["--yes", "--repo-root", str(repo)])

@@ -7,12 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo, review_text
-from tests.test_prerelease_s2 import ROSTER
+from tests.support.review import make_review_repo, review_text, git
+from tests.support.extracted.prerelease_s2 import ROSTER
 
 from specy_road.bundled_scripts import review_cli, review_packet
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.review_files import PACKET_NAME, reviews_dir, reviews_root
+from tests.support.same.cli_02173e685269 import cli
 
 
 def _linked(tmp_path: Path) -> tuple[Path, Path]:
@@ -24,10 +25,6 @@ def _linked(tmp_path: Path) -> tuple[Path, Path]:
     return repo, wt
 
 
-def _cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        review_cli.main(list(args))
-    return e.value.code
 
 
 def test_packet_record_and_status_agree_from_a_linked_worktree(tmp_path: Path, capsys, monkeypatch) -> None:
@@ -43,11 +40,11 @@ def test_packet_record_and_status_agree_from_a_linked_worktree(tmp_path: Path, c
         f"base: {git(wt, 'rev-parse', 'dev')}\nchanged_paths: [src/a.py]\n---\n")
     notes = main_dir / "notes-rev.md"
     notes.write_text(review_text(head, model="rev"))
-    assert _cli("review", "record", "M1.1", "--model", "rev", "--verdict", "approve",
+    assert cli("review", "record", "M1.1", "--model", "rev", "--verdict", "approve",
                 "--file", str(notes), "--repo-root", str(wt)) == 0
     assert (main_dir / "REVIEW-rev.md").is_file()
     capsys.readouterr()
-    assert _cli("handoff", "status", "M1.1", "--json", "--repo-root", str(wt)) == 0
+    assert cli("handoff", "status", "M1.1", "--json", "--repo-root", str(wt)) == 0
     st = json.loads(capsys.readouterr().out)["nodes"][0]
     assert [r["file"] for r in st["ready"]] == ["READY-x.md"]
     assert [r["file"] for r in st["reviews"]] == ["REVIEW-rev.md"] and st["state"] == "approved"

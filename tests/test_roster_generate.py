@@ -3,6 +3,8 @@ malformed `profile:` with its accepted form; roster examples in docs and the sta
 
 from __future__ import annotations
 
+import pytest
+
 import re
 from pathlib import Path
 
@@ -80,6 +82,7 @@ def test_models_roster_write_round_trips_through_validate(tmp_path: Path, capsys
     assert "already rostered: claude-opus-5-5" in capsys.readouterr().out and path.read_text() == text
 
 
+@pytest.mark.repo
 def test_models_roster_write_into_the_starter_keeps_its_comments(tmp_path: Path, capsys) -> None:
     repo = make_profile_repo(tmp_path)
     path = repo / "roadmap" / "orchestration.yaml"
@@ -192,8 +195,9 @@ def test_committed_plan_reports_invalid_profile_for_a_well_formed_missing_path(t
     assert not any("cannot read" in p or "not committed" in p for p in problems)
 
 
+@pytest.mark.repo
 def test_committed_plan_refuses_a_malformed_profile_even_when_a_file_exists_at_that_path(tmp_path: Path) -> None:
-    from tests.review_repo_helpers import git
+    from tests.support.same.git_84c8ad8f55f9 import git
 
     roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
               f"  - {{id: opus, family: anthropic, profile: {MALFORMED}, roles: [executor]}}\n"
@@ -245,6 +249,7 @@ def test_the_scan_catches_a_dotted_opus_id_and_a_wrong_profile_path() -> None:
                                                  "profile model-profiles/anthropic/claude-opus-5.5.md"]
 
 
+@pytest.mark.repo
 def test_docs_and_starter_roster_examples_name_shipped_profile_ids() -> None:
     shipped = mp.list_profiles(mp.bundled_profiles_root())
     files = [*sorted((REPO / "docs").glob("orchestration*.md")), STARTER]

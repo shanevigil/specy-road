@@ -26,6 +26,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, script_subprocess_env
+from tests.support.same.git_736cc1f249f0 import git
 
 #: (script, extra args) — the read-mostly commands a consumer runs constantly.
 COMMANDS = [
@@ -39,8 +40,6 @@ COMMANDS = [
 ]
 
 
-def _git(root: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
 
 
 @pytest.fixture(params=["embedded", "nested"])
@@ -56,15 +55,15 @@ def layout(request: pytest.FixtureRequest, tmp_path: Path) -> tuple[Path, Path]:
     project = (top / prefix) if prefix else top
     shutil.copytree(DOGFOOD, project, dirs_exist_ok=True)
 
-    _git(top, "init", "-q", "-b", "main")
+    git(top, "init", "-q", "-b", "main")
     manifest = top / ".specyrd" / "manifest.json"
     manifest.parent.mkdir(parents=True, exist_ok=True)
     manifest.write_text(
         json.dumps({"project_root": prefix.rstrip("/") or "."}) + "\n",
         encoding="utf-8",
     )
-    _git(top, "add", "-A")
-    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "seed")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "seed")
     return top.resolve(), project.resolve()
 
 
@@ -139,7 +138,7 @@ def test_the_brief_is_identical_across_layouts(tmp_path: Path) -> None:
         top.mkdir()
         project = (top / prefix) if prefix else top
         shutil.copytree(DOGFOOD, project, dirs_exist_ok=True)
-        _git(top, "init", "-q", "-b", "main")
+        git(top, "init", "-q", "-b", "main")
         proc = _run(
             "generate_brief.py",
             ["M0.3", "--no-history", "--repo-root", str(project)],
@@ -189,7 +188,7 @@ def test_ignore_blocks_land_at_the_git_root_and_match(
 def _fresh(tmp_path: Path, prefix: str) -> tuple[Path, Path]:
     top = tmp_path / "checkout"
     top.mkdir(parents=True, exist_ok=True)
-    _git(top, "init", "-q", "-b", "main")
+    git(top, "init", "-q", "-b", "main")
     project = (top / prefix) if prefix else top
     return top.resolve(), project
 
@@ -281,8 +280,8 @@ def test_committed_copies_are_read_relative_to_the_project_root(layout: tuple[Pa
         "policy:\n  reviewers_required: 2\n  reviewers_distinct_families: true\n",
         encoding="utf-8",
     )
-    _git(top, "add", "-A")
-    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "roster")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "roster")
 
     config, err = effective_config(project, "HEAD")
 
@@ -305,13 +304,13 @@ def test_a_registry_only_tip_commit_does_not_stale_a_review(layout: tuple[Path, 
 
     top, project = layout
     (project / "vision.md").write_text("real change\n", encoding="utf-8")
-    _git(top, "add", "-A")
-    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "work")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "work")
     work = subprocess.run(["git", "-C", str(top), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
     reg = project / "roadmap" / "registry.yaml"
     reg.write_text(reg.read_text(encoding="utf-8") + "# approved\n", encoding="utf-8")
-    _git(top, "add", "-A")
-    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "chore: mark reviewed")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "chore: mark reviewed")
 
     assert reviewed_commit(project, "HEAD", None) == work
 
@@ -325,14 +324,14 @@ def test_finish_bookkeeping_paths_are_matched_under_the_project_prefix(layout: t
     (project / "roadmap.md").write_text("regenerated\n", encoding="utf-8")
     (project / "work").mkdir(exist_ok=True)
     (project / "work" / "note.md").write_text("x\n", encoding="utf-8")
-    _git(top, "add", "-A")
-    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "finish bookkeeping")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "finish bookkeeping")
 
     assert stray_finish_paths(project, "feature/rm-x") == []
 
     (top / "README.md").write_text("code\n", encoding="utf-8")
-    _git(top, "add", "-A")
-    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "code")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "code")
     assert stray_finish_paths(project, "feature/rm-x") == ["README.md"]
 
 
@@ -356,8 +355,8 @@ def test_packet_boundary_reads_changed_paths_relative_to_the_project(layout: tup
     base = subprocess.run(["git", "-C", str(top), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
     (project / "work").mkdir(exist_ok=True)
     (project / "work" / "implementation-summary-M1.md").write_text("done\n", encoding="utf-8")
-    _git(top, "add", "-A")
-    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "summary")
+    git(top, "add", "-A")
+    git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "summary")
     tip = subprocess.run(["git", "-C", str(top), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
     node = {"id": "M1", "touch_zones": ["src/"]}
     target = ReviewTarget(node=node, nodes=[node], entry=None, ref="HEAD", commit=tip, base_ref=None, base=base)
@@ -382,14 +381,14 @@ def test_trial_merge_classifies_conflicts_relative_to_the_project(layout: tuple[
         reg.write_text(seed + f"# {side}\n", encoding="utf-8")
         (top / "roadmap").mkdir(exist_ok=True)
         (top / "roadmap" / "x.json").write_text(f'"{side}"\n', encoding="utf-8")
-        _git(top, "add", "-A")
-        _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", side)
+        git(top, "add", "-A")
+        git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", side)
 
-    _git(top, "checkout", "-q", "-b", "feature/rm-x")
+    git(top, "checkout", "-q", "-b", "feature/rm-x")
     commit_side("feature")
-    _git(top, "checkout", "-q", "main")
+    git(top, "checkout", "-q", "main")
     commit_side("main")
-    _git(top, "checkout", "-q", "feature/rm-x")
+    git(top, "checkout", "-q", "feature/rm-x")
 
     tm = trial_merge(project, "HEAD", "main")
     if top == project:   # embedded: both paths are the project's own bookkeeping

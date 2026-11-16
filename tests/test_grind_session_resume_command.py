@@ -16,11 +16,11 @@ from pathlib import Path
 import pytest
 
 import specy_road.orchestration.grind.grind_session_implement as gsi
-from tests.test_grind_session_implement import (  # noqa: F401 - autouse fixture
+from tests.support.extracted.grind_session_implement import (
     LIMIT,
     SESSION,
-    _empty_claude_home,
-    _limit_text,
+    empty_claude_home,
+    limit_text,
 )
 
 #: The invocation the docs recommend -- the one the round-trip destroyed.
@@ -75,7 +75,7 @@ def test_the_resumed_command_really_expands_the_prompt_file(
     args_log = tmp_path / "args.log"
     stamp = tmp_path / "stamp"
     limit_msg = tmp_path / "limit.txt"
-    limit_msg.write_text(_limit_text(), encoding="utf-8")
+    limit_msg.write_text(limit_text(), encoding="utf-8")
 
     fake = tmp_path / "bin" / "claude"
     fake.parent.mkdir()

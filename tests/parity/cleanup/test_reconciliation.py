@@ -33,6 +33,7 @@ def current() -> dict[str, dict[str, dict]]:
     return {name: _actions(found) for name, found in record.selections(new_forms=True).items()}
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("name", sorted(COMMANDS))
 def test_each_command_selects_the_tables_rows(name: str, current) -> None:
     assert current[name] == COMMANDS[name]["rows"]

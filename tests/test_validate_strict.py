@@ -40,6 +40,7 @@ def _overlong_claude_md(root: Path) -> None:
     (root / "CLAUDE.md").write_text("- rule\n" * 201, encoding="utf-8")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(("spoil", "warning"), [
     (_clear_acceptance, "has no acceptance criteria"),
     (_overlong_claude_md, "CLAUDE.md is 201 lines; Claude Code's documented target is under 200"),
@@ -116,6 +117,7 @@ def _add_placeholder_leaf(root: Path) -> None:
     assert r.returncode == 0, r.stderr
 
 
+@pytest.mark.slow
 def test_a_placeholder_leaf_passes_the_starter_strict_check(tmp_path: Path) -> None:
     """M11.46: planning roadmap-first leaves unauthored leaves open; the starter's validate --strict still passes."""
     root = _scaffold(tmp_path)
@@ -131,6 +133,7 @@ def test_a_placeholder_leaf_passes_the_starter_strict_check(tmp_path: Path) -> N
     assert "  M1.2: planning/M1.2_" in r.stdout
 
 
+@pytest.mark.slow
 def test_strict_authoring_counts_the_placeholder_leaf_again(tmp_path: Path) -> None:
     root = _scaffold(tmp_path)
     _add_placeholder_leaf(root)

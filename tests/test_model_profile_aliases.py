@@ -18,7 +18,7 @@ from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.orchestration.orchestrate_plan import guidance_bypass_refusal
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 
-from tests.review_repo_helpers import git, shipped_anthropic_opus_cli_yaml_line
+from tests.support.review import shipped_anthropic_opus_cli_yaml_line, git
 from tests.support.cli import run_main
 from tests.support.profiles import commit_profile, make_profile_repo, ROSTER, TEMPLATE_PROFILES
 
@@ -187,6 +187,7 @@ def _harness_model_repo(tmp_path: Path, entries: str, cli: str | None = None) ->
     return repo
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("key", ["claude-opus-5-5", "claude-opus-5-5-high"])
 def test_an_entry_matches_its_profile_by_harness_model(tmp_path: Path, capsys, key: str) -> None:
     """api_id and alias rows: no warning, and the prompt holds the profile's rules; the pinned row: with the

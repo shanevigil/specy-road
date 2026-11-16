@@ -256,6 +256,3 @@ def record(row: Row, tmp: Path) -> str:
     return step_transcript([row.name], 0, body, "", dirs)   # pids first: seven digits read as a sha
 
 
-def golden_path(row: Row) -> Path:
-    """Where ``row``'s recorded output lives."""
-    return GOLDEN / f"{row.name}.txt"

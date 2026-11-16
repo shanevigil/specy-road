@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import do_next_task as dnt
@@ -81,6 +81,7 @@ def _free_leaf_for_pickup(repo: Path) -> None:
     git(repo, "commit", "-qam", "free the claim")
 
 
+@pytest.mark.slow
 def test_pickup_leaves_worker_events_and_stash_alone_while_the_log_grows(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

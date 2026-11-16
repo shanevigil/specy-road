@@ -8,10 +8,12 @@ links that section and does not restate it.
 
 from __future__ import annotations
 
+import pytest
+
 import shutil
 from pathlib import Path
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.profiles import ROSTER, TEMPLATE_PROFILES
 
 from specy_road.agents_md_block import render_rules
@@ -19,6 +21,7 @@ from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts import role_prompt
 from specy_road.orchestration.role_prompt_rca import TEST_RULES
 from specy_road.review_files import PACKET_NAME, reviews_dir
+pytestmark = pytest.mark.repo
 
 REPO = Path(__file__).resolve().parent.parent
 BLOCK = render_rules()

@@ -26,66 +26,14 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import DOGFOOD
+from tests.support.extracted.pm_gui_concurrency_autoff import git, siblings_of, autoff_repo
 
 _ROOT = Path(__file__).resolve().parent.parent
 from specy_road.roadmap_layout import natural_id_sort_key
 
 
-def _git(args: list[str], cwd: Path) -> str:
-    out = subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        check=True,
-        env={
-            "GIT_AUTHOR_NAME": "t",
-            "GIT_AUTHOR_EMAIL": "t@example.com",
-            "GIT_COMMITTER_NAME": "t",
-            "GIT_COMMITTER_EMAIL": "t@example.com",
-            "PATH": "/usr/bin:/bin:/usr/local/bin",
-            "HOME": str(cwd),
-        },
-    )
-    return out.stdout.strip()
 
 
-@pytest.fixture()
-def autoff_repo(tmp_path: Path) -> tuple[Path, Path]:
-    """Bare remote + working tree where remote is 2 commits ahead of HEAD.
-
-    Returns ``(working_tree, bare_remote)``. ``integration_branch=master``
-    is set in ``roadmap/git-workflow.yaml`` so
-    ``maybe_auto_integration_ff`` will engage without depending on the
-    toolkit's default ``main`` branch.
-    """
-    work = tmp_path / "work"
-    shutil.copytree(DOGFOOD, work)
-    bare = tmp_path / "remote.git"
-    # -b master: the bare repo's HEAD has to name the one branch this
-    # fixture ever pushes. Left to the git build's init.defaultBranch it
-    # can point at main, and the clone below then lands on an unborn
-    # main with no local master to push.
-    _git(["init", "--bare", "-q", "-b", "master", str(bare)], tmp_path)
-    _git(["init", "-q", "-b", "master"], work)
-    _git(["add", "-A"], work)
-    _git(["commit", "-q", "-m", "initial"], work)
-    gw = work / "roadmap" / "git-workflow.yaml"
-    gw.write_text(
-        gw.read_text(encoding="utf-8").replace(
-            "integration_branch: main", "integration_branch: master"
-        ),
-        encoding="utf-8",
-    )
-    _git(["commit", "-q", "-am", "use master"], work)
-    _git(["remote", "add", "origin", str(bare)], work)
-    _git(["push", "-q", "-u", "origin", "master"], work)
-    helper = tmp_path / "helper"
-    _git(["clone", "-q", str(bare), str(helper)], tmp_path)
-    _git(["commit", "-q", "--allow-empty", "-m", "ahead-1"], helper)
-    _git(["commit", "-q", "--allow-empty", "-m", "ahead-2"], helper)
-    _git(["push", "-q", "origin", "master"], helper)
-    return work, bare
 
 
 def _enable_overlay_and_autoff(
@@ -100,15 +48,6 @@ def _enable_overlay_and_autoff(
     rro._LAST_INTEGRATION_FF_MONO.clear()
 
 
-def _siblings_of(work: Path, parent: str) -> list[str]:
-    out: list[tuple[int, str]] = []
-    for chunk in (work / "roadmap" / "phases").glob("*.json"):
-        doc = json.loads(chunk.read_text(encoding="utf-8"))
-        for n in doc.get("nodes") or []:
-            if n.get("parent_id") == parent:
-                out.append((int(n.get("sibling_order", 0)), str(n["id"])))
-    out.sort(key=lambda t: (t[0], natural_id_sort_key(t[1])))
-    return [k for _, k in out]
 
 
 def _sibling_keys_of(work: Path, parent: str) -> list[str]:
@@ -125,13 +64,13 @@ def _sibling_keys_of(work: Path, parent: str) -> list[str]:
 def _force_local_head_drift(work: Path) -> None:
     """Push two commits to the remote and FF-merge them into local HEAD."""
     helper = work.parent / "helper"
-    _git(["fetch", "-q"], helper)
-    _git(["reset", "--hard", "origin/master", "-q"], helper)
-    _git(["commit", "-q", "--allow-empty", "-m", "race-1"], helper)
-    _git(["commit", "-q", "--allow-empty", "-m", "race-2"], helper)
-    _git(["push", "-q", "origin", "master"], helper)
-    _git(["fetch", "-q", "origin"], work)
-    _git(["merge", "-q", "--ff-only", "origin/master"], work)
+    git(["fetch", "-q"], helper)
+    git(["reset", "--hard", "origin/master", "-q"], helper)
+    git(["commit", "-q", "--allow-empty", "-m", "race-1"], helper)
+    git(["commit", "-q", "--allow-empty", "-m", "race-2"], helper)
+    git(["push", "-q", "origin", "master"], helper)
+    git(["fetch", "-q", "origin"], work)
+    git(["merge", "-q", "--ff-only", "origin/master"], work)
     from specy_road import registry_remote_overlay as rro
 
     rro._LAST_FETCH_MONO.clear()
@@ -173,7 +112,7 @@ def test_outline_reorder_succeeds_despite_planning_autosave_storm(
     # Hammer the planning tree the way Cursor / IDE autosave would.
     for _ in range(20):
         _touch_planning(work)
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     keys_target = _sibling_keys_of(work, "M0")[-1:] + _sibling_keys_of(work, "M0")[:-1]
     r = client.post(
@@ -201,7 +140,7 @@ def test_outline_reorder_succeeds_despite_head_movement(
     fp = client.get("/api/roadmap").json()["fingerprint"]
     _force_local_head_drift(work)  # local HEAD now points 2 commits ahead
 
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     keys_before = _sibling_keys_of(work, "M0")
     keys_target = keys_before[-1:] + keys_before[:-1]
@@ -236,7 +175,7 @@ def test_outline_reorder_412_when_chunk_actually_changed(
 
     os.utime(chunk, (time.time(), time.time() + 1))
 
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     r = client.post(
         "/api/outline/reorder",
@@ -278,7 +217,7 @@ def test_passthrough_when_token_matches(
 
     client = TestClient(create_app())
     fp = client.get("/api/roadmap").json()["fingerprint"]
-    sibs = _siblings_of(work, "M0")
+    sibs = siblings_of(work, "M0")
     rotated = sibs[-1:] + sibs[:-1]
     keys_target = _sibling_keys_of(work, "M0")[-1:] + _sibling_keys_of(work, "M0")[:-1]
     r = client.post(
@@ -305,7 +244,7 @@ def test_outline_move_succeeds_despite_head_movement(
     client = TestClient(create_app())
     payload = client.get("/api/roadmap").json()
     nodes_by_id = {n["id"]: n for n in payload["nodes"]}
-    sibs_m0 = _siblings_of(work, "M0")
+    sibs_m0 = siblings_of(work, "M0")
     assert sibs_m0, "fixture must have children under M0"
     moved_display = sibs_m0[-1]
     moved_key = nodes_by_id[moved_display]["node_key"]

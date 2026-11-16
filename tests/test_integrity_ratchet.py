@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.integrity_repo_helpers import commit, git, make_repo, merge_dev, on_dev
+from tests.support.same.git_84c8ad8f55f9 import git
+from tests.support.integrity import commit, make_repo, merge_dev, on_dev
 from specy_road.bundled_scripts import integrity_cli
 
 _BASE = "a = 1\nb = 2\n"

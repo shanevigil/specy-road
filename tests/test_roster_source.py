@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.plan import only_assignment, plan_repo, ROSTER
-from tests.test_worker_cli_fixes import EXECUTORLESS
+from tests.support.extracted.worker_cli_fixes import EXECUTORLESS
 
 from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli
@@ -92,6 +92,7 @@ def _remedy(repo: Path, step: str, detach: bool) -> None:
         git(repo, "merge", "-q", "--ff-only", "origin/dev")
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("state", list(ROSTER_STATES))
 def test_plan_and_validate_name_the_roster_source_and_remedy(
         state: str, tmp_path: Path, monkeypatch, capsys) -> None:

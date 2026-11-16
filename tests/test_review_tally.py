@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, git, make_review_repo, review_text
+from tests.support.review import NODE, make_review_repo, review_text, git
 from tests.support.plan import only_assignment, plan_repo, ROSTER
 
 from specy_road.orchestration import orchestrate_plan as op

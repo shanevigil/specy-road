@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import make_review_repo
+from tests.support.review import make_review_repo
 
 from specy_road.orchestration.harness import harness_facts as hf
 from specy_road.orchestration.workers import worker_adapters as wa
@@ -150,6 +150,7 @@ def test_executor_launches_get_both_switches(tmp_path: Path, monkeypatch: pytest
     assert _envs(fake) == [dict.fromkeys(ENV_KEYS, "1")]
 
 
+@pytest.mark.slow
 def test_review_delegate_and_the_bare_reviewer_command_disable_background_tasks(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     roster = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.support.review import commit_file, make_review_repo, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import FAKE, wait_for_worker, worker_roster
 
@@ -18,6 +18,7 @@ from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import chore_cli
 from specy_road.orchestration.workers.worker_orphans import orphans
+from tests.support.extracted.chore_mode import RULES, roadmap_bytes, garden_repo, run_chore_cli
 
 
 def chore_repo(tmp_path: Path) -> Path:
@@ -31,10 +32,6 @@ def chore_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def run_chore_cli(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        chore_cli.main(list(args))
-    return e.value.code or 0
 
 
 def _start(repo: Path, slug: str = "fix-env", *extra: str) -> dict:
@@ -59,6 +56,7 @@ def test_start_records_an_unregistered_chore(tmp_path: Path, capsys) -> None:
     assert "already exists" in capsys.readouterr().err
 
 
+@pytest.mark.slow
 def test_delegate_sync_usage_message_and_close(tmp_path: Path, capsys) -> None:
     repo = chore_repo(tmp_path)
     _start(repo, "fix-env", "--model", "opus")
@@ -171,8 +169,6 @@ from specy_road.bundled_scripts import chore_garden  # noqa: E402
 from specy_road.orchestration.role_prompt_rca import dirty_check  # noqa: E402
 from specy_road.roadmap_load import load_roadmap  # noqa: E402
 
-_RULES = ("# Rules\n\nRead the docs.\n<!-- prevents: drift | enforced: advisory | ref: x -->\n"
-          "Run validate.\n<!-- prevents: bad graphs | enforced: specy-road validate | ref: y -->\n")
 _GARDEN_LINES = [
     "stale-command: docs/guide.md:3: `specy-road grind` is not a command in specy-road "
     f"{chore_garden.__version__}; use `specy-road grind-session`",
@@ -183,31 +179,8 @@ _GARDEN_LINES = [
 ]
 
 
-def garden_repo(tmp_path: Path, *, tag: bool = True, cadence: int | None = None) -> Path:
-    """A repo on ``dev`` with one finding of each class in its last commit; ``.gitignore`` is the managed lines only."""
-    repo = make_review_repo(tmp_path)
-    git(repo, "checkout", "-q", "dev")
-    (repo / ".gitignore").unlink()
-    apply_agent_ignores(repo)                                             # as init project writes it
-    git(repo, "add", ".gitignore", ".cursorindexingignore")
-    git(repo, "commit", "-qm", "managed ignores")
-    policy = "version: 1\npolicy:\n  ratchet_paths:\n    - constraints/base.txt\n" + (
-        f"  garden_cadence_days: {cadence}\n" if cadence else "")
-    for rel, text in (("roadmap/orchestration.yaml", policy), ("constraints/base.txt", "a\n")):
-        commit_file(repo, rel, text, f"add {rel}")
-    if tag:
-        git(repo, "tag", "v1")
-    for rel, text in (("constraints/base.txt", "a\nb\nc\n"),
-                      ("docs/guide.md", "# Guide\n\nRun `specy-road grind` then run `specy-road validate`.\n"),
-                      ("AGENTS.md", "# Agents\n\n- specy-road nope --flag\n"), (".specyrd/AGENTS.md", _RULES)):
-        commit_file(repo, rel, text, f"drift in {rel}")
-    return repo
 
 
-def _roadmap_bytes(repo: Path) -> dict[str, bytes]:
-    return {p.relative_to(repo).as_posix(): p.read_bytes()
-            for base in ("roadmap", "planning") if (repo / base).is_dir()
-            for p in sorted((repo / base).rglob("*")) if p.is_file()}
 
 
 def test_garden_prints_one_line_per_finding_and_writes_nothing_tracked(tmp_path: Path, capsys) -> None:
@@ -249,10 +222,10 @@ def test_open_chores_adds_one_leaf_per_class_then_nothing(tmp_path: Path, capsys
         "`docs/guide.md` names no specy-road command this version does not register (now: line 3)",
         "`AGENTS.md` names no specy-road command this version does not register (now: line 3)"]
     assert added["garden-ratchet-grew"]["acceptance"][0].endswith("(now: +2 line(s) since v1)")
-    before = _roadmap_bytes(repo)
+    before = roadmap_bytes(repo)
     capsys.readouterr()
     assert run_chore_cli("chore", "garden", "--open-chores", "--under", "M1.1", "--repo-root", str(repo)) == 0
-    assert _roadmap_bytes(repo) == before
+    assert roadmap_bytes(repo) == before
     assert f"stale-command: {stale['id']} is still open; added nothing" in capsys.readouterr().out
 
 
@@ -297,7 +270,7 @@ def test_garden_reports_stale_commands_in_the_managed_rules_file(tmp_path: Path,
     from specy_road.validate_stale_commands import agent_files  # noqa: PLC0415
 
     repo = garden_repo(tmp_path)
-    commit_file(repo, ".specyrd/AGENTS.md", _RULES + "Run `specy-road nonexistent-garden-probe`.\n", "probe")
+    commit_file(repo, ".specyrd/AGENTS.md", RULES + "Run `specy-road nonexistent-garden-probe`.\n", "probe")
     capsys.readouterr()
     assert run_chore_cli("chore", "garden", "--json", "--repo-root", str(repo)) == 0
     stale = [f for f in json.loads(capsys.readouterr().out)["findings"] if f["cls"] == "stale-command"]
@@ -333,7 +306,7 @@ def test_garden_line_numbers_count_only_newlines(tmp_path: Path, capsys) -> None
     """Coverage audit: a U+2028, form feed or lone CR inside a line does not shift later line numbers."""
     repo = garden_repo(tmp_path)
     commit_file(repo, "docs/guide.md", "a b\x0cc\rd\r\nRun `specy-road grind` now.\n", "odd breaks")
-    commit_file(repo, ".specyrd/AGENTS.md", "x y\n" + _RULES, "odd breaks")
+    commit_file(repo, ".specyrd/AGENTS.md", "x y\n" + RULES, "odd breaks")
     lines = {(f["cls"], f["path"], f["line"]) for f in _garden_json(repo, capsys)["findings"]}
     assert ("stale-command", "docs/guide.md", 2) in lines
     assert ("advisory-rule", ".specyrd/AGENTS.md", 5) in lines

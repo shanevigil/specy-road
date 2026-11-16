@@ -11,7 +11,7 @@ import pytest
 from specy_road.bundled_scripts import decisions_cli
 from specy_road.runtime_paths import project_template_root
 from tests.helpers import DOGFOOD
-from tests.review_repo_helpers import NODE, git
+from tests.support.review import NODE, git
 
 SHEET = NODE["planning_dir"]
 

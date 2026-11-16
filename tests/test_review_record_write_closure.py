@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import delegate_repo, delegate_roster, set_steps, verdict_step
-from tests.review_repo_helpers import git, make_review_repo, review_output
+from tests.support.review import make_review_repo, review_output, git
 from tests.support.cli import run_main
 
 from specy_road import review_files as rf
@@ -28,6 +28,7 @@ from specy_road.review_delegate import delegate, load_run
 from specy_road.reviewer_run_failure import run_path, save_run
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("state", ["rerun", "review_failure"])
 def test_prompt_cli_keeps_a_failed_filing_incomplete_beside_an_older_record_of_the_commit(tmp_path: Path, capsys,
                                                                                           state: str) -> None:
@@ -48,6 +49,7 @@ def test_prompt_cli_keeps_a_failed_filing_incomplete_beside_an_older_record_of_t
     assert said in capsys.readouterr().err
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("how", ["preflight", "interrupt"])
 def test_prompt_cli_that_sends_nothing_stays_incomplete_beside_an_older_record_of_the_commit(
         tmp_path: Path, monkeypatch, how: str) -> None:
@@ -110,6 +112,7 @@ def _codex(tmp_path: Path, monkeypatch, **spec: object) -> tuple[Path, str, Path
     return repo, head, calls
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("null_last", [True, False])
 def test_a_codex_resume_whose_last_answer_event_has_no_text_is_a_rerun(tmp_path: Path, monkeypatch,
                                                                        null_last: bool) -> None:
@@ -138,6 +141,7 @@ def test_a_codex_resume_whose_last_answer_event_has_no_text_is_a_rerun(tmp_path:
         assert run["outcome"] == "recorded", run["reason"]
 
 
+@pytest.mark.slow
 def test_a_retried_codex_turn_never_files_the_failed_fresh_turns_answer_file(tmp_path: Path, monkeypatch) -> None:
     repo, _head, calls = _codex(tmp_path, monkeypatch, resume_texts=["not a verdict"])
     run = delegate(repo, "M1.1", "sol", retries=1, backoff=0, sleep=lambda _s: None)

@@ -28,9 +28,9 @@ from specy_road.digest import render_digest
 from specy_road.init_project import run_init_project
 from specy_road.managed_block import HTML_COMMENT, render_block
 from specy_road.specyrd_init import run_init
-from tests.test_digest_quality import land
-from tests.test_history_walk import commit, git
-from tests.upgrade_repo_helpers import OLD_STUB, SHIPPED_DOC, old_repo
+from tests.support.extracted.digest_quality import land
+from tests.support.extracted.history_walk import commit, git
+from tests.support.upgrade import OLD_STUB, SHIPPED_DOC, old_repo
 
 def test_one_run_clears_every_upgrade_warning(tmp_path: Path, capsys) -> None:
     root = old_repo(tmp_path)
@@ -137,6 +137,7 @@ def _state(path: Path) -> object:
     return ("link", os.readlink(path)) if path.is_symlink() else path.read_bytes() if path.exists() else None
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(("setup", "dry_run", "rendered", "said", "unsaid", "exit_code"), [
     pytest.param(None, False, {DIGEST}, [WROTE_DIGEST], [NEXT_DIGEST], 0, id="missing-digest"),
     pytest.param(_finished_leaf, False, {DIGEST}, [WROTE_DIGEST], [NEXT_DIGEST], 0, id="drifted-after-finished-leaf"),
@@ -232,6 +233,7 @@ def test_a_docs_link_out_of_the_repo_is_not_followed(tmp_path: Path, capsys) -> 
     assert not any(outside.iterdir())
 
 
+@pytest.mark.slow
 def test_upgrade_moves_the_full_agents_md_section_into_the_rules_file_once(tmp_path: Path, capsys) -> None:
     """2026-11-04: an adopter's full AGENTS.md and CLAUDE.md sections become stubs; their own text stays."""
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)

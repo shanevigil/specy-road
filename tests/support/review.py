@@ -15,6 +15,7 @@ from pathlib import Path
 import yaml
 
 from tests.helpers import DOGFOOD, REPO
+from tests.support.same.git_84c8ad8f55f9 import git
 
 #: Git-root file changed on the nested-outside layout shape (outside ``sr/``).
 OUTSIDE_ROOT_FILE = "README.md"
@@ -39,9 +40,6 @@ NODE = {
 }
 
 
-def git(repo: Path, *args: str) -> str:
-    r = subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True)
-    return r.stdout.strip()
 
 
 def commit_file(repo: Path, rel: str, text: str, msg: str) -> str:
@@ -257,7 +255,7 @@ def review_output(commit: str, *, model: str, verdict: str = "approve", a1: str 
 
 def shipped_anthropic_opus_cli_yaml_line() -> str:
     """The shipped ``access.cli`` YAML line for claude-opus-5-5 (project template)."""
-    path = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "project" / "model-profiles"
+    path = Path(__file__).resolve().parents[2] / "specy_road" / "templates" / "project" / "model-profiles"
     text = (path / "anthropic-claude" / "claude-opus-5-5.md").read_text(encoding="utf-8")
     return next(line for line in text.splitlines() if line.startswith("  cli: "))
 

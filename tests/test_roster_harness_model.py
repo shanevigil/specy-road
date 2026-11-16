@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_ops as ops
@@ -79,6 +79,7 @@ def test_delegate_and_message_tell_claude_the_harness_model(tmp_path: Path, monk
     assert "--resume" in launches[1].argv
 
 
+@pytest.mark.slow
 def test_review_delegate_tells_claude_the_harness_model(tmp_path: Path, monkeypatch) -> None:
     repo = make_review_repo(tmp_path, orchestration=_roster(MAPPED))
     reviews_dir(repo, "M1.1").mkdir(parents=True, exist_ok=True)

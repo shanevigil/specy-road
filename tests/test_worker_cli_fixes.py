@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.support.review import make_review_repo, git
 from tests.support.plan import only_assignment, plan_repo, ROSTER
 from tests.support.cli import run_worker_cli
 from tests.support.harness import FAKE, wait_for_worker, worker_roster
@@ -32,6 +32,7 @@ from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import orchestrate_cli, session_cli
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.bundled_scripts.validate_roadmap import validate_orchestration_contract
+from tests.support.extracted.worker_cli_fixes import EXECUTORLESS
 
 
 # --- A1: {session_flag} --------------------------------------------------------
@@ -61,7 +62,6 @@ def test_session_flag_must_be_whole_arguments(cli: str) -> None:
 
 # --- A2: roster provenance -----------------------------------------------------
 
-EXECUTORLESS = "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
 
 
 def _plan_text(repo: Path, capsys) -> str:
@@ -70,6 +70,7 @@ def _plan_text(repo: Path, capsys) -> str:
     return capsys.readouterr().out
 
 
+@pytest.mark.slow
 def test_text_plan_always_names_the_roster_ref(tmp_path: Path, capsys) -> None:
     repo = plan_repo(tmp_path)
     plan, err = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
@@ -209,6 +210,7 @@ def test_nested_prompt_and_brief_give_paths_from_the_git_root(tmp_path: Path) ->
             "implementation summary is `sr/work/implementation-summary-M1.1.md`") in text   # the brief's line
 
 
+@pytest.mark.slow
 def test_nested_delegate_puts_the_brief_under_the_worktrees_project_root(tmp_path: Path) -> None:
     top, project = _nested(tmp_path)
     git(top, "checkout", "-q", "dev")
@@ -223,6 +225,7 @@ def test_nested_delegate_puts_the_brief_under_the_worktrees_project_root(tmp_pat
     wait_for_worker(project, again.worker_id)
 
 
+@pytest.mark.slow
 def test_nested_delegate_counts_only_the_projects_work_as_bookkeeping(tmp_path: Path) -> None:
     top, project = _nested(tmp_path)
     git(top, "checkout", "-q", "dev")
@@ -241,6 +244,7 @@ def test_nested_delegate_counts_only_the_projects_work_as_bookkeeping(tmp_path: 
     wait_for_worker(project, rec.worker_id)
 
 
+@pytest.mark.slow
 def test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects(tmp_path: Path) -> None:
     top, project = _nested(tmp_path)   # the claim's branch is checked out here: the worker runs at its git root
     rec, created = ops.delegate(project, "M1.1", "opus")
@@ -257,6 +261,7 @@ def test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects(tmp_pa
 
 
 
+@pytest.mark.slow
 def test_nested_reconcile_matches_zones_by_the_project_relative_name(tmp_path: Path) -> None:
     top, project = _nested(tmp_path)   # the worker runs in this checkout; the leaf's zone is `src`
     rec, created = ops.delegate(project, "M1.1", "opus")

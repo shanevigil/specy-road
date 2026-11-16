@@ -14,15 +14,11 @@ from specy_road.orchestration.harness import harness_facts as hf
 from specy_road.bundled_scripts import refresh_profiles as rp
 from specy_road.runtime_paths import project_template_root
 from specy_road.orchestration.workers.worker_state import HARNESSES
+from tests.support.extracted.harness_facts import run_main
 OPUS = Path("model-profiles/anthropic-claude/claude-opus-5-5.md")
 SOL = Path("model-profiles/openai-gpt/gpt-6.1-sol.md")
 
 
-def run_main(*args: str) -> int:
-    with pytest.raises(SystemExit) as e:
-        rp.main(list(args))
-        raise SystemExit(0)
-    return e.value.code or 0
 
 
 def _repo(tmp_path: Path) -> Path:

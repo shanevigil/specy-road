@@ -335,6 +335,7 @@ def command_problems(path: Path) -> list[str]:
     return problems
 
 
+@pytest.mark.repo
 def test_suggested_prompts_name_only_canonical_commands() -> None:
     problems = []
     for path in sorted(PROMPTS.glob("*.md")):

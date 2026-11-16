@@ -21,7 +21,9 @@ from specy_road.orchestration.grind.grind_session_events import (
     EXIT_OK,
     EXIT_PICKUP_FAILED,
 )
-from tests.test_grind_session import TS, _Harness, _event, _events, _plan, _run
+from tests.support.same.events_bc2d3e84325c import events
+from tests.support.same.plan_a42dad7814e8 import plan
+from tests.support.extracted.grind_session import TS, Harness, event as event_fn, run
 
 BASE = ["--on-complete", "merge", "--implement-mode", "hook",
         "--implement-cmd", "true", "--json", "--repo-root", "/tmp/x"]
@@ -30,8 +32,8 @@ BR1 = "feature/rm-cn-m1-1"
 BR2 = "feature/rm-cn-m1-2"
 
 
-def _one_leaf(monkeypatch, **over) -> _Harness:
-    return _Harness(monkeypatch, [_plan(ready=["M1.1"]), _plan(ready=[])], **over)
+def _one_leaf(monkeypatch, **over) -> Harness:
+    return Harness(monkeypatch, [plan(ready=["M1.1"]), plan(ready=[])], **over)
 
 
 def _verbs(harness) -> list[str]:
@@ -46,11 +48,11 @@ def _verbs(harness) -> list[str]:
 def test_merge_mode_checks_out_the_integration_branch_at_the_end(monkeypatch, capsys):
     h = _one_leaf(monkeypatch)
 
-    code = _run([*BASE, "--max-leaves", "1"])
+    code = run([*BASE, "--max-leaves", "1"])
 
     assert code == EXIT_OK
     assert ["checkout", "main"] in h.git_calls
-    event = _event(_events(capsys), "cleanup")
+    event = event_fn(events(capsys), "cleanup")
     assert event["checked_out"] is True
     assert event["integration_branch"] == "main"
     assert event["deleted_local"] == []
@@ -59,17 +61,17 @@ def test_merge_mode_checks_out_the_integration_branch_at_the_end(monkeypatch, ca
 def test_without_the_flag_it_prints_the_cleanup_command(monkeypatch, capsys):
     _one_leaf(monkeypatch)
 
-    _run([*BASE, "--max-leaves", "1"])
+    run([*BASE, "--max-leaves", "1"])
 
-    assert _event(_events(capsys), "cleanup")["hint"] == f"git branch -d {BR1}"
+    assert event_fn(events(capsys), "cleanup")["hint"] == f"git branch -d {BR1}"
 
 
 def test_the_hint_covers_the_remote_when_pushing(monkeypatch, capsys):
     _one_leaf(monkeypatch)
 
-    _run([*BASE, "--push", "--max-leaves", "1"])
+    run([*BASE, "--push", "--max-leaves", "1"])
 
-    hint = _event(_events(capsys), "cleanup")["hint"]
+    hint = event_fn(events(capsys), "cleanup")["hint"]
     assert hint == f"git branch -d {BR1} && git push origin --delete {BR1}"
 
 
@@ -77,11 +79,11 @@ def test_a_checkout_failure_is_non_fatal_and_stops_the_deletes(monkeypatch, caps
     h = _one_leaf(monkeypatch)
     h.git_rc["checkout"] = 1
 
-    code = _run([*BASE, "--delete-merged-branches", "--max-leaves", "1"])
+    code = run([*BASE, "--delete-merged-branches", "--max-leaves", "1"])
 
     assert code == EXIT_OK
     assert _verbs(h) == ["checkout"]
-    event = _event(_events(capsys), "cleanup")
+    event = event_fn(events(capsys), "cleanup")
     assert event["checked_out"] is False
     assert event["failed"][0]["step"] == "checkout"
 
@@ -94,12 +96,12 @@ def test_a_checkout_failure_is_non_fatal_and_stops_the_deletes(monkeypatch, caps
 def test_the_flag_deletes_the_branch_locally(monkeypatch, capsys):
     h = _one_leaf(monkeypatch)
 
-    _run([*BASE, "--delete-merged-branches", "--max-leaves", "1"])
+    run([*BASE, "--delete-merged-branches", "--max-leaves", "1"])
 
     assert ["merge-base", "--is-ancestor", BR1, "main"] in h.git_calls
     assert ["branch", "-d", BR1] in h.git_calls
     assert "push" not in _verbs(h)
-    event = _event(_events(capsys), "cleanup")
+    event = event_fn(events(capsys), "cleanup")
     assert event["deleted_local"] == [BR1]
     assert event["deleted_remote"] == []
     assert event["hint"] is None
@@ -108,11 +110,11 @@ def test_the_flag_deletes_the_branch_locally(monkeypatch, capsys):
 def test_with_push_it_also_deletes_the_remote_branch(monkeypatch, capsys):
     h = _one_leaf(monkeypatch)
 
-    _run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1",
+    run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1",
           "--base", "dev", "--remote", "up"])
 
     assert ["push", "up", f"--force-with-lease=refs/heads/{BR1}:{'a' * 40}", "--delete", BR1] in h.git_calls
-    event = _event(_events(capsys), "cleanup")
+    event = event_fn(events(capsys), "cleanup")
     assert event["integration_branch"] == "dev"
     assert event["remote"] == "up"
     assert event["deleted_remote"] == [BR1]
@@ -123,12 +125,12 @@ def test_a_branch_the_integration_branch_lacks_is_left_alone(monkeypatch, capsys
     h = _one_leaf(monkeypatch)
     h.git_rc["merge-base"] = 1
 
-    code = _run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
+    code = run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
 
     assert code == EXIT_OK
     assert "branch" not in _verbs(h)
     assert "push" not in _verbs(h)
-    failure = _event(_events(capsys), "cleanup")["failed"][0]
+    failure = event_fn(events(capsys), "cleanup")["failed"][0]
     assert failure["step"] == "merge_base"
     assert failure["branch"] == BR1
 
@@ -137,21 +139,21 @@ def test_a_failed_local_delete_never_touches_the_remote(monkeypatch, capsys):
     h = _one_leaf(monkeypatch)
     h.git_rc["branch"] = 1
 
-    _run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
+    run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
 
     assert "push" not in _verbs(h)
-    event = _event(_events(capsys), "cleanup")
+    event = event_fn(events(capsys), "cleanup")
     assert event["deleted_local"] == []
     assert event["failed"][0]["step"] == "branch_d"
 
 
 def test_every_branch_the_session_finished_is_collected(monkeypatch, capsys):
-    _Harness(monkeypatch, [_plan(ready=["M1.1"]), _plan(ready=["M1.2"]),
-                           _plan(ready=[])])
+    Harness(monkeypatch, [plan(ready=["M1.1"]), plan(ready=["M1.2"]),
+                           plan(ready=[])])
 
-    _run([*BASE, "--delete-merged-branches", "--max-leaves", "2"])
+    run([*BASE, "--delete-merged-branches", "--max-leaves", "2"])
 
-    assert _event(_events(capsys), "cleanup")["deleted_local"] == [BR1, BR2]
+    assert event_fn(events(capsys), "cleanup")["deleted_local"] == [BR1, BR2]
 
 
 # ---------------------------------------------------------------------------
@@ -163,17 +165,17 @@ def test_no_cleanup_after_a_failed_cycle(monkeypatch, capsys):
     """The dev needs the feature branch exactly as the failure left it."""
     h = _one_leaf(monkeypatch, pickup_rc=1)
 
-    code = _run([*BASE, "--delete-merged-branches"])
+    code = run([*BASE, "--delete-merged-branches"])
 
     assert code == EXIT_PICKUP_FAILED
     assert h.git_calls == []
-    assert [e for e in _events(capsys) if e["event"] == "cleanup"] == []
+    assert [e for e in events(capsys) if e["event"] == "cleanup"] == []
 
 
 def test_no_cleanup_when_the_session_finished_nothing(monkeypatch, capsys):
-    h = _Harness(monkeypatch, [_plan(ready=[])])
+    h = Harness(monkeypatch, [plan(ready=[])])
 
-    code = _run([*BASE, "--delete-merged-branches"])
+    code = run([*BASE, "--delete-merged-branches"])
 
     assert code == EXIT_NO_LEAVES
     assert h.git_calls == []
@@ -183,7 +185,7 @@ def test_no_cleanup_in_milestone_subtree_mode(monkeypatch, capsys):
     """finish lands on the rollup branch there, not the integration branch."""
     h = _one_leaf(monkeypatch)
 
-    _run([*BASE, "--milestone-subtree", "--delete-merged-branches", "--max-leaves", "1"])
+    run([*BASE, "--milestone-subtree", "--delete-merged-branches", "--max-leaves", "1"])
 
     assert h.git_calls == []
 
@@ -196,9 +198,9 @@ def test_no_cleanup_in_milestone_subtree_mode(monkeypatch, capsys):
 def test_every_json_event_carries_a_timestamp(monkeypatch, capsys):
     _one_leaf(monkeypatch)
 
-    _run([*BASE, "--max-leaves", "1"])
+    run([*BASE, "--max-leaves", "1"])
 
-    evs = _events(capsys)
+    evs = events(capsys)
     assert evs
     for event in evs:
         assert list(event)[:2] == ["event", "ts"]
@@ -236,13 +238,13 @@ def test_without_json_the_child_keeps_our_stdout(monkeypatch, tmp_path, capfd):
 
 @pytest.mark.parametrize("json_flag, expected", [(True, True), (False, False)])
 def test_the_child_stdout_mode_follows_the_json_flag(monkeypatch, capsys, json_flag, expected):
-    _Harness(monkeypatch, [_plan(ready=[])])
+    Harness(monkeypatch, [plan(ready=[])])
     argv = ["--on-complete", "merge", "--implement-mode", "hook",
             "--implement-cmd", "true", "--repo-root", "/tmp/x"]
     if json_flag:
         argv.append("--json")
 
-    _run(argv)
+    run(argv)
 
     assert gs.CHILD_STDOUT_TO_STDERR is expected
 
@@ -250,7 +252,7 @@ def test_the_child_stdout_mode_follows_the_json_flag(monkeypatch, capsys, json_f
 def test_stdout_stays_parseable_as_jsonl(monkeypatch, capsys):
     _one_leaf(monkeypatch)
 
-    _run([*BASE, "--max-leaves", "1"])
+    run([*BASE, "--max-leaves", "1"])
 
     for line in capsys.readouterr().out.strip().splitlines():
         assert json.loads(line)["event"]
@@ -261,10 +263,10 @@ def test_a_rejected_remote_delete_keeps_the_local_one_and_warns(monkeypatch, cap
     h = _one_leaf(monkeypatch)
     h.git_rc["push"] = 1
 
-    code = _run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
+    code = run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
 
     assert code == EXIT_OK
-    event = _event(_events(capsys), "cleanup")
+    event = event_fn(events(capsys), "cleanup")
     assert event["deleted_local"] == [BR1]
     assert event["deleted_remote"] == []
     assert event["failed"][0]["step"] == "push_delete"
@@ -286,11 +288,11 @@ def test_the_remote_branch_must_also_be_contained_in_the_integration_branch(
     monkeypatch.setattr(gsc, "git_code", fake_git)
     monkeypatch.setattr(merged_branch, "git_code", fake_git)
 
-    _run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
+    run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
 
     assert ["merge-base", "--is-ancestor", f"origin/{BR1}", "main"] in h.git_calls
     assert "push" not in _verbs(h)
-    event = _event(_events(capsys), "cleanup")
+    event = event_fn(events(capsys), "cleanup")
     assert event["deleted_local"] == [BR1]
     assert event["deleted_remote"] == []
     assert "not contained in main" in event["failed"][0]["message"]
@@ -302,7 +304,7 @@ def test_the_human_summary_names_the_branch_and_the_cleanup_command(
     """Without --json this line is the only report the session gives."""
     _one_leaf(monkeypatch)
 
-    _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd",
+    run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd",
           "true", "--repo-root", "/tmp/x", "--max-leaves", "1"])
 
     out = capsys.readouterr().out
@@ -315,7 +317,7 @@ def test_the_human_summary_reports_a_failed_checkout(monkeypatch, capsys):
     h = _one_leaf(monkeypatch)
     h.git_rc["checkout"] = 1
 
-    _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd",
+    run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd",
           "true", "--repo-root", "/tmp/x", "--max-leaves", "1"])
 
     out = capsys.readouterr().out

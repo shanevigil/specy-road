@@ -12,7 +12,7 @@ import pytest
 import yaml
 
 from tests.helpers import DOGFOOD, SCHEMAS, script_subprocess_env
-from tests.review_repo_helpers import git
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.cli import run_cli, run_cli_subprocess
 from tests.support.harness import make_worker_repo, run_fake_harness_turn
 from tests.support.roadmap import node_key, roadmap_repo

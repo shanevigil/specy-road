@@ -12,8 +12,8 @@ from specy_road.milestone_chunk_io import (
 )
 from specy_road.milestone_rollup_git import branch_exists, current_branch
 from specy_road.milestone_session import milestone_session_path, read_milestone_session
-from tests.milestone_repo_helpers import make_milestone_repo
-from tests.review_repo_helpers import git
+from tests.support.milestone import make_milestone_repo
+from tests.support.same.git_84c8ad8f55f9 import git
 from tests.scenarios.milestone.repos import (
     CODENAME,
     INTEGRATION,

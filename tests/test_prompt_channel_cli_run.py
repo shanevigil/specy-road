@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_delegate_helpers import fake_reviewer_run
-from tests.review_repo_helpers import NODE, git, review_output, review_text
+from tests.support.review import NODE, review_output, review_text, git
 from tests.support.cli import run_main
 from tests.support.profiles import commit_profile, make_profile_repo, OPUS
 
@@ -225,6 +225,7 @@ def test_every_reviewer_entry_point_refuses_the_same_reviewer_command(tmp_path: 
 
 # --- A3: the reviewer runs in the leaf's own worktree ---------------------------------------------------------------
 
+@pytest.mark.slow
 def test_a_reviewer_run_from_the_main_checkout_launches_in_the_leafs_worktree(tmp_path: Path, monkeypatch,
                                                                               capsys) -> None:
     repo, leaf = _repo(tmp_path, leaf=True)
@@ -268,6 +269,7 @@ def test_worktree_that_is_not_a_checkout_top_or_not_at_the_leaf_tip_is_refused(t
     assert started == []
 
 
+@pytest.mark.slow
 def test_worktree_overrides_where_a_reviewer_runs(tmp_path: Path, monkeypatch) -> None:
     repo, leaf = _repo(tmp_path, leaf=True)
     other = tmp_path / "other"
@@ -304,6 +306,7 @@ def test_check_run_flags_any_reported_model_that_is_not_the_rostered_one(lines: 
     assert check_run(lines, {"id": "opus"}, load_profile(OPUS)) == want
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("init, result", [
     ("gpt-5.6-sol", {}),                       # reported by the init event
     (None, {"model": "gpt-5.6-sol"}),          # reported only by the result event
@@ -326,6 +329,7 @@ def test_a_mismatched_model_is_filed_flagged_and_excluded_from_the_gate(tmp_path
     assert not row["eligible"] and MISMATCH_REASON in row["reason"]
 
 
+@pytest.mark.slow
 def test_an_unreported_model_is_a_warning_and_the_record_counts(tmp_path: Path, monkeypatch, capsys) -> None:
     repo, leaf = _repo(tmp_path, leaf=True)
     head = git(repo, "rev-parse", "feature/rm-thing")
@@ -345,7 +349,7 @@ LABEL_ROSTER = ("version: 1\nroster:\n  - {id: human, family: human, roles: [coo
 
 def _label_repo(tmp_path: Path) -> Path:
     """A claimed leaf whose reviewer is rostered under a label id, with no profile and a ``harness_model``."""
-    from tests.review_repo_helpers import make_review_repo
+    from tests.support.review import make_review_repo
 
     repo = make_review_repo(tmp_path, orchestration=LABEL_ROSTER)
     d = rf.reviews_dir(repo, "M1.1")
@@ -354,6 +358,7 @@ def _label_repo(tmp_path: Path) -> Path:
     return repo
 
 
+@pytest.mark.slow
 def test_a_roster_harness_model_is_the_model_flag_in_preview_and_launch(tmp_path: Path, monkeypatch, capsys) -> None:
     repo = _label_repo(tmp_path)
     args = ("M1.1", "--model", "review-label", "--role", "reviewer", "--channel", "cli", "--repo-root", str(repo))

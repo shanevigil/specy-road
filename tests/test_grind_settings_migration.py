@@ -18,8 +18,8 @@ from specy_road.bundled_scripts.upgrade import migrate_grind_text, run_upgrade
 from specy_road.git_workflow_config import validate_git_workflow_dict
 from specy_road.grind_status import watch_seconds
 from specy_road.orchestration.grind.grind_session import resolve_implement_limits
-from tests.review_repo_helpers import git, make_review_repo
-from tests.upgrade_repo_helpers import old_repo
+from tests.support.review import make_review_repo, git
+from tests.support.upgrade import old_repo
 
 _GW = "version: 1\nintegration_branch: main\nremote: origin\n"
 DEFAULTS = {"max_resumes": 3, "max_wait_seconds": 6 * 3600, "grace_seconds": 120,
