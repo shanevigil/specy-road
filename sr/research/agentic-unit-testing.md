@@ -17,4 +17,4 @@ uniquely covered arc, about 30-35% of test functions removable with no coverage 
 private names) and the suite on 2026-11-05 at `469b9322`: 5,408 collected items, 3,778 test
 functions in 393 files (74k test lines), 72 s wall time with `pytest -n auto` on 32 CPUs.
 
-Runs: 2026-11-16, preliminary automated multi-agent web research pass (not the deep-research tool): `docs/research/agentic-unit-testing-2026-11-16-claude-code.md`. It recommends Option B for M16.7.8; the maintainer may run the full prompt in the deep-research tool. Paste-back reports go to `docs/research/agentic-unit-testing-<date>-<tool>.md`.
+Runs: (1) 2026-11-06, Codex: `docs/research/agentic-unit-testing-2026-11-06-codex.md` (recommends branch coverage by subsystem, targeted mutation on named core modules, historical regression detection). (2) 2026-11-16, preliminary automated multi-agent web research pass: `docs/research/agentic-unit-testing-2026-11-16-claude-code.md` (recommends its Option B: coverage and hygiene checks plus a core-module mutation ratchet). The M16.7.8 A1 decision should draw on both; the maintainer may also run the full prompt in the deep-research tool.
