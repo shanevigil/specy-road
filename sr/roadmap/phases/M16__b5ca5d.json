@@ -174,7 +174,7 @@
       "parent_id": "M16.6",
       "planning_dir": "planning/M16.6.7_integrity-follows-moved-test-files_fc207fa2-60e7-4d2b-86f4-2aecafaa2a05.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Integrity follows moved test files: a renamed test file and its tests are not removals",
       "touch_zones": [
         "specy_road/integrity.py",
