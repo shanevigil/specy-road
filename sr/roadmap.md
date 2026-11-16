@@ -67,6 +67,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.6.4` | Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support | task | Agentic-led | Complete |
 | `M16.6.5` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Not Started |
 | `M16.6.6` | Tests: per-leaf and per-round test files fold into the file for the module or flow they test | task | Agentic-led | Not Started |
+| `M16.6.7` | Integrity follows moved test files: a renamed test file and its tests are not removals | task | Agentic-led | Not Started |
 | `M16.7` | Test dedupe, public seams, properties and the smoke lane | milestone | — | Not Started |
 | `M16.7.1` | Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it | task | Agentic-led | Not Started |
 | `M16.7.2` | Tests: apply the dedupe worklist for review gate | task | Agentic-led | Not Started |
