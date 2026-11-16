@@ -471,112 +471,75 @@ def _unmarked_repo_tests() -> list[str]:
 
 
 @pytest.mark.slow
-def test_no_test_module_imports_a_test_module_and_manifests_stay_in_the_builder() -> None:
-    """A test_* import, a ``*_repo_helpers.py`` file, or an unlisted manifest write fails."""
+def test_no_test_module_imports_a_test_module_and_manifests_stay_in_the_builder(
+    tmp_path: Path,
+) -> None:
+    """Each scan clause reports, and the tree has no stray import, helper, write, or checkout read."""
+    writes = tmp_path / "writes.py"
+    writes.write_text("\n".join([
+        'NAME = ".specyrd/manifest.json"',
+        'CMD = "test -f roadmap/manifest.json"',
+        "def spelled(repo):",
+        '    (repo / "roadmap" / "manifest.json").write_text("{}", encoding="utf-8")',
+        "def assigned(repo):",
+        '    manifest = repo / "roadmap" / "manifest.json"',
+        '    manifest.write_text("{}", encoding="utf-8")',
+        "def joined(root):",
+        "    path = root / NAME",
+        '    path.write_text("{}", encoding="utf-8")',
+        "def command(repo):",
+        "    repo = run(repo, CMD)",
+        '    (repo / "notes.md").write_text("x", encoding="utf-8")',
+        "",
+    ]), encoding="utf-8")
+    assert [hit.split(":", 1)[1] for hit in _manifest_writes(writes)] == ["4", "7", "10"]
+    uses = tmp_path / "uses.py"
+    uses.write_text("\n".join([
+        "from tests import test_review_gate",
+        "from tests import test_review_gate as gate",
+        "from . import test_local",
+        "from tests.support import roadmap",
+        "import os",
+        "",
+    ]), encoding="utf-8")
+    assert [hit.split(":")[1] for hit in _imports_a_test_module(uses)] == ["1", "2", "3"]
+    dumps = tmp_path / "dumps.py"
+    dumps.write_text("\n".join([
+        "import json",
+        "def opened(repo):",
+        "    with open(repo / 'manifest.json', 'w') as file:",
+        "        json.dump({}, file)",
+        "def direct(repo):",
+        "    path = repo / 'roadmap' / 'manifest.json'",
+        "    json.dump({}, open(path, 'w'))",
+        "def method(repo):",
+        "    with (repo / 'manifest.json').open('w') as file:",
+        "        json.dump({}, file)",
+        "def other(repo):",
+        "    with open(repo / 'notes.md', 'w') as file:",
+        "        json.dump({}, file)",
+        "def keyword(repo):",
+        "    file = open(repo / 'manifest.json', 'w')",
+        "    json.dump({}, file=file)",
+        "",
+    ]), encoding="utf-8")
+    assert [hit.split(":")[1] for hit in _manifest_writes(dumps)] == ["4", "7", "10", "16"]
+    extra = tmp_path / "extra.py"
+    extra.write_text("\n".join([
+        "def one(repo):",
+        "    (repo / 'manifest.json').write_text('{}', encoding='utf-8')",
+        "def two(repo):",
+        "    (repo / 'roadmap' / 'manifest.json').write_text('{}', encoding='utf-8')",
+        "",
+    ]), encoding="utf-8")
+    found = _manifest_writes(extra)
+    assert [hit for hit in found if hit not in {found[0]}] == [found[1]]
     imports = [hit for path in _modules() for hit in _imports_a_test_module(path)]
-    helpers = sorted(path.relative_to(ROOT).as_posix() for path in TESTS.rglob("*_repo_helpers.py"))
+    helpers = sorted(
+        path.relative_to(ROOT).as_posix() for path in TESTS.rglob("*_repo_helpers.py")
+    )
     detected = [hit for path in _modules() for hit in _manifest_writes(path)]
     assert imports == []
     assert helpers == []
     assert set(detected) == _allowed()
-
-
-def test_a_path_assigned_before_the_write_is_still_a_manifest_write(tmp_path: Path) -> None:
-    """A spelled path, a copied name, and a join of a filename constant all count."""
-    source = tmp_path / "writes.py"
-    source.write_text(
-        "\n".join([
-            'NAME = ".specyrd/manifest.json"',
-            'CMD = "test -f roadmap/manifest.json"',
-            "def spelled(repo):",
-            '    (repo / "roadmap" / "manifest.json").write_text("{}", encoding="utf-8")',
-            "def assigned(repo):",
-            '    manifest = repo / "roadmap" / "manifest.json"',
-            '    manifest.write_text("{}", encoding="utf-8")',
-            "def joined(root):",
-            "    path = root / NAME",
-            '    path.write_text("{}", encoding="utf-8")',
-            "def command(repo):",
-            "    repo = run(repo, CMD)",
-            '    (repo / "notes.md").write_text("x", encoding="utf-8")',
-            "",
-        ]),
-        encoding="utf-8",
-    )
-    hits = _manifest_writes(source)
-    assert [hit.split(":", 1)[1] for hit in hits] == ["4", "7", "10"]
-
-
-def test_an_imported_name_starting_with_test_is_a_test_module(tmp_path: Path) -> None:
-    """``from tests import test_review_gate`` is a test-module import; a support name is not."""
-    source = tmp_path / "uses.py"
-    source.write_text(
-        "\n".join([
-            "from tests import test_review_gate",
-            "from tests import test_review_gate as gate",
-            "from . import test_local",
-            "from tests.support import roadmap",
-            "import os",
-            "",
-        ]),
-        encoding="utf-8",
-    )
-    hits = _imports_a_test_module(source)
-    assert [hit.split(":")[1] for hit in hits] == ["1", "2", "3"]
-
-
-def test_json_dump_into_an_opened_manifest_file_is_a_write(tmp_path: Path) -> None:
-    """``json.dump`` into an opened manifest file counts; a dump into another file does not."""
-    source = tmp_path / "dumps.py"
-    source.write_text(
-        "\n".join([
-            "import json",
-            "def opened(repo):",
-            "    with open(repo / 'manifest.json', 'w') as file:",
-            "        json.dump({}, file)",
-            "def direct(repo):",
-            "    path = repo / 'roadmap' / 'manifest.json'",
-            "    json.dump({}, open(path, 'w'))",
-            "def method(repo):",
-            "    with (repo / 'manifest.json').open('w') as file:",
-            "        json.dump({}, file)",
-            "def other(repo):",
-            "    with open(repo / 'notes.md', 'w') as file:",
-            "        json.dump({}, file)",
-            "def keyword(repo):",
-            "    file = open(repo / 'manifest.json', 'w')",
-            "    json.dump({}, file=file)",
-            "",
-        ]),
-        encoding="utf-8",
-    )
-    hits = _manifest_writes(source)
-    assert [hit.split(":")[1] for hit in hits] == ["4", "7", "10", "16"]
-
-
-def test_a_second_write_in_an_allowlisted_file_is_still_a_write(tmp_path: Path) -> None:
-    """Listing one write does not exempt another write in the same file."""
-    source = tmp_path / "extra.py"
-    source.write_text(
-        "\n".join([
-            "def one(repo):",
-            "    (repo / 'manifest.json').write_text('{}', encoding='utf-8')",
-            "def two(repo):",
-            "    (repo / 'roadmap' / 'manifest.json').write_text('{}', encoding='utf-8')",
-            "",
-        ]),
-        encoding="utf-8",
-    )
-    writes = _manifest_writes(source)
-    assert [hit for hit in writes if hit not in {writes[0]}] == [writes[1]]
-
-
-def test_repository_scans_carry_the_repo_marker() -> None:
-    """A test that reads this checkout outside ``tests/`` carries the repo marker.
-
-    The path is the imported checkout root, a ``Path(__file__)`` walk up to that
-    root, or a name assigned from one of those. A path under ``tests/`` is a
-    fixture. A subprocess working directory is not a read. A path stored on an
-    attribute, or a read performed in another module, is not followed.
-    """
     assert _unmarked_repo_tests() == []
