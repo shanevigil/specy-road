@@ -1053,15 +1053,14 @@
       "D102/D103": 3
     },
     "tests/support/extracted/roadmap_chunk_router.py": {
-      "PL": 1,
-      "N": 1
+      "PL": 1
     },
     "tests/support/extracted/touch_zone_tracked.py": {
       "D102/D103": 1
     },
     "tests/support/harness.py": {
       "PL": 1,
-      "D102/D103": 4
+      "D102/D103": 2
     },
     "tests/support/integrity.py": {
       "D102/D103": 7
@@ -1070,8 +1069,7 @@
       "D102/D103": 5
     },
     "tests/support/pickup.py": {
-      "PL": 1,
-      "D102/D103": 2
+      "PL": 1
     },
     "tests/support/review.py": {
       "PL": 3,
@@ -1634,7 +1632,7 @@
     },
     "tests/test_lean_rules.py": {
       "PL": 3,
-      "D102/D103": 8
+      "D102/D103": 7
     },
     "tests/test_line_width_baseline.py": {
       "D102/D103": 3
@@ -1697,7 +1695,7 @@
     },
     "tests/test_models_and_prompt.py": {
       "PL": 2,
-      "D102/D103": 25
+      "D102/D103": 23
     },
     "tests/test_move_node_cli.py": {
       "D102/D103": 6
@@ -1742,7 +1740,7 @@
       "PL": 4
     },
     "tests/test_orchestrate_plan.py": {
-      "D102/D103": 15
+      "D102/D103": 14
     },
     "tests/test_orchestrate_spread.py": {
       "D102/D103": 5
@@ -2154,8 +2152,8 @@
       "D102/D103": 9
     },
     "tests/test_roadmap_crud.py": {
-      "PL": 4,
-      "D102/D103": 19
+      "PL": 3,
+      "D102/D103": 16
     },
     "tests/test_roadmap_crud_atomicity.py": {
       "PL": 4,
@@ -2303,7 +2301,7 @@
       "D102/D103": 9
     },
     "tests/test_shared_checkout_guidance.py": {
-      "D102/D103": 3
+      "D102/D103": 2
     },
     "tests/test_shared_zones.py": {
       "D102/D103": 14
