@@ -265,7 +265,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.69` | A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line | task | Agentic-led | Complete |
 | `M22.70` | review-packet reads the implementation summary from the leaf's own worktree | task | Agentic-led | Complete |
 | `M22.71` | Review channels report the model the harness actually ran, so every review record names it | task | Agentic-led | Not Started |
-| `M22.72` | Gate: current harness facts delivered from the research repository | gate | Human-led | Not Started |
+| `M22.72` | Gate: current harness facts delivered as a dated research report | gate | Human-led | Not Started |
 | `M22.73` | Harness facts and captures refreshed from the delivered research | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |

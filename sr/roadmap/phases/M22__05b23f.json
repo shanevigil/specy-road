@@ -127,7 +127,7 @@
     },
     {
       "acceptance": [
-        "human: a dated harness-facts report from the private research repository is copied into sr/docs/research/ (Claude Code, Codex CLI and Cursor Agent CLI: installed and current versions, headless flags, sandbox and trust behaviour, model ids and selectors, output formats, limit messages); the maintainer records the gate decision in the decisions ledger"
+        "human: a dated harness-facts report (from private notes) is copied into sr/docs/research/ (Claude Code, Codex CLI and Cursor Agent CLI: installed and current versions, headless flags, sandbox and trust behaviour, model ids and selectors, output formats, limit messages); the maintainer records the gate decision in the decisions ledger"
       ],
       "codename": "harness-facts-research-delivered",
       "dependencies": [],
@@ -138,7 +138,7 @@
       "planning_dir": "planning/M22.72_harness-facts-research-delivered_393ad414-3a5a-49b3-8873-b63d0e35d0ee.md",
       "sibling_order": 72,
       "status": "Not Started",
-      "title": "Gate: current harness facts delivered from the research repository",
+      "title": "Gate: current harness facts delivered as a dated research report",
       "touch_zones": [],
       "type": "gate"
     },
