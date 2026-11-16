@@ -96,15 +96,3 @@ entries:
     started: '2026-11-15'
     owner: savigil
     implementation_review: pending
-  - codename: integrity-follows-moved-test-files
-    node_id: M16.6.7
-    branch: feature/rm-integrity-follows-moved-test-files
-    touch_zones:
-      - specy_road/integrity.py
-      - tests/test_integrity_python.py
-      - tests/test_integrity.py
-      - CHANGELOG.md
-    started: '2026-11-16'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-16T17:37:55+00:00'
