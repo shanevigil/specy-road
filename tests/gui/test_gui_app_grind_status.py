@@ -1,6 +1,6 @@
 """M17.14: ``GET /api/grind-status`` serves M22.68's status object unchanged, read-only.
 
-Temporary repos built with ``tests.flows.orchestrate.test_grind_status``'s helpers; ``now`` is pinned through
+Temporary repos built with ``tests.test_grind_status``'s helpers; ``now`` is pinned through
 ``create_app(clock=...)`` so the route body can be compared with the builder's output byte for byte.
 """
 

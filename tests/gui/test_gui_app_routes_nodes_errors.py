@@ -2,7 +2,7 @@
 
 These tests pin down the **graceful 4xx** contract for failure modes that
 previously surfaced as bare FastAPI 5xx (or as inconsistent status codes).
-They complement the unit-level coverage in ``tests/unit/test_milestone_lock.py``.
+They complement the unit-level coverage in ``tests/test_milestone_lock.py``.
 """
 
 from __future__ import annotations

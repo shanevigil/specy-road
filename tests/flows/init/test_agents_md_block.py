@@ -2,7 +2,7 @@
 
 specy-road owns a section of `AGENTS.md` and the whole of `.specyrd/AGENTS.md`; the
 project owns the rest of `AGENTS.md` and `.specyrd/AGENTS.team.md`.
-Mirrors tests/unit/test_specyrd_init_guide_block.py for `CLAUDE.md`.
+Mirrors tests/test_specyrd_init_guide_block.py for `CLAUDE.md`.
 """
 
 from __future__ import annotations
