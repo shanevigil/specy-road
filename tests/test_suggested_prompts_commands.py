@@ -2,9 +2,10 @@
 
 Invocations are the shell-fence lines and the single-line code spans that begin
 with ``specy-road`` or ``specyrd``. Each is tokenised with :func:`shlex.split`
-and cut at a shell operator or a bare ``--``. An operator glued to a word
-(``validate;``, ``&&specy-road``) is its own token, longest match first
-(``&&`` before ``&``, ``||`` before ``|``, ``>>`` before ``>``). A documented
+and cut at an unquoted shell operator or a bare ``--``. An operator
+separates commands only outside quotes, longest match first (``&&`` before
+``&``, ``||`` before ``|``, ``>>`` before ``>``), so ``validate;`` and
+``&&specy-road`` split and ``--title "A; B"`` does not. A documented
 placeholder token is skipped, including a ``<NAME>`` glued where a redirect
 would be. An option token (it starts with ``-``) is never a placeholder: its
 name, the text before ``=``, is checked even when the value is one. A command
@@ -28,7 +29,6 @@ from tests.parity.help_surface import command_tree, parser_inventory
 REPO = Path(__file__).resolve().parent.parent
 PROMPTS = REPO / "suggested_prompts"
 _OPERATOR_ORDER = (">>", "&&", "||", "|", "&", ";", "(", ")", ">", "<")
-_OPERATORS = frozenset(_OPERATOR_ORDER)
 _PLACEHOLDER_TOKEN = re.compile(r"<[^>]+>")
 _FENCE_OPEN = re.compile(r"^\s*(`{3,}|~{3,})")
 _FENCE_CLOSE = re.compile(r"^\s*(`{3,}|~{3,})\s*$")
@@ -74,40 +74,73 @@ def _logical_lines(block: list[tuple[int, str]]) -> list[tuple[int, str]]:
     return joined
 
 
-def _split_adjacent_operators(token: str) -> list[str]:
-    """Split shell operators out of one ``shlex`` word, longest operator first.
+def _quote_ends(text: str, index: int, quote: str) -> bool:
+    """True when ``text[index]`` closes ``quote``. A ``"`` closes only if it is not escaped."""
+    if text[index] != quote:
+        return False
+    if quote == "'":
+        return True
+    slashes = 0
+    cursor = index - 1
+    while cursor >= 0 and text[cursor] == "\\":
+        slashes += 1
+        cursor -= 1
+    return slashes % 2 == 0
 
-    One rule. ``shlex`` leaves ``&&`` and ``;`` inside a word when no space
-    separates them, so each operator becomes its own token: the command before
-    it is checked, and the command after it is its own invocation. A ``<NAME>``
-    placeholder is one token, not a redirect. Limit: the scan is that word, so
-    a quoted operator stays quoted, and ``2>`` is the word ``2`` plus a redirect.
+
+def _unquoted_chunk(text: str, index: int) -> tuple[str, str]:
+    """``(kind, text)`` outside quotes: a quote mark, an operator, or a literal.
+
+    A literal is one character, a backslash and the character it escapes, or a
+    ``<NAME>`` placeholder. Operators are longest-first, so ``&&`` is not two
+    ``&``.
     """
-    parts: list[str] = []
-    word = ""
+    if text[index] in "'\"":
+        return "quote", text[index]
+    if text[index] == "\\" and index + 1 < len(text):
+        return "literal", text[index:index + 2]
+    placeholder = _PLACEHOLDER_TOKEN.match(text, index)
+    if placeholder:
+        return "literal", placeholder.group()
+    operator = next((op for op in _OPERATOR_ORDER if text.startswith(op, index)), "")
+    if operator:
+        return "operator", operator
+    return "literal", text[index]
+
+
+def _command_pieces(text: str) -> list[str]:
+    """Pieces of ``text`` between unquoted shell operators.
+
+    One rule. An operator separates commands only outside quotes, and the
+    longer form wins (``&&`` before ``&``, ``||`` before ``|``, ``>>`` before
+    ``>``). Inside ``'...'`` every character is literal. Inside ``"..."`` a
+    quote ends only when it is not escaped. A backslash outside quotes
+    escapes the next character, and a ``<NAME>`` placeholder is not a
+    redirect. Limit: ``$(...)`` and backticks are not quoting contexts, so an
+    unquoted ``(`` still separates.
+    """
+    pieces: list[str] = []
+    buf: list[str] = []
     index = 0
-    while index < len(token):
-        placeholder = _PLACEHOLDER_TOKEN.match(token, index)
-        if placeholder:
-            if word:
-                parts.append(word)
-                word = ""
-            parts.append(placeholder.group())
-            index = placeholder.end()
+    quote = ""
+    while index < len(text):
+        if quote:
+            buf.append(text[index])
+            if _quote_ends(text, index, quote):
+                quote = ""
+            index += 1
             continue
-        operator = next((op for op in _OPERATOR_ORDER if token.startswith(op, index)), "")
-        if operator:
-            if word:
-                parts.append(word)
-                word = ""
-            parts.append(operator)
-            index += len(operator)
-            continue
-        word += token[index]
-        index += 1
-    if word:
-        parts.append(word)
-    return parts
+        kind, chunk = _unquoted_chunk(text, index)
+        if kind == "quote":
+            quote = chunk
+        if kind == "operator":
+            pieces.append("".join(buf))
+            buf = []
+        else:
+            buf.append(chunk)
+        index += len(chunk)
+    pieces.append("".join(buf))
+    return pieces
 
 
 def _begins_with_program(text: str) -> bool:
@@ -122,25 +155,21 @@ def _begins_with_program(text: str) -> bool:
     return text.startswith(_PROGRAMS)
 
 
-def _segments(tokens: list[str]) -> list[list[str]]:
-    """Invocations in one tokenised line, each cut at an operator or a bare ``--``."""
-    found: list[list[str]] = []
+def _invocation_tokens(tokens: list[str]) -> list[str]:
+    """Words of one piece: placeholders omitted, a bare ``--`` ends it.
+
+    Operators are already removed by :func:`_command_pieces`. A word whose
+    text is ``&&`` or ``;`` was quoted, so it stays a word.
+    """
     current: list[str] = []
-    stopped = False
     for token in tokens:
-        if token in _OPERATORS:
-            if current:
-                found.append(current)
-            current, stopped = [], False
-            continue
-        if stopped or token == "--":
-            stopped = True
-            continue
+        if token == "--":
+            break
         if not _placeholder(token):
             current.append(token)
-    if current:
-        found.append(current)
-    return [segment for segment in found if segment[0] in _PROGRAMS]
+    if current and current[0] in _PROGRAMS:
+        return current
+    return []
 
 
 def _invocations_on_line(lineno: int, line: str) -> list[tuple[int, list[str]]]:
@@ -149,12 +178,18 @@ def _invocations_on_line(lineno: int, line: str) -> list[tuple[int, list[str]]]:
         return []
     if text.startswith("$"):
         text = text[1:].strip()
-    try:
-        tokens = shlex.split(text, comments=True, posix=True)
-    except ValueError:
-        return [(lineno, ["<unclosed-quote>"])]
-    parts = [part for token in tokens for part in _split_adjacent_operators(token)]
-    return [(lineno, segment) for segment in _segments(parts)]
+    found: list[tuple[int, list[str]]] = []
+    for piece in _command_pieces(text):
+        if not piece.strip():
+            continue
+        try:
+            tokens = shlex.split(piece, comments=True, posix=True)
+        except ValueError:
+            return [(lineno, ["<unclosed-quote>"])]
+        words = _invocation_tokens(tokens)
+        if words:
+            found.append((lineno, words))
+    return found
 
 
 def prompt_invocations(text: str) -> list[tuple[int, list[str]]]:
@@ -162,14 +197,14 @@ def prompt_invocations(text: str) -> list[tuple[int, list[str]]]:
 
     Shell fences contribute each logical line that begins with the program (a
     leading ``$`` is the prompt, not a token). Outside fences, only a single-line
-    code span whose content begins with the program counts. Tokens come from
-    :func:`shlex.split`, then each word is split on adjacent shell operators
-    (longest first) so ``validate;`` and ``&&specy-road`` are not one word.
-    A shell operator or a bare ``--`` ends the invocation; the command after
-    an operator is its own invocation. A documented placeholder token is
-    omitted, so an option that follows one is still checked. An option token
-    is kept whole, placeholder value included. A line that begins with
-    operators and then the program is still an invocation.
+    code span whose content begins with the program counts. Unquoted shell
+    operators are cut out of the line first, quotes still in place, and each
+    piece is tokenised with :func:`shlex.split`. A quoted ``&`` or ``;`` stays
+    inside its word, so an option after ``--title "A; B"`` is still checked.
+    A bare ``--`` ends the piece. A documented placeholder token is omitted,
+    so an option that follows one is still checked. An option token is kept
+    whole, placeholder value included. A line that begins with operators and
+    then the program is still an invocation.
     """
     lines = text.splitlines()
     in_fence: set[int] = set()
@@ -331,6 +366,26 @@ def test_suggested_prompts_name_only_canonical_commands() -> None:
         ("`specy-road validate&specy-road refresh-stubs`\n", ["refresh-stubs"]),
         ("`specy-road validate>>out`\n", []),
         ("`(specy-road refresh-stubs)`\n", ["refresh-stubs"]),
+        (
+            '`specy-road brainstorm start --topic "costs & benefits" --no-such-flag`\n',
+            ["--no-such-flag"],
+        ),
+        (
+            '`specy-road add-node --title "A; B" --no-such-flag`\n',
+            ["--no-such-flag"],
+        ),
+        (
+            "`specy-road add-node --title 'A; B' --no-such-flag`\n",
+            ["--no-such-flag"],
+        ),
+        (
+            '`specy-road add-node --title "A;B" --no-such-flag`\n',
+            ["--no-such-flag"],
+        ),
+        (
+            '`specy-road add-node --title "&&" --no-such-flag`\n',
+            ["--no-such-flag"],
+        ),
     ],
 )
 def test_a_bad_token_fails_naming_the_file_and_the_token(
@@ -344,6 +399,7 @@ def test_a_bad_token_fails_naming_the_file_and_the_token(
     line. A canonical option with those values is not a problem. A canonical
     command with ``;`` or ``>>`` glued on passes. A retired command after
     ``&&``, ``;``, ``||`` or ``&``, including one wrapped in ``()``, fails.
+    An option after a quoted ``&``, ``;`` or ``&&`` fails too.
     """
     path = tmp_path / "prompt.md"
     path.write_text(body, encoding="utf-8")
