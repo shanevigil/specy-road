@@ -207,6 +207,62 @@ def test_skip_decorator_on_class_skips_its_methods(tmp_path: Path) -> None:
     ]
 
 
+def test_moved_test_file_is_not_a_removal(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    on_dev(repo)
+    commit(repo, "tests/test_x.py", "def test_keep():\n    assert 1\n", "on dev")
+    merge_dev(repo)
+    (repo / "tests" / "unit").mkdir()
+    git(repo, "mv", "tests/test_x.py", "tests/unit/test_x.py")
+    git(repo, "commit", "-qm", "move the test file")
+    assert compare_integrity(repo, merge_base(repo), git(repo, "rev-parse", "HEAD")) == []
+
+
+def test_test_dropped_in_a_move_is_still_removed(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    on_dev(repo)
+    commit(
+        repo,
+        "tests/test_x.py",
+        "def test_keep():\n    assert 1\n    assert 2\n\n"
+        "def test_later():\n    assert 1\n\n"
+        "def test_gone():\n    assert 1\n",
+        "three on dev",
+    )
+    merge_dev(repo)
+    (repo / "tests" / "unit").mkdir()
+    git(repo, "mv", "tests/test_x.py", "tests/unit/test_x.py")
+    (repo / "tests" / "unit" / "test_x.py").write_text(
+        "def test_keep():\n    assert 1\n\n"
+        "import pytest\n\n@pytest.mark.skip\n"
+        "def test_later():\n    assert 1\n",
+        encoding="utf-8",
+    )
+    git(repo, "add", "tests/unit/test_x.py")
+    git(repo, "commit", "-qm", "move, drop and weaken")
+    compared = compare_integrity(repo, merge_base(repo), git(repo, "rev-parse", "HEAD"))
+    lines = [f.line() for f in compared]
+    assert lines == [
+        "assert-loss: tests/unit/test_x.py::test_keep 2->1",
+        "new-skip: tests/unit/test_x.py::test_later",
+        "removed-test: tests/unit/test_x.py::test_gone",
+    ]
+
+
+def test_rename_to_a_non_test_name_is_still_a_removal(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    on_dev(repo)
+    commit(repo, "tests/test_x.py", "def test_keep():\n    assert 1\n", "on dev")
+    merge_dev(repo)
+    git(repo, "mv", "tests/test_x.py", "tests/x_cases.py")
+    git(repo, "commit", "-qm", "rename off the test pattern")
+    compared = compare_integrity(repo, merge_base(repo), git(repo, "rev-parse", "HEAD"))
+    assert [f.line() for f in compared] == [
+        "removed-test-file: tests/test_x.py",
+        "removed-test: tests/test_x.py::test_keep",
+    ]
+
+
 def test_function_defined_inside_a_function_is_not_a_test(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     on_dev(repo)

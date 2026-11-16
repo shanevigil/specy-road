@@ -296,36 +296,6 @@
     },
     {
       "acceptance": [
-        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, and replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper; assertions and fixture contents unchanged; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
-        "Collected test count and covered-arc set unchanged; test ids change only by path",
-        "Estimated net line change (informational, not a gate): tests about -50"
-      ],
-      "codename": "tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only",
-      "dependencies": [
-        "840167f3-ec33-428a-86cc-e6ea639f8d6b",
-        "a0733044-eec3-4411-bec8-e6f31fac6456"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.6.5",
-      "node_key": "33af9de4-c487-4e4e-ac48-253ffb8483f1",
-      "parent_id": "M16.6",
-      "planning_dir": "planning/M16.6.5_tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only_33af9de4-c487-4e4e-ac48-253ffb8483f1.md",
-      "sibling_order": 4,
-      "status": "Not Started",
-      "title": "Tests: files move into unit, flows, cli, gui and repo lanes, moves only",
-      "touch_zones": [
-        "tests/",
-        "scripts/line_width_baseline.json",
-        "scripts/ruff_quality_baseline.json",
-        "constraints/test-private-imports-baseline.txt",
-        "docs/context-regressions.yaml",
-        "constraints/file-limits.yaml",
-        "sr/constraints/file-limits.yaml"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "scripts/test_dedupe_worklist.py reads the lean_metrics --contexts output (its commit recorded in each file) and writes candidate rows to tests/support/dedupe/review-gate.csv, worker.csv, pickup-finish.csv and rest.csv: the identical-arc groups and the pairs with Jaccard 0.95 or more, by stable test item id. The executor then records for every candidate an action (delete, fold or keep) and, for delete or fold, the surviving test, the assertion in it that covers the removed one and the fold destination; reviewers check those columns, and an undecided row is keep",
         "No removal row in any worklist targets another row's surviving test; this leaf commits the four worklists and changes no test and no roadmap node; the planner sets planned_test_changes on M16.7.2 to M16.7.5 from them after this leaf merges, outside its diff",
         "Estimated net line change (informational, not a gate): scripts about +150",
