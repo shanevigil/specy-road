@@ -346,6 +346,7 @@ Do not pick these up.
 
 - `M16.6.2` on `feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` since 2026-11-15
 - `M16.6.5` on `feature/rm-tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` since 2026-11-15
+- `M16.6.8` on `feature/rm-worker-tests-wait-under-the-workers-lock` since 2026-11-16
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05

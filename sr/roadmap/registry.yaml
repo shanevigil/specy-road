@@ -96,3 +96,12 @@ entries:
     started: '2026-11-15'
     owner: savigil
     implementation_review: pending
+  - codename: worker-tests-wait-under-the-workers-lock
+    node_id: M16.6.8
+    branch: feature/rm-worker-tests-wait-under-the-workers-lock
+    touch_zones:
+      - tests/support/harness.py
+      - tests/test_worker_max_workers_global.py
+    started: '2026-11-16'
+    owner: savigil
+    implementation_review: pending
