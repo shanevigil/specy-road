@@ -199,7 +199,7 @@
       "parent_id": "M16.6",
       "planning_dir": "planning/M16.6.8_worker-tests-wait-under-the-workers-lock_eebb31de-077f-4d0d-9ee3-3280973373f7.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates",
       "touch_zones": [
         "tests/support/harness.py",
