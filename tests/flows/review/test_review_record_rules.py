@@ -329,7 +329,7 @@ JOIN_ROWS = [(f"{a}{j}{b}, not a defect because both are expected.",
 @pytest.mark.parametrize("text, why", [
     *CLAUSE_BREAK_ROWS,
     *JOIN_ROWS,
-    ("Changed paths are tests/flows/worker/test_worker_queue_message.py plus sr/work/implementation-summary-M21.8.md, not a defect "
+    ("Changed paths are tests/test_worker_queue_message.py plus sr/work/implementation-summary-M21.8.md, not a defect "
      "because the summary is the leaf hand-off.", None),
     ("The cache is cold, the lock is held plus the queue is empty, not a defect because all three are expected.", None),
     (CONJUNCTION_WORDING, 'says "valid input crashes", two observations joined by "and": '
@@ -403,7 +403,7 @@ NOT_RUN = ("`pytest tests/test_x.py` not run: `OSError: [Errno 30] Read-only fil
            "sandbox is read-only and the executor's READY shows it passing.")
 
 
-@pytest.mark.parametrize(("rerun", "state"), [([], "rerun"), (["pytest tests/flows/review/test_review_record_rules.py"], "recorded")])
+@pytest.mark.parametrize(("rerun", "state"), [([], "rerun"), (["pytest tests/test_review_record_rules.py"], "recorded")])
 def test_a_not_run_test_does_not_meet_the_rerun_policy(tmp_path: Path, rerun: list[str], state: str) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI + "policy:\n  reviewer_reruns_required: true\n")
     reviews = reviews_dir(repo, "M1.1")
