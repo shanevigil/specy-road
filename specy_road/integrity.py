@@ -133,12 +133,24 @@ def _is_removed_test_file(path: str) -> bool:
 
 
 def _renames(root: Path, base: str, ref: str) -> dict[str, str]:
-    """``old path -> new path`` for every rename ``git diff --find-renames`` reports."""
-    return {
-        source: path
-        for path, _old, _new, source in _changed_files(root, base, ref, "--find-renames")
-        if source is not None
-    }
+    """``old path -> new path`` for every rename ``git diff --find-renames`` reports.
+
+    Read from the same ``--raw -z`` records as ``_changed_files``. That helper
+    still returns ``(path at ref, old blob, new blob)`` for its other callers.
+    """
+    args = ["diff", "--raw", "-z", "--no-abbrev", "--no-relative", "--find-renames", base, ref]
+    fields = git_bytes(args, root).split(b"\0")
+    out: dict[str, str] = {}
+    i = 0
+    while i < len(fields) and fields[i].startswith(b":"):
+        status = fields[i][1:].split(b" ")[4]
+        width = 2 if status[:1] in (b"R", b"C") else 1
+        if status[:1] == b"R" and i + width < len(fields):
+            source, path = _utf8(fields[i + 1]), _utf8(fields[i + width])
+            if source is not None and path is not None:
+                out[source] = path
+        i += 1 + width
+    return out
 
 
 def _python_test_pairs(
@@ -201,7 +213,7 @@ def _added_lines(root: Path, base: str, ref: str) -> dict[str, list[tuple[int, s
     Renames are followed, so a moved file's existing lines are not new.
     """
     added: dict[str, list[tuple[int, str]]] = {}
-    for path, old, new, _source in _changed_files(root, base, ref, "--find-renames"):
+    for path, old, new in _changed_files(root, base, ref, "--find-renames"):
         lines = _blob_additions(root, old, new)
         if lines:
             added[path] = lines
@@ -226,40 +238,28 @@ def _blob_additions(root: Path, old: str | None, new: str) -> list[tuple[int, st
     return list(enumerate(lines, 1))
 
 
-def _changed_files(
-    root: Path, base: str, ref: str, renames: str,
-) -> list[tuple[str, str | None, str, str | None]]:
-    """``(path at ref, old blob, new blob, path at base when renamed)`` per raw diff entry.
+def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[str, str | None, str]]:
+    """``(path at ref, old blob, new blob)`` for each ``git diff --raw -z`` entry whose new side is a file or symlink.
 
-    The new side must be a file or symlink. No pathspec selects anything, so each entry's
-    lines belong to exactly its own path. Deletions and submodules are skipped. The old blob
-    is ``None`` when the old side is not the same kind (an addition, or a file/symlink type
-    change, which git's own diff shows as a deletion and an addition), so every new line
-    counts. A name that is not UTF-8 is skipped. The fourth item is the pre-rename path when
-    git reports a rename, and ``None`` otherwise (including a copy).
+    No pathspec selects anything, so each entry's lines belong to exactly its own path.
+    Deletions and submodules are skipped. The old blob is ``None`` when the old side is not
+    the same kind (an addition, or a file/symlink type change, which git's own diff shows
+    as a deletion and an addition), so every new line counts. A name that is not UTF-8 is
+    skipped.
     """
     args = ["diff", "--raw", "-z", "--no-abbrev", "--no-relative", renames, base, ref]
     fields = git_bytes(args, root).split(b"\0")
-    out: list[tuple[str, str | None, str, str | None]] = []
+    out: list[tuple[str, str | None, str]] = []
     i = 0
     while i < len(fields) and fields[i].startswith(b":"):
         old_mode, new_mode, old_blob, new_blob, status = fields[i][1:].split(b" ")
-        source = _renamed_from(fields, i, status)
         width = 2 if status[:1] in (b"R", b"C") else 1
         path = _utf8(fields[i + width]) if i + width < len(fields) else None
         i += 1 + width
         if new_mode in _KIND and path is not None:
             same_kind = _KIND.get(old_mode) == _KIND[new_mode]
-            blob = old_blob.decode() if same_kind else None
-            out.append((path, blob, new_blob.decode(), source))
+            out.append((path, old_blob.decode() if same_kind else None, new_blob.decode()))
     return out
-
-
-def _renamed_from(fields: list[bytes], index: int, status: bytes) -> str | None:
-    """The pre-rename path when ``status`` is a rename; ``None`` for every other entry."""
-    if status[:1] != b"R" or index + 1 >= len(fields):
-        return None
-    return _utf8(fields[index + 1])
 
 
 def _utf8(data: bytes) -> str | None:
@@ -302,7 +302,7 @@ def _ratchet_findings(root: Path, base: str, ref: str, ratchet_paths: list[str])
     """Renames are not followed: a file moved onto a ratchet path widens it by every line."""
     wanted = set(ratchet_paths)
     out: list[Finding] = []
-    for path, old, new, _source in _changed_files(root, base, ref, "--no-renames"):
+    for path, old, new in _changed_files(root, base, ref, "--no-renames"):
         count = len(_blob_additions(root, old, new)) if path in wanted else 0
         if count:
             out.append(Finding("baseline-widened", path, detail=str(count)))
