@@ -2,8 +2,11 @@
 
 Invocations are the shell-fence lines and the single-line code spans that begin
 with ``specy-road`` or ``specyrd``. Each is tokenised with :func:`shlex.split`
-and cut at a shell operator or a bare ``--``. A documented placeholder token is
-skipped. An option token (it starts with ``-``) is never a placeholder: its
+and cut at a shell operator or a bare ``--``. An operator glued to a word
+(``validate;``, ``&&specy-road``) is its own token, longest match first
+(``&&`` before ``&``, ``||`` before ``|``, ``>>`` before ``>``). A documented
+placeholder token is skipped, including a ``<NAME>`` glued where a redirect
+would be. An option token (it starts with ``-``) is never a placeholder: its
 name, the text before ``=``, is checked even when the value is one. A command
 path or option that is not a canonical name in the M16.1.1 parity inventory
 fails as ``<file>: <token>``. A name ``tests/parity/command_map.yaml`` retires
@@ -24,7 +27,9 @@ from tests.parity.help_surface import command_tree, parser_inventory
 
 REPO = Path(__file__).resolve().parent.parent
 PROMPTS = REPO / "suggested_prompts"
-_OPERATORS = frozenset({"&&", "||", "|", "&", ";", "(", ")", ">", "<", ">>"})
+_OPERATOR_ORDER = (">>", "&&", "||", "|", "&", ";", "(", ")", ">", "<")
+_OPERATORS = frozenset(_OPERATOR_ORDER)
+_PLACEHOLDER_TOKEN = re.compile(r"<[^>]+>")
 _FENCE_OPEN = re.compile(r"^\s*(`{3,}|~{3,})")
 _FENCE_CLOSE = re.compile(r"^\s*(`{3,}|~{3,})\s*$")
 _SPAN = re.compile(r"`([^`\n]+)`")
@@ -69,6 +74,54 @@ def _logical_lines(block: list[tuple[int, str]]) -> list[tuple[int, str]]:
     return joined
 
 
+def _split_adjacent_operators(token: str) -> list[str]:
+    """Split shell operators out of one ``shlex`` word, longest operator first.
+
+    One rule. ``shlex`` leaves ``&&`` and ``;`` inside a word when no space
+    separates them, so each operator becomes its own token: the command before
+    it is checked, and the command after it is its own invocation. A ``<NAME>``
+    placeholder is one token, not a redirect. Limit: the scan is that word, so
+    a quoted operator stays quoted, and ``2>`` is the word ``2`` plus a redirect.
+    """
+    parts: list[str] = []
+    word = ""
+    index = 0
+    while index < len(token):
+        placeholder = _PLACEHOLDER_TOKEN.match(token, index)
+        if placeholder:
+            if word:
+                parts.append(word)
+                word = ""
+            parts.append(placeholder.group())
+            index = placeholder.end()
+            continue
+        operator = next((op for op in _OPERATOR_ORDER if token.startswith(op, index)), "")
+        if operator:
+            if word:
+                parts.append(word)
+                word = ""
+            parts.append(operator)
+            index += len(operator)
+            continue
+        word += token[index]
+        index += 1
+    if word:
+        parts.append(word)
+    return parts
+
+
+def _begins_with_program(text: str) -> bool:
+    """True when ``text`` is an invocation: optional ``$``, then operators, then the program."""
+    if text.startswith("$"):
+        text = text[1:].lstrip()
+    while text and not text.startswith(_PROGRAMS):
+        operator = next((op for op in _OPERATOR_ORDER if text.startswith(op)), "")
+        if not operator:
+            return False
+        text = text[len(operator):].lstrip()
+    return text.startswith(_PROGRAMS)
+
+
 def _segments(tokens: list[str]) -> list[list[str]]:
     """Invocations in one tokenised line, each cut at an operator or a bare ``--``."""
     found: list[list[str]] = []
@@ -92,15 +145,16 @@ def _segments(tokens: list[str]) -> list[list[str]]:
 
 def _invocations_on_line(lineno: int, line: str) -> list[tuple[int, list[str]]]:
     text = line.strip()
+    if not _begins_with_program(text):
+        return []
     if text.startswith("$"):
         text = text[1:].strip()
-    if not text.startswith(_PROGRAMS):
-        return []
     try:
         tokens = shlex.split(text, comments=True, posix=True)
     except ValueError:
         return [(lineno, ["<unclosed-quote>"])]
-    return [(lineno, segment) for segment in _segments(tokens)]
+    parts = [part for token in tokens for part in _split_adjacent_operators(token)]
+    return [(lineno, segment) for segment in _segments(parts)]
 
 
 def prompt_invocations(text: str) -> list[tuple[int, list[str]]]:
@@ -109,10 +163,13 @@ def prompt_invocations(text: str) -> list[tuple[int, list[str]]]:
     Shell fences contribute each logical line that begins with the program (a
     leading ``$`` is the prompt, not a token). Outside fences, only a single-line
     code span whose content begins with the program counts. Tokens come from
-    :func:`shlex.split`. A shell operator or a bare ``--`` ends the invocation;
-    the command after an operator is its own invocation. A documented
-    placeholder token is omitted, so an option that follows one is still
-    checked. An option token is kept whole, placeholder value included.
+    :func:`shlex.split`, then each word is split on adjacent shell operators
+    (longest first) so ``validate;`` and ``&&specy-road`` are not one word.
+    A shell operator or a bare ``--`` ends the invocation; the command after
+    an operator is its own invocation. A documented placeholder token is
+    omitted, so an option that follows one is still checked. An option token
+    is kept whole, placeholder value included. A line that begins with
+    operators and then the program is still an invocation.
     """
     lines = text.splitlines()
     in_fence: set[int] = set()
@@ -267,17 +324,26 @@ def test_suggested_prompts_name_only_canonical_commands() -> None:
         ("`specy-road validate --repo-root=<PATH>`\n", []),
         ("`specy-road validate --repo-root=...`\n", []),
         ("`specy-road validate --strict={on}`\n", []),
+        ("`specy-road validate;`\n", []),
+        ("`specy-road validate &&specy-road refresh-stubs`\n", ["refresh-stubs"]),
+        ("`specy-road validate;specy-road refresh-stubs`\n", ["refresh-stubs"]),
+        ("`specy-road validate||specy-road refresh-stubs`\n", ["refresh-stubs"]),
+        ("`specy-road validate&specy-road refresh-stubs`\n", ["refresh-stubs"]),
+        ("`specy-road validate>>out`\n", []),
+        ("`(specy-road refresh-stubs)`\n", ["refresh-stubs"]),
     ],
 )
 def test_a_bad_token_fails_naming_the_file_and_the_token(
     tmp_path: Path, body: str, tokens: list[str]
 ) -> None:
-    """Each clause of the placeholder rule, named by the file and the token.
+    """Each clause of the placeholder and operator rules, named by file and token.
 
     An unknown option, a retired alias, and an option after a separate
     placeholder fail. So does an option whose value is a placeholder
     (``<VALUE>``, ``...``, ``…``, braces), including two such options on one
-    line. A canonical option with those values is not a problem.
+    line. A canonical option with those values is not a problem. A canonical
+    command with ``;`` or ``>>`` glued on passes. A retired command after
+    ``&&``, ``;``, ``||`` or ``&``, including one wrapped in ``()``, fails.
     """
     path = tmp_path / "prompt.md"
     path.write_text(body, encoding="utf-8")
