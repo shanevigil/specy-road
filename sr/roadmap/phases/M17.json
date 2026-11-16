@@ -275,7 +275,7 @@
       "parent_id": "M17",
       "planning_dir": "planning/M17.9_gui-orch-sandbox-acceptance_dcfc7951-9552-486c-b415-a50e994cf442.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "GUI acceptance on the agentic sandbox: a scripted browser run of the orchestration view against a built wheel and a seeded fixture repo, with a checklist and recorded results",
       "touch_zones": [
         "tests/sandbox/pm_gui_orchestration/"
