@@ -1,12 +1,13 @@
 """Suggested prompts name canonical commands and options from the parity inventory.
 
 Invocations are the shell-fence lines and the single-line code spans that begin
-with ``specy-road`` or ``specyrd``. Each is tokenised with :func:`shlex.split`,
-cut at a shell operator or a bare ``--``, and checked after documented
-placeholders are skipped. A command path or option that is not a canonical name
-in the M16.1.1 parity inventory fails as ``<file>: <token>``. A name
-``tests/parity/command_map.yaml`` retires is not canonical, including a hidden
-alias the CLI still accepts.
+with ``specy-road`` or ``specyrd``. Each is tokenised with :func:`shlex.split`
+and cut at a shell operator or a bare ``--``. A documented placeholder token is
+skipped. An option token (it starts with ``-``) is never a placeholder: its
+name, the text before ``=``, is checked even when the value is one. A command
+path or option that is not a canonical name in the M16.1.1 parity inventory
+fails as ``<file>: <token>``. A name ``tests/parity/command_map.yaml`` retires
+is not canonical, including a hidden alias the CLI still accepts.
 """
 
 from __future__ import annotations
@@ -31,12 +32,16 @@ _PROGRAMS = ("specy-road", "specyrd")
 
 
 def _placeholder(token: str) -> bool:
-    """A documented placeholder, not a command word or an option.
+    """A documented placeholder token, not a command word and not an option.
 
-    The forms the prompts tell an adopter to replace, and the same template
-    tokens the rest of the tree already treats as not a command line: ``[NAME]``,
-    ``<NAME>``, a token containing ``…`` or ``...``, and a token containing braces.
+    One rule. A placeholder is a whole shell token: a whole ``[NAME]``, or a
+    token containing ``<NAME>``, ``…``, ``...``, or braces. A token that starts
+    with ``-`` is an option, so it is kept and its name is checked; a
+    placeholder written after ``=`` is only the value. Limit: the decision is
+    that whole token from :func:`shlex.split`, not a second split of the value.
     """
+    if token.startswith("-"):
+        return False
     if "…" in token or "..." in token or "{" in token or "}" in token:
         return True
     if re.fullmatch(r"\[[^\]]*\]", token):
@@ -105,8 +110,9 @@ def prompt_invocations(text: str) -> list[tuple[int, list[str]]]:
     leading ``$`` is the prompt, not a token). Outside fences, only a single-line
     code span whose content begins with the program counts. Tokens come from
     :func:`shlex.split`. A shell operator or a bare ``--`` ends the invocation;
-    the command after an operator is its own invocation. Documented placeholders
-    are omitted, so an option that follows one is still checked.
+    the command after an operator is its own invocation. A documented
+    placeholder token is omitted, so an option that follows one is still
+    checked. An option token is kept whole, placeholder value included.
     """
     lines = text.splitlines()
     in_fence: set[int] = set()
@@ -245,17 +251,34 @@ def test_suggested_prompts_name_only_canonical_commands() -> None:
 
 
 @pytest.mark.parametrize(
-    ("body", "token"),
+    ("body", "tokens"),
     [
-        ("`specy-road validate --no-such-flag`\n", "--no-such-flag"),
-        ("```bash\nspecy-road refresh-stubs\n```\n", "refresh-stubs"),
-        ("`specy-road validate <NODE_ID> --dry-run`\n", "--dry-run"),
+        ("`specy-road validate --no-such-flag`\n", ["--no-such-flag"]),
+        ("```bash\nspecy-road refresh-stubs\n```\n", ["refresh-stubs"]),
+        ("`specy-road validate <NODE_ID> --dry-run`\n", ["--dry-run"]),
+        ("`specy-road validate --no-such-flag=<VALUE>`\n", ["--no-such-flag"]),
+        ("`specy-road validate --no-such-flag=...`\n", ["--no-such-flag"]),
+        ("`specy-road validate --no-such-flag=…`\n", ["--no-such-flag"]),
+        ("`specy-road validate --no-such-flag={VALUE}`\n", ["--no-such-flag"]),
+        (
+            "`specy-road validate --no-such-flag=<VALUE> --also-bad=...`\n",
+            ["--no-such-flag", "--also-bad"],
+        ),
+        ("`specy-road validate --repo-root=<PATH>`\n", []),
+        ("`specy-road validate --repo-root=...`\n", []),
+        ("`specy-road validate --strict={on}`\n", []),
     ],
 )
 def test_a_bad_token_fails_naming_the_file_and_the_token(
-    tmp_path: Path, body: str, token: str
+    tmp_path: Path, body: str, tokens: list[str]
 ) -> None:
-    """Unknown option, retired alias, and a real option after a placeholder each fail."""
+    """Each clause of the placeholder rule, named by the file and the token.
+
+    An unknown option, a retired alias, and an option after a separate
+    placeholder fail. So does an option whose value is a placeholder
+    (``<VALUE>``, ``...``, ``…``, braces), including two such options on one
+    line. A canonical option with those values is not a problem.
+    """
     path = tmp_path / "prompt.md"
     path.write_text(body, encoding="utf-8")
-    assert command_problems(path) == [f"{path}: {token}"]
+    assert command_problems(path) == [f"{path}: {token}" for token in tokens]
