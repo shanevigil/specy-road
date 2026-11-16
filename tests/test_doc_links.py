@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import re
 from pathlib import Path
 
@@ -13,6 +15,7 @@ REPO = Path(__file__).resolve().parent.parent
 TEMPLATES = REPO / "specy_road" / "templates" / "specyrd"
 
 
+@pytest.mark.repo
 def test_every_doc_a_shipped_template_cites_exists() -> None:
     """A rename in docs/ would otherwise ship a dead link in every consumer's skills."""
     cited = {m for p in TEMPLATES.rglob("*.md")
@@ -60,6 +63,7 @@ def _without_install_section(text: str) -> str:
     return text[:start] + text[end:]
 
 
+@pytest.mark.repo
 def test_no_doc_pins_a_release_candidate() -> None:
     """A pinned ``X.Y.ZrcN`` goes stale with the next candidate; the release runbook's worked
     examples and the install section of install-and-usage.md are the only places one belongs.
@@ -103,6 +107,7 @@ def _broken(source: Path, target: Path, anchor: str) -> str | None:
     return None
 
 
+@pytest.mark.repo
 def test_doc_links_resolve() -> None:
     """Every relative link in README.md and docs/, and every toolkit-docs URL there, names a file
     that exists and a heading it has, so a moved or merged doc leaves no dead inbound link."""
@@ -120,6 +125,7 @@ def test_doc_links_resolve() -> None:
     assert [b for b in broken if b] == []
 
 
+@pytest.mark.repo
 def test_project_templates_cite_toolkit_docs_by_url() -> None:
     """``init project`` copies templates/project verbatim: a doc the consumer does not get is cited
     by its toolkit URL, and that doc exists."""
@@ -177,6 +183,7 @@ def test_alternation_rule_clauses() -> None:
     assert _alternation_offenders(f"`{extra}`") == [extra]
 
 
+@pytest.mark.repo
 def test_no_runnable_doc_command_uses_a_bar_for_alternatives() -> None:
     """A shell reads ``a|b`` as a pipe, so a copied command would run a pipeline: README.md, docs/
     and the Markdown templates ``init project`` and ``specyrd init`` copy into a consumer repo."""

@@ -214,6 +214,7 @@ def test_each_occurrence_warns_with_its_line(tmp_path: Path, capsys) -> None:
     assert "AGENTS.md:2" in lines[1] and "`specy-road frob`" in lines[1]
 
 
+@pytest.mark.repo
 def test_the_toolkits_agent_files_report_nothing() -> None:
     for name in ("AGENTS.md", "CLAUDE.md"):
         assert unregistered_commands((REPO / name).read_text(encoding="utf-8")) == []

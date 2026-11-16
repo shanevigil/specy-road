@@ -201,6 +201,7 @@ def test_shared_readme_constant_matches_the_discovered_path(tmp_path: Path) -> N
     root = _repo(tmp_path)
     assert SHARED_README in all_contracts(root)
 
+@pytest.mark.repo
 def test_shipped_planning_templates_cite_nothing_by_themselves(tmp_path: Path) -> None:
     """A scaffolded sheet must start with zero citations.
 

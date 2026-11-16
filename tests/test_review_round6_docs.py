@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import json
 import os
 import re
@@ -99,6 +101,7 @@ def test_refresh_links_a_canonical_skill_another_recorded_pack_owns(tmp_path: Pa
 
 # --- F16: the block names who changes the registry -------------------------------
 
+@pytest.mark.repo
 def test_block_says_pickup_and_finish_change_the_registry() -> None:
     text = BLOCK.read_text(encoding="utf-8")
     assert "never edits the registry directly; pickup and finish make the registry changes" in text
@@ -107,6 +110,7 @@ def test_block_says_pickup_and_finish_change_the_registry() -> None:
 
 # --- F17: the bootstrap prompt merges the block and still names everything in it --
 
+@pytest.mark.repo
 def test_bootstrap_prompt_merges_the_block_verbatim_and_names_every_command_and_env_var() -> None:
     block = BLOCK.read_text(encoding="utf-8")
     prompt = PROMPT.read_text(encoding="utf-8")
@@ -126,6 +130,7 @@ def _description(name: str) -> str:
     return re.search(r'^description: "(.*)"$', text, re.M).group(1)
 
 
+@pytest.mark.repo
 def test_skill_descriptions_state_their_limits() -> None:
     assert "claims nothing" in _description("brief")
     assert "switches branches" in _description("sync")
@@ -136,6 +141,7 @@ def test_skill_descriptions_state_their_limits() -> None:
 
 # --- F5 / F15: the role and model-call claims match the code ---------------------
 
+@pytest.mark.repo
 def test_constitution_and_quickstarts_carry_the_exceptions() -> None:
     principles = (REPO / "constitution" / "principles.md").read_text(encoding="utf-8")
     assert "The coordination CLI never calls a model or search API" in principles

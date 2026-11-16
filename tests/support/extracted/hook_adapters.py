@@ -8,6 +8,7 @@ import subprocess
 import sys
 from tests.helpers import REPO
 
+#: The stdin each harness sends for a shell command, as documented.
 def pre_tool_use(cmd: str) -> dict:
     """Shared test helper."""
     return {
@@ -24,6 +25,7 @@ PAYLOADS = {
                            "workspace_roots": ["/tmp"], "command": cmd, "cwd": "/tmp", "sandbox": False},
 }
 
+#: How each harness reads a deny and an allow, per its docs.
 DENY = {   # (exit code, where the reason appears)
     "generic": (2, "stderr"), "claude-code": (2, "stderr"), "codex": (2, "stderr"), "cursor": (0, "stdout"),
 }

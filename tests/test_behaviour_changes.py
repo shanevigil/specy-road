@@ -29,6 +29,7 @@ def test_every_entry_names_a_registered_command_and_flag(command: str) -> None:
 
 
 @pytest.mark.slow
+@pytest.mark.repo
 def test_toolkit_docs_and_templates_do_not_say_the_first_commit_registers_the_work() -> None:
     entry = next(e for e in CATALOGUE if e.flags == ("--base",))
     hits = [

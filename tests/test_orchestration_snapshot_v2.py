@@ -420,6 +420,7 @@ def test_an_unreadable_hold_file_is_unknown(tmp_path: Path) -> None:
     assert _leaf(repo)["holds"] == "unknown"
 
 
+@pytest.mark.repo
 def test_v2_fixture_key_paths_match_the_typescript_lists() -> None:
     """The committed snapshot's key paths are ``requiredKeys`` plus ``optionalKeys``."""
     src = TS.read_text(encoding="utf-8")

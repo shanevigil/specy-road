@@ -81,6 +81,7 @@ def test_converge_prompt_still_forbids_new_ideas_but_is_not_a_diverge_prompt(rep
     assert "must not add new ideas" in text
 
 
+@pytest.mark.repo
 def test_suggested_prompt_and_docs_mirror_the_allow_list() -> None:
     prompt = (ROOT / "suggested_prompts" / "brainstorm-roadmap.md").read_text(encoding="utf-8")
     doc = (ROOT / "docs" / "brainstorming.md").read_text(encoding="utf-8")
@@ -139,6 +140,7 @@ def test_gui_converge_is_advisory_and_persists_nothing_structured(
     assert not idea.get("cluster_id") and not idea.get("overlap") and not idea.get("critic")
 
 
+@pytest.mark.repo
 def test_gui_docs_say_converge_is_advisory_and_route_to_revise() -> None:
     doc = (ROOT / "docs" / "pm-gui.md").read_text(encoding="utf-8")
     assert "advisory only" in doc.lower()

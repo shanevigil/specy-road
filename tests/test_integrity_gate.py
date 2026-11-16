@@ -143,6 +143,7 @@ def test_finish_refuses_once_the_integration_branch_turns_the_gate_on(tmp_path: 
     assert git(repo, "rev-parse", "HEAD") == before
 
 
+@pytest.mark.repo
 def test_schemas_accept_the_new_fields() -> None:
     roadmap = json.loads((SCHEMAS / "roadmap.schema.json").read_text())
     Draft202012Validator(roadmap).validate({"version": 1, "nodes": [{**NODE, "planned_test_changes": [FINDING]}]})

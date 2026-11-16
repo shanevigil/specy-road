@@ -16,6 +16,9 @@ ENV = {
     "GIT_COMMITTER_EMAIL": "pat@example.com",
 }
 
+# Fixture identities. M0.1 and M0.3 start Complete; M2 and M0.2 start Not
+# Started. M0.2 lives in M1.json, not M0.json — which is why edit_node has
+# to find a node rather than assume a chunk.
 M01_KEY = "44ef4a9d-923f-545c-8187-eaabc7ca86ba"
 
 M2_KEY = "4c1d98f2-2bdc-4a7d-81b9-c6f7e96e95f0"

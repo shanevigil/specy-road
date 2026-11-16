@@ -308,6 +308,7 @@ def _in_pickup_tree(path: str, present: set[str], moved_from: dict[str, str]) ->
     return path in present or (old is not None and old in present)
 
 
+@pytest.mark.repo
 def test_baseline_records_the_pickup_commit_and_only_its_files() -> None:
     data = json.loads((ROOT / "scripts" / "ruff_quality_baseline.json").read_text(encoding="utf-8"))
     assert data["commit"] == PICKUP

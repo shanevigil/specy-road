@@ -177,6 +177,7 @@ def _profiled_repo(tmp_path: Path, roster: str) -> Path:
     (ALIASED, "claude-opus-x", "opus"), (ALIASED, "opus", "Claude-Opus-X"),   # harness_model
     (PROFILED, "vendor-model", "opus"), (PROFILED, "opus", "custom-model"),   # declared api_id, file name
 ])
+@pytest.mark.repo
 def test_ready_author_and_record_model_are_compared_after_case_folding_and_roster_aliases(
         tmp_path: Path, roster: str, agent: str, model: str) -> None:
     """M22.19: a case variant or an entry's name on either side still excludes the executor; others still count."""
@@ -216,6 +217,7 @@ _WROTE = "wrote READY-{}.md on this leaf"
     (COLLIDE, "astra", None, ["opus", "sol"], {}),                         # record: one family, nobody wrote
     (PROFILED, "vendor-model", "roster entry 'opus': its profile's names cannot be known", ["opus", "sol"], {}),
 ])
+@pytest.mark.repo
 def test_a_shared_name_closes_the_gate_only_when_it_could_be_the_writer(
         tmp_path: Path, roster: str, agent: str | None, problem: str | None, counted: list[str],
         excluded: dict[str, str]) -> None:

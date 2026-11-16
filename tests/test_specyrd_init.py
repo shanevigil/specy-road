@@ -39,6 +39,7 @@ def test_specyrd_init_dry_run_cursor(tmp_path: Path) -> None:
     assert not (tmp_path / ".agents").exists()
 
 
+@pytest.mark.repo
 def test_specyrd_init_writes_cursor(tmp_path: Path) -> None:
     run_init(
         target=tmp_path,

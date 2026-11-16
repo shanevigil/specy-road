@@ -9,6 +9,7 @@ from specy_road.orchestration.grind import grind_session_events as gse
 from specy_road import merged_branch
 from tests.helpers import REPO
 
+#: Frozen event timestamp so `ts` can be asserted exactly.
 TS = "2026-09-06T00:00:00Z"
 
 def node(nid, codename=None):

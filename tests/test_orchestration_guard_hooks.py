@@ -178,6 +178,7 @@ def test_claude_print_config_has_on_failure_block() -> None:
     assert "orchestration guard" in hook["command"]
 
 
+@pytest.mark.repo
 def test_codex_launch_template_pins_disable_flags() -> None:
     """Template and GPT access.cli pin Codex --disable switches; codex worker argv is M8.2."""
     facts = (REPO / "specy_road" / "templates" / "project" / "model-profiles" / "harness-facts.yaml").read_text(
@@ -210,6 +211,7 @@ def test_harness_env_exports_claude_avoid_switches_for_executor() -> None:
     assert "CLAUDE_CODE_DISABLE_AUTO_MEMORY" not in codex
 
 
+@pytest.mark.repo
 def test_claude_launch_template_pins_env_switches() -> None:
     facts = (REPO / "specy_road" / "templates" / "project" / "model-profiles" / "harness-facts.yaml").read_text(
         encoding="utf-8"
@@ -321,6 +323,7 @@ def test_specyrd_init_installs_one_claude_orchestration_hook(tmp_path: Path) -> 
     assert deny.returncode == 2
 
 
+@pytest.mark.repo
 def test_codex_hook_in_fresh_worktree_denies_reviewer_commit(tmp_path: Path) -> None:
     main = tmp_path / "main"
     main.mkdir()

@@ -74,6 +74,7 @@ def test_every_step_in_one_process_matches_the_corpus(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("name", ["cli.py", "cli_entry.py", "bundled_scripts/doctor.py",
                                   "bundled_scripts/mark_implementation_reviewed.py"])
+@pytest.mark.repo
 def test_dispatch_and_nested_runs_start_no_specy_road_interpreter(name: str) -> None:
     """These run commands, in their own process: none starts ``python -m specy_road``."""
     source = (REPO / "specy_road" / name).read_text(encoding="utf-8")

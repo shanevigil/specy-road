@@ -120,6 +120,7 @@ def test_read_only_serves_the_get_refuses_a_post_and_changes_nothing(repo: Path)
     assert state() == before
 
 
+@pytest.mark.repo
 def test_the_gui_mock_has_the_routes_key_paths_both_ways(repo: Path) -> None:
     body = client().get("/api/grind-status", params={"until": "M1"}).json()
     mock = json.loads(MOCK.read_text())

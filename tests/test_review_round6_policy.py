@@ -209,6 +209,7 @@ def test_refresh_profiles_refuses_a_symlinked_destination(tmp_path: Path) -> Non
 
 # --- F4 ----------------------------------------------------------------------------
 
+@pytest.mark.repo
 def test_documented_cli_forms_pass_the_placeholder_guard() -> None:
     doc = (REPO / "docs" / "orchestration-models.md").read_text()
     for form in ("claude -p --model <id> < {prompt}", 'claude -p "<prompt>" --model <id>',

@@ -200,6 +200,7 @@ def _hands_off_cli() -> str:
     return re.search(r'cli: "(.*)"', _documented("yaml", "--settings")).group(1)
 
 
+@pytest.mark.repo
 def test_the_documented_hands_off_claude_cli_keeps_its_settings_on_resume(tmp_path: Path, monkeypatch) -> None:
     cli = _hands_off_cli()
     assert placeholder_problem(cli) is None
@@ -211,6 +212,7 @@ def test_the_documented_hands_off_claude_cli_keeps_its_settings_on_resume(tmp_pa
     assert "--permission-mode acceptEdits" in resumed.argv[2]
 
 
+@pytest.mark.repo
 def test_the_documented_settings_parse_and_deny_push_with_no_bare_edit_allow() -> None:
     perms = json.loads(_documented("json", '"permissions"'))["permissions"]
     assert {"Bash(git push *)", "Bash(gh pr *)"} <= set(perms["deny"])

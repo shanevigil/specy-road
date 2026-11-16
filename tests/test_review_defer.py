@@ -55,6 +55,7 @@ SCHEMA = Path(__file__).resolve().parents[1] / "specy_road" / "schemas" / "rca-r
 
 
 
+@pytest.mark.repo
 def test_schema_accepts_defer_findings_only_with_its_list() -> None:
     v = Draft202012Validator(json.loads(SCHEMA.read_text()))
     assert not list(v.iter_errors(record(2, [item_fn("abc1234")])))

@@ -223,6 +223,7 @@ def test_difference_lists_every_change_and_main_exits_zero(tmp_path, capsys):
 
 
 @pytest.mark.slow
+@pytest.mark.repo
 def test_report_names_the_cycles_and_running_it_exits_zero(monkeypatch):
     """The live scan and the committed report keep roadmap_load apart from review_gate and
     roadmap_crud apart from chore_cli, and the script exits 0."""

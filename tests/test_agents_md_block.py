@@ -360,6 +360,7 @@ def test_codex_meters_a_nonempty_override_instead_of_agents_md(tmp_path: Path, c
     assert "AGENTS.md" not in err
 
 
+@pytest.mark.repo
 def test_rules_file_is_the_full_rule_set_and_the_stub_points_at_it() -> None:
     text = render_rules()
     for needle in ("### Load order", "## Roadmap model", "## Finding things", "**Task pickup:**",
@@ -383,6 +384,7 @@ def provenance_section(name: str) -> str:
 
 
 @pytest.mark.parametrize("name", ["agents-md-block.md", "agents-rules.md", "claude-md-block.md"])
+@pytest.mark.repo
 def test_each_template_is_its_provenance_section_and_every_rule_there_has_one(name: str) -> None:
     template = (TEMPLATES / name).read_text(encoding="utf-8")
     assert not [ln for ln in template.splitlines() if PROVENANCE.fullmatch(ln)]

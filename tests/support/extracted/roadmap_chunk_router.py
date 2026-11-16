@@ -8,6 +8,8 @@ import json
 import shutil
 from specy_road.roadmap_chunk_utils import write_json_chunk
 
+# Use distinct UUID-shaped prefixes so the 6-hex tail of node_key derived
+# filenames differs across nodes (the router takes the first 6 hex chars).
 NK = "{tail:08d}-0000-4000-8000-000000000001"
 
 def node(

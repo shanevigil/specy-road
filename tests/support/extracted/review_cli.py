@@ -7,6 +7,7 @@ from tests.support.same.git_84c8ad8f55f9 import git
 import json
 from specy_road.review_files import reviews_dir
 
+# One AI reviewer beside the default human: `review record` refuses `human`.
 ONE_AI = """version: 1
 roster:
   - {id: human, family: human, roles: [coordinator, reviewer]}

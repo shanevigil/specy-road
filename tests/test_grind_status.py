@@ -38,7 +38,16 @@ from specy_road.orchestration.workers.worker_state import (
 from specy_road.orchestration.guard.orchestration_role_env import ROLE_ENV
 from specy_road.review_gate import evaluate_gate
 from tests.support.review import NODE, commit_file, diverge, make_review_repo, review_text
-from tests import test_gui_app_pm_decisions as gui
+from tests.support.extracted.gui_app_pm_decisions import (
+    answer,
+    approve,
+    block,
+    client,
+    layout,
+    leaf_offer,
+    question,
+    with_questions,
+)
 from tests.support.extracted.review_override import ROSTER as REVIEWERS, STRONG
 from tests.support.extracted.review_rca import ROSTER
 from tests.support.extracted.grind_status import (
@@ -365,17 +374,17 @@ def pending(root: Path) -> dict:
 @pytest.mark.slow
 def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv(ROLE_ENV, raising=False)   # the manual coordinator
-    lay = gui.layout(tmp_path, monkeypatch)
-    gui.with_questions(lay, gui.question("D1"), gui.question("D4", kind="human-action", criterion="A2"))
+    lay = layout(tmp_path, monkeypatch)
+    with_questions(lay, question("D1"), question("D4", kind="human-action", criterion="A2"))
     git(lay.leaf, "merge", "-q", "--no-edit", "dev")
-    gui.block(lay)
+    block(lay)
     local = lay.run / "roadmap" / "decisions.local.yaml"   # a local-only D2: the approval must not take its id
-    local.write_text(yaml.safe_dump({"version": 1, "entries": [gui.question("D2")]}))
-    c = gui.client()
-    assert gui.answer(c, "D1", "A", "ship A\nnow").status_code == 400   # one line, so the sheet line can match
-    assert gui.answer(c, "D1", "A", "ship A").status_code == 200
-    assert gui.answer(c, "D4", "A", "wording approved").status_code == 200   # finish-this-task consumes it
-    assert gui.approve(c, gui.leaf_offer(c)).status_code == 200
+    local.write_text(yaml.safe_dump({"version": 1, "entries": [question("D2")]}))
+    c = client()
+    assert answer(c, "D1", "A", "ship A\nnow").status_code == 400   # one line, so the sheet line can match
+    assert answer(c, "D1", "A", "ship A").status_code == 200
+    assert answer(c, "D4", "A", "wording approved").status_code == 200   # finish-this-task consumes it
+    assert approve(c, leaf_offer(c)).status_code == 200
     git(lay.top, "merge", "-q", "--ff-only", "origin/dev")   # the coordinator pulls
     got = pending(lay.run)
     assert {k: (g["kind"], g["node"]) for k, g in got.items()} == {
@@ -400,10 +409,10 @@ def test_gui_decisions_stay_pending_until_the_coordinator_processes_them(tmp_pat
 @pytest.mark.slow
 def test_another_clone_lists_the_approval_without_a_marker(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv(ROLE_ENV, raising=False)   # the manual coordinator
-    lay = gui.layout(tmp_path, monkeypatch)
-    gui.block(lay)
-    c = gui.client()
-    assert gui.approve(c, gui.leaf_offer(c)).status_code == 200
+    lay = layout(tmp_path, monkeypatch)
+    block(lay)
+    c = client()
+    assert approve(c, leaf_offer(c)).status_code == 200
     other = tmp_path / "other"
     git(tmp_path, "clone", "-q", "-b", "dev", str(lay.bare), str(other))
     assert pending(other)["D1"]["next"] == [gst.NO_MARKER]

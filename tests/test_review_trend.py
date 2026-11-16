@@ -76,6 +76,7 @@ def test_same_acceptance_still_applies_while_counts_fall() -> None:
     assert escalation(rounds, POLICY).rule == "same_acceptance"
 
 
+@pytest.mark.repo
 def test_default_and_schema_carry_the_policy_key() -> None:
     assert DEFAULT_POLICY["escalate_when_converging"] is False
     schema = Path(__file__).resolve().parent.parent / "specy_road/templates/project/schemas/orchestration.schema.json"

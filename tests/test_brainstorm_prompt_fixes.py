@@ -39,6 +39,7 @@ def _prompt(repo: Path, pass_name: str) -> str:
     return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
+@pytest.mark.repo
 def test_skill_and_agent_rules_say_to_start_before_reading_the_digest() -> None:
     skill = (ROOT / "specy_road/templates/specyrd/commands/specyrd-brainstorm.md").read_text(encoding="utf-8")
     block = (ROOT / "specy_road/templates/specyrd/agents-rules.md").read_text(encoding="utf-8")
@@ -75,6 +76,7 @@ def test_a_run_nobody_can_answer_records_an_assumed_frame_and_goes_on(repo: Path
     assert "listing the assumed answers" in headless
 
 
+@pytest.mark.repo
 def test_the_skill_description_says_start_comes_before_any_roadmap_read() -> None:
     """CR5/cursor read roadmap-context.md in the same step as the skill body."""
     skill = (ROOT / "specy_road/templates/specyrd/commands/specyrd-brainstorm.md").read_text(encoding="utf-8")
