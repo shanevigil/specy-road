@@ -82,7 +82,7 @@ entries:
     started: '2026-11-15'
     owner: savigil
     implementation_review: approved
-    implementation_review_at: '2026-11-16T05:17:35+00:00'
+    implementation_review_at: '2026-11-16T05:24:17+00:00'
   - codename: suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout
     node_id: M16.6.2
     branch: feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout
