@@ -70,19 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support
-    node_id: M16.6.4
-    branch: feature/rm-tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support
-    touch_zones:
-      - tests/support/
-      - tests/
-      - scripts/line_width_baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/test-private-imports-baseline.txt
-    started: '2026-11-15'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-16T05:24:17+00:00'
   - codename: suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout
     node_id: M16.6.2
     branch: feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout
