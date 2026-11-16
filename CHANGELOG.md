@@ -241,6 +241,11 @@ are removed in the release after 0.3.1:
 
 ### Fixed
 
+- `specy-road integrity` follows a renamed test file (`git diff --find-renames`). The move is not a removed
+  test file, and that file's tests are compared at the new path: a pure move is clean, while a test dropped,
+  newly skipped or losing asserts in the move is still reported there. A test file deleted with no rename
+  target is still a removed test file.
+
 - PM GUI: the Orchestration drawer lists leaf groups in the outline's row order (parents before children, siblings in
   sibling order), then No leaf, instead of the Gantt's dependency-step order. See `docs/pm-gui.md` (Orchestration drawer).
 - PM GUI orchestration view: the drawer, the outline badges and the edit dialog's Orchestration section join
