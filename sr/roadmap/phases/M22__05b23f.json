@@ -98,6 +98,75 @@
         "tests/parity/golden/upgrade/rc3-dry-run.txt"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Each bundled reviewer channel (Claude Code, Codex CLI, Cursor Agent CLI) surfaces the model the harness reports for the run, so file_review writes harness_model into the review record; today the Codex wrapper prints only the final JSON and the record falls back to 'the harness reported no model' (only 31 of 859 recorded reviews carry harness_model)",
+        "A harness that reports no model still gives the existing warning and a record without harness_model; a reported model of a different family than the roster entry keeps today's model_mismatch handling; the requested roster id stays in model",
+        "Tests: one per channel parsing a captured harness output into the reported model, each failing on the current code; existing review-model tests unchanged",
+        "CHANGELOG.md [Unreleased] records the change; no version heading is written",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +60"
+      ],
+      "codename": "review-channels-report-the-model-the-harness-ran",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.71",
+      "node_key": "239e5f71-06c2-481b-9f80-2839b0591800",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.71_review-channels-report-the-model-the-harness-ran_239e5f71-06c2-481b-9f80-2839b0591800.md",
+      "sibling_order": 71,
+      "status": "Not Started",
+      "title": "Review channels report the model the harness actually ran, so every review record names it",
+      "touch_zones": [
+        "specy_road/review_model_check.py",
+        "specy_road/orchestration/workers/worker_adapter_parsers.py",
+        "CHANGELOG.md",
+        "tests/test_review_delegate.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "human: a dated harness-facts report from the private research repository is copied into sr/docs/research/ (Claude Code, Codex CLI and Cursor Agent CLI: installed and current versions, headless flags, sandbox and trust behaviour, model ids and selectors, output formats, limit messages); the maintainer records the gate decision in the decisions ledger"
+      ],
+      "codename": "harness-facts-research-delivered",
+      "dependencies": [],
+      "execution_milestone": "Human-led",
+      "id": "M22.72",
+      "node_key": "393ad414-3a5a-49b3-8873-b63d0e35d0ee",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.72_harness-facts-research-delivered_393ad414-3a5a-49b3-8873-b63d0e35d0ee.md",
+      "sibling_order": 72,
+      "status": "Not Started",
+      "title": "Gate: current harness facts delivered from the research repository",
+      "touch_zones": [],
+      "type": "gate"
+    },
+    {
+      "acceptance": [
+        "The bundled harness facts and captures match the report M22.72 delivered: versions, flags, model ids (including a claude-fable-5-2 profile; earlier models stay listed while their providers still offer them), Codex project-trust behaviour (reviewers stay untrusted; no --trust in any launch), and the replacement for the deprecated Codex multi_agent flag",
+        "docs/orchestration-workers.md notes for adopters: Codex project trust, and that Claude Code's opt-in Bash sandbox blocks git worktree lifecycle commands inside a session",
+        "The facts tests pass against the refreshed fixture; any check of installed binaries reports the versions it ran against",
+        "CHANGELOG.md [Unreleased] records the refresh; no version heading is written"
+      ],
+      "codename": "harness-facts-and-captures-refreshed",
+      "dependencies": [
+        "393ad414-3a5a-49b3-8873-b63d0e35d0ee"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.73",
+      "node_key": "d5103a37-a7d0-4b07-ba7f-72f05a7c4ba8",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.73_harness-facts-and-captures-refreshed_d5103a37-a7d0-4b07-ba7f-72f05a7c4ba8.md",
+      "sibling_order": 73,
+      "status": "Not Started",
+      "title": "Harness facts and captures refreshed from the delivered research",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

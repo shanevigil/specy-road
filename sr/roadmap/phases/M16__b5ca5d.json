@@ -128,7 +128,7 @@
     },
     {
       "acceptance": [
-        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, and replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper; assertions and fixture contents unchanged; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
+        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, and replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper; assertions and fixture contents unchanged, except that a fixture's citation of a moved test (path::name) follows the move (operator 2026-11-16); entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
         "Collected test count and covered-arc set unchanged; test ids change only by path",
         "Estimated net line change (informational, not a gate): tests about -50"
       ],
@@ -199,7 +199,7 @@
       "parent_id": "M16.6",
       "planning_dir": "planning/M16.6.8_worker-tests-wait-under-the-workers-lock_eebb31de-077f-4d0d-9ee3-3280973373f7.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates",
       "touch_zones": [
         "tests/support/harness.py",
