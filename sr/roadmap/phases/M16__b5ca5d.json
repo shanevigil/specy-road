@@ -128,7 +128,7 @@
     },
     {
       "acceptance": [
-        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, and replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper; assertions and fixture contents unchanged; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
+        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, and replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper; assertions and fixture contents unchanged, except that a fixture's citation of a moved test (path::name) follows the move (operator 2026-11-16); entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
         "Collected test count and covered-arc set unchanged; test ids change only by path",
         "Estimated net line change (informational, not a gate): tests about -50"
       ],
