@@ -62,7 +62,7 @@ rows:
     roster: null
     steps: []
     expect: {passed: false, approvals: 0, problems: 1, required: 1, distinct_families: false}
-    says: {"need 1 approvals at this commit, have 0": tests/test_review_gate.py::test_no_reviews_fails_default_policy}
+    says: {"need 1 approvals at this commit, have 0": tests/flows/review/test_review_gate.py::test_no_reviews_fails_default_policy}
   - id: defaults-one-human-approval
     branch: too_few_approvals
     roster: null
@@ -91,7 +91,7 @@ rows:
     policy: {reviewers_required: 2, reviewers_distinct_families: true}
     steps: [{review: {model: opus}}, {review: {model: sol}}, {review: {model: human, verdict: block, a1: fail}}]
     expect: {passed: false, approvals: 2, problems: 1}
-    says: {"human blocks this commit": tests/test_review_gate.py::test_block_at_head_fails_even_with_enough_approvals}
+    says: {"human blocks this commit": tests/flows/review/test_review_gate.py::test_block_at_head_fails_even_with_enough_approvals}
 
   # --- a stale record; stale vs current commit ---
   - id: stale-only
@@ -99,7 +99,7 @@ rows:
     roster: null
     steps: [{review: {model: human}}, {commit: {path: src/b.py}}]
     expect: {passed: false, approvals: 0, problems: 2}
-    says: {"re-review": tests/test_review_gate.py::test_a_new_commit_makes_reviews_stale}
+    says: {"re-review": tests/flows/review/test_review_gate.py::test_a_new_commit_makes_reviews_stale}
   - id: stale-beside-a-current-approval
     branch: stale
     roster: team
@@ -112,7 +112,7 @@ rows:
     roster: null
     steps: [{review: {model: human, drop: A2}}]
     expect: {passed: false, approvals: 0, problems: 2}
-    says: {"no result for A2": tests/test_review_gate.py::test_invalid_record_is_reported}
+    says: {"no result for A2": tests/flows/review/test_review_gate.py::test_invalid_record_is_reported}
   - id: invalid-beside-a-valid-approval
     branch: invalid
     roster: team
@@ -125,7 +125,7 @@ rows:
     roster: null
     steps: [{review: {model: opus}}]
     expect: {passed: false, approvals: 0, problems: 2}
-    says: {"not a rostered reviewer": tests/test_review_gate.py::test_unrostered_model_does_not_count_under_default_roster}
+    says: {"not a rostered reviewer": tests/flows/review/test_review_gate.py::test_unrostered_model_does_not_count_under_default_roster}
   - id: ineligible-beside-a-valid-approval
     branch: ineligible
     roster: null
@@ -138,13 +138,13 @@ rows:
     roster: null
     steps: [{review: {model: human}}, {ready: {agent: exec, exit: 1}}]
     expect: {passed: false, approvals: 1, problems: 1}
-    says: {"verifier `false` exited 1": tests/test_mark_implementation_reviewed_gate.py::test_yes_refuses_a_failing_ready_verifier}
+    says: {"verifier `false` exited 1": tests/flows/review/test_mark_implementation_reviewed_gate.py::test_yes_refuses_a_failing_ready_verifier}
   - id: verifier-blocked-on
     branch: verifier
     roster: null
     steps: [{review: {model: human}}, {ready: {agent: exec, exit: 0, blocked_on: A1}}]
     expect: {passed: false, approvals: 1, problems: 1}
-    says: {"blocked on A1": tests/test_mark_implementation_reviewed_gate.py::test_yes_refuses_while_ready_declares_blocked_on}
+    says: {"blocked on A1": tests/flows/review/test_mark_implementation_reviewed_gate.py::test_yes_refuses_while_ready_declares_blocked_on}
   - id: verifier-passing
     branch: verifier
     roster: null
@@ -193,7 +193,7 @@ rows:
     policy: {reviewers_required: 1, signed_reviews: true}
     steps: [{operator: {}}]
     expect: {passed: false, approvals: 0, problems: 1}
-    says: {"need 1 approvals at this commit, have 0": tests/test_review_override.py::test_other_gate_failures_still_fail}
+    says: {"need 1 approvals at this commit, have 0": tests/flows/review/test_review_override.py::test_other_gate_failures_still_fail}
 
   # --- exclusions: executor, coordinator, fresh session ---
   - id: executor-excluded
@@ -272,7 +272,7 @@ rows:
     policy: {reviewers_required: 2, reviewers_distinct_families: true}
     steps: [{review: {model: opus}}, {review: {model: sonnet}}]
     expect: {passed: false, approvals: 1, problems: 1, required: 2, distinct_families: true}
-    says: {"need 2 distinct-family approvals": tests/test_mark_implementation_reviewed_gate.py::test_human_cannot_stand_in_for_a_missing_second_family}
+    says: {"need 2 distinct-family approvals": tests/flows/review/test_mark_implementation_reviewed_gate.py::test_human_cannot_stand_in_for_a_missing_second_family}
   - id: families-two
     branch: too_few_approvals
     roster: team
