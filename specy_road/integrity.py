@@ -3,10 +3,11 @@
 Compares a merge base to a leaf head: removed tests, new skips, lost asserts,
 pytest-related config edits, added lint suppressions, and lines added to the
 baseline files the integration branch lists in ``policy.ratchet_paths``.
-A test file git reports as renamed is not a removed file: its tests are
-compared at the new path, so a pure move is clean and a test dropped or
-weakened in the move is still reported there. Python per-function checks use
-AST over ``git show <commit>:<path>``; no checkout and no writes.
+A rename is followed only when the new path is still a test file: its tests
+are compared there, so a pure move is clean and a test dropped or weakened
+in the move is still reported there. A test file renamed to a non-test name
+is a removed test file, and its tests are removed tests. Python per-function
+checks use AST over ``git show <commit>:<path>``; no checkout and no writes.
 """
 
 from __future__ import annotations
@@ -70,7 +71,8 @@ class Finding:
 def compare_integrity(repo_root: Path, base: str, ref: str) -> list[Finding]:
     """Findings for ``base..ref``; sorted by their printed line.
 
-    A renamed test file is compared at its new path, not reported as removed.
+    A rename to another test file is compared at the new path. A rename to a
+    non-test name is reported as a removal.
     """
     root = repo_root.resolve()
     findings: list[Finding] = []
@@ -158,13 +160,19 @@ def _python_test_pairs(
 ) -> list[tuple[str, str]]:
     """``(path at ref, path read at base)`` for each Python test file to compare.
 
-    A renamed test file is read at its old path and reported at its new one.
-    The old path is not also compared as a deletion.
+    A rename is followed only when the new path is still a Python test module.
+    Those tests are read at the old path and reported at the new one. A rename
+    to a non-test name is compared as a deletion at the old path.
     """
-    followed = {new: old for old, new in renamed.items() if _is_python_test_module(old)}
+    followed = {
+        new: old
+        for old, new in renamed.items()
+        if _is_python_test_module(old) and _is_python_test_module(new)
+    }
+    followed_away = set(followed.values())
     paths = {
         p for p in base_files | ref_files
-        if _is_python_test_module(p) and p not in renamed
+        if _is_python_test_module(p) and p not in followed_away
     }
     paths.update(followed)
     return [(path, followed.get(path, path)) for path in sorted(paths)]
@@ -173,10 +181,15 @@ def _python_test_pairs(
 def _removed_test_files(
     base_files: set[str], ref_files: set[str], renamed: dict[str, str],
 ) -> list[Finding]:
-    """Test files present at base and gone at ref, skipping paths git paired with a rename."""
+    """Test files present at base and gone at ref.
+
+    A rename is skipped only when the new path is still a test file.
+    """
     out: list[Finding] = []
     for path in sorted(base_files):
-        if path not in ref_files and path not in renamed and _is_removed_test_file(path):
+        target = renamed.get(path)
+        kept = target is not None and _is_removed_test_file(target)
+        if path not in ref_files and not kept and _is_removed_test_file(path):
             out.append(Finding("removed-test-file", path))
     return out
 

@@ -249,6 +249,20 @@ def test_test_dropped_in_a_move_is_still_removed(tmp_path: Path) -> None:
     ]
 
 
+def test_rename_to_a_non_test_name_is_still_a_removal(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    on_dev(repo)
+    commit(repo, "tests/test_x.py", "def test_keep():\n    assert 1\n", "on dev")
+    merge_dev(repo)
+    git(repo, "mv", "tests/test_x.py", "tests/x_cases.py")
+    git(repo, "commit", "-qm", "rename off the test pattern")
+    compared = compare_integrity(repo, merge_base(repo), git(repo, "rev-parse", "HEAD"))
+    assert [f.line() for f in compared] == [
+        "removed-test-file: tests/test_x.py",
+        "removed-test: tests/test_x.py::test_keep",
+    ]
+
+
 def test_function_defined_inside_a_function_is_not_a_test(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     on_dev(repo)
