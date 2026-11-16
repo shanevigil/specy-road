@@ -2,7 +2,7 @@
 purpose: Find how to make unit testing efficient and effective when most code and tests are written by AI agents (what to measure, how to keep agent-written tests from pinning implementation details or duplicating each other, review rules, suite structure, tools that fit a stdlib-first Python core), so the maintainer can choose M16.7.8's effectiveness measures; rerun each minor release (90 days approximates that)
 prompt: research/prompts/agentic-unit-testing.md
 cadence_days: 90
-last_run:
+last_run: 2026-11-16
 fed: [M16.7.8]
 ---
 
@@ -17,4 +17,4 @@ uniquely covered arc, about 30-35% of test functions removable with no coverage 
 private names) and the suite on 2026-11-05 at `469b9322`: 5,408 collected items, 3,778 test
 functions in 393 files (74k test lines), 72 s wall time with `pytest -n auto` on 32 CPUs.
 
-Runs: none yet. Paste-back reports go to `docs/research/agentic-unit-testing-<date>-<tool>.md`.
+Runs: 2026-11-16, preliminary automated multi-agent web research pass (not the deep-research tool): `docs/research/agentic-unit-testing-2026-11-16-claude-code.md`. It recommends Option B for M16.7.8; the maintainer may run the full prompt in the deep-research tool. Paste-back reports go to `docs/research/agentic-unit-testing-<date>-<tool>.md`.
