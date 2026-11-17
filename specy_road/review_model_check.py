@@ -2,7 +2,9 @@
 
 A reviewer's record counts toward the gate under its roster id, so the models the harness says it ran (the first
 ``system/init`` event's ``model``, read as worker usage reads it: :func:`~specy_road.worker_adapter_parsers.init_model`,
-and each ``result`` event's: :func:`result_model`) are compared with the roster entry's model by
+each ``result`` event's: :func:`result_model`, and for Codex, whose ``--json`` stream names none, the model its rollout
+recorded for the first ``thread.started`` thread that has one: :func:`~specy_road.worker_adapter_codex.thread_model`)
+are compared with the roster entry's model by
 :func:`~specy_road.model_names.same_model`, which normalises case, separators and display names. :func:`check_run` gives ``match``, ``mismatch`` or ``unreported``;
 :func:`~specy_road.review_record_write.file_review` writes ``harness_model`` into the record and, on a mismatch,
 ``model_mismatch: true``, which :func:`model_mismatch_problem` keeps from counting in the gate. A harness that
@@ -21,6 +23,7 @@ from specy_road.orchestration.model_names import (
 )
 from specy_road.orchestration_config import harness_model
 from specy_road.review_answer import stream_lines
+from specy_road.orchestration.workers.worker_adapter_codex import thread_model
 from specy_road.orchestration.workers.worker_adapter_parsers import init_model
 
 MISMATCH_REASON = "harness ran a different model"
@@ -45,12 +48,17 @@ def result_model(line: str) -> str | None:
 
 def reported_models(lines: list[str] | str) -> list[str]:
     """Every model the run reported, in order and without repeats: the first ``system/init`` event's (as worker usage
-    reads it) and each ``result`` event's (:func:`result_model`). Codex and plain-text harnesses report none."""
+    reads it), each ``result`` event's (:func:`result_model`) and the rollout model of the first Codex
+    ``thread.started`` thread that has one (:func:`~specy_road.worker_adapter_codex.thread_model`). Plain-text harnesses
+    report none."""
     out: list[str] = []
-    init_seen = False
+    init_seen = thread_seen = False
     for line in stream_lines(lines) if isinstance(lines, str) else lines:   # \n only, as JSON Lines
         model = None if init_seen else init_model(line)
         init_seen = init_seen or model is not None
+        if not model and not thread_seen:
+            model = thread_model(line)
+            thread_seen = model is not None
         model = model or result_model(line)
         if model and model not in out:
             out.append(model)

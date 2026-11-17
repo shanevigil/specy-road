@@ -37,17 +37,46 @@ def profile_home(model: str | None) -> Path:
     worker, and its sessions stay apart. The user's ``auth.json`` is linked in, so the login carries over."""
     home = codex_homes() / re.sub(r"[^A-Za-z0-9._-]", "_", model or "default")
     home.mkdir(parents=True, exist_ok=True)
-    auth = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex") / "auth.json"
+    auth = user_home() / "auth.json"
     if auth.is_file() and not (home / "auth.json").exists() and not (home / "auth.json").is_symlink():
         (home / "auth.json").symlink_to(auth)
     return home
 
 
+def user_home() -> Path:
+    """The user's own ``CODEX_HOME``: where a ``channels.cli`` that sets none leaves its sessions."""
+    return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+
+
+def _profile_rollouts(session_id: str) -> list[Path]:
+    root = codex_homes()
+    return sorted(root.glob(f"*/sessions/**/*{session_id}*.jsonl")) if root.is_dir() else []
+
+
 def session_home(session_id: str) -> Path | None:
     """The per-profile home whose ``sessions/`` holds the thread's rollout, so a resume finds it."""
-    root = codex_homes()
-    hits = sorted(root.glob(f"*/sessions/**/*{session_id}*.jsonl")) if root.is_dir() else []
-    return root / hits[0].relative_to(root).parts[0] if hits else None
+    hits = _profile_rollouts(session_id)
+    return codex_homes() / hits[0].relative_to(codex_homes()).parts[0] if hits else None
+
+
+def thread_model(line: str) -> str | None:
+    """The model Codex recorded for the thread a ``thread.started`` line names (``codex exec --json`` names none
+    itself): the last ``turn_context.model`` of its rollout, looked up as :func:`session_home` finds it, then in
+    :func:`user_home` (a ``channels.cli`` passing the stream through). An id that is not a plain thread id (glob
+    characters from untrusted output) or a thread with no rollout gives ``None``."""
+    d = _json(line)
+    tid = d.get("thread_id") if d and d.get("type") == "thread.started" else None
+    if not isinstance(tid, str) or not re.fullmatch(r"[0-9A-Za-z-]+", tid):
+        return None
+    user = user_home() / "sessions"
+    hits = _profile_rollouts(tid) or (sorted(user.glob(f"**/*{tid}*.jsonl")) if user.is_dir() else [])
+    model = None
+    for row in hits[0].read_text(errors="replace").splitlines() if hits else []:
+        e = _json(row)
+        ctx = e.get("payload") if e and e.get("type") == "turn_context" else None
+        if isinstance(ctx, dict) and isinstance(ctx.get("model"), str) and ctx["model"].strip():
+            model = ctx["model"].strip()
+    return model
 
 
 class Codex(Adapter):
