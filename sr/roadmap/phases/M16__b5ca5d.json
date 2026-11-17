@@ -223,7 +223,7 @@
       "parent_id": "M16.6",
       "planning_dir": "planning/M16.6.9_docs-name-moved-test-files-at-lane-paths_7f5507bd-e3cb-4b24-8483-0e33170f4a51.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Docs name the moved test files at their lane paths",
       "touch_zones": [
         "docs/orchestration.md",
