@@ -182,12 +182,14 @@ A `channels.cli` wrapper must pass the harness's event stream through to
 stdout unchanged (`claude -p --output-format stream-json --verbose`, `agent -p
 --output-format stream-json`, `codex exec --json`), with its stderr kept off
 stdout: the model check reads only that stream, and a wrapper that prints only
-the final answer files every record as reporting no model. A Codex wrapper that
-uses its own `CODEX_HOME` must write it in the command as a `CODEX_HOME=VALUE`
-word (`CODEX_HOME=/srv/codex codex exec --json …`, `env CODEX_HOME=…`, `export
-CODEX_HOME=…;`), with an absolute value after `~` and `$VAR` are expanded from
-specy-road's environment: a home set inside a script the command runs, built at
-run time or given as a relative path is not found, and the run reports no model.
+the final answer files every record as reporting no model. A Codex wrapper must
+not change `CODEX_HOME`: specy-road finds the run's rollout under its own
+`CODEX_HOME` (else `~/.codex`) and the profile homes, and it cannot see a
+child's environment. A wrapper that changes it (inside a script, at run time or
+to a relative path) has its model recorded as unreported, with the warning
+above. Only an absolute `CODEX_HOME=VALUE` word written in the `channels.cli` or
+`cli_resume` text itself is also searched; it is a mitigation, not a supported
+way to move the home.
 
 ## Prevention and the tripwire (A2)
 
