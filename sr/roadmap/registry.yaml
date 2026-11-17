@@ -108,3 +108,15 @@ entries:
     started: '2026-11-16'
     owner: savigil
     implementation_review: pending
+  - codename: tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test
+    node_id: M16.6.6
+    branch: feature/rm-tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test
+    touch_zones:
+      - tests/
+      - scripts/line_width_baseline.json
+      - scripts/ruff_quality_baseline.json
+      - constraints/test-private-imports-baseline.txt
+      - docs/context-regressions.yaml
+    started: '2026-11-17'
+    owner: savigil
+    implementation_review: pending
