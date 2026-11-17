@@ -82,7 +82,8 @@ entries:
       - tests/support/layout.csv
     started: '2026-11-15'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-17T14:36:24+00:00'
   - codename: docs-name-moved-test-files-at-lane-paths
     node_id: M16.6.9
     branch: feature/rm-docs-name-moved-test-files-at-lane-paths
