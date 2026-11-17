@@ -1,17 +1,30 @@
 # Prompt: Build specy-road roadmap, registry, and planning from existing project notes
 
-Copy everything below the line into your agentic coding tool. Replace `[REPO_ROOT]` with your repository root if you use absolute paths.
+Copy everything below the line into your agentic coding tool. Replace `[REPO_ROOT]` with your git root if you use absolute paths.
 
 ---
 
 You are migrating **roadmap-like** information from an existing project into **specy-road’s** strict layout: a **merged JSON graph** under `roadmap/`, a **registry** for active claims, and **planning** feature sheets (one `planning/*.md` per node with `planning_dir`).
 
+Adoption order, stated the same way in every suggested prompt: `specy-road init project`, then governance (`bootstrap-governance.md`), then this prompt, then agent entrypoints (`bootstrap-agents-md.md`, a merge — init already wrote `AGENTS.md`), then brainstorm (`brainstorm-roadmap.md`) any time after the roadmap exists.
+
+Paths such as `roadmap/` and `planning/` are relative to the **project root**. In the embedded layout that root is the git root. In the nested layout (the tree under `sr/`) it is the directory `.specyrd/manifest.json` records as `project_root`. Run every `specy-road` command from the **git root**; the CLI resolves the project root, including a nested one, with no extra flag. Do not create a second `roadmap/` at the git root of a nested repo. `specy-road init project sr` is how a nested tree is scaffolded.
+
 ## Authoritative references
 
-1. **`specy-road init project --dry-run`** — Lists every scaffold path; use as checklist.
-2. **`docs/roadmap-authoring.md`** — Manifest, chunks, immutability, line limits, planning feature sheets.
-3. **`docs/git-workflow.md`** — Register on the integration branch, then `feature/rm-<codename>`, touch zones.
-4. **JSON Schema** (consumer copy under `schemas/`): `roadmap.schema.json`, `manifest.schema.json`, `registry.schema.json`. These are copied in by `init project` and do **not** follow toolkit upgrades — if `specy-road validate` warns that a schema is behind, run **`specy-road upgrade`** (in order: `--only schemas`; `--only profiles`, which adds missing `model-profiles/` files without overwriting; copies any shipped `docs/` file the `.specyrd/AGENTS.md` load order names and the repo lacks; `--only stubs`, re-applying the managed blocks and rewriting `.specyrd/AGENTS.md`, with `--prune` deleting stubs this version no longer installs; then `validate` and `digest --check`. It never touches the roadmap or planning sheets, and `--dry-run` stops before writing. Never `init project --force`, which rewrites the whole scaffold). The IDE stubs from `specyrd init` have the same problem and the same fix, never `specyrd init --force`.
+1. **`specy-road init project --dry-run`** lists every scaffold path. It prints paths, not contents. Run `specy-road init project` to write the files.
+2. **Toolkit docs are not in an adopter repo** unless named here as shipped. `specy-road init project` ships only `docs/supply-chain-security.md` and `docs/model-profiles-research-notes.md`. This prompt's `docs/roadmap-authoring.md`, `docs/git-workflow.md`, `docs/orchestration.md` and `docs/archiving.md` are in the toolkit repository, https://github.com/shanevigil/specy-road/tree/main/docs . `specy-road upgrade` copies a `docs/` file only when `.specyrd/AGENTS.md`'s load order names it and the repo lacks it.
+3. **JSON Schema**, shipped by `init project` under `schemas/` and in the installed package at `specy_road/templates/project/schemas/`: `roadmap.schema.json`, `manifest.schema.json`, `registry.schema.json`, `git-workflow.schema.json`, `orchestration.schema.json`. These copies do not follow toolkit upgrades. When `specy-road validate` warns that a schema or stub is behind, run:
+
+```bash
+specy-road upgrade --only schemas
+specy-road upgrade --only profiles
+specy-road upgrade --only stubs
+specy-road validate
+specy-road digest --check
+```
+
+`--dry-run` stops before writing. Never `specy-road init project --force` to refresh schemas, and never `specyrd init --force` to refresh stubs.
 
 ## Mental model (do not confuse these)
 
@@ -29,75 +42,39 @@ flowchart LR
   merged -->|specy-road export| index
 ```
 
-- **`roadmap/manifest.json`** — `version: 1` and `includes`: ordered list of chunk paths **relative to `roadmap/`**. Do **not** put `nodes` in the manifest.
-- **Chunk files** — JSON containing a `nodes` array (or shapes the loader accepts per `docs/roadmap-authoring.md`). Split large graphs across multiple chunks for git-friendly diffs; respect line limits in `constraints/file-limits.yaml`.
-- **`roadmap/git-workflow.yaml`** — Machine defaults for integration branch and remote (CLI + PM Gantt). Edit to match your trunk (e.g. `dev` vs `main`). Every other key is optional; the authoritative list, with each key's default and meaning, is the scaffolded **`schemas/git-workflow.schema.json`** (`additionalProperties: false`, so `validate` rejects a key it does not list), explained in `docs/git-workflow.md`. Decide two of them explicitly: **`on_complete`** (`pr`, `merge` or `auto`: how **`finish-this-task`** lands work; write it rather than relying on the `pr` default, because **`specy-road grind-session`** refuses to start in `pr` mode) and **`require_implementation_review_before_finish`** (when `true`, **`specy-road mark-implementation-reviewed`** must close the review gate against `roadmap/orchestration.yaml` before **`finish-this-task`**; see `docs/orchestration.md`). Know one default: **`require_implementation_before_finish`** is `true`, so `finish-this-task` refuses a node whose branch changed no file under its `touch_zones` (set it `false`, or pass `--allow-empty-implementation`, for a leaf that needs no code change). Quote string values that YAML would otherwise read as booleans: write `track_worker_logs: "off"` (a bare `off` parses as `false`, which the schema happens to accept; `on`/`yes` would not). The PM Gantt UI's `pm_gui.integration_branch_auto_ff` and `pm_gui.registry_remote_overlay` are **not** keys of this file: they are per-user PM GUI settings in `~/.specy-road/gui-settings.json` (the GUI's **Settings** panel).
-- **`roadmap/registry.yaml`** — `version: 1`, `entries: []` or active rows. **Not** part of `includes`. Records in-progress work (codename, `node_id`, branch, `touch_zones`, optional `started`, `owner`, optional `node_key`). When **`require_implementation_review_before_finish`** is enabled, each row may include **`implementation_review`**: `pending` | `approved`, and optional **`implementation_review_at`** after approval.
-- **`roadmap/orchestration.yaml`** — `version: 1`; optional (a missing file means the default). **`roster`** entries need **`id`**, **`family`** and **`roles`** (`coordinator` | `executor` | `reviewer`); the scaffold default is one `human` reviewer. **`policy`** sets review requirements (`reviewers_required` defaults to 1) and **`substitutions`** swap a roster slot temporarily. For every optional roster, policy and substitution key, read the scaffolded **`schemas/orchestration.schema.json`** (it is authoritative and rejects unknown keys) and the toolkit's `docs/orchestration.md`; do not copy a key list from elsewhere. Do not invent models the team does not use; add a roster entry only for a model that will actually review. Review hand-offs live under gitignored `work/reviews/<NODE_ID>/`.
-- **`roadmap/archive/`** — Written only by `specy-road archive` / `restore-archive`; do **not** hand-author it. Holds `index.json` (the ledger of archived subtrees, which `validate` consults so live nodes may keep depending on archived work — **never delete it**), plus the archived chunks, planning sheets, deep-archive bundles and reference files. Not part of `includes`. Commit it like any other roadmap file. See the toolkit's `docs/archiving.md`.
-- **`roadmap.md` at repo root** — **Generated** by `specy-road export`. Do not maintain it by hand as the source of truth.
+- **`roadmap/manifest.json`** — `version: 1` and `includes`: ordered chunk paths **relative to `roadmap/`**. Do **not** put `nodes` in the manifest.
+- **Chunk files** — JSON `nodes`, written by the CLI below. The shapes the loader accepts are the toolkit's `docs/roadmap-authoring.md`.
+- **`roadmap.md`** at the project root is **generated** by `specy-road export`. Do not maintain it by hand.
 
-## Phase 1 — Discovery
+## Create nodes with the CLI
 
-Find and consolidate:
+Do not hand-write chunk JSON, `node_key` UUIDs, or planning filenames. From the git root:
 
-- `ROADMAP.md`, epics, release plans, Notion exports, issue milestones, strategy docs.
-- Dependencies between initiatives (order, blockers).
-- **Touch zones** — repo path prefixes each initiative may change (for milestones and registry).
-- **Codenames** for milestones if already named (must match kebab-case pattern used in git workflow: align with `codename` on milestone nodes and `feature/rm-<codename>` branches).
+```bash
+specy-road add-node --id M2 --parent-id null --type phase --title "…"
+specy-road add-node --id M2.1 --parent-id M2 --type task --title "…" --touch-zone src/ --dependency M1.1
+specy-road edit-node M2.1 --add acceptance="…"
+specy-road planning scaffold M2.1
+```
 
-## Phase 2 — Graph rules (must satisfy validator)
+`specy-road add-node` allocates the `node_key`, routes the chunk, and keeps `includes` in order. Repeat `--touch-zone`, `--dependency` (a display id or a `node_key`; stored as the `node_key`) and `--acceptance`. `specy-road edit-node` patches fields (`--set`, `--add`, `--remove`). `specy-road planning scaffold` writes `planning/<id>_<slug>_<node_key>.md` from the package template (feature-sheet, or gate-sheet when `type` is `gate`) and sets `planning_dir`. Fill that sheet from existing notes. Field rules live in `schemas/roadmap.schema.json` and the toolkit's `docs/roadmap-authoring.md`; do not copy them into the chunk by hand.
 
-After merge, every node must conform to `schemas/roadmap.schema.json` (validated on the **merged** graph).
+**The scaffold's own nodes.** `init project` ships phase **M1** *Adopt specy-road* and task **M1.1** *Set up the project's specy-road basics*. Keep them. Put migrated work in new phases (`M2`, …) or under M1, and mark M1.1 `Complete` through review and `specy-road finish-this-task` once its criteria hold. Display ids (`M` plus dotted numbers) are immutable.
 
-**The scaffold's own nodes.** `init project` ships phase **M1** *Adopt specy-road* and task **M1.1** *Set up the project's specy-road basics* (`project-setup`), whose acceptance criteria are the setup this migration completes. Keep them: put the migrated work in new phases (`M2`, …) or under M1, and mark M1.1 `Complete` through the normal review and finish once its criteria hold. Do not rename them into project work.
+A dependency on a phase or milestone is satisfied when that node's leaves are all `Complete`. `execution_milestone` does not hold a leaf out of `specy-road do-next-available-task`; a `type: gate` node does. `status: "Blocked"` promotes a leaf in the pickup queue; it does not mean "leave this unclaimed". Do not author `agentic_checklist` or `execution_subtask`. With the review gate on, `specy-road validate` warns when an open leaf has no `acceptance`. A criterion only a person can satisfy starts with `human:`; closing it is `specy-road decisions add --kind human-action`, not a line on the planning sheet.
 
-### Required on each node
+`vision.md` at the project root is not a roadmap `type: "vision"` node. See the toolkit's `docs/roadmap-authoring.md`.
 
-- **`id`** — Display id, pattern `M[0-9]+(\.[0-9]+)*` (e.g. `M1`, `M1.2`). **Immutable**; never renumber existing ids (gaps allowed).
-- **`node_key`** — Stable **UUID** (lowercase hex with hyphens). Used in **`dependencies`** and optionally in registry.
-- **`type`** — One of: `vision`, `phase`, `milestone`, `task`, `gate` (see `docs/roadmap-authoring.md` for Gate — PM hold, not dev pickup).
-- **`title`** — Non-empty string.
+## Registry and the other roadmap files
 
-### Dependencies
+- Start `roadmap/registry.yaml` at `version: 1` and `entries: []` unless an active claim is being migrated. Register on the integration branch, then `feature/rm-<codename>`, and remove the row before merge (toolkit `docs/git-workflow.md`). `specy-road do-next-available-task` and `specy-road finish-this-task` write the row; do not hand-edit it to claim work.
+- **`roadmap/git-workflow.yaml`** — set the integration branch to this repo's trunk. The key list, with defaults, is the scaffolded `schemas/git-workflow.schema.json` (unknown keys fail validate), explained in the toolkit's `docs/git-workflow.md`. Decide two keys yourself: `on_complete` (`pr`, `merge` or `auto`; `specy-road grind-session` refuses to start when it is `pr`) and `require_implementation_review_before_finish` (when true, `specy-road mark-implementation-reviewed` must pass against `roadmap/orchestration.yaml` before finish). `require_implementation_before_finish` defaults to true, so finish refuses a leaf whose branch changed nothing under its `touch_zones`. Quote values YAML would read as booleans: `track_worker_logs: "off"`. `pm_gui.integration_branch_auto_ff` and `pm_gui.registry_remote_overlay` are not keys of this file; they are per-user settings in `~/.specy-road/gui-settings.json`.
+- **`roadmap/orchestration.yaml`** — optional (`version: 1`; missing means one human reviewer). Roster entries need `id`, `family` and `roles`. Add a model only if the team will use it. Keys: `schemas/orchestration.schema.json` and the toolkit's `docs/orchestration.md`.
+- **`roadmap/archive/`** — written only by `specy-road archive` and `specy-road restore-archive`. Do not hand-author it, and never delete `index.json`. See the toolkit's `docs/archiving.md`.
 
-- **`dependencies`** — Array of **`node_key`** UUID strings (depends-on), **not** display `id` strings. A dependency on a **phase or milestone** is satisfied when that node's leaf descendants are all `Complete` (the F-013 rollup), not when its own `status` field says so.
+## Verification
 
-### Nodes with planning (vision, phase, milestone, task, gate)
-
-- Set **`planning_dir`** — Repo-relative path to **one** Markdown file, e.g. `planning/M1.1_slug_<node_key>.md`. **Required** for `vision`, `phase`, `milestone`, `task`, and `gate` per validation. Filename pattern is described in `planning/README.md` (identity is in the filename, not required YAML frontmatter).
-
-### Common optional fields
-
-- `parent_id`, `sibling_order`, `status`, `notes`, `codename`, `touch_zones`, `sensitivity` (default `public`; must match a roster `may_process` value), `executor_eligibility` (`any` or a roster `class` tag), `parallel_tracks`, `execution_milestone`, `goal`, `acceptance` (with the review gate on, `validate` warns on open leaves without it; a criterion only a person can satisfy starts with `human:`, reviewers mark it `n/a`, and `finish-this-task` refuses the leaf until a person closes its `decisions add <NODE> --kind human-action --criterion A#` entry, at their own terminal or in the PM GUI; a planning-sheet line does not count — see `docs/roadmap-authoring.md`), `planned_test_changes` (test removals or weakenings the leaf is approved to make, each a finding line exactly as `specy-road integrity` prints it; authored and approved with the leaf before pickup, the only way such a change passes the gate when `policy.integrity_gate` is on), `risks`, `decision`.
-- **`execution_milestone`** (`Human-led` / `Agentic-led` / `Mixed`) is **advisory** metadata. It does **not** keep a leaf out of `specy-road do-next-available-task`. To hold work until a person clears it, add a **`type: gate`** node and depend on it.
-- **`status: "Blocked"`** on a leaf **promotes** it to the top of the pickup queue (a blocked leaf is the one most worth unblocking). Do not use it to mean "do not pick this up" — use a gate dependency.
-- **Do not author `agentic_checklist` or `execution_subtask`.** Both are deprecated and absent from `schemas/roadmap.schema.json`; `specy-road validate` strips them from chunk files. Put the contract a node conforms to in its planning sheet's `## References`, cited by filename (`shared/api-contract.md`) — that is what `specy-road brief` reads and inlines.
-
-### Root `vision.md` vs graph
-
-- **`vision.md`** at repo root is separate Markdown. A roadmap **`type: "vision"`** node is optional and is **not** the same artifact—see `docs/roadmap-authoring.md` vocabulary.
-
-## Phase 3 — Registry
-
-- Start from **`roadmap/registry.yaml`** with `version: 1` and `entries: []` unless migrating active work.
-- Each active entry: **`codename`**, **`node_id`**, **`branch`** (`feature/rm-<codename>`), **`touch_zones`** (non-empty array), optional **`node_key`**, **`started`**, **`owner`**, and when the implementation-review gate is on: **`implementation_review`** — see `schemas/registry.schema.json` and `docs/git-workflow.md` (register on the **integration branch**, then `feature/rm-*`; remove entry before merge).
-
-## Phase 4 — Planning feature sheets
-
-For every `planning_dir` you reference:
-
-1. Create `planning/<id>_<slug>_<node_key>.md` with content derived from existing docs (or run **`specy-road planning scaffold <NODE_ID>`** to create from the package template: **feature-sheet** sections for most types, **gate-sheet** sections for `type: gate`).
-2. Ensure the planning file name matches `<id>_<codename_slug>_<node_key>.md` (see `planning/README.md`).
-
-## Phase 5 — Export and limits
-
-- Run **`specy-road export`** / **`specy-road export --check`** so **`roadmap.md`** is generated and consistent.
-- Keep **`manifest.json`** small; keep each chunk under line limits unless a single-node exception applies per `docs/roadmap-authoring.md` and `constraints/file-limits.yaml` (`roadmap_manifest_max_lines`, `roadmap_json_chunk_max_lines`).
-
-## Phase 6 — Verification
-
-From `[REPO_ROOT]`:
+From the git root:
 
 ```bash
 specy-road validate
@@ -106,9 +83,9 @@ specy-road digest --check
 specy-road file-limits
 ```
 
-Resolve all errors before finishing. Prefer splitting oversized JSON chunks or adjusting `file-limits.yaml` only when consistent with team policy.
+Resolve every error and every warning before finishing, not errors alone. A run that exits 0 can still print touch-zone overlap warnings and milestone-review notices; fix those too. When a warning says a schema or stub is behind, run `specy-road upgrade` as in the references above. Prefer splitting an oversized chunk over raising a cap in `constraints/file-limits.yaml`, unless that is the team's policy.
 
 ## Non-goals
 
-- Inventing a YAML “merged roadmap” file as the graph source.
-- Storing active claims only in chat—use `registry.yaml` for in-progress registration per `docs/git-workflow.md`.
+- Hand-writing chunk JSON, or inventing a YAML file as the merged graph, where `specy-road add-node`, `specy-road edit-node` and `specy-road planning scaffold` exist.
+- Storing active claims only in chat. Use `roadmap/registry.yaml`, as the toolkit's `docs/git-workflow.md` describes.

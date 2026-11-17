@@ -375,6 +375,7 @@ tests/test_specyrd_skills.py,tests/unit/test_specyrd_skills.py
 tests/test_start_milestone_session_reentry.py,tests/flows/orchestrate/test_start_milestone_session_reentry.py
 tests/test_steering_file_guard.py,tests/flows/review/test_steering_file_guard.py
 tests/test_strong_review.py,tests/flows/review/test_strong_review.py
+tests/test_suggested_prompts_commands.py,tests/repo/test_suggested_prompts_commands.py
 tests/test_support.py,tests/flows/support/test_support.py
 tests/test_support_boundary.py,tests/repo/test_support_boundary.py
 tests/test_sync_planning_outline.py,tests/unit/test_sync_planning_outline.py
