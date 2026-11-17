@@ -88,7 +88,7 @@ def test_a_retry_never_files_an_earlier_attempts_answer(tmp_path: Path) -> None:
 
 @pytest.mark.slow
 def test_one_leafs_reviewer_runs_take_turns(tmp_path: Path) -> None:
-    """Moved from tests/test_review_record_write.py (file limit): a refused launch writes none of the run's files."""
+    """Moved from tests/flows/review/test_review_record_write.py (file limit): a refused launch writes none of the run's files."""
     repo, spec = delegate_repo(tmp_path)
     set_steps(repo, spec, verdict_step(repo))
     reviews = reviews_dir(repo, "M1.1")

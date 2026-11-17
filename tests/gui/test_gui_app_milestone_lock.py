@@ -5,7 +5,7 @@ attach an active ``milestone_execution`` to one milestone parent, and
 verify that mutating routes return **409** for nodes inside the locked
 subtree while still allowing edits elsewhere.
 
-Complements ``tests/test_milestone_lock.py`` (unit-level coverage of
+Complements ``tests/unit/test_milestone_lock.py`` (unit-level coverage of
 ``milestone_lock.assert_pm_nodes_not_milestone_locked``).
 """
 

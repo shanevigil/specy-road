@@ -1,7 +1,7 @@
 """M8.3 A2/A3 regressions from Sol's block at 27d39730, through the public CLIs and ``delegate``.
 
 F1 (the run lock overwritten in place) was withdrawn by the 2026-11-04 rescope: the lock is one of specy-road's run
-files the tripwire leaves out (tests/test_review_record_write.py).
+files the tripwire leaves out (tests/flows/review/test_review_record_write.py).
 F2: ``prompt --channel cli`` closes its run from the filing outcome, so a review failure or rerun request stays
 incomplete even when an older record of the same commit is on file.
 F3: a terminal Codex ``agent_message`` with no text replaces an earlier answer of the turn: a rerun request.

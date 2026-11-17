@@ -79,6 +79,6 @@ def test_start_up_reading_exists_and_stays_within_the_limit(repo: str, tmp_path:
 
 def test_shipped_rules_cite_only_files_an_adopter_has(tmp_path: Path) -> None:
     root = _consumer(tmp_path)
-    # No provenance comment ships: tests/test_agents_md_block.py checks render_rules() has no "<!--".
+    # No provenance comment ships: tests/flows/init/test_agents_md_block.py checks render_rules() has no "<!--".
     cited = re.findall(r"`(docs/[\w-]+\.md)`", render_rules())
     assert [d for d in cited if not (root / d).is_file()] == []

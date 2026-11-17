@@ -111,7 +111,7 @@ def test_wait_for_event_returns_on_the_next_event_or_times_out(tmp_path: Path) -
 
 
 def test_sync_wait_ctrl_c_exits_130_without_a_traceback(tmp_path: Path, capsys, monkeypatch) -> None:
-    # Beside the wait itself: tests/test_worker_cli.py is at the file-line cap.
+    # Beside the wait itself: tests/flows/worker/test_worker_cli.py is at the file-line cap.
     repo = _repo(tmp_path)
 
     def interrupted(*_a):
