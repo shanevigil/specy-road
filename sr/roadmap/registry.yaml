@@ -81,19 +81,3 @@ entries:
     started: '2026-11-15'
     owner: savigil
     implementation_review: pending
-  - codename: tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only
-    node_id: M16.6.5
-    branch: feature/rm-tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only
-    touch_zones:
-      - tests/
-      - scripts/line_width_baseline.json
-      - scripts/ruff_quality_baseline.json
-      - constraints/test-private-imports-baseline.txt
-      - docs/context-regressions.yaml
-      - constraints/file-limits.yaml
-      - sr/constraints/file-limits.yaml
-      - docs/contributor-guide.md
-    started: '2026-11-15'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-17T05:47:38+00:00'
