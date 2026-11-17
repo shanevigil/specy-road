@@ -15,7 +15,7 @@ from specy_road.review_files import review_path, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_target import resolve_target
 from tests.support.review import commit_file
-from tests.support.extracted.folded_review_evidence import _roster
+from tests.support.extracted.folded_review_evidence import evidence_roster
 
 
 def _repo(tmp_path: Path, **kw) -> Path:
@@ -239,7 +239,7 @@ def test_a_signing_failure_is_an_error_not_a_traceback(tmp_path: Path, monkeypat
 
 def test_post_write_gate_failure_prints_its_problems(tmp_path: Path, monkeypatch, capsys) -> None:
     """The record is written, then the gate still fails: every problem is printed, not only the generic error."""
-    repo = make_review_repo(tmp_path, orchestration=_roster(None, signed=False))
+    repo = make_review_repo(tmp_path, orchestration=evidence_roster(None, signed=False))
     (repo / "work").mkdir()
     (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nx\n")
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)

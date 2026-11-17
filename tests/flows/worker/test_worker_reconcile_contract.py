@@ -28,7 +28,6 @@ from specy_road.bundled_scripts import review_packet as rp
 from specy_road.finish_implementation_check import changed_paths
 from specy_road.git_changed_paths import diff_paths, parse_name_status
 from specy_road.review_target import resolve_target
-from tests.support.extracted.folded_review_evidence import _roster
 from tests.support.same.git_84c8ad8f55f9 import git as git_folded
 from tests.support.harness import make_worker_repo
 from tests.support.cli import run_worker_cli

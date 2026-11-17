@@ -26,7 +26,6 @@ from specy_road.orchestration.guard.session_presence import current_user, list_s
 from specy_road.orchestration.workers.worker_process import wrapper_alive
 import subprocess
 from specy_road.orchestration.workers import worker_reconcile as wrc
-from tests.support.extracted.folded_review_ops import _idle
 from specy_road.orchestration.workers import worker_process as wp
 
 OLD = "2026-01-01T00:00:00+00:00"   # long past policy.stall_after_seconds (default 600)

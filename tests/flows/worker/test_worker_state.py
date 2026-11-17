@@ -30,7 +30,7 @@ from tests.support.cli import run_worker_cli
 from specy_road.orchestration.workers import worker_reconcile as wrc
 from specy_road.orchestration.workers import worker_sessions as wsess
 from specy_road.orchestration.workers import worker_lease as ww
-from tests.support.extracted.folded_review_ops import _idle
+from tests.support.extracted.folded_review_ops import idle_record
 from specy_road.orchestration.workers import worker_ops as ops
 
 
@@ -494,7 +494,7 @@ def test_resume_commands_are_shell_quoted_and_bad_ids_refused(tmp_path: Path) ->
         ops.adopt(repo, "M1.1", "codex", "thr-1")
     assert ops.adopt(repo, "M1.1", "cursor", "chat_01:abc-DEF").provider_session_id == "chat_01:abc-DEF"
     # An id the harness output chose is refused at use, not rendered into a command.
-    rec = _idle(repo, "M1.2", sid="$(touch /tmp/forged)")
+    rec = idle_record(repo, "M1.2", sid="$(touch /tmp/forged)")
     with pytest.raises(ws.WorkerError, match="metacharacters"):
         ops.handoff(repo, rec.worker_id)
     with pytest.raises(ws.WorkerError, match="metacharacters"):
@@ -507,8 +507,8 @@ def test_resume_commands_are_shell_quoted_and_bad_ids_refused(tmp_path: Path) ->
 
 def test_hook_matches_by_harness_and_refuses_ambiguity(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
-    a = _idle(repo, "M1.1", "claude-code", "same-id")
-    b = _idle(repo, "M1.2", "cursor", "same-id")
+    a = idle_record(repo, "M1.1", "claude-code", "same-id")
+    b = idle_record(repo, "M1.2", "cursor", "same-id")
     ops.handoff(repo, a.worker_id)
     ops.handoff(repo, b.worker_id)
     assert _hook(repo, "cursor", {"conversation_id": "same-id", "prompt": "cursor human"}) == 0
@@ -523,7 +523,7 @@ def test_hook_matches_by_harness_and_refuses_ambiguity(tmp_path: Path, capsys) -
 
 def test_hook_witness_does_not_wait_on_a_busy_lock(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    rec = _idle(repo)
+    rec = idle_record(repo)
     ops.handoff(repo, rec.worker_id)
     release = threading.Event()
     taken = threading.Event()
@@ -550,7 +550,7 @@ def test_hook_witness_does_not_wait_on_a_busy_lock(tmp_path: Path) -> None:
 
 def test_a_crashed_reclaim_is_repaired_once_not_repeated(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    rec = _idle(repo)
+    rec = idle_record(repo)
     ops.handoff(repo, rec.worker_id)
     real = wl.append_event
     with mock.patch.object(wl, "append_event", side_effect=OSError("crash after the record moved")):
@@ -571,7 +571,7 @@ def test_a_crashed_reclaim_is_repaired_once_not_repeated(tmp_path: Path) -> None
 
 def test_handoff_and_reclaim_move_the_record_in_one_write(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    rec = _idle(repo)
+    rec = idle_record(repo)
     saves: list[tuple[str, str, int]] = []
     real = ws.save_record
 

@@ -26,7 +26,7 @@ from specy_road.review_files import reviews_root
 import os
 from tests.support.review import git as git_folded
 from specy_road.orchestration.workers import worker_lease as ww
-from tests.support.extracted.folded_review_ops import _idle
+from tests.support.extracted.folded_review_ops import idle_record
 from tests.support.harness import FAKE, worker_roster
 from tests.support.extracted.worker_repos import worker_repo
 from specy_road.orchestration.workers import worker_adapters as wa
@@ -384,7 +384,7 @@ def test_a_stale_worktree_directory_is_refused(tmp_path: Path) -> None:
 
 def test_handoff_prints_a_quoted_command(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
-    rec = _idle(repo, sid="a.b:c-d")
+    rec = idle_record(repo, sid="a.b:c-d")
     assert run_worker_cli("worker", "handoff", rec.worker_id, "--repo-root", str(repo)) == 0
     assert "claude --resume a.b:c-d" in capsys.readouterr().out
     assert run_worker_cli("worker", "open", rec.worker_id, "--repo-root", str(repo)) == 0

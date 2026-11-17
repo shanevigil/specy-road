@@ -23,7 +23,7 @@ from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli
 from specy_road.orchestration.workers.worker_adapters import Launch
 from specy_road.orchestration.workers.worker_runner_ready import READY_ONLY_PROMPT
-from tests.support.extracted.folded_review_ops import _idle
+from tests.support.extracted.folded_review_ops import idle_record
 
 
 FAKE_SLOW = '''
@@ -482,7 +482,7 @@ def test_message_op_id_binds_the_text_and_survives_a_missing_file(tmp_path: Path
 
 def test_message_from_a_linked_worktree_without_work_dir(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)
-    rec = _idle(repo, sid=UUID)
+    rec = idle_record(repo, sid=UUID)
     wt = tmp_path / "linked"
     git(repo, "worktree", "add", "-q", str(wt), "-b", "side")
     assert not (wt / "work").exists()

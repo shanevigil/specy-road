@@ -24,8 +24,6 @@ from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts.review_packet import UNCOMMITTED_REF_NOTE
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_target import resolve_target
-from tests.support.extracted.folded_review_evidence import _roster
-
 #: Goldens recorded before the packet fragments folded. Git dates and the
 #: packet's generated date are fixed; the fixture path is written ``<ROOT>``.
 PACKET_GOLDEN = REPO / "tests" / "parity" / "golden" / "packet"

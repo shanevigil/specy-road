@@ -14,7 +14,6 @@ from specy_road import review_files as rf
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.review_files import latest_ready, reviews_dir
 from specy_road.review_target import resolve_target
-from tests.support.extracted.folded_review_evidence import _roster
 from tests.support.review import make_review_repo, git
 from specy_road.review_files import reviews_root
 from specy_road.bundled_scripts import review_cli

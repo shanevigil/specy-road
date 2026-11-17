@@ -32,7 +32,6 @@ from tests.support.review import git
 from tests.support.harness import make_worker_repo
 from specy_road.review_files import reviews_root
 import subprocess
-from tests.support.extracted.folded_review_ops import _idle
 from tests.support import REPO
 from specy_road.orchestration.workers.worker_adapters import placeholder_problem
 from tests.support.extracted.folded_review_policy import PROFILE_REL, ROSTER

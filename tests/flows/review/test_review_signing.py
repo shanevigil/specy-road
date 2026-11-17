@@ -20,7 +20,7 @@ from tests.support.same.key_5acf3bfe8b72 import key as key_fn
 from tests.support.extracted.review_signing import roster as roster_fn
 from specy_road.review_files import reviews_root
 from specy_road.review_gate import SigningError, write_human_approval
-from tests.support.extracted.folded_review_evidence import _roster
+from tests.support.extracted.folded_review_evidence import evidence_roster
 from tests.support.extracted.review_signing import roster
 from specy_road.review_files import render_front_matter
 
@@ -279,7 +279,7 @@ def test_notes_digest_normalises_line_endings_and_trailing_whitespace() -> None:
 @needs_keygen
 def test_a_signed_record_binds_its_notes(tmp_path: Path) -> None:
     key, pub = key_fn(tmp_path, "opus")
-    repo = make_review_repo(tmp_path, orchestration=_roster(pub))
+    repo = make_review_repo(tmp_path, orchestration=evidence_roster(pub))
     head = git(repo, "rev-parse", "HEAD")
     notes = tmp_path / "notes.md"
     # M11.75: an approve's observation lines carry a same-line 'not a defect because' reason
@@ -305,7 +305,7 @@ def test_a_signed_record_binds_its_notes(tmp_path: Path) -> None:
 
 
 def test_unsigned_records_keep_working_without_the_hash_but_a_present_one_is_checked(tmp_path: Path) -> None:
-    repo = make_review_repo(tmp_path, orchestration=_roster(None, signed=False))
+    repo = make_review_repo(tmp_path, orchestration=evidence_roster(None, signed=False))
     head = git(repo, "rev-parse", "HEAD")
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True)
@@ -341,7 +341,7 @@ def test_a_wrong_human_key_writes_no_record_and_the_reason_is_printed(tmp_path: 
     _human_key, human_pub = key_fn(tmp_path, "human")
     wrong_key, _wrong_pub = key_fn(tmp_path, "wrong")
     _opus_key, opus_pub = key_fn(tmp_path, "opus")
-    repo = make_review_repo(tmp_path, orchestration=_roster(opus_pub, human_pub=human_pub))
+    repo = make_review_repo(tmp_path, orchestration=evidence_roster(opus_pub, human_pub=human_pub))
     head = git(repo, "rev-parse", "HEAD")
     with pytest.raises(SigningError, match="does not verify against the roster public_key for 'human'"):
         write_human_approval(repo, NODE, head, wrong_key)
