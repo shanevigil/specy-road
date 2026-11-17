@@ -511,7 +511,7 @@ the `claude-code` format judges those too, so either snippet guards Cursor.
 
 Get each snippet with `specy-road session guard --format cursor --print-config`
 (or `codex`). The repo's own test suite runs every adapter as a subprocess
-with its harness's documented payload (`tests/test_hook_adapters.py`), so an
+with its harness's documented payload (`tests/unit/test_hook_adapters.py`), so an
 adapter that drifts from its contract fails in CI, not in someone's IDE.
 
 ## Working in one shared checkout

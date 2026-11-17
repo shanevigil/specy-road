@@ -20,7 +20,7 @@ reports as exit 126 or 127).
 | `cursor` | `agent -p` documents no standard input (`agent --help`, 2026.10.22), so its argument is a one-line instruction naming the prompt file's absolute path; the agent reads the file. Launch, resume and the `--mode ask` reviewer alike. |
 
 A test builds every adapter's launches for every role from a 200 KiB prompt and checks that no argument exceeds
-32 KiB (`tests/test_harness_launch.py`).
+32 KiB (`tests/flows/worker/test_harness_launch.py`).
 
 ## A command that would still put it on the command line is refused
 
