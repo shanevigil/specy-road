@@ -60,10 +60,11 @@
       "title": "suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout",
       "touch_zones": [
         "suggested_prompts/",
-        "tests/test_suggested_prompts_commands.py",
-        "tests/test_lean_rules.py",
-        "tests/test_shared_checkout_guidance.py",
-        "scripts/ruff_quality_baseline.json"
+        "scripts/ruff_quality_baseline.json",
+        "tests/repo/test_suggested_prompts_commands.py",
+        "tests/repo/test_lean_rules.py",
+        "tests/unit/test_shared_checkout_guidance.py",
+        "tests/support/layout.csv"
       ],
       "type": "task"
     },

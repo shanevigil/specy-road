@@ -229,7 +229,8 @@
         "docs/orchestration.md",
         "docs/orchestration-workers.md",
         "docs/orchestration-harness-launch.md",
-        "docs/agentic-sandbox-runbook.md"
+        "docs/agentic-sandbox-runbook.md",
+        "docs/supply-chain-security.md"
       ],
       "type": "task"
     }

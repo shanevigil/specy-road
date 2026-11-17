@@ -277,34 +277,6 @@
     },
     {
       "acceptance": [
-        "Before edits, sr/work/M16.6.6-fold-manifest.md holds the manifest: every test path matching `(?i)(^|[/_])(m\\d+(\\.\\d+)*|round\\d+|slice\\d+|finding[-_]?\\w+)([._/]|$)`, its destination module or flow file, and each test function renamed; those files fold into their destinations; a file is not folded only for having few tests",
-        "Only names listed in that manifest are renamed; finding ids survive only as comments or parametrize ids; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the manifest's path mapping",
-        "Collected test count and covered-arc set unchanged; renamed test ids equal this leaf's planned_test_changes",
-        "Estimated net line change (informational, not a gate): tests about -250"
-      ],
-      "codename": "tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test",
-      "dependencies": [
-        "33af9de4-c487-4e4e-ac48-253ffb8483f1"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M16.6.6",
-      "node_key": "41b1d9c3-a6d6-4cc4-adf1-b365ed06b0f9",
-      "parent_id": "M16.6",
-      "planning_dir": "planning/M16.6.6_tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test_41b1d9c3-a6d6-4cc4-adf1-b365ed06b0f9.md",
-      "sibling_order": 5,
-      "status": "Not Started",
-      "title": "Tests: per-leaf and per-round test files fold into the file for the module or flow they test",
-      "touch_zones": [
-        "tests/",
-        "scripts/line_width_baseline.json",
-        "scripts/ruff_quality_baseline.json",
-        "constraints/test-private-imports-baseline.txt",
-        "docs/context-regressions.yaml"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "Applies exactly the rows of tests/support/dedupe/review-gate.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
         "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
         "Tables this leaf creates assert structured results, not message text",

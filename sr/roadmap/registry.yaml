@@ -75,10 +75,11 @@ entries:
     branch: feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout
     touch_zones:
       - suggested_prompts/
-      - tests/test_suggested_prompts_commands.py
-      - tests/test_lean_rules.py
-      - tests/test_shared_checkout_guidance.py
       - scripts/ruff_quality_baseline.json
+      - tests/repo/test_suggested_prompts_commands.py
+      - tests/repo/test_lean_rules.py
+      - tests/unit/test_shared_checkout_guidance.py
+      - tests/support/layout.csv
     started: '2026-11-15'
     owner: savigil
     implementation_review: pending
@@ -90,6 +91,7 @@ entries:
       - docs/orchestration-workers.md
       - docs/orchestration-harness-launch.md
       - docs/agentic-sandbox-runbook.md
+      - docs/supply-chain-security.md
     started: '2026-11-16'
     owner: savigil
     implementation_review: pending
