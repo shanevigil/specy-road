@@ -286,6 +286,11 @@ def test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout(
 
 
 
+# M13.7: notices that were correct but misleading.
+# A symlinked skills directory listed every skill twice; a new .gitignore
+# rule silently matched files already in the tree. (The session end wording
+# is pinned in test_session_presence.py.)
+
 # --- A2, real run: the report is git's observed change -------------------------------------------
 
 
