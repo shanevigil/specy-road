@@ -215,6 +215,8 @@ def test_edit_node_warns_only_when_it_writes_zones(crud_git_repo: Path) -> None:
 
 
 
+# The untracked-touch-zone notice is bounded.
+
 # --- A1: the untracked-zone notice is bounded ---------------------------------------------------
 
 def _many_nodes() -> list[dict]:

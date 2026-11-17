@@ -343,7 +343,7 @@ def test_diff_on_a_current_repo_shows_nothing(
     assert "already match" in out
 
 
-# M13.7: notices that were correct but misleading.
+# Notices that were correct but misleading.
 # A symlinked skills directory listed every skill twice; a new .gitignore
 # rule silently matched files already in the tree. (The session end wording
 # is pinned in test_session_presence.py.)

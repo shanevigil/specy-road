@@ -144,6 +144,8 @@ def test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded(tmp_path: Pat
 
 
 
+# Unchanged context warnings fold into one line.
+
 # --- A5: context warnings in full only when they changed -----------------------------------------
 
 def _warner(lines: list[str]):

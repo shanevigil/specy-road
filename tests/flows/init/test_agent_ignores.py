@@ -224,6 +224,11 @@ def commands(out: list[str]) -> list[list[str]]:
     return [shlex.split(ln) for ln in out if ln.startswith("    ")]
 
 
+# Every command the ignore note prints is a line of its own that a shell parses
+# back to its argv. Paths with spaces, quotes and parentheses are quoted; when
+# more tracked files match than the note lists, the overflow note is its own
+# line, never part of the command.
+
 
 def test_odd_paths_round_trip_through_the_shell(tmp_path: Path, capsys) -> None:
     repo = tracked_prompts(tmp_path, ODD)
@@ -286,7 +291,7 @@ def test_a_git_dir_from_a_hook_does_not_point_the_scratch_repo_at_the_checkout(
 
 
 
-# M13.7: notices that were correct but misleading.
+# Notices that were correct but misleading.
 # A symlinked skills directory listed every skill twice; a new .gitignore
 # rule silently matched files already in the tree. (The session end wording
 # is pinned in test_session_presence.py.)
@@ -489,6 +494,10 @@ MANIFEST_NOTE = "`.specyrd/manifest.json`, when present, stays tracked."
 
 
 
+# Validate notices stay short and true. The managed .gitignore comment is true
+# without a manifest; a tracked file under a new ignore rule gets the
+# git rm --cached command; repeated .gitignore patterns get one notice.
+
 # --- A2: the managed .gitignore comment is true without a manifest -------------------------------
 
 def test_the_gitignore_comment_is_true_in_a_repo_with_no_stub_pack(tmp_path: Path) -> None:
@@ -627,6 +636,7 @@ def _case_dangling_top(repo: Path) -> None:
 
 
 
+# The dry-run estimate treats a symlinked .gitignore as git does (it does not read one).
 #: name -> (setup, expected now-hidden): ``.gitignore`` symlinks the estimate must keep as symlinks.
 SYMLINK_CASES = {
     # The link itself sits under work/*, so it is hidden too.
