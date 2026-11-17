@@ -98,6 +98,78 @@
         "tests/parity/golden/upgrade/rc3-dry-run.txt"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Codex runs (default launch and any channels.cli that passes `codex exec --json` through) report the model Codex recorded for the thread (its rollout turn_context.model, found by the thread.started id, reusing session_home's glob), so file_review writes harness_model; Claude Code and Cursor runs already report theirs via stream-json. docs/orchestration-reviewer-output.md states that a channels.cli wrapper must pass the harness's event stream through (stderr kept off stdout). Today 0 of 862 review records carry harness_model (planner 2026-11-16). A channels.cli wrapper that changes CODEX_HOME (inside its script or to a relative path) is outside this: its run is recorded as unreported with the existing warning, and docs/orchestration-reviewer-output.md says a wrapper must not change CODEX_HOME (operator 2026-11-17)",
+        "A harness that reports no model still gives the existing warning and a record without harness_model; a reported model of a different family than the roster entry keeps today's model_mismatch handling; the requested roster id stays in model",
+        "Tests: a Codex match and a mismatch case from a captured, scrubbed rollout fixture, each failing on the current code; a real captured Cursor init line checked by check_run; existing review-model tests unchanged. If a Codex 0.166 --json capture already names the model, parse the stream instead and say so",
+        "CHANGELOG.md [Unreleased] records the change; no version heading is written",
+        "Out of this leaf (coordinator step after it lands, with no review in flight): the repository's own reviewer wrappers pass the native event stream through, after a check() dry run of each roster entry's captured init model so a display name such as a Cursor model label is not judged a mismatch",
+        "Estimated net line change (informational, not a gate): package about +40, tests about +60"
+      ],
+      "codename": "review-channels-report-the-model-the-harness-ran",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.71",
+      "node_key": "239e5f71-06c2-481b-9f80-2839b0591800",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.71_review-channels-report-the-model-the-harness-ran_239e5f71-06c2-481b-9f80-2839b0591800.md",
+      "sibling_order": 71,
+      "status": "Not Started",
+      "title": "Review channels report the model the harness actually ran, so every review record names it",
+      "touch_zones": [
+        "specy_road/review_model_check.py",
+        "specy_road/orchestration/workers/worker_adapter_codex.py",
+        "docs/orchestration-reviewer-output.md",
+        "tests/flows/worker/test_prompt_channel_cli_run.py",
+        "tests/fixtures/codex_rollout/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "human: a dated harness-facts report (from private notes) is copied into sr/docs/research/ (Claude Code, Codex CLI and Cursor Agent CLI: installed and current versions, headless flags, sandbox and trust behaviour, model ids and selectors, output formats, limit messages); the maintainer records the gate decision in the decisions ledger"
+      ],
+      "codename": "harness-facts-research-delivered",
+      "dependencies": [],
+      "execution_milestone": "Human-led",
+      "id": "M22.72",
+      "node_key": "393ad414-3a5a-49b3-8873-b63d0e35d0ee",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.72_harness-facts-research-delivered_393ad414-3a5a-49b3-8873-b63d0e35d0ee.md",
+      "sibling_order": 72,
+      "status": "Not Started",
+      "title": "Gate: current harness facts delivered as a dated research report",
+      "touch_zones": [],
+      "type": "gate"
+    },
+    {
+      "acceptance": [
+        "The bundled harness facts and captures match the report M22.72 delivered: versions, flags, model ids (including a claude-fable-5-2 profile; earlier models stay listed while their providers still offer them), Codex project-trust behaviour (reviewers stay untrusted; no --trust in any launch), and the replacement for the deprecated Codex multi_agent flag",
+        "docs/orchestration-workers.md notes for adopters: Codex project trust, and that Claude Code's opt-in Bash sandbox blocks git worktree lifecycle commands inside a session",
+        "The facts tests pass against the refreshed fixture; any check of installed binaries reports the versions it ran against",
+        "CHANGELOG.md [Unreleased] records the refresh; no version heading is written"
+      ],
+      "codename": "harness-facts-and-captures-refreshed",
+      "dependencies": [
+        "393ad414-3a5a-49b3-8873-b63d0e35d0ee"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.73",
+      "node_key": "d5103a37-a7d0-4b07-ba7f-72f05a7c4ba8",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.73_harness-facts-and-captures-refreshed_d5103a37-a7d0-4b07-ba7f-72f05a7c4ba8.md",
+      "sibling_order": 73,
+      "status": "Not Started",
+      "title": "Harness facts and captures refreshed from the delivered research",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/",
+        "docs/orchestration-workers.md",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

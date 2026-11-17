@@ -65,8 +65,11 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.6.2` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Not Started |
 | `M16.6.3` | Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them | task | Agentic-led | Complete |
 | `M16.6.4` | Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support | task | Agentic-led | Complete |
-| `M16.6.5` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Not Started |
+| `M16.6.5` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Complete |
 | `M16.6.6` | Tests: per-leaf and per-round test files fold into the file for the module or flow they test | task | Agentic-led | Not Started |
+| `M16.6.7` | Integrity follows moved test files: a renamed test file and its tests are not removals | task | Agentic-led | Complete |
+| `M16.6.8` | Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates | task | Agentic-led | Complete |
+| `M16.6.9` | Docs name the moved test files at their lane paths | task | Agentic-led | Not Started |
 | `M16.7` | Test dedupe, public seams, properties and the smoke lane | milestone | — | Not Started |
 | `M16.7.1` | Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it | task | Agentic-led | Not Started |
 | `M16.7.2` | Tests: apply the dedupe worklist for review gate | task | Agentic-led | Not Started |
@@ -262,6 +265,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.68` | grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only | task | Agentic-led | Complete |
 | `M22.69` | A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line | task | Agentic-led | Complete |
 | `M22.70` | review-packet reads the implementation summary from the leaf's own worktree | task | Agentic-led | Complete |
+| `M22.71` | Review channels report the model the harness actually ran, so every review record names it | task | Agentic-led | Not Started |
+| `M22.72` | Gate: current harness facts delivered as a dated research report | gate | Human-led | Not Started |
+| `M22.73` | Harness facts and captures refreshed from the delivered research | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |

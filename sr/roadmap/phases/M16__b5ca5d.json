@@ -125,6 +125,114 @@
         "tests/parity/golden/help/specy-road__self-update.txt"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper, and the edits the move forces: a string that names a moved test file's path (in a fixture, test data, a parametrized id, a comment or docstring) follows the move; a baseline or ratchet test maps moved paths through layout.csv; an import allowlist admits tests.support; a test that reads the checkout carries the repo marker (operator 2026-11-16, 'M16.6.5 broaden'); assertions and fixture behaviour unchanged; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
+        "Collected test count and covered-arc set unchanged; test ids change only through moved paths (the file path, or a parameter that names a moved path)",
+        "Estimated net line change (informational, not a gate): tests about -50"
+      ],
+      "codename": "tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only",
+      "dependencies": [
+        "840167f3-ec33-428a-86cc-e6ea639f8d6b",
+        "a0733044-eec3-4411-bec8-e6f31fac6456",
+        "fc207fa2-60e7-4d2b-86f4-2aecafaa2a05"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.6.5",
+      "node_key": "33af9de4-c487-4e4e-ac48-253ffb8483f1",
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.5_tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only_33af9de4-c487-4e4e-ac48-253ffb8483f1.md",
+      "sibling_order": 4,
+      "status": "Complete",
+      "title": "Tests: files move into unit, flows, cli, gui and repo lanes, moves only",
+      "touch_zones": [
+        "tests/",
+        "scripts/line_width_baseline.json",
+        "scripts/ruff_quality_baseline.json",
+        "constraints/test-private-imports-baseline.txt",
+        "docs/context-regressions.yaml",
+        "constraints/file-limits.yaml",
+        "sr/constraints/file-limits.yaml",
+        "docs/contributor-guide.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "compare_integrity follows renames: a test file that git reports as renamed between base and ref to a path that is still a test file (by the same rule as removed-test-file) (git diff --find-renames, the detection integrity.py already uses for ratchets) gives no removed-test-file finding, and its test functions are compared against the file at its new path, so a pure move yields no removed-test, and a test dropped or weakened during the move is still reported (removed-test, new-skip, assert-loss under the new path). A test file deleted without a rename target is still a removed-test-file. A test file renamed to a non-test name (for example tests/test_x.py -> tests/x_cases.py) is not followed: it stays a removed-test-file and its tests removed-test, because pytest no longer collects them (operator 2026-11-16)",
+        "Tests in tests/test_integrity_python.py: one that fails on the current behaviour (a git mv of a test file reports removed-test-file and removed-test) and one that a test dropped in the same move is still reported; existing integrity tests unchanged",
+        "On M16.6.5's branch (feature/rm-tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only at c16b2d01 against its base 3affe0ea), specy-road integrity with this fix reports no removed-test-file or removed-test for the moved files; report the command and the remaining finding counts in READY",
+        "CHANGELOG.md [Unreleased] records the fix; no version heading is written",
+        "Estimated net line change (informational, not a gate): package about +15, tests about +40"
+      ],
+      "codename": "integrity-follows-moved-test-files",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.6.7",
+      "node_key": "fc207fa2-60e7-4d2b-86f4-2aecafaa2a05",
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.7_integrity-follows-moved-test-files_fc207fa2-60e7-4d2b-86f4-2aecafaa2a05.md",
+      "sibling_order": 7,
+      "status": "Complete",
+      "title": "Integrity follows moved test files: a renamed test file and its tests are not removals",
+      "touch_zones": [
+        "specy_road/integrity.py",
+        "tests/test_integrity_python.py",
+        "tests/test_integrity.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "tests/support/harness.py wait_for_worker reads the worker record while holding the public workers_lock the runner holds when it clears the pid and releases the lease (specy_road/orchestration/workers/worker_runner.py, the end-of-turn update), so a caller never sees a finished worker whose completed or failed lease is not yet released; it imports no _-prefixed name and adds no sleep beyond its existing poll interval",
+        "tests/test_worker_max_workers_global.py passes 20 consecutive runs with pytest -n 4 at this leaf's head (record the command and the 20/20 result in READY); at the merge base the same loop shows the flake (record the failure count, expected about 1 in 5), and no assertion in that file is removed or loosened",
+        "No product code changes; every other test that calls wait_for_worker still passes",
+        "Estimated net line change (informational, not a gate): tests about +5"
+      ],
+      "codename": "worker-tests-wait-under-the-workers-lock",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.6.8",
+      "node_key": "eebb31de-077f-4d0d-9ee3-3280973373f7",
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.8_worker-tests-wait-under-the-workers-lock_eebb31de-077f-4d0d-9ee3-3280973373f7.md",
+      "sibling_order": 8,
+      "status": "Complete",
+      "title": "Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates",
+      "touch_zones": [
+        "tests/support/harness.py",
+        "tests/test_worker_max_workers_global.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Every backticked test path in docs/orchestration.md, docs/orchestration-workers.md, docs/orchestration-harness-launch.md and docs/agentic-sandbox-runbook.md that M16.6.5 moved names its new lane path from tests/support/layout.csv; a grep of docs/ for the old flat paths listed in layout.csv finds none",
+        "Docs only; no wording change beyond the paths; tests/test_doc_links.py passes",
+        "Estimated net line change (informational, not a gate): docs about 0"
+      ],
+      "codename": "docs-name-moved-test-files-at-lane-paths",
+      "dependencies": [
+        "33af9de4-c487-4e4e-ac48-253ffb8483f1"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.6.9",
+      "node_key": "7f5507bd-e3cb-4b24-8483-0e33170f4a51",
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.9_docs-name-moved-test-files-at-lane-paths_7f5507bd-e3cb-4b24-8483-0e33170f4a51.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "Docs name the moved test files at their lane paths",
+      "touch_zones": [
+        "docs/orchestration.md",
+        "docs/orchestration-workers.md",
+        "docs/orchestration-harness-launch.md",
+        "docs/agentic-sandbox-runbook.md",
+        "docs/supply-chain-security.md"
+      ],
+      "type": "task"
     }
   ]
 }

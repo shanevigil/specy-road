@@ -65,8 +65,11 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.6.2` suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout `suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` — task — **Not Started**
     - `M16.6.3` Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them `tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` — task — **Complete**
     - `M16.6.4` Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support `tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support` — task — **Complete**
-    - `M16.6.5` Tests: files move into unit, flows, cli, gui and repo lanes, moves only `tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` — task — **Not Started**
+    - `M16.6.5` Tests: files move into unit, flows, cli, gui and repo lanes, moves only `tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` — task — **Complete**
     - `M16.6.6` Tests: per-leaf and per-round test files fold into the file for the module or flow they test `tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test` — task — **Not Started**
+    - `M16.6.7` Integrity follows moved test files: a renamed test file and its tests are not removals `integrity-follows-moved-test-files` — task — **Complete**
+    - `M16.6.8` Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates `worker-tests-wait-under-the-workers-lock` — task — **Complete**
+    - `M16.6.9` Docs name the moved test files at their lane paths `docs-name-moved-test-files-at-lane-paths` — task — **Not Started**
   - `M16.7` Test dedupe, public seams, properties and the smoke lane `test-dedupe-public-seams-properties-and-the-smoke-lane` — milestone — **Not Started**
     - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Not Started**
     - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Not Started**
@@ -192,6 +195,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.68` grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only `grind-status` — task — **Complete**
   - `M22.69` A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line `human-criteria-in-ledger` — task — **Complete**
   - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Complete**
+  - `M22.71` Review channels report the model the harness actually ran, so every review record names it `review-channels-report-the-model-the-harness-ran` — task — **Not Started**
+  - `M22.72` Gate: current harness facts delivered as a dated research report `harness-facts-research-delivered` — gate — **Not Started**
+  - `M22.73` Harness facts and captures refreshed from the delivered research `harness-facts-and-captures-refreshed` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -282,6 +288,7 @@ Work behind these is deliberately held back until they clear.
 - `M16.8.9 Gate: ready to tag 0.3.1` — **Not Started**
 - `M16.8.10 Gate: 0.3.1 tagged` — **Not Started**
 - `M22.59 Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced` — **Not Started**
+- `M22.72 Gate: current harness facts delivered as a dated research report` — **Not Started**
 - `M23.2 Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window` — **Not Started**
 
 ## Dependencies that were removed
@@ -343,12 +350,13 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.6.2` on `feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` since 2026-11-15
-- `M16.6.5` on `feature/rm-tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` since 2026-11-15
+- `M16.6.9` on `feature/rm-docs-name-moved-test-files-at-lane-paths` since 2026-11-16
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
+- `M22.71` on `feature/rm-review-channels-report-the-model-the-harness-ran` since 2026-11-16
 
 ## Quality by area
 
@@ -357,9 +365,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.gitignore` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `CHANGELOG.md` **flagged** | 23 | 0 | 2.70 | 74% | 21 | 1 |
+| `CHANGELOG.md` **flagged** | 20 | 0 | 2.85 | 80% | 21 | 0 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 25 | 0 | 2.72 | 72% | 53 | 1 |
+| `docs` **flagged** | 22 | 0 | 2.91 | 77% | 55 | 0 |
 | `gui` **flagged** | 8 | 0 | 2.62 | 62% | 1 | 0 |
 | `planning` **flagged** | 4 | 0 | 3.75 | 75% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
@@ -368,12 +376,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `specy_road` **flagged** | 48 | 0 | 2.33 | 54% | 111 | 1 |
+| `scripts` **flagged** | 21 | 0 | 2.71 | 52% | 98 | 0 |
+| `specy_road` **flagged** | 44 | 0 | 2.41 | 57% | 111 | 0 |
 | `suggested_prompts` **flagged** | 6 | 0 | 3.17 | 100% | 4 | 0 |
-| `tests` **flagged** | 49 | 0 | 2.24 | 53% | 115 | 1 |
+| `tests` **flagged** | 49 | 0 | 2.41 | 57% | 120 | 0 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `constraints` | 22 | 0 | 2.27 | 41% | 99 | 0 |
-| `scripts` | 19 | 0 | 2.47 | 47% | 94 | 0 |
+| `constraints` | 24 | 0 | 2.50 | 46% | 103 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

@@ -16,6 +16,7 @@ from tests.support.review import make_review_repo, git
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers.worker_adapters import Launch
+from specy_road.orchestration.workers.worker_lock import workers_lock
 FAKE = '''
 import json, sys, time
 spec = json.loads(open(sys.argv[1]).read()) if sys.argv[1].endswith(".json") else {"lines": [
@@ -65,9 +66,15 @@ def reset_cursor_adapter_via_init(adapter=None):
 
 
 def wait_for_worker(repo: Path, wid: str, timeout: float = 10) -> ws.WorkerRecord:
-    """Poll until worker ``wid``'s wrapper has exited; return its record."""
+    """Poll until worker ``wid``'s wrapper has exited; return its record.
+
+    Each read holds ``workers_lock``, the lock the runner holds while it clears
+    the pid and releases a completed or failed lease, so a caller never sees a
+    finished worker whose lease is not yet released.
+    """
     for _ in range(int(timeout * 10)):
-        rec = ws.load_record(repo, wid)
+        with workers_lock(repo):
+            rec = ws.load_record(repo, wid)
         if rec.pid is None:
             return rec
         time.sleep(0.1)
