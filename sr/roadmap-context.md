@@ -363,9 +363,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.gitignore` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `CHANGELOG.md` **flagged** | 21 | 0 | 2.81 | 76% | 21 | 1 |
+| `CHANGELOG.md` **flagged** | 21 | 0 | 2.95 | 81% | 21 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 23 | 0 | 2.83 | 74% | 53 | 1 |
+| `docs` **flagged** | 22 | 0 | 2.91 | 77% | 53 | 1 |
 | `gui` **flagged** | 8 | 0 | 2.62 | 62% | 1 | 0 |
 | `planning` **flagged** | 4 | 0 | 3.75 | 75% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
@@ -374,9 +374,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `specy_road` **flagged** | 46 | 0 | 2.37 | 54% | 111 | 1 |
+| `specy_road` **flagged** | 45 | 0 | 2.47 | 58% | 111 | 1 |
 | `suggested_prompts` **flagged** | 6 | 0 | 3.17 | 100% | 4 | 0 |
-| `tests` **flagged** | 49 | 0 | 2.35 | 55% | 118 | 1 |
+| `tests` **flagged** | 49 | 0 | 2.41 | 57% | 118 | 1 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `constraints` | 23 | 0 | 2.39 | 43% | 101 | 0 |
 | `scripts` | 20 | 0 | 2.60 | 50% | 96 | 0 |
