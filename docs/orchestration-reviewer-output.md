@@ -164,7 +164,8 @@ harness reported (its first `system/init` event's `model`, as worker usage
 reads it, each `result` event's `model`, or the one key of its
 `modelUsage`, and for Codex, whose `--json` stream names no model, the
 `turn_context.model` its rollout recorded for the first `thread.started`
-thread, found under the profile's `CODEX_HOME` or else the user's) with the entry's one effective model
+thread, found under the profile's `CODEX_HOME`, a `CODEX_HOME` the entry's
+`channels.cli` or `cli_resume` sets in its own words, or else the user's) with the entry's one effective model
 (`review_model_check.resolve_effective_model`: `harness_model`, else the
 profile's `api_id`, else the roster `id`; empty or `unknown` resolves to none),
 after normalising case, separators and display names (`Claude Opus 5.5` is
@@ -181,7 +182,12 @@ A `channels.cli` wrapper must pass the harness's event stream through to
 stdout unchanged (`claude -p --output-format stream-json --verbose`, `agent -p
 --output-format stream-json`, `codex exec --json`), with its stderr kept off
 stdout: the model check reads only that stream, and a wrapper that prints only
-the final answer files every record as reporting no model.
+the final answer files every record as reporting no model. A Codex wrapper that
+uses its own `CODEX_HOME` must write it in the command as a `CODEX_HOME=VALUE`
+word (`CODEX_HOME=/srv/codex codex exec --json …`, `env CODEX_HOME=…`, `export
+CODEX_HOME=…;`), with an absolute value after `~` and `$VAR` are expanded from
+specy-road's environment: a home set inside a script the command runs, built at
+run time or given as a relative path is not found, and the run reports no model.
 
 ## Prevention and the tripwire (A2)
 

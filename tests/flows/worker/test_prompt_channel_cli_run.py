@@ -313,19 +313,38 @@ def test_check_run_flags_any_reported_model_that_is_not_the_rostered_one(lines: 
     assert check_run(lines, {"id": "opus"}, load_profile(OPUS)) == want
 
 
+TERRA = {"id": "terra", "harness_model": "gpt-6.1-terra"}
+
+
 @pytest.mark.parametrize("home, thread, entry, want", [
-    ("profile", CODEX_THREAD, {"id": "terra", "harness_model": "gpt-6.1-terra"}, ("gpt-6.1-terra", "match")),
-    ("user", CODEX_THREAD, {"id": "opus"}, ("gpt-6.1-terra", "mismatch")),   # a channels.cli under the user's home
+    ("profile", CODEX_THREAD, TERRA, ("gpt-6.1-terra", "match")),                     # a default launch
+    ("user", CODEX_THREAD, {"id": "opus"}, ("gpt-6.1-terra", "mismatch")),   # a channels.cli that sets no home
     ("user", "*", {"id": "opus"}, (None, "unreported")),   # a glob in an untrusted thread id finds no rollout
+    # a channels.cli that sets its own CODEX_HOME in its words: as a prefix, through a variable, on cli_resume
+    ("wrapper", CODEX_THREAD, {**TERRA, "channels": {"cli": "CODEX_HOME={home} codex exec --json -"}},
+     ("gpt-6.1-terra", "match")),
+    ("wrapper", CODEX_THREAD, {"id": "opus", "channels": {"cli": "export CODEX_HOME=$WRAP_HOME; codex exec --json -"}},
+     ("gpt-6.1-terra", "mismatch")),
+    ("wrapper", CODEX_THREAD, {**TERRA, "channels": {"cli": "codex exec --json -",
+                                                     "cli_resume": "env CODEX_HOME={home} codex exec resume --json"}},
+     ("gpt-6.1-terra", "match")),
+    ("wrapper", CODEX_THREAD, {**TERRA, "channels": {"cli": "CODEX_HOME=wrapper-home codex exec --json -"}},
+     (None, "unreported")),   # a relative home: the run's directory is not known here
+    ("wrapper", CODEX_THREAD, {**TERRA, "channels": {"cli": "./review-with-own-home.sh"}},
+     (None, "unreported")),   # a home set inside a script the command runs is not seen
 ])
 def test_check_run_reads_the_model_the_codex_rollout_recorded(tmp_path: Path, monkeypatch, home: str, thread: str,
                                                               entry: dict, want: tuple) -> None:
     """``codex exec --json`` names no model; the thread's rollout does, in the profile's ``CODEX_HOME`` (a default
-    launch) or the user's (a ``channels.cli`` passing the stream through)."""
+    launch), a ``CODEX_HOME`` the ``channels.cli`` sets in its own words, or else the user's."""
     from specy_road.orchestration.workers import worker_adapter_codex as codex   # noqa: PLC0415
 
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
-    root = codex.codex_homes() / "gpt-6.1-terra" if home == "profile" else tmp_path / "codex"
+    monkeypatch.setenv("WRAP_HOME", str(tmp_path / "wrapper"))
+    channels = {k: v.replace("{home}", str(tmp_path / "wrapper")) for k, v in entry.get("channels", {}).items()}
+    entry = {**entry, "channels": channels} if channels else entry
+    root = {"profile": codex.codex_homes() / "gpt-6.1-terra", "user": tmp_path / "codex",
+            "wrapper": tmp_path / "wrapper"}[home]
     day = root / "sessions" / "2026" / "11" / "16"
     day.mkdir(parents=True)
     shutil.copy(CODEX_ROLLOUT, day)
