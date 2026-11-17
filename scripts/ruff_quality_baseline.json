@@ -995,7 +995,7 @@
       "B": 1,
       "D102/D103": 1
     },
-    "tests/cli/test_review_round6_guard.py": {
+    "tests/cli/test_session_guard.py": {
       "PL": 2,
       "D102/D103": 16
     },
@@ -1023,23 +1023,19 @@
       "D102/D103": 5
     },
     "tests/flows/brainstorm/test_brainstorm_cli.py": {
-      "PL": 3,
-      "D102/D103": 22
-    },
-    "tests/flows/brainstorm/test_brainstorm_promote_m37.py": {
-      "PL": 1,
-      "D102/D103": 8
+      "PL": 5,
+      "D102/D103": 24
     },
     "tests/flows/brainstorm/test_brainstorm_prompt_fixes.py": {
       "PL": 1,
-      "D102/D103": 7
+      "D102/D103": 8
     },
     "tests/flows/brainstorm/test_brainstorm_repo_evidence.py": {
       "D102/D103": 15
     },
     "tests/flows/brainstorm/test_brainstorm_verify.py": {
       "PL": 5,
-      "D102/D103": 9
+      "D102/D103": 10
     },
     "tests/flows/chore/test_chore_garden_lifecycle.py": {
       "PL": 1
@@ -1079,7 +1075,7 @@
       "D102/D103": 1
     },
     "tests/flows/finish/test_finish_merge_mode.py": {
-      "D102/D103": 3
+      "D102/D103": 4
     },
     "tests/flows/finish/test_finish_on_complete_override.py": {
       "D102/D103": 4
@@ -1118,7 +1114,8 @@
       "D102/D103": 3
     },
     "tests/flows/init/test_agent_ignores.py": {
-      "D102/D103": 4
+      "PL": 1,
+      "D102/D103": 22
     },
     "tests/flows/init/test_agents_md_block.py": {
       "PL": 1,
@@ -1126,7 +1123,7 @@
     },
     "tests/flows/init/test_agents_md_report.py": {
       "PL": 3,
-      "D102/D103": 4
+      "D102/D103": 5
     },
     "tests/flows/init/test_init_project_first_run.py": {
       "D102/D103": 1
@@ -1138,19 +1135,12 @@
       "PL": 1,
       "D102/D103": 8
     },
-    "tests/flows/init/test_m13_12_untrack_command.py": {
-      "D102/D103": 3
-    },
-    "tests/flows/init/test_m13_7_notices.py": {
-      "PL": 1,
-      "D102/D103": 13
-    },
     "tests/flows/init/test_refresh_stubs.py": {
       "PL": 2,
-      "D102/D103": 10
+      "D102/D103": 19
     },
     "tests/flows/init/test_skill_mirrors.py": {
-      "D102/D103": 8
+      "D102/D103": 11
     },
     "tests/flows/init/test_update_specy_road.py": {
       "D102/D103": 8
@@ -1259,7 +1249,7 @@
       "D102/D103": 4
     },
     "tests/flows/registry/test_integrity.py": {
-      "D102/D103": 12
+      "D102/D103": 13
     },
     "tests/flows/registry/test_integrity_gate.py": {
       "D102/D103": 11
@@ -1348,8 +1338,8 @@
       "D102/D103": 3
     },
     "tests/flows/review/test_mark_implementation_reviewed_gate.py": {
-      "PL": 5,
-      "D102/D103": 9
+      "PL": 6,
+      "D102/D103": 10
     },
     "tests/flows/review/test_ready_changelog_warning.py": {
       "PL": 2,
@@ -1389,8 +1379,8 @@
       "D102/D103": 12
     },
     "tests/flows/review/test_review_delegate.py": {
-      "PL": 4,
-      "D102/D103": 21
+      "PL": 5,
+      "D102/D103": 26
     },
     "tests/flows/review/test_review_delegate_claude_schema.py": {
       "D102/D103": 3
@@ -1406,15 +1396,11 @@
     },
     "tests/flows/review/test_review_files.py": {
       "PL": 11,
-      "D102/D103": 18
-    },
-    "tests/flows/review/test_review_friction_m15_17.py": {
-      "PL": 1,
-      "D102/D103": 14
+      "D102/D103": 20
     },
     "tests/flows/review/test_review_gate.py": {
       "PL": 2,
-      "D102/D103": 12
+      "D102/D103": 14
     },
     "tests/flows/review/test_review_gate_ready_author.py": {
       "PL": 2,
@@ -1433,7 +1419,7 @@
     },
     "tests/flows/review/test_review_packet.py": {
       "PL": 1,
-      "D102/D103": 20
+      "D102/D103": 23
     },
     "tests/flows/review/test_review_policy_pin.py": {
       "PL": 5,
@@ -1454,7 +1440,7 @@
       "D102/D103": 9
     },
     "tests/flows/review/test_review_record_rules.py": {
-      "D102/D103": 20
+      "D102/D103": 26
     },
     "tests/flows/review/test_review_record_write.py": {
       "D102/D103": 18
@@ -1462,43 +1448,12 @@
     "tests/flows/review/test_review_record_write_closure.py": {
       "D102/D103": 3
     },
-    "tests/flows/review/test_review_rejected_m15_33.py": {
-      "D102/D103": 11
-    },
-    "tests/flows/review/test_review_round2_routing.py": {
-      "D102/D103": 10
-    },
-    "tests/flows/review/test_review_round4_sol.py": {
-      "PL": 2,
-      "D102/D103": 21
-    },
-    "tests/flows/review/test_review_round4_sol_b.py": {
-      "PL": 3,
-      "D102/D103": 6
-    },
-    "tests/flows/review/test_review_round5.py": {
-      "PL": 7,
-      "D102/D103": 18
-    },
-    "tests/flows/review/test_review_round6_evidence.py": {
-      "PL": 1,
-      "D102/D103": 13
-    },
-    "tests/flows/review/test_review_round6_ops.py": {
-      "PL": 1,
-      "SIM": 1,
-      "D102/D103": 17
-    },
-    "tests/flows/review/test_review_round6_policy.py": {
-      "D102/D103": 13
-    },
-    "tests/flows/review/test_review_round6_runner.py": {
-      "PL": 1,
+    "tests/flows/review/test_review_rejected.py": {
       "D102/D103": 11
     },
     "tests/flows/review/test_review_signing.py": {
-      "PL": 8,
-      "D102/D103": 9
+      "PL": 10,
+      "D102/D103": 16
     },
     "tests/flows/review/test_review_strict_schema_removals.py": {
       "D102/D103": 3
@@ -1529,11 +1484,9 @@
       "PL": 3,
       "D102/D103": 9
     },
-    "tests/flows/review/test_rework_findings_in_prompt.py": {
-      "D102/D103": 7
-    },
     "tests/flows/review/test_rework_rca.py": {
-      "D102/D103": 9
+      "PL": 2,
+      "D102/D103": 21
     },
     "tests/flows/review/test_sheet_edits_keep_approvals.py": {
       "D102/D103": 7
@@ -1579,9 +1532,6 @@
       "PL": 1,
       "D102/D103": 9
     },
-    "tests/flows/roadmap/test_m11_27_small_cli_fixes.py": {
-      "D102/D103": 6
-    },
     "tests/flows/roadmap/test_move_node_subtree.py": {
       "D102/D103": 7
     },
@@ -1619,7 +1569,7 @@
     },
     "tests/flows/roadmap/test_validate_roadmap.py": {
       "PL": 3,
-      "D102/D103": 18
+      "D102/D103": 21
     },
     "tests/flows/roadmap/test_validate_stale_commands.py": {
       "PL": 2,
@@ -1654,14 +1604,15 @@
       "PL": 3
     },
     "tests/flows/worker/test_harness_launch.py": {
-      "D102/D103": 12
+      "PL": 1,
+      "D102/D103": 17
     },
     "tests/flows/worker/test_model_profile_aliases.py": {
-      "D102/D103": 4
+      "D102/D103": 12
     },
     "tests/flows/worker/test_models_and_prompt.py": {
       "PL": 2,
-      "D102/D103": 25
+      "D102/D103": 32
     },
     "tests/flows/worker/test_orphaned_claims.py": {
       "D102/D103": 5
@@ -1678,11 +1629,11 @@
       "D102/D103": 17
     },
     "tests/flows/worker/test_roster_harness_model.py": {
-      "D102/D103": 8
+      "D102/D103": 9
     },
     "tests/flows/worker/test_roster_source.py": {
       "PL": 2,
-      "D102/D103": 2
+      "D102/D103": 3
     },
     "tests/flows/worker/test_sandbox_setup_polish.py": {
       "D102/D103": 5
@@ -1692,27 +1643,24 @@
     },
     "tests/flows/worker/test_session_presence.py": {
       "PL": 1,
-      "D102/D103": 18
+      "D102/D103": 20
     },
     "tests/flows/worker/test_worker_adapters.py": {
-      "PL": 2,
-      "D102/D103": 19
+      "PL": 3,
+      "D102/D103": 38
     },
     "tests/flows/worker/test_worker_claude_auth.py": {
       "PL": 6,
       "D102/D103": 4
     },
     "tests/flows/worker/test_worker_cli.py": {
-      "PL": 12,
-      "D102/D103": 11
+      "PL": 17,
+      "D102/D103": 30
     },
     "tests/flows/worker/test_worker_cli_fixes.py": {
       "D102/D103": 17
     },
     "tests/flows/worker/test_worker_handoff_writable.py": {
-      "D102/D103": 5
-    },
-    "tests/flows/worker/test_worker_m310_reconcile_status.py": {
       "D102/D103": 6
     },
     "tests/flows/worker/test_worker_max_workers_global.py": {
@@ -1725,27 +1673,20 @@
     },
     "tests/flows/worker/test_worker_queue_message.py": {
       "PL": 4,
-      "D102/D103": 7
+      "D102/D103": 11
     },
     "tests/flows/worker/test_worker_reconcile_contract.py": {
-      "D102/D103": 6
+      "D102/D103": 17
     },
     "tests/flows/worker/test_worker_reconcile_merged.py": {
       "D102/D103": 6
     },
     "tests/flows/worker/test_worker_resume_failed.py": {
-      "D102/D103": 7
+      "D102/D103": 9
     },
     "tests/flows/worker/test_worker_resume_permissions.py": {
       "PL": 2,
       "D102/D103": 15
-    },
-    "tests/flows/worker/test_worker_review_round1.py": {
-      "PL": 3,
-      "D102/D103": 9
-    },
-    "tests/flows/worker/test_worker_review_round2.py": {
-      "D102/D103": 17
     },
     "tests/flows/worker/test_worker_reviews_dir_before_launch.py": {
       "D102/D103": 2
@@ -1755,16 +1696,13 @@
       "D102/D103": 3
     },
     "tests/flows/worker/test_worker_stall_recovery.py": {
-      "PL": 4,
-      "D102/D103": 6
+      "PL": 5,
+      "D102/D103": 13
     },
     "tests/flows/worker/test_worker_state.py": {
-      "PL": 11,
-      "D102/D103": 16
-    },
-    "tests/flows/worker/test_worker_sync_m15_13.py": {
-      "PL": 6,
-      "D102/D103": 14
+      "PL": 15,
+      "SIM": 1,
+      "D102/D103": 39
     },
     "tests/flows/worker/test_worker_turn_check.py": {
       "PL": 5,
@@ -1787,8 +1725,8 @@
       "D102/D103": 14
     },
     "tests/gui/test_gui_app_brainstorm.py": {
-      "PL": 19,
-      "D102/D103": 17
+      "PL": 23,
+      "D102/D103": 21
     },
     "tests/gui/test_gui_app_milestone_lock.py": {
       "PL": 6,
@@ -1845,9 +1783,6 @@
     "tests/helpers.py": {
       "PL": 2,
       "D102/D103": 1
-    },
-    "tests/m13_7_ignore_helpers.py": {
-      "D102/D103": 5
     },
     "tests/move_node_helpers.py": {
       "PL": 2,
@@ -1964,6 +1899,9 @@
     "tests/support/decisions.py": {
       "D102/D103": 3
     },
+    "tests/support/extracted/agent_ignores.py": {
+      "D102/D103": 5
+    },
     "tests/support/extracted/chore_mode.py": {
       "D102/D103": 1
     },
@@ -2002,7 +1940,7 @@
     "tests/support/extracted/review_defer_rounds.py": {
       "PL": 5
     },
-    "tests/support/extracted/rework_findings_in_prompt.py": {
+    "tests/support/extracted/rework_rca.py": {
       "D102/D103": 3
     },
     "tests/support/extracted/roadmap_chunk_router.py": {
@@ -2082,7 +2020,7 @@
     },
     "tests/unit/test_brainstorm_chat.py": {
       "PL": 3,
-      "D102/D103": 9
+      "D102/D103": 11
     },
     "tests/unit/test_brainstorm_decisions.py": {
       "PL": 2,
@@ -2093,8 +2031,8 @@
       "D102/D103": 10
     },
     "tests/unit/test_brainstorm_promote.py": {
-      "PL": 6,
-      "D102/D103": 15
+      "PL": 7,
+      "D102/D103": 23
     },
     "tests/unit/test_brainstorm_promote_judgement.py": {
       "D102/D103": 11
@@ -2108,19 +2046,16 @@
       "D102/D103": 11
     },
     "tests/unit/test_brainstorm_session.py": {
-      "D102/D103": 13
+      "PL": 1,
+      "D102/D103": 19
     },
     "tests/unit/test_brainstorm_skill_first_call.py": {
       "PL": 1,
       "D102/D103": 1
     },
-    "tests/unit/test_brainstorm_triage_m36.py": {
-      "PL": 1,
-      "D102/D103": 5
-    },
     "tests/unit/test_brainstorm_v2.py": {
-      "PL": 6,
-      "D102/D103": 19
+      "PL": 8,
+      "D102/D103": 28
     },
     "tests/unit/test_brief_dependency_context.py": {
       "PL": 1,
@@ -2136,6 +2071,9 @@
     "tests/unit/test_cli_init.py": {
       "PL": 1,
       "D102/D103": 5
+    },
+    "tests/unit/test_context_notice_cache.py": {
+      "D102/D103": 17
     },
     "tests/unit/test_cursor_usage_segments.py": {
       "PL": 10,
@@ -2236,21 +2174,11 @@
     },
     "tests/unit/test_hook_adapters.py": {
       "PL": 4,
-      "D102/D103": 7
+      "D102/D103": 8
     },
     "tests/unit/test_llm_throughput.py": {
       "PL": 4,
       "D102/D103": 12
-    },
-    "tests/unit/test_m13_12_context_cache.py": {
-      "D102/D103": 14
-    },
-    "tests/unit/test_m13_12_quieter_notices.py": {
-      "PL": 2,
-      "D102/D103": 12
-    },
-    "tests/unit/test_m13_7_gitignore_symlinks.py": {
-      "D102/D103": 1
     },
     "tests/unit/test_managed_block.py": {
       "D102/D103": 6
@@ -2284,7 +2212,8 @@
       "D102/D103": 2
     },
     "tests/unit/test_orchestrate_plan.py": {
-      "D102/D103": 15
+      "PL": 5,
+      "D102/D103": 17
     },
     "tests/unit/test_outline_group_cli.py": {
       "B": 1,
@@ -2349,13 +2278,6 @@
     },
     "tests/unit/test_review_lessons.py": {
       "D102/D103": 6
-    },
-    "tests/unit/test_review_round6_brainstorm.py": {
-      "PL": 6,
-      "D102/D103": 12
-    },
-    "tests/unit/test_review_round6_docs.py": {
-      "D102/D103": 10
     },
     "tests/unit/test_review_run_lows_rc5.py": {
       "PL": 1,
@@ -2466,11 +2388,11 @@
       "D102/D103": 14
     },
     "tests/unit/test_specyrd_init_guide_block.py": {
-      "D102/D103": 4
+      "D102/D103": 7
     },
     "tests/unit/test_specyrd_skills.py": {
       "PL": 3,
-      "D102/D103": 10
+      "D102/D103": 17
     },
     "tests/unit/test_sync_planning_outline.py": {
       "D102/D103": 3
@@ -2480,11 +2402,11 @@
     },
     "tests/unit/test_tool_call_guard.py": {
       "PL": 9,
-      "D102/D103": 9
+      "D102/D103": 19
     },
     "tests/unit/test_touch_zone_tracked.py": {
-      "PL": 1,
-      "D102/D103": 15
+      "PL": 3,
+      "D102/D103": 18
     },
     "tests/unit/test_upgrade_file_limits_notice.py": {
       "D102/D103": 1

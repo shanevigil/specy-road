@@ -24,6 +24,10 @@ from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import doctor
 from specy_road.orchestration.guard.session_presence import current_user, list_sessions, start_session
 from specy_road.orchestration.workers.worker_process import wrapper_alive
+import subprocess
+from specy_road.orchestration.workers import worker_reconcile as wrc
+from tests.support.extracted.folded_review_ops import _idle
+from specy_road.orchestration.workers import worker_process as wp
 
 OLD = "2026-01-01T00:00:00+00:00"   # long past policy.stall_after_seconds (default 600)
 
@@ -193,3 +197,176 @@ def test_recover_refuses_while_another_worker_holds_the_leaf(tmp_path: Path) -> 
         slots.recover(repo, stalled.worker_id)
     after = ws.load_record(repo, stalled.worker_id)
     assert after.state == "running" and not after.recoveries
+
+
+
+# --- F5, F8, F16 ----------------------------------------------------------------
+
+def test_a_dead_wrapper_frees_the_leaf(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path, max_workers=4)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.set_state(repo, rec, "running", pid=999999)
+    again, created = ops.delegate(repo, "M1.1", "opus")
+    assert created and again.worker_id != rec.worker_id
+    assert ws.load_record(repo, rec.worker_id).state == "failed"
+    wait_for_worker(repo, again.worker_id)
+
+
+
+# --- F11 (a) / G2 ---------------------------------------------------------------
+
+def _dead_pid() -> int:
+    p = subprocess.Popen([sys.executable, "-c", "pass"])
+    p.wait()
+    return p.pid
+
+
+
+def test_sync_and_delegate_reap_dead_wrappers_on_any_leaf(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path, max_workers=1)
+    dead = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
+    ws.set_state(repo, dead, "running", pid=_dead_pid())
+    assert wrc.sync(repo, ack=True)
+    delta = wrc.sync(repo)
+    assert delta == [] and ws.load_record(repo, dead.worker_id).state == "failed"
+    assert [e.type for e in ws.events_since(repo, dead.worker_id)][-1] == "error"
+    # A second dead record, not yet swept, must not hold the single slot.
+    dead2 = ws.create_record(repo, "M1.3", "claude-code", "opus", repo)
+    ws.set_state(repo, dead2, "running", pid=_dead_pid())
+    rec, created = ops.delegate(repo, "M1.1", "opus")
+    assert created and ws.load_record(repo, dead2.worker_id).state == "failed"
+    wait_for_worker(repo, rec.worker_id)
+
+
+
+# --- B9 ---------------------------------------------------------------------------
+
+@pytest.mark.slow
+@pytest.mark.skipif(not hasattr(signal, "SIGKILL"), reason="POSIX signals")
+def test_a_dead_wrapper_with_a_live_harness_keeps_the_leaf_and_terminate_kills_the_group(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    slow = tmp_path / "slow.json"
+    slow.write_text(json.dumps({"lines": [{"type": "system", "subtype": "init", "session_id": "slow"}], "sleep": 30}))
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    wr.spawn(repo, rec, wa.Launch([sys.executable, str(script), str(slow)]))
+    for _ in range(100):
+        rec = ws.load_record(repo, rec.worker_id)
+        if rec.provider_session_id and rec.harness_pid:
+            break
+        time.sleep(0.1)
+    assert rec.pgid == rec.pid and rec.harness_pid and rec.harness_start and rec.wrapper_token
+    assert wp.wrapper_alive(rec, repo) and wp.harness_alive(rec)
+    os.kill(rec.pid, signal.SIGKILL)
+    time.sleep(0.3)
+    assert not wp.wrapper_alive(rec, repo) and wp.harness_alive(rec)
+    assert ops._wrapper_gone(repo, ws.load_record(repo, rec.worker_id)) is False
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.state == "running" and ws.FLAG_ORPHAN in rec.flags
+    evs = ws.events_since(repo, rec.worker_id)
+    assert "harness pid" in evs[-1].summary and "still alive" in evs[-1].summary
+    assert ops._wrapper_gone(repo, rec) is False and len(ws.events_since(repo, rec.worker_id)) == len(evs)  # said once
+    with pytest.raises(ws.WorkerError, match="still running"):
+        ops.resume(repo, rec.worker_id)
+    with pytest.raises(ws.WorkerError, match="running"):
+        ops.handoff(repo, rec.worker_id)
+    _r, created = ops.delegate(repo, "M1.1", "opus")
+    assert not created                                              # the leaf is still owned
+    pgid = rec.pgid
+    ops.terminate(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).state == "terminated"
+    assert not wp._group_members(pgid)
+
+
+
+def test_once_the_whole_group_is_gone_the_record_is_failed(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: (setattr(r, "state", "running"), setattr(r, "pid", 999999),
+                                    setattr(r, "pgid", 999999), setattr(r, "harness_pid", 999998)))
+    assert ops._wrapper_gone(repo, ws.load_record(repo, rec.worker_id)) is True
+    assert ws.load_record(repo, rec.worker_id).state == "failed"
+
+
+
+# --- B11 ----------------------------------------------------------------------------
+
+def test_pid_verification_needs_repo_root_worker_id_and_token_as_whole_args(monkeypatch) -> None:
+    me = os.getpid()
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /other/repository w-0001 tok1 /p")
+    assert not wp.pid_alive(me, "w-0001", repo_root=Path("/r"), token="tok1")
+    assert not wp.pid_verified(me, "w-0001", repo_root=Path("/r"), token="tok1")
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001 tok2 /p")
+    assert not wp.pid_alive(me, "w-0001", repo_root=Path("/r"), token="tok1")     # same repo, a later spawn's token
+    assert not wp.pid_alive(me, "w-00011", repo_root=Path("/r"), token="tok2")    # a prefix is not the id
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001 tok1 /p")
+    assert wp.pid_alive(me, "w-0001", repo_root=Path("/r"), token="tok1")
+    assert wp.pid_verified(me, "w-0001", repo_root=Path("/r"), token="tok1")
+    rec = ws.WorkerRecord("w-0001", "M1.1", "claude-code", "opus", "/r", "running", {"holder": "broker", "since": "t"},
+                          0, 1, 0, "t", "t", pid=me, wrapper_token="tok9")
+    assert not wp.wrapper_alive(rec, Path("/r"))                                 # the record's token rules
+
+
+
+def test_a_pid_our_user_cannot_signal_is_not_our_wrapper(monkeypatch) -> None:
+    def denied(pid, sig):
+        raise PermissionError(pid)
+    monkeypatch.setattr(wp.os, "kill", denied)
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: "some other user's process")
+    assert not wp.pid_alive(4242, "w-0001")
+    assert not wp.pid_verified(4242, "w-0001")
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: None)                       # ps cannot say either
+    assert not wp.pid_alive(4242, "w-0001")
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001 tok /p")
+    assert wp.pid_alive(4242, "w-0001", repo_root=Path("/r"), token="tok")      # only the command line can confirm it
+
+
+
+def test_a_wrapper_with_a_long_command_line_is_still_recognised(tmp_path: Path) -> None:
+    """procps ``ps`` without a terminal cuts ``-o command=`` at 80 columns unless ``-ww`` (cloud pre-release run)."""
+    from specy_road.orchestration.workers import worker_process as wp
+    deep = tmp_path / ("d" * 120) / "r"
+    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)", "specy_road.worker_runner", str(deep), "w-0042", "{}"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(50):
+            if "w-0042" in (wp._cmdline(p.pid) or ""):
+                break
+            time.sleep(0.1)
+        assert wp.pid_alive(p.pid, "w-0042") and wp.pid_verified(p.pid, "w-0042")
+    finally:
+        p.kill()
+        p.wait()
+
+
+
+@pytest.mark.parametrize("module", [
+    "specy_road.worker_runner",                          # launched before the move
+    "specy_road.orchestration.workers.worker_runner",
+])
+def test_a_wrapper_launched_under_either_module_name_is_live(tmp_path: Path, module: str) -> None:
+    """A wrapper an older specy-road started as ``-m specy_road.worker_runner`` is still live."""
+    repo = tmp_path.resolve()
+    argv = ["-P", "-m", module, str(repo), "w-0042", "tok42", str(repo / "payload.json")]
+    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)", *argv],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    rec = ws.WorkerRecord("w-0042", "M1.1", "claude-code", "opus", str(repo), "running",
+                          {"holder": "broker", "since": "t"}, 0, 1, 0, "t", "t",
+                          pid=p.pid, wrapper_token="tok42")
+    try:
+        deadline = time.monotonic() + 5
+        while not wp.wrapper_verified(rec, repo) and time.monotonic() < deadline:   # ps may lag
+            time.sleep(0.1)
+        assert wp.wrapper_verified(rec, repo) and wp.wrapper_alive(rec, repo)
+    finally:
+        p.kill()
+        p.wait()
+
+
+
+def test_pid_alive_ignores_a_reused_pid(monkeypatch) -> None:
+    me = os.getpid()                       # alive, but not a wrapper
+    assert not wr.pid_alive(me)
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001")
+    assert wr.pid_alive(me)
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: None)   # ps unavailable: fall back to liveness
+    assert wr.pid_alive(me)

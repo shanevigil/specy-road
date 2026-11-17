@@ -15,6 +15,9 @@ from specy_road.agent_guide_block import render_guide_lines
 from specy_road.agents_md_block import render_rules
 from specy_road.managed_block import MARKER_START
 from specy_road.specyrd_init import InitResult, run_init
+from tests.support import REPO
+import pytest
+import re
 
 HAND_AUTHORED_CLAUDE_MD = """# My Project
 
@@ -138,3 +141,53 @@ def test_the_guide_block_is_prefixed_in_a_nested_layout(tmp_path: Path) -> None:
     assert not any("{{SPECYRD_VERSION}}" in ln for ln in lines)
     assert not any("<!--" in ln for ln in lines)   # provenance stays in the template
 
+
+BLOCK = REPO / "specy_road" / "templates" / "specyrd" / "agents-rules.md"
+
+PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
+
+
+
+# --- F16: the block names who changes the registry -------------------------------
+
+@pytest.mark.repo
+def test_block_says_pickup_and_finish_change_the_registry() -> None:
+    text = BLOCK.read_text(encoding="utf-8")
+    assert "never edits the registry directly; pickup and finish make the registry changes" in text
+    assert "and never edits the registry." not in text
+
+
+
+# --- F17: the bootstrap prompt merges the block and still names everything in it --
+
+@pytest.mark.repo
+def test_bootstrap_prompt_merges_the_block_verbatim_and_names_every_command_and_env_var() -> None:
+    block = BLOCK.read_text(encoding="utf-8")
+    prompt = PROMPT.read_text(encoding="utf-8")
+    assert "Merge the managed block verbatim" in prompt and "upgrade --only stubs" in prompt
+    commands = set(re.findall(r"`specy-road ([a-z][a-z-]+)", block))
+    env_vars = set(re.findall(r"\bSPECY_ROAD_[A-Z_]+", block))
+    assert commands and env_vars
+    missing = [c for c in sorted(commands) if f"specy-road {c}" not in prompt and f"`{c}" not in prompt]
+    missing += [v for v in sorted(env_vars) if v not in prompt]
+    assert not missing, missing
+
+
+
+# --- F5 / F15: the role and model-call claims match the code ---------------------
+
+@pytest.mark.repo
+def test_constitution_and_quickstarts_carry_the_exceptions() -> None:
+    principles = (REPO / "constitution" / "principles.md").read_text(encoding="utf-8")
+    assert "The coordination CLI never calls a model or search API" in principles
+    assert "`review-node`" in principles and "GUI" in principles
+    assert "`is_coordinator: true`" in principles
+    assert "only for an approval those records already earned" in principles
+    orchestration = (REPO / "docs" / "orchestration.md").read_text(encoding="utf-8")
+    assert "`REVIEW-human.md` with `is_coordinator: true` by design" in orchestration
+    assert "slices still to come" not in orchestration
+    dev = (REPO / "docs" / "dev-workflow.md").read_text(encoding="utf-8")
+    assert "the one exception is the documented manual claim path" in dev
+    grind = (REPO / "docs" / "grind-session.md").read_text(encoding="utf-8")
+    assert "unlocks only when **every** leaf" not in grind
+    assert "a reading aid, not a barrier" in grind

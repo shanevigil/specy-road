@@ -11,6 +11,13 @@ from tests.review_delegate_helpers import fake_reviewer_run
 from tests.support.review import claude_code_reviewer_repo
 
 from specy_road import review_files as rf
+from specy_road.bundled_scripts import review_packet as rp
+from specy_road.review_files import latest_ready, reviews_dir
+from specy_road.review_target import resolve_target
+from tests.support.extracted.folded_review_evidence import _roster
+from tests.support.review import make_review_repo, git
+from specy_road.review_files import reviews_root
+from specy_road.bundled_scripts import review_cli
 
 READY = """---
 node_id: M1.1
@@ -294,3 +301,48 @@ def test_reviewer_prompt_asks_for_launch_mode(tmp_path: Path) -> None:
     text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")
     assert err is None and "Add `--launch-mode full|bare|explicit` to that `review record` command" in text
     assert "--launch-mode" not in role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")[0]
+
+
+
+# --- F6 -------------------------------------------------------------------
+
+def _ready(repo: Path, name: str, *, node_id: str = "M1.1", branch: str = "feature/rm-thing") -> Path:
+    t = resolve_target(repo, "M1.1")
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / name
+    p.write_text(f"---\nnode_id: {node_id}\nagent: x\nbranch: {branch}\ncommit: '{t.commit}'\n"
+                 f"base: '{t.base}'\nchanged_paths: [src/a.py]\nverify:\n  - {{cmd: 'echo hi', exit: 0, tail: hi}}\n---\n")
+    return p
+
+
+
+def test_a_ready_for_another_node_or_branch_is_invalid_here(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    _ready(repo, "READY-wrong.md", node_id="M9.9", branch="feature/other")
+    assert latest_ready(repo, "M1.1") is None
+    st = review_cli._node_status(repo, "M1.1")
+    assert st["state"] == "waiting"
+    assert any("node_id is 'M9.9', not 'M1.1'" in e for r in st["ready"] for e in r["errors"])
+    assert "READY-wrong.md" not in rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    # Right node, wrong branch: still not this node's hand-off.
+    _ready(repo, "READY-wrong.md", branch="feature/other")
+    assert latest_ready(repo, "M1.1", "feature/rm-thing") is None
+    assert "branch is 'feature/other', not the registered 'feature/rm-thing'" in review_cli._node_status(repo, "M1.1")["ready"][0]["errors"][0]
+    _ready(repo, "READY-right.md")
+    assert latest_ready(repo, "M1.1", "feature/rm-thing").path.name == "READY-right.md"
+    assert review_cli._node_status(repo, "M1.1")["state"] == "in-review"
+
+
+
+def test_reviews_root_stays_inside_a_nested_project(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    nested = repo / "sr"
+    nested.mkdir()
+    assert reviews_root(nested) == nested / "work" / "reviews"
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    assert reviews_root(wt) == repo.resolve() / "work" / "reviews"
+    (wt / "sr").mkdir()
+    assert reviews_root(wt / "sr") == repo.resolve() / "sr" / "work" / "reviews"

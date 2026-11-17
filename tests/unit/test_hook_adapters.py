@@ -23,6 +23,7 @@ from tests.support.review import make_review_repo
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard.tool_call_guard import ADAPTERS
 from tests.support.extracted.hook_adapters import DENY, PAYLOADS, REPO, pre_tool_use, run
+from specy_road.orchestration.guard import tool_call_guard_adapters as tga
 
 
 
@@ -134,3 +135,14 @@ def test_internal_errors_fail_closed_for_cursor_too(tmp_path: Path, monkeypatch,
         session_cli.main(["session", "guard", "--format", "cursor", "--repo-root", str(tmp_path)])
     assert e.value.code == 0
     assert json.loads(capsys.readouterr().out)["permission"] == "deny"
+
+
+
+# --- Sol F4 ---------------------------------------------------------------------
+
+def test_a_non_string_hook_command_is_an_error_not_an_allow() -> None:
+    with pytest.raises(ValueError, match="not a string"):
+        tga.ADAPTERS["cursor"].extract({"command": ["git", "stash"]})
+    with pytest.raises(ValueError, match="not a string"):
+        tga.ADAPTERS["claude-code"].extract({"tool_name": "Bash", "tool_input": {"command": {"x": 1}}})
+    assert tga.ADAPTERS["cursor"].extract({"command": ""}) is None

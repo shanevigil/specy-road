@@ -9,7 +9,7 @@ import pytest
 
 from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.harness import wait_for_worker
-from tests.support.extracted.worker_m310_reconcile_status import nested_project
+from tests.support.extracted.worker_repos import nested_project
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws

@@ -311,6 +311,14 @@ _MOVED_FROM.update({
         if line and not line.startswith("old,")
     )
 })
+# Renamed test modules and helpers: new path -> path at pickup.
+_MOVED_FROM['tests/cli/test_session_guard.py'] = 'tests/test_review_round6_guard.py'
+_MOVED_FROM['tests/flows/review/test_review_rejected.py'] = (
+    'tests/test_review_rejected_m15_33.py'
+)
+_MOVED_FROM['tests/unit/test_context_notice_cache.py'] = 'tests/test_m13_12_context_cache.py'
+_MOVED_FROM['tests/support/extracted/agent_ignores.py'] = 'tests/m13_7_ignore_helpers.py'
+_MOVED_FROM['tests/support/extracted/rework_rca.py'] = 'tests/test_rework_findings_in_prompt.py'
 
 
 def _in_pickup_tree(path: str, present: set[str], moved_from: dict[str, str]) -> bool:

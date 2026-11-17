@@ -22,6 +22,7 @@ from specy_road.review_record_rules import (
     unexplained_defects,
 )
 from tests.support.same.run_651387813ee4 import run
+from specy_road.review_record_rules import approve_defect_problem
 
 
 def test_reviewer_prompt_carries_the_four_probe_rules(tmp_path: Path) -> None:
@@ -417,3 +418,114 @@ def test_a_not_run_test_does_not_meet_the_rerun_policy(tmp_path: Path, rerun: li
     assert review_path(repo, "M1.1", "opus").is_file() == (state == "recorded")
     if state == "rerun":
         assert "approved without re-running a command" in out.reason
+
+
+
+# A4 — the refusal quotes each offending line and states the rule in one sentence
+
+
+def _record_folded(repo: Path, notes: str) -> int:
+    p = repo.parent / "notes-opus.md"
+    p.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus").replace("---\nnotes\n", "---\n" + notes))
+    return run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(p),
+                "--repo-root", str(repo))
+
+
+
+ONE_AI_folded = (
+    "version: 1\nroster:\n"
+    "  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+    "  - {id: opus, family: anthropic, roles: [reviewer]}\n"
+)
+
+
+
+def test_refusal_quotes_a_two_clause_line_and_the_rule(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI_folded)
+    line = "The cache is cold and the lock leaks, not a defect because both are expected."
+    assert _record_folded(repo, f"## Acceptance\n\n- **A1:** pass\n\n{line}\n") == 1
+    err = capsys.readouterr().err
+    assert "verdict: approve refused: each line below has no required_changes entry and no 'not a defect because'" \
+           " line" in err
+    assert (f'notes line 5 says "leaks", two observations joined by "and": "The cache is cold" and '
+            f'"the lock leaks": {line}') in err
+    assert not review_path(repo, "M1.1", "opus").exists()
+
+
+
+def test_refusal_quotes_a_line_with_no_marker(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI_folded)
+    assert _record_folded(
+        repo, "## Acceptance\n\n- **A1:** pass\n\nRe-ran the record tests.\n",
+    ) == 1
+    err = capsys.readouterr().err
+    assert "  notes line 5 is an observation: Re-ran the record tests." in err
+    assert "say on it why it is not a defect ('not a defect because <reason>'" in err
+
+
+
+def test_refusal_text_has_the_rule_once_then_one_line_per_offence() -> None:
+    why = approve_defect_problem({"verdict": "approve", "findings": {"correctness": ["Minor: x"]}},
+                                 "Line one is here.\nok\nLine three is here.\n")
+    rule, *rest = why.split("\n")
+    assert rule.count(".") == 1 and rule.endswith("and block.")
+    assert rest == ['  findings.correctness[0] says "Minor": Minor: x',
+                    "  notes line 1 is an observation: Line one is here.",
+                    "  notes line 3 is an observation: Line three is here."]
+
+
+
+# A6 — the joining word and both parts are named; quoted spans are not split
+
+
+@pytest.mark.parametrize("line", [
+    'The packet compares "base and HEAD" of the leaf branch, not a defect because that is the brief\'s range.',
+    "The packet compares 'base and HEAD' of the leaf branch, not a defect because that is the brief's range.",
+    "The packet compares `base and HEAD` of the leaf branch, not a defect because that is the brief's range.",
+    "The diff is empty; not a defect because base and HEAD are the same commit.",
+])
+def test_a_conjunction_inside_quotes_is_not_a_split_point(line: str) -> None:
+    assert clause_problem(line) is None
+
+
+
+def test_the_reported_shape_is_refused_with_the_word_and_both_parts() -> None:
+    line = "The packet compares base and HEAD of the leaf branch crashes, not a defect because that is the brief's range."
+    assert clause_problem(line) == ('says "crashes", two observations joined by "and": "The packet compares '
+                                    'base" and "HEAD of the leaf branch crashes"')
+
+
+
+# A4/A6 on refusals reviewers really hit after M8.3 (from RUN-*.log final answers, 2026-11-05): a line still refused
+# names its trigger and quotes the line; a line whose joined parts name no defect is accepted (M15.37, M21.12).
+
+_REAL = [
+    # M14.1 cursor-grok-4.6-high, findings.boundary[0]: joined by "plus", which names no defect, so one observation
+    ({"boundary": ["Changed paths are the touch zones plus sr/work/implementation-summary-M14.1.md, not a defect "
+                   "because that summary is the leaf hand-off."]}, "",
+     None),
+    # M14.1 grok-4.7-low, findings.boundary[0]: the same
+    ({"boundary": ["The diff stays inside the listed touch zones plus the required implementation summary not a "
+                   "defect because no other product module is edited."]}, "",
+     None),
+    # M13.12 grok-4.7-low, findings.test_integrity[0]: the reason names a defect word
+    ({"test_integrity": ["The packet's test-integrity section lists no removals not a defect because no test was "
+                         "dropped."]}, "",
+     'findings.test_integrity[0] says "was dropped" in its reason: The packet\'s test-integrity section lists no '
+     'removals not a defect because no test was dropped.'),
+    # M12.5 grok-4.7-low, notes line 3: joined by "and", which names no defect, so one observation (M15.37)
+    ({}, "## Acceptance\nA1: pass.\nA2: pass. Refusals print one reason line and leave the worktree in place not a "
+         "defect because `test_cleanup_refuses_and_removes_nothing` covers unmerged files.\n",
+     None),
+]
+
+
+
+@pytest.mark.parametrize("findings, notes, want", _REAL)
+def test_a_real_refusal_names_its_trigger_and_quotes_the_line(findings: dict, notes: str, want: str | None) -> None:
+    why = approve_defect_problem({"verdict": "approve", "findings": findings}, notes)
+    if want is None:   # a line whose joined parts name no defect
+        assert why is None
+        return
+    assert why is not None and why.startswith("verdict: approve refused: each line below has no required_changes")
+    assert f"\n  {want}" in why

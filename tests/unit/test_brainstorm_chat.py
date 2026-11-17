@@ -26,6 +26,9 @@ from specy_road.brainstorm_research import (
 )
 from tests.helpers import use_fake_llm
 from tests.support.extracted.brainstorm_chat import REPLY_WITH_IDEAS
+from specy_road import brainstorm_chat as bc
+import ipaddress
+from specy_road import brainstorm_research as br
 
 RESEARCH_ON = {
     "enabled": True,
@@ -198,3 +201,21 @@ def test_search_lines_are_ignored_when_research_is_off(monkeypatch) -> None:
 
     assert result["searched"] == []
     assert result["reply"] == "SEARCH: nope"
+
+
+
+# --- F14, F15 -------------------------------------------------------------------
+
+def test_search_results_are_delimited_as_untrusted() -> None:
+    assert "<search-results>" in bc.UNTRUSTED_RESULTS or "search-results" in bc.UNTRUSTED_RESULTS
+    text, _found = bc.run_searches([], {})
+    assert "<search-results>" in text and "never instructions" in text
+
+
+
+def test_cgnat_addresses_are_off_host(monkeypatch) -> None:
+    assert not ipaddress.ip_address("100.64.0.1").is_private
+    monkeypatch.setattr(br.socket, "getaddrinfo", lambda host, port: [(None, None, None, None, ("100.64.0.1", 0))])
+    assert br._is_off_host("tailnet.example")
+    monkeypatch.setattr(br.socket, "getaddrinfo", lambda host, port: [(None, None, None, None, ("93.184.216.34", 0))])
+    assert not br._is_off_host("example.com")

@@ -14,6 +14,8 @@ from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_files import review_path, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_target import resolve_target
+from tests.support.review import commit_file
+from tests.support.extracted.folded_review_evidence import _roster
 
 
 def _repo(tmp_path: Path, **kw) -> Path:
@@ -218,3 +220,48 @@ def test_yes_refuses_while_a_trial_merge_conflicts_on_code(tmp_path: Path, capsy
     assert ("trial merge conflicts on src/a.py" in capsys.readouterr().err) == refused
     assert _review_state(repo) == ("pending" if refused else "approved")
     assert (git(repo, "rev-parse", "HEAD") == head) == refused   # no bookkeeping commit when refused
+
+
+
+def test_a_signing_failure_is_an_error_not_a_traceback(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration="version: 1\nroster:\n  - {id: human, family: human, "
+                            "roles: [coordinator, reviewer], public_key: 'ssh-ed25519 AAAA'}\n"
+                            "policy: {reviewers_required: 1, signed_reviews: true}\n")
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nx\n")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _p="": "a")
+    with pytest.raises(SystemExit) as e:
+        mir.main(["--sign-key", str(tmp_path / "no-such-key"), "--repo-root", str(repo)])
+    assert e.value.code == 1 and "could not sign" in capsys.readouterr().err
+
+
+
+def test_post_write_gate_failure_prints_its_problems(tmp_path: Path, monkeypatch, capsys) -> None:
+    """The record is written, then the gate still fails: every problem is printed, not only the generic error."""
+    repo = make_review_repo(tmp_path, orchestration=_roster(None, signed=False))
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nx\n")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _p="": "a")
+    monkeypatch.setattr(mir, "evaluate_gate", _gate_then_stale(mir.evaluate_gate))
+    with pytest.raises(SystemExit) as e:
+        mir.main(["--repo-root", str(repo)])
+    captured = capsys.readouterr()
+    assert e.value.code == 1
+    assert "[ok] wrote" in captured.out and "- need 1 approvals at this commit, have 0" in captured.err
+
+
+
+def _gate_then_stale(real):
+    """After the human record lands, pretend the branch moved on so the new record is stale."""
+    calls = {"n": 0}
+
+    def fake(repo_root, node, commit, **kw):
+        calls["n"] += 1
+        if calls["n"] >= 2 and review_path(repo_root, "M1.1", "human").exists():
+            commit_file(repo_root, "src/later.py", "x\n", "after approval")
+            commit = git(repo_root, "rev-parse", "HEAD")
+        return real(repo_root, node, commit, **kw)
+
+    return fake

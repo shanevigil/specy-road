@@ -18,7 +18,7 @@ import yaml
 from tests.support.review import commit_file, git
 from tests.support.cli import run_worker_cli
 from tests.support.harness import wait_for_worker
-from tests.support.extracted.worker_m310_reconcile_status import worker_repo
+from tests.support.extracted.worker_repos import worker_repo
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws

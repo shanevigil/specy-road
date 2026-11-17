@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.profiles import make_profile_repo
-from tests.support.extracted.rework_findings_in_prompt import (
+from tests.support.extracted.rework_rca import (
     executor_prompt,
     file_review,
     stopped_worker,

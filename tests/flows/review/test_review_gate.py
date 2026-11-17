@@ -12,6 +12,10 @@ from tests.support.review import NODE, advance_dev, commit_file, make_review_rep
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, trial_merge
 from tests.support.extracted.review_gate import TWO_FAMILIES
+import subprocess
+from specy_road.bundled_scripts.role_prompt import build_prompt
+from specy_road.review_gate import policy_source, review_required
+from tests.support.extracted.folded_review_policy import PROFILE_REL, ROSTER
 
 
 
@@ -133,3 +137,38 @@ def test_trial_merge_bookkeeping_is_exact_files_and_whole_directories(tmp_path: 
     tm = trial_merge(repo, "feature/rm-thing", "dev")
     assert tm.conflicts == [rel]
     assert tm.code_conflicts == ([rel] if blocks else [])
+
+
+
+# --- B4 ----------------------------------------------------------------------------
+
+def test_a_feature_commit_cannot_retarget_the_integration_branch(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ROSTER)
+    git(repo, "branch", "rogue")
+    commit_file(repo, "roadmap/git-workflow.yaml",
+                "version: 1\nintegration_branch: rogue\nremote: origin\n", "retarget")
+    ref, err = policy_source(repo)
+    assert ref is None and "'rogue'" in err and "'dev'" in err and "names itself" in err
+    assert review_required(repo)   # fails closed
+    assert "orchestration config" in build_prompt(repo, "M1.1", role="executor", model="opus")[2]
+
+
+
+def test_with_a_remote_only_the_remote_tracking_integration_ref_is_read(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ROSTER)
+    bare = tmp_path / "remote.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+    git(repo, "remote", "add", "origin", str(bare))
+    git(repo, "push", "-q", "origin", "dev:main")
+    git(repo, "remote", "set-head", "origin", "main")   # as `git clone` records the default branch
+    ref, err = policy_source(repo)
+    assert ref is None and "not fetched as origin/dev" in err   # local dev alone no longer counts
+    git(repo, "push", "-q", "origin", "dev")
+    assert policy_source(repo) == ("refs/remotes/origin/dev", None)
+    # moving the local branch to a widened roster changes nothing
+    (repo / "roadmap" / "orchestration.yaml").write_text(
+        ROSTER.replace("roles: [coordinator, executor, reviewer]",
+                       "roles: [coordinator, executor, reviewer]\n    may_process: [public, restricted]"))
+    git(repo, "commit", "-qm", "wide", "--", "roadmap/orchestration.yaml")
+    git(repo, "update-ref", "refs/heads/dev", "HEAD")
+    assert policy_source(repo) == ("refs/remotes/origin/dev", None)

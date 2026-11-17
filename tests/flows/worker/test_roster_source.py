@@ -19,6 +19,10 @@ from tests.support.extracted.worker_cli_fixes import EXECUTORLESS
 from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli
 from specy_road.bundled_scripts.validate_roadmap import validate_orchestration_contract
+from tests.support.review import make_review_repo
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.bundled_scripts.role_prompt import build_prompt
 
 
 def _pushed(repo: Path, tmp_path: Path) -> None:
@@ -138,3 +142,19 @@ def test_no_roster_anywhere_points_at_the_docs_not_the_may_process_hint(
     validate_roadmap.main()
     out = capsys.readouterr().out
     assert validate_roadmap.NO_ORCHESTRATION_NOTICE in out and "nor in the working tree" in out
+
+
+
+# --- Gemini B3 ----------------------------------------------------------------
+
+def test_routing_reads_the_roster_from_the_integration_branch(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    (repo / "roadmap" / "orchestration.yaml").write_text(
+        "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+        "  - {id: rogue, family: openai, roles: [executor, reviewer], may_process: [public, restricted]}\n"
+        "policy: {reviewers_required: 1}\n")
+    (repo / "work" / "reviews" / "M1.1").mkdir(parents=True)
+    (repo / "work" / "reviews" / "M1.1" / "PACKET.md").write_text("# packet\n")
+    assert "not in the roster" in build_prompt(repo, "M1.1", role="reviewer", model="rogue")[2]
+    with pytest.raises(ws.WorkerError, match="not in the roster"):
+        ops.delegate(repo, "M1.1", "rogue")

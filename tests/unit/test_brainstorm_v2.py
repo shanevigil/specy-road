@@ -36,6 +36,9 @@ from tests.support.same.cli_11f0555f0fa9 import cli
 from tests.support.same.prompt_26b6cb7fef04 import prompt
 from tests.support.same.session_9301503dde8a import session as session_fn
 from tests.support.same.start_f653667be42d import start as start_fn
+from specy_road.brainstorm_prompt import render_brainstorm_prompt, render_recommend_prompt
+from tests.support.same.cli_4bb09fdf3883 import cli as cli_folded
+from tests.support.extracted.folded_review_brainstorm import ROOT
 
 SLUG = "how-do-we-expand-payments"
 
@@ -368,3 +371,122 @@ def test_promote_warns_for_each_strong_idea_no_matched_source_backs(repo: Path) 
     assert f"brainstorm evidence B2 --slug {SLUG}" in err
     assert "warning: B4 is recommended strong but no source is matched (not-found)" in err
     assert "B3" not in err and "B5" not in err
+
+FORBIDDEN = ("planning/", "roadmap/", "registry.yaml", "shared/", "Do not edit code")
+
+
+
+
+
+
+
+def _started(repo: Path, *extra: str) -> BrainstormSession:
+    code, _out, err = cli_folded(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
+    assert code == 0, err
+    return read_session(repo, SLUG)
+
+
+
+# --- B8 --------------------------------------------------------------------
+
+
+def test_round_one_prompt_carries_the_write_allow_list(repo: Path) -> None:
+    text = render_brainstorm_prompt(repo, _started(repo), count=5)
+    assert "## What you may write" in text
+    for needle in FORBIDDEN:
+        assert needle in text, needle
+    assert "`add-idea`, `add-evidence`, and `revise`" in text
+
+
+
+def test_later_rounds_and_shards_carry_the_allow_list_too(repo: Path) -> None:
+    session = _started(repo, "--panel", "2")
+    add_idea(session, title="Stored vault")
+    session.round = 2
+    later = render_brainstorm_prompt(repo, session, count=5)
+    shard = render_shard_prompt(repo, session, count=5, shard=1, total=2)
+    for text in (later, shard):
+        assert "## What you may write" in text
+        assert "registry.yaml" in text
+
+
+
+def test_converge_prompt_still_forbids_new_ideas_but_is_not_a_diverge_prompt(repo: Path) -> None:
+    """The allow-list is a diverge rule; converge keeps its own 'no new ideas' rule."""
+    text = render_recommend_prompt(repo, _started(repo))
+    assert "must not add new ideas" in text
+
+
+
+@pytest.mark.repo
+def test_suggested_prompt_and_docs_mirror_the_allow_list() -> None:
+    prompt = (ROOT / "suggested_prompts" / "brainstorm-roadmap.md").read_text(encoding="utf-8")
+    doc = (ROOT / "docs" / "brainstorming.md").read_text(encoding="utf-8")
+    for text in (prompt, doc):
+        assert "## What" in text and "may write" in text
+        for needle in ("planning/", "registry.yaml", "shared/", "edit code"):
+            assert needle in text, needle
+    assert "Do not implement an idea during the session" in prompt
+
+
+
+# --- F8 --------------------------------------------------------------------
+
+
+def test_revise_rejects_an_overlap_without_a_node_id(repo: Path) -> None:
+    session = _started(repo)
+    add_idea(session, title="Stored vault")
+    from specy_road.brainstorm_session import write_session
+
+    write_session(repo, session)
+
+    code, _out, err = cli_folded(repo, "revise", "B1", "--overlap", ":adjacent")
+
+    assert code == 1
+    assert "node id" in err
+    assert read_session(repo, SLUG).by_id("B1").overlap == []   # nothing written; file still reads
+
+
+
+@pytest.mark.parametrize("text", ["", ":", "  :prerequisite"])
+def test_parse_overlap_needs_a_node_id(text: str) -> None:
+    with pytest.raises(BrainstormError, match="node id"):
+        parse_overlap(text)
+
+
+
+def test_add_evidence_with_an_empty_url_is_a_brainstorm_error(repo: Path) -> None:
+    session = _started(repo)
+    add_idea(session, title="Stored vault")
+    from specy_road.brainstorm_session import write_session
+
+    write_session(repo, session)
+
+    code, _out, err = cli_folded(repo, "add-evidence", "B1", "--url", "", "--quote", "q")
+
+    assert code == 1
+    assert "--url is required" in err
+    assert read_session(repo, SLUG).by_id("B1").sources == []
+
+
+
+@pytest.mark.parametrize("url", ["", "   "])
+def test_source_record_needs_a_url(url: str) -> None:
+    with pytest.raises(BrainstormError, match="--url is required"):
+        source_record(url, quote="q")
+
+
+
+def test_a_loaded_source_with_an_unknown_stance_is_rejected() -> None:
+    with pytest.raises(BrainstormError, match="stance 'maybe'"):
+        idea_from_dict({"id": "B1", "title": "t", "sources": [{"url": "https://x", "stance": "maybe"}]})
+    ok = idea_from_dict({"id": "B1", "title": "t", "sources": [{"url": "https://x", "stance": "against"}]})
+    assert ok.sources[0]["stance"] == "against"
+
+
+
+def test_start_help_no_longer_claims_research(repo: Path) -> None:
+    _code, out, _err = cli_folded(repo, "-h")
+    flat = " ".join(out.split())   # argparse wraps the description
+    assert "no research in round 1" in flat
+    assert "Socratic questioning, research)" not in flat

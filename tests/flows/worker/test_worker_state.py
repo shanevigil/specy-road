@@ -18,6 +18,20 @@ from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers.worker_cli_sync import wait_for_event
 from specy_road.bundled_scripts import worker_cli
+import os
+from tests.support.harness import make_worker_repo, wait_for_worker
+from specy_road.orchestration.workers import worker_lease as wl
+from specy_road.orchestration.workers import worker_process as wp
+import io
+from datetime import datetime, timezone
+from unittest import mock
+import yaml
+from tests.support.cli import run_worker_cli
+from specy_road.orchestration.workers import worker_reconcile as wrc
+from specy_road.orchestration.workers import worker_sessions as wsess
+from specy_road.orchestration.workers import worker_lease as ww
+from tests.support.extracted.folded_review_ops import _idle
+from specy_road.orchestration.workers import worker_ops as ops
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -292,3 +306,394 @@ def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp
     again, created = ops.delegate(repo, "M1.1", "opus")   # neither leaf's logs block it
     assert created and again.worker_id != rec.worker_id
     wait_for_worker(repo, again.worker_id)
+
+
+
+# --- B1 -----------------------------------------------------------------------
+
+@pytest.mark.slow
+def test_a_completed_worker_still_owns_its_leaf(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path, max_workers=4)
+    rec, _c = ops.delegate(repo, "M1.1", "opus")
+    wait_for_worker(repo, rec.worker_id)
+    ws.set_state(repo, rec, "completed", pid=None)
+    again, created = ops.delegate(repo, "M1.1", "opus")
+    assert not created and again.worker_id == rec.worker_id
+    assert ws.active_for_node(repo, "M1.1").worker_id == rec.worker_id
+    ops.terminate(repo, rec.worker_id)
+    assert ws.active_for_node(repo, "M1.1") is None
+
+
+
+def test_concurrent_reclaims_record_one_intervention(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ws.set_state(repo, rec, "idle", pid=None)
+    ops.handoff(repo, rec.worker_id)
+    results: list = []
+
+    def go() -> None:
+        try:
+            results.append(ops.reclaim(repo, rec.worker_id)[0].instruction_epoch)
+        except ws.WorkerError as e:
+            results.append(e)
+
+    threads = [threading.Thread(target=go) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert sorted(type(r).__name__ for r in results) == ["WorkerError", "int"]
+    assert ws.load_record(repo, rec.worker_id).instruction_epoch == 1      # one intervention, not two
+
+
+
+# --- F1 -----------------------------------------------------------------------
+
+def test_an_op_id_binds_its_arguments(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    assert ws.begin_op(repo, "op", "message", "w-0001", {"text": "a"}) is None
+    ws.complete_op(repo, "op", {"ok": 1})
+    assert ws.begin_op(repo, "op", "message", "w-0001", {"text": "a"})["result"] == {"ok": 1}
+    with pytest.raises(ws.WorkerError, match="different arguments"):
+        ws.begin_op(repo, "op", "message", "w-0001", {"text": "b"})
+
+
+
+def test_terminate_refuses_a_pid_it_cannot_verify(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.set_state(repo, rec, "running", pid=os.getpid())
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: None)              # ps unavailable: alive, unverified
+    with pytest.raises(ws.WorkerError, match="cannot be verified"):
+        ops.terminate(repo, rec.worker_id)
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0002 {}")
+    out = ops.terminate(repo, rec.worker_id)        # another worker's wrapper: not ours to signal; the record closes
+    assert out.state == "terminated"
+
+
+
+def test_terminate_closes_an_adopted_record_without_signalling(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ops.adopt(repo, "M1.1", "claude-code", "aaaaaaaa-0000-4000-8000-000000000001")
+    ws.set_state(repo, rec, "idle", pid=os.getpid())
+    out = ops.terminate(repo, rec.worker_id)
+    assert out.state == "terminated"
+    assert "not signalled" in ws.events_since(repo, rec.worker_id)[-1].summary
+
+
+
+def test_reclaim_keeps_the_prompt_verbatim(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ws.set_state(repo, rec, "idle", pid=None)
+    ops.handoff(repo, rec.worker_id)
+    long = "x" * 600
+    wl.record_hook_prompt(repo, "sid-1", long)
+    _rec, detail = ops.reclaim(repo, rec.worker_id)
+    assert detail["prompts"] == [long]
+
+
+
+# --- Gemini F2 ----------------------------------------------------------------
+
+def test_a_crashed_running_worker_cannot_be_handed_off_and_is_recorded_failed_before_a_message(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ws.set_state(repo, rec, "running", pid=999999)
+    with pytest.raises(ws.WorkerError, match="failed"):
+        ops.handoff(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).state == "failed"
+    ws.set_state(repo, rec, "running", pid=999999)
+    ops.message(repo, rec.worker_id, "hi")   # the crash is recorded, then its session resumes (M11.2)
+    types = [e.type for e in ws.events_since(repo, rec.worker_id)]
+    assert types.count("error") == 2 and types.index("message") > types.index("error")
+    assert wait_for_worker(repo, rec.worker_id).state == "idle"
+
+
+
+# --- Sol B4 ----------------------------------------------------------------------
+
+def test_event_sequences_survive_a_record_that_lags_the_log(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.append_event(repo, rec, "output", source="worker", summary="written before crash")
+    ws.mutate(repo, rec, lambda r: setattr(r, "last_event_seq", 1))      # the crash: log says 2, record says 1
+    ws.append_event(repo, rec, "error", source="system", summary="recovery")
+    seqs = [e.seq for e in ws.events_since(repo, rec.worker_id)]
+    assert seqs == [1, 2, 3]
+
+
+
+# --- Sol B5 ----------------------------------------------------------------------
+
+def test_a_platform_without_a_file_lock_refuses_worker_mutations(tmp_path: Path, monkeypatch) -> None:
+    import builtins
+
+    from specy_road.orchestration.workers import worker_lock
+
+    real_import = builtins.__import__
+
+    def no_locks(name, *a, **k):
+        if name in ("fcntl", "msvcrt"):
+            raise ImportError(name)
+        return real_import(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", no_locks)
+    with pytest.raises(ws.WorkerError, match="exclusive file lock"), worker_lock.workers_lock(tmp_path):
+        pass
+
+
+
+# --- Sol B6 ----------------------------------------------------------------------
+
+def test_adopt_is_one_transaction(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ops.adopt(repo, "M1.1", "claude-code", "aaaaaaaa-0000-4000-8000-000000000001")
+    types = [e.type for e in ws.events_since(repo, rec.worker_id)]
+    assert types[-1] == "adopted" and ws.load_record(repo, rec.worker_id).checkpoint is not None
+
+
+
+# --- Sol B7 ----------------------------------------------------------------------
+
+def test_hook_prompts_are_stored_whole(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ws.set_state(repo, rec, "idle", pid=None)
+    ops.handoff(repo, rec.worker_id)
+    long = "y" * 2501
+    wl.record_hook_prompt(repo, "sid-1", long)
+    _rec, detail = ops.reclaim(repo, rec.worker_id)
+    assert detail["prompts"] == [long]
+
+
+
+def _hook(repo: Path, fmt: str, payload: dict) -> int:
+    sys.stdin = io.StringIO(json.dumps(payload))
+    try:
+        return run_worker_cli("worker", "hook", "--format", fmt, "--repo-root", str(repo))
+    finally:
+        sys.stdin = sys.__stdin__
+
+
+
+# --- B13 -----------------------------------------------------------------------
+
+def test_resume_commands_are_shell_quoted_and_bad_ids_refused(tmp_path: Path) -> None:
+    assert wsess.render_command(["claude", "--resume", "sid; touch /tmp/forged"]) == \
+        "claude --resume 'sid; touch /tmp/forged'"
+    repo = make_review_repo(tmp_path)
+    with pytest.raises(ws.WorkerError, match="metacharacters"):
+        ops.adopt(repo, "M1.1", "claude-code", "sid; touch /tmp/forged")
+    with pytest.raises(ws.WorkerError, match="not a UUID"):
+        ops.adopt(repo, "M1.1", "codex", "thr-1")
+    assert ops.adopt(repo, "M1.1", "cursor", "chat_01:abc-DEF").provider_session_id == "chat_01:abc-DEF"
+    # An id the harness output chose is refused at use, not rendered into a command.
+    rec = _idle(repo, "M1.2", sid="$(touch /tmp/forged)")
+    with pytest.raises(ws.WorkerError, match="metacharacters"):
+        ops.handoff(repo, rec.worker_id)
+    with pytest.raises(ws.WorkerError, match="metacharacters"):
+        ops.message(repo, rec.worker_id, "hi")
+    assert ws.load_record(repo, rec.worker_id).lease["holder"] == "broker"
+
+
+
+# --- F10 -----------------------------------------------------------------------
+
+def test_hook_matches_by_harness_and_refuses_ambiguity(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    a = _idle(repo, "M1.1", "claude-code", "same-id")
+    b = _idle(repo, "M1.2", "cursor", "same-id")
+    ops.handoff(repo, a.worker_id)
+    ops.handoff(repo, b.worker_id)
+    assert _hook(repo, "cursor", {"conversation_id": "same-id", "prompt": "cursor human"}) == 0
+    assert not ops.interventions_path(repo, a.worker_id).is_file()
+    assert "cursor human" in ops.interventions_path(repo, b.worker_id).read_text()
+    with pytest.raises(ws.WorkerError, match="ambiguous"):
+        ww.record_hook_prompt(repo, "same-id", "no harness given")
+    assert _hook(repo, "claude-code", {"session_id": "same-id", "prompt": "claude human"}) == 0
+    assert "claude human" in ops.interventions_path(repo, a.worker_id).read_text()
+
+
+
+def test_hook_witness_does_not_wait_on_a_busy_lock(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = _idle(repo)
+    ops.handoff(repo, rec.worker_id)
+    release = threading.Event()
+    taken = threading.Event()
+
+    def hold() -> None:
+        with ws.workers_lock(repo):
+            taken.set()
+            release.wait(10)
+    t = threading.Thread(target=hold, daemon=True)
+    t.start()
+    taken.wait(5)
+    t0 = time.monotonic()
+    assert ww.record_hook_prompt(repo, "sid-1", "while busy", harness="claude-code", timeout=0.3) is None
+    assert time.monotonic() - t0 < 2
+    release.set()
+    t.join(5)
+    assert ww.record_hook_prompt(repo, "sid-1", "after", harness="claude-code", timeout=0.3) is not None
+    _r, d = ops.reclaim(repo, rec.worker_id)
+    assert d["prompts"] == ["after"]
+
+
+
+# --- F11 (c) ---------------------------------------------------------------------
+
+def test_a_crashed_reclaim_is_repaired_once_not_repeated(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = _idle(repo)
+    ops.handoff(repo, rec.worker_id)
+    real = wl.append_event
+    with mock.patch.object(wl, "append_event", side_effect=OSError("crash after the record moved")):
+        with pytest.raises(OSError):
+            ops.reclaim(repo, rec.worker_id)
+    mid = ws.load_record(repo, rec.worker_id)
+    assert mid.instruction_epoch == 1 and mid.lease["holder"] == "broker" and mid.state == "idle"
+    wl.append_event = real
+    rec2, d = ops.reclaim(repo, rec.worker_id)          # the retry repairs the events
+    evs = [e for e in ws.events_since(repo, rec.worker_id) if e.type in ("intervention", "reclaim")]
+    assert rec2.instruction_epoch == 1 and [e.type for e in evs] == ["intervention", "reclaim"]
+    assert evs[0].epoch == 1 and "repaired" in evs[0].summary
+    with pytest.raises(ws.WorkerError, match="not handed off"):
+        ops.reclaim(repo, rec.worker_id)                 # and a third call is refused, not repeated
+    assert ws.load_record(repo, rec.worker_id).instruction_epoch == 1
+
+
+
+def test_handoff_and_reclaim_move_the_record_in_one_write(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = _idle(repo)
+    saves: list[tuple[str, str, int]] = []
+    real = ws.save_record
+
+    def spy(root, r):
+        saves.append((r.lease["holder"], r.state, r.instruction_epoch))
+        return real(root, r)
+    with mock.patch.object(ws, "save_record", side_effect=spy):
+        ops.handoff(repo, rec.worker_id)
+        ops.reclaim(repo, rec.worker_id)
+    # No save ever shows a half-moved record: human+handed_off, then broker+idle+epoch 1, never a mix.
+    assert all(s in {("broker", "idle", 0), ("human", "handed_off", 0), ("broker", "idle", 1)} for s in saves)
+    assert ("human", "idle", 0) not in saves and ("broker", "handed_off", 0) not in saves
+
+
+
+# --- F11 (d) ---------------------------------------------------------------------
+
+def test_sync_ack_runs_under_the_workers_lock(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    release = threading.Event()
+    taken = threading.Event()
+    done: list[float] = []
+
+    def hold() -> None:
+        with ws.workers_lock(repo):
+            taken.set()
+            release.wait(10)
+    threading.Thread(target=hold, daemon=True).start()
+    taken.wait(5)
+    t = threading.Thread(target=lambda: (wrc.sync(repo, ack=True), done.append(time.monotonic())))
+    t.start()
+    time.sleep(0.5)
+    assert not done                                   # blocked behind the other writer
+    t0 = time.monotonic()
+    before = datetime.now(timezone.utc).replace(microsecond=0)
+    release.set()
+    t.join(5)
+    assert done and done[0] >= t0
+    marks = yaml.safe_load((ws.workers_dir(repo) / "sync.yaml").read_text())
+    last = ws.load_record(repo, rec.worker_id).last_event_seq
+    acked_at = marks.get(rec.worker_id, {}).get("acked_at")
+    assert isinstance(acked_at, str) and before <= datetime.fromisoformat(acked_at) <= datetime.now(timezone.utc)
+    assert marks == {rec.worker_id: {"seq": last, "acked_at": acked_at}}   # exactly these fields, nothing else
+    assert wrc.sync(repo) == []                                 # the mark still reads as acknowledged
+    # A file from before acked_at was recorded (a bare integer per worker) is still a mark.
+    (ws.workers_dir(repo) / "sync.yaml").write_text(f"{rec.worker_id}: {last}\n")
+    assert wrc.sync_marks(repo) == {rec.worker_id: {"seq": last, "acked_at": None}} and wrc.sync(repo) == []
+
+
+
+@pytest.mark.slow
+def test_a_flag_set_while_the_wrapper_streams_survives(tmp_path: Path) -> None:
+    repo, _script = make_worker_repo(tmp_path)
+    spec = tmp_path / "slow.json"
+    spec.write_text(json.dumps({"lines": [{"type": "system", "subtype": "init", "session_id": "slow"},
+                                          {"type": "assistant", "message": {"content": [{"type": "text", "text": "a"}]}},
+                                          {"type": "result", "subtype": "success", "result": "ok"}], "sleep": 2}))
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {_script} {{prompt}}")
+    wr.spawn(repo, rec, launch)
+    time.sleep(0.8)
+    ws.add_flag(repo, rec, ws.FLAG_RECONCILE)           # another process writes while it runs
+    ws.append_event(repo, rec, "reconcile", source="orchestrator", summary="mid-run")
+    wait_for_worker(repo, rec.worker_id)
+    final = ws.load_record(repo, rec.worker_id)
+    assert ws.FLAG_RECONCILE in final.flags
+    seqs = [e.seq for e in ws.events_since(repo, rec.worker_id)]
+    assert seqs == sorted(set(seqs)) and final.last_event_seq == seqs[-1]
+
+
+
+def test_terminate_refuses_a_handed_off_worker(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.set_lease(repo, rec, "human")
+    with pytest.raises(ws.WorkerError, match="reclaim"):
+        ops.terminate(repo, rec.worker_id)
+
+
+
+def test_an_op_id_names_one_operation(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    assert ws.begin_op(repo, "X1", "reconcile", "w-0001") is None
+    ws.complete_op(repo, "X1", {"ok": True})
+    assert ws.begin_op(repo, "X1", "reconcile", "w-0001")["result"] == {"ok": True}
+    with pytest.raises(ws.WorkerError, match="names one operation"):
+        ws.begin_op(repo, "X1", "terminate", "w-0001")
+    with pytest.raises(ws.WorkerError, match="names one operation"):
+        ws.begin_op(repo, "X1", "reconcile", "w-0002")
+
+
+
+def test_handoff_refuses_a_closed_worker(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ops.terminate(repo, rec.worker_id)
+    with pytest.raises(ws.WorkerError, match="terminated"):
+        ops.handoff(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).state == "terminated"
+
+
+
+def test_hook_prompts_are_attributed_by_line_and_only_under_a_human_lease(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    assert ops.record_hook_prompt(repo, "sid-1", "broker prompt") is None    # not an intervention
+    ws.set_state(repo, rec, "idle", pid=None)
+    ops.handoff(repo, rec.worker_id)
+    ops.record_hook_prompt(repo, "sid-1", "human says hi")
+    rec, detail = ops.reclaim(repo, rec.worker_id)
+    assert detail["prompts"] == ["human says hi"] and ws.FLAG_EXTERNAL not in rec.flags
+    ops.handoff(repo, rec.worker_id)                                        # same second: the old line does not count
+    rec, detail = ops.reclaim(repo, rec.worker_id)
+    assert detail["prompts"] == [] and ws.FLAG_EXTERNAL in rec.flags
+
+
+
+def test_adopt_refuses_a_second_worker_on_the_leaf(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    ops.adopt(repo, "M1.1", "claude-code", "aaaaaaaa-0000-4000-8000-000000000001")
+    with pytest.raises(ws.WorkerError, match="already has an active worker"):
+        ops.adopt(repo, "M1.1", "claude-code", "aaaaaaaa-0000-4000-8000-000000000002")

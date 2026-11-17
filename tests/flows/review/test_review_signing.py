@@ -18,6 +18,11 @@ from specy_road.review_files import PACKET_NAME, load_review, review_path, revie
 from specy_road.review_gate import evaluate_gate
 from tests.support.same.key_5acf3bfe8b72 import key as key_fn
 from tests.support.extracted.review_signing import roster as roster_fn
+from specy_road.review_files import reviews_root
+from specy_road.review_gate import SigningError, write_human_approval
+from tests.support.extracted.folded_review_evidence import _roster
+from tests.support.extracted.review_signing import roster
+from specy_road.review_files import render_front_matter
 
 pytestmark = pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="needs OpenSSH ssh-keygen")
 
@@ -221,3 +226,134 @@ def test_a_launched_reviewers_verdict_is_filed_signed_with_the_callers_key(tmp_p
     assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--channel", "cli", "--run",
                     "--sign-key", str(key), "--repo-root", str(repo)) == 0
     assert evaluate_gate(repo, NODE, head).passed
+
+
+
+# --- F3, F18 ------------------------------------------------------------------
+
+def test_signing_without_a_roster_key_is_refused_early(tmp_path: Path, capsys) -> None:
+    key, _pub = key_fn(tmp_path, "opus")
+    repo = make_review_repo(tmp_path, orchestration=roster("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", signed=False)
+                            .replace('public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"', ""))
+    from tests.support.review import review_text
+
+    notes = tmp_path / "notes.md"
+    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus"))
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                         "--file", str(notes), "--sign-key", str(key), "--repo-root", str(repo)])
+    assert e.value.code == 1 and "has no public_key" in capsys.readouterr().err
+
+
+
+def test_a_wrong_key_is_an_error_not_a_written_record(tmp_path: Path, capsys) -> None:
+    key, _pub = key_fn(tmp_path, "opus")
+    _other, other_pub = key_fn(tmp_path, "other")
+    repo = make_review_repo(tmp_path, orchestration=roster(other_pub))
+    from tests.support.review import review_text
+
+    notes = tmp_path / "notes.md"
+    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus"))
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                         "--file", str(notes), "--sign-key", str(key), "--repo-root", str(repo)])
+    assert e.value.code == 1 and "does not verify" in capsys.readouterr().err
+    assert not (reviews_root(repo) / "M1.1" / "REVIEW-opus.md").exists()
+
+
+needs_keygen = pytest.mark.skipif(shutil.which("ssh-keygen") is None, reason="needs OpenSSH ssh-keygen")
+
+
+
+def _write(repo: Path, data: dict, body: str) -> None:
+    review_path(repo, "M1.1", "opus").write_text(render_front_matter(data, body))
+
+
+
+def test_notes_digest_normalises_line_endings_and_trailing_whitespace() -> None:
+    assert rs.notes_digest("a\r\nb\r\n") == rs.notes_digest("a\nb") == rs.notes_digest("a\nb\n\n  ")
+    assert rs.notes_digest("a\nb") != rs.notes_digest("a\nc")
+
+
+
+@needs_keygen
+def test_a_signed_record_binds_its_notes(tmp_path: Path) -> None:
+    key, pub = key_fn(tmp_path, "opus")
+    repo = make_review_repo(tmp_path, orchestration=_roster(pub))
+    head = git(repo, "rev-parse", "HEAD")
+    notes = tmp_path / "notes.md"
+    # M11.75: an approve's observation lines carry a same-line 'not a defect because' reason
+    notes.write_text(review_text(head, model="opus") + "Looked at src/a.py; not a defect because it is unchanged.\n")
+    with pytest.raises(SystemExit) as e:
+        review_cli.main(["review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                         "--file", str(notes), "--sign-key", str(key), "--repo-root", str(repo)])
+    assert (e.value.code or 0) == 0
+    rec = load_review(review_path(repo, "M1.1", "opus"))
+    assert rec.data["notes_sha256"] == rs.notes_digest("notes\nLooked at src/a.py; not a defect because it is unchanged.\n")
+    assert evaluate_gate(repo, NODE, head).passed
+    # The body is replaced, front matter untouched: no longer counts.
+    _write(repo, rec.data, "Something else entirely.\n")
+    g = evaluate_gate(repo, NODE, head)
+    assert not g.passed and "notes body does not match notes_sha256" in g.ineligible[0][1]
+    # A signed record that never carried the hash does not count either.
+    data = {k: v for k, v in rec.data.items() if k != "notes_sha256"}
+    data["signature"] = rs.sign(data, key)
+    _write(repo, data, rec.body)
+    g = evaluate_gate(repo, NODE, head)
+    assert not g.passed and "signed without notes_sha256" in g.ineligible[0][1]
+
+
+
+def test_unsigned_records_keep_working_without_the_hash_but_a_present_one_is_checked(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=_roster(None, signed=False))
+    head = git(repo, "rev-parse", "HEAD")
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    p = d / "REVIEW-opus.md"
+    p.write_text(review_text(head, model="opus"))
+    assert evaluate_gate(repo, NODE, head).passed                      # no hash: valid under unsigned policy
+    data = {**load_review(p).data, "notes_sha256": rs.notes_digest("notes\n")}
+    _write(repo, data, "notes\n")
+    assert evaluate_gate(repo, NODE, head).passed
+    _write(repo, data, "edited\n")
+    g = evaluate_gate(repo, NODE, head)
+    assert not g.passed and "notes body does not match" in g.ineligible[0][1]
+
+
+
+@needs_keygen
+def test_verify_rejects_a_mismatched_identity_on_its_own(tmp_path: Path) -> None:
+    key, pub = key_fn(tmp_path, "opus")
+    data = {"node_id": "M1.1", "model": "opus", "verdict": "approve", "commit": "abc1234"}
+    sig = rs.sign(data, key)
+    assert rs.verify(data, sig, pub, "opus") == (True, "")
+    ok, why = rs.verify(data, sig, pub, "sol")
+    assert not ok and "record model 'opus' is not the signer identity 'sol'" in why
+    ok, why = rs.verify({**data, "model": "sol"}, sig, pub, "sol")     # relabelled record: signature breaks
+    assert not ok and "not the signer identity" not in why
+
+
+
+# --- human approval with a wrong key --------------------------------------
+
+@needs_keygen
+def test_a_wrong_human_key_writes_no_record_and_the_reason_is_printed(tmp_path: Path, monkeypatch, capsys) -> None:
+    _human_key, human_pub = key_fn(tmp_path, "human")
+    wrong_key, _wrong_pub = key_fn(tmp_path, "wrong")
+    _opus_key, opus_pub = key_fn(tmp_path, "opus")
+    repo = make_review_repo(tmp_path, orchestration=_roster(opus_pub, human_pub=human_pub))
+    head = git(repo, "rev-parse", "HEAD")
+    with pytest.raises(SigningError, match="does not verify against the roster public_key for 'human'"):
+        write_human_approval(repo, NODE, head, wrong_key)
+    assert not review_path(repo, "M1.1", "human").exists()
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nx\n")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _p="": "a")
+    with pytest.raises(SystemExit) as e:
+        mir.main(["--sign-key", str(wrong_key), "--repo-root", str(repo)])
+    captured = capsys.readouterr()
+    assert e.value.code == 1
+    assert "could not sign" in captured.err and "wrong key?" in captured.err
+    assert "[ok] wrote" not in captured.out
+    assert not review_path(repo, "M1.1", "human").exists()

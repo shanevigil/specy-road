@@ -11,3 +11,14 @@ CLAUDE_RESULT, CODEX_TURN, CURSOR_RESULT = (RECORDED[h]["lines"][i] for h, i in 
 FULL_INIT = {"type": "system", "subtype": "init", "session_id": "s1", "model": "opus", "claude_code_version": "2.1.300",
              "tools": ["Bash", "Read", "Edit", "Write", "Skill"], "mcp_servers": [{"name": "docs", "status": "connected"}],
              "plugins": [{"name": "lint", "path": "/p"}]}
+
+import sys
+from specy_road.orchestration.workers import worker_adapters as wa
+
+OK = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
+
+def launch(tmp_path: Path, script: Path, repo: Path, name: str, **spec):
+    """Shared test helper."""
+    p = tmp_path / f"{name}.json"
+    p.write_text(json.dumps({"lines": OK, **spec}))
+    return wa.adapter_for("claude-code").launch(p, repo, "opus", f"{sys.executable} {script} {{prompt}}")

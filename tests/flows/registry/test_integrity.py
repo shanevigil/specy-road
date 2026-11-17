@@ -13,6 +13,7 @@ from specy_road.bundled_scripts import integrity_cli
 from specy_road.bundled_scripts import review_packet as packet
 from specy_road.integrity import compare_integrity
 from specy_road.review_target import resolve_target_or_exit
+from tests.support.review import commit_file, make_review_repo, git as git_folded
 
 
 def test_unchanged_ref_has_no_findings(tmp_path: Path) -> None:
@@ -187,3 +188,27 @@ def test_nested_project_root_reports_git_root_paths(tmp_path: Path, capsys) -> N
     assert capsys.readouterr().out.splitlines() == expected
     section = packet.test_integrity_section(project, resolve_target_or_exit(project, "T1", head))
     assert section[-1 - len(expected):-1] == expected
+
+
+
+# A3 — suppression line numbers are the lines at the commit under review
+
+
+def test_suppression_line_numbers_are_those_at_the_commit(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    base = commit_file(repo, "src/m.py", "".join(f"v{i} = {i}\n" for i in range(1, 21)), "base")
+    lines = [f"v{i} = {i}\n" for i in range(1, 21)]
+    del lines[2:5]                                        # unrelated edits first: three lines gone ...
+    lines[0:0] = ["import os\n", "import sys\n"]          # ... two added at the top
+    commit_file(repo, "src/m.py", "".join(lines), "unrelated edits")
+    lines[9] = lines[9].rstrip("\n") + "  # noqa: E501\n"   # then a suppression on an existing line
+    lines.append("x = os  # type: ignore\n")             # and one on a new last line
+    commit_file(repo, "src/m.py", "".join(lines), "suppressions")
+    # renamed: the numbers are the new file's
+    git_folded(repo, "mv", "src/m.py", "src/n.py")
+    git_folded(repo, "commit", "-qm", "rename")
+    at_commit = git_folded(repo, "show", "HEAD:src/n.py").splitlines()
+    want = {str(n) for n, line in enumerate(at_commit, 1) if "noqa" in line or "type: ignore" in line}
+    assert want == {"10", str(len(at_commit))}
+    got = {f.detail for f in compare_integrity(repo, base, "HEAD") if f.kind == "new-suppression"}
+    assert got == want

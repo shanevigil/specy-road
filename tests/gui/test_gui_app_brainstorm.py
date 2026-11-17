@@ -18,6 +18,10 @@ from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD, script_subprocess_env, use_fake_llm
 from tests.support.extracted.brainstorm_chat import REPLY_WITH_IDEAS
+from specy_road.gui_app_models import BrainstormTriageBody
+from specy_road.gui_app_routes_brainstorm import _apply_triage, _payload
+from specy_road.brainstorm_session import BrainstormSession, add_idea
+from tests.support.extracted.folded_review_brainstorm import ROOT
 
 RESEARCH_ON = {
     "enabled": True,
@@ -378,3 +382,87 @@ def test_a_chat_turn_keeps_ideas_written_while_the_model_was_thinking(
                                                       "llm": {}}, headers=_headers(api_client))
     assert r.status_code == 200, r.text
     assert sorted(i["title"] for i in r.json()["session"]["ideas"]) == ["From a panel shard", "From the chat"]
+
+
+
+# --- B9, F13 ------------------------------------------------------------------
+
+def test_the_gui_payload_carries_the_v2_session_and_rejects_need_a_reason() -> None:
+    session = BrainstormSession(slug="s", topic="t", round=2, profile="technical", panel=3,
+                                frame={"outcome": "x"}, allocation="grid")
+    add_idea(session, title="One")
+    out = _payload(session)
+    assert (out["round"], out["profile"], out["panel"], out["frame"], out["allocation"]) == (2, "technical", 3, {"outcome": "x"}, "grid")
+    with pytest.raises(Exception, match="needs a reason"):
+        _apply_triage(session, BrainstormTriageBody(slug="s", idea_id="B1", status="rejected"))
+    _apply_triage(session, BrainstormTriageBody(slug="s", idea_id="B1", status="rejected", reason="not now"))
+    assert session.by_id("B1").decision["reason"] == "not now"
+
+
+
+# --- F3 --------------------------------------------------------------------
+
+
+def test_gui_payload_carries_the_planned_round_count() -> None:
+    payload = _payload(BrainstormSession(slug="x", topic="t", round=2, rounds=7))
+    assert payload["round"] == 2
+    assert payload["rounds"] == 7
+
+
+
+# --- F7 / Question 3 -------------------------------------------------------
+
+
+@pytest.fixture()
+def api_client_folded(repo: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(repo))
+    from specy_road.gui_app import create_app
+
+    return TestClient(create_app())
+
+
+
+def test_gui_converge_is_advisory_and_persists_nothing_structured(
+    api_client_folded: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The decision: no structured converge protocol in the GUI; docs say advisory."""
+    use_fake_llm(
+        monkeypatch,
+        lambda *_a, **_k: "B1: strong — Principle 3; cluster C1; overlaps M1.1 (adjacent)\nIDEA: sneaky\n",
+    )
+    fingerprint = api_client_folded.get("/api/roadmap").json()["fingerprint"]
+    headers = {"X-PM-Gui-Fingerprint": str(fingerprint)}
+    slug = api_client_folded.post(
+        "/api/brainstorm/session", json={"topic": "Expand payments", "under": "M1"}, headers=headers,
+    ).json()["slug"]
+    api_client_folded.post(
+        "/api/brainstorm/idea",
+        json={"slug": slug, "title": "Stored vault"},
+        headers=headers,
+    )
+    api_client_folded.post(
+        "/api/brainstorm/session",
+        json={"slug": slug, "mode": "roadmap"},
+        headers=headers,
+    )
+
+    r = api_client_folded.post(
+        "/api/brainstorm/chat",
+        json={"slug": slug, "messages": [{"role": "user", "content": "assess"}], "llm": {}},
+        headers=headers,
+    )
+
+    assert r.status_code == 200, r.text
+    assert r.json()["ideas"] == []
+    (idea,) = r.json()["session"]["ideas"]
+    assert idea["recommendation"] is None
+    assert not idea.get("cluster_id") and not idea.get("overlap") and not idea.get("critic")
+
+
+
+@pytest.mark.repo
+def test_gui_docs_say_converge_is_advisory_and_route_to_revise() -> None:
+    doc = (ROOT / "docs" / "pm-gui.md").read_text(encoding="utf-8")
+    assert "advisory only" in doc.lower()
+    assert "specy-road brainstorm revise" in doc
+    assert "ordered by the model's verdict" not in doc

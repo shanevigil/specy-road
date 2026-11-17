@@ -28,6 +28,20 @@ from tests.support.extracted.worker_adapters import (
     FULL_INIT,
     RECORDED,
 )
+from tests.support.review import git
+from tests.support.harness import make_worker_repo
+from specy_road.review_files import reviews_root
+import subprocess
+from tests.support.extracted.folded_review_ops import _idle
+from tests.support import REPO
+from specy_road.orchestration.workers.worker_adapters import placeholder_problem
+from tests.support.extracted.folded_review_policy import PROFILE_REL, ROSTER
+from tests.support.same.git_84c8ad8f55f9 import git as git_folded
+from specy_road.orchestration.workers import worker_process as wp
+from tests.support.extracted.worker_adapters import launch
+from tests.support.extracted.worker_adapters import launch as launch_fn
+from specy_road.review_files import list_ready, reviews_dir
+import os
 
 FAKE = '''
 import json, sys
@@ -417,3 +431,340 @@ def test_delegate_passes_the_executor_effort_to_default_and_custom_commands(tmp_
             assert launches[-1].argv[2].startswith("wrapper --effort medium ") and notes == 0
         else:
             assert "--effort" not in launches[-1].argv[2] and notes == 1
+
+
+
+# --- B4 -----------------------------------------------------------------------
+
+def test_an_embedded_placeholder_is_refused_not_quoted_inside_quotes(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("$(echo pwned)")
+    for cli in ('printf "prefix <prompt>"', "x --prompt=<prompt>", "x '<prompt>y'"):
+        assert "whole argument" in (wa.placeholder_problem(cli) or ""), cli
+        with pytest.raises(wa.Unsupported):
+            wa.ADAPTERS["generic"].launch(p, tmp_path, "m", cli)
+    assert wa.placeholder_problem('claude -p "<prompt>"') is None
+    assert wa.placeholder_problem("run {prompt} {session}") is None
+
+
+
+# --- F9 -----------------------------------------------------------------------
+
+def test_a_ready_on_another_branch_does_not_complete(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git(repo, "rev-parse", "HEAD")
+    (d / "READY-x.md").write_text(f"---\nnode_id: M1.1\nagent: x\nbranch: feature/rm-other\ncommit: {head}\n"
+                                  f"base: {head}\nchanged_paths: []\nverify: []\n---\n")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    spec = tmp_path / "ok.json"
+    spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]}))
+    launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")
+    time.sleep(0.05)
+    os.utime(d / "READY-x.md", None)
+    assert wr.run(repo, rec.worker_id, launch) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+
+
+
+def _ready(repo: Path, commit: str, branch: str = "feature/rm-thing") -> Path:
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / "READY-x.md"
+    p.write_text(f"---\nnode_id: M1.1\nagent: x\nbranch: {branch}\ncommit: {commit}\nbase: {commit}\n"
+                 "changed_paths: []\nverify: []\n---\n")
+    return p
+
+
+
+# --- Gemini B2 / Sol F1 ---------------------------------------------------------
+
+def test_a_ready_for_an_older_commit_does_not_complete(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    old = git(repo, "rev-parse", "HEAD~1")
+    ready = _ready(repo, old)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    spec = tmp_path / "ok.json"
+    spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]}))
+    launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")
+    time.sleep(0.05)
+    os.utime(ready, None)
+    assert wr.run(repo, rec.worker_id, launch) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+    head = git(repo, "rev-parse", "HEAD")
+    spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}],
+                                "write": {"path": str(ready), "text": ready.read_text().replace(old, head)}}))
+    wr.run(repo, rec.worker_id, launch, resumed=True)      # the turn rewrites the READY at HEAD
+    assert ws.load_record(repo, rec.worker_id).state == "completed"
+
+
+
+# --- Sol B3 ----------------------------------------------------------------------
+
+def test_a_malformed_custom_cli_raises_instead_of_widening(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("hi")
+    with pytest.raises(wa.Unsupported, match="whole argument"):
+        wa.adapter_for("cursor").launch(p, tmp_path, "m", 'agent -p --mode plan "$(cat {prompt})"')
+    launch = wa.adapter_for("cursor").launch(p, tmp_path, "m", "agent -p --mode plan {prompt}")
+    assert launch.argv[:2] == ["sh", "-c"] and "--force" not in launch.argv[2]
+
+
+
+# --- F1 / G1 ---------------------------------------------------------------------
+
+@pytest.mark.parametrize("cli", [
+    "claude -p --session-id={session} < {prompt}",
+    'printf "prefix <prompt> suffix"',
+    "run --prompt={prompt}",
+    "run '<prompt> and more'",
+    'run "$(cat {prompt})"',
+    "run <prompt>'",
+])
+def test_embedded_placeholders_are_refused(cli: str) -> None:
+    assert wa.placeholder_problem(cli) is not None
+
+
+
+@pytest.mark.parametrize("cli", [
+    "claude -p --session-id {session} < {prompt}",
+    'claude -p "<prompt>"',
+    "muse exec '<prompt>'",
+    "run <{prompt}",
+    "run '{session}' \"{prompt}\"",
+])
+def test_whole_word_placeholders_are_accepted(cli: str) -> None:
+    assert wa.placeholder_problem(cli) is None
+
+
+
+def test_prompt_text_cannot_run_a_command_substitution(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("hello $(echo INJECTED) world")
+    out = subprocess.run(["sh", "-c", wa.substitute_prompt('printf "%s" "<prompt>"', p)],
+                         capture_output=True, text=True, check=True).stdout
+    assert out == "hello $(echo INJECTED) world"
+    text = wa.substitute_prompt("x --session-id {session} <{prompt} '<prompt>'", p, "abc")
+    assert text == f"x --session-id abc <{p} 'hello $(echo INJECTED) world'"
+
+
+
+def test_an_embedded_session_placeholder_is_refused_by_the_adapter(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("hi")
+    with pytest.raises(wa.Unsupported, match="whole argument"):
+        wa.adapter_for("claude-code").launch(p, tmp_path, "m", "claude -p --session-id={session} < {prompt}")
+
+
+
+# --- F4 ----------------------------------------------------------------------------
+
+@pytest.mark.repo
+def test_documented_cli_forms_pass_the_placeholder_guard() -> None:
+    doc = (REPO / "docs" / "orchestration-models.md").read_text()
+    for form in ("claude -p --model <id> < {prompt}", 'claude -p "<prompt>" --model <id>',
+                 "codex exec -m <id> - < {prompt}", "agent -p --model <id> < {prompt}"):
+        assert form in doc and placeholder_problem(form) is None
+    assert 'claude -p "$(cat {prompt})"' in doc   # named as the refused form
+    assert placeholder_problem('claude -p "$(cat {prompt})" --model x')
+
+
+
+
+def _ready_text(repo: Path, commit: str, agent: str = "x", branch: str = "feature/rm-thing") -> str:
+    return (f"---\nnode_id: M1.1\nagent: {agent}\nbranch: {branch}\ncommit: {commit}\nbase: {commit}\n"
+            "changed_paths: []\nverify: []\n---\n")
+
+
+
+
+
+# --- B3 ---------------------------------------------------------------------------
+
+def test_a_ready_written_just_before_the_turn_does_not_complete_it_and_a_rewritten_one_does(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git_folded(repo, "rev-parse", "HEAD")
+    ready = d / "READY-x.md"
+    ready.write_text(_ready_text(repo, head))           # 0 s before the turn: the mtime window accepted this
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    assert wr.run(repo, rec.worker_id, launch(tmp_path, script, repo, "quiet")) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+    # The same path rewritten with new content during the turn is a new READY, whatever the clock says.
+    old = time.time() - 3600
+    os.utime(ready, (old, old))
+    rewrite = {"path": str(ready), "text": _ready_text(repo, head, agent="y")}
+    wr.run(repo, rec.worker_id, launch(tmp_path, script, repo, "writes", write=rewrite), resumed=True)
+    assert ws.load_record(repo, rec.worker_id).state == "completed"
+    assert wp.ready_fingerprints(repo, "M1.1") == [f"READY-x.md:{__import__('hashlib').sha256(ready.read_bytes()).hexdigest()}"]
+
+
+
+def test_the_checkpoint_is_by_content_not_mtime(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git_folded(repo, "rev-parse", "HEAD")
+    (d / "READY-a.md").write_text(_ready_text(repo, head))
+    before = wp.ready_fingerprints(repo, "M1.1")
+    future = time.time() + 600
+    os.utime(d / "READY-a.md", (future, future))
+    assert wp.new_ready(repo, "M1.1", before) is None               # touched, not changed
+    (d / "READY-b.md").write_text(_ready_text(repo, head, agent="b"))
+    assert wp.new_ready(repo, "M1.1", before).path.name == "READY-b.md"   # new, though its mtime is older than a's
+
+
+
+# --- B12 ----------------------------------------------------------------------------
+
+def test_completion_resume_and_reclaim_check_the_branch_actually_checked_out(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    git_folded(repo, "checkout", "-q", "dev")
+    head = git_folded(repo, "rev-parse", "HEAD")
+    write = {"path": str(d / "READY-x.md"), "text": _ready_text(repo, head)}   # declares the branch, at dev's HEAD
+    assert wr.run(repo, rec.worker_id, launch(tmp_path, script, repo, "w", write=write)) == 0
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.state == "idle"
+    why = [e for e in ws.events_since(repo, rec.worker_id) if "READY-x.md ignored" in e.summary]
+    assert len(why) == 1 and "has dev checked out, not the worker's branch feature/rm-thing" in why[0].summary
+    with pytest.raises(ws.WorkerError, match="has dev checked out"):
+        ops.resume(repo, rec.worker_id)
+    git_folded(repo, "checkout", "-q", "feature/rm-thing")
+    ops.handoff(repo, rec.worker_id)
+    git_folded(repo, "checkout", "-q", "dev")
+    with pytest.raises(ws.WorkerError, match="has dev checked out"):
+        ops.reclaim(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).lease["holder"] == "human"
+    git_folded(repo, "checkout", "-q", "feature/rm-thing")
+    ops.reclaim(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).lease["holder"] == "broker"
+
+
+
+# --- F9 ---------------------------------------------------------------------------
+
+def test_parsed_output_is_worker_suggestion_and_lifecycle_stays_system(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    lines = [{"type": "system", "subtype": "init", "session_id": "n"},
+             {"type": "assistant", "message": {"content": [{"type": "text", "text": "hello"}]}},
+             {"type": "result", "subtype": "success", "result": "ok"}]
+    spec = tmp_path / "f9.json"
+    spec.write_text(json.dumps({"lines": lines}))
+    wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}"))
+    got = {(e.type, e.source): e.authority for e in ws.events_since(repo, rec.worker_id)}
+    assert got[("started", "broker")] == "system" and got[("completion", "worker")] == "system"
+    assert got[("started", "worker")] == got[("output", "worker")] == got[("turn_completed", "worker")] == "worker_suggestion"
+
+
+
+def test_worker_runner_reports_invalid_and_missing_ready(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    ready_path = reviews_dir(repo, "M1.1") / "READY-opus.md"
+    ready_path.parent.mkdir(parents=True, exist_ok=True)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    launch = launch_fn(
+        tmp_path, script, repo, "invalid",
+        write={"path": str(ready_path), "text": "no front matter\n"},
+    )
+    wr.run(repo, rec.worker_id, launch)
+    invalid_summary = ws.events_since(repo, rec.worker_id)[-1].summary
+    assert invalid_summary.startswith("exit 0; READY file invalid:")
+    invalid = next(r for r in list_ready(repo, "M1.1") if r.path.name == "READY-opus.md" and r.errors)
+    assert "; ".join(invalid.errors) in invalid_summary
+
+    rec2 = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    wr.run(repo, rec2.worker_id, launch_fn(tmp_path, script, repo, "missing"))
+    assert ws.events_since(repo, rec2.worker_id)[-1].summary == "exit 0; READY file missing"
+
+
+
+def test_exit_zero_with_a_broken_roadmap_still_completes_idle(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    (repo / "roadmap" / "manifest.json").write_text("{not json", encoding="utf-8")
+    wr.run(repo, rec.worker_id, launch_fn(tmp_path, script, repo, "broken-roadmap"))
+    last = ws.events_since(repo, rec.worker_id)[-1]
+    assert last.type == "completion"
+    assert last.summary == "exit 0; READY file missing"
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+
+
+
+def test_an_older_attempts_ready_does_not_complete_a_new_worker(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    from tests.support.same.git_84c8ad8f55f9 import git
+
+    head = git(repo, "rev-parse", "HEAD")
+    ready = d / "READY-old.md"
+    ready.write_text(f"---\nnode_id: M1.1\nagent: old\nbranch: feature/rm-thing\ncommit: {head}\nbase: {head}\n"
+                     "changed_paths: []\nverify: []\n---\n")
+    now = time.time() + 60   # even a future mtime is not freshness: the checkpoint is by content, not clock
+    os.utime(ready, (now, now))
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    lines = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
+    spec = tmp_path / "ok.json"
+    spec.write_text(json.dumps({"lines": lines}))
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "idle"      # not completed on an older attempt's READY
+    rec2 = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
+    rec2 = ws.mutate(repo, rec2, lambda r: setattr(r, "node_id", "M1.1"))
+    spec2 = tmp_path / "writes.json"       # this worker's harness writes its own READY during the turn
+    spec2.write_text(json.dumps({"lines": lines, "write": {"path": str(d / "READY-new.md"),
+                                                           "text": ready.read_text().replace("agent: old", "agent: new")}}))
+    wr.run(repo, rec2.worker_id, wa.adapter_for("claude-code").launch(spec2, repo, "opus", f"{sys.executable} {script} {{prompt}}"))
+    assert ws.load_record(repo, rec2.worker_id).state == "completed"
+
+
+
+def test_a_bad_output_line_does_not_kill_the_wrapper(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "codex", "sol", repo)
+    spec = tmp_path / "e.json"
+    bad = tmp_path / "bad.py"
+    bad.write_text("import json\nprint(json.dumps({'type': 'thread.started', 'thread_id': 't'}), flush=True)\n"
+                   "print(json.dumps({'type': 'item.completed', 'item': {'type': 'agent_message', 'text': ''}}), flush=True)\n"
+                   "print(json.dumps({'type': 'turn.completed'}), flush=True)\n")
+    assert wr.run(repo, rec.worker_id, wa.Launch([sys.executable, str(bad)])) == 0
+    final = ws.load_record(repo, rec.worker_id)
+    assert final.state == "idle" and final.pid is None
+    assert [e.type for e in ws.events_since(repo, rec.worker_id)][-1] == "completion"
+
+
+
+def test_a_prompt_containing_the_placeholder_cannot_break_the_quoting(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("Explain <prompt> and '{prompt}' then {session} $(touch pwned)")
+    out = wa.substitute_prompt('claude -p "<prompt>" --sid {session}', p, "S1")
+    assert out == "claude -p " + "'Explain <prompt> and '\"'\"'{prompt}'\"'\"' then {session} $(touch pwned)'" + " --sid S1"
+    launch = wa.ADAPTERS["generic"]._custom("run {prompt} {session}", p)
+    assert launch and launch.argv[2].endswith(f"{p} {launch.session_id}")
+
+
+
+def test_a_ready_from_the_previous_turn_does_not_complete_the_next(tmp_path: Path) -> None:
+    repo, script = make_worker_repo(tmp_path)
+    d = reviews_root(repo) / "M1.1"
+    d.mkdir(parents=True)
+    head = git(repo, "rev-parse", "HEAD")
+    text = (f"---\nnode_id: M1.1\nagent: old\nbranch: feature/rm-thing\ncommit: {head}\n"
+            f"base: {head}\nchanged_paths: []\nverify: []\n---\n")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    lines = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
+    writes = tmp_path / "writes.json"       # this turn's harness writes the READY
+    writes.write_text(json.dumps({"lines": lines, "write": {"path": str(d / "READY-old.md"), "text": text}}))
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(
+        writes, repo, "opus", f"{sys.executable} {script} {{prompt}}")) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "completed"
+    quiet = tmp_path / "quiet.json"         # the next turn writes nothing: the READY is the checkpoint's
+    quiet.write_text(json.dumps({"lines": lines}))
+    wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(
+        quiet, repo, "opus", f"{sys.executable} {script} {{prompt}}"), resumed=True)
+    assert ws.load_record(repo, rec.worker_id).state == "idle"

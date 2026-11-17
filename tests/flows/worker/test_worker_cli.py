@@ -21,6 +21,18 @@ from specy_road.orchestration.workers import worker_cli_render as wcr
 
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo, run_fake_harness_turn, wait_for_worker
+from tests.support.review import make_review_repo, git as git_folded
+from specy_road.review_files import reviews_root
+import os
+from tests.support.review import git as git_folded
+from specy_road.orchestration.workers import worker_lease as ww
+from tests.support.extracted.folded_review_ops import _idle
+from tests.support.harness import FAKE, worker_roster
+from tests.support.extracted.worker_repos import worker_repo
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_runner as wr
+from specy_road.bundled_scripts.role_prompt import build_prompt
+from specy_road.orchestration.workers.worker_cli_render import sync_event_lines
 
 
 def test_delegate_returns_at_once_and_is_idempotent(tmp_path: Path, capsys) -> None:
@@ -353,3 +365,356 @@ def test_usage_event_schema_needs_every_field_nullable_never_missing() -> None:
     for bad in ({}, {**nulls, "output_tokens": "9"}, {k: v for k, v in nulls.items() if k != "num_turns"}):
         assert ws.schema_errors({**ev, "detail": bad}, "worker-event.schema.json")
     assert ws.schema_errors(ev, "worker-event.schema.json")   # no detail at all
+
+
+
+# --- B8 -----------------------------------------------------------------------
+
+def test_a_stale_worktree_directory_is_refused(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    git_folded(repo, "checkout", "-q", "dev")
+    stale = reviews_root(repo).parent / ".worktrees" / "thing"
+    stale.mkdir(parents=True)
+    with pytest.raises(ws.WorkerError, match="not a git worktree"):
+        ops._worktree_for(repo, "feature/rm-thing", "thing", None)
+    with pytest.raises(ws.WorkerError, match="checked out, not the claim's branch"):
+        ops._worktree_for(repo, "feature/rm-thing", "thing", repo)
+
+
+
+def test_handoff_prints_a_quoted_command(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = _idle(repo, sid="a.b:c-d")
+    assert run_worker_cli("worker", "handoff", rec.worker_id, "--repo-root", str(repo)) == 0
+    assert "claude --resume a.b:c-d" in capsys.readouterr().out
+    assert run_worker_cli("worker", "open", rec.worker_id, "--repo-root", str(repo)) == 0
+    assert "resume:   claude --resume a.b:c-d" in capsys.readouterr().out
+
+
+
+def test_delegate_runs_preflight_outside_the_workers_lock(tmp_path: Path, monkeypatch) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    seen: dict[str, bool] = {}
+
+    def probe(entry, root):
+        with ww.try_workers_lock(root, 0.2) as held:   # re-entrant when this thread holds it
+            seen["free"] = held
+        # A stranger (another thread) must be able to take the lock while preflight runs.
+        got = []
+        t = threading.Thread(target=lambda: [got.append(h) for h in [ww.try_workers_lock(root, 0.5).__enter__()]])
+        t.start()
+        t.join(2)
+        seen["other_thread"] = bool(got and got[0])
+    monkeypatch.setattr(ops, "_preflight", probe)
+    rec, created = ops.delegate(repo, "M1.1", "opus")
+    assert created and seen == {"free": True, "other_thread": True}
+    wait_for_worker(repo, rec.worker_id)
+
+
+
+# --- F11 (b) ---------------------------------------------------------------------
+
+@pytest.mark.slow
+def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, capsys) -> None:
+    # Pre-release review: the worker would edit the same tree, overwriting this
+    # work, and `reconcile` could not tell its edits from it. Only the leaf's
+    # untracked bookkeeping is exempt, not the rest of work/ (re-review N2).
+    repo, _ = make_worker_repo(tmp_path)
+    (repo / ".gitignore").write_text("work/.workers/\nwork/prompt-*.md\n")   # as the project template: briefs tracked
+    (repo / "work").mkdir(exist_ok=True)
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("committed summary\n")
+    git_folded(repo, "add", ".gitignore", "work/implementation-summary-M1.1.md")
+    git_folded(repo, "commit", "-qm", "template ignores")
+    (repo / "work" / "brief-M1.1.md").write_text("pickup's brief, untracked\n")
+    (repo / "work" / "notes.md").write_text("the human's notes\n")
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("edited before delegate\n")
+    (repo / "pre.txt").write_text("dirt before delegate\n")
+    (repo / "src" / "a.py").write_text("edited before delegate\n")
+    prompt = repo / "work" / "prompt-M1.1-executor-opus.md"   # third review F4: nothing is written before the check
+    prompt.write_text("an earlier prompt\n")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert ("uncommitted changes" in err and "commit or stash" in err
+            and "pre.txt, src/a.py, work/implementation-summary-M1.1.md, work/notes.md;" in err)
+    assert (repo / "src" / "a.py").read_text() == "edited before delegate\n" and not ws.list_records(repo)
+    (repo / "pre.txt").unlink()
+    (repo / "work" / "notes.md").unlink()
+    git_folded(repo, "checkout", "--", "src/a.py", "work/implementation-summary-M1.1.md")
+    index = repo / ".git" / "index"
+    saved = index.read_bytes()
+    index.write_bytes(b"not an index")   # re-review N9: a status git cannot read is not a clean tree
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "cannot read `git status`" in capsys.readouterr().err and not ws.list_records(repo)
+    assert prompt.read_text() == "an earlier prompt\n"
+    index.write_bytes(saved)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0   # only the brief left
+    wait_for_worker(repo, "w-0001")
+
+
+
+def test_delegate_in_the_same_checkout_writes_the_missing_brief(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    assert not (repo / "work" / "brief-M1.1.md").exists()
+    rec, _c = ops.delegate(repo, "M1.1", "opus")
+    assert rec.worktree == str(repo.resolve()) and (repo / "work" / "brief-M1.1.md").is_file()
+    wait_for_worker(repo, rec.worker_id)
+    assert os.path.getsize(repo / "work" / "brief-M1.1.md") > 0
+
+
+
+@pytest.mark.slow
+def test_worker_list_and_sync_show_worktree(tmp_path: Path, capsys) -> None:
+    script = tmp_path / "fake.py"
+    script.write_text(FAKE)
+    repo = make_review_repo(
+        tmp_path,
+        orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"),
+    )
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    rec = wait_for_worker(repo, "w-0001")
+    capsys.readouterr()
+    assert run_worker_cli("worker", "list", "--repo-root", str(repo)) == 0
+    assert f"worktree={rec.worktree}" in capsys.readouterr().out
+    capsys.readouterr()
+    assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
+    assert f"worktree={rec.worktree}" in capsys.readouterr().out
+
+
+
+def test_sync_and_list_surface_the_harness_final_message(tmp_path: Path, capsys) -> None:
+    limit = "You've hit your 5-hour limit · resets 6:20pm"
+    script = tmp_path / "limit.py"
+    script.write_text(
+        f'''import json, sys
+print(json.dumps({{"type": "system", "subtype": "init", "session_id": "s1", "model": "fake"}}), flush=True)
+print(json.dumps({{"type": "result", "subtype": "success", "is_error": True, "result": "{limit}",
+  "session_id": "s1"}}), flush=True)
+sys.exit(1)
+'''
+    )
+    repo = make_review_repo(
+        tmp_path,
+        orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"),
+    )
+    (repo / ".gitignore").write_text("work/\n")
+    git_folded(repo, "add", ".gitignore")
+    git_folded(repo, "commit", "-qm", "ignore work")
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    rec = wait_for_worker(repo, "w-0001")
+    assert rec.state == "failed"
+    capsys.readouterr()
+    assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
+    sync_out = capsys.readouterr().out
+    assert limit in sync_out
+    assert run_worker_cli("worker", "list", "--all", "--repo-root", str(repo)) == 0
+    assert limit in capsys.readouterr().out
+
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("exit_type, exit_summary, exit_detail", [
+    ("completion", "exit 0; READY file missing", {"exit": 0, "ready": False}),
+    ("error", "exit 1; see w-0001.log", {"exit": 1, "ready": False}),
+])
+def test_sync_shows_an_acknowledged_final_message_with_the_later_exit(
+    tmp_path: Path, capsys, exit_type: str, exit_summary: str, exit_detail: dict,
+) -> None:
+    final = "Stop: write READY in main checkout reviews dir"
+    repo = worker_repo(tmp_path)
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    rec = wait_for_worker(repo, "w-0001")
+    ws.append_event(repo, rec, "output", source="worker", summary="(truncated)", detail={"message": final})
+    assert run_worker_cli("worker", "sync", "--ack", "--repo-root", str(repo)) == 0   # acked while the turn runs
+    ws.append_event(repo, rec, exit_type, source="worker", summary=exit_summary, detail=exit_detail)
+    capsys.readouterr()
+    assert run_worker_cli("worker", "sync", "--ack", "--repo-root", str(repo)) == 0
+    assert final in capsys.readouterr().out
+    # The next turn exits with no message of its own: the earlier turn's is not shown for it.
+    ws.append_event(repo, rec, exit_type, source="worker", summary=exit_summary, detail=exit_detail)
+    assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
+    assert final not in capsys.readouterr().out
+
+
+
+def test_concurrent_delegates_on_one_leaf_launch_once(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path, max_workers=4)
+    results: list = []
+
+    def go() -> None:
+        try:
+            results.append(ops.delegate(repo, "M1.1", "opus"))
+        except Exception as e:  # noqa: BLE001
+            results.append(e)
+
+    threads = [threading.Thread(target=go) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    recs = [r for r in results if isinstance(r, tuple)]
+    assert len(recs) == 4 and sum(1 for _r, created in recs if created) == 1
+    assert {r.worker_id for r, _c in recs} == {"w-0001"}
+    wait_for_worker(repo, "w-0001")
+
+
+
+@pytest.mark.slow
+def test_terminate_reaches_the_harness_and_its_children(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    marker = tmp_path / "ticks"
+    child = tmp_path / "child.py"
+    child.write_text(f"import time\nwhile True:\n    open({str(marker)!r}, 'a').write('x')\n    time.sleep(0.1)\n")
+    harness = tmp_path / "harness.py"
+    harness.write_text("import json, subprocess, sys, time\n"
+                       f"subprocess.Popen([sys.executable, {str(child)!r}])\n"
+                       "print(json.dumps({'type': 'system', 'subtype': 'init', 'session_id': 'h'}), flush=True)\n"
+                       "time.sleep(30)\n")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    wr.spawn(repo, rec, wa.Launch([sys.executable, str(harness)]))
+    for _ in range(50):
+        if marker.is_file() and ws.load_record(repo, rec.worker_id).provider_session_id:
+            break
+        time.sleep(0.1)
+    assert marker.is_file()
+    ops.terminate(repo, rec.worker_id)
+    time.sleep(0.5)
+    size = marker.stat().st_size
+    time.sleep(0.5)
+    assert marker.stat().st_size == size, "the harness's child kept writing after terminate"
+    assert ws.load_record(repo, rec.worker_id).state == "terminated"
+
+
+
+def test_delegate_into_a_linked_worktree_carries_the_brief(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    (repo / "work").mkdir(exist_ok=True)
+    (repo / "work" / "brief-M1.1.md").write_text("# Brief\n")
+    git_folded(repo, "checkout", "-q", "dev")
+    rec, created = ops.delegate(repo, "M1.1", "opus")
+    assert created and Path(rec.worktree) != repo.resolve()
+    assert (Path(rec.worktree) / "work" / "brief-M1.1.md").read_text() == "# Brief\n"
+    wait_for_worker(repo, rec.worker_id)
+    text, _p, err = build_prompt(repo, "M1.1", role="executor", model="opus")
+    assert err is None and str(reviews_root(repo) / "M1.1") in text
+
+
+
+def test_an_op_id_is_bound_to_its_target(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path, max_workers=4)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo)) == 0
+    wait_for_worker(repo, "w-0001")
+    assert run_worker_cli("worker", "delegate", "M9.9", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo)) != 0
+    assert [r.worker_id for r in ws.list_records(repo)] == ["w-0001"]   # no replayed result, no second worker
+
+
+_UNTIL_VALUES = ("completion", "error", "intervention", "completion,error", "error,intervention")
+
+
+
+def _idle_rec(repo: Path) -> ws.WorkerRecord:
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.set_state(repo, rec, "idle", pid=None)
+    return rec
+
+
+
+def _ack_all(repo: Path) -> None:
+    run_worker_cli("worker", "sync", "--wait", "--ack", "--repo-root", str(repo))
+
+
+
+@pytest.mark.parametrize("until", _UNTIL_VALUES)
+def test_sync_wait_until_exits_0_when_the_condition_is_met(tmp_path: Path, capsys, until: str) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = _idle_rec(repo)
+    _ack_all(repo)
+    capsys.readouterr()
+    want = {t.strip() for t in until.split(",")}
+    if "completion" in want:
+        ws.append_event(repo, rec, "completion", source="worker", summary="exit 0; READY file present",
+                        detail={"exit": 0, "ready": True})
+    elif "error" in want:
+        ws.append_event(repo, rec, "error", source="worker", summary="exit 1", detail={"exit": 1})
+    else:
+        ws.append_event(repo, rec, "intervention", source="human", authority="human_authoritative", summary="stop")
+    assert run_worker_cli("worker", "sync", "--wait", "--until", until, "--timeout", "5",
+                          "--json", "--repo-root", str(repo)) == 0
+    evs = json.loads(capsys.readouterr().out)["workers"][0]["events"]
+    assert evs[-1]["type"] in want
+
+
+
+@pytest.mark.parametrize("until", ("completion", "error", "intervention"))
+def test_sync_wait_until_exits_2_on_timeout_with_no_events(tmp_path: Path, capsys, until: str) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    _idle_rec(repo)
+    _ack_all(repo)
+    capsys.readouterr()
+    assert run_worker_cli("worker", "sync", "--wait", "--until", until, "--timeout", "0.3",
+                          "--repo-root", str(repo)) == 2
+    assert "No new worker events." in capsys.readouterr().out
+
+
+
+@pytest.mark.parametrize("until", ("completion", "error", "intervention"))
+def test_sync_wait_until_exits_2_on_timeout_with_unmatched_events(tmp_path: Path, capsys, until: str) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = _idle_rec(repo)
+    _ack_all(repo)
+    capsys.readouterr()
+    ws.append_event(repo, rec, "output", source="worker", summary="(tool use)")
+    assert run_worker_cli("worker", "sync", "--wait", "--until", until, "--timeout", "0.3",
+                          "--repo-root", str(repo)) == 2
+    out = capsys.readouterr().out
+    assert "(tool use)" in out or "tool uses" in out
+
+
+
+def test_sync_wait_until_completion_waits_past_output_before_completion(tmp_path: Path, capsys) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = _idle_rec(repo)
+    _ack_all(repo)
+    capsys.readouterr()
+    for _ in range(3):
+        ws.append_event(repo, rec, "output", source="worker", summary="(tool use)")
+    threading.Timer(0.4, lambda: ws.append_event(repo, rec, "completion", source="worker",
+                                                   summary="exit 0; READY file present",
+                                                   detail={"exit": 0, "ready": True})).start()
+    t0 = time.monotonic()
+    assert run_worker_cli("worker", "sync", "--wait", "--until", "completion", "--timeout", "10",
+                          "--json", "--repo-root", str(repo)) == 0
+    assert time.monotonic() - t0 >= 0.35
+    evs = json.loads(capsys.readouterr().out)["workers"][0]["events"]
+    assert evs[-1]["type"] == "completion"
+
+
+
+def test_sync_collapses_consecutive_tool_use_lines(tmp_path: Path, capsys) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = _idle_rec(repo)
+    for _ in range(6):
+        ws.append_event(repo, rec, "output", source="worker", summary="(tool use)")
+    run_worker_cli("worker", "sync", "--repo-root", str(repo))
+    out = capsys.readouterr().out
+    assert " output: 6 tool uses" in out
+    assert "-#" in out
+    assert out.count("(tool use)") == 0
+
+
+
+def test_sync_verbose_shows_each_tool_use(tmp_path: Path, capsys) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = _idle_rec(repo)
+    ws.append_event(repo, rec, "output", source="worker", summary="(tool use)")
+    ws.append_event(repo, rec, "output", source="worker", summary="(tool use)")
+    run_worker_cli("worker", "sync", "--verbose", "--repo-root", str(repo))
+    out = capsys.readouterr().out
+    assert out.count("(tool use)") == 2
+
+
+
+def test_completion_missing_ready_offers_ready_only_resume() -> None:
+    lines = sync_event_lines([], [{"seq": 3, "type": "completion", "source": "worker",
+                                     "summary": "exit 0; READY file missing",
+                                     "detail": {"exit": 0, "ready": False}}], "w-0001")
+    assert any("worker resume w-0001 --ready-only" in line for line in lines)

@@ -29,6 +29,11 @@ from specy_road.orchestration.workers.worker_adapter_base import (ARG_LIMIT, COD
                                          oversized_arg)
 from specy_road.orchestration.workers.worker_adapter_codex import CODEX_MEMORY_OFF, profile_home
 from specy_road.orchestration.workers.worker_adapters import ADAPTERS, Launch, Unsupported
+from tests.support.harness import make_worker_repo
+from tests.support.harness import wait_for_worker
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_process as wp
+from specy_road.orchestration.workers import worker_runner as wr
 
 REAL_RESOLVE = hb.resolve   # taken at import, before conftest's autouse stub replaces it for each test
 
@@ -350,3 +355,85 @@ def test_an_rca_prompt_over_the_limit_reaches_the_bundled_codex_profile_on_stdin
     shipped = sorted((project_template_root() / "model-profiles" / "openai-gpt").glob("*.md"))
     assert shipped   # every bundled OpenAI profile, however many, is rendered with the stdin form
     assert all(load_profile(p).cli().endswith(" - < {prompt}") for p in shipped)
+
+
+
+def test_a_spawn_failure_marks_the_record_failed(tmp_path: Path, monkeypatch) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+
+    def boom(*a, **k):
+        raise OSError("no fork for you")
+
+    monkeypatch.setattr(ops, "spawn", boom)
+    with pytest.raises(ws.WorkerError, match="cannot start the wrapper"):
+        ops.delegate(repo, "M1.1", "opus")
+    assert ws.load_record(repo, "w-0001").state == "failed"
+    assert ws.active_for_node(repo, "M1.1") is None
+
+
+
+# --- B10 ----------------------------------------------------------------------------
+
+def test_a_huge_stdin_prompt_travels_in_a_0600_file_not_argv(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    probe = tmp_path / "probe.py"
+    probe.write_text("import json, sys\nn = len(sys.stdin.read())\n"
+                     "print(json.dumps({'type': 'system', 'subtype': 'init', 'session_id': str(n)}), flush=True)\n")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    seen = {}
+    real = wr.subprocess.Popen
+
+    def spy(argv, **kw):
+        # the lock's git calls go through Popen too
+        if "specy_road.orchestration.workers.worker_runner" in argv:
+            seen["argv"] = argv
+            seen["mode"] = oct(Path(argv[-1]).stat().st_mode & 0o777)
+        return real(argv, **kw)
+    wr.subprocess.Popen = spy
+    try:
+        wr.spawn(repo, rec, wa.Launch([sys.executable, str(probe)], stdin="x" * 2_000_000))   # E2BIG before
+    finally:
+        wr.subprocess.Popen = real
+    assert seen["mode"] == "0o600" and sum(len(a) for a in seen["argv"]) < 4096
+    assert seen["argv"][4:7] == [str(repo.resolve()), rec.worker_id, ws.load_record(repo, rec.worker_id).wrapper_token]
+    final = wait_for_worker(repo, rec.worker_id)
+    assert final.provider_session_id == "2000000"
+    assert not list((repo / "work" / ".workers").glob("*.launch-*.json"))   # read once and deleted
+
+
+
+def test_a_prompt_in_argv_is_refused_above_the_limit_with_a_failed_record(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "cursor", "composer", repo)
+    with pytest.raises(ws.WorkerError, match=r"KiB of arguments \(limit 100 KiB\)"):
+        wr.spawn(repo, rec, wa.Launch(["agent", "-p", "y" * (wp.ARGV_LIMIT + 1)]))
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.state == "failed" and rec.pid is None
+    assert "shorten the brief" in ws.events_since(repo, rec.worker_id)[-1].summary
+
+
+
+def test_the_harness_does_not_inherit_the_wrappers_pythonpath(tmp_path: Path, monkeypatch) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    probe = tmp_path / "probe.py"
+    probe.write_text("import json, os\nprint(json.dumps({'type': 'system', 'subtype': 'init', 'session_id': os.environ.get('PYTHONPATH', '(unset)')}), flush=True)\n")
+    monkeypatch.setenv("PYTHONPATH", "/adopter/own/path")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    wr.spawn(repo, rec, wa.Launch([sys.executable, str(probe)]))
+    wait_for_worker(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).provider_session_id == "/adopter/own/path"
+    monkeypatch.delenv("PYTHONPATH")
+    rec2 = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
+    wr.spawn(repo, rec2, wa.Launch([sys.executable, str(probe)]))
+    wait_for_worker(repo, rec2.worker_id)
+    assert ws.load_record(repo, rec2.worker_id).provider_session_id == "(unset)"
+
+
+
+def test_the_session_id_chosen_up_front_is_on_disk_after_spawn(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    wr.spawn(repo, rec, wa.Launch(["true"], session_id="sid-1234"))
+    assert ws.load_record(repo, rec.worker_id).provider_session_id == "sid-1234"
+    wait_for_worker(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).provider_session_id == "sid-1234"
