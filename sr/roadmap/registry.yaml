@@ -78,6 +78,18 @@ entries:
       - tests/test_suggested_prompts_commands.py
       - tests/test_lean_rules.py
       - tests/test_shared_checkout_guidance.py
+      - scripts/ruff_quality_baseline.json
     started: '2026-11-15'
+    owner: savigil
+    implementation_review: pending
+  - codename: docs-name-moved-test-files-at-lane-paths
+    node_id: M16.6.9
+    branch: feature/rm-docs-name-moved-test-files-at-lane-paths
+    touch_zones:
+      - docs/orchestration.md
+      - docs/orchestration-workers.md
+      - docs/orchestration-harness-launch.md
+      - docs/agentic-sandbox-runbook.md
+    started: '2026-11-16'
     owner: savigil
     implementation_review: pending
