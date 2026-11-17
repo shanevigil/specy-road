@@ -62,7 +62,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.5.13` The review packet fragments fold into review_packet `the-review-packet-fragments-fold-into-review-packet` — task — **Complete**
   - `M16.6` Docs and tests reorganised by topic `docs-and-tests-reorganised-by-topic` — milestone — **Not Started**
     - `M16.6.1` Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra `docs-by-topic-design-notes-out-of-docs-one-workers-doc-folded-small-docs-no-pinned-release-candidate-one-gui-extra` — task — **Complete**
-    - `M16.6.2` suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout `suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` — task — **Not Started**
+    - `M16.6.2` suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout `suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` — task — **Complete**
     - `M16.6.3` Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them `tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` — task — **Complete**
     - `M16.6.4` Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support `tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support` — task — **Complete**
     - `M16.6.5` Tests: files move into unit, flows, cli, gui and repo lanes, moves only `tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` — task — **Complete**
@@ -349,7 +349,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.6.2` on `feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` since 2026-11-15
 - `M16.6.9` on `feature/rm-docs-name-moved-test-files-at-lane-paths` since 2026-11-16
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -365,9 +364,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.gitignore` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `CHANGELOG.md` **flagged** | 20 | 0 | 2.85 | 80% | 21 | 0 |
+| `CHANGELOG.md` **flagged** | 23 | 0 | 2.70 | 74% | 21 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 22 | 0 | 2.91 | 77% | 55 | 0 |
+| `docs` **flagged** | 25 | 0 | 2.72 | 72% | 53 | 1 |
 | `gui` **flagged** | 8 | 0 | 2.62 | 62% | 1 | 0 |
 | `planning` **flagged** | 4 | 0 | 3.75 | 75% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
@@ -376,12 +375,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `scripts` **flagged** | 21 | 0 | 2.71 | 52% | 98 | 0 |
-| `specy_road` **flagged** | 44 | 0 | 2.41 | 57% | 111 | 0 |
+| `specy_road` **flagged** | 48 | 0 | 2.33 | 54% | 111 | 1 |
 | `suggested_prompts` **flagged** | 6 | 0 | 3.17 | 100% | 4 | 0 |
-| `tests` **flagged** | 49 | 0 | 2.41 | 57% | 120 | 0 |
+| `tests` **flagged** | 49 | 0 | 2.24 | 53% | 115 | 1 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `constraints` | 24 | 0 | 2.50 | 46% | 103 | 0 |
+| `constraints` | 22 | 0 | 2.27 | 41% | 99 | 0 |
+| `scripts` | 19 | 0 | 2.47 | 47% | 94 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

@@ -70,20 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout
-    node_id: M16.6.2
-    branch: feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout
-    touch_zones:
-      - suggested_prompts/
-      - scripts/ruff_quality_baseline.json
-      - tests/repo/test_suggested_prompts_commands.py
-      - tests/repo/test_lean_rules.py
-      - tests/unit/test_shared_checkout_guidance.py
-      - tests/support/layout.csv
-    started: '2026-11-15'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-17T14:36:24+00:00'
   - codename: docs-name-moved-test-files-at-lane-paths
     node_id: M16.6.9
     branch: feature/rm-docs-name-moved-test-files-at-lane-paths

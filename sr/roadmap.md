@@ -62,7 +62,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.5.13` | The review packet fragments fold into review_packet | task | Agentic-led | Complete |
 | `M16.6` | Docs and tests reorganised by topic | milestone | — | Not Started |
 | `M16.6.1` | Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra | task | Agentic-led | Complete |
-| `M16.6.2` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Not Started |
+| `M16.6.2` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Complete |
 | `M16.6.3` | Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them | task | Agentic-led | Complete |
 | `M16.6.4` | Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support | task | Agentic-led | Complete |
 | `M16.6.5` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Complete |
