@@ -18,7 +18,7 @@ mkdir -p "$REVIEWS/.transcripts"
 side="$REVIEWS/.transcripts/cursor-$(date +%Y%m%dT%H%M%S)-$$.log"
 # Since M8.3 the channel output must be one JSON object: keep the raw text in a side file and print only the
 # last top-level JSON object of the answer (the model sometimes narrates before it).
-agent -p --force --model "$model" --output-format text "$prompt" > "$side" 2>&1
+agent -p --force --model "$model" --output-format stream-json "$prompt" > "$side" 2> "$side.err"
 rc=$?
-python3 "$(dirname "$0")/last-json.py" < "$side"
+cat "$side"   # the native event stream (M22.71)
 exit $rc
