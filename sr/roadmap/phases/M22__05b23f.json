@@ -116,7 +116,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.71_review-channels-report-the-model-the-harness-ran_239e5f71-06c2-481b-9f80-2839b0591800.md",
       "sibling_order": 71,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review channels report the model the harness actually ran, so every review record names it",
       "touch_zones": [
         "specy_road/review_model_check.py",

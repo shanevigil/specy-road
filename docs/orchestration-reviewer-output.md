@@ -161,8 +161,11 @@ add` that creates one.
 
 After the run, `specy_road/review_model_check.py` compares the model the
 harness reported (its first `system/init` event's `model`, as worker usage
-reads it, and each `result` event's `model`, or the one key of its
-`modelUsage`) with the entry's one effective model
+reads it, each `result` event's `model`, or the one key of its
+`modelUsage`, and for Codex, whose `--json` stream names no model, the
+`turn_context.model` its rollout recorded for the first `thread.started`
+thread, found under the profile's `CODEX_HOME`, a `CODEX_HOME` the entry's
+`channels.cli` or `cli_resume` sets in its own words, or else the user's) with the entry's one effective model
 (`review_model_check.resolve_effective_model`: `harness_model`, else the
 profile's `api_id`, else the roster `id`; empty or `unknown` resolves to none),
 after normalising case, separators and display names (`Claude Opus 5.5` is
@@ -171,8 +174,22 @@ profile's other names when `harness_model` selects a different model. Any report
 the model printed can add one but never hide one. The filed record carries
 `harness_model`; on a real mismatch it also carries `model_mismatch: true`, and the gate does not count
 it (`harness ran a different model`), which `review status` lists under who
-can still approve. A harness that reports no model (Codex, plain-text
-commands) is a warning only.
+can still approve. A harness that reports no model (a plain-text command, or a
+Codex thread with no rollout found) is a warning only, and the record has no
+`harness_model`. The record's `model` is always the requested roster id.
+
+A `channels.cli` wrapper must pass the harness's event stream through to
+stdout unchanged (`claude -p --output-format stream-json --verbose`, `agent -p
+--output-format stream-json`, `codex exec --json`), with its stderr kept off
+stdout: the model check reads only that stream, and a wrapper that prints only
+the final answer files every record as reporting no model. A Codex wrapper must
+not change `CODEX_HOME`: specy-road finds the run's rollout under its own
+`CODEX_HOME` (else `~/.codex`) and the profile homes, and it cannot see a
+child's environment. A wrapper that changes it (inside a script, at run time or
+to a relative path) has its model recorded as unreported, with the warning
+above. Only an absolute `CODEX_HOME=VALUE` word written in the `channels.cli` or
+`cli_resume` text itself is also searched; it is a mitigation, not a supported
+way to move the home.
 
 ## Prevention and the tripwire (A2)
 

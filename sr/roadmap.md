@@ -62,7 +62,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.5.13` | The review packet fragments fold into review_packet | task | Agentic-led | Complete |
 | `M16.6` | Docs and tests reorganised by topic | milestone | — | Not Started |
 | `M16.6.1` | Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra | task | Agentic-led | Complete |
-| `M16.6.2` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Not Started |
+| `M16.6.2` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Complete |
 | `M16.6.3` | Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them | task | Agentic-led | Complete |
 | `M16.6.4` | Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support | task | Agentic-led | Complete |
 | `M16.6.5` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Complete |
@@ -265,7 +265,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.68` | grind-session --status reports a goal's leaves by state, a completion range from history, and what waits on a person, read-only | task | Agentic-led | Complete |
 | `M22.69` | A human: acceptance criterion is met by a person's closed decisions-ledger entry, never by a planning-sheet line | task | Agentic-led | Complete |
 | `M22.70` | review-packet reads the implementation summary from the leaf's own worktree | task | Agentic-led | Complete |
-| `M22.71` | Review channels report the model the harness actually ran, so every review record names it | task | Agentic-led | Not Started |
+| `M22.71` | Review channels report the model the harness actually ran, so every review record names it | task | Agentic-led | Complete |
 | `M22.72` | Gate: current harness facts delivered as a dated research report | gate | Human-led | Not Started |
 | `M22.73` | Harness facts and captures refreshed from the delivered research | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |

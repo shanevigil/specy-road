@@ -2,7 +2,7 @@
   "nodes": [
     {
       "acceptance": [
-        "Before edits, sr/work/M16.6.6-fold-manifest.md holds the manifest: every test path matching `(?i)(^|[/_])(m\\d+(\\.\\d+)*|round\\d+|slice\\d+|finding[-_]?\\w+)([._/]|$)`, its destination module or flow file, and each test function renamed; those files fold into their destinations; a file is not folded only for having few tests",
+        "Before edits, the manifest is written (sr/work/M16.6.6-fold-manifest.md, untracked; its content is reproduced in READY so the review sees it): every test path matching `(?i)(^|[/_])(m\\d+(\\.\\d+)*|round\\d+|slice\\d+|finding[-_]?\\w+)([._/]|$)`, its destination module or flow file, and each test function renamed; those files fold into their destinations; a file is not folded only for having few tests; exception (operator 2026-11-17): tests/cli/test_review_round6_guard.py is renamed to tests/cli/test_session_guard.py and tests/flows/review/test_review_rejected_m15_33.py to tests/flows/review/test_review_rejected.py instead of being folded",
         "Only names listed in that manifest are renamed; finding ids survive only as comments or parametrize ids; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the manifest's path mapping; exception: the dead helper _wrapper_cmdline (no caller) is deleted with its private-imports baseline row (operator 2026-11-17)",
         "Collected test count and covered-arc set unchanged; renamed test ids equal this leaf's planned_test_changes",
         "Estimated net line change (informational, not a gate): tests about -250"
