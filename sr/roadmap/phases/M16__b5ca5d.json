@@ -206,6 +206,32 @@
         "tests/test_worker_max_workers_global.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Every backticked test path in docs/orchestration.md, docs/orchestration-workers.md, docs/orchestration-harness-launch.md and docs/agentic-sandbox-runbook.md that M16.6.5 moved names its new lane path from tests/support/layout.csv; a grep of docs/ for the old flat paths listed in layout.csv finds none",
+        "Docs only; no wording change beyond the paths; tests/test_doc_links.py passes",
+        "Estimated net line change (informational, not a gate): docs about 0"
+      ],
+      "codename": "docs-name-moved-test-files-at-lane-paths",
+      "dependencies": [
+        "33af9de4-c487-4e4e-ac48-253ffb8483f1"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.6.9",
+      "node_key": "7f5507bd-e3cb-4b24-8483-0e33170f4a51",
+      "parent_id": "M16.6",
+      "planning_dir": "planning/M16.6.9_docs-name-moved-test-files-at-lane-paths_7f5507bd-e3cb-4b24-8483-0e33170f4a51.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "Docs name the moved test files at their lane paths",
+      "touch_zones": [
+        "docs/orchestration.md",
+        "docs/orchestration-workers.md",
+        "docs/orchestration-harness-launch.md",
+        "docs/agentic-sandbox-runbook.md"
+      ],
+      "type": "task"
     }
   ]
 }

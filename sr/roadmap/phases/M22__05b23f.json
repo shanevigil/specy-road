@@ -101,10 +101,11 @@
     },
     {
       "acceptance": [
-        "Each bundled reviewer channel (Claude Code, Codex CLI, Cursor Agent CLI) surfaces the model the harness reports for the run, so file_review writes harness_model into the review record; today the Codex wrapper prints only the final JSON and the record falls back to 'the harness reported no model' (only 31 of 859 recorded reviews carry harness_model)",
+        "Codex runs (default launch and any channels.cli that passes `codex exec --json` through) report the model Codex recorded for the thread (its rollout turn_context.model, found by the thread.started id, reusing session_home's glob), so file_review writes harness_model; Claude Code and Cursor runs already report theirs via stream-json. docs/orchestration-reviewer-output.md states that a channels.cli wrapper must pass the harness's event stream through (stderr kept off stdout). Today 0 of 862 review records carry harness_model (planner 2026-11-16)",
         "A harness that reports no model still gives the existing warning and a record without harness_model; a reported model of a different family than the roster entry keeps today's model_mismatch handling; the requested roster id stays in model",
-        "Tests: one per channel parsing a captured harness output into the reported model, each failing on the current code; existing review-model tests unchanged",
+        "Tests: a Codex match and a mismatch case from a captured, scrubbed rollout fixture, each failing on the current code; a real captured Cursor init line checked by check_run; existing review-model tests unchanged. If a Codex 0.166 --json capture already names the model, parse the stream instead and say so",
         "CHANGELOG.md [Unreleased] records the change; no version heading is written",
+        "Out of this leaf (coordinator step after it lands, with no review in flight): the repository's own reviewer wrappers pass the native event stream through, after a check() dry run of each roster entry's captured init model so a display name such as a Cursor model label is not judged a mismatch",
         "Estimated net line change (informational, not a gate): package about +40, tests about +60"
       ],
       "codename": "review-channels-report-the-model-the-harness-ran",
@@ -119,9 +120,11 @@
       "title": "Review channels report the model the harness actually ran, so every review record names it",
       "touch_zones": [
         "specy_road/review_model_check.py",
-        "specy_road/orchestration/workers/worker_adapter_parsers.py",
-        "CHANGELOG.md",
-        "tests/test_review_delegate.py"
+        "specy_road/orchestration/workers/worker_adapter_codex.py",
+        "docs/orchestration-reviewer-output.md",
+        "tests/flows/worker/test_prompt_channel_cli_run.py",
+        "tests/fixtures/codex_rollout/",
+        "CHANGELOG.md"
       ],
       "type": "task"
     },
