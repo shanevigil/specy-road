@@ -62,7 +62,8 @@
         "suggested_prompts/",
         "tests/test_suggested_prompts_commands.py",
         "tests/test_lean_rules.py",
-        "tests/test_shared_checkout_guidance.py"
+        "tests/test_shared_checkout_guidance.py",
+        "scripts/ruff_quality_baseline.json"
       ],
       "type": "task"
     },
