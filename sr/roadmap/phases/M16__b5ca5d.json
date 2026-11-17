@@ -128,8 +128,8 @@
     },
     {
       "acceptance": [
-        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, and replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper; assertions and fixture contents unchanged, except that a fixture's citation of a moved test (path::name) follows the move (operator 2026-11-16); entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
-        "Collected test count and covered-arc set unchanged; test ids change only by path",
+        "Test files move with `git mv` into tests/unit, tests/flows/<area>, tests/cli, tests/gui and tests/repo per a mapping file tests/support/layout.csv committed first in this leaf; only moves, import fixes, replacing `Path(__file__).parents[N]` repo-root assumptions with tests/support's REPO helper, and the edits the move forces: a string that names a moved test file's path (in a fixture, test data, a parametrized id, a comment or docstring) follows the move; a baseline or ratchet test maps moved paths through layout.csv; an import allowlist admits tests.support; a test that reads the checkout carries the repo marker (operator 2026-11-16, 'M16.6.5 broaden'); assertions and fixture behaviour unchanged; entries in constraints/test-private-imports-baseline.txt, scripts/line_width_baseline.json and scripts/ruff_quality_baseline.json change only by the layout.csv path mapping",
+        "Collected test count and covered-arc set unchanged; test ids change only through moved paths (the file path, or a parameter that names a moved path)",
         "Estimated net line change (informational, not a gate): tests about -50"
       ],
       "codename": "tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only",
