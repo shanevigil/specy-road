@@ -241,6 +241,13 @@ are removed in the release after 0.3.1:
 
 ### Fixed
 
+- Review records name the model a Codex reviewer ran: `codex exec --json` reports none, so `harness_model` is now
+  read from the thread's rollout (`turn_context.model`, by the `thread.started` id) under the profile's
+  `CODEX_HOME`, a `CODEX_HOME=VALUE` word in the entry's `channels.cli` or `cli_resume`, or the user's, for the
+  default launch and a `channels.cli` that passes the stream through. A
+  different model is a mismatch as before; no rollout found is the existing warning.
+  `docs/orchestration-reviewer-output.md` states that a `channels.cli` wrapper must pass the harness's event stream through, with stderr kept off stdout.
+
 - `specy-road integrity` follows a renamed test file (`git diff --find-renames`). The move is not a removed
   test file, and that file's tests are compared at the new path: a pure move is clean, while a test dropped,
   newly skipped or losing asserts in the move is still reported there. A test file deleted with no rename

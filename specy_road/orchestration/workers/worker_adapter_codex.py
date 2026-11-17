@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import Iterable
 from dataclasses import replace
 from pathlib import Path
 
@@ -37,17 +38,51 @@ def profile_home(model: str | None) -> Path:
     worker, and its sessions stay apart. The user's ``auth.json`` is linked in, so the login carries over."""
     home = codex_homes() / re.sub(r"[^A-Za-z0-9._-]", "_", model or "default")
     home.mkdir(parents=True, exist_ok=True)
-    auth = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex") / "auth.json"
+    auth = user_home() / "auth.json"
     if auth.is_file() and not (home / "auth.json").exists() and not (home / "auth.json").is_symlink():
         (home / "auth.json").symlink_to(auth)
     return home
 
 
+def user_home() -> Path:
+    """The user's own ``CODEX_HOME``: where a ``channels.cli`` that sets none leaves its sessions."""
+    return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+
+
+def _rollouts(session_id: str, roots: list[tuple[Path, str]]) -> list[Path]:
+    """The thread's rollout files under the first ``(home root, glob prefix)`` of ``roots`` that has any."""
+    for root, prefix in roots:
+        hits = sorted(root.glob(f"{prefix}sessions/**/*{session_id}*.jsonl")) if root.is_dir() else []
+        if hits:
+            return hits
+    return []
+
+
 def session_home(session_id: str) -> Path | None:
     """The per-profile home whose ``sessions/`` holds the thread's rollout, so a resume finds it."""
-    root = codex_homes()
-    hits = sorted(root.glob(f"*/sessions/**/*{session_id}*.jsonl")) if root.is_dir() else []
-    return root / hits[0].relative_to(root).parts[0] if hits else None
+    hits = _rollouts(session_id, [(codex_homes(), "*/")])
+    return codex_homes() / hits[0].relative_to(codex_homes()).parts[0] if hits else None
+
+
+def thread_model(line: str, homes: Iterable[Path] = ()) -> str | None:
+    """The model Codex recorded for the thread a ``thread.started`` line names (``codex exec --json`` names none
+    itself): the last ``turn_context.model`` of its rollout. The rollout is looked up in one ordered list of homes:
+    the per-profile homes (as :func:`session_home` finds it, a default launch), each of ``homes`` (the
+    ``CODEX_HOME`` a ``channels.cli`` sets: :func:`~specy_road.review_model_check.cli_codex_homes`), then
+    :func:`user_home` (a ``channels.cli`` that sets none). An id that is not a plain thread id (glob characters from
+    untrusted output) or a thread with no rollout in those homes gives ``None``."""
+    d = _json(line)
+    tid = d.get("thread_id") if d and d.get("type") == "thread.started" else None
+    if not isinstance(tid, str) or not re.fullmatch(r"[0-9A-Za-z-]+", tid):
+        return None
+    hits = _rollouts(tid, [(codex_homes(), "*/"), *((h, "") for h in (*homes, user_home()))])
+    model = None
+    for row in hits[0].read_text(errors="replace").splitlines() if hits else []:
+        e = _json(row)
+        ctx = e.get("payload") if e and e.get("type") == "turn_context" else None
+        if isinstance(ctx, dict) and isinstance(ctx.get("model"), str) and ctx["model"].strip():
+            model = ctx["model"].strip()
+    return model
 
 
 class Codex(Adapter):

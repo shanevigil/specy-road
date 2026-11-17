@@ -4,6 +4,7 @@ runs in the leaf's worktree, and a model the harness did not report as rostered 
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -283,6 +284,11 @@ def test_worktree_overrides_where_a_reviewer_runs(tmp_path: Path, monkeypatch) -
 
 # --- A4: the harness-reported model -------------------------------------------------------------------------------
 
+FIXTURES = Path(__file__).parents[2] / "fixtures"
+CURSOR_INIT = (FIXTURES / "cursor_question_tool.jsonl").read_text().splitlines()[0]   # captured from Cursor's agent
+CODEX_ROLLOUT = next((FIXTURES / "codex_rollout").glob("rollout-*.jsonl"))            # captured from codex-cli 0.166.0
+CODEX_THREAD = json.loads(CODEX_ROLLOUT.read_text().splitlines()[0])["payload"]["id"]
+
 def test_reported_models_read_the_first_init_event_and_every_result() -> None:
     lines = ['{"type": "system", "subtype": "init", "model": "Claude Opus 5.5"}',
              '{"type": "system", "subtype": "init", "model": "forged"}',
@@ -301,9 +307,51 @@ def test_reported_models_read_the_first_init_event_and_every_result() -> None:
       '{"type": "result", "model": "gpt-5.6-sol"}'], ("gpt-5.6-sol", "mismatch")),   # a matching init hides nothing
     ([], (None, "unreported")),
     ('{"type": "result", "model": "gpt-5.6-sol", "note": "a\u2028b"}\n', ("gpt-5.6-sol", "mismatch")),   # \n only
+    ([CURSOR_INIT], ("Grok 4.7 256K High", "mismatch")),   # a captured Cursor init line names its display name
 ])
 def test_check_run_flags_any_reported_model_that_is_not_the_rostered_one(lines: list[str], want: tuple) -> None:
     assert check_run(lines, {"id": "opus"}, load_profile(OPUS)) == want
+
+
+TERRA = {"id": "terra", "harness_model": "gpt-6.1-terra"}
+
+
+@pytest.mark.parametrize("home, thread, entry, want", [
+    ("profile", CODEX_THREAD, TERRA, ("gpt-6.1-terra", "match")),                     # a default launch
+    ("user", CODEX_THREAD, {"id": "opus"}, ("gpt-6.1-terra", "mismatch")),   # a channels.cli that sets no home
+    ("user", "*", {"id": "opus"}, (None, "unreported")),   # a glob in an untrusted thread id finds no rollout
+    # a channels.cli that sets its own CODEX_HOME in its words: as a prefix, through a variable, on cli_resume
+    ("wrapper", CODEX_THREAD, {**TERRA, "channels": {"cli": "CODEX_HOME={home} codex exec --json -"}},
+     ("gpt-6.1-terra", "match")),
+    ("wrapper", CODEX_THREAD, {"id": "opus", "channels": {"cli": "export CODEX_HOME=$WRAP_HOME; codex exec --json -"}},
+     ("gpt-6.1-terra", "mismatch")),
+    ("wrapper", CODEX_THREAD, {**TERRA, "channels": {"cli": "codex exec --json -",
+                                                     "cli_resume": "env CODEX_HOME={home} codex exec resume --json"}},
+     ("gpt-6.1-terra", "match")),
+    ("wrapper", CODEX_THREAD, {**TERRA, "channels": {"cli": "CODEX_HOME=wrapper-home codex exec --json -"}},
+     (None, "unreported")),   # a relative home: the run's directory is not known here
+    ("wrapper", CODEX_THREAD, {**TERRA, "channels": {"cli": "./review-with-own-home.sh"}},
+     (None, "unreported")),   # a home set inside a script the command runs is not seen
+])
+def test_check_run_reads_the_model_the_codex_rollout_recorded(tmp_path: Path, monkeypatch, home: str, thread: str,
+                                                              entry: dict, want: tuple) -> None:
+    """``codex exec --json`` names no model; the thread's rollout does, in the profile's ``CODEX_HOME`` (a default
+    launch), a ``CODEX_HOME`` the ``channels.cli`` sets in its own words, or else the user's."""
+    from specy_road.orchestration.workers import worker_adapter_codex as codex   # noqa: PLC0415
+
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
+    monkeypatch.setenv("WRAP_HOME", str(tmp_path / "wrapper"))
+    channels = {k: v.replace("{home}", str(tmp_path / "wrapper")) for k, v in entry.get("channels", {}).items()}
+    entry = {**entry, "channels": channels} if channels else entry
+    root = {"profile": codex.codex_homes() / "gpt-6.1-terra", "user": tmp_path / "codex",
+            "wrapper": tmp_path / "wrapper"}[home]
+    day = root / "sessions" / "2026" / "11" / "16"
+    day.mkdir(parents=True)
+    shutil.copy(CODEX_ROLLOUT, day)
+    stream = [json.dumps({"type": "thread.started", "thread_id": thread}), '{"type":"turn.started"}',
+              json.dumps({"type": "item.completed", "item": {"id": "item_0", "type": "agent_message", "text": "{}"}}),
+              '{"type":"turn.completed","usage":{"input_tokens":10,"cached_input_tokens":0,"output_tokens":2}}']
+    assert check_run(stream, entry, load_profile(OPUS) if entry["id"] == "opus" else None) == want
 
 
 @pytest.mark.slow
