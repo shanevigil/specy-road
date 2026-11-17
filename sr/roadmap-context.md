@@ -69,7 +69,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.6.6` Tests: per-leaf and per-round test files fold into the file for the module or flow they test `tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test` — task — **Not Started**
     - `M16.6.7` Integrity follows moved test files: a renamed test file and its tests are not removals `integrity-follows-moved-test-files` — task — **Complete**
     - `M16.6.8` Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates `worker-tests-wait-under-the-workers-lock` — task — **Complete**
-    - `M16.6.9` Docs name the moved test files at their lane paths `docs-name-moved-test-files-at-lane-paths` — task — **Not Started**
+    - `M16.6.9` Docs name the moved test files at their lane paths `docs-name-moved-test-files-at-lane-paths` — task — **Complete**
   - `M16.7` Test dedupe, public seams, properties and the smoke lane `test-dedupe-public-seams-properties-and-the-smoke-lane` — milestone — **Not Started**
     - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Not Started**
     - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Not Started**
@@ -350,7 +350,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.6.2` on `feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` since 2026-11-15
-- `M16.6.9` on `feature/rm-docs-name-moved-test-files-at-lane-paths` since 2026-11-16
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05

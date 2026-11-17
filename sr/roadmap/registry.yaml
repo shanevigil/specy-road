@@ -83,19 +83,6 @@ entries:
     started: '2026-11-15'
     owner: savigil
     implementation_review: pending
-  - codename: docs-name-moved-test-files-at-lane-paths
-    node_id: M16.6.9
-    branch: feature/rm-docs-name-moved-test-files-at-lane-paths
-    touch_zones:
-      - docs/orchestration.md
-      - docs/orchestration-workers.md
-      - docs/orchestration-harness-launch.md
-      - docs/agentic-sandbox-runbook.md
-      - docs/supply-chain-security.md
-    started: '2026-11-16'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-17T07:33:22+00:00'
   - codename: review-channels-report-the-model-the-harness-ran
     node_id: M22.71
     branch: feature/rm-review-channels-report-the-model-the-harness-ran
