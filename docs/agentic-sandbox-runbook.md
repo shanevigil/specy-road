@@ -391,7 +391,7 @@ mapping of `command`, a `specy-road prompt` line, and `send`, the file it
 writes), `pass` (items of `artifact`, a file or a git or `specy-road` read,
 and `expect`; an `expect` may name an outcome that fails the run outright)
 and `runs` (the first runs of the failure rule's sample).
-`tests/test_context_regressions.py` holds the schema and checks the file
+`tests/repo/test_context_regressions.py` holds the schema and checks the file
 against it. Replace a case rather than adding an eleventh.
 
 ## 10. Context feedback (pilot)
