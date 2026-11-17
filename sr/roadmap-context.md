@@ -65,7 +65,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.6.2` suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout `suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` — task — **Not Started**
     - `M16.6.3` Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them `tests-tests-support-primitives-and-the-four-heaviest-cross-imported-test-files-switch-to-them` — task — **Complete**
     - `M16.6.4` Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support `tests-every-other-cross-file-import-copied-helper-and-hand-written-manifest-moves-to-tests-support` — task — **Complete**
-    - `M16.6.5` Tests: files move into unit, flows, cli, gui and repo lanes, moves only `tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` — task — **Not Started**
+    - `M16.6.5` Tests: files move into unit, flows, cli, gui and repo lanes, moves only `tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` — task — **Complete**
     - `M16.6.6` Tests: per-leaf and per-round test files fold into the file for the module or flow they test `tests-per-leaf-and-per-round-test-files-fold-into-the-file-for-the-module-or-flow-they-test` — task — **Not Started**
     - `M16.6.7` Integrity follows moved test files: a renamed test file and its tests are not removals `integrity-follows-moved-test-files` — task — **Complete**
     - `M16.6.8` Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates `worker-tests-wait-under-the-workers-lock` — task — **Complete**
@@ -350,7 +350,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.6.2` on `feature/rm-suggested-prompts-follow-the-real-formats-cli-authoring-complete-deliverables-no-restated-rules-nested-layout` since 2026-11-15
-- `M16.6.5` on `feature/rm-tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only` since 2026-11-15
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -364,9 +363,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `.gitignore` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `CHANGELOG.md` **flagged** | 21 | 0 | 2.95 | 81% | 21 | 1 |
+| `CHANGELOG.md` **flagged** | 20 | 0 | 2.85 | 80% | 21 | 0 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 22 | 0 | 2.91 | 77% | 53 | 1 |
+| `docs` **flagged** | 22 | 0 | 2.91 | 77% | 55 | 0 |
 | `gui` **flagged** | 8 | 0 | 2.62 | 62% | 1 | 0 |
 | `planning` **flagged** | 4 | 0 | 3.75 | 75% | 23 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
@@ -375,12 +374,12 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `specy_road` **flagged** | 45 | 0 | 2.47 | 58% | 111 | 1 |
+| `scripts` **flagged** | 21 | 0 | 2.71 | 52% | 98 | 0 |
+| `specy_road` **flagged** | 44 | 0 | 2.41 | 57% | 111 | 0 |
 | `suggested_prompts` **flagged** | 6 | 0 | 3.17 | 100% | 4 | 0 |
-| `tests` **flagged** | 49 | 0 | 2.41 | 57% | 118 | 1 |
+| `tests` **flagged** | 49 | 0 | 2.41 | 57% | 120 | 0 |
 | `work` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `constraints` | 23 | 0 | 2.39 | 43% | 101 | 0 |
-| `scripts` | 20 | 0 | 2.60 | 50% | 96 | 0 |
+| `constraints` | 24 | 0 | 2.50 | 46% | 103 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

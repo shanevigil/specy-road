@@ -65,7 +65,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.6.2` | suggested_prompts follow the real formats: CLI authoring, complete deliverables, no restated rules, nested layout | task | Agentic-led | Not Started |
 | `M16.6.3` | Tests: tests/support primitives, and the four heaviest cross-imported test files switch to them | task | Agentic-led | Complete |
 | `M16.6.4` | Tests: every other cross-file import, copied helper and hand-written manifest moves to tests/support | task | Agentic-led | Complete |
-| `M16.6.5` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Not Started |
+| `M16.6.5` | Tests: files move into unit, flows, cli, gui and repo lanes, moves only | task | Agentic-led | Complete |
 | `M16.6.6` | Tests: per-leaf and per-round test files fold into the file for the module or flow they test | task | Agentic-led | Not Started |
 | `M16.6.7` | Integrity follows moved test files: a renamed test file and its tests are not removals | task | Agentic-led | Complete |
 | `M16.6.8` | Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates | task | Agentic-led | Complete |

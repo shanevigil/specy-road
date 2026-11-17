@@ -144,7 +144,7 @@
       "parent_id": "M16.6",
       "planning_dir": "planning/M16.6.5_tests-files-move-into-unit-flows-cli-gui-and-repo-lanes-moves-only_33af9de4-c487-4e4e-ac48-253ffb8483f1.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: files move into unit, flows, cli, gui and repo lanes, moves only",
       "touch_zones": [
         "tests/",

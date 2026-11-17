@@ -88,7 +88,7 @@ A command that exits non-zero prints what failed, why, and the next command
 to run: a `specy-road …` or `git …` command, in backticks or at the start of a
 line, that a user can copy as written. A refusal that only says "no" costs a
 round trip to diagnose. Where the cause is a set of paths or ids, name them
-(a long list is capped, then counted). [`tests/test_refusals_name_their_fix.py`](../tests/test_refusals_name_their_fix.py)
+(a long list is capped, then counted). [`tests/flows/review/test_refusals_name_their_fix.py`](../tests/flows/review/test_refusals_name_their_fix.py)
 runs the refusals covered so far through the CLI and checks each names its fix.
 
 ---
@@ -166,7 +166,7 @@ maintainer setup:
 
 Renaming the workflow file or the environments will break publishing
 until the trust on `pypi.org` and `test.pypi.org` is updated. The
-[`tests/test_release_harness.py`](../tests/test_release_harness.py)
+[`tests/repo/test_release_harness.py`](../tests/repo/test_release_harness.py)
 suite asserts the workflow names and env names are stable; if a
 maintainer renames any of them, those tests will fail before the
 release does.

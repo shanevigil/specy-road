@@ -1,6 +1,6 @@
 """A one-leaf pickup project with a bare ``origin``, and the CLI run as a user would run it.
 
-Promoted from ``tests/test_baseline_gate_cli.py`` so pickup tests in other
+Promoted from ``tests/flows/pickup/test_baseline_gate_cli.py`` so pickup tests in other
 modules share one setup through public names.
 """
 

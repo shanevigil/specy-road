@@ -16,7 +16,7 @@ applies_to_globs:
 override_limits:
   - name: set_gate_status_fixture
     file_globs:
-      - "tests/test_set_gate_status.py"
+      - "tests/unit/test_set_gate_status.py"
     max_lines_per_function: 120
 
 # Warn (do not fail) as a file approaches the cap.

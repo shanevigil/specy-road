@@ -1,0 +1,1 @@
+"""Git-backed registry scenarios."""
