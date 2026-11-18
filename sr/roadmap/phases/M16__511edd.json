@@ -278,10 +278,10 @@
     {
       "acceptance": [
         "Applies exactly the rows of tests/support/dedupe/review-gate.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
-        "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
+        "Compare the reviewed commit with its merge base on WIP/improvements-0-3-1 (named in READY). Run the full pytest suite and `python scripts/lean_metrics.py --contexts` once in a clean worktree at each commit, using the same Python and installed pinned dev and review dependencies, the same object at `refs/remotes/origin/dev`, and with `sr/.specyrd/cache/roadmap-history.json` absent before each run; both pytest runs must exit 0. \"Covered-arc set unchanged\" means that, for every module listed under `subsystems.review-gate` in tests/support/dedupe/modules.json whose blob is byte-identical at the two commits, both the only-before and only-after differences between the full-suite unions of covered branch arcs are empty; a module with a different blob is out of scope. \"Total coverage at or above fail_under\" means the TOTAL of the reviewed-commit run's coverage report is at least `[tool.coverage.report] fail_under` in pyproject.toml at the reviewed commit. \"Removed and renamed test ids equal planned_test_changes\" means the removed-test, removed-test-file, new-skip and assert-loss findings of `specy-road integrity` from the merge base to the reviewed commit are exactly the node's planned_test_changes, and every applied delete or fold row's test id is absent from the reviewed commit's collection (coordinator 2026-11-18, planner protocol)",
         "Tables this leaf creates assert structured results, not message text",
-        "Estimated net line change (informational, not a gate): tests about -3,000",
-        "Review-record test fixtures give each model its own notes body by default: review_text and review_output (tests/review_repo_helpers.py) and the independent constant bodies in tests/parity/test_leaf_loop.py, tests/test_review_override.py and tests/parity/review_gate/test_review_gate_decision_table.py take a per-model default body; the per-site body rewrites added by M22.62 collapse to that default; tests that depend on the literal body (tests/test_review_round6_evidence.py, tests/test_review_friction_m15_17.py) are adjusted without losing an assertion (coordinator, 2026-11-09, from the M22.62 analyses)"
+        "Estimated net line change (informational, not a gate): tests about -6 (planner 2026-11-18)",
+        "Review-record test fixtures give each model its own notes body by default: review_text and review_output (now in tests/support/review.py) and the independent constant bodies in tests/parity/test_leaf_loop.py, tests/flows/review/test_review_override.py and tests/parity/review_gate/test_review_gate_decision_table.py take a per-model default body; the per-site body rewrites added by M22.62 collapse to that default; tests that depend on the literal body (those M16.6.6 folded from tests/test_review_round6_evidence.py and tests/test_review_friction_m15_17.py into their module files) are adjusted without losing an assertion (coordinator, 2026-11-09, from the M22.62 analyses)"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-review-gate",
       "dependencies": [
@@ -291,6 +291,9 @@
       "id": "M16.7.2",
       "node_key": "e4706b28-6e79-40f8-9042-cb4e6cfff1e9",
       "parent_id": "M16.7",
+      "planned_test_changes": [
+        "removed-test: tests/flows/review/test_review_record_write.py::test_a_custom_reviewer_command_under_review_delegate_is_checked_and_filed"
+      ],
       "planning_dir": "planning/M16.7.2_tests-apply-the-dedupe-worklist-for-review-gate_e4706b28-6e79-40f8-9042-cb4e6cfff1e9.md",
       "sibling_order": 1,
       "status": "Not Started",
@@ -305,10 +308,10 @@
     },
     {
       "acceptance": [
-        "Applies exactly the rows of tests/support/dedupe/worker.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
-        "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
+        "Applies exactly the rows of tests/support/dedupe/worker.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched. Fold rows whose removed test is in tests/cli/test_session_guard.py or tests/unit/test_tool_call_guard.py are not applied: guard tests are not folded before 0.3.1 (the guard rewrite is M23.8)",
+        "Compare the reviewed commit with its merge base on WIP/improvements-0-3-1 (named in READY). Run the full pytest suite and `python scripts/lean_metrics.py --contexts` once in a clean worktree at each commit, using the same Python and installed pinned dev and review dependencies, the same object at `refs/remotes/origin/dev`, and with `sr/.specyrd/cache/roadmap-history.json` absent before each run; both pytest runs must exit 0. \"Covered-arc set unchanged\" means that, for every module listed under `subsystems.worker` in tests/support/dedupe/modules.json whose blob is byte-identical at the two commits, both the only-before and only-after differences between the full-suite unions of covered branch arcs are empty; a module with a different blob is out of scope. \"Total coverage at or above fail_under\" means the TOTAL of the reviewed-commit run's coverage report is at least `[tool.coverage.report] fail_under` in pyproject.toml at the reviewed commit. \"Removed and renamed test ids equal planned_test_changes\" means the removed-test, removed-test-file, new-skip and assert-loss findings of `specy-road integrity` from the merge base to the reviewed commit are exactly the node's planned_test_changes, and every applied delete or fold row's test id is absent from the reviewed commit's collection (coordinator 2026-11-18, planner protocol)",
         "Tables this leaf creates assert structured results, not message text",
-        "Estimated net line change (informational, not a gate): tests about -3,000"
+        "Estimated net line change (informational, not a gate): tests about -40 (planner 2026-11-18, after the guard rows are left out)"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-worker",
       "dependencies": [
@@ -318,6 +321,11 @@
       "id": "M16.7.3",
       "node_key": "21cc96e6-1e15-425e-a4b0-9c821fe30c55",
       "parent_id": "M16.7",
+      "planned_test_changes": [
+        "removed-test: tests/flows/worker/test_worker_max_workers_global.py::test_a_missing_checkout_id_is_created_and_the_count_still_holds",
+        "removed-test: tests/flows/worker/test_worker_state.py::test_reclaim_keeps_the_prompt_verbatim",
+        "removed-test: tests/unit/test_orchestrate_plan.py::test_unavailable_model_is_skipped_until_its_date"
+      ],
       "planning_dir": "planning/M16.7.3_tests-apply-the-dedupe-worklist-for-worker_21cc96e6-1e15-425e-a4b0-9c821fe30c55.md",
       "sibling_order": 2,
       "status": "Not Started",
@@ -332,10 +340,10 @@
     {
       "acceptance": [
         "Applies exactly the rows of tests/support/dedupe/rest.csv: a delete only where the row names the surviving test and the assertion it makes, a fold into a parametrised table, and keep rows untouched",
-        "The covered-arc set of the subsystem's modules is unchanged and total coverage stays at or above fail_under; removed and renamed test ids equal this leaf's planned_test_changes",
-        "Tables this leaf creates assert structured results, not message text",
+        "Compare the reviewed commit with its merge base on WIP/improvements-0-3-1 (named in READY). Run the full pytest suite and `python scripts/lean_metrics.py --contexts` once in a clean worktree at each commit, using the same Python and installed pinned dev and review dependencies, the same object at `refs/remotes/origin/dev`, and with `sr/.specyrd/cache/roadmap-history.json` absent before each run; both pytest runs must exit 0. \"Covered-arc set unchanged\" means that, for every module listed under `subsystems.rest` in tests/support/dedupe/modules.json plus specy_road/milestone_lock.py (its locked-subtree fold lands in this leaf) whose blob is byte-identical at the two commits, both the only-before and only-after differences between the full-suite unions of covered branch arcs are empty; a module with a different blob is out of scope. \"Total coverage at or above fail_under\" means the TOTAL of the reviewed-commit run's coverage report is at least `[tool.coverage.report] fail_under` in pyproject.toml at the reviewed commit. \"Removed and renamed test ids equal planned_test_changes\" means the removed-test, removed-test-file, new-skip and assert-loss findings of `specy-road integrity` from the merge base to the reviewed commit are exactly the node's planned_test_changes, and every applied delete or fold row's test id is absent from the reviewed commit's collection (coordinator 2026-11-18, planner protocol)",
+        "Tables this leaf creates assert structured results, not message text; an assertion that a message is absent (the silence a test checks for) is allowed (coordinator 2026-11-18)",
         "Refusal cases that rest.csv folds into one table carry a committed remediation substring each (a table in sr/work/M16.7.5-remediation.md); existing public-output parity fixtures are unchanged; this leaf adds no other refusal case",
-        "Estimated net line change (informational, not a gate): tests about -3,000"
+        "Estimated net line change (informational, not a gate): tests about -40 (planner 2026-11-18)"
       ],
       "codename": "tests-apply-the-dedupe-worklist-for-the-rest",
       "dependencies": [
@@ -345,6 +353,18 @@
       "id": "M16.7.5",
       "node_key": "25cffd57-e38b-4ebf-a4c0-d2edea799baa",
       "parent_id": "M16.7",
+      "planned_test_changes": [
+        "removed-test: tests/cli/test_doctor_version_skew.py::test_silent_when_running_is_newer_than_every_recorded_source",
+        "removed-test: tests/flows/pickup/test_verify_cmd.py::test_schema_accepts_verify_cmd",
+        "removed-test: tests/flows/roadmap/test_history_cache.py::test_a_truncated_cache_document_rebuilds",
+        "removed-test: tests/flows/worker/test_claude_config_dir.py::test_an_empty_variable_means_the_default",
+        "removed-test: tests/gui/test_gui_app_milestone_lock.py::test_delete_inside_locked_subtree_returns_409",
+        "removed-test: tests/gui/test_gui_app_milestone_lock.py::test_indent_inside_locked_subtree_returns_409",
+        "removed-test: tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+        "removed-test: tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_work_prefix",
+        "removed-test: tests/unit/test_roadmap_crud.py::test_edit_node_cli",
+        "removed-test: tests/unit/test_roadmap_crud_atomicity.py::test_rejected_edit_changes_nothing_on_disk"
+      ],
       "planning_dir": "planning/M16.7.5_tests-apply-the-dedupe-worklist-for-the-rest_25cffd57-e38b-4ebf-a4c0-d2edea799baa.md",
       "sibling_order": 4,
       "status": "Not Started",
