@@ -33,8 +33,8 @@ tests/gui/test_gui_app_routes_nodes_errors.py:122: malformed or empty manifest l
 tests/gui/test_gui_app_routes_nodes_errors.py:129: malformed or empty manifest left as raw bytes
 tests/cli/test_init_project.py:59: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
 tests/flows/init/test_init_project_reports.py:183: malformed or empty manifest left as raw bytes
-tests/flows/roadmap/test_validate_roadmap.py:463: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
-tests/flows/worker/test_worker_adapters.py:689: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/flows/roadmap/test_validate_roadmap.py:466: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/flows/worker/test_worker_adapters.py:736: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
 tests/flows/init/test_refresh_stubs.py:361: project manifest (.specyrd), not a roadmap the builder writes
 tests/flows/init/test_refresh_stubs.py:383: project manifest (.specyrd), not a roadmap the builder writes
 tests/flows/init/test_refresh_stubs.py:430: project manifest (.specyrd), not a roadmap the builder writes
@@ -57,12 +57,12 @@ tests/flows/init/test_refresh_stubs.py:312: project manifest (.specyrd), not a r
 tests/cli/test_registry_remote_overlay.py:62: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
 tests/flows/registry/test_registry_remote_overlay_sync.py:53: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
 tests/flows/review/test_review_node.py:35: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
-tests/flows/init/test_refresh_stubs.py:496: project manifest (.specyrd), not a roadmap the builder writes
-tests/flows/init/test_agents_md_report.py:176: malformed or empty manifest left as raw bytes
-tests/flows/init/test_agents_md_report.py:178: malformed or empty manifest left as raw bytes
-tests/unit/test_specyrd_skills.py:254: project manifest (.specyrd), not a roadmap the builder writes
-tests/unit/test_specyrd_skills.py:269: project manifest (.specyrd), not a roadmap the builder writes
-tests/unit/test_specyrd_skills.py:298: project manifest (.specyrd), not a roadmap the builder writes
+tests/flows/init/test_refresh_stubs.py:500: project manifest (.specyrd), not a roadmap the builder writes
+tests/flows/init/test_agents_md_report.py:186: malformed or empty manifest left as raw bytes
+tests/flows/init/test_agents_md_report.py:188: malformed or empty manifest left as raw bytes
+tests/unit/test_specyrd_skills.py:256: project manifest (.specyrd), not a roadmap the builder writes
+tests/unit/test_specyrd_skills.py:271: project manifest (.specyrd), not a roadmap the builder writes
+tests/unit/test_specyrd_skills.py:300: project manifest (.specyrd), not a roadmap the builder writes
 tests/unit/test_roadmap_crud_atomicity.py:73: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
 tests/unit/test_roadmap_crud_edit_node_chunks.py:210: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
 tests/unit/test_roadmap_crud_ops.py:88: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
