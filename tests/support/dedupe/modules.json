@@ -8,7 +8,7 @@
   "decision_rule": "A delete or fold names the surviving test and the assertion that covers the removed case. A keep that was read names the behaviour, input class or state that differs. A keep (classifier) row was not in that pool. No removal is the only test of an escalation rule, a forced RCA, a next-step state or a deferral.",
   "id_rule": "A test id is the collected pytest id. The repository-root prefix is removed from the file path and every other parameter is kept verbatim. When the collected id contains the repository root, the home directory, a temp-directory prefix or the hostname, the written id is file::function[#index]: that function id with those prefixes removed, plus the 0-based index of the item in pytest collection order. --check accepts this form only for those items. Every other test id must equal a collected item.",
   "unattributed_tests": 642,
-  "unattributed_id_sha256": "9677503c193c123a01a135735c21d907029a85f6fd461dd71c6b6ff3f6b3c01e",
+  "unattributed_id_sha256": "0be0ac7587cf49522154da4d1751486d29790e51036269e4cae74cec3e3609d6",
   "unattributed_note": "These collected tests have no specy_road arc in the contexts file, so they are not candidates. Subprocesses started without the coverage context are the usual cause.",
   "rows": {
     "review-gate": {
