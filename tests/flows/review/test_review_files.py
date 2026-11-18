@@ -11,6 +11,12 @@ from tests.review_delegate_helpers import fake_reviewer_run
 from tests.support.review import claude_code_reviewer_repo
 
 from specy_road import review_files as rf
+from specy_road.bundled_scripts import review_packet as rp
+from specy_road.review_files import latest_ready, reviews_dir
+from specy_road.review_target import resolve_target
+from tests.support.review import make_review_repo, git
+from specy_road.review_files import reviews_root
+from specy_road.bundled_scripts import review_cli
 
 READY = """---
 node_id: M1.1
@@ -294,3 +300,67 @@ def test_reviewer_prompt_asks_for_launch_mode(tmp_path: Path) -> None:
     text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")
     assert err is None and "Add `--launch-mode full|bare|explicit` to that `review record` command" in text
     assert "--launch-mode" not in role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")[0]
+
+
+
+# --- F6 -------------------------------------------------------------------
+
+def _ready(repo: Path, name: str, *, node_id: str = "M1.1", branch: str = "feature/rm-thing") -> Path:
+    t = resolve_target(repo, "M1.1")
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / name
+    p.write_text(f"---\nnode_id: {node_id}\nagent: x\nbranch: {branch}\ncommit: '{t.commit}'\n"
+                 f"base: '{t.base}'\nchanged_paths: [src/a.py]\nverify:\n  - {{cmd: 'echo hi', exit: 0, tail: hi}}\n---\n")
+    return p
+
+
+
+# Evidence the gate, the packet and reconcile rely on.
+# A rename or copy into a touch zone is also a change outside it, in `worker reconcile`, the
+# review packet and the finish-time check.
+# A READY under `work/reviews/<node>/` naming another node or branch never feeds `handoff status`,
+# the packet or completion.
+# The Markdown notes are bound to the signed front matter (`notes_sha256`); `verify` rejects a
+# mismatched identity on its own; the packet labels committed, working-tree and missing summaries
+# distinctly.
+# A wrong `--sign-key` on the interactive human approval writes nothing and the reason is printed.
+
+def test_a_ready_for_another_node_or_branch_is_invalid_here(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    _ready(repo, "READY-wrong.md", node_id="M9.9", branch="feature/other")
+    assert latest_ready(repo, "M1.1") is None
+    st = review_cli._node_status(repo, "M1.1")
+    assert st["state"] == "waiting"
+    assert any("node_id is 'M9.9', not 'M1.1'" in e for r in st["ready"] for e in r["errors"])
+    assert "READY-wrong.md" not in rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    # Right node, wrong branch: still not this node's hand-off.
+    _ready(repo, "READY-wrong.md", branch="feature/other")
+    assert latest_ready(repo, "M1.1", "feature/rm-thing") is None
+    assert "branch is 'feature/other', not the registered 'feature/rm-thing'" in review_cli._node_status(repo, "M1.1")["ready"][0]["errors"][0]
+    _ready(repo, "READY-right.md")
+    assert latest_ready(repo, "M1.1", "feature/rm-thing").path.name == "READY-right.md"
+    assert review_cli._node_status(repo, "M1.1")["state"] == "in-review"
+
+
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
+
+def test_reviews_root_stays_inside_a_nested_project(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    nested = repo / "sr"
+    nested.mkdir()
+    assert reviews_root(nested) == nested / "work" / "reviews"
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    assert reviews_root(wt) == repo.resolve() / "work" / "reviews"
+    (wt / "sr").mkdir()
+    assert reviews_root(wt / "sr") == repo.resolve() / "sr" / "work" / "reviews"

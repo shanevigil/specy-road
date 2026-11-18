@@ -27,6 +27,8 @@ from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.bundled_scripts.upgrade import run_upgrade
 from specy_road.init_project import run_init_project
 from specy_road.managed_block import HTML_COMMENT
+from specy_road.bundled_scripts import refresh_stubs as rs
+from specy_road.specyrd_init import run_init
 
 MANIFEST = ".specyrd/manifest.json"
 
@@ -164,3 +166,27 @@ def test_a_repeated_absolute_import_through_an_outside_link_names_the_file_in_th
     print_injected_context(repo)
     line = next(ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("context: Claude Code"))
     assert line.endswith(f"; total 4 lines, {len(claude.encode()) + 9} bytes (shared.md imported twice, counted once)")
+
+
+
+# --- Gemini F4 ----------------------------------------------------------------
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
+def test_a_nested_project_reports_its_agents_md_with_the_prefix(tmp_path: Path) -> None:
+    (tmp_path / "sr" / "roadmap").mkdir(parents=True)
+    (tmp_path / "sr" / "roadmap" / "manifest.json").write_text("{}")
+    (tmp_path / ".specyrd").mkdir()
+    (tmp_path / ".specyrd" / "manifest.json").write_text('{"project_root": "sr"}')
+    run_init(target=tmp_path, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None, role="dev")
+    (tmp_path / "sr" / "AGENTS.md").write_text("# mine\n")
+    written, _o = rs.refresh_stubs(tmp_path)
+    assert any(w.startswith("sr/AGENTS.md (") for w in written)

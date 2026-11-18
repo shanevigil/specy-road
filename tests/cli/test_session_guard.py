@@ -1,6 +1,4 @@
-"""Review round 6 (`9f3b9df`), guard items: B1, B14, B15, B16, B17, question 4, and two Gemini follow-ups.
-
-Each test reproduces the report's shape first (the command the reviewer ran)
+"""Each test reproduces the report's shape first (the command the reviewer ran)
 and pins the fail-closed answer. Adapter-level cases run the real
 `specy-road session guard --format …` subprocess, as the harness would.
 """

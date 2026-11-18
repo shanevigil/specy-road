@@ -30,6 +30,9 @@ from specy_road.review_files import reviews_dir
 from specy_road import review_files as rf
 from specy_road.orchestration.workers.worker_adapters import ClaudeCode
 from tests.support.same.run_651387813ee4 import run as run_fn
+from tests.support.review import review_text
+from specy_road.review_files import PACKET_NAME, review_path
+from tests.support.same.run_651387813ee4 import run
 
 
 
@@ -382,3 +385,102 @@ def test_delegate_records_model_mismatch_and_the_gate_excludes_the_approval(tmp_
     capsys.readouterr()
     run_fn("review", "list", "M1.1", "--repo-root", str(repo))
     assert MISMATCH_REASON in capsys.readouterr().out
+
+
+
+
+
+def _delegate_folded(repo: Path) -> int:
+    return run("review", "delegate", "M1.1", "--model", "opus", "--backoff", "0", "--retries", "0",
+                "--repo-root", str(repo))
+
+
+
+# A1 — delegate builds a missing or other-commit packet
+
+
+# Delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions at
+# the commit, refusals quote the line, and superseded failed runs say so.
+
+def test_delegate_builds_the_packet_when_none_exists(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    packet = reviews_dir(repo, "M1.1") / PACKET_NAME
+    packet.unlink()
+    set_steps(repo, spec, verdict_step(repo))
+    assert _delegate_folded(repo) == 0
+    head = git(repo, "rev-parse", "HEAD")
+    assert f"**Commit under review:** `{head}`" in packet.read_text()
+    err = capsys.readouterr().err
+    assert f"review packet is missing: built {packet} ({packet.stat().st_size} bytes) for {head[:12]}" in err
+    assert load_run(repo, "M1.1", "opus")["state"] == "complete"
+
+
+
+def test_delegate_rebuilds_a_packet_built_for_another_commit(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    packet = reviews_dir(repo, "M1.1") / PACKET_NAME
+    old = git(repo, "rev-parse", "HEAD~1")
+    packet.write_text(f"# Review packet\n\n- **Commit under review:** `{old}` (`x`)\n")
+    set_steps(repo, spec, verdict_step(repo))
+    assert _delegate_folded(repo) == 0
+    head = git(repo, "rev-parse", "HEAD")
+    assert f"**Commit under review:** `{head}`" in packet.read_text()
+    assert f"review packet was built for {old[:12]}, not {head[:12]}: built {packet}" in capsys.readouterr().err
+
+
+
+def test_delegate_keeps_a_packet_for_the_commit_under_review(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    packet = reviews_dir(repo, "M1.1") / PACKET_NAME
+    text = f"# Review packet\n\n- **Commit under review:** `{git(repo, 'rev-parse', 'HEAD')}` (`x`)\n"
+    packet.write_text(text)
+    set_steps(repo, spec, verdict_step(repo))
+    assert _delegate_folded(repo) == 0
+    assert packet.read_text() == text and "review packet" not in capsys.readouterr().err
+
+
+
+# A5 — a failed run superseded by a record filed later at the same commit
+
+
+@pytest.mark.slow
+def test_a_failed_run_is_marked_superseded_by_a_later_record(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    set_steps(repo, spec, {"raw": "not a verdict"})
+    assert _delegate_folded(repo) == 1
+    assert load_run(repo, "M1.1", "opus")["state"] == "incomplete"
+    capsys.readouterr()
+    run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    before = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert any("delegated review of this commit is incomplete" in p for p in before["problems"])
+    notes = repo.parent / "notes-opus.md"
+    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus"))
+    assert run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(notes),
+                "--repo-root", str(repo)) == 0
+    capsys.readouterr()
+    assert run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert "RUN-opus.json: incomplete run by opus" in out
+    assert "— superseded: REVIEW-opus.md was filed later at this commit" in out
+    run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    st = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert st["review_runs"][0]["superseded"] == "REVIEW-opus.md"
+    assert not any("delegated review of this commit is incomplete" in p for p in st["problems"])
+    assert "reviewer failure" not in st["policy"]
+    run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    assert "— superseded: REVIEW-opus.md was filed later at this commit" in capsys.readouterr().out
+
+
+
+def test_a_record_filed_before_the_failed_run_does_not_supersede_it(tmp_path: Path, capsys) -> None:
+    repo, spec = delegate_repo(tmp_path)
+    path = review_path(repo, "M1.1", "opus")
+    path.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus"))
+    import os
+    os.utime(path, (1_000_000_000, 1_000_000_000))       # filed long before the run
+    set_steps(repo, spec, {"raw": "not a verdict"})
+    _delegate_folded(repo)
+    capsys.readouterr()
+    run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    st = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert st["review_runs"][0]["superseded"] is None

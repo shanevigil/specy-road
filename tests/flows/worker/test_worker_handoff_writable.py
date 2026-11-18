@@ -8,10 +8,11 @@ from pathlib import Path
 import pytest
 
 from tests.support.same.git_84c8ad8f55f9 import git
-from tests.support.extracted.worker_m310_reconcile_status import nested_project
+from tests.support.extracted.worker_repos import nested_project
 
 from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.review_files import reviews_dir
+from tests.support.review import git as git_folded
 
 
 @pytest.fixture
@@ -83,3 +84,30 @@ def test_custom_cli_reviews_dir_is_refused_when_it_cannot_be_substituted(linked,
     _top, project, wt, prompt = linked
     with pytest.raises(wa.Unsupported, match=r"\{reviews_dir\}"):
         wa.adapter_for("codex").launch(prompt, wt, "m", cli, node_id=node_id, repo_root=project)
+
+
+
+
+
+
+
+# Worker hand-off, reconcile reporting, sync/list messages, and the merge finish notice.
+
+def test_claude_passes_add_dir_only_in_a_linked_worktree(tmp_path: Path) -> None:
+    top, project = nested_project(tmp_path)
+    git_folded(top, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git_folded(top, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    prompt = project / "work" / "prompt-M1.1-executor-opus.md"
+    prompt.parent.mkdir(parents=True, exist_ok=True)
+    prompt.write_text("x\n")
+    handoff = reviews_dir(project, "M1.1")
+    linked = wa.adapter_for("claude-code").launch(
+        prompt, wt, "m", None, node_id="M1.1", repo_root=project,
+    )
+    assert "--add-dir" in linked.argv
+    assert str(handoff) == linked.argv[linked.argv.index("--add-dir") + 1]
+    main = wa.adapter_for("claude-code").launch(
+        prompt, top, "m", None, node_id="M1.1", repo_root=project,
+    )
+    assert "--add-dir" not in main.argv

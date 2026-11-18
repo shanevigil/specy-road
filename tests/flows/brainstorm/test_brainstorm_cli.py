@@ -17,6 +17,9 @@ import pytest
 
 from specy_road.brainstorm_session import resolve_slug
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
+from tests.support.review import make_review_repo
+from specy_road.bundled_scripts import brainstorm_cli
+from specy_road.brainstorm_session import read_session
 
 
 
@@ -373,3 +376,64 @@ def test_close_refuses_a_missing_session_and_an_existing_destination(repo: Path)
     clash = _run(repo, "close", "--slug", "a")
     assert clash.returncode == 1 and "work/brainstorm-closed/brainstorm-a.yaml already exists" in clash.stderr
     assert (repo / "work" / "brainstorm-a.yaml").is_file()   # nothing moved
+
+
+
+def _bs(repo: Path, *args: str) -> int:
+    with pytest.raises(SystemExit) as e:
+        brainstorm_cli.main([*args, "--repo-root", str(repo)])
+        raise SystemExit(0)
+    return e.value.code or 0
+
+
+
+# Routing parity between `prompt`, `orchestrate plan` and `worker delegate`; a signing failure in
+# `mark-implementation-reviewed`; skill and stub edge cases in `refresh-stubs`; a stale brainstorm
+# decision; and `models show` printing `harness/model`.
+
+def test_accepting_a_rejected_idea_clears_the_stale_decision(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    (repo / "work").mkdir(exist_ok=True)
+    assert _bs(repo, "start", "--topic", "Grow", "--under", "M1") == 0
+    assert _bs(repo, "add-idea", "--title", "One", "--slug", "grow") == 0
+    assert _bs(repo, "reject", "B1", "--reason", "not now", "--slug", "grow") == 0
+    assert read_session(repo, "grow").by_id("B1").decision["reason"] == "not now"
+    assert _bs(repo, "accept", "B1", "--slug", "grow") == 0
+    # Accepting records its own decision (accept order, M3.7); the stale reject is gone.
+    decision = read_session(repo, "grow").by_id("B1").decision
+    assert decision["status"] == "accepted" and "reason" not in decision
+
+
+
+# --- Gemini F5 / Sol F8, Sol F10 ---------------------------------------------------
+
+def _bs_folded(repo: Path, *args: str) -> tuple[int, str]:
+    import contextlib
+    import io
+
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out), pytest.raises(SystemExit) as e:
+        brainstorm_cli.main([*args, "--repo-root", str(repo)])
+        raise SystemExit(0)
+    return (e.value.code or 0), out.getvalue()
+
+
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
+def test_rounds_are_persisted_and_next_round_warns_past_them(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    (repo / "work").mkdir(exist_ok=True)
+    assert _bs_folded(repo, "start", "--topic", "Grow", "--under", "M1", "--rounds", "1")[0] == 0
+    assert read_session(repo, "grow").rounds == 1
+    _bs_folded(repo, "add-idea", "--title", "One", "--slug", "grow")
+    code, out = _bs_folded(repo, "next-round", "--slug", "grow")
+    assert code == 0 and "round 2 of 1" in out and "past the 1 round(s) planned" in out

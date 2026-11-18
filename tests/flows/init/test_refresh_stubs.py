@@ -24,6 +24,12 @@ from specy_road.bundled_scripts.refresh_stubs import (
     warn_if_stubs_stale,
 )
 from specy_road.managed_block import HTML_COMMENT, render_block
+import shutil
+from specy_road.written_entry import Written
+from specy_road.bundled_scripts.refresh_stubs import report
+import os
+from specy_road.bundled_scripts import refresh_stubs as rs
+from specy_road.specyrd_init import run_init
 
 MANIFEST = ".specyrd/manifest.json"
 OLD_VERSION = "0.1.4"
@@ -335,3 +341,202 @@ def test_diff_on_a_current_repo_shows_nothing(
 
     assert "+++" not in out
     assert "already match" in out
+
+
+# Notices that were correct but misleading.
+# A symlinked skills directory listed every skill twice; a new .gitignore
+# rule silently matched files already in the tree. (The session end wording
+# is pinned in test_session_presence.py.)
+
+NOTE = "(.agents/skills → .claude/skills)"
+
+
+
+def _linked_skills_repo(tmp_path: Path) -> Path:
+    """``.agents/skills`` is a symlink to ``.claude/skills``, with a claude-code pack recorded."""
+    (tmp_path / ".claude" / "skills").mkdir(parents=True)
+    (tmp_path / ".agents").mkdir()
+    (tmp_path / ".agents" / "skills").symlink_to(Path("..") / ".claude" / "skills")
+    (tmp_path / ".specyrd").mkdir()
+    (tmp_path / ".specyrd" / "manifest.json").write_text(
+        json.dumps({"agents": {"claude-code": [".agents/skills/specyrd-brief/SKILL.md"]}}), encoding="utf-8")
+    return tmp_path
+
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_symlinked_skills_dir_reports_each_skill_once_with_the_link(tmp_path: Path, capsys, dry_run: bool) -> None:
+    repo = _linked_skills_repo(tmp_path)
+    main(["--repo-root", str(repo), *(["--dry-run"] if dry_run else [])])
+    brief = [ln for ln in capsys.readouterr().out.splitlines() if "specyrd-brief" in ln]
+    verb = "would write" if dry_run else "wrote"
+    assert brief == [f"{verb} .claude/skills/specyrd-brief/SKILL.md {NOTE}"]
+
+
+
+def _reverse_linked_repo(tmp_path: Path) -> Path:
+    """``.claude/skills`` is a symlink to ``.agents/skills`` (the other direction)."""
+    (tmp_path / ".agents" / "skills").mkdir(parents=True)
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "skills").symlink_to(Path("..") / ".agents" / "skills")
+    (tmp_path / ".specyrd").mkdir()
+    (tmp_path / ".specyrd" / "manifest.json").write_text(
+        json.dumps({"agents": {"claude-code": [".agents/skills/specyrd-brief/SKILL.md"]}}), encoding="utf-8")
+    return tmp_path
+
+
+
+def _skill_lines(out: str, verb: str) -> list[str]:
+    return [ln.removeprefix(verb) for ln in out.splitlines() if "specyrd-" in ln and ln.startswith(verb)]
+
+
+
+def test_a_reverse_symlinked_skills_dir_reports_each_skill_once_and_runs_agree(tmp_path: Path, capsys) -> None:
+    repo = _reverse_linked_repo(tmp_path)
+    main(["--repo-root", str(repo), "--dry-run"])
+    dry = _skill_lines(capsys.readouterr().out, "would write ")
+    main(["--repo-root", str(repo)])
+    real = _skill_lines(capsys.readouterr().out, "wrote ")
+    assert [ln for ln in dry if "specyrd-brief" in ln] == [".agents/skills/specyrd-brief/SKILL.md"]
+    assert dry == real and len(dry) == len({ln.split("/")[2] for ln in dry})
+
+
+
+def test_the_report_folds_two_names_for_one_file_into_its_real_path(tmp_path: Path, capsys) -> None:
+    repo = _linked_skills_repo(tmp_path)
+    written = [Written(".agents/skills/x/SKILL.md"), Written(".claude/skills/x/SKILL.md"),
+               Written(".gitignore", "updated")]
+    report(written, [], dry_run=True, footer=False, repo_root=repo)
+    assert capsys.readouterr().out.splitlines() == [
+        f"would write .claude/skills/x/SKILL.md {NOTE}",
+        "would write .gitignore (updated)",
+    ]
+
+
+
+def _generic_repo(tmp_path: Path, rel_dir: str, *, link_to: str | None = None) -> Path:
+    """A ``generic`` pack recorded under ``rel_dir``, optionally a symlink to ``link_to`` (repo-relative)."""
+    stub_dir = tmp_path / rel_dir
+    stub_dir.parent.mkdir(parents=True, exist_ok=True)
+    if link_to:
+        (tmp_path / link_to).mkdir(parents=True)
+        stub_dir.symlink_to(Path(*[".."] * (len(Path(rel_dir).parts) - 1), link_to))
+    else:
+        stub_dir.mkdir()
+    for name in ("specyrd-validate.md", "specyrd-brief.md"):
+        (stub_dir / name).write_text("stale\n", encoding="utf-8")
+    (tmp_path / ".specyrd").mkdir()
+    recorded = [f"{rel_dir}/specyrd-validate.md", f"{rel_dir}/specyrd-brief.md"]
+    (tmp_path / ".specyrd" / "manifest.json").write_text(
+        json.dumps({"agents": {"generic": recorded}}), encoding="utf-8")
+    return tmp_path
+
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+@pytest.mark.parametrize("rel_dir", ["docs/team (commands)", "docs/équipe #1 !x"])
+def test_a_generic_dir_with_parentheses_or_odd_characters_is_reported_whole(
+        tmp_path: Path, capsys, dry_run: bool, rel_dir: str) -> None:
+    repo = _generic_repo(tmp_path, rel_dir)
+    main(["--repo-root", str(repo), *(["--dry-run"] if dry_run else [])])
+    verb = "would write" if dry_run else "wrote"
+    out = capsys.readouterr().out.splitlines()
+    for name in ("specyrd-validate.md", "specyrd-brief.md"):
+        assert f"{verb} {rel_dir}/{name}" in out
+
+
+
+def _generic_linked_parent(tmp_path: Path, self_loop: bool) -> tuple[Path, Path]:
+    """A stub under a linked directory that is not an agent skills directory (to ``actual``, or to itself)."""
+    repo = _generic_repo(tmp_path, "docs/team (commands)", link_to=None if self_loop else "actual")
+    link = repo / "docs" / "team (commands)"
+    if self_loop:
+        shutil.rmtree(link)
+        link.symlink_to(link.name)
+    return repo, link
+
+
+
+@pytest.mark.parametrize("self_loop", [False, True], ids=["to-actual", "self-loop"])
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_a_stub_under_a_linked_directory_that_is_not_a_skills_directory_is_refused(
+        tmp_path: Path, capsys, dry_run: bool, self_loop: bool) -> None:
+    """M21.37: only an agent skills directory may be a link; skills-link shapes are in test_setup_writers_refuse_links.
+    A link loop is refused like any link, without a traceback."""
+    repo, link = _generic_linked_parent(tmp_path, self_loop)
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+
+    with pytest.raises(SystemExit) as e:
+        main(["--repo-root", str(repo), *(["--dry-run"] if dry_run else [])])
+
+    err = capsys.readouterr().err
+    assert e.value.code == 1 and f"error: {link} is a symlink" in err, err
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file() and ".specyrd" not in p.parts
+            and p.name not in (".gitignore", ".cursorindexingignore", "AGENTS.md")} == {
+        p: b for p, b in before.items() if ".specyrd" not in p.parts}
+
+
+
+def test_diff_shows_stubs_under_a_parenthesised_dir(tmp_path: Path, capsys) -> None:
+    repo = _generic_repo(tmp_path, "docs/team (commands)")
+    main(["--repo-root", str(repo), "--diff"])
+    out = capsys.readouterr().out.splitlines()
+    for name in ("specyrd-validate.md", "specyrd-brief.md"):
+        assert f"+++ b/docs/team (commands)/{name}" in out
+        assert f"would write docs/team (commands)/{name}" not in out   # diffed, not left as a bare line
+
+
+
+# Routing parity between `prompt`, `orchestrate plan` and `worker delegate`; a signing failure in
+# `mark-implementation-reviewed`; skill and stub edge cases in `refresh-stubs`; a stale brainstorm
+# decision; and `models show` printing `harness/model`.
+
+def test_refresh_stubs_lists_a_dangling_skill_link_as_an_orphan(tmp_path: Path) -> None:
+    run_init(target=tmp_path, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None, role="dev")
+    manifest = tmp_path / ".specyrd" / "manifest.json"
+    data = manifest.read_text()
+    link = ".claude/skills/specyrd-gone"
+    os.symlink("../../.agents/skills/specyrd-gone", tmp_path / link)
+    manifest.write_text(data.replace('".claude/skills/specyrd-validate"', f'".claude/skills/specyrd-validate", "{link}"'))
+    _w, orphans = rs.refresh_stubs(tmp_path)
+    assert link in orphans and (tmp_path / link).is_symlink()
+
+
+
+def test_refresh_stubs_does_not_create_claude_md(tmp_path: Path) -> None:
+    run_init(target=tmp_path, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None, write_claude_md=False)
+    assert not (tmp_path / "CLAUDE.md").exists()
+    rs.refresh_stubs(tmp_path)
+    assert not (tmp_path / "CLAUDE.md").exists()
+
+
+
+def test_the_commands_hint_is_only_for_old_harness_stubs() -> None:
+    assert rs.old_command_stub(".cursor/commands/specyrd-x.md")
+    assert not rs.old_command_stub("docs/commands/specyrd-x.md")
+
+
+
+# --- B7, F4 -------------------------------------------------------------------
+
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
+def test_a_skipped_canonical_skill_is_never_adopted_or_overwritten(tmp_path: Path) -> None:
+    mine = tmp_path / ".agents" / "skills" / "specyrd-validate" / "SKILL.md"
+    mine.parent.mkdir(parents=True)
+    mine.write_text("CUSTOM USER SKILL\n")
+    run_init(target=tmp_path, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None, role="dev")
+    manifest = json.loads((tmp_path / ".specyrd" / "manifest.json").read_text())
+    assert ".agents/skills/specyrd-validate/SKILL.md" not in manifest["agents"]["claude-code"]
+    written, _o = rs.refresh_stubs(tmp_path)
+    assert mine.read_text() == "CUSTOM USER SKILL\n"
+    assert ".agents/skills/specyrd-validate/SKILL.md (skipped (not ours))" in written

@@ -23,6 +23,7 @@ from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import review_cli
 from specy_road.orchestration.workers.worker_adapters import Launch
 from specy_road.orchestration.workers.worker_runner_ready import READY_ONLY_PROMPT
+from tests.support.extracted.folded_review_ops import idle_record
 
 
 FAKE_SLOW = '''
@@ -408,3 +409,129 @@ def test_a_queued_turn_gets_the_callers_pythonpath(tmp_path: Path, monkeypatch: 
         raise AssertionError("queued turn did not finish")
     want = caller_path if caller_path is not None else ""
     assert (repo / "work" / "pythonpaths").read_text(encoding="utf-8").splitlines() == [want, want]
+
+
+
+# --- B2 -----------------------------------------------------------------------
+
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
+def test_concurrent_messages_launch_one_turn(tmp_path: Path, monkeypatch) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ws.set_state(repo, rec, "idle", pid=None)
+    spawned: list[str] = []
+    gate = threading.Event()
+
+    def fake_spawn(repo_root, r, launch, *, resumed=False):
+        spawned.append(r.worker_id)
+        gate.wait(1)
+        ws.set_state(repo_root, r, "running", pid=os.getpid())
+        return os.getpid()
+
+    monkeypatch.setattr(ops, "spawn", fake_spawn)
+    monkeypatch.setattr(ops, "process_alive", lambda r, repo_root=None: r.pid == os.getpid())
+    monkeypatch.setattr(ops, "wrapper_gone", lambda repo_root, r: False)   # the fake spawn has no token to verify
+    errors: list[Exception] = []
+
+    def go() -> None:
+        try:
+            ops.message(repo, rec.worker_id, "hi")
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+
+    threads = [threading.Thread(target=go) for _ in range(2)]
+    for t in threads:
+        t.start()
+    time.sleep(0.2)
+    gate.set()
+    for t in threads:
+        t.join()
+    assert len(spawned) == 1 and len(errors) == 0
+    assert ws.load_record(repo, rec.worker_id).queued_message == "hi"
+
+
+UUID = "7f1c0000-1111-4222-8333-444444444444"
+
+
+
+# --- F2 ------------------------------------------------------------------------
+
+# Session ids are validated and resume commands rendered with shlex.
+# A placeholder is a whole shell word; embedded or multi-word quoted forms are refused, and
+# validation and substitution walk the same tokens.
+# `message --op-id` binds the message text, and a retry whose file is gone answers from the
+# outbox.
+# The hook matches by harness and id, refuses ambiguity, and never waits long for the workers
+# lock; `delegate` keeps its preflight outside the lock.
+# Dead wrappers on any leaf are reaped by `sync` and before the `max_workers` count; `delegate`
+# refuses a dirty checkout; a crashed reclaim is repaired, not repeated; `sync --ack` is
+# serialised.
+# `message` from a linked worktree, and the brief in the same checkout.
+
+@pytest.mark.slow
+def test_message_op_id_binds_the_text_and_survives_a_missing_file(tmp_path: Path, capsys) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    wait_for_worker(repo, "w-0001")
+    capsys.readouterr()
+    msg = tmp_path / "message.txt"
+    msg.write_text("first")
+    assert run_worker_cli("worker", "message", "w-0001", "--file", str(msg), "--op-id", "same-op", "--json", "--repo-root", str(repo)) == 0
+    first = json.loads(capsys.readouterr().out)
+    wait_for_worker(repo, "w-0001")
+    msg.write_text("second")
+    assert run_worker_cli("worker", "message", "w-0001", "--file", str(msg), "--op-id", "same-op", "--json", "--repo-root", str(repo)) == 1
+    assert "different arguments" in capsys.readouterr().err
+    msg.unlink()
+    assert run_worker_cli("worker", "message", "w-0001", "--file", str(msg), "--op-id", "same-op", "--json", "--repo-root", str(repo)) == 0
+    assert json.loads(capsys.readouterr().out) == first
+    assert run_worker_cli("worker", "message", "w-0001", "--file", str(msg), "--repo-root", str(repo)) == 1
+    assert "cannot read --file" in capsys.readouterr().err
+
+
+
+# --- G3 ------------------------------------------------------------------------
+
+def test_message_from_a_linked_worktree_without_work_dir(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = idle_record(repo, sid=UUID)
+    wt = tmp_path / "linked"
+    git(repo, "worktree", "add", "-q", str(wt), "-b", "side")
+    assert not (wt / "work").exists()
+    ops.message(wt, rec.worker_id, "hi from the side")
+    final = wait_for_worker(repo, rec.worker_id)
+    assert final.state in ("idle", "completed") and (wt / "work" / f"prompt-{rec.worker_id}-message-2.md").is_file()
+
+
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
+
+def test_a_completed_worker_takes_a_review_block_as_a_message(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ws.set_state(repo, rec, "completed", pid=None)
+    rec = ops.message(repo, rec.worker_id, "fix the blocker")
+    wait_for_worker(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).state in ("idle", "completed")
+    ws.set_state(repo, rec, "terminated", pid=None)   # failed with a session id resumes (M11.2)
+    with pytest.raises(ws.WorkerError, match="is terminated, session sid-1; delegate again instead"):
+        ops.message(repo, rec.worker_id, "x")

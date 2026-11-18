@@ -16,6 +16,7 @@ from tests.support.harness import make_worker_repo, wait_for_worker
 
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_state as ws
+from specy_road.orchestration.workers.worker_runner_ready import READY_ONLY_PROMPT
 
 
 def _failed(repo: Path, session: str | None = "sid-1", node: str = "M1.1") -> ws.WorkerRecord:
@@ -103,3 +104,45 @@ def test_a_leaf_already_held_by_another_worker_is_not_reopened(tmp_path: Path) -
     with pytest.raises(ws.WorkerError, match=f"already has an active worker \\({newer.worker_id}\\); "
                                              f"{rec.worker_id} stays failed"):
         ops.message(repo, rec.worker_id, "x")
+
+
+
+# Worker sync --until, collapsed tool-use output, rework after completed, and ready-only resume.
+
+@pytest.mark.slow
+def test_resume_ready_only_writes_the_prompt_file_via_the_cli(tmp_path: Path, capsys) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    rec = wait_for_worker(repo, "w-0001")
+    capsys.readouterr()
+    assert run_worker_cli("worker", "resume", rec.worker_id, "--ready-only", "--repo-root", str(repo)) == 0
+    paths = sorted((repo / "work").glob(f"prompt-{rec.worker_id}-ready-only-*.md"))
+    assert len(paths) == 1
+    assert paths[0].read_text(encoding="utf-8") == READY_ONLY_PROMPT
+    wait_for_worker(repo, rec.worker_id)
+
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    ("extra_first", "extra_second"),
+    (
+        (("--ready-only",), ()),
+        ((), ("--ready-only",)),
+        (("--offline",), ()),
+        ((), ("--offline",)),
+        (("--ready-only",), ("--offline",)),
+        (("--offline",), ("--ready-only",)),
+    ),
+)
+def test_resume_op_id_refuses_when_offline_or_ready_only_toggles(tmp_path: Path, capsys, extra_first, extra_second) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    rec = wait_for_worker(repo, "w-0001")
+    capsys.readouterr()
+    base = ("worker", "resume", rec.worker_id, "--op-id", "resume-op", "--repo-root", str(repo))
+    assert run_worker_cli(*base, *extra_first) == 0
+    wait_for_worker(repo, rec.worker_id)
+    capsys.readouterr()
+    assert run_worker_cli(*base, *extra_second) != 0
+    assert "ran with different arguments" in capsys.readouterr().err

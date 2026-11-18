@@ -17,6 +17,17 @@ from specy_road.bundled_scripts import models_cli, role_prompt
 from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_files import PACKET_NAME, reviews_dir
 import pytest
+from tests.support.review import make_review_repo
+from specy_road.bundled_scripts.role_prompt import build_prompt
+from specy_road.roadmap_load import load_roadmap
+from specy_road.orchestration.model_profiles import profile_for_entry
+from specy_road.orchestration.orchestrate_plan import Candidate, assign_leaf
+from specy_road.orchestration_config import effective_config
+import os
+from specy_road.bundled_scripts.refresh_profiles import refresh_profiles
+import sys
+from io import StringIO
+from tests.support.harness import worker_roster
 
 
 # --- profiles -----------------------------------------------------------------
@@ -365,3 +376,149 @@ def test_models_show_prints_effort_by_role(tmp_path: Path, capsys) -> None:
     repo = make_profile_repo(tmp_path)
     assert run_main(models_cli, "models", "show", "opus", "--repo-root", str(repo)) == 0
     assert "- effort_by_role: coordinator=low (low), executor=medium (medium), reviewer=medium (medium)" in capsys.readouterr().out
+
+
+ORCH = """version: 1
+roster:
+  - {id: coord, family: anthropic, roles: [coordinator], may_process: [public]}
+  - {id: coord2, family: openai, roles: [coordinator], may_process: [public, restricted]}
+  - id: exec1
+    family: anthropic
+    profile: model-profiles/anthropic-claude/claude-opus-5-5.md
+    roles: [executor, coordinator]
+    may_process: [public, restricted]
+    harness: claude-code
+    channels: {cli: "printf roster-cli-%s {prompt}"}
+  - {id: sub1, family: openai, roles: [executor], may_process: [public, restricted]}
+policy: {reviewers_required: 1}
+substitutions:
+  - {slot: rev, use: sub1, decided: "2026-01-01", expires: "2027-01-01"}
+"""
+
+
+
+def _repo(tmp_path: Path, *, sensitivity: str | None = None) -> Path:
+    repo = make_review_repo(tmp_path, orchestration=ORCH)
+    dest = repo / "model-profiles" / "anthropic-claude"
+    dest.mkdir(parents=True)
+    shutil.copy(OPUS, dest / OPUS.name)
+    if sensitivity:
+        chunk = repo / "roadmap" / "phases" / "M1.json"
+        chunk.write_text(chunk.read_text().replace('"id": "M1.1"', f'"sensitivity": "{sensitivity}", "id": "M1.1"'))
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "roster")
+    return repo
+
+
+
+def _run(mod, *args: str) -> int:
+    with pytest.raises(SystemExit) as e:
+        mod.main(list(args))
+        raise SystemExit(0)
+    return e.value.code or 0
+
+
+
+# Routing parity between `prompt`, `orchestrate plan` and `worker delegate`; a signing failure in
+# `mark-implementation-reviewed`; skill and stub edge cases in `refresh-stubs`; a stale brainstorm
+# decision; and `models show` printing `harness/model`.
+
+def test_a_substitute_reviewer_gets_a_prompt(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    (repo / "work" / "reviews" / "M1.1").mkdir(parents=True)
+    (repo / "work" / "reviews" / "M1.1" / "PACKET.md").write_text("# packet\n")
+    text, _p, err = build_prompt(repo, "M1.1", role="reviewer", model="sub1")
+    assert err is None and "## Your role: reviewer" in text
+    assert "does not have the reviewer role" in build_prompt(repo, "M1.1", role="reviewer", model="exec1")[2]
+
+
+
+def test_coordinator_sensitivity_is_checked_by_plan_and_prompt_alike(tmp_path: Path) -> None:
+    repo = _repo(tmp_path, sensitivity="restricted")
+    assert "may process only" in build_prompt(repo, "M1.1", role="coordinator", model="coord")[2]
+    git(repo, "checkout", "-q", "dev")          # unclaimed from here: plan and prompt still check, prompt still carries the brief
+    git(repo, "merge", "-q", "feature/rm-thing")
+    (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
+    config, _err = effective_config(repo)
+    node = next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.1")
+    cands = [Candidate(e, profile_for_entry(repo, e)) for e in config["roster"]]
+    assert assign_leaf(node, cands, config).coordinator != "coord"    # coord has may_process: [public] only
+    assert "may process only" in build_prompt(repo, "M1.1", role="coordinator", model="coord")[2]
+    text, _p, err = build_prompt(repo, "M1.1", role="coordinator", model="coord2")
+    assert err is None and "## Intent" in text
+    assert "unknown node id" in build_prompt(repo, "M9.9", role="coordinator", model="coord2")[2]
+
+
+
+def test_prompt_cli_channel_prefers_the_roster_channels_cli(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    git(repo, "update-ref", "refs/heads/dev", "HEAD")   # the profile, like the roster, is read from the integration branch
+    assert _run(__import__("specy_road.bundled_scripts.role_prompt", fromlist=["main"]),
+                "M1.1", "--model", "exec1", "--role", "executor", "--channel", "cli", "--run", "--repo-root", str(repo)) == 0
+    assert "running: printf roster-cli-%s " in capsys.readouterr().err
+
+
+
+def test_models_show_prints_harness_and_model(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    assert _run(models_cli, "models", "show", "exec1", "--repo-root", str(repo)) == 0
+    assert "- harness/model: claude-code/exec1" in capsys.readouterr().out
+
+
+
+# --- F10, F11, F12 --------------------------------------------------------------
+
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
+
+def test_a_profile_path_cannot_escape_the_repo(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    outside = tmp_path / "evil.md"
+    outside.write_text("---\nprofile_schema: 2\n---\n")
+    prof = profile_for_entry(repo, {"id": "x", "profile": "../evil.md"})
+    assert prof is not None and not prof.ok and "escapes the repository" in prof.errors[0]
+
+
+
+# --- B7 ----------------------------------------------------------------------------
+
+# Trusted integration ref; pinned profiles; `may_process: []`; refresh-profiles containment;
+# validate uses the gate's policy source; profile diagnostics.
+
+def test_refresh_profiles_refuses_a_symlinked_destination(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    outside = tmp_path / "outside"
+    repo.mkdir()
+    outside.mkdir()
+    os.symlink(outside, repo / "model-profiles")
+    with pytest.raises(ValueError, match="symlink"):
+        refresh_profiles(repo, profiles="all")
+    assert not list(outside.rglob("*.md"))
+    (repo / "model-profiles").unlink()
+    (repo / "model-profiles").mkdir()
+    os.symlink(outside, repo / "model-profiles" / "anthropic-claude")
+    with pytest.raises(ValueError, match="symlink"):
+        refresh_profiles(repo, profiles="all")
+    assert not list(outside.rglob("*.md"))
+    (repo / "model-profiles" / "anthropic-claude").unlink()
+    written, _ = refresh_profiles(repo, profiles="all")
+    assert written and all((repo / w).is_file() for w in written)
+
+
+
+def test_prompt_wrote_line_is_on_stderr(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path, orchestration=worker_roster("true"))
+    out = tmp_path / "work" / "prompt-M1.1-executor-opus.md"
+    monkeypatch.setattr(sys, "stdout", StringIO())
+    monkeypatch.setattr(role_prompt, "run_cli_channel", lambda *_a, **_k: 0)
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as exc:
+        role_prompt.main(
+            ["M1.1", "--model", "opus", "--role", "executor", "--channel", "paste",
+             "--output", str(out), "--repo-root", str(repo)]
+        )
+    assert exc.value.code == 0
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert f"Wrote {out}" in captured.err

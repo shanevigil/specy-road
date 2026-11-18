@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 from tests.support.review import make_review_repo, git
-from tests.support.extracted.worker_m310_reconcile_status import nested_project
+from tests.support.extracted.worker_repos import nested_project
 
 from specy_road.orchestration.workers import worker_adapter_codex as codex
 from specy_road.orchestration.workers import worker_adapters as wa

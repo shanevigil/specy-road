@@ -14,6 +14,10 @@ from tests.support.review import make_review_repo
 from specy_road.orchestration.guard import session_presence as sp
 from specy_road.orchestration.guard import tool_call_guard as g
 from specy_road.bundled_scripts import session_cli
+from tests.support.review import git
+from specy_road.orchestration.guard import tool_call_guard as tg
+from specy_road.orchestration.workers import worker_process as wp
+from specy_road.orchestration.workers import worker_state as ws
 
 
 @pytest.mark.parametrize("command, fragment", [
@@ -209,3 +213,137 @@ def test_cli_generic_payload(tmp_path: Path) -> None:
     sp.start_session(repo, "alice", paths=["src"])
     assert _cli("session", "guard", "--agent", "me", "--repo-root", str(repo), stdin='{"command": "git rebase main"}') == 2
     assert _cli("session", "guard", "--agent", "me", "--repo-root", str(repo), stdin='{"command": "git log"}') == 0
+
+
+
+# --- B3, B6, F17 ----------------------------------------------------------------
+
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
+@pytest.mark.parametrize("command", [
+    "f(){ git stash; }; f", "sh -c 'f(){ git reset --hard; }; f'", "gitcmd=git; $gitcmd stash",
+    "python -c 'import subprocess; subprocess.run([\"git\",\"stash\"])'", "git commit -m x",
+])
+def test_opaque_shapes_and_bare_commits_are_refused(command: str) -> None:
+    assert tg.classify(command), command
+
+
+
+@pytest.mark.parametrize("command", ["f(){ echo hi; }; f", "python -c 'print(1)'", "git commit -m x src/a.py"])
+def test_opaque_shapes_without_git_pass(command: str) -> None:
+    assert tg.classify(command) is None
+
+
+
+def test_git_dash_c_into_another_tree_counts_that_trees_session(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    sp.start_session(repo, "alice", paths=["src"], worktree=wt)
+    assert tg.decide(repo, "git checkout -b feature/x", agent="bob").allowed       # alice is elsewhere
+    assert not tg.decide(repo, f"git -C {wt} reset --hard", agent="bob").allowed   # but this reaches her
+
+
+
+# --- Gemini F1 / Sol B1 -----------------------------------------------------------
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
+@pytest.mark.parametrize("command", [
+    'env -S "git stash"', "echo $(git reset --hard $(echo HEAD))", "sudo --user root git stash",
+    "env --unset HOME git stash", "nice --adjustment 5 git stash", "timeout 10 git stash",
+    "printf 'stash\\n' | xargs git",
+])
+def test_more_wrapper_shapes_are_classified(command: str) -> None:
+    assert tg.classify(command), command
+
+
+
+def test_attached_dash_c_git_dir_and_config_aliases_reach_the_right_tree(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    sp.start_session(repo, "alice", paths=["src"], worktree=wt)
+    git(repo, "config", "alias.s", "stash")
+    git(repo, "config", "alias.boom", "!git reset --hard")
+    assert not tg.decide(repo, f"git -C{wt} reset --hard", agent="bob").allowed
+    assert not tg.decide(repo, f"git --git-dir={wt}/.git commit -m x", agent="bob").allowed
+    assert not tg.decide(repo, "git s", agent="bob").allowed
+    assert "reset --hard" in (tg.classify(tg._expand_config_aliases(repo, "git boom")) or "")   # bang alias expanded
+    assert not tg.decide(repo, "git boom", agent="bob", always=True).allowed
+    assert tg.decide(repo, "git -C . status", agent="bob").allowed
+
+
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
+
+def test_tree_only_commands_ignore_sessions_in_other_worktrees(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    sp.start_session(repo, "alice", paths=["src"], worktree=repo)
+    assert tg.decide(wt, "git checkout -b feature/rm-other", agent="bob").allowed
+    assert not tg.decide(repo, "git checkout -b feature/rm-other", agent="bob").allowed
+    assert not tg.decide(wt, "git stash", agent="bob").allowed          # the stash stack is repo-wide
+
+
+
+def test_a_worker_does_not_count_itself(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    # The guard matches the wrapper's resolved repo root as a whole argument (review round 6, B11).
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: f"python -m specy_road.worker_runner {repo.resolve()} w-0001")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.set_state(repo, rec, "running", pid=os.getpid())
+    assert not tg.decide(repo, "git checkout dev", agent="me").allowed
+    monkeypatch.setenv("SPECY_ROAD_WORKER_ID", "w-0001")
+    assert tg.decide(repo, "git checkout dev", agent="me").allowed
+    monkeypatch.delenv("SPECY_ROAD_WORKER_ID")
+    ws.set_state(repo, rec, "running", pid=999999)              # a dead pid is not a live worker
+    assert tg.decide(repo, "git checkout dev", agent="me").allowed
+
+
+
+@pytest.mark.parametrize("command", [
+    "git checkout -f", "git checkout --force", "git restore src/a.py", "git restore -W src/a.py",
+    "{ git stash; }", "eval git stash", "echo $(git reset --hard)", "x=`git stash`",
+])
+def test_more_destructive_shapes_are_classified(command: str) -> None:
+    assert tg.classify(command), command
+
+
+
+def test_staged_restore_of_a_path_is_fine() -> None:
+    assert tg.classify("git restore --staged src/a.py") is None
+
+
+
+def test_malformed_hook_stdin_denies() -> None:
+    with pytest.raises(ValueError):
+        tg.read_payload("not json")

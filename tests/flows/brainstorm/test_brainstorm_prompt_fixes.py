@@ -25,6 +25,8 @@ from specy_road.brainstorm_prompt import render_brainstorm_prompt, render_recomm
 from specy_road.brainstorm_session import add_idea, read_session
 from tests.support.same.cli_4bb09fdf3883 import cli
 from tests.support.same.start_f653667be42d import start
+from tests.support.review import make_review_repo
+from specy_road.brainstorm_session import BrainstormSession
 
 ROOT = REPO
 SLUG = "how-do-we-expand-payments"
@@ -181,3 +183,28 @@ def test_start_warns_on_the_integration_branch_only(repo: Path, monkeypatch: pyt
 
     subprocess.run(["git", "checkout", "-q", "-b", f"chore/brainstorm-{SLUG}"], cwd=repo, check=True)
     assert "integration branch" not in start(repo)[2]
+
+
+
+# --- Sol B9 ----------------------------------------------------------------------
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
+def test_round_one_does_not_point_at_the_roadmap_digest(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    (repo / "roadmap-context.md").write_text("# digest\n")
+    s = BrainstormSession(slug="s", topic="t")
+    # Round 1 names the digest only as a file not to open, never as one to read.
+    text = render_brainstorm_prompt(repo, s, count=5)
+    assert "`roadmap-context.md`" not in text.split("**Do not open")[0]
+    s.round = 2
+    s.ideas = []
+    assert "**Current roadmap state:** `roadmap-context.md`" in render_brainstorm_prompt(repo, s, count=5)

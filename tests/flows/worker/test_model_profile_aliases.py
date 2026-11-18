@@ -21,6 +21,22 @@ from specy_road.orchestration_pinned import pinned_profile_for_entry
 from tests.support.review import shipped_anthropic_opus_cli_yaml_line, git
 from tests.support.cli import run_main
 from tests.support.profiles import commit_profile, make_profile_repo, ROSTER, TEMPLATE_PROFILES
+from tests.support import REPO
+import os
+import shutil
+import time
+from tests.support.review import commit_file, make_review_repo
+from specy_road.orchestration.workers import worker_ops as ops
+from specy_road.orchestration.workers import worker_state as ws
+from specy_road.bundled_scripts.role_prompt import build_prompt
+from specy_road.orchestration.model_profiles import load_profile
+from specy_road.orchestration.orchestrate_plan import (
+    build_orchestration_plan,
+    entry_may_process,
+    may_handle,
+)
+from specy_road.orchestration_config import parse_orchestration_text
+from tests.support.extracted.folded_review_policy import PROFILE_REL, ROSTER as ROSTER_FOLDED
 
 
 def test_shipped_cursor_family_profiles_list_effort_suffix_aliases() -> None:
@@ -234,3 +250,181 @@ def test_a_drifted_profile_matched_by_harness_model_is_refused_and_runs_nothing(
                     "--repo-root", str(repo)) == 1
     assert "differs from the copy on the integration branch" in capsys.readouterr().err
     assert not (repo / "ran.txt").exists() and not (repo / "other.txt").exists()
+
+
+OPUS = REPO / "specy_road/templates/project/model-profiles/anthropic-claude/claude-opus-5-5.md"
+
+COMPOSER = REPO / "specy_road/templates/project/model-profiles/cursor-composer/composer-2.md"   # api_id: unknown
+
+
+
+def _repo(tmp_path: Path, roster: str = ROSTER_FOLDED) -> Path:
+    """Roster and profile committed on the feature branch, then ``dev`` moved to it."""
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    dest = repo / PROFILE_REL
+    dest.parent.mkdir(parents=True)
+    shutil.copy(OPUS, dest)
+    git(repo, "add", "model-profiles")
+    git(repo, "commit", "-qm", "profile")
+    git(repo, "update-ref", "refs/heads/dev", "HEAD")
+    return repo
+
+
+
+# --- B5 ----------------------------------------------------------------------------
+
+# Trusted integration ref; pinned profiles; `may_process: []`; refresh-profiles containment;
+# validate uses the gate's policy source; profile diagnostics.
+
+def test_an_uncommitted_profile_edit_is_refused_not_executed(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    marker = tmp_path / "ran"
+    prof = repo / PROFILE_REL
+    prof.write_text(prof.read_text().replace("cli:", f'cli: "touch {marker} && echo {{prompt}}"\n  was_cli:', 1))
+    text, p, err = build_prompt(repo, "M1.1", role="executor", model="opus")
+    assert err and "differs from the copy on the integration branch" in err and "commit it" in err
+    plan, _ = build_orchestration_plan(repo)
+    with pytest.raises(ws.WorkerError, match="differs from the copy on the integration branch"):
+        ops.delegate(repo, "M1.1", "opus", harness="generic")
+    assert not marker.exists()
+    with pytest.raises(SystemExit) as e:
+        models_cli.main(["models", "list", "--json", "--repo-root", str(repo)])
+    assert e.value.code == 0
+
+
+
+def test_a_profile_only_in_the_working_tree_is_not_used(tmp_path: Path) -> None:
+    # roster on dev, profile nowhere
+    repo = make_review_repo(tmp_path, orchestration=ROSTER_FOLDED)
+    git(repo, "update-ref", "refs/heads/dev", "HEAD")
+    dest = repo / PROFILE_REL
+    dest.parent.mkdir(parents=True)
+    shutil.copy(OPUS, dest)
+    prof = pinned_profile_for_entry(repo, {"id": "opus", "profile": PROFILE_REL})
+    assert not prof.ok and "not committed on the integration branch" in prof.errors[0]
+    plan, _ = build_orchestration_plan(repo)
+
+
+
+def test_the_committed_profile_is_used_when_the_tree_matches_or_lacks_it(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    assert pinned_profile_for_entry(repo, {"id": "opus", "profile": PROFILE_REL}).ok
+    (repo / PROFILE_REL).unlink()
+    prof = pinned_profile_for_entry(repo, {"id": "opus", "profile": PROFILE_REL})
+    assert prof.ok and prof.cli()
+    text, p, err = build_prompt(repo, "M1.1", role="executor", model="opus")
+    assert err is None and "## Model notes" in text
+
+
+
+@pytest.mark.parametrize("harness, profile, expect", [
+    # Sandbox runbook §0 (2026-10-27): a profiled claude-code entry launched `claude -p '<prompt>'`.
+    ("claude-code", OPUS, ["stream-json", "--session-id", "--model", "claude-opus-5-5"]),
+    # Review round 7, R7-1: Composer's `api_id: unknown` is Cursor's default model, not `--model unknown`.
+    ("cursor", COMPOSER, ["stream-json", "!--model"]),
+    # R7-5: no `harness:` is generic, which runs the profile's own access.cli (`claude -p "<prompt>"`).
+    (None, OPUS, ["-p", "!stream-json"]),
+])
+def test_a_profile_cli_launches_only_generic_workers(tmp_path: Path, monkeypatch, harness, profile, expect) -> None:
+    rel = profile.relative_to(REPO / "specy_road/templates/project").as_posix()
+    roster = ROSTER_FOLDED.replace(PROFILE_REL, rel)
+    if harness:
+        roster = roster.replace("family: anthropic", f"family: anthropic\n    harness: {harness}")
+    repo = _repo(tmp_path, roster)
+    if rel != PROFILE_REL:
+        commit_file(repo, rel, profile.read_text(), "composer profile")
+        git(repo, "update-ref", "refs/heads/dev", "HEAD")
+    bin_dir, argv = tmp_path / "bin", tmp_path / "argv"
+    bin_dir.mkdir()
+    for name in ("claude", "agent"):
+        (bin_dir / name).write_text(f'#!/bin/sh\necho "$@" > {argv}\ncat > /dev/null\n')
+        (bin_dir / name).chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    ops.delegate(repo, "M1.1", "opus")
+    for _ in range(100):
+        if argv.is_file() and argv.read_text():
+            break
+        time.sleep(0.1)
+    args = argv.read_text().split()
+    for e in expect:
+        assert (e[1:] not in args) if e.startswith("!") else (e in args), (e, args)
+    if "--model" in expect:
+        assert args[args.index("--model") + 1] == expect[expect.index("--model") + 1]
+
+
+
+# --- B6 ----------------------------------------------------------------------------
+
+def test_explicit_empty_may_process_denies_everything(tmp_path: Path) -> None:
+    assert entry_may_process({"id": "x"}) == ["public"]
+    assert entry_may_process({"id": "x", "may_process": []}) == []
+    assert not may_handle({"id": "x", "may_process": []}, "public")
+    roster = ROSTER_FOLDED.replace("roles: [coordinator, executor, reviewer]",
+                            "roles: [coordinator, executor, reviewer]\n    may_process: []")
+    repo = _repo(tmp_path, roster)
+    assert "may process only []" in build_prompt(repo, "M1.1", role="executor", model="opus")[2]
+    with pytest.raises(ws.WorkerError, match="may not process it"):
+        ops.delegate(repo, "M1.1", "opus", harness="generic")
+    git(repo, "checkout", "-q", "dev")
+    (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    chunk.write_text(chunk.read_text().replace('"In Progress"', '"Not Started"'))
+    git(repo, "commit", "-qam", "free")
+    plan, err = build_orchestration_plan(repo)
+    assert err is None and any("no eligible executor" in p for p in plan.batches[0][0].problems)
+
+
+
+# --- F14 ---------------------------------------------------------------------------
+
+def _profile(tmp_path: Path, front: str) -> Path:
+    p = tmp_path / "p.md"
+    p.write_text(f"---\nprofile_schema: 2\nfamily: x\nmodel: x\napi_id: x\nversion_rank: current\n{front}\n---\n")
+    return p
+
+
+
+def test_malformed_access_and_role_fit_are_errors_not_crashes(tmp_path: Path) -> None:
+    prof = load_profile(_profile(tmp_path, "researched: 2026-01-01\naccess: a string\nrole_fit: [1]"))
+    assert not prof.ok and any("`access` must be a mapping" in e for e in prof.errors)
+    assert any("`role_fit` must be a mapping" in e for e in prof.errors)
+    assert prof.cli() is None and prof.role_score("executor") is None
+    prof = load_profile(_profile(tmp_path, "researched: 2026-01-01\naccess: {cli: [1]}\n"
+                                           "role_fit: {executor: {score: high}}\ncost_usd_per_mtok: 3"))
+    assert {"`access.cli` must be a string", "`role_fit.executor` must be a mapping with an integer `score`",
+            "`cost_usd_per_mtok` must be a mapping"} <= set(prof.errors)
+
+
+
+def test_impossible_dates_are_errors(tmp_path: Path) -> None:
+    prof = load_profile(_profile(tmp_path, "researched: 2026-00-00\naccess: {}\nrole_fit: {}"))
+    assert not prof.ok and "not valid YAML" in prof.errors[0]
+    prof = load_profile(_profile(tmp_path, "researched: '2026-00-00'\naccess: {}\nrole_fit: {}"))
+    assert not prof.ok and "not a calendar date" in prof.errors[-1]
+    assert load_profile(_profile(tmp_path, "researched: 2026-01-15\naccess: {}\nrole_fit: {}")).ok
+    for field in ("unavailable_until: '2026-00-00'", "unavailable_until: 2026-00-00", "unavailable_until: '2026-02-30'"):
+        text = ROSTER_FOLDED.replace(
+            "roles: [coordinator, executor, reviewer]",
+            f"roles: [coordinator, executor, reviewer]\n    {field}",
+        )
+        _d, err = parse_orchestration_text(text)
+        assert err and ("not a calendar date" in err or "YAML error" in err)
+    text = ROSTER_FOLDED.replace(
+        "policy:",
+        "substitutions:\n  - {slot: r, use: opus, decided: '2026-13-01', expires_when: x}\npolicy:",
+    )
+    _d, err = parse_orchestration_text(text)
+    assert err and "substitutions/0/decided" in err
+
+
+
+def test_models_list_and_show_survive_an_escaping_profile_path(tmp_path: Path, capsys) -> None:
+    roster = ROSTER_FOLDED.replace(PROFILE_REL, "../outside.md")
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    git(repo, "update-ref", "refs/heads/dev", "HEAD")
+    for args in (["models", "list", "--repo-root", str(repo)], ["models", "list", "--json", "--repo-root", str(repo)],
+                 ["models", "show", "opus", "--repo-root", str(repo)], ["models", "stale", "--repo-root", str(repo)]):
+        with pytest.raises(SystemExit) as e:
+            models_cli.main(args)
+        assert e.value.code == 0
+    assert "escapes the repository" in capsys.readouterr().out

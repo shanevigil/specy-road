@@ -29,6 +29,11 @@ from specy_road.orchestration.workers.worker_adapter_base import (ARG_LIMIT, COD
                                          oversized_arg)
 from specy_road.orchestration.workers.worker_adapter_codex import CODEX_MEMORY_OFF, profile_home
 from specy_road.orchestration.workers.worker_adapters import ADAPTERS, Launch, Unsupported
+from tests.support.harness import make_worker_repo
+from tests.support.harness import wait_for_worker
+from specy_road.orchestration.workers import worker_adapters as wa
+from specy_road.orchestration.workers import worker_process as wp
+from specy_road.orchestration.workers import worker_runner as wr
 
 REAL_RESOLVE = hb.resolve   # taken at import, before conftest's autouse stub replaces it for each test
 
@@ -350,3 +355,117 @@ def test_an_rca_prompt_over_the_limit_reaches_the_bundled_codex_profile_on_stdin
     shipped = sorted((project_template_root() / "model-profiles" / "openai-gpt").glob("*.md"))
     assert shipped   # every bundled OpenAI profile, however many, is rendered with the stdin form
     assert all(load_profile(p).cli().endswith(" - < {prompt}") for p in shipped)
+
+
+
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
+def test_a_spawn_failure_marks_the_record_failed(tmp_path: Path, monkeypatch) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+
+    def boom(*a, **k):
+        raise OSError("no fork for you")
+
+    monkeypatch.setattr(ops, "spawn", boom)
+    with pytest.raises(ws.WorkerError, match="cannot start the wrapper"):
+        ops.delegate(repo, "M1.1", "opus")
+    assert ws.load_record(repo, "w-0001").state == "failed"
+    assert ws.active_for_node(repo, "M1.1") is None
+
+
+
+# --- B10 ----------------------------------------------------------------------------
+
+# READY freshness is a content checkpoint, not an mtime window; a wrapper that dies does not free
+# a leaf whose harness is alive, and `terminate` kills the recorded group; the launch payload
+# travels in a 0600 file, never in argv; a pid is this worker's wrapper only with the repo root,
+# worker id and token as whole arguments (and `PermissionError` is not "ours"); completion, resume
+# and reclaim check the branch actually checked out; parsed output is `worker_suggestion`, not
+# `system`.
+
+def test_a_huge_stdin_prompt_travels_in_a_0600_file_not_argv(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    probe = tmp_path / "probe.py"
+    probe.write_text("import json, sys\nn = len(sys.stdin.read())\n"
+                     "print(json.dumps({'type': 'system', 'subtype': 'init', 'session_id': str(n)}), flush=True)\n")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    seen = {}
+    real = wr.subprocess.Popen
+
+    def spy(argv, **kw):
+        # the lock's git calls go through Popen too
+        if "specy_road.orchestration.workers.worker_runner" in argv:
+            seen["argv"] = argv
+            seen["mode"] = oct(Path(argv[-1]).stat().st_mode & 0o777)
+        return real(argv, **kw)
+    wr.subprocess.Popen = spy
+    try:
+        wr.spawn(repo, rec, wa.Launch([sys.executable, str(probe)], stdin="x" * 2_000_000))   # E2BIG before
+    finally:
+        wr.subprocess.Popen = real
+    assert seen["mode"] == "0o600" and sum(len(a) for a in seen["argv"]) < 4096
+    assert seen["argv"][4:7] == [str(repo.resolve()), rec.worker_id, ws.load_record(repo, rec.worker_id).wrapper_token]
+    final = wait_for_worker(repo, rec.worker_id)
+    assert final.provider_session_id == "2000000"
+    assert not list((repo / "work" / ".workers").glob("*.launch-*.json"))   # read once and deleted
+
+
+
+def test_a_prompt_in_argv_is_refused_above_the_limit_with_a_failed_record(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "cursor", "composer", repo)
+    with pytest.raises(ws.WorkerError, match=r"KiB of arguments \(limit 100 KiB\)"):
+        wr.spawn(repo, rec, wa.Launch(["agent", "-p", "y" * (wp.ARGV_LIMIT + 1)]))
+    rec = ws.load_record(repo, rec.worker_id)
+    assert rec.state == "failed" and rec.pid is None
+    assert "shorten the brief" in ws.events_since(repo, rec.worker_id)[-1].summary
+
+
+
+# One test per finding: records survive a concurrent writer (the wrapper no longer writes a stale
+# copy back), two delegates on one leaf launch once, terminate reaches the harness and its
+# children, an op id names one operation, an older attempt's READY does not complete a new worker,
+# and the harness does not inherit the wrapper's PYTHONPATH.
+
+def test_the_harness_does_not_inherit_the_wrappers_pythonpath(tmp_path: Path, monkeypatch) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    probe = tmp_path / "probe.py"
+    probe.write_text("import json, os\nprint(json.dumps({'type': 'system', 'subtype': 'init', 'session_id': os.environ.get('PYTHONPATH', '(unset)')}), flush=True)\n")
+    monkeypatch.setenv("PYTHONPATH", "/adopter/own/path")
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    wr.spawn(repo, rec, wa.Launch([sys.executable, str(probe)]))
+    wait_for_worker(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).provider_session_id == "/adopter/own/path"
+    monkeypatch.delenv("PYTHONPATH")
+    rec2 = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
+    wr.spawn(repo, rec2, wa.Launch([sys.executable, str(probe)]))
+    wait_for_worker(repo, rec2.worker_id)
+    assert ws.load_record(repo, rec2.worker_id).provider_session_id == "(unset)"
+
+
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
+
+def test_the_session_id_chosen_up_front_is_on_disk_after_spawn(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    wr.spawn(repo, rec, wa.Launch(["true"], session_id="sid-1234"))
+    assert ws.load_record(repo, rec.worker_id).provider_session_id == "sid-1234"
+    wait_for_worker(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).provider_session_id == "sid-1234"

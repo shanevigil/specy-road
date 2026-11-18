@@ -14,6 +14,8 @@ from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road.review_files import review_path, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_target import resolve_target
+from tests.support.review import commit_file
+from tests.support.extracted.folded_review_evidence import evidence_roster
 
 
 def _repo(tmp_path: Path, **kw) -> Path:
@@ -218,3 +220,62 @@ def test_yes_refuses_while_a_trial_merge_conflicts_on_code(tmp_path: Path, capsy
     assert ("trial merge conflicts on src/a.py" in capsys.readouterr().err) == refused
     assert _review_state(repo) == ("pending" if refused else "approved")
     assert (git(repo, "rev-parse", "HEAD") == head) == refused   # no bookkeeping commit when refused
+
+
+
+# Routing parity between `prompt`, `orchestrate plan` and `worker delegate`; a signing failure in
+# `mark-implementation-reviewed`; skill and stub edge cases in `refresh-stubs`; a stale brainstorm
+# decision; and `models show` printing `harness/model`.
+
+def test_a_signing_failure_is_an_error_not_a_traceback(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration="version: 1\nroster:\n  - {id: human, family: human, "
+                            "roles: [coordinator, reviewer], public_key: 'ssh-ed25519 AAAA'}\n"
+                            "policy: {reviewers_required: 1, signed_reviews: true}\n")
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nx\n")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _p="": "a")
+    with pytest.raises(SystemExit) as e:
+        mir.main(["--sign-key", str(tmp_path / "no-such-key"), "--repo-root", str(repo)])
+    assert e.value.code == 1 and "could not sign" in capsys.readouterr().err
+
+
+
+# Evidence the gate, the packet and reconcile rely on.
+# A rename or copy into a touch zone is also a change outside it, in `worker reconcile`, the
+# review packet and the finish-time check.
+# A READY under `work/reviews/<node>/` naming another node or branch never feeds `handoff status`,
+# the packet or completion.
+# The Markdown notes are bound to the signed front matter (`notes_sha256`); `verify` rejects a
+# mismatched identity on its own; the packet labels committed, working-tree and missing summaries
+# distinctly.
+# A wrong `--sign-key` on the interactive human approval writes nothing and the reason is printed.
+
+def test_post_write_gate_failure_prints_its_problems(tmp_path: Path, monkeypatch, capsys) -> None:
+    """The record is written, then the gate still fails: every problem is printed, not only the generic error."""
+    repo = make_review_repo(tmp_path, orchestration=evidence_roster(None, signed=False))
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nx\n")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _p="": "a")
+    monkeypatch.setattr(mir, "evaluate_gate", _gate_then_stale(mir.evaluate_gate))
+    with pytest.raises(SystemExit) as e:
+        mir.main(["--repo-root", str(repo)])
+    captured = capsys.readouterr()
+    assert e.value.code == 1
+    assert "[ok] wrote" in captured.out and "- need 1 approvals at this commit, have 0" in captured.err
+
+
+
+def _gate_then_stale(real):
+    """After the human record lands, pretend the branch moved on so the new record is stale."""
+    calls = {"n": 0}
+
+    def fake(repo_root, node, commit, **kw):
+        calls["n"] += 1
+        if calls["n"] >= 2 and review_path(repo_root, "M1.1", "human").exists():
+            commit_file(repo_root, "src/later.py", "x\n", "after approval")
+            commit = git(repo_root, "rev-parse", "HEAD")
+        return real(repo_root, node, commit, **kw)
+
+    return fake

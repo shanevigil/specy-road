@@ -22,6 +22,13 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
     validate_parents,
     warn_stale_parent_status,
 )
+import yaml
+from tests.support.review import make_review_repo
+from specy_road.bundled_scripts.validate_roadmap import validate_at
+from tests.support.extracted.folded_review_policy import PROFILE_REL, ROSTER
+from tests.helpers import SCHEMAS
+from tests.support.review import git
+from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 
 
 def test_validate_script_is_quiet_when_no_parent_status_drifted() -> None:
@@ -388,3 +395,147 @@ def test_validate_reads_past_a_requirements_file_that_is_not_utf8(tmp_path: Path
     assert "OK: roadmap and registry validate." in out
     assert err.count("pins specy-road") == 1
     assert f"pins specy-road 0.0.1 (requirements.txt) but {__version__} is running" in err
+
+
+
+# --- F13 ---------------------------------------------------------------------------
+
+# Trusted integration ref; pinned profiles; `may_process: []`; refresh-profiles containment;
+# validate uses the gate's policy source; profile diagnostics.
+
+def test_validate_uses_the_integration_branch_gate_switch(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    data = json.loads(chunk.read_text())
+    data["nodes"][0].pop("acceptance")
+    chunk.write_text(json.dumps(data))
+    (repo / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: dev\nremote: origin\nrequire_implementation_review_before_finish: false\n")
+    capsys.readouterr()
+    validate_at(repo)
+    assert "has no acceptance criteria" in capsys.readouterr().err
+    reg = repo / "roadmap" / "registry.yaml"
+    entries = yaml.safe_load(reg.read_text())
+    del entries["entries"][0]["implementation_review"]
+    reg.write_text(yaml.safe_dump(entries))
+    with pytest.raises(SystemExit):
+        validate_at(repo)
+    assert "implementation_review must be" in capsys.readouterr().err
+
+
+
+def test_validate_missing_planning_dir_lists_every_node_and_scaffold_fix(capsys) -> None:
+    nodes = [
+        {"id": "M1", "node_key": "10000000-0000-4000-8000-000000000001", "type": "phase"},
+        {"id": "M2", "node_key": "20000000-0000-4000-8000-000000000002", "type": "task"},
+    ]
+    capsys.readouterr()
+    with pytest.raises(SystemExit):
+        vr.validate_required_planning_dirs(nodes)
+    err = capsys.readouterr().err
+    assert "roadmap: node M1 (type phase):" in err
+    assert "roadmap: node M2 (type task):" in err
+    assert err.count("fix: specy-road scaffold-planning M1") == 1
+    assert err.count("fix: specy-road scaffold-planning M2") == 1
+
+
+
+NK = {
+    "M70": "70000000-0000-4000-8000-000000000001",
+    "M70.1": "70000000-0000-4000-8000-000000000002",
+    "M70.1.1": "70000000-0000-4000-8000-000000000003",
+    "M70.2": "70000000-0000-4000-8000-000000000004",
+}
+
+
+
+def _rollup_finish_repo(tmp_path: Path) -> Path:
+    shutil.copytree(SCHEMAS, tmp_path / "schemas")
+    shutil.copytree(REPO / "constraints", tmp_path / "constraints")
+    (tmp_path / "roadmap" / "phases").mkdir(parents=True)
+    (tmp_path / "shared").mkdir()
+    (tmp_path / "shared" / "README.md").write_text("# Shared\n", encoding="utf-8")
+    (tmp_path / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n", encoding="utf-8")
+    (tmp_path / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: dev\nremote: origin\n"
+        "require_implementation_review_before_finish: true\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "roadmap" / "orchestration.yaml").write_text(
+        "version: 1\npolicy: {milestone_full_review: false}\n", encoding="utf-8")
+    (tmp_path / "roadmap" / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": ["phases/M70.json"]}), encoding="utf-8"
+    )
+    planning = tmp_path / "planning"
+    planning.mkdir()
+    nodes = [
+        {
+            "id": "M70",
+            "node_key": NK["M70"],
+            "parent_id": None,
+            "type": "phase",
+            "title": "P",
+            "planning_dir": f"planning/M70_unnamed_{NK['M70']}.md",
+            "status": "Not Started",
+            "touch_zones": [],
+            "dependencies": [],
+        },
+        {
+            "id": "M70.1",
+            "node_key": NK["M70.1"],
+            "parent_id": "M70",
+            "type": "milestone",
+            "title": "M",
+            "planning_dir": f"planning/M70.1_unnamed_{NK['M70.1']}.md",
+            "status": "Not Started",
+            "touch_zones": [],
+            "dependencies": [],
+        },
+        {
+            "id": "M70.1.1",
+            "node_key": NK["M70.1.1"],
+            "parent_id": "M70.1",
+            "type": "task",
+            "title": "Done leaf",
+            "codename": "done-leaf",
+            "planning_dir": f"planning/M70.1.1_done-leaf_{NK['M70.1.1']}.md",
+            "status": "Complete",
+            "touch_zones": ["src"],
+            "dependencies": [],
+            "acceptance": ["done"],
+        },
+        {
+            "id": "M70.2",
+            "node_key": NK["M70.2"],
+            "parent_id": "M70",
+            "type": "task",
+            "title": "Bare sibling",
+            "planning_dir": f"planning/M70.2_bare_{NK['M70.2']}.md",
+            "status": "Not Started",
+            "touch_zones": [],
+            "dependencies": [],
+        },
+    ]
+    for n in nodes:
+        rel = n["planning_dir"].split("/", 1)[1]
+        (planning / rel).write_text(f"# {n['id']}\n\n## Intent\n\nWork.\n", encoding="utf-8")
+    (tmp_path / "roadmap" / "phases" / "M70.json").write_text(
+        json.dumps({"version": 1, "nodes": nodes}, indent=2), encoding="utf-8"
+    )
+    git(tmp_path, "init", "-q", "-b", "dev")
+    git(tmp_path, "config", "user.email", "t@e.com")
+    git(tmp_path, "config", "user.name", "T")
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-qm", "graph")
+    return tmp_path
+
+
+
+def test_ancestor_rollup_then_validate_prints_each_warning_once(tmp_path: Path, capsys) -> None:
+    repo = _rollup_finish_repo(tmp_path)
+    capsys.readouterr()
+    changed = complete_rolled_up_ancestors(repo, "M70.1.1")
+    assert changed
+    validate_at(repo, no_overlap_warn=True, require_registry=True)
+    err = capsys.readouterr().err
+    assert err.count("has no acceptance criteria") == 1

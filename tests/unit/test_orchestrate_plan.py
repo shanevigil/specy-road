@@ -12,6 +12,9 @@ from tests.support.plan import ROSTER, only_assignment, plan_repo
 
 from specy_road.orchestration import orchestrate_plan as op
 from specy_road.bundled_scripts import orchestrate_cli, role_prompt
+from tests.support.review import make_review_repo
+from specy_road.orchestration.orchestrate_plan import Candidate, assign_leaf
+from specy_road.orchestration_config import effective_config
 
 
 def test_default_leaf_gets_cheapest_executor_and_two_families(tmp_path: Path) -> None:
@@ -152,3 +155,54 @@ def test_executor_order_class_then_price_then_billing() -> None:
             cand("cheap", **{"class": "cheap", "billing_route": "api_key"})]
     assert [c.id for c in sorted(pool, key=op.Candidate.executor_key)] == [
         "cheap", "sub", "oauth", "bare", "metered", "senior"]
+
+
+
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
+
+def test_a_plan_without_a_coordinator_says_so(tmp_path: Path) -> None:
+    from specy_road.roadmap_load import load_roadmap
+    from specy_road.orchestration.orchestrate_plan import Candidate, assign_leaf
+    from specy_road.orchestration_config import effective_config
+
+    repo = make_review_repo(tmp_path, orchestration="version: 1\nroster:\n  - {id: exec1, family: openai, roles: [executor, reviewer]}\n"
+                                                     "  - {id: rev1, family: anthropic, roles: [reviewer]}\npolicy: {reviewers_required: 1}\n")
+    config, _err = effective_config(repo)
+    node = next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.1")
+    a = assign_leaf(node, [Candidate(e, None) for e in config["roster"]], config)
+    # M15.11 A4: with no coordinator rostered the session running the plan coordinates, and says so
+    assert a.ok and a.coordinator is None and a.coordinator_is_session
+    assert any(n.startswith("coordinator: this session") for n in a.notes)
+
+
+
+# --- Sol F5 ----------------------------------------------------------------------
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
+def test_an_invalid_configured_profile_is_a_staffing_error(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration="version: 1\nroster:\n"
+                            "  - {id: bad, family: openai, roles: [executor, reviewer, coordinator], "
+                            "profile: model-profiles/bad.md}\n"
+                            "  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
+                            "policy: {reviewers_required: 1}\n")
+    (repo / "model-profiles").mkdir()
+    (repo / "model-profiles" / "bad.md").write_text("not a profile\n")
+    from specy_road.roadmap_load import load_roadmap
+    from specy_road.orchestration.model_profiles import profile_for_entry
+
+    config, _e = effective_config(repo)
+    node = next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.1")
+    a = assign_leaf(node, [Candidate(e, profile_for_entry(repo, e)) for e in config["roster"]], config)
+    assert a.executor is None and sum("profile is invalid" in p for p in a.problems) == 1
+    assert a.reviewers == ["human"] and a.coordinator == "human"   # every pool skips it, as `prompt` refuses it

@@ -36,7 +36,7 @@ cases:
   - id: CR2
     title: A commit takes only the agent's own paths
     source:
-      - tests/cli/test_review_round6_guard.py::test_broad_pathspecs_are_refused
+      - tests/cli/test_session_guard.py::test_broad_pathspecs_are_refused
     app: todo
     harnesses: [claude-code, codex, cursor]
     setup: >-
@@ -62,7 +62,7 @@ cases:
   - id: CR3
     title: Cleaning up never discards another session's work
     source:
-      - tests/flows/review/test_review_round4_sol.py::test_opaque_shapes_and_bare_commits_are_refused
+      - tests/unit/test_tool_call_guard.py::test_opaque_shapes_and_bare_commits_are_refused
       - tests/unit/test_tool_call_guard.py::test_deny_only_with_another_live_session
     app: todo
     harnesses: [claude-code, codex, cursor]
@@ -98,8 +98,8 @@ cases:
   - id: CR5
     title: Brainstorm round 1 neither reads the roadmap nor builds
     source:
-      - tests/flows/review/test_review_round5.py::test_round_one_does_not_point_at_the_roadmap_digest
-      - tests/unit/test_review_round6_brainstorm.py::test_round_one_prompt_carries_the_write_allow_list
+      - tests/flows/brainstorm/test_brainstorm_prompt_fixes.py::test_round_one_does_not_point_at_the_roadmap_digest
+      - tests/unit/test_brainstorm_v2.py::test_round_one_prompt_carries_the_write_allow_list
     app: notes
     harnesses: [claude-code, codex, cursor]
     prompt: >-
@@ -117,7 +117,7 @@ cases:
     title: An executor stays in its zones and lists what it added
     source:
       - tests/repo/test_lean_rules.py::test_executor_prompt_asks_for_the_added_inventory
-      - tests/flows/review/test_review_round6_evidence.py::test_committed_rename_into_the_zone_is_reported_on_both_sides
+      - tests/flows/worker/test_worker_reconcile_contract.py::test_committed_rename_into_the_zone_is_reported_on_both_sides
     app: calculator
     harnesses: [claude-code, codex, cursor]
     setup: One leaf claimed by do-next-available-task; the roster has the harness's executor entry.
@@ -189,8 +189,8 @@ cases:
   - id: CR10
     title: A delegated worker's READY binds to its own branch tip
     source:
-      - tests/flows/review/test_review_round4_sol_b.py::test_a_ready_on_another_branch_does_not_complete
-      - tests/flows/review/test_review_round5.py::test_a_ready_for_an_older_commit_does_not_complete
+      - tests/flows/worker/test_worker_adapters.py::test_a_ready_on_another_branch_does_not_complete
+      - tests/flows/worker/test_worker_adapters.py::test_a_ready_for_an_older_commit_does_not_complete
     app: notes
     harnesses: [claude-code, codex, cursor]
     setup: >-

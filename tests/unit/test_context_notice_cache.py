@@ -1,4 +1,4 @@
-"""M13.12 A5: the context-warning hash is disposable, and only the ``validate`` CLI folds.
+"""The context-warning hash is disposable, and only the ``validate`` CLI folds.
 
 Any hash file that cannot be read or matched (invalid UTF-8, truncated, a
 directory, no permission) is a cache miss: the warnings print in full and the
@@ -141,3 +141,47 @@ def test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded(tmp_path: Pat
     assert capsys.readouterr().err == FULL
     report_context_warnings(tmp_path, warn, cached=True)
     assert capsys.readouterr().err == FOLDED
+
+
+
+# Unchanged context warnings fold into one line.
+
+# --- A5: context warnings in full only when they changed -----------------------------------------
+
+def _warner(lines: list[str]):
+    def warn(_root: Path) -> None:
+        for ln in lines:
+            print(ln, file=sys.stderr)
+    return warn
+
+
+
+def test_context_warnings_first_run_unchanged_run_and_changed_run(tmp_path: Path, capsys) -> None:
+    full = "".join(ln + "\n" for ln in WARNINGS)
+    report_context_warnings(tmp_path, _warner(WARNINGS), cached=True)
+    assert capsys.readouterr().err == full                                     # first run: in full
+    report_context_warnings(tmp_path, _warner(WARNINGS), cached=True)
+    assert capsys.readouterr().err == FOLDED                                   # unchanged: one line
+    changed = [*WARNINGS[:1], "context: warning — AGENTS.md total more …"]
+    report_context_warnings(tmp_path, _warner(changed), cached=True)
+    assert capsys.readouterr().err == "".join(ln + "\n" for ln in changed)    # changed: in full again
+    report_context_warnings(tmp_path, _warner(changed), cached=True)
+    assert capsys.readouterr().err == FOLDED
+    assert (tmp_path / ".specyrd" / "cache" / "context-warnings.sha256").is_file()
+
+
+
+def test_upgrade_and_validate_context_always_print_in_full(tmp_path: Path, capsys) -> None:
+    full = "".join(ln + "\n" for ln in WARNINGS)
+    report_context_warnings(tmp_path, _warner(WARNINGS), cached=True)
+    capsys.readouterr()
+    for _ in range(2):
+        report_context_warnings(tmp_path, _warner(WARNINGS), cached=False)
+        assert capsys.readouterr().err == full
+
+
+
+def test_no_context_warnings_print_nothing(tmp_path: Path, capsys) -> None:
+    for _ in range(2):
+        report_context_warnings(tmp_path, _warner([]), cached=True)
+        assert capsys.readouterr().err == ""

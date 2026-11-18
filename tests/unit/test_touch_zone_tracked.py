@@ -26,6 +26,7 @@ from tests.helpers import BUNDLED_SCRIPTS, script_subprocess_env
 from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.crud import crud_fixture_repo, run_crud
 from tests.support.extracted.touch_zone_tracked import FILES, UNTRACKED, zone_git_repo
+from specy_road.bundled_scripts.touch_zone_tracked import LISTED_LIMIT
 
 
 
@@ -211,3 +212,55 @@ def test_edit_node_warns_only_when_it_writes_zones(crud_git_repo: Path) -> None:
     assert r.returncode == 0, r.stderr
     assert "M99.1 touch zone 'pkg/worker_ops_' is a name prefix" in r.stderr
     assert UNTRACKED not in r.stderr   # the prefix line already covers it
+
+
+
+# The untracked-touch-zone notice is bounded.
+
+# --- A1: the untracked-zone notice is bounded ---------------------------------------------------
+
+def _many_nodes() -> list[dict]:
+    """85 leaves with a zone naming no file: 2 In Progress, 1 claimed, 2 Blocked, 80 Not Started."""
+    nodes = [{"id": "M1", "type": "phase", "status": "Not Started"}]
+    for i in range(85):
+        status = "In Progress" if i in (40, 41) else "Blocked" if i in (50, 51) else "Not Started"
+        nodes.append({"id": f"M1.{i}", "parent_id": "M1", "status": status, "touch_zones": [f"pkg/new_{i}.py"]})
+    return nodes
+
+
+
+def test_85_untracked_nodes_give_a_bounded_line_claimed_and_in_progress_first(tmp_path: Path, capsys) -> None:
+    zone_git_repo(tmp_path)
+    warn_untracked_zones(_many_nodes(), tmp_path, claims=[{"node_id": "M1.60"}])
+    out, err = capsys.readouterr()
+    assert err == ""
+    assert out == (
+        f"roadmap: notice — {UNTRACKED}: M1.40 'pkg/new_40.py'; M1.41 'pkg/new_41.py'; "
+        "M1.60 'pkg/new_60.py'; M1.50 'pkg/new_50.py'; M1.51 'pkg/new_51.py'; "
+        "and 80 more node(s) (by status: Not Started 80); `specy-road validate --all` lists every one. "
+        "Keep a zone that names a file the work will create; otherwise fix the path (specy-road edit-node "
+        "<NODE_ID> --set touch_zones=<paths>) — zones are paths, directories or globs (for example "
+        "'pkg/worker_ops_*.py'); a bare name prefix is read as a literal path and is not supported.\n"
+    )
+
+
+
+def test_at_most_ten_nodes_are_named_and_the_rest_counted_by_status(tmp_path: Path, capsys) -> None:
+    zone_git_repo(tmp_path)
+    nodes = _many_nodes()
+    for n in nodes[1:16]:
+        n["status"] = "Blocked"
+    warn_untracked_zones(nodes, tmp_path)
+    out = capsys.readouterr().out
+    assert out.count("'pkg/new_") == LISTED_LIMIT
+    assert "and 75 more node(s) (by status: Blocked 9, Not Started 66);" in out
+    assert len(out) < 1000
+
+
+
+def test_validate_all_names_every_node(tmp_path: Path, capsys) -> None:
+    zone_git_repo(tmp_path)
+    warn_untracked_zones(_many_nodes(), tmp_path, show_all=True)
+    out = capsys.readouterr().out
+    assert out.count("'pkg/new_") == 85
+    assert "more node(s)" not in out

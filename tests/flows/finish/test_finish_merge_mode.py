@@ -154,3 +154,27 @@ def test_finish_merge_omits_the_branch_line_when_the_branch_is_deleted(
     result = _finish_cli(repo, "--delete-branch")
     assert result.returncode == 0, result.stderr + result.stdout
     assert "this checkout is still on" not in result.stdout
+
+
+
+# Worker hand-off, reconcile reporting, sync/list messages, and the merge finish notice.
+
+def test_finish_help_and_merge_notice(tmp_path: Path, capsys) -> None:
+    help_text = subprocess.check_output(
+        [sys.executable, "-m", "specy_road.cli", "finish-this-task", "--help"],
+        text=True,
+    )
+    assert "merge lands on the integration branch and pushes it" in help_text
+    assert "--push only pushes the feature branch" in help_text
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    base = git(repo, "rev-parse", "HEAD")
+    git(repo, "commit", "--allow-empty", "-qm", "extra on dev")
+    git(repo, "update-ref", "refs/remotes/origin/dev", base)
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    print_merge_push_notice(
+        repo, remote="origin", integration_branch="dev", feature_branch="feature/rm-thing",
+    )
+    out = capsys.readouterr().out
+    assert "will merge 'feature/rm-thing' into 'dev' and push origin/dev" in out
+    assert "The push will carry 4 commits (1 not from 'feature/rm-thing')." in out

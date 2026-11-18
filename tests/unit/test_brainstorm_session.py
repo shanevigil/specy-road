@@ -25,6 +25,10 @@ from specy_road.brainstorm_session import (
     slugify,
     write_session,
 )
+from tests.support.review import make_review_repo
+import io
+from specy_road.bundled_scripts import brainstorm_cli
+from tests.support.same.session_9311e77aa0c8 import session
 
 
 def _session(**kw) -> BrainstormSession:
@@ -211,3 +215,114 @@ def test_an_ordinary_slug_still_lands_in_work(tmp_path: Path) -> None:
     assert session_path(tmp_path, "how-do-we-expand-payments").parent == (
         tmp_path / "work"
     )
+
+
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
+def test_a_session_file_whose_slug_disagrees_is_refused(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    write_session(repo, BrainstormSession(slug="b", topic="t"))
+    (repo / "work" / "brainstorm-a.yaml").write_text((repo / "work" / "brainstorm-b.yaml").read_text())
+    with pytest.raises(Exception, match="says slug 'b'"):
+        read_session(repo, "a")
+
+
+
+
+
+def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
+    import contextlib
+
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        try:
+            brainstorm_cli.main([*args, "--repo-root", str(repo)])
+            code = 0
+        except SystemExit as e:
+            code = int(e.code) if isinstance(e.code, int) else 1
+    return code, out.getvalue(), err.getvalue()
+
+
+
+def _start(repo: Path) -> None:
+    assert _cli(repo, "start", "--topic", "How do we expand payments?")[0] == 0
+
+
+
+
+
+# Triage CLI: all-or-nothing batching, realize, append-why, and list --summary.
+
+def test_triage_checks_every_id_before_printing_or_saving(repo: Path) -> None:
+    _start(repo)
+    _cli(repo, "add-idea", "--title", "One")
+    _cli(repo, "add-idea", "--title", "Two")
+    code, out, err = _cli(repo, "accept", "B1", "B9")
+    assert code == 1 and not out.strip() and "B9" in err
+    assert session(repo).by_id("B1").status == "proposed"
+    code, out, err = _cli(repo, "park", "B1", "B9", "--reason", "later")
+    assert code == 1 and not out.strip()
+    assert session(repo).by_id("B1").status == "proposed"
+
+
+
+def test_triage_prints_nothing_when_a_batch_holds_a_promoted_idea(repo: Path) -> None:
+    _start(repo)
+    _cli(repo, "add-idea", "--title", "One")
+    _cli(repo, "add-idea", "--title", "Two")
+    assert _cli(repo, "realize", "B2", "--node", "M1")[0] == 0
+    before = session(repo)
+    assert before.by_id("B1").status == "proposed" and before.by_id("B2").promoted_node_key
+    code, out, err = _cli(repo, "accept", "B1", "B2")
+    assert code == 1 and not out.strip() and "already on the roadmap" in err
+    assert session(repo).by_id("B1").status == "proposed"
+    code, out, err = _cli(repo, "park", "B1", "B2", "--reason", "later")
+    assert code == 1 and not out.strip()
+    assert session(repo).by_id("B1").status == "proposed"
+    code, out, err = _cli(repo, "reject", "B1", "B2", "--reason", "no")
+    assert code == 1 and not out.strip()
+    assert session(repo).by_id("B1").status == "proposed"
+
+
+
+def test_realize_records_a_hand_built_node(repo: Path) -> None:
+    _start(repo)
+    _cli(repo, "add-idea", "--title", "Hand built")
+    code, out, err = _cli(repo, "realize", "B1", "--node", "M1")
+    assert code == 0, err
+    idea = session(repo).by_id("B1")
+    assert idea.promoted_node_key
+    assert "M1" in out and idea.promoted_node_key[:8] in out
+    code, _, err = _cli(repo, "realize", "B1", "--node", "M1.1")
+    assert code == 1 and "already on the roadmap" in err
+
+
+
+def test_revise_append_why_adds_to_verdict_why(repo: Path) -> None:
+    _start(repo)
+    _cli(repo, "add-idea", "--title", "One")
+    _cli(repo, "revise", "B1", "--why", "first line")
+    _cli(repo, "revise", "B1", "--append-why", "second line")
+    assert session(repo).by_id("B1").verdict_why == "first line\nsecond line"
+
+
+
+def test_list_summary_prints_status_and_recommendation_counts(repo: Path) -> None:
+    _start(repo)
+    _cli(repo, "add-idea", "--title", "One")
+    _cli(repo, "add-idea", "--title", "Two")
+    _cli(repo, "revise", "B1", "--recommendation", "strong")
+    _cli(repo, "accept", "B1")
+    _cli(repo, "reject", "B2", "--reason", "no")
+    _, out, _ = _cli(repo, "list", "--summary")
+    assert "status:" in out and "  proposed: 0" in out and "  accepted: 1" in out and "  rejected: 1" in out
+    assert "recommendation:" in out and "  strong: 1" in out and "  -: 1" in out

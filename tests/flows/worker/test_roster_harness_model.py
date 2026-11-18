@@ -19,6 +19,7 @@ from specy_road.bundled_scripts.validate_roadmap import validate_orchestration_c
 from specy_road.orchestration_config import harness_model, harness_model_warnings, parse_orchestration_text
 from specy_road.review_delegate import delegate as review_delegate
 from specy_road.review_files import reviews_dir
+from tests.support.harness import make_worker_repo
 
 DOTTED = {"id": "claude-opus-5.5", "family": "anthropic", "harness": "claude-code"}
 MAPPED = {**DOTTED, "harness_model": "claude-opus-5-5"}
@@ -138,3 +139,14 @@ def test_only_this_turns_part_of_the_log_is_quoted(tmp_path: Path) -> None:
     assert wr.run(repo, rec.worker_id, wa.Launch(["sh", "-c", "exit 1"])) == 1
     last = ws.events_since(repo, rec.worker_id)[-1]
     assert last.summary.startswith("exit 1; see ") and "earlier" not in last.summary
+
+
+
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
+
+def test_harness_override_cannot_move_a_rostered_model(tmp_path: Path) -> None:
+    repo, _ = make_worker_repo(tmp_path)
+    with pytest.raises(ws.WorkerError, match="rostered on harness"):
+        ops.delegate(repo, "M1.1", "opus", harness="cursor")

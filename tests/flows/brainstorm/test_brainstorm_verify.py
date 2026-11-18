@@ -386,3 +386,35 @@ def test_the_connection_is_pinned_to_the_checked_address(monkeypatch) -> None:
     conn._context = Ctx()
     conn.connect()
     assert opened == [("93.184.216.34", 443), ("sni", "example.com")]
+
+
+
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
+
+def test_the_byte_cap_blocks_rather_than_truncates(monkeypatch) -> None:
+    class R:
+        status = 200
+        _left = bv.MAX_BYTES + 1
+
+        def read(self, n):
+            take = min(n, self._left)
+            self._left -= take
+            return b"x" * take
+
+        def getheader(self, _name):
+            return None
+
+    class Conn:
+        def __init__(self, host, address, port): pass
+        def request(self, *a, **k): pass
+        def getresponse(self): return R()
+        def close(self): pass
+
+    monkeypatch.setattr(bv, "_PinnedHTTPS", Conn)
+    monkeypatch.setattr(bv, "_public_address", lambda host: "93.184.216.34")
+    monkeypatch.setattr(bv, "_is_off_host", lambda host: False)
+    with pytest.raises(ValueError, match="larger than"):
+        bv.default_fetch("https://example.com/big")
+    assert bv.check_source({"url": "https://example.com/big", "quote": "x"}, bv.default_fetch) == "blocked"

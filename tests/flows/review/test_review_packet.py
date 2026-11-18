@@ -23,7 +23,7 @@ from tests.support.extracted.nested_repo_worktrees import COVERED, add_nested_re
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts.review_packet import UNCOMMITTED_REF_NOTE
 from specy_road.review_files import PACKET_NAME, reviews_dir
-
+from specy_road.review_target import resolve_target
 #: Goldens recorded before the packet fragments folded. Git dates and the
 #: packet's generated date are fixed; the fixture path is written ``<ROOT>``.
 PACKET_GOLDEN = REPO / "tests" / "parity" / "golden" / "packet"
@@ -490,3 +490,98 @@ def test_nested_and_over_budget_packets_match_the_goldens(
     assert "Diff capped at 2 lines" in over and "DIFF-nested-src+engine.patch" in over
     assert nested == (PACKET_GOLDEN / "nested-PACKET.md").read_text(encoding="utf-8")
     assert over == (PACKET_GOLDEN / "over-budget-PACKET.md").read_text(encoding="utf-8")
+
+
+
+# A2 — ignored paths and globs that match nothing are not warned about
+
+
+def _cite(repo: Path, text: str) -> None:
+    sheet = repo / NODE["planning_dir"]
+    commit_file(repo, NODE["planning_dir"], sheet.read_text() + f"\n{text}\n", "cite")
+
+
+
+# Delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions at
+# the commit, refusals quote the line, and superseded failed runs say so.
+
+def test_packet_does_not_warn_about_an_ignored_build_path(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, ".gitignore", (repo / ".gitignore").read_text() + "build/\n", "ignore build")
+    (repo / "build").mkdir()
+    (repo / "build" / "out.js").write_text("x\n")
+    # every glob form counts: *, ?, [...], a glob extension, and a top-level glob with no directory
+    # patterns are packet text: "**x" (which Path.glob refuses) and a lone "[" are matched, never raised on
+    globs = ["planning/M9_*.md", "planning/M9_?.md", "planning/M9_[ab].md", "planning/M9.m?", "NOTES?.md",
+             "planning/**draft.md", "planning/M9_[.md"]
+    _cite(repo, "The bundle lands in `build/out.js` and the sheets match "
+                + ", ".join(f"`{g}`" for g in globs) + "; also `shared/missing.md`.")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    err = capsys.readouterr().err
+    assert "build/out.js" not in err and not any(g in err for g in globs)
+    block = text.split("## Uncommitted references\n", 1)[1].split("\n## Changed paths\n", 1)[0]
+    assert "- `shared/missing.md`" in block and "build/out.js" not in block and "planning/M9" not in block
+    assert "NOTES" not in block
+    assert "warning: `shared/missing.md` is named in the packet but not at commit" in err   # no wildcard: warned
+    assert err.count(f"note: {1 + len(globs)} path(s) named in the packet but not at commit") == 1
+
+
+
+def test_a_glob_that_matches_a_committed_file_is_not_missing(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    _cite(repo, "Sheets: `planning/M1*.md`.")
+    rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    err = capsys.readouterr().err
+    assert "planning/M1*.md" not in err and "note:" not in err
+
+
+
+# The review packet never treats `.git` as an uncommitted reference.
+
+def test_packet_skips_dot_git_paths_named_in_the_brief(tmp_path: Path, capsys) -> None:
+    """A1: `.git` and paths under it are never uncommitted references."""
+    repo = make_review_repo(tmp_path)
+    git(repo, "rm", "docs/x.md")
+    git(repo, "commit", "-qm", "drop docs x")
+    sheet = repo / NODE["planning_dir"]
+    commit_file(
+        repo,
+        NODE["planning_dir"],
+        sheet.read_text()
+        + "\nIgnore `.git` and `.git/hooks/pre-commit`; still track `docs/x.md`.\n",
+        "cite git and missing doc",
+    )
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    block = text.split("## Uncommitted references\n", 1)[1].split("\n## Changed paths\n", 1)[0]
+    assert UNCOMMITTED_REF_NOTE in block and "- `docs/x.md`" in block
+    assert ".git" not in block
+    err = capsys.readouterr().err
+    assert err.count("warning:") == 1
+    assert "warning: `docs/x.md` is named in the packet but not at commit" in err
+    assert ".git" not in err
+
+
+
+# Evidence the gate, the packet and reconcile rely on.
+# A rename or copy into a touch zone is also a change outside it, in `worker reconcile`, the
+# review packet and the finish-time check.
+# A READY under `work/reviews/<node>/` naming another node or branch never feeds `handoff status`,
+# the packet or completion.
+# The Markdown notes are bound to the signed front matter (`notes_sha256`); `verify` rejects a
+# mismatched identity on its own; the packet labels committed, working-tree and missing summaries
+# distinctly.
+# A wrong `--sign-key` on the interactive human approval writes nothing and the reason is printed.
+
+def test_packet_labels_committed_working_tree_and_missing_summaries(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rel = "work/implementation-summary-M1.1.md"
+    t = resolve_target(repo, "M1.1")
+    text = "\n".join(rp._summary(repo, t))
+    assert rp.SUMMARY_MISSING in text and rp.ASSERTED not in text and rp.ASSERTED_WORKING_TREE not in text
+    (repo / "work").mkdir()
+    (repo / rel).write_text("From the tree.\n")
+    text = "\n".join(rp._summary(repo, t))
+    assert rp.ASSERTED_WORKING_TREE in text and "From the tree." in text and rp.ASSERTED not in text
+    commit_file(repo, rel, "Committed.\n", "summary")
+    text = "\n".join(rp._summary(repo, resolve_target(repo, "M1.1")))
+    assert rp.ASSERTED in text and "Committed." in text and rp.ASSERTED_WORKING_TREE not in text
