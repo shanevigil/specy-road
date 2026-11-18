@@ -218,10 +218,9 @@ def test_rca_prompt_states_the_deferral_rule_and_shape(tmp_path: Path) -> None:
 def _crlf_review(repo: Path, model: str) -> None:
     """``model`` blocks HEAD on A1 with the boundary finding 'CRLF input still warns'."""
     notes = repo.parent / f"notes-{model}.md"
-    text = (review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict="block", a1="fail")
-            .replace("boundary: []", "boundary:\n  - CRLF input still warns"))
-    front, _body = text.rsplit("---\n", 1)
-    notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
+    text = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict="block", a1="fail")
+    text = text.replace("boundary: []", "boundary:\n  - CRLF input still warns")
+    notes.write_text(text, encoding="utf-8")
     assert run("review", "record", "M1.1", "--model", model, "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 

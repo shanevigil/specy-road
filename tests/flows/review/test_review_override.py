@@ -50,10 +50,12 @@ def _cli(module, *args: str) -> int:
 
 def _block(repo: Path, model: str = "opus", findings: dict | None = None, extra: tuple[str, ...] = ()) -> None:
     """``model`` files a block of HEAD on A1 with ``findings`` (default: one correctness finding)."""
-    data = yaml.safe_load(review_text(head_fn(repo), model=model, verdict="block", a1="fail").split("---\n")[1])
+    text = review_text(head_fn(repo), model=model, verdict="block", a1="fail")
+    data = yaml.safe_load(text.split("---\n")[1])
+    body = text.rsplit("---\n", 1)[1]
     data["findings"].update(findings or {"correctness": ["A1 regressed"]})
     notes = repo.parent / f"notes-{model}.md"
-    notes.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + f"---\n# {model} notes\n")
+    notes.write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\n" + body)
     assert _cli(review_cli, "review", "record", "M1.1", "--model", model, "--verdict", "block",
                 "--file", str(notes), *extra, "--repo-root", str(repo)) == 0
     notes.unlink()   # inside the git checkout for an sr/ project
@@ -746,7 +748,8 @@ def test_a_milestone_full_review_block_is_unchanged(tmp_path: Path, monkeypatch,
     d.mkdir(parents=True, exist_ok=True)
     data = yaml.safe_load(review_text(git(root, "rev-parse", "dev"), model="opus", verdict="block").split("---\n")[1])
     data.update(node_id="M2", acceptance={}, findings={**data["findings"], "correctness": ["A1 regressed"]})
-    (d / "REVIEW-opus.md").write_text("---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n")
+    body = "---\n" + yaml.safe_dump(data, sort_keys=False) + "---\n# opus notes\n"
+    (d / "REVIEW-opus.md").write_text(body)
     seen = _terminal(monkeypatch, capsys, "a", "false alarm, ship it")
     assert _mark(root, "M2") == 1
     captured = capsys.readouterr()

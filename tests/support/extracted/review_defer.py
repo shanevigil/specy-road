@@ -51,10 +51,8 @@ def write_rca(repo: Path, data: dict) -> Path:
 def review(repo: Path, model: str, verdict: str = "block") -> None:
     """Shared test helper."""
     notes = repo.parent / f"notes-{model}.md"
-    text = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
-                       a1="fail" if verdict == "block" else "pass")
-    front, _body = text.rsplit("---\n", 1)
-    notes.write_text(front + "---\n" + f"# {model} notes\n", encoding="utf-8")
+    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict,
+                                 a1="fail" if verdict == "block" else "pass"), encoding="utf-8")
     assert run("review", "record", "M1.1", "--model", model, "--verdict", verdict,
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 

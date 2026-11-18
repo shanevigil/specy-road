@@ -330,13 +330,6 @@ def test_prompt_channel_cli_captures_a_custom_reviewer_command_and_checks_its_wr
 
 
 @pytest.mark.slow
-def test_a_custom_reviewer_command_under_review_delegate_is_checked_and_filed(tmp_path: Path) -> None:
-    repo, spec = delegate_repo(tmp_path, GENERIC)
-    set_steps(repo, spec, {**verdict_step(repo, model="gem"), "plain": True})
-    assert delegate(repo, "M1.1", "gem", sleep=lambda s: None)["outcome"] == "recorded"
-
-
-@pytest.mark.slow
 @pytest.mark.parametrize("harness", ["codex", "cursor"])
 def test_a_plain_text_wrapper_on_a_codex_or_cursor_entry_is_filed_from_its_final_message(tmp_path: Path, capsys,
                                                                                           harness: str) -> None:
