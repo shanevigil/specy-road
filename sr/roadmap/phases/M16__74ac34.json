@@ -311,7 +311,7 @@
       "parent_id": "M16.7",
       "planning_dir": "planning/M16.7.1_tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it_3c8001e2-d1c2-4365-a0f2-be80807504ee.md",
       "sibling_order": 0,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it",
       "touch_zones": [
         "scripts/test_dedupe_worklist.py",

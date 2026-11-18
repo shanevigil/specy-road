@@ -71,7 +71,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.6.8` | Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates | task | Agentic-led | Complete |
 | `M16.6.9` | Docs name the moved test files at their lane paths | task | Agentic-led | Complete |
 | `M16.7` | Test dedupe, public seams, properties and the smoke lane | milestone | — | Not Started |
-| `M16.7.1` | Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it | task | Agentic-led | Not Started |
+| `M16.7.1` | Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it | task | Agentic-led | Complete |
 | `M16.7.2` | Tests: apply the dedupe worklist for review gate | task | Agentic-led | Not Started |
 | `M16.7.3` | Tests: apply the dedupe worklist for worker | task | Agentic-led | Not Started |
 | `M16.7.4` | Tests: apply the dedupe worklist for pickup and finish | task | Agentic-led | Not Started |

@@ -70,13 +70,3 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it
-    node_id: M16.7.1
-    branch: feature/rm-tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it
-    touch_zones:
-      - scripts/test_dedupe_worklist.py
-      - tests/support/dedupe/
-    started: '2026-11-18'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-18T22:35:51+00:00'
