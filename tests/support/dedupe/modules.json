@@ -6,8 +6,8 @@
   "jaccard_at_least": "19/20",
   "assignment": "A candidate is filed under the subsystem with the most of its covered arcs (the group's set, or the pair's union). Ties break toward the earlier of review-gate, worker, pickup-finish, rest.",
   "decision_rule": "A delete or fold names the surviving test and the assertion that covers the removed case. A keep that was read names the behaviour, input class or state that differs. A keep (classifier) row was not in that pool. No removal is the only test of an escalation rule, a forced RCA, a next-step state or a deferral.",
-  "unattributed_tests": 629,
-  "unattributed_id_sha256": "91afc4e806c9cdd9b6cbacb2ff77897c1e1ab3128014bf5bf9ac8821c1cef0a4",
+  "unattributed_tests": 641,
+  "unattributed_id_sha256": "60fa109f1a60a58cc5069d5651e215a8b9346d3cd42cc4dd34140cd71ffcd030",
   "unattributed_note": "These collected tests have no specy_road arc in the contexts file, so they are not candidates. Subprocesses started without the coverage context are the usual cause.",
   "rows": {
     "review-gate": {

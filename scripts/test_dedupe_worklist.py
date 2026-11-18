@@ -15,9 +15,11 @@ on the same contexts file at the recorded commit rewrites the same bytes.
 ``--check`` compares the tree to that rewrite and exits non-zero on a difference
 or a broken invariant.
 
-Ids written into a worklist are repo-relative. A path inside this checkout
-drops the checkout prefix. Any other absolute path, a home path, a hostname
-or an ``sr/`` path is the placeholder ``<path>``.
+A written item id is the collected pytest id. The parameter in brackets is
+kept, including a literal path such as ``/abs-node``, so the row names that
+item. This checkout's prefix is removed wherever it appears. A ``/home`` or
+``/Users`` name, a hostname or an ``sr/`` path that is not that prefix is
+still ``<path>``, and that one row then does not name the collected item.
 
 Each row records an action. A delete or fold names the surviving test, the
 assertion in it that covers the removed one, and, for a fold, the table that
@@ -85,6 +87,12 @@ _HOSTNAME = re.compile(r"\b[A-Za-z0-9.-]*MacBook(?:-(?:Pro|Air))?(?:-\d+)?\.loca
 _SR_PATH = re.compile(
     r"(?<![\w.-])sr/(?:work|planning|roadmap|tools)(?:/[^/\s\]\"']+)*"
 )
+_HOME_LEAK = re.compile(r"/(?:home|Users)/[A-Za-z0-9._-]+")
+_WIN_USERS = re.compile(
+    r"(?<![A-Za-z0-9])[A-Za-z]:\\(?:Users|users)\\[A-Za-z0-9._-]+"
+)
+_LOCATION_PATTERNS = (_ABS_PATH, _WIN_PATH, _TILDE_PATH, _HOSTNAME, _SR_PATH)
+_PARAM_PATTERNS = (_HOME_LEAK, _WIN_USERS, _HOSTNAME, _SR_PATH)
 DECISION_RULE = (
     "A delete or fold names the surviving test and the assertion that covers "
     "the removed case. A keep that was read names the behaviour, input class "
@@ -313,19 +321,34 @@ def module_lists(paths: list[str]) -> dict[str, list[str]]:
     return lists
 
 
+def _sub(text: str, patterns: tuple[re.Pattern[str], ...]) -> str:
+    for pattern in patterns:
+        text = pattern.sub(PATH_PLACEHOLDER, text)
+    return text
+
+
+def _redact_location(text: str) -> str:
+    """Replace machine paths in a node location or a decision, not in a parameter."""
+    text = _QUOTED_PATH.sub(
+        lambda m: m.group("q") + PATH_PLACEHOLDER + m.group("q"), text,
+    )
+    return _sub(text, _LOCATION_PATTERNS)
+
+
 def normalize_test_id(test_id: str) -> str:
-    """Drop this checkout's prefix and replace any other machine path with ``<path>``."""
+    """Collected item id, with this checkout's prefix removed.
+
+    The bracket parameter is kept, so a literal path stays the pytest id.
+    A home directory, a hostname or an ``sr/`` path that is not this checkout
+    is still ``<path>``.
+    """
     prefix = str(REPO) + "/"
     if prefix in test_id:
         test_id = test_id.replace(prefix, "")
-    test_id = _QUOTED_PATH.sub(
-        lambda m: m.group("q") + PATH_PLACEHOLDER + m.group("q"), test_id,
-    )
-    test_id = _ABS_PATH.sub(PATH_PLACEHOLDER, test_id)
-    test_id = _WIN_PATH.sub(PATH_PLACEHOLDER, test_id)
-    test_id = _TILDE_PATH.sub(PATH_PLACEHOLDER, test_id)
-    test_id = _HOSTNAME.sub(PATH_PLACEHOLDER, test_id)
-    return _SR_PATH.sub(PATH_PLACEHOLDER, test_id)
+    head, sep, param = test_id.partition("[")
+    if not sep:
+        return _redact_location(head)
+    return _redact_location(head) + sep + _sub(param, _PARAM_PATTERNS)
 
 
 def _public_ids(compiled: dict[str, tuple[int, ...]]) -> dict[str, tuple[int, ...]]:
@@ -583,12 +606,8 @@ def _class_reason(function_id: str, others: list[str]) -> str:
 
 
 def _public_reason(text: str) -> str:
-    text = text.replace(str(REPO) + "/", "")
-    text = _ABS_PATH.sub(PATH_PLACEHOLDER, text)
-    text = _WIN_PATH.sub(PATH_PLACEHOLDER, text)
-    text = _TILDE_PATH.sub(PATH_PLACEHOLDER, text)
-    text = _HOSTNAME.sub(PATH_PLACEHOLDER, text)
-    return _SR_PATH.sub(PATH_PLACEHOLDER, text)
+    """A decision is prose, so a machine path in it is ``<path>``."""
+    return _redact_location(text.replace(str(REPO) + "/", ""))
 
 
 def decide(test_id: str, others: list[str]) -> tuple[str, str, str, str, str]:
@@ -732,11 +751,14 @@ def render(contexts_path: Path) -> dict[Path, str]:
 
 
 def _machine_path(text: str) -> bool:
-    """True when ``text`` still carries an absolute path, a home, a hostname or ``sr/``."""
-    return bool(
-        _QUOTED_PATH.search(text) or _ABS_PATH.search(text) or _WIN_PATH.search(text)
-        or _TILDE_PATH.search(text) or _HOSTNAME.search(text) or _SR_PATH.search(text)
-    )
+    """True when a location, or an uncommittable leak inside a parameter, remains.
+
+    A literal path inside ``[...]`` is the pytest item id and is allowed.
+    """
+    outside = re.sub(r"\[[^\[\]]*\]", "[]", text)
+    if _QUOTED_PATH.search(outside) or any(p.search(outside) for p in _LOCATION_PATTERNS):
+        return True
+    return any(p.search(text) for p in _PARAM_PATTERNS)
 
 
 def _load(path: Path) -> tuple[dict, dict]:
@@ -814,7 +836,15 @@ def _write(texts: dict[Path, str]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog=(
+            "Item ids keep the pytest parameter, including a literal path. "
+            "Only this checkout's prefix is removed. A /home or /Users name, "
+            "a hostname or an sr/ path that is not that prefix becomes <path>, "
+            "and that row no longer names the collected item."
+        ),
+    )
     parser.add_argument("contexts", nargs="?", default=str(DEFAULT_CONTEXTS))
     parser.add_argument("--check", action="store_true",
                         help="exit non-zero unless the worklists match a fresh rewrite")
