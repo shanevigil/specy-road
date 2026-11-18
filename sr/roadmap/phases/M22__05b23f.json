@@ -147,7 +147,7 @@
     },
     {
       "acceptance": [
-        "The bundled harness facts and captures match the report M22.72 delivered: versions, flags, model ids (including a claude-fable-5-2 profile; earlier models stay listed while their providers still offer them), Codex project-trust behaviour (reviewers stay untrusted; no --trust in any launch), and the replacement for the deprecated Codex multi_agent flag",
+        "The bundled harness facts and captures match the report M22.72 delivered: versions, flags, model ids (including profiles for claude-fable-5-2, gpt-6.2-sol and gpt-6.2-astra, each with its context window, default effort and supported effort levels; earlier models stay listed while their providers still offer them), Codex project-trust behaviour (reviewers stay untrusted; no --trust in any launch), and the replacement for the deprecated Codex multi_agent flag",
         "docs/orchestration-workers.md notes for adopters: Codex project trust, and that Claude Code's opt-in Bash sandbox blocks git worktree lifecycle commands inside a session",
         "The facts tests pass against the refreshed fixture; any check of installed binaries reports the versions it ran against",
         "CHANGELOG.md [Unreleased] records the refresh; no version heading is written"
