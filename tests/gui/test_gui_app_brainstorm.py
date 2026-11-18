@@ -387,6 +387,17 @@ def test_a_chat_turn_keeps_ideas_written_while_the_model_was_thinking(
 
 # --- B9, F13 ------------------------------------------------------------------
 
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
 def test_the_gui_payload_carries_the_v2_session_and_rejects_need_a_reason() -> None:
     session = BrainstormSession(slug="s", topic="t", round=2, profile="technical", panel=3,
                                 frame={"outcome": "x"}, allocation="grid")
@@ -402,6 +413,13 @@ def test_the_gui_payload_carries_the_v2_session_and_rejects_need_a_reason() -> N
 
 # --- F3 --------------------------------------------------------------------
 
+
+# Every diverge prompt and the copy-paste prompt carry a write allow-list, so a divergence agent
+# is told not to build what it proposes.
+# The GUI payload carries the planned round count, not just the current round.
+# The GUI converge pass is advisory — nothing structured is persisted, and the docs say so.
+# Malformed overlap, URL and stance fail at the boundary with `BrainstormError` instead of
+# corrupting the session or raising `KeyError`; the parser help no longer says `start` researches.
 
 def test_gui_payload_carries_the_planned_round_count() -> None:
     payload = _payload(BrainstormSession(slug="x", topic="t", round=2, rounds=7))

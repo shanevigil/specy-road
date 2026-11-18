@@ -157,6 +157,8 @@ def test_finish_merge_omits_the_branch_line_when_the_branch_is_deleted(
 
 
 
+# Worker hand-off, reconcile reporting, sync/list messages, and the merge finish notice.
+
 def test_finish_help_and_merge_notice(tmp_path: Path, capsys) -> None:
     help_text = subprocess.check_output(
         [sys.executable, "-m", "specy_road.cli", "finish-this-task", "--help"],

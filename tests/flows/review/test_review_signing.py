@@ -231,6 +231,17 @@ def test_a_launched_reviewers_verdict_is_filed_signed_with_the_callers_key(tmp_p
 
 # --- F3, F18 ------------------------------------------------------------------
 
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
 def test_signing_without_a_roster_key_is_refused_early(tmp_path: Path, capsys) -> None:
     key, _pub = key_fn(tmp_path, "opus")
     repo = make_review_repo(tmp_path, orchestration=roster("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", signed=False)
@@ -269,6 +280,16 @@ def _write(repo: Path, data: dict, body: str) -> None:
     review_path(repo, "M1.1", "opus").write_text(render_front_matter(data, body))
 
 
+
+# Evidence the gate, the packet and reconcile rely on.
+# A rename or copy into a touch zone is also a change outside it, in `worker reconcile`, the
+# review packet and the finish-time check.
+# A READY under `work/reviews/<node>/` naming another node or branch never feeds `handoff status`,
+# the packet or completion.
+# The Markdown notes are bound to the signed front matter (`notes_sha256`); `verify` rejects a
+# mismatched identity on its own; the packet labels committed, working-tree and missing summaries
+# distinctly.
+# A wrong `--sign-key` on the interactive human approval writes nothing and the reason is printed.
 
 def test_notes_digest_normalises_line_endings_and_trailing_whitespace() -> None:
     assert rs.notes_digest("a\r\nb\r\n") == rs.notes_digest("a\nb") == rs.notes_digest("a\nb\n\n  ")

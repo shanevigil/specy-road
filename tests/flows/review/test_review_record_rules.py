@@ -440,6 +440,9 @@ ONE_AI_folded = (
 
 
 
+# Delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions at
+# the commit, refusals quote the line, and superseded failed runs say so.
+
 def test_refusal_quotes_a_two_clause_line_and_the_rule(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI_folded)
     line = "The cache is cold and the lock leaks, not a defect because both are expected."

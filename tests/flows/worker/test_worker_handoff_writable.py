@@ -91,6 +91,8 @@ def test_custom_cli_reviews_dir_is_refused_when_it_cannot_be_substituted(linked,
 
 
 
+# Worker hand-off, reconcile reporting, sync/list messages, and the merge finish notice.
+
 def test_claude_passes_add_dir_only_in_a_linked_worktree(tmp_path: Path) -> None:
     top, project = nested_project(tmp_path)
     git_folded(top, "checkout", "-q", "dev")

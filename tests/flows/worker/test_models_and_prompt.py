@@ -419,6 +419,10 @@ def _run(mod, *args: str) -> int:
 
 
 
+# Routing parity between `prompt`, `orchestrate plan` and `worker delegate`; a signing failure in
+# `mark-implementation-reviewed`; skill and stub edge cases in `refresh-stubs`; a stale brainstorm
+# decision; and `models show` printing `harness/model`.
+
 def test_a_substitute_reviewer_gets_a_prompt(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     (repo / "work" / "reviews" / "M1.1").mkdir(parents=True)
@@ -464,6 +468,10 @@ def test_models_show_prints_harness_and_model(tmp_path: Path, capsys) -> None:
 
 # --- F10, F11, F12 --------------------------------------------------------------
 
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
+
 def test_a_profile_path_cannot_escape_the_repo(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     outside = tmp_path / "evil.md"
@@ -474,6 +482,9 @@ def test_a_profile_path_cannot_escape_the_repo(tmp_path: Path) -> None:
 
 
 # --- B7 ----------------------------------------------------------------------------
+
+# Trusted integration ref; pinned profiles; `may_process: []`; refresh-profiles containment;
+# validate uses the gate's policy source; profile diagnostics.
 
 def test_refresh_profiles_refuses_a_symlinked_destination(tmp_path: Path) -> None:
     repo = tmp_path / "repo"

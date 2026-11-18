@@ -502,6 +502,9 @@ def _cite(repo: Path, text: str) -> None:
 
 
 
+# Delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions at
+# the commit, refusals quote the line, and superseded failed runs say so.
+
 def test_packet_does_not_warn_about_an_ignored_build_path(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     commit_file(repo, ".gitignore", (repo / ".gitignore").read_text() + "build/\n", "ignore build")
@@ -533,6 +536,8 @@ def test_a_glob_that_matches_a_committed_file_is_not_missing(tmp_path: Path, cap
 
 
 
+# The review packet never treats `.git` as an uncommitted reference.
+
 def test_packet_skips_dot_git_paths_named_in_the_brief(tmp_path: Path, capsys) -> None:
     """A1: `.git` and paths under it are never uncommitted references."""
     repo = make_review_repo(tmp_path)
@@ -556,6 +561,16 @@ def test_packet_skips_dot_git_paths_named_in_the_brief(tmp_path: Path, capsys) -
     assert ".git" not in err
 
 
+
+# Evidence the gate, the packet and reconcile rely on.
+# A rename or copy into a touch zone is also a change outside it, in `worker reconcile`, the
+# review packet and the finish-time check.
+# A READY under `work/reviews/<node>/` naming another node or branch never feeds `handoff status`,
+# the packet or completion.
+# The Markdown notes are bound to the signed front matter (`notes_sha256`); `verify` rejects a
+# mismatched identity on its own; the packet labels committed, working-tree and missing summaries
+# distinctly.
+# A wrong `--sign-key` on the interactive human approval writes nothing and the reason is printed.
 
 def test_packet_labels_committed_working_tree_and_missing_summaries(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)

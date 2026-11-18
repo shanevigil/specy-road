@@ -213,6 +213,9 @@ def test_a_schema_broken_rca_with_nothing_to_carry_leaves_the_prompt_alone(repo:
 
 
 
+# A re-delegated executor starts from the blocking review findings and the previous worker's last
+# message.
+
 def test_no_blocking_record_and_no_stopped_worker_means_no_rework_section(tmp_path: Path) -> None:
     repo = make_profile_repo(tmp_path)
     file_review(repo, "sol", git(repo, "rev-parse", "HEAD"), "approve")
@@ -294,6 +297,8 @@ def test_delegate_rework_refusals(tmp_path: Path, capsys) -> None:
     assert not (repo / "work" / "prompt-M1.1-executor-opus.md").exists()
 
 
+
+# Worker sync --until, collapsed tool-use output, rework after completed, and ready-only resume.
 
 def test_delegate_rework_proceeds_when_the_leaf_worker_is_completed(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)

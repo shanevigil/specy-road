@@ -1,4 +1,4 @@
-"""Shared helpers for the M13.7 ignore-note tests (``test_m13_7_notices``, ``test_m13_7_gitignore_symlinks``)."""
+"""Shared helpers for the ignore-note tests."""
 
 from __future__ import annotations
 

@@ -201,6 +201,17 @@ def test_recover_refuses_while_another_worker_holds_the_leaf(tmp_path: Path) -> 
 
 # --- F5, F8, F16 ----------------------------------------------------------------
 
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
 def test_a_dead_wrapper_frees_the_leaf(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path, max_workers=4)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
@@ -221,6 +232,18 @@ def _dead_pid() -> int:
 
 
 
+# Session ids are validated and resume commands rendered with shlex.
+# A placeholder is a whole shell word; embedded or multi-word quoted forms are refused, and
+# validation and substitution walk the same tokens.
+# `message --op-id` binds the message text, and a retry whose file is gone answers from the
+# outbox.
+# The hook matches by harness and id, refuses ambiguity, and never waits long for the workers
+# lock; `delegate` keeps its preflight outside the lock.
+# Dead wrappers on any leaf are reaped by `sync` and before the `max_workers` count; `delegate`
+# refuses a dirty checkout; a crashed reclaim is repaired, not repeated; `sync --ack` is
+# serialised.
+# `message` from a linked worktree, and the brief in the same checkout.
+
 def test_sync_and_delegate_reap_dead_wrappers_on_any_leaf(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path, max_workers=1)
     dead = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
@@ -239,6 +262,13 @@ def test_sync_and_delegate_reap_dead_wrappers_on_any_leaf(tmp_path: Path) -> Non
 
 
 # --- B9 ---------------------------------------------------------------------------
+
+# READY freshness is a content checkpoint, not an mtime window; a wrapper that dies does not free
+# a leaf whose harness is alive, and `terminate` kills the recorded group; the launch payload
+# travels in a 0600 file, never in argv; a pid is this worker's wrapper only with the repo root,
+# worker id and token as whole arguments (and `PermissionError` is not "ours"); completion, resume
+# and reclaim check the branch actually checked out; parsed output is `worker_suggestion`, not
+# `system`.
 
 @pytest.mark.slow
 @pytest.mark.skipif(not hasattr(signal, "SIGKILL"), reason="POSIX signals")
@@ -319,6 +349,11 @@ def test_a_pid_our_user_cannot_signal_is_not_our_wrapper(monkeypatch) -> None:
     assert wp.pid_alive(4242, "w-0001", repo_root=Path("/r"), token="tok")      # only the command line can confirm it
 
 
+
+# One test per finding: records survive a concurrent writer (the wrapper no longer writes a stale
+# copy back), two delegates on one leaf launch once, terminate reaches the harness and its
+# children, an op id names one operation, an older attempt's READY does not complete a new worker,
+# and the harness does not inherit the wrapper's PYTHONPATH.
 
 def test_a_wrapper_with_a_long_command_line_is_still_recognised(tmp_path: Path) -> None:
     """procps ``ps`` without a terminal cuts ``-o command=`` at 80 columns unless ``-ww`` (cloud pre-release run)."""

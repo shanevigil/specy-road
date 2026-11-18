@@ -414,6 +414,17 @@ def test_a_queued_turn_gets_the_callers_pythonpath(tmp_path: Path, monkeypatch: 
 
 # --- B2 -----------------------------------------------------------------------
 
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
 def test_concurrent_messages_launch_one_turn(tmp_path: Path, monkeypatch) -> None:
     repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
@@ -456,6 +467,18 @@ UUID = "7f1c0000-1111-4222-8333-444444444444"
 
 # --- F2 ------------------------------------------------------------------------
 
+# Session ids are validated and resume commands rendered with shlex.
+# A placeholder is a whole shell word; embedded or multi-word quoted forms are refused, and
+# validation and substitution walk the same tokens.
+# `message --op-id` binds the message text, and a retry whose file is gone answers from the
+# outbox.
+# The hook matches by harness and id, refuses ambiguity, and never waits long for the workers
+# lock; `delegate` keeps its preflight outside the lock.
+# Dead wrappers on any leaf are reaped by `sync` and before the `max_workers` count; `delegate`
+# refuses a dirty checkout; a crashed reclaim is repaired, not repeated; `sync --ack` is
+# serialised.
+# `message` from a linked worktree, and the brief in the same checkout.
+
 @pytest.mark.slow
 def test_message_op_id_binds_the_text_and_survives_a_missing_file(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)
@@ -491,6 +514,15 @@ def test_message_from_a_linked_worktree_without_work_dir(tmp_path: Path) -> None
     assert final.state in ("idle", "completed") and (wt / "work" / f"prompt-{rec.worker_id}-message-2.md").is_file()
 
 
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
 
 def test_a_completed_worker_takes_a_review_block_as_a_message(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)

@@ -158,6 +158,10 @@ def test_executor_order_class_then_price_then_billing() -> None:
 
 
 
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
+
 def test_a_plan_without_a_coordinator_says_so(tmp_path: Path) -> None:
     from specy_road.roadmap_load import load_roadmap
     from specy_road.orchestration.orchestrate_plan import Candidate, assign_leaf
@@ -175,6 +179,16 @@ def test_a_plan_without_a_coordinator_says_so(tmp_path: Path) -> None:
 
 
 # --- Sol F5 ----------------------------------------------------------------------
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
 
 def test_an_invalid_configured_profile_is_a_staffing_error(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration="version: 1\nroster:\n"

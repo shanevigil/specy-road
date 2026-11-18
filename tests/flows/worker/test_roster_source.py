@@ -147,6 +147,16 @@ def test_no_roster_anywhere_points_at_the_docs_not_the_may_process_hint(
 
 # --- Gemini B3 ----------------------------------------------------------------
 
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
 def test_routing_reads_the_roster_from_the_integration_branch(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     (repo / "roadmap" / "orchestration.yaml").write_text(

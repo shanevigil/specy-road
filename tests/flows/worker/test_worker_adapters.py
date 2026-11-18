@@ -435,6 +435,17 @@ def test_delegate_passes_the_executor_effort_to_default_and_custom_commands(tmp_
 
 # --- B4 -----------------------------------------------------------------------
 
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
 def test_an_embedded_placeholder_is_refused_not_quoted_inside_quotes(tmp_path: Path) -> None:
     p = tmp_path / "p.md"
     p.write_text("$(echo pwned)")
@@ -448,6 +459,10 @@ def test_an_embedded_placeholder_is_refused_not_quoted_inside_quotes(tmp_path: P
 
 
 # --- F9 -----------------------------------------------------------------------
+
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
 
 def test_a_ready_on_another_branch_does_not_complete(tmp_path: Path) -> None:
     repo, script = make_worker_repo(tmp_path)
@@ -478,6 +493,16 @@ def _ready(repo: Path, commit: str, branch: str = "feature/rm-thing") -> Path:
 
 
 # --- Gemini B2 / Sol F1 ---------------------------------------------------------
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
 
 def test_a_ready_for_an_older_commit_does_not_complete(tmp_path: Path) -> None:
     repo, script = make_worker_repo(tmp_path)
@@ -512,6 +537,18 @@ def test_a_malformed_custom_cli_raises_instead_of_widening(tmp_path: Path) -> No
 
 
 # --- F1 / G1 ---------------------------------------------------------------------
+
+# Session ids are validated and resume commands rendered with shlex.
+# A placeholder is a whole shell word; embedded or multi-word quoted forms are refused, and
+# validation and substitution walk the same tokens.
+# `message --op-id` binds the message text, and a retry whose file is gone answers from the
+# outbox.
+# The hook matches by harness and id, refuses ambiguity, and never waits long for the workers
+# lock; `delegate` keeps its preflight outside the lock.
+# Dead wrappers on any leaf are reaped by `sync` and before the `max_workers` count; `delegate`
+# refuses a dirty checkout; a crashed reclaim is repaired, not repeated; `sync --ack` is
+# serialised.
+# `message` from a linked worktree, and the brief in the same checkout.
 
 @pytest.mark.parametrize("cli", [
     "claude -p --session-id={session} < {prompt}",
@@ -559,6 +596,9 @@ def test_an_embedded_session_placeholder_is_refused_by_the_adapter(tmp_path: Pat
 
 # --- F4 ----------------------------------------------------------------------------
 
+# Trusted integration ref; pinned profiles; `may_process: []`; refresh-profiles containment;
+# validate uses the gate's policy source; profile diagnostics.
+
 @pytest.mark.repo
 def test_documented_cli_forms_pass_the_placeholder_guard() -> None:
     doc = (REPO / "docs" / "orchestration-models.md").read_text()
@@ -580,6 +620,13 @@ def _ready_text(repo: Path, commit: str, agent: str = "x", branch: str = "featur
 
 
 # --- B3 ---------------------------------------------------------------------------
+
+# READY freshness is a content checkpoint, not an mtime window; a wrapper that dies does not free
+# a leaf whose harness is alive, and `terminate` kills the recorded group; the launch payload
+# travels in a 0600 file, never in argv; a pid is this worker's wrapper only with the repo root,
+# worker id and token as whole arguments (and `PermissionError` is not "ours"); completion, resume
+# and reclaim check the branch actually checked out; parsed output is `worker_suggestion`, not
+# `system`.
 
 def test_a_ready_written_just_before_the_turn_does_not_complete_it_and_a_rewritten_one_does(tmp_path: Path) -> None:
     repo, script = make_worker_repo(tmp_path)
@@ -695,6 +742,11 @@ def test_exit_zero_with_a_broken_roadmap_still_completes_idle(tmp_path: Path) ->
 
 
 
+# One test per finding: records survive a concurrent writer (the wrapper no longer writes a stale
+# copy back), two delegates on one leaf launch once, terminate reaches the harness and its
+# children, an op id names one operation, an older attempt's READY does not complete a new worker,
+# and the harness does not inherit the wrapper's PYTHONPATH.
+
 def test_an_older_attempts_ready_does_not_complete_a_new_worker(tmp_path: Path) -> None:
     repo, script = make_worker_repo(tmp_path)
     d = reviews_root(repo) / "M1.1"
@@ -737,6 +789,15 @@ def test_a_bad_output_line_does_not_kill_the_wrapper(tmp_path: Path) -> None:
     assert [e.type for e in ws.events_since(repo, rec.worker_id)][-1] == "completion"
 
 
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
 
 def test_a_prompt_containing_the_placeholder_cannot_break_the_quoting(tmp_path: Path) -> None:
     p = tmp_path / "p.md"

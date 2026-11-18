@@ -387,6 +387,10 @@ def _bs(repo: Path, *args: str) -> int:
 
 
 
+# Routing parity between `prompt`, `orchestrate plan` and `worker delegate`; a signing failure in
+# `mark-implementation-reviewed`; skill and stub edge cases in `refresh-stubs`; a stale brainstorm
+# decision; and `models show` printing `harness/model`.
+
 def test_accepting_a_rejected_idea_clears_the_stale_decision(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     (repo / "work").mkdir(exist_ok=True)
@@ -414,6 +418,16 @@ def _bs_folded(repo: Path, *args: str) -> tuple[int, str]:
     return (e.value.code or 0), out.getvalue()
 
 
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
 
 def test_rounds_are_persisted_and_next_round_warns_past_them(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)

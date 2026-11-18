@@ -1,4 +1,4 @@
-"""M15.33: a refused ``review record`` leaves ``REJECTED-<model>.md`` until a record is filed."""
+"""A refused ``review record`` leaves ``REJECTED-<model>.md`` until a record is filed."""
 
 from __future__ import annotations
 

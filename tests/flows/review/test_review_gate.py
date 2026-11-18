@@ -142,6 +142,9 @@ def test_trial_merge_bookkeeping_is_exact_files_and_whole_directories(tmp_path: 
 
 # --- B4 ----------------------------------------------------------------------------
 
+# Trusted integration ref; pinned profiles; `may_process: []`; refresh-profiles containment;
+# validate uses the gate's policy source; profile diagnostics.
+
 def test_a_feature_commit_cannot_retarget_the_integration_branch(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     git(repo, "branch", "rogue")

@@ -138,6 +138,10 @@ def test_a_copy_with_no_installed_skill_is_not_a_mirror(tmp_path: Path) -> None:
 
 
 
+# Routing parity between `prompt`, `orchestrate plan` and `worker delegate`; a signing failure in
+# `mark-implementation-reviewed`; skill and stub edge cases in `refresh-stubs`; a stale brainstorm
+# decision; and `models show` printing `harness/model`.
+
 def test_a_users_own_skill_directory_is_reported_skipped(tmp_path: Path, capsys) -> None:
     mine = tmp_path / ".claude" / "skills" / "specyrd-validate"
     mine.mkdir(parents=True)
@@ -149,6 +153,17 @@ def test_a_users_own_skill_directory_is_reported_skipped(tmp_path: Path, capsys)
     assert (mine / "extra.txt").is_file()
 
 
+
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
 
 def test_a_foreign_skill_link_is_left_alone_on_first_install(tmp_path: Path) -> None:
     link = tmp_path / ".claude" / "skills" / "specyrd-brief"
@@ -164,6 +179,16 @@ def test_a_foreign_skill_link_is_left_alone_on_first_install(tmp_path: Path) -> 
 
 
 # --- Gemini F3 / Sol B2 ---------------------------------------------------------
+
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
 
 def test_no_link_to_a_skipped_canonical_skill_and_no_rmtree_without_force(tmp_path: Path) -> None:
     mine = tmp_path / ".agents" / "skills" / "specyrd-validate" / "SKILL.md"

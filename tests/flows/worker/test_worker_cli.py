@@ -370,6 +370,17 @@ def test_usage_event_schema_needs_every_field_nullable_never_missing() -> None:
 
 # --- B8 -----------------------------------------------------------------------
 
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
 def test_a_stale_worktree_directory_is_refused(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     git_folded(repo, "checkout", "-q", "dev")
@@ -381,6 +392,18 @@ def test_a_stale_worktree_directory_is_refused(tmp_path: Path) -> None:
         ops._worktree_for(repo, "feature/rm-thing", "thing", repo)
 
 
+
+# Session ids are validated and resume commands rendered with shlex.
+# A placeholder is a whole shell word; embedded or multi-word quoted forms are refused, and
+# validation and substitution walk the same tokens.
+# `message --op-id` binds the message text, and a retry whose file is gone answers from the
+# outbox.
+# The hook matches by harness and id, refuses ambiguity, and never waits long for the workers
+# lock; `delegate` keeps its preflight outside the lock.
+# Dead wrappers on any leaf are reaped by `sync` and before the `max_workers` count; `delegate`
+# refuses a dirty checkout; a crashed reclaim is repaired, not repeated; `sync --ack` is
+# serialised.
+# `message` from a linked worktree, and the brief in the same checkout.
 
 def test_handoff_prints_a_quoted_command(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
@@ -481,6 +504,8 @@ def test_worker_list_and_sync_show_worktree(tmp_path: Path, capsys) -> None:
 
 
 
+# Worker hand-off, reconcile reporting, sync/list messages, and the merge finish notice.
+
 def test_sync_and_list_surface_the_harness_final_message(tmp_path: Path, capsys) -> None:
     limit = "You've hit your 5-hour limit · resets 6:20pm"
     script = tmp_path / "limit.py"
@@ -536,6 +561,11 @@ def test_sync_shows_an_acknowledged_final_message_with_the_later_exit(
 
 
 
+# One test per finding: records survive a concurrent writer (the wrapper no longer writes a stale
+# copy back), two delegates on one leaf launch once, terminate reaches the harness and its
+# children, an op id names one operation, an older attempt's READY does not complete a new worker,
+# and the harness does not inherit the wrapper's PYTHONPATH.
+
 def test_concurrent_delegates_on_one_leaf_launch_once(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path, max_workers=4)
     results: list = []
@@ -585,6 +615,15 @@ def test_terminate_reaches_the_harness_and_its_children(tmp_path: Path) -> None:
 
 
 
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
+
 def test_delegate_into_a_linked_worktree_carries_the_brief(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)
     (repo / "work").mkdir(exist_ok=True)
@@ -622,6 +661,8 @@ def _ack_all(repo: Path) -> None:
     run_worker_cli("worker", "sync", "--wait", "--ack", "--repo-root", str(repo))
 
 
+
+# Worker sync --until, collapsed tool-use output, rework after completed, and ready-only resume.
 
 @pytest.mark.parametrize("until", _UNTIL_VALUES)
 def test_sync_wait_until_exits_0_when_the_condition_is_met(tmp_path: Path, capsys, until: str) -> None:

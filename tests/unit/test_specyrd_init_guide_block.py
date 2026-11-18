@@ -150,6 +150,8 @@ PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
 
 # --- F16: the block names who changes the registry -------------------------------
 
+# Skill ownership and the agent-facing claims.
+
 @pytest.mark.repo
 def test_block_says_pickup_and_finish_change_the_registry() -> None:
     text = BLOCK.read_text(encoding="utf-8")

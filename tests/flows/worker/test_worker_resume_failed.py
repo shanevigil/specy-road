@@ -107,6 +107,8 @@ def test_a_leaf_already_held_by_another_worker_is_not_reopened(tmp_path: Path) -
 
 
 
+# Worker sync --until, collapsed tool-use output, rework after completed, and ready-only resume.
+
 @pytest.mark.slow
 def test_resume_ready_only_writes_the_prompt_file_via_the_cli(tmp_path: Path, capsys) -> None:
     repo, _ = make_worker_repo(tmp_path)

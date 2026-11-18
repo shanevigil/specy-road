@@ -311,6 +311,17 @@ def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp
 
 # --- B1 -----------------------------------------------------------------------
 
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
 @pytest.mark.slow
 def test_a_completed_worker_still_owns_its_leaf(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path, max_workers=4)
@@ -399,6 +410,16 @@ def test_reclaim_keeps_the_prompt_verbatim(tmp_path: Path) -> None:
 
 # --- Gemini F2 ----------------------------------------------------------------
 
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
 def test_a_crashed_running_worker_cannot_be_handed_off_and_is_recorded_failed_before_a_message(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
@@ -483,6 +504,18 @@ def _hook(repo: Path, fmt: str, payload: dict) -> int:
 
 
 # --- B13 -----------------------------------------------------------------------
+
+# Session ids are validated and resume commands rendered with shlex.
+# A placeholder is a whole shell word; embedded or multi-word quoted forms are refused, and
+# validation and substitution walk the same tokens.
+# `message --op-id` binds the message text, and a retry whose file is gone answers from the
+# outbox.
+# The hook matches by harness and id, refuses ambiguity, and never waits long for the workers
+# lock; `delegate` keeps its preflight outside the lock.
+# Dead wrappers on any leaf are reaped by `sync` and before the `max_workers` count; `delegate`
+# refuses a dirty checkout; a crashed reclaim is repaired, not repeated; `sync --ack` is
+# serialised.
+# `message` from a linked worktree, and the brief in the same checkout.
 
 def test_resume_commands_are_shell_quoted_and_bad_ids_refused(tmp_path: Path) -> None:
     assert wsess.render_command(["claude", "--resume", "sid; touch /tmp/forged"]) == \
@@ -623,6 +656,11 @@ def test_sync_ack_runs_under_the_workers_lock(tmp_path: Path) -> None:
 
 
 
+# One test per finding: records survive a concurrent writer (the wrapper no longer writes a stale
+# copy back), two delegates on one leaf launch once, terminate reaches the harness and its
+# children, an op id names one operation, an older attempt's READY does not complete a new worker,
+# and the harness does not inherit the wrapper's PYTHONPATH.
+
 @pytest.mark.slow
 def test_a_flag_set_while_the_wrapper_streams_survives(tmp_path: Path) -> None:
     repo, _script = make_worker_repo(tmp_path)
@@ -664,6 +702,15 @@ def test_an_op_id_names_one_operation(tmp_path: Path) -> None:
         ws.begin_op(repo, "X1", "reconcile", "w-0002")
 
 
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
 
 def test_handoff_refuses_a_closed_worker(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)

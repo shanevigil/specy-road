@@ -140,6 +140,16 @@ def test_a_change_to_the_leafs_own_contract_is_reported(tmp_path: Path, change: 
 
 # --- Gemini B1 / Sol F2 ---------------------------------------------------------
 
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
 def test_reconcile_remembers_a_breach_from_before_the_handoff(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
@@ -171,6 +181,16 @@ def _rename_into_zone(tmp_path: Path, src: str, dst: str) -> Path:
     return repo
 
 
+
+# Evidence the gate, the packet and reconcile rely on.
+# A rename or copy into a touch zone is also a change outside it, in `worker reconcile`, the
+# review packet and the finish-time check.
+# A READY under `work/reviews/<node>/` naming another node or branch never feeds `handoff status`,
+# the packet or completion.
+# The Markdown notes are bound to the signed front matter (`notes_sha256`); `verify` rejects a
+# mismatched identity on its own; the packet labels committed, working-tree and missing summaries
+# distinctly.
+# A wrong `--sign-key` on the interactive human approval writes nothing and the reason is printed.
 
 def test_parse_name_status_returns_both_sides_of_renames_and_copies() -> None:
     out = "M\0a.py\0R100\0docs/old name.md\0src/old name.md\0C75\0src/a.py\0src/b.py\0D\0gone\ttab\0"
@@ -231,6 +251,13 @@ def test_diff_paths_is_none_outside_git(tmp_path: Path) -> None:
 
 
 
+# READY freshness is a content checkpoint, not an mtime window; a wrapper that dies does not free
+# a leaf whose harness is alive, and `terminate` kills the recorded group; the launch payload
+# travels in a 0600 file, never in argv; a pid is this worker's wrapper only with the repo root,
+# worker id and token as whole arguments (and `PermissionError` is not "ours"); completion, resume
+# and reclaim check the branch actually checked out; parsed output is `worker_suggestion`, not
+# `system`.
+
 def test_reconcile_flags_a_tree_off_the_workers_branch(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
@@ -240,6 +267,8 @@ def test_reconcile_flags_a_tree_off_the_workers_branch(tmp_path: Path) -> None:
     assert delta["needs_reconcile"] and "has dev checked out" in delta["branch_mismatch"]
 
 
+
+# Worker hand-off, reconcile reporting, sync/list messages, and the merge finish notice.
 
 @pytest.mark.slow
 def test_reconcile_treats_a_directory_touch_zone_as_covering_files(tmp_path: Path) -> None:
@@ -273,6 +302,15 @@ def test_reconcile_ignores_prompt_hash_drift_when_brief_is_byte_identical(tmp_pa
     assert not delta["contract_changed"] and not delta["needs_reconcile"]
 
 
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
 
 def test_reconcile_counts_an_unbuildable_prompt_as_a_contract_change(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)

@@ -142,6 +142,10 @@ def test_only_this_turns_part_of_the_log_is_quoted(tmp_path: Path) -> None:
 
 
 
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
+
 def test_harness_override_cannot_move_a_rostered_model(tmp_path: Path) -> None:
     repo, _ = make_worker_repo(tmp_path)
     with pytest.raises(ws.WorkerError, match="rostered on harness"):

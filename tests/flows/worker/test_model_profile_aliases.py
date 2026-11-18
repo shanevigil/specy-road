@@ -273,6 +273,9 @@ def _repo(tmp_path: Path, roster: str = ROSTER_FOLDED) -> Path:
 
 # --- B5 ----------------------------------------------------------------------------
 
+# Trusted integration ref; pinned profiles; `may_process: []`; refresh-profiles containment;
+# validate uses the gate's policy source; profile diagnostics.
+
 def test_an_uncommitted_profile_edit_is_refused_not_executed(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     marker = tmp_path / "ran"

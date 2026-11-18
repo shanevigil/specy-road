@@ -281,6 +281,8 @@ def test_promoted_nodes_omit_execution_milestone_when_the_anchor_has_none(
 
 
 
+# Promote validates once, with capped codenames, a goal, order, and a missing-field list.
+
 def test_promote_prints_pin_warnings_once_for_a_multi_node_batch(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

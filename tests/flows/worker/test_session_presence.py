@@ -318,6 +318,17 @@ def test_terminate_ends_only_the_workers_own_session(tmp_path: Path, monkeypatch
 
 # --- B5 -----------------------------------------------------------------------
 
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
 def test_the_default_session_id_is_stable_across_processes(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("SPECY_ROAD_AGENT_ID", raising=False)
     code = "from specy_road.orchestration.guard.session_presence import default_agent_id; print(default_agent_id())"

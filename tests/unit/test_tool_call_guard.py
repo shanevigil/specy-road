@@ -218,6 +218,17 @@ def test_cli_generic_payload(tmp_path: Path) -> None:
 
 # --- B3, B6, F17 ----------------------------------------------------------------
 
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
+
 @pytest.mark.parametrize("command", [
     "f(){ git stash; }; f", "sh -c 'f(){ git reset --hard; }; f'", "gitcmd=git; $gitcmd stash",
     "python -c 'import subprocess; subprocess.run([\"git\",\"stash\"])'", "git commit -m x",
@@ -246,6 +257,16 @@ def test_git_dash_c_into_another_tree_counts_that_trees_session(tmp_path: Path) 
 
 # --- Gemini F1 / Sol B1 -----------------------------------------------------------
 
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
 @pytest.mark.parametrize("command", [
     'env -S "git stash"', "echo $(git reset --hard $(echo HEAD))", "sudo --user root git stash",
     "env --unset HOME git stash", "nice --adjustment 5 git stash", "timeout 10 git stash",
@@ -272,6 +293,15 @@ def test_attached_dash_c_git_dir_and_config_aliases_reach_the_right_tree(tmp_pat
     assert tg.decide(repo, "git -C . status", agent="bob").allowed
 
 
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
 
 def test_tree_only_commands_ignore_sessions_in_other_worktrees(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)

@@ -1,4 +1,4 @@
-"""M13.12 A5: the context-warning hash is disposable, and only the ``validate`` CLI folds.
+"""The context-warning hash is disposable, and only the ``validate`` CLI folds.
 
 Any hash file that cannot be read or matched (invalid UTF-8, truncated, a
 directory, no permission) is a cache miss: the warnings print in full and the

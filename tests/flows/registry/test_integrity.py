@@ -194,6 +194,9 @@ def test_nested_project_root_reports_git_root_paths(tmp_path: Path, capsys) -> N
 # A3 — suppression line numbers are the lines at the commit under review
 
 
+# Delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions at
+# the commit, refusals quote the line, and superseded failed runs say so.
+
 def test_suppression_line_numbers_are_those_at_the_commit(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     base = commit_file(repo, "src/m.py", "".join(f"v{i} = {i}\n" for i in range(1, 21)), "base")

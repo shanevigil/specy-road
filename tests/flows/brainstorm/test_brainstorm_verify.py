@@ -389,6 +389,10 @@ def test_the_connection_is_pinned_to_the_checked_address(monkeypatch) -> None:
 
 
 
+# READY binds to the branch; a profile path cannot escape the repo; `--harness` cannot override
+# the roster; a plan with no coordinator says so; search results are delimited; the verifier's
+# byte cap is a cap.
+
 def test_the_byte_cap_blocks_rather_than_truncates(monkeypatch) -> None:
     class R:
         status = 200

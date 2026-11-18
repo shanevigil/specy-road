@@ -198,6 +198,8 @@ def _init_folded(root: Path, *, force: bool):
 
 # --- B18 (a): first-install --force and the text heuristic ---------------------
 
+# Skill ownership and the agent-facing claims.
+
 def test_force_on_a_first_install_does_not_delete_a_foreign_skill_dir_that_merely_looks_ours(tmp_path: Path) -> None:
     theirs = tmp_path / LINK / "SKILL.md"
     theirs.parent.mkdir(parents=True)

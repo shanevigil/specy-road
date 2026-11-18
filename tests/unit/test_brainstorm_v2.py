@@ -390,6 +390,13 @@ def _started(repo: Path, *extra: str) -> BrainstormSession:
 # --- B8 --------------------------------------------------------------------
 
 
+# Every diverge prompt and the copy-paste prompt carry a write allow-list, so a divergence agent
+# is told not to build what it proposes.
+# The GUI payload carries the planned round count, not just the current round.
+# The GUI converge pass is advisory — nothing structured is persisted, and the docs say so.
+# Malformed overlap, URL and stance fail at the boundary with `BrainstormError` instead of
+# corrupting the session or raising `KeyError`; the parser help no longer says `start` researches.
+
 def test_round_one_prompt_carries_the_write_allow_list(repo: Path) -> None:
     text = render_brainstorm_prompt(repo, _started(repo), count=5)
     assert "## What you may write" in text

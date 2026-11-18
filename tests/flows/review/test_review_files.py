@@ -316,6 +316,16 @@ def _ready(repo: Path, name: str, *, node_id: str = "M1.1", branch: str = "featu
 
 
 
+# Evidence the gate, the packet and reconcile rely on.
+# A rename or copy into a touch zone is also a change outside it, in `worker reconcile`, the
+# review packet and the finish-time check.
+# A READY under `work/reviews/<node>/` naming another node or branch never feeds `handoff status`,
+# the packet or completion.
+# The Markdown notes are bound to the signed front matter (`notes_sha256`); `verify` rejects a
+# mismatched identity on its own; the packet labels committed, working-tree and missing summaries
+# distinctly.
+# A wrong `--sign-key` on the interactive human approval writes nothing and the reason is printed.
+
 def test_a_ready_for_another_node_or_branch_is_invalid_here(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     _ready(repo, "READY-wrong.md", node_id="M9.9", branch="feature/other")
@@ -333,6 +343,15 @@ def test_a_ready_for_another_node_or_branch_is_invalid_here(tmp_path: Path) -> N
     assert review_cli._node_status(repo, "M1.1")["state"] == "in-review"
 
 
+
+# One test per finding: a prompt containing `<prompt>` cannot break out of the shell quoting; the
+# session id chosen up front survives the spawn; a completed worker can take a review `block` as a
+# message and a turn's READY is judged against that turn; a linked worktree gets the brief; the
+# guard scopes tree-only commands to this worktree and sees `checkout -f`, `restore <path>`, brace
+# groups, `eval` and `$(…)`; an op id is bound to its target; handoff refuses a closed worker;
+# hook prompts are attributed by line, not by second; adopt refuses a duplicate; reconcile treats
+# an unbuildable prompt as a contract change; Codex resume keeps its sandbox; reviews_root stays
+# inside a nested project; the CGNAT range is off-host.
 
 def test_reviews_root_stays_inside_a_nested_project(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)

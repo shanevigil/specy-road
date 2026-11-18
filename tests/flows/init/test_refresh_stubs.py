@@ -487,6 +487,10 @@ def test_diff_shows_stubs_under_a_parenthesised_dir(tmp_path: Path, capsys) -> N
 
 
 
+# Routing parity between `prompt`, `orchestrate plan` and `worker delegate`; a signing failure in
+# `mark-implementation-reviewed`; skill and stub edge cases in `refresh-stubs`; a stale brainstorm
+# decision; and `models show` printing `harness/model`.
+
 def test_refresh_stubs_lists_a_dangling_skill_link_as_an_orphan(tmp_path: Path) -> None:
     run_init(target=tmp_path, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None, role="dev")
     manifest = tmp_path / ".specyrd" / "manifest.json"
@@ -514,6 +518,17 @@ def test_the_commands_hint_is_only_for_old_harness_stubs() -> None:
 
 
 # --- B7, F4 -------------------------------------------------------------------
+
+# One test per finding: a completed worker still owns its leaf; lifecycle transitions are one
+# transaction each; the guard refuses shell shapes it cannot follow and `git -C` into another
+# tree, and denies a bare commit; an embedded placeholder is refused; the default session id is
+# stable across processes and `touch` keeps the paths; a skipped skill is never adopted or
+# overwritten; a stale worktree directory is refused; the GUI reports the v2 session and requires
+# a reject reason; op ids bind their arguments; signing without a roster key is refused early; a
+# foreign skill link is left alone; a dead wrapper frees the leaf; terminate refuses an
+# unverifiable pid and does not signal an adopted session; READY binds to the branch; a profile
+# path cannot escape the repo; `--harness` cannot override the roster; a plan with no coordinator
+# says so; search results are delimited; the verifier's byte cap is a cap.
 
 def test_a_skipped_canonical_skill_is_never_adopted_or_overwritten(tmp_path: Path) -> None:
     mine = tmp_path / ".agents" / "skills" / "specyrd-validate" / "SKILL.md"

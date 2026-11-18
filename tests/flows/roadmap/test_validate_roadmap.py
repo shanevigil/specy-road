@@ -400,6 +400,9 @@ def test_validate_reads_past_a_requirements_file_that_is_not_utf8(tmp_path: Path
 
 # --- F13 ---------------------------------------------------------------------------
 
+# Trusted integration ref; pinned profiles; `may_process: []`; refresh-profiles containment;
+# validate uses the gate's policy source; profile diagnostics.
+
 def test_validate_uses_the_integration_branch_gate_switch(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     chunk = repo / "roadmap" / "phases" / "M1.json"

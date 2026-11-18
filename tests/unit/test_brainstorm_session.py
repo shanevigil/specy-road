@@ -218,6 +218,16 @@ def test_an_ordinary_slug_still_lands_in_work(tmp_path: Path) -> None:
 
 
 
+# One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
+# worktree's HEAD; routing reads the roster from the integration branch; the guard follows env -S,
+# nested $(), attached -C, --git-dir, long wrapper options, timeout, xargs-from-stdin and
+# configured aliases, and refuses a non-string hook command; a dead wrapper fails on
+# message/handoff; a skipped skill gets no link and a foreign directory is never removed; the
+# nested AGENTS.md report carries its prefix; rounds are persisted; a malformed custom cli raises;
+# event sequences survive a crash; adopt is atomic; hook prompts are verbatim; the verifier pins
+# its address; round one hides the roadmap digest; an invalid profile is a staffing error; a
+# mismatched slug is refused.
+
 def test_a_session_file_whose_slug_disagrees_is_refused(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     write_session(repo, BrainstormSession(slug="b", topic="t"))
@@ -249,6 +259,8 @@ def _start(repo: Path) -> None:
 
 
 
+
+# Triage CLI: all-or-nothing batching, realize, append-why, and list --summary.
 
 def test_triage_checks_every_id_before_printing_or_saving(repo: Path) -> None:
     _start(repo)

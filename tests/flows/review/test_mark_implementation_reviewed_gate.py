@@ -223,6 +223,10 @@ def test_yes_refuses_while_a_trial_merge_conflicts_on_code(tmp_path: Path, capsy
 
 
 
+# Routing parity between `prompt`, `orchestrate plan` and `worker delegate`; a signing failure in
+# `mark-implementation-reviewed`; skill and stub edge cases in `refresh-stubs`; a stale brainstorm
+# decision; and `models show` printing `harness/model`.
+
 def test_a_signing_failure_is_an_error_not_a_traceback(tmp_path: Path, monkeypatch, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration="version: 1\nroster:\n  - {id: human, family: human, "
                             "roles: [coordinator, reviewer], public_key: 'ssh-ed25519 AAAA'}\n"
@@ -236,6 +240,16 @@ def test_a_signing_failure_is_an_error_not_a_traceback(tmp_path: Path, monkeypat
     assert e.value.code == 1 and "could not sign" in capsys.readouterr().err
 
 
+
+# Evidence the gate, the packet and reconcile rely on.
+# A rename or copy into a touch zone is also a change outside it, in `worker reconcile`, the
+# review packet and the finish-time check.
+# A READY under `work/reviews/<node>/` naming another node or branch never feeds `handoff status`,
+# the packet or completion.
+# The Markdown notes are bound to the signed front matter (`notes_sha256`); `verify` rejects a
+# mismatched identity on its own; the packet labels committed, working-tree and missing summaries
+# distinctly.
+# A wrong `--sign-key` on the interactive human approval writes nothing and the reason is printed.
 
 def test_post_write_gate_failure_prints_its_problems(tmp_path: Path, monkeypatch, capsys) -> None:
     """The record is written, then the gate still fails: every problem is printed, not only the generic error."""

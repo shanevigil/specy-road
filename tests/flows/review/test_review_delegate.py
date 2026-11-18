@@ -399,6 +399,9 @@ def _delegate_folded(repo: Path) -> int:
 # A1 — delegate builds a missing or other-commit packet
 
 
+# Delegate builds a missing packet, the packet skips ignored evidence and numbers suppressions at
+# the commit, refusals quote the line, and superseded failed runs say so.
+
 def test_delegate_builds_the_packet_when_none_exists(tmp_path: Path, capsys) -> None:
     repo, spec = delegate_repo(tmp_path)
     packet = reviews_dir(repo, "M1.1") / PACKET_NAME
