@@ -74,7 +74,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Complete**
     - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Not Started**
     - `M16.7.3` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Not Started**
-    - `M16.7.4` Tests: apply the dedupe worklist for pickup and finish `tests-apply-the-dedupe-worklist-for-pickup-and-finish` — task — **Not Started**
     - `M16.7.5` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Not Started**
     - `M16.7.6` Tests: public seams replace private-name patches, and no test sleeps on the wall clock `tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` — task — **Not Started**
     - `M16.7.7` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Not Started**
@@ -307,7 +306,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-10 `M16.7.7` stopped depending on `M16.7.6 Tests: public seams replace private-name patches, and no test sleeps on the wall clock`
 - 2026-11-09 `M17.14` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-09 `M16.2.6` stopped depending on `M16.2.5 Library modules imported by the package move out of bundled_scripts`
-- 2026-11-09 `M16.7.5` stopped depending on `M16.7.4 Tests: apply the dedupe worklist for pickup and finish`
+- 2026-11-09 `M16.7.5` stopped depending on `086cd41a-9d4b-4377-8ebd-ee563a0d20df` (no longer live)
 - 2026-11-09 `M17.7` stopped depending on `M16.3.7 Fold the PM UI server and roadmap CRUD splits, after the orchestration snapshot is fixed`
 - 2026-11-09 `M16.7.3` stopped depending on `M16.7.2 Tests: apply the dedupe worklist for review gate`
 - 2026-11-09 `M16.7.4` stopped depending on `M16.7.3 Tests: apply the dedupe worklist for worker`
