@@ -81,10 +81,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.7.8` Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses `tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` — task — **Not Started**
   - `M16.8` rc5 close, alias window, end-to-end pass and the 0.3.1 tag `rc5-close-alias-window-end-to-end-pass-and-the-0-3-1-tag` — milestone — **Not Started**
     - `M16.8.1` rc5 close: lean metrics measured against the baseline `rc5-close-lean-metrics-measured-against-the-baseline` — task — **Not Started**
-    - `M16.8.4` End-to-end pass on the toolkit and a feedback-and-fix round before 0.3.1 `e2e-pass-and-fix-round` — task — **Not Started**
+    - `M16.8.4` Pre-release pass in the agentic sandbox: release runbook section 3 with the three apps, on a branch-head wheel, before the 0.3.1 release candidate `e2e-pass-and-fix-round` — task — **Not Started**
     - `M16.8.8` Release docs for 0.3.1: README, docs, prompts and the CHANGELOG brought in line with what ships `release-docs-0-3-1` — task — **Not Started**
     - `M16.8.9` Gate: ready to tag 0.3.1 `ready-to-tag-0-3-1` — gate — **Not Started**
     - `M16.8.10` Gate: 0.3.1 tagged `v0-3-1-tagged` — gate — **Not Started**
+    - `M16.8.5` Gate: a 0.3.1 release candidate is published to TestPyPI `gate-a-0-3-1-release-candidate-is-published-to-testpypi` — gate — **Not Started**
+    - `M16.8.6` Gate: the maintainer has tried the release candidate in their dependent projects `gate-the-maintainer-has-tried-the-release-candidate-in-their` — gate — **Not Started**
 - `M21` rc4 stabilization: fixes filed after the themed-milestone rule `rc4-stabilization` — phase — **In Progress**
   - `M21.1` move-node takes a chosen free id or fills the lowest gap; PM GUI moves renumber only the moved subtree `move-node-chosen-id` — task — **Complete**
   - `M21.2` CLI indent, outdent and group-nodes re-level siblings in one transaction validated once `outline-group-cli` — task — **Complete**
@@ -285,6 +287,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 
 Work behind these is deliberately held back until they clear.
 
+- `M16.8.5 Gate: a 0.3.1 release candidate is published to TestPyPI` — **Not Started**
+- `M16.8.6 Gate: the maintainer has tried the release candidate in their dependent projects` — **Not Started**
 - `M16.8.9 Gate: ready to tag 0.3.1` — **Not Started**
 - `M16.8.10 Gate: 0.3.1 tagged` — **Not Started**
 - `M22.59 Gate: history rewritten and published, Support filed, TestPyPI decided, every clone replaced` — **Not Started**

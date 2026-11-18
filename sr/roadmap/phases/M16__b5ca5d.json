@@ -233,6 +233,44 @@
         "docs/supply-chain-security.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "human: the maintainer has published a 0.3.1 release candidate to TestPyPI through docs/release-runbook.md section A, with the tag the maintainer chose, and this sheet records the tag, the wheel's TestPyPI file URL and its sha256"
+      ],
+      "codename": "gate-a-0-3-1-release-candidate-is-published-to-testpypi",
+      "dependencies": [
+        "08ceae7d-08a4-4aa3-80ea-e0f74cd512e0"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M16.8.5",
+      "node_key": "d935966b-b820-4602-b161-e4beea8788e5",
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.5_gate-a-0-3-1-release-candidate-is-published-to-testpypi_d935966b-b820-4602-b161-e4beea8788e5.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "Gate: a 0.3.1 release candidate is published to TestPyPI",
+      "touch_zones": [],
+      "type": "gate"
+    },
+    {
+      "acceptance": [
+        "human: the maintainer has installed the release candidate from TestPyPI in their dependent projects and told the coordinator the feedback, or that there is none; the coordinator has filed each item as an intake entry in sr/work/M16.8.4-e2e-results.md with a proposed disposition the maintainer confirms"
+      ],
+      "codename": "gate-the-maintainer-has-tried-the-release-candidate-in-their",
+      "dependencies": [
+        "d935966b-b820-4602-b161-e4beea8788e5"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M16.8.6",
+      "node_key": "84d49bb1-b03f-4ec3-a24a-16439063bb40",
+      "parent_id": "M16.8",
+      "planning_dir": "planning/M16.8.6_gate-the-maintainer-has-tried-the-release-candidate-in-their_84d49bb1-b03f-4ec3-a24a-16439063bb40.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Gate: the maintainer has tried the release candidate in their dependent projects",
+      "touch_zones": [],
+      "type": "gate"
     }
   ]
 }
