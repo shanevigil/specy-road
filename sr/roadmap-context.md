@@ -71,7 +71,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.6.8` Worker tests wait for a finished worker under the workers lock, so the lease race stops failing gates `worker-tests-wait-under-the-workers-lock` — task — **Complete**
     - `M16.6.9` Docs name the moved test files at their lane paths `docs-name-moved-test-files-at-lane-paths` — task — **Complete**
   - `M16.7` Test dedupe, public seams, properties and the smoke lane `test-dedupe-public-seams-properties-and-the-smoke-lane` — milestone — **Not Started**
-    - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Not Started**
+    - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Complete**
     - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Not Started**
     - `M16.7.3` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Not Started**
     - `M16.7.4` Tests: apply the dedupe worklist for pickup and finish `tests-apply-the-dedupe-worklist-for-pickup-and-finish` — task — **Not Started**
@@ -353,7 +353,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.7.1` on `feature/rm-tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` since 2026-11-18
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -370,18 +369,18 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
 | `docs` **flagged** | 22 | 0 | 3.18 | 77% | 337 | 1 |
 | `gui` **flagged** | 8 | 0 | 2.62 | 62% | 1 | 0 |
-| `planning` **flagged** | 4 | 0 | 3.75 | 75% | 23 | 0 |
+| `planning` **flagged** | 3 | 0 | 3.33 | 67% | 5 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap-context.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
-| `scripts` **flagged** | 22 | 0 | 3.14 | 59% | 384 | 1 |
-| `specy_road` **flagged** | 42 | 0 | 2.45 | 57% | 109 | 0 |
+| `scripts` **flagged** | 22 | 0 | 3.09 | 59% | 400 | 1 |
+| `specy_road` **flagged** | 41 | 0 | 2.39 | 56% | 91 | 0 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 48 | 0 | 2.65 | 60% | 404 | 1 |
-| `constraints` | 24 | 0 | 2.79 | 50% | 387 | 1 |
+| `tests` **flagged** | 48 | 0 | 2.62 | 60% | 420 | 1 |
+| `constraints` | 23 | 0 | 2.70 | 48% | 369 | 1 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

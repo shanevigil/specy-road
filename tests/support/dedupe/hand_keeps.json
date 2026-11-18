@@ -1,0 +1,1432 @@
+[
+  {
+    "a": "tests/flows/worker/test_worker_reconcile_contract.py::test_a_change_to_the_leafs_own_contract_is_reported",
+    "b": "tests/flows/worker/test_worker_reconcile_contract.py::test_reconcile_counts_an_unbuildable_prompt_as_a_contract_change",
+    "reason": "the leaf's own sheet or code versus a roster edit that makes the prompt unbuildable"
+  },
+  {
+    "a": "tests/flows/brainstorm/test_brainstorm_verify.py::test_a_citation_marker_is_dropped_from_the_page_only",
+    "b": "tests/flows/brainstorm/test_brainstorm_verify.py::test_a_quote_that_keeps_a_bracket_matches_it_on_the_page",
+    "reason": "a quote that keeps a bracket matches; a marker the page lacks is not-found"
+  },
+  {
+    "a": "tests/unit/test_search_index.py::test_a_corrupt_index_file_rebuilds_without_raising",
+    "b": "tests/unit/test_search_index.py::test_a_version_bump_discards_the_index",
+    "reason": "a non-sqlite index versus an index version bump; both rebuild"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_state.py::test_a_crashed_running_worker_cannot_be_handed_off_and_is_recorded_failed_before_a_message",
+    "b": "tests/unit/test_worker_faults.py::test_a_killed_harness_leaves_the_worker_failed",
+    "reason": "a crashed running worker versus a killed harness; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_state.py::test_a_crashed_running_worker_cannot_be_handed_off_and_is_recorded_failed_before_a_message",
+    "b": "tests/flows/worker/test_worker_resume_failed.py::test_a_stalled_worker_whose_process_ended_resumes",
+    "reason": "a stalled worker whose process has ended versus a crashed running worker; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_state.py::test_a_crashed_running_worker_cannot_be_handed_off_and_is_recorded_failed_before_a_message",
+    "b": "tests/flows/worker/test_worker_max_workers_global.py::test_an_idle_worker_resumes_in_its_own_slot",
+    "reason": "an idle worker versus a crashed running worker; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_state.py::test_a_crashed_running_worker_cannot_be_handed_off_and_is_recorded_failed_before_a_message",
+    "b": "tests/unit/test_worker_lease_races.py::test_three_callers_initialising_an_empty_id_agree_and_a_leased_worker_resumes_in_its_slot",
+    "reason": "a crashed running worker versus three callers initialising one empty id; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/flows/archive/test_archive_git_provenance.py::test_a_deleted_rollup_branch_degrades_to_nulls",
+    "b": "tests/flows/archive/test_archive_git_provenance.py::test_provenance_on_a_directory_that_is_not_a_repo",
+    "reason": "a plain directory versus a deleted rollup branch; both leave the tips null"
+  },
+  {
+    "a": "tests/unit/test_roadmap_explain.py::test_a_dependency_cycle_terminates",
+    "b": "tests/unit/test_roadmap_explain.py::test_the_chain_is_transitive_not_just_the_immediate_dependency",
+    "reason": "a cycle stops at the other node; the chain walks past the immediate dependency"
+  },
+  {
+    "a": "tests/flows/finish/test_nested_repo_worktrees.py::test_a_detached_nested_worktree_off_the_integration_tip_is_refused",
+    "b": "tests/flows/finish/test_nested_repo_worktrees.py::test_delegate_adds_the_nested_worktree_on_the_leaf_branch",
+    "reason": "a detached nested worktree is refused; delegate adds one on the leaf branch"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "reason": "a directory where the hash file should be versus a different report between two folding runs; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "reason": "a non-utf8 hash file versus a different report between two folding runs; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "reason": "a truncated hash file versus a different report between two folding runs; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "reason": "an unreadable hash file versus a different report between two folding runs; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "reason": "a different report between two folding runs versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "reason": "an empty report followed by a non-empty one versus a different report between two folding runs; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "reason": "a different report between two folding runs versus fold off, then on, for the same report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "reason": "a different report between two folding runs versus the fold flag covering a single report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "reason": "a different report between two folding runs versus upgrade and validate, which never fold; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_different_unfolded_report_in_between_makes_the_next_folding_run_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "validate run with the fold flag absent versus a different report between two folding runs; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "b": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "reason": "a non-utf8 hash file versus a directory where the hash file should be; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "b": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "reason": "a truncated hash file versus a directory where the hash file should be; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "b": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "reason": "an unreadable hash file versus a directory where the hash file should be; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "b": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "reason": "a directory where the hash file should be versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "b": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "reason": "a directory where the hash file should be versus an empty report followed by a non-empty one; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "b": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "reason": "a directory where the hash file should be versus fold off, then on, for the same report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "b": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "reason": "a directory where the hash file should be versus the fold flag covering a single report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "b": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "reason": "a directory where the hash file should be versus upgrade and validate, which never fold; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_directory_in_place_of_the_hash_file_is_a_miss_every_time",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "a directory where the hash file should be versus validate run with the fold flag absent; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/flows/pickup/test_do_next_task_branch_resume.py::test_a_failed_checkout_still_rolls_the_claim_back",
+    "b": "tests/flows/pickup/test_do_next_task_branch_resume.py::test_a_failed_push_still_rolls_the_claim_back",
+    "reason": "a failed checkout versus a failed push; both roll the claim back"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_preview.py::test_a_global_excludes_file_keeps_a_secret_out_of_both_mirrors",
+    "b": "tests/flows/init/test_upgrade_plan_parity.py::test_a_link_climbing_past_the_root_creates_nothing_outside_the_copy",
+    "reason": "a link that would write outside the copy versus a global excludes file; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_preview.py::test_a_global_excludes_file_keeps_a_secret_out_of_both_mirrors",
+    "b": "tests/flows/init/test_upgrade_preview.py::test_a_tracked_read_only_directory_does_not_stop_either_run",
+    "reason": "a tracked directory that is read-only versus a global excludes file; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_preview.py::test_a_global_excludes_file_keeps_a_secret_out_of_both_mirrors",
+    "b": "tests/flows/init/test_upgrade_preview.py::test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror",
+    "reason": "a global excludes file versus ignored secrets and a nested repo; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_preview.py::test_a_global_excludes_file_keeps_a_secret_out_of_both_mirrors",
+    "b": "tests/flows/init/test_upgrade_preview.py::test_upgrade_never_touches_the_repository_a_git_variable_names",
+    "reason": "a global excludes file versus GIT_CONFIG pointing at another repository; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/unit/test_worker_faults.py::test_a_killed_harness_leaves_the_worker_failed",
+    "b": "tests/flows/worker/test_worker_resume_failed.py::test_a_stalled_worker_whose_process_ended_resumes",
+    "reason": "a stalled worker whose process has ended versus a killed harness; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/unit/test_worker_faults.py::test_a_killed_harness_leaves_the_worker_failed",
+    "b": "tests/flows/worker/test_worker_max_workers_global.py::test_an_idle_worker_resumes_in_its_own_slot",
+    "reason": "an idle worker versus a killed harness; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/unit/test_worker_faults.py::test_a_killed_harness_leaves_the_worker_failed",
+    "b": "tests/unit/test_worker_lease_races.py::test_three_callers_initialising_an_empty_id_agree_and_a_leased_worker_resumes_in_its_slot",
+    "reason": "a killed harness versus three callers initialising one empty id; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_orphans.py::test_a_landing_not_yet_on_the_remote_tracking_ref_keeps_the_worker_until_it_is",
+    "b": "tests/flows/worker/test_worker_orphans.py::test_an_unreadable_integration_registry_keeps_the_worker",
+    "reason": "an unreadable integration registry versus a landing not yet on the remote-tracking ref"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_plan_parity.py::test_a_link_climbing_past_the_root_creates_nothing_outside_the_copy",
+    "b": "tests/flows/init/test_upgrade_preview.py::test_a_tracked_read_only_directory_does_not_stop_either_run",
+    "reason": "a tracked directory that is read-only versus a link that would write outside the copy; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_plan_parity.py::test_a_link_climbing_past_the_root_creates_nothing_outside_the_copy",
+    "b": "tests/flows/init/test_upgrade_preview.py::test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror",
+    "reason": "a link that would write outside the copy versus ignored secrets and a nested repo; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_plan_parity.py::test_a_link_climbing_past_the_root_creates_nothing_outside_the_copy",
+    "b": "tests/flows/init/test_upgrade_preview.py::test_upgrade_never_touches_the_repository_a_git_variable_names",
+    "reason": "a link that would write outside the copy versus GIT_CONFIG pointing at another repository; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/unit/test_roadmap_edit_fields.py::test_a_missing_codename_is_still_derived",
+    "b": "tests/unit/test_roadmap_edit_fields.py::test_sync_codename_forces_the_rewrite",
+    "reason": "a missing codename is derived versus sync_codename also rewriting planning_dir"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "b": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "reason": "a truncated hash file versus a non-utf8 hash file; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "b": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "reason": "an unreadable hash file versus a non-utf8 hash file; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "b": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "reason": "a non-utf8 hash file versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "b": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "reason": "a non-utf8 hash file versus an empty report followed by a non-empty one; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "b": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "reason": "a non-utf8 hash file versus fold off, then on, for the same report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "b": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "reason": "a non-utf8 hash file versus the fold flag covering a single report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "b": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "reason": "a non-utf8 hash file versus upgrade and validate, which never fold; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_non_utf8_hash_file_is_a_miss_and_is_rewritten",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "a non-utf8 hash file versus validate run with the fold flag absent; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/flows/init/test_agent_ignores.py::test_a_prefixed_block_actually_matches_in_git",
+    "b": "tests/flows/roadmap/test_project_layouts.py::test_ignore_blocks_land_at_the_git_root_and_match",
+    "reason": "a prefixed block matches in git; the other checks the blocks land at the git root"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_adapters.py::test_a_ready_for_an_older_commit_does_not_complete",
+    "b": "tests/flows/worker/test_worker_adapters.py::test_a_ready_on_another_branch_does_not_complete",
+    "reason": "a ready file on another branch versus a ready file for an older commit"
+  },
+  {
+    "a": "tests/flows/review/test_sibling_repo_approvals.py::test_a_record_without_sibling_heads_carries_when_no_sibling_remains",
+    "b": "tests/flows/review/test_sheet_edits_keep_approvals.py::test_sheet_only_delta_keeps_approval",
+    "reason": "no sibling remains versus a sheet-only delta"
+  },
+  {
+    "a": "tests/flows/review/test_sibling_repo_approvals.py::test_a_record_without_sibling_heads_carries_when_no_sibling_remains",
+    "b": "tests/flows/review/test_sheet_edits_keep_approvals.py::test_summary_only_delta_keeps_approval",
+    "reason": "no sibling remains versus a summary-only delta"
+  },
+  {
+    "a": "tests/flows/review/test_review_writers_refuse_links.py::test_a_refused_marker_writes_nothing_outside",
+    "b": "tests/flows/review/test_review_writers_refuse_links.py::test_the_lock_refuses_a_symlink_before_any_filing",
+    "reason": "the review lock refuses a symlink before filing; a refused marker writes nothing outside"
+  },
+  {
+    "a": "tests/unit/test_refresh_schemas.py::test_a_schema_the_consumer_never_had_is_not_drift",
+    "b": "tests/unit/test_refresh_schemas.py::test_current_schemas_are_not_reported_as_stale",
+    "reason": "a schema the consumer never had versus the current schemas"
+  },
+  {
+    "a": "tests/unit/test_refresh_schemas.py::test_a_schema_the_consumer_never_had_is_not_drift",
+    "b": "tests/unit/test_refresh_schemas.py::test_description_only_edits_are_not_drift",
+    "reason": "a missing schema versus a description-only edit"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "reason": "a brainstorm session with no topic or slug versus a brainstorm slug that climbs out of the tree; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "reason": "a brainstorm session with no topic or slug versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "reason": "a brainstorm session with no topic or slug versus the unknown-node helper across methods; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "reason": "an outline move of an unknown node_key versus a brainstorm session with no topic or slug; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "reason": "a brainstorm session with no topic or slug versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "reason": "a planning put whose validate fails versus a brainstorm session with no topic or slug; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "reason": "a brainstorm session with no topic or slug versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "reason": "a workspace put outside shared/ versus a brainstorm session with no topic or slug; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "reason": "invalid base64 on workspace upload versus a brainstorm session with no topic or slug; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "a workspace upload under work/ versus a brainstorm session with no topic or slug; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "a brainstorm session with no topic or slug versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "a brainstorm session with no topic or slug versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an unknown node_key that must be 400, not 404 versus a brainstorm session with no topic or slug; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "a brainstorm session with no topic or slug versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_session_without_a_topic_or_slug_is_refused",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus a brainstorm session with no topic or slug; both answer 400"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_resume_failed.py::test_a_stalled_worker_whose_process_ended_resumes",
+    "b": "tests/flows/worker/test_worker_max_workers_global.py::test_an_idle_worker_resumes_in_its_own_slot",
+    "reason": "an idle worker versus a stalled worker whose process has ended; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_resume_failed.py::test_a_stalled_worker_whose_process_ended_resumes",
+    "b": "tests/unit/test_worker_lease_races.py::test_three_callers_initialising_an_empty_id_agree_and_a_leased_worker_resumes_in_its_slot",
+    "reason": "a stalled worker whose process has ended versus three callers initialising one empty id; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/unit/test_review_answer.py::test_a_text_message_answers_with_its_final_object",
+    "b": "tests/unit/test_review_answer.py::test_the_last_terminal_message_is_the_answer_or_a_rerun",
+    "reason": "adapter text paths versus the terminal-message table"
+  },
+  {
+    "a": "tests/unit/test_claude_code_limits.py::test_a_timed_session_limit_is_recognized_and_dated",
+    "b": "tests/unit/test_claude_code_limits.py::test_a_transcript_record_is_read_the_same_way",
+    "reason": "a transcript record versus the timed-session text; both read the same session id"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_preview.py::test_a_tracked_read_only_directory_does_not_stop_either_run",
+    "b": "tests/flows/init/test_upgrade_preview.py::test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror",
+    "reason": "a tracked directory that is read-only versus ignored secrets and a nested repo; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_preview.py::test_a_tracked_read_only_directory_does_not_stop_either_run",
+    "b": "tests/flows/init/test_upgrade_preview.py::test_upgrade_never_touches_the_repository_a_git_variable_names",
+    "reason": "a tracked directory that is read-only versus GIT_CONFIG pointing at another repository; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "reason": "a brainstorm slug that climbs out of the tree versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "reason": "a brainstorm slug that climbs out of the tree versus the unknown-node helper across methods; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "reason": "an outline move of an unknown node_key versus a brainstorm slug that climbs out of the tree; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "reason": "a brainstorm slug that climbs out of the tree versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "reason": "a planning put whose validate fails versus a brainstorm slug that climbs out of the tree; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "reason": "a brainstorm slug that climbs out of the tree versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "reason": "a workspace put outside shared/ versus a brainstorm slug that climbs out of the tree; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "reason": "invalid base64 on workspace upload versus a brainstorm slug that climbs out of the tree; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "a workspace upload under work/ versus a brainstorm slug that climbs out of the tree; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "a brainstorm slug that climbs out of the tree versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "a brainstorm slug that climbs out of the tree versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an unknown node_key that must be 400, not 404 versus a brainstorm slug that climbs out of the tree; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "a brainstorm slug that climbs out of the tree versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_brainstorm.py::test_a_traversing_slug_is_a_400_not_a_crash",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus a brainstorm slug that climbs out of the tree; both answer 400"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "reason": "an unreadable hash file versus a truncated hash file; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "reason": "a truncated hash file versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "reason": "a truncated hash file versus an empty report followed by a non-empty one; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "reason": "a truncated hash file versus fold off, then on, for the same report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "reason": "a truncated hash file versus the fold flag covering a single report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "reason": "a truncated hash file versus upgrade and validate, which never fold; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_a_truncated_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "a truncated hash file versus validate run with the fold flag absent; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "reason": "the unknown-node helper across methods versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "reason": "an outline move of an unknown node_key versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "reason": "add-node with an id that is already taken versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "reason": "a planning put whose validate fails versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "reason": "add-node with an id that is already taken versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "reason": "a workspace put outside shared/ versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "reason": "invalid base64 on workspace upload versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "a workspace upload under work/ versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "add-node with an id that is already taken versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "add-node with an id that is already taken versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an unknown node_key that must be 400, not 404 versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "add-node with an id that is already taken versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_add_node_refuses_a_taken_requested_id",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus add-node with an id that is already taken; both answer 400"
+  },
+  {
+    "a": "tests/unit/test_roadmap_crud.py::test_add_node_rejects_removed_execution_subtask_flag",
+    "b": "tests/cli/test_cli_query_commands.py::test_list_nodes_rejects_a_status_outside_the_vocabulary",
+    "reason": "list-nodes rejects a bad status; add-node rejects a removed flag"
+  },
+  {
+    "a": "tests/flows/pickup/test_unauthored_leaf_guard.py::test_allow_scaffold_planning_warns_and_picks",
+    "b": "tests/flows/roadmap/test_author_approach.py::test_guard_unchanged_allow_scaffold_planning_still_picks",
+    "reason": "a promoted sheet still picks; the scaffold sheet picks and warns"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_max_workers_global.py::test_an_idle_worker_resumes_in_its_own_slot",
+    "b": "tests/unit/test_worker_lease_races.py::test_three_callers_initialising_an_empty_id_agree_and_a_leased_worker_resumes_in_its_slot",
+    "reason": "an idle worker versus three callers initialising one empty id; each resumes or fails a different worker state"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "reason": "an outline move of an unknown node_key versus the unknown-node helper across methods; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "reason": "the unknown-node helper across methods versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "reason": "a planning put whose validate fails versus the unknown-node helper across methods; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "reason": "the unknown-node helper across methods versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "reason": "a workspace put outside shared/ versus the unknown-node helper across methods; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "reason": "invalid base64 on workspace upload versus the unknown-node helper across methods; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "a workspace upload under work/ versus the unknown-node helper across methods; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "the unknown-node helper across methods versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "the unknown-node helper across methods versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an unknown node_key that must be 400, not 404 versus the unknown-node helper across methods; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "the unknown-node helper across methods versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_an_unknown_node_is_400",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus the unknown-node helper across methods; both answer 400"
+  },
+  {
+    "a": "tests/flows/review/test_delta_review.py::test_an_unknown_tier_leaves_the_approval_stale_and_says_why",
+    "b": "tests/flows/review/test_delta_review.py::test_policy_and_integrity_still_stop_the_carry",
+    "reason": "policy or integrity stops the carry; an unknown tier leaves the approval stale"
+  },
+  {
+    "a": "tests/flows/review/test_delta_review.py::test_an_unknown_tier_leaves_the_approval_stale_and_says_why",
+    "b": "tests/flows/review/test_delta_review.py::test_two_blocks_or_two_fix_commits_do_not_carry",
+    "reason": "two blocks do not carry; an unknown tier leaves the approval stale and says why"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "reason": "an unreadable hash file versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "reason": "an unreadable hash file versus an empty report followed by a non-empty one; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "reason": "an unreadable hash file versus fold off, then on, for the same report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "reason": "an unreadable hash file versus the fold flag covering a single report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "reason": "an unreadable hash file versus upgrade and validate, which never fold; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_an_unreadable_hash_file_is_a_miss",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "an unreadable hash file versus validate run with the fold flag absent; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/flows/roadmap/test_validate_strict.py::test_ancestor_claude_above_the_git_root_does_not_fail_strict",
+    "b": "tests/flows/roadmap/test_validate_strict.py::test_user_claude_outside_home_is_noted_and_does_not_fail_strict",
+    "reason": "an ancestor CLAUDE.md above the git root versus a user file outside home"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "reason": "an outline move of an unknown node_key versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "reason": "an outline move of an unknown node_key versus a planning put whose validate fails; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "reason": "an outline move of an unknown node_key versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "reason": "an outline move of an unknown node_key versus a workspace put outside shared/; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "reason": "invalid base64 on workspace upload versus an outline move of an unknown node_key; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "a workspace upload under work/ versus an outline move of an unknown node_key; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "an outline move of an unknown node_key versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "an outline move of an unknown node_key versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an outline move of an unknown node_key versus an unknown node_key that must be 400, not 404; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "an outline move of an unknown node_key versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_outline_move_rejects_unknown_node_key",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus an outline move of an unknown node_key; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "reason": "a planning put whose validate fails versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "reason": "a planning path that contains .. versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "reason": "a workspace put outside shared/ versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "reason": "invalid base64 on workspace upload versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "a workspace upload under work/ versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "an outline group refusal with a string detail versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "an outline move refusal with a string detail versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an unknown node_key that must be 400, not 404 versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "an outline reorder refusal with a string detail versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_planning_file_rejects_parent_segments",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus a planning path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "reason": "a planning put whose validate fails versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "reason": "a planning put whose validate fails versus a workspace put outside shared/; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "reason": "invalid base64 on workspace upload versus a planning put whose validate fails; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "a workspace upload under work/ versus a planning put whose validate fails; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "a planning put whose validate fails versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "a planning put whose validate fails versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "a planning put whose validate fails versus an unknown node_key that must be 400, not 404; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "a planning put whose validate fails versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_mutations.py::test_api_planning_put_restores_content_when_validate_fails",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus a planning put whose validate fails; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_repo_env_overrides_cwd",
+    "b": "tests/gui/test_gui_app.py::test_api_repo_follows_cwd_when_env_unset",
+    "reason": "SPECY_ROAD_REPO_ROOT wins over cwd versus no env, which follows cwd"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "b": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "reason": "a workspace put outside shared/ versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "reason": "invalid base64 on workspace upload versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "a workspace upload under work/ versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "an outline group refusal with a string detail versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "an outline move refusal with a string detail versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an unknown node_key that must be 400, not 404 versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "an outline reorder refusal with a string detail versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_get_rejects_path_traversal",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus a workspace path that contains ..; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "reason": "invalid base64 on workspace upload versus a workspace put outside shared/; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "a workspace upload under work/ versus a workspace put outside shared/; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "a workspace put outside shared/ versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "a workspace put outside shared/ versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an unknown node_key that must be 400, not 404 versus a workspace put outside shared/; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "a workspace put outside shared/ versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_workspace_file.py::test_api_workspace_file_put_rejects_non_shared",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus a workspace put outside shared/; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "b": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "reason": "invalid base64 on workspace upload versus a workspace upload under work/; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "invalid base64 on workspace upload versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "invalid base64 on workspace upload versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "invalid base64 on workspace upload versus an unknown node_key that must be 400, not 404; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "invalid base64 on workspace upload versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_invalid_base64",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "invalid base64 on workspace upload versus an unconfigured research test endpoint; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "reason": "a workspace upload under work/ versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "a workspace upload under work/ versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "a workspace upload under work/ versus an unknown node_key that must be 400, not 404; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "a workspace upload under work/ versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app.py::test_api_workspace_upload_rejects_non_shared",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "a workspace upload under work/ versus an unconfigured research test endpoint; both answer 400"
+  },
+  {
+    "a": "tests/unit/test_archive_deep.py::test_archived_dependencies_survive_deepening",
+    "b": "tests/unit/test_archive_dependencies.py::test_archiving_records_every_key_in_the_subtree",
+    "reason": "dependencies after a deepen versus the keys recorded at archive time"
+  },
+  {
+    "a": "tests/flows/archive/test_archive_auto_and_cli.py::test_auto_ignores_incomplete_subtrees_whatever_their_age",
+    "b": "tests/flows/archive/test_archive_auto_and_cli.py::test_auto_skips_work_completed_inside_the_window",
+    "reason": "an incomplete milestone versus work closed inside the age window"
+  },
+  {
+    "a": "tests/unit/test_do_next_queue.py::test_available_excludes_complete",
+    "b": "tests/unit/test_do_next_queue.py::test_available_excludes_no_codename",
+    "reason": "Complete is excluded versus a node with no codename"
+  },
+  {
+    "a": "tests/unit/test_do_next_queue.py::test_available_includes_when_deps_complete",
+    "b": "tests/unit/test_do_next_queue.py::test_available_returns_unclaimed_agentic",
+    "reason": "a completed dependency versus an unclaimed node with no dependencies"
+  },
+  {
+    "a": "tests/flows/pickup/test_baseline_gate_cli.py::test_baseline_may_write_under_work",
+    "b": "tests/flows/pickup/test_baseline_gate_cli.py::test_baseline_warn_picks_up_from_a_red_base",
+    "reason": "a baseline may write under work; a red base warns and still picks up"
+  },
+  {
+    "a": "tests/flows/pickup/test_baseline_gate_cli.py::test_baseline_may_write_under_work",
+    "b": "tests/flows/pickup/test_baseline_gate_cli.py::test_git_workflow_baseline_applies_and_an_empty_flag_turns_it_off",
+    "reason": "writing under work versus an empty flag that turns the baseline off"
+  },
+  {
+    "a": "tests/unit/test_planning_artifacts.py::test_collect_planning_errors_ok_legacy_frontmatter_ignored",
+    "b": "tests/unit/test_planning_artifacts.py::test_collect_planning_errors_ok_minimal",
+    "reason": "legacy frontmatter is ignored versus a minimal valid sheet"
+  },
+  {
+    "a": "tests/flows/roadmap/test_project_layouts.py::test_command_works_with_no_repo_root_flag",
+    "b": "tests/flows/roadmap/test_project_layouts.py::test_resolution_agrees_from_any_working_directory",
+    "reason": "no --repo-root from the git root versus the command from a nested or sibling directory"
+  },
+  {
+    "a": "tests/flows/roadmap/test_project_layouts.py::test_command_works_with_no_repo_root_flag",
+    "b": "tests/flows/roadmap/test_project_layouts.py::test_the_brief_is_identical_across_layouts",
+    "reason": "a command with no --repo-root versus a brief that is identical across layouts"
+  },
+  {
+    "a": "tests/flows/worker/test_roster_generate.py::test_committed_plan_refuses_a_malformed_profile_even_when_a_file_exists_at_that_path",
+    "b": "tests/flows/worker/test_roster_generate.py::test_worktree_plan_reports_invalid_profile_form_for_a_malformed_missing_path",
+    "reason": "a malformed profile file that exists versus a malformed path that is missing"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "b": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "reason": "an empty report followed by a non-empty one versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "b": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "reason": "fold off, then on, for the same report versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "b": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "reason": "the fold flag covering a single report versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "b": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "reason": "upgrade and validate, which never fold versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_context_warnings_first_run_unchanged_run_and_changed_run",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "validate run with the fold flag absent versus a first run, an unchanged run, then a changed run; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_refresh_schemas.py::test_current_schemas_are_not_reported_as_stale",
+    "b": "tests/unit/test_refresh_schemas.py::test_description_only_edits_are_not_drift",
+    "reason": "untouched schemas versus a reworded description"
+  },
+  {
+    "a": "tests/flows/registry/test_integrity_gate.py::test_declaration_on_the_leaf_branch_does_not_clear_the_finding",
+    "b": "tests/flows/registry/test_integrity_gate.py::test_undeclared_finding_blocks_an_approved_gate",
+    "reason": "a declaration on the leaf does not clear the finding; the other never declares it"
+  },
+  {
+    "a": "tests/flows/review/test_rework_rca.py::test_delegate_rework_proceeds_when_the_leaf_worker_is_completed",
+    "b": "tests/flows/review/test_rework_rca.py::test_delegate_rework_with_completed_only_launches_a_fresh_worker",
+    "reason": "a completed worker with no review versus one that already has a block review"
+  },
+  {
+    "a": "tests/unit/test_tool_call_guard.py::test_destructive_commands_are_classified",
+    "b": "tests/unit/test_tool_call_guard.py::test_more_destructive_shapes_are_classified",
+    "reason": "destructive rows require the fragment in the reason; the other table only requires a reason"
+  },
+  {
+    "a": "tests/unit/test_tool_call_guard.py::test_destructive_commands_are_classified",
+    "b": "tests/unit/test_tool_call_guard.py::test_more_wrapper_shapes_are_classified",
+    "reason": "destructive rows require the fragment; wrapper rows only require a reason"
+  },
+  {
+    "a": "tests/unit/test_tool_call_guard.py::test_destructive_commands_are_classified",
+    "b": "tests/unit/test_tool_call_guard.py::test_opaque_shapes_and_bare_commits_are_refused",
+    "reason": "bare commits only require a reason; destructive rows require the named fragment"
+  },
+  {
+    "a": "tests/cli/test_session_guard.py::test_dynamic_shell_forms_fail_closed",
+    "b": "tests/unit/test_tool_call_guard.py::test_more_destructive_shapes_are_classified",
+    "reason": "dynamic shell forms require the fragment; destructive-shape rows only require a reason"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "reason": "an empty report followed by a non-empty one versus fold off, then on, for the same report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "reason": "an empty report followed by a non-empty one versus the fold flag covering a single report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "reason": "an empty report followed by a non-empty one versus upgrade and validate, which never fold; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_empty_then_non_empty_prints_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "an empty report followed by a non-empty one versus validate run with the fold flag absent; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/cli/test_session_guard.py::test_env_config_check_leaves_ordinary_commands_alone",
+    "b": "tests/unit/test_tool_call_guard.py::test_ordinary_commands_pass",
+    "reason": "env-config ordinary commands join the ordinary-commands table"
+  },
+  {
+    "a": "tests/cli/test_session_guard.py::test_eval_is_judged_by_what_it_runs",
+    "b": "tests/unit/test_tool_call_guard.py::test_more_destructive_shapes_are_classified",
+    "reason": "eval is judged by the command it runs; destructive-shape rows only require a reason"
+  },
+  {
+    "a": "tests/flows/registry/test_integrity_ratchet.py::test_existing_suppression_moved_by_an_insert_is_not_new",
+    "b": "tests/flows/registry/test_integrity_ratchet.py::test_ratchet_paths_listed_only_on_the_leaf_branch_are_ignored",
+    "reason": "a moved noqa is not a new suppression; a leaf-only ratchet path is ignored"
+  },
+  {
+    "a": "tests/cli/test_session_guard.py::test_explicit_pathspecs_pass",
+    "b": "tests/unit/test_tool_call_guard.py::test_opaque_shapes_without_git_pass",
+    "reason": "explicit pathspecs versus commands that never mention git; both pass"
+  },
+  {
+    "a": "tests/cli/test_session_guard.py::test_explicit_pathspecs_pass",
+    "b": "tests/unit/test_tool_call_guard.py::test_ordinary_commands_pass",
+    "reason": "explicit pathspecs are ordinary git commands and join that table"
+  },
+  {
+    "a": "tests/gui/test_pm_gui_field_repros.py::test_fingerprint_emitted_as_string_to_dodge_js_number_precision",
+    "b": "tests/gui/test_pm_gui_field_repros.py::test_mutation_does_not_412_on_rollup_status_in_validate",
+    "reason": "rollup_status stripped from the schema before validate versus the fingerprint emitted as a string; each is a different reason the reorder returns 200"
+  },
+  {
+    "a": "tests/gui/test_pm_gui_field_repros.py::test_fingerprint_emitted_as_string_to_dodge_js_number_precision",
+    "b": "tests/gui/test_pm_gui_concurrency_autoff.py::test_outline_reorder_succeeds_despite_planning_autosave_storm",
+    "reason": "planning files change between the GET and the POST versus the fingerprint emitted as a string; each is a different reason the reorder returns 200"
+  },
+  {
+    "a": "tests/gui/test_pm_gui_field_repros.py::test_fingerprint_emitted_as_string_to_dodge_js_number_precision",
+    "b": "tests/gui/test_pm_gui_concurrency_autoff.py::test_passthrough_when_token_matches",
+    "reason": "a matching fingerprint and no concurrent edit versus the fingerprint emitted as a string; each is a different reason the reorder returns 200"
+  },
+  {
+    "a": "tests/flows/pickup/test_do_next_finished_unmerged.py::test_finished_leaf_on_unmerged_branch_is_dropped",
+    "b": "tests/flows/pickup/test_do_next_finished_unmerged.py::test_remote_only_branch_is_still_seen",
+    "reason": "a remote-tracking ref is still seen; an unmerged local branch is dropped"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "b": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "reason": "fold off, then on, for the same report versus the fold flag covering a single report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "b": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "reason": "fold off, then on, for the same report versus upgrade and validate, which never fold; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_fold_off_then_on_folds_a_report_the_unfolded_run_recorded",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "validate run with the fold flag absent versus fold off, then on, for the same report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/flows/pickup/test_why_blocked_plan_holds.py::test_free_leaf_has_no_hold",
+    "b": "tests/flows/pickup/test_why_blocked_plan_holds.py::test_the_holder_itself_is_not_held",
+    "reason": "M1.4 is free; M1.1 is the holder and is not held by itself"
+  },
+  {
+    "a": "tests/flows/registry/test_integrity_gate.py::test_gate_off_or_absent_ignores_findings",
+    "b": "tests/flows/registry/test_integrity_gate.py::test_gate_switched_on_only_on_the_leaf_branch_is_not_read",
+    "reason": "the gate is on only on the leaf branch versus absent; both pass"
+  },
+  {
+    "a": "tests/flows/registry/test_integrity_gate.py::test_gate_off_or_absent_ignores_findings",
+    "b": "tests/flows/review/test_review_gate.py::test_one_human_approval_passes_default_policy",
+    "reason": "findings ignored when the gate is off versus one human approval on the default policy"
+  },
+  {
+    "a": "tests/unit/test_roadmap_gui_remote.py::test_github_pr_detail_merged_from_state_all",
+    "b": "tests/unit/test_roadmap_gui_remote.py::test_github_pr_detail_open_not_list_falls_through_to_all",
+    "reason": "an open query that is not a list falls through; a merged pull is read from state=all"
+  },
+  {
+    "a": "tests/flows/init/test_upgrade_preview.py::test_ignored_secrets_and_a_nested_repo_stay_out_of_the_mirror",
+    "b": "tests/flows/init/test_upgrade_preview.py::test_upgrade_never_touches_the_repository_a_git_variable_names",
+    "reason": "ignored secrets and a nested repo versus GIT_CONFIG pointing at another repository; each is a different thing the upgrade must leave alone"
+  },
+  {
+    "a": "tests/flows/roadmap/test_project_layouts.py::test_init_project_after_specyrd_init_still_ends_up_prefixed",
+    "b": "tests/flows/roadmap/test_project_layouts.py::test_specyrd_init_prefixes_the_blocks_using_the_recorded_root",
+    "reason": "init-project after specyrd versus specyrd-init using the recorded root"
+  },
+  {
+    "a": "tests/flows/finish/test_finish_merge_mode.py::test_land_merge_succeeds_when_integration_branch_is_master",
+    "b": "tests/flows/finish/test_finish_land_check.py::test_no_flag_and_no_key_runs_no_check",
+    "reason": "land-merge when the integration branch is master versus a land check that is skipped"
+  },
+  {
+    "a": "tests/unit/test_roadmap_crud_dependencies.py::test_list_dependencies_cli",
+    "b": "tests/unit/test_roadmap_crud.py::test_list_nodes_cli",
+    "reason": "list-nodes prints M99.1; list-dependencies prints a dependency id"
+  },
+  {
+    "a": "tests/unit/test_roadmap_crud_dependencies.py::test_list_dependencies_empty_and_unknown",
+    "b": "tests/cli/test_cli.py::test_specy_road_list_dependencies",
+    "reason": "a populated dependency list versus empty and unknown ids"
+  },
+  {
+    "a": "tests/cli/test_cli_query_commands.py::test_list_nodes_filters_on_status",
+    "b": "tests/cli/test_cli.py::test_specy_road_list_dependencies",
+    "reason": "list-dependencies smoke versus list-nodes filtered by status"
+  },
+  {
+    "a": "tests/cli/test_cli_query_commands.py::test_list_nodes_without_status_is_unchanged",
+    "b": "tests/cli/test_cli.py::test_specy_road_list_dependencies",
+    "reason": "list-dependencies smoke versus list-nodes with no status filter"
+  },
+  {
+    "a": "tests/unit/test_decisions.py::test_list_rejects_malformed_asked_in_ledger",
+    "b": "tests/unit/test_decisions.py::test_schema_rejects_incomplete_document",
+    "reason": "a bad asked_in ledger versus a document missing required fields"
+  },
+  {
+    "a": "tests/unit/test_brainstorm_promote_structured.py::test_min_recommendation_strong_skips_weaker_verdicts",
+    "b": "tests/unit/test_brainstorm_promote.py::test_only_accepted_ideas_are_promoted",
+    "reason": "a rejected idea is skipped versus a recommendation below strong"
+  },
+  {
+    "a": "tests/repo/test_contract_citations.py::test_mixed_bullet_keeps_only_shared_paths",
+    "b": "tests/repo/test_contract_citations.py::test_plain_markdown_link",
+    "reason": "a mixed bullet drops the non-shared path; a plain link is only the shared path"
+  },
+  {
+    "a": "tests/gui/test_pm_gui_field_repros.py::test_mutation_does_not_412_on_rollup_status_in_validate",
+    "b": "tests/gui/test_pm_gui_concurrency_autoff.py::test_outline_reorder_succeeds_despite_planning_autosave_storm",
+    "reason": "planning files change between the GET and the POST versus rollup_status stripped from the schema before validate; each is a different reason the reorder returns 200"
+  },
+  {
+    "a": "tests/gui/test_pm_gui_field_repros.py::test_mutation_does_not_412_on_rollup_status_in_validate",
+    "b": "tests/gui/test_pm_gui_concurrency_autoff.py::test_passthrough_when_token_matches",
+    "reason": "a matching fingerprint and no concurrent edit versus rollup_status stripped from the schema before validate; each is a different reason the reorder returns 200"
+  },
+  {
+    "a": "tests/flows/worker/test_worker_cli_fixes.py::test_nested_delegate_counts_only_the_projects_work_as_bookkeeping",
+    "b": "tests/flows/worker/test_worker_cli_fixes.py::test_nested_reconcile_matches_zones_by_the_project_relative_name",
+    "reason": "delegate bookkeeping versus reconcile matching zones by project-relative name"
+  },
+  {
+    "a": "tests/cli/test_grind_session.py::test_no_actionable_leaves_exits_2",
+    "b": "tests/unit/test_grind_session_cleanup.py::test_no_cleanup_when_the_session_finished_nothing",
+    "reason": "no leaves exits 2; the cleanup test also asserts no git calls"
+  },
+  {
+    "a": "tests/flows/init/test_agent_ignores.py::test_no_repeats_print_nothing",
+    "b": "tests/flows/init/test_agent_ignores.py::test_patterns_git_reads_differently_are_not_repeats",
+    "reason": "no repeated pattern versus patterns git reads differently from their unescaped form"
+  },
+  {
+    "a": "tests/unit/test_version_skew_install.py::test_no_shadow_warning_when_running_install_is_first",
+    "b": "tests/unit/test_version_skew_install.py::test_symlinked_prefix_and_trailing_slash_still_running",
+    "reason": "the running install is first on PATH versus a symlinked prefix with a trailing slash"
+  },
+  {
+    "a": "tests/unit/test_tool_call_guard.py::test_opaque_shapes_without_git_pass",
+    "b": "tests/unit/test_tool_call_guard.py::test_ordinary_commands_pass",
+    "reason": "ordinary commands versus shapes that never mention git; both pass"
+  },
+  {
+    "a": "tests/unit/test_tool_call_guard.py::test_ordinary_commands_pass",
+    "b": "tests/unit/test_tool_call_guard.py::test_staged_restore_of_a_path_is_fine",
+    "reason": "the ordinary-commands table versus one staged restore of a path"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "reason": "an outline group refusal with a string detail versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an unknown node_key that must be 400, not 404 versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "an outline group refusal with a string detail versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_outline_group_refusals_are_400_with_a_string_detail",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus an outline group refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "b": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "reason": "an unknown node_key that must be 400, not 404 versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "an outline move refusal with a string detail versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_outline_move_refusals_are_400_with_a_string_detail",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus an outline move refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "b": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "reason": "an unknown node_key that must be 400, not 404 versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_app_routes_nodes_errors.py::test_outline_move_unknown_node_key_is_400_not_404",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus an unknown node_key that must be 400, not 404; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_gui_outline_contract.py::test_outline_reorder_refusal_is_400_with_a_string_detail",
+    "b": "tests/gui/test_gui_app_brainstorm.py::test_testing_an_unconfigured_endpoint_is_a_400",
+    "reason": "an unconfigured research test endpoint versus an outline reorder refusal with a string detail; both answer 400"
+  },
+  {
+    "a": "tests/gui/test_pm_gui_concurrency_autoff.py::test_outline_reorder_succeeds_despite_planning_autosave_storm",
+    "b": "tests/gui/test_pm_gui_concurrency_autoff.py::test_passthrough_when_token_matches",
+    "reason": "planning files change between the GET and the POST versus a matching fingerprint and no concurrent edit; each is a different reason the reorder returns 200"
+  },
+  {
+    "a": "tests/unit/test_roadmap_chunk_router.py::test_pick_target_chunk_creates_new_chunk_when_none_fit",
+    "b": "tests/unit/test_roadmap_chunk_router.py::test_pick_target_chunk_does_not_scatter_across_phases",
+    "reason": "a full phase must not spill into another phase; the other has no second phase to spill into"
+  },
+  {
+    "a": "tests/flows/pickup/test_unauthored_leaf_guard.py::test_plan_allow_unauthored_keeps_acceptance_scaffold_not_ready",
+    "b": "tests/flows/pickup/test_unauthored_leaf_guard.py::test_plan_lists_scaffold_approach_with_acceptance_as_unauthored",
+    "reason": "--allow-unauthored leaves the scaffold off ready; the default plan lists it unauthored"
+  },
+  {
+    "a": "tests/flows/review/test_delta_review.py::test_policy_and_integrity_still_stop_the_carry",
+    "b": "tests/flows/review/test_delta_review.py::test_two_blocks_or_two_fix_commits_do_not_carry",
+    "reason": "policy or integrity stops the carry; two blocks or two fix commits do not carry"
+  },
+  {
+    "a": "tests/unit/test_brainstorm_promote.py::test_promoted_nodes_accept_execution_milestone_override",
+    "b": "tests/unit/test_brainstorm_promote.py::test_promoted_nodes_inherit_human_led_from_the_anchor",
+    "reason": "an explicit Human-led override versus inheriting Human-led from the anchor"
+  },
+  {
+    "a": "tests/unit/test_reconcile_milestone_status_errors.py::test_reconcile_isolates_per_node_failures_apply_exits_nonzero",
+    "b": "tests/unit/test_reconcile_milestone_status_errors.py::test_reconcile_isolates_per_node_failures_dryrun",
+    "reason": "dry-run isolates a per-node failure; apply exits non-zero"
+  },
+  {
+    "a": "tests/flows/review/test_review_record_rules.py::test_record_files_an_approve_whose_notes_explain_the_order_on_the_same_line",
+    "b": "tests/flows/review/test_review_record_rules.py::test_record_files_an_approve_with_no_findings",
+    "reason": "notes that explain order wording versus notes with no findings"
+  },
+  {
+    "a": "tests/flows/review/test_review_record_rules.py::test_record_files_an_approve_whose_notes_explain_the_order_on_the_same_line",
+    "b": "tests/flows/review/test_review_record_rules.py::test_record_files_an_approve_with_one_explanation_per_observation",
+    "reason": "one order explanation on the same line versus one explanation per observation"
+  },
+  {
+    "a": "tests/flows/review/test_review_record_rules.py::test_record_files_an_approve_with_no_findings",
+    "b": "tests/flows/review/test_review_record_rules.py::test_record_files_an_approve_with_one_explanation_per_observation",
+    "reason": "notes with no findings versus one explanation per observation"
+  },
+  {
+    "a": "tests/unit/test_remove_node.py::test_refused_removal_leaves_healable_bytes_untouched",
+    "b": "tests/unit/test_remove_node.py::test_refused_removal_preserves_every_byte_when_post_graph_invalid",
+    "reason": "parallel_tracks 0 is healable versus an invalid type; both keep the bytes"
+  },
+  {
+    "a": "tests/unit/test_remove_node.py::test_refused_remove_node_on_blockers_preserves_tree",
+    "b": "tests/unit/test_remove_node.py::test_remove_node_dry_run_blocked_writes_nothing",
+    "reason": "a real remove versus --dry-run; both refuse a parent that still has a child"
+  },
+  {
+    "a": "tests/gui/test_pm_gui_git_remote_verify.py::test_registry_remote_overlay_enabled_true_when_gates_satisfied",
+    "b": "tests/gui/test_pm_gui_git_remote_verify.py::test_save_settings_preserves_git_remote_tested_ok_when_only_non_git_fields_change",
+    "reason": "a non-git settings edit keeps tested_ok; the overlay turns on only when repo and token are set"
+  },
+  {
+    "a": "tests/flows/review/test_resumed_delta_review.py::test_resumed_delta_refused_when_policy_off",
+    "b": "tests/flows/review/test_resumed_delta_review.py::test_resumed_full_review_still_needs_fresh_session",
+    "reason": "policy off refuses a resumed delta; policy on still requires a fresh full review"
+  },
+  {
+    "a": "tests/unit/test_review_run_state_trusted.py::test_review_delegate_keeps_its_attempt_spans_and_log_in_memory",
+    "b": "tests/flows/review/test_review_record_write.py::test_the_notes_and_specy_roads_own_run_files_are_not_the_reviewers_writes",
+    "reason": "a review-path write versus a forged run kept in memory"
+  },
+  {
+    "a": "tests/parity/checks_migration/test_checks_migration.py::test_row_gives_its_recorded_result",
+    "b": "tests/parity/checks_migration/test_checks_migration.py::test_upgraded_row_gives_its_recorded_result",
+    "reason": "the stage table versus a legacy row that is migrated before the same stage"
+  },
+  {
+    "a": "tests/flows/review/test_review_untrusted_output.py::test_run_text_keeps_a_raw_u2028_and_delegate_files_the_answer",
+    "b": "tests/flows/review/test_review_record_write.py::test_the_notes_and_specy_roads_own_run_files_are_not_the_reviewers_writes",
+    "reason": "a review-path write versus a raw line separator kept in the notes"
+  },
+  {
+    "a": "tests/gui/test_pm_gui_git_remote_verify.py::test_save_settings_clears_git_remote_tested_ok_when_git_remote_identity_changes",
+    "b": "tests/gui/test_pm_gui_git_remote_verify.py::test_save_settings_preserves_git_remote_tested_ok_when_only_non_git_fields_change",
+    "reason": "a non-git edit keeps tested_ok; changing the git remote identity clears it"
+  },
+  {
+    "a": "tests/flows/review/test_sheet_edits_keep_approvals.py::test_sheet_only_delta_keeps_approval",
+    "b": "tests/flows/review/test_sheet_edits_keep_approvals.py::test_summary_only_delta_keeps_approval",
+    "reason": "a summary-only delta versus a sheet-only delta; both keep the approval"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "b": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "reason": "the fold flag covering a single report versus upgrade and validate, which never fold; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_the_cli_flag_folds_one_report_only",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "validate run with the fold flag absent versus the fold flag covering a single report; both decide whether the notice prints in full"
+  },
+  {
+    "a": "tests/unit/test_registry_overlap_warnings.py::test_touch_zone_overlap_lists_nested_only_claim_in_shared_zone_summary",
+    "b": "tests/unit/test_registry_overlap_warnings.py::test_touch_zone_overlap_validate_skips_nested_clashes_under_summarized_broad",
+    "reason": "nested files under a broad zone versus a nested-only claim named in the summary"
+  },
+  {
+    "a": "tests/cli/test_doctor_version_skew.py::test_unreadable_manifest_still_warns_from_agents_md",
+    "b": "tests/cli/test_doctor_version_skew.py::test_warns_when_the_minimum_is_newer_than_written_by_and_the_manifest",
+    "reason": "a missing or unreadable manifest versus a readable 0.0.1; both warn from the agents minimum"
+  },
+  {
+    "a": "tests/unit/test_context_notice_cache.py::test_upgrade_and_validate_context_always_print_in_full",
+    "b": "tests/unit/test_context_notice_cache.py::test_without_the_validate_cli_flag_reports_never_fold",
+    "reason": "validate run with the fold flag absent versus upgrade and validate, which never fold; both decide whether the notice prints in full"
+  }
+]
