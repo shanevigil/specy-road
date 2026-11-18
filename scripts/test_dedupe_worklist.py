@@ -15,11 +15,13 @@ on the same contexts file at the recorded commit rewrites the same bytes.
 ``--check`` compares the tree to that rewrite and exits non-zero on a difference
 or a broken invariant.
 
-A written item id is the collected pytest id. The parameter in brackets is
-kept, including a literal path such as ``/abs-node``, so the row names that
-item. This checkout's prefix is removed wherever it appears. A ``/home`` or
-``/Users`` name, a hostname or an ``sr/`` path that is not that prefix is
-still ``<path>``, and that one row then does not name the collected item.
+A written item id is the collected pytest id. The parameter is kept verbatim,
+including a literal path such as ``/abs-node``. Only a real machine path is
+removed: this checkout's prefix on the file path, and, when the collected id
+itself contains the repository root, the home directory, a temp-directory
+prefix or the hostname, the whole id is replaced by ``file::function[#index]``.
+``--check`` requires every other test id to be an item from ``pytest
+--collect-only``, and it checks the index of those documented rows.
 
 Each row records an action. A delete or fold names the surviving test, the
 assertion in it that covers the removed one, and, for a fold, the table that
@@ -33,12 +35,15 @@ from __future__ import annotations
 import argparse
 import ast
 import csv
+import functools
 import hashlib
 import io
 import json
 import re
+import socket
 import subprocess
 import sys
+import tempfile
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -74,6 +79,22 @@ PICKUP_NAMES = (
     "start_milestone", "reconcile_milestone", "open_milestone",
 )
 PATH_PLACEHOLDER = "<path>"
+# These strings are the same on every machine, so a fixture under one of them
+# is published the same way wherever ``--check`` runs. ``Path.home()`` and the
+# hostname are this machine's, and a collected id that contains them has no
+# stable text.
+_TEMP_PREFIXES = ("/tmp/", "/var/tmp/", "/private/tmp/", "/var/folders/")
+_STABLE_ID = re.compile(r"^(?P<func>.+)\[#(?P<index>\d+)\]$")
+ID_RULE = (
+    "A test id is the collected pytest id. The repository-root prefix is "
+    "removed from the file path and every other parameter is kept verbatim. "
+    "When the collected id contains the repository root, the home directory, "
+    "a temp-directory prefix or the hostname, the written id is "
+    "file::function[#index]: that function id with those prefixes removed, "
+    "plus the 0-based index of the item in pytest collection order. --check "
+    "accepts this form only for those items. Every other test id must equal "
+    "a collected item."
+)
 _FS_ROOT = r"home|Users|tmp|private|var|usr|opt|etc|dev|abs(?:-[A-Za-z0-9]+)?|bin|proc|sys|run|root"
 _QUOTED_PATH = re.compile(
     rf"""(?P<q>["'])/(?:{_FS_ROOT})(?![A-Za-z0-9._-])[^"'\\]*(?P=q)"""
@@ -87,12 +108,7 @@ _HOSTNAME = re.compile(r"\b[A-Za-z0-9.-]*MacBook(?:-(?:Pro|Air))?(?:-\d+)?\.loca
 _SR_PATH = re.compile(
     r"(?<![\w.-])sr/(?:work|planning|roadmap|tools)(?:/[^/\s\]\"']+)*"
 )
-_HOME_LEAK = re.compile(r"/(?:home|Users)/[A-Za-z0-9._-]+")
-_WIN_USERS = re.compile(
-    r"(?<![A-Za-z0-9])[A-Za-z]:\\(?:Users|users)\\[A-Za-z0-9._-]+"
-)
 _LOCATION_PATTERNS = (_ABS_PATH, _WIN_PATH, _TILDE_PATH, _HOSTNAME, _SR_PATH)
-_PARAM_PATTERNS = (_HOME_LEAK, _WIN_USERS, _HOSTNAME, _SR_PATH)
 DECISION_RULE = (
     "A delete or fold names the surviving test and the assertion that covers "
     "the removed case. A keep that was read names the behaviour, input class "
@@ -335,27 +351,145 @@ def _redact_location(text: str) -> str:
     return _sub(text, _LOCATION_PATTERNS)
 
 
-def normalize_test_id(test_id: str) -> str:
-    """Collected item id, with this checkout's prefix removed.
+def _relative_id(test_id: str) -> str:
+    prefix = str(REPO).rstrip("/") + "/"
+    return test_id.replace(prefix, "")
 
-    The bracket parameter is kept, so a literal path stays the pytest id.
-    A home directory, a hostname or an ``sr/`` path that is not this checkout
-    is still ``<path>``.
+
+@functools.lru_cache(maxsize=1)
+def _dir_prefixes() -> tuple[str, ...]:
+    """Directory prefixes that identify this machine, longest first."""
+    current = tempfile.gettempdir().rstrip("/") + "/"
+    prefixes = [str(REPO).rstrip("/") + "/", str(Path.home()).rstrip("/") + "/"]
+    prefixes.extend(_TEMP_PREFIXES)
+    if current not in prefixes:
+        prefixes.append(current)
+    unique = [prefix for prefix in prefixes if prefix and prefix != "/"]
+    return tuple(sorted(set(unique), key=len, reverse=True))
+
+
+@functools.lru_cache(maxsize=1)
+def _marker_patterns() -> tuple[re.Pattern[str], ...]:
+    patterns = [
+        re.compile(rf"(?<![.\w]){re.escape(prefix)}") for prefix in _dir_prefixes()
+    ]
+    host = socket.gethostname()
+    if host:
+        patterns.append(re.compile(rf"(?<![\w.-]){re.escape(host)}(?![\w.-])"))
+    return tuple(patterns)
+
+
+def _machine_specific(text: str) -> bool:
+    """True when text contains this checkout, the home or temp dir, or the hostname."""
+    if not text:
+        return False
+    return any(pattern.search(text) for pattern in _marker_patterns())
+
+
+def _needs_stable_id(test_id: str) -> bool:
+    """True when the collected id itself contains a machine path.
+
+    The repository prefix on the file path is not such a path: removing it
+    leaves the id pytest collects. A machine path in the parameter does not.
     """
-    prefix = str(REPO) + "/"
-    if prefix in test_id:
-        test_id = test_id.replace(prefix, "")
-    head, sep, param = test_id.partition("[")
-    if not sep:
-        return _redact_location(head)
-    return _redact_location(head) + sep + _sub(param, _PARAM_PATTERNS)
+    head = _function_id(_relative_id(test_id))
+    raw_param = test_id.split("[", 1)[1] if "[" in test_id else ""
+    return _machine_specific(raw_param) or _machine_specific(head)
 
 
-def _public_ids(compiled: dict[str, tuple[int, ...]]) -> dict[str, tuple[int, ...]]:
+def _scrub_function(function_id: str) -> str:
+    text = function_id
+    for prefix in _dir_prefixes():
+        text = re.sub(rf"(?<![.\w]){re.escape(prefix)}", "", text)
+    host = socket.gethostname()
+    if host:
+        text = re.sub(rf"(?<![\w.-]){re.escape(host)}(?![\w.-])", "", text)
+    return text
+
+
+def _items_by_function(collected: list[str]) -> dict[str, list[str]]:
+    """Collected ids of each function, in collection order."""
+    grouped: dict[str, list[str]] = defaultdict(list)
+    for node in collected:
+        grouped[_function_id(_relative_id(node))].append(node)
+    return grouped
+
+
+def _stable_form(test_id: str, collected: list[str]) -> str:
+    function = _function_id(_relative_id(test_id))
+    items = _items_by_function(collected).get(function) or []
+    if test_id not in items:
+        raise SystemExit(f"no collected item for a machine-path id: {function}")
+    return f"{_scrub_function(function)}[#{items.index(test_id)}]"
+
+
+def normalize_test_id(test_id: str, collected: list[str] | None = None) -> str:
+    """Collected item id, or ``file::function[#index]`` when it has no stable text.
+
+    The bracket parameter is kept verbatim, so ``/abs-node`` stays the pytest
+    id. A collected id that contains the repository root, the home directory,
+    a temp-directory prefix or the hostname is replaced by the function id
+    plus that item's index in ``collected``.
+    """
+    if not _needs_stable_id(test_id):
+        return _relative_id(test_id)
+    if collected is None:
+        raise SystemExit("a machine path in an item id needs the collected ids")
+    return _stable_form(test_id, collected)
+
+
+def _items_for(function: str, grouped: dict[str, list[str]]) -> list[str] | None:
+    if function in grouped:
+        return grouped[function]
+    owners = [name for name in grouped if _scrub_function(name) == function]
+    if len(owners) == 1:
+        return grouped[owners[0]]
+    return None
+
+
+def item_id_problems(test_ids: list[str], collected: list[str]) -> list[str]:
+    """Ids that are neither a collected item nor the documented stable form."""
+    grouped = _items_by_function(collected)
+    known = set(collected)
+    problems = []
+    for test_id in test_ids:
+        problems.extend(_one_item_problem(test_id, grouped, known, collected))
+    return problems
+
+
+def _one_item_problem(test_id, grouped, known, collected) -> list[str]:
+    if test_id in known:
+        if _needs_stable_id(test_id):
+            return [f"collected id carries a machine path: {test_id}"]
+        return []
+    return _stable_problem(test_id, grouped, collected)
+
+
+def _stable_problem(test_id, grouped, collected) -> list[str]:
+    match = _STABLE_ID.fullmatch(test_id)
+    if not match:
+        return [f"test_id is not a collected item: {test_id}"]
+    items = _items_for(match.group("func"), grouped)
+    index = int(match.group("index"))
+    if items is None:
+        return [f"stable id does not name one collected function: {test_id}"]
+    if index >= len(items):
+        return [f"stable id index is outside collection: {test_id}"]
+    raw = items[index]
+    if not _needs_stable_id(raw):
+        return [f"stable id replaces an item with no machine path: {test_id}"]
+    if normalize_test_id(raw, collected) != test_id:
+        return [f"stable id does not match the documented form: {test_id}"]
+    return []
+
+
+def _public_ids(
+    compiled: dict[str, tuple[int, ...]], collected: list[str],
+) -> dict[str, tuple[int, ...]]:
     """The arc map keyed by :func:`normalize_test_id`. Two raw ids must not collapse."""
     public: dict[str, tuple[int, ...]] = {}
     for test_id, arcs in compiled.items():
-        key = normalize_test_id(test_id)
+        key = normalize_test_id(test_id, collected)
         if key in public:
             raise SystemExit("two tests normalise to one id")
         public[key] = arcs
@@ -373,7 +507,9 @@ def collected_ids() -> list[str]:
     return [line.strip() for line in proc.stdout.splitlines() if "::" in line]
 
 
-def compile_arcs(contexts: dict) -> tuple[dict[str, tuple[int, ...]], list[tuple]]:
+def compile_arcs(
+    contexts: dict, collected: list[str],
+) -> tuple[dict[str, tuple[int, ...]], list[tuple]]:
     """``{test id: sorted arc ids}`` and the arc each id names. Empty sets stay."""
     vocabulary: dict[tuple, int] = {}
     meta: list[tuple] = []
@@ -384,7 +520,7 @@ def compile_arcs(contexts: dict) -> tuple[dict[str, tuple[int, ...]], list[tuple
         if isinstance(files, dict):
             raw = _arcs_of(files)
         compiled[test_id] = tuple(sorted(_intern(arc, vocabulary, meta) for arc in raw))
-    return _public_ids(compiled), meta
+    return _public_ids(compiled, collected), meta
 
 
 def _arcs_of(files: dict) -> list[tuple]:
@@ -719,6 +855,14 @@ def _row_problems(row: dict, compiled) -> list[str]:
     return problems
 
 
+def _row_ids(rows: list[dict]) -> list[str]:
+    found = []
+    for row in rows:
+        found.append(row["test_id"])
+        found.extend(json.loads(row["counterparts"]))
+    return found
+
+
 def render(contexts_path: Path) -> dict[Path, str]:
     """The four worklists and the module manifest, as text."""
     header, contexts = _load(contexts_path)
@@ -726,20 +870,25 @@ def render(contexts_path: Path) -> dict[Path, str]:
         raise SystemExit(
             f"contexts pytest_exit is {header.get('pytest_exit')}; arcs are incomplete"
         )
-    compiled, meta = compile_arcs(contexts)
+    collected = collected_ids()
+    compiled, meta = compile_arcs(contexts, collected)
     ordered = sorted(
         ((test_id, arcs) for test_id, arcs in compiled.items() if arcs),
         key=lambda item: item[0],
     )
     groups = identical_groups(compiled)
     pairs = jaccard_pairs(ordered)
-    collected = collected_ids()
     lists = module_lists(tracked_modules())
     rows = build_rows(header, compiled, meta, groups, pairs, lists)
     flat = [row for name in SUBSYSTEMS for row in rows[name]]
     problems = invariant_problems(flat, compiled)
     if problems:
         raise SystemExit("worklist invariants failed:\n" + "\n".join(problems[:30]))
+    id_problems = item_id_problems(_row_ids(flat), collected)
+    if id_problems:
+        raise SystemExit(
+            "item ids do not match collection:\n" + "\n".join(id_problems[:30])
+        )
     texts = {FILES[name]: _csv(rows[name]) for name in SUBSYSTEMS}
     texts[MANIFEST] = _manifest(header, contexts, collected, lists, rows)
     if any(_machine_path(text) for text in texts.values()):
@@ -751,14 +900,8 @@ def render(contexts_path: Path) -> dict[Path, str]:
 
 
 def _machine_path(text: str) -> bool:
-    """True when a location, or an uncommittable leak inside a parameter, remains.
-
-    A literal path inside ``[...]`` is the pytest item id and is allowed.
-    """
-    outside = re.sub(r"\[[^\[\]]*\]", "[]", text)
-    if _QUOTED_PATH.search(outside) or any(p.search(outside) for p in _LOCATION_PATTERNS):
-        return True
-    return any(p.search(text) for p in _PARAM_PATTERNS)
+    """True when a written worklist still contains a machine path."""
+    return _machine_specific(text)
 
 
 def _load(path: Path) -> tuple[dict, dict]:
@@ -801,6 +944,7 @@ def _manifest(header, contexts, collected, lists, rows) -> str:
             "earlier of review-gate, worker, pickup-finish, rest."
         ),
         "decision_rule": DECISION_RULE,
+        "id_rule": ID_RULE,
         "unattributed_tests": len(unattributed),
         "unattributed_id_sha256": hashlib.sha256("\n".join(unattributed).encode()).hexdigest(),
         "unattributed_note": (
@@ -838,16 +982,16 @@ def _write(texts: dict[Path, str]) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
-        epilog=(
-            "Item ids keep the pytest parameter, including a literal path. "
-            "Only this checkout's prefix is removed. A /home or /Users name, "
-            "a hostname or an sr/ path that is not that prefix becomes <path>, "
-            "and that row no longer names the collected item."
-        ),
+        epilog=ID_RULE,
     )
     parser.add_argument("contexts", nargs="?", default=str(DEFAULT_CONTEXTS))
-    parser.add_argument("--check", action="store_true",
-                        help="exit non-zero unless the worklists match a fresh rewrite")
+    parser.add_argument(
+        "--check", action="store_true",
+        help=(
+            "exit non-zero unless the worklists match a fresh rewrite and "
+            "each test id is a collected item or the documented stable form"
+        ),
+    )
     args = parser.parse_args(argv)
     texts = render(Path(args.contexts))
     if args.check:
