@@ -17,7 +17,7 @@ aliases:
   - claude-fable-5-1-thinking-max
 checkpoint: same-as-api_id
 alias_moves: 'no'
-version_rank: latest
+version_rank: previous
 release_date: 2026-09-01
 researched: 2026-10-26
 researcher: claude

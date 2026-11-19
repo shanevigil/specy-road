@@ -6,7 +6,7 @@ model: GPT-6.1 Sol
 api_id: gpt-6.1-sol
 checkpoint: same-as-api_id
 alias_moves: 'no'
-version_rank: latest
+version_rank: previous
 release_date: 2026-09-29
 researched: 2026-10-20
 researcher: merged

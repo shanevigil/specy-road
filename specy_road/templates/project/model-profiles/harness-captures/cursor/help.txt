@@ -86,7 +86,7 @@ Commands:
   team                         View or switch the active team for this account
   bedrock                      Configure AWS Bedrock usage for CLI
   about [options]              Display version, system, and account information
-  update                       Update Cursor Agent to the latest version
+  update [options]             Update Cursor Agent to the latest version
   create-chat                  Create a new empty chat and return its ID
   generate-rule|rule           Generate a new Cursor rule with interactive
                                prompts
