@@ -276,6 +276,33 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "classify reads every wrapper it knows (env, sudo, command, nohup, exec, time, nice, xargs, timeout, doas and the rest of _WRAPPERS) by the basename of the word, as it already reads git: '/usr/bin/env -S \"git stash\"', '(/usr/bin/env -S \"git stash\")', '/bin/env --split=\"git stash\"' and '/usr/bin/sudo env -S \"git stash\"' (verified allowed on WIP ce19f9ad, 2026-11-19) are refused with the same reason as their bare forms",
+        "The enumerated wrapper test from M22.77 adds path-qualified spellings (/usr/bin/<w>, /bin/<w>, ./<w>) for each wrapper; every destructive case gets the bare reason through them, and the ordinary-commands table stays allowed through them",
+        "The enumerated test compares each wrapped destructive form against its bare form and fails on any difference in verdict or reason, so a regression of an existing refusal fails in CI (the coordinator also runs its own untracked base-versus-head check before any risk-ok; that check is not a READY item)",
+        "CHANGELOG.md [Unreleased] extends the guard Security entry; no version heading is written"
+      ],
+      "codename": "the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a",
+      "dependencies": [
+        "23ba8a95-3926-453b-964a-b5a564c85c7c"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.78",
+      "node_key": "f73d1ecb-3815-4f7c-b3a0-92e3e0d68af3",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.78_the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a_f73d1ecb-3815-4f7c-b3a0-92e3e0d68af3.md",
+      "sibling_order": 78,
+      "status": "Not Started",
+      "title": "The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word",
+      "touch_zones": [
+        "specy_road/orchestration/guard/tool_call_guard.py",
+        "specy_road/orchestration/guard/tool_call_guard_shapes.py",
+        "tests/unit/test_tool_call_guard.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
