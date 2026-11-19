@@ -253,7 +253,7 @@
     {
       "acceptance": [
         "The guard reads env's arguments with GNU getopt_long rules for the option set of GNU coreutils env (the version is named in a comment): a long option matches by any unambiguous prefix, with its value either attached with '=' or in the next argument; short options cluster, and an option that takes a value takes the rest of the cluster or the next argument. So 'env --split \"git stash\"', 'env --s \"git stash\"', 'env --split=\"git stash\"' and 'env --spl=\"git stash\"' (verified allowed on WIP 42fabcea, 2026-11-18) are refused with the same reason as 'env -S \"git stash\"'. Options that take a value but no command (for example --unset, --chdir) consume their value and are not read as the command",
-        "One enumerated test, with no new dependency, runs every case of the existing destructive-command tables through every wrapper form the guard handles: an opener ('!', '{ …; }', 'if true; then …; fi'), a subshell, an assignment prefix, sudo, and env with each spelling of the split-string option (-S separate, clustered and attached, and every unambiguous prefix of --split-string with '=' and with a separate value). Each wrapped form gets the same verdict and reason as the bare case. The ordinary-commands table, run through the same forms, stays allowed",
+        "One enumerated test, with no new dependency, runs every case of the existing destructive-command tables through every wrapper form the guard handles: an opener ('!', '{ …; }', 'if true; then …; fi'), a subshell, an assignment prefix, sudo, and env with each spelling of the split-string option (-S separate, clustered and attached, and every unambiguous prefix of --split-string with '=' and with a separate value). Each wrapped form gets the same verdict and reason as the bare case. The ordinary-commands table, run through the same forms, stays allowed, except that a split-string whose command cannot be determined without runtime state (a variable reference such as $HOME or ${DIR}, or an unknown escape) is refused as opaque: the guard fails closed where it cannot know the command (coordinator 2026-11-19 under the operator's authorization, after Terra's block at 1eadbdaa)",
         "Every existing guard table row passes unchanged; the forms M22.74 and M22.76 fixed stay refused",
         "CHANGELOG.md [Unreleased] extends the guard Security entry; no version heading is written"
       ],
@@ -267,7 +267,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.77_the-tool-call-guard-parses-env-s-options-the-way-gnu-getopt-does_23ba8a95-3926-453b-964a-b5a564c85c7c.md",
       "sibling_order": 77,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test",
       "touch_zones": [
         "specy_road/orchestration/guard/tool_call_guard.py",

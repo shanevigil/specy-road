@@ -73,7 +73,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.7` | Test dedupe, public seams, properties and the smoke lane | milestone | — | Not Started |
 | `M16.7.1` | Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it | task | Agentic-led | Complete |
 | `M16.7.2` | Tests: apply the dedupe worklist for review gate | task | Agentic-led | Complete |
-| `M16.7.3` | Tests: apply the dedupe worklist for worker | task | Agentic-led | Not Started |
+| `M16.7.3` | Tests: apply the dedupe worklist for worker | task | Agentic-led | Complete |
 | `M16.7.5` | Tests: apply the dedupe worklist for the rest | task | Agentic-led | Not Started |
 | `M16.7.6` | Tests: public seams replace private-name patches, and no test sleeps on the wall clock | task | Agentic-led | Not Started |
 | `M16.7.7` | Tests: five named properties replace the single-input tests they cover | task | Agentic-led | Not Started |
@@ -272,7 +272,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.74` | The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment | task | Agentic-led | Complete |
 | `M22.75` | Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block | task | Agentic-led | Complete |
 | `M22.76` | The tool-call guard reads env's clustered and attached -S like the separate flag | task | Agentic-led | Complete |
-| `M22.77` | The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test | task | Agentic-led | Not Started |
+| `M22.77` | The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test | task | Agentic-led | Complete |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |

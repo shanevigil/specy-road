@@ -1096,6 +1096,25 @@ are removed in the release after 0.3.1:
   (`env -vS "git stash"`, `env -iS "git stash"`, `env -S"git stash"`,
   `env -vS"git stash"`), including behind those openers, wrappers and
   assignments. The reason is the one the bare command already gets.
+  GNU coreutils 9.4 `env` options are read with `getopt_long`: a long option
+  matches by any unambiguous prefix, its value attached with `=` or taken from
+  the next argument, and short options cluster, so `env --split "git stash"`,
+  `env --s "git stash"`, `env --split="git stash"` and `env --spl="git stash"`
+  are the same split-string option as `env -S`. `--unset` and `--chdir`, and
+  their prefixes, consume their value, so that word is not the command. In the
+  split string, GNU coreutils 9.4 escapes are decoded: `\_` is an argument
+  break (a space inside double quotes, and literal inside single quotes),
+  `\t` `\n` `\f` `\v` `\r` embed that character, `\\` and the quote escapes
+  insert themselves, `\c` ends the string, and `\#` is a literal hash. An
+  embedded tab or newline is read as a space, so `env -S 'git\tstash'` is
+  `git stash`. The words that split produces are parsed as env options before
+  the command, so `env -S '--unset git stash'` unsets `git` and runs `stash`.
+  A variable reference (`$HOME`, `${DIR}`) or an unknown escape cannot be known
+  without runtime state and is refused as opaque, including when it sits inside
+  a nested `-S`. A `NAME=VALUE` word is kept in the command, so a `GIT_CONFIG*`
+  assignment after an env option is still refused (`env -i GIT_CONFIG_GLOBAL=/tmp/c git x`,
+  `env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'`). The refusal is that command's
+  own reason when the command can be read.
 
 ## [v0.3.1-rc2] - 2026-10-29
 

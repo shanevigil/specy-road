@@ -49,12 +49,27 @@ _WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs",
 _WRAPPER_LEADING_ARG = {"timeout"}
 #: Shell words that open a command without being one: ``(``, ``{``, ``if``/``then``/``do``…, ``!``.
 _OPENERS = {"(", "{", "if", "then", "elif", "else", "while", "until", "do", "!"}
-#: ``env -S "git stash"`` splits its argument into a command: opaque to a token parser.
-_ENV_SPLIT = {"-S", "--split-string"}
-#: GNU ``env`` short options that take an argument, so the rest of a cluster belongs to them.
-_ENV_SHORT_WITH_ARG = set("Cu")
-#: GNU ``env`` short options with no argument; a later ``S`` in the same cluster is ``-S``.
-_ENV_SHORT_NO_ARG = set("0iv")
+# GNU coreutils 9.4 ``env``: ``getopt_long`` shortopts ``+C:iS:u:v0``.
+# A long option matches by an unambiguous prefix (an exact name wins). Its value is attached
+# with ``=`` or, when required, taken from the next argument. Short options cluster; one that
+# takes a value takes the rest of the cluster or the next argument. The leading ``+`` stops at
+# the first non-option. A lone ``-`` is ``-i`` and ends options. After ``-S`` / ``--split-string``,
+# coreutils appends the remaining arguments to that command and does not parse them as options.
+_ENV_LONG: tuple[tuple[str, str, str], ...] = (
+    ("ignore-environment", "no", "i"),
+    ("null", "no", "0"),
+    ("unset", "required", "u"),
+    ("chdir", "required", "C"),
+    ("split-string", "required", "S"),
+    ("block-signal", "optional", ""),
+    ("default-signal", "optional", ""),
+    ("ignore-signal", "optional", ""),
+    ("list-signal-handling", "no", ""),
+    ("debug", "no", "v"),
+    ("help", "no", ""),
+    ("version", "no", ""),
+)
+_ENV_BY_SHORT = {short: (name, kind) for name, kind, short in _ENV_LONG if short}
 #: Reasons about the working tree only; other worktrees' sessions are not at risk.
 _TREE_SCOPED = ("git switch", "git checkout", "git restore", "git clean", "git commit", "git add", "git reset")
 #: ``git -C <dir>`` / ``--work-tree`` act on another tree: never scope those to the caller's.
@@ -65,7 +80,7 @@ _EXPANSION = re.compile(r"[$`*?\[]|\{[^}]*(,|\.\.)")
 _EXPANSION_SYNTAX = re.compile(r"\$\{[^}]*\}|\$\w+|[$`{}*?\[\],]")
 #: ``${NAME:-word}`` / ``${NAME=word}``: the word the author wrote as the fallback.
 _DEFAULT = re.compile(r"\$\{\w+:?[-=]([^}]*)\}")
-_FUNC_DEF = re.compile(r"(^|[\s;])\w+\s*\(\s*\)\s*\{")
+_FUNC_DEF = re.compile(r"(^|[\s;(])\w+\s*\(\s*\)\s*\{")
 _INTERPRETERS = {"python", "python3", "perl", "ruby", "node", "php"}
 #: ``$(…)``, ``<(…)``, ``>(…)`` and backticks all run their body as a command.
 _SUBSTITUTION = re.compile(r"[$<>]\(([^()]*)\)|`([^`]*)`")
@@ -120,39 +135,252 @@ def split_segments(command: str) -> list[str]:
     return [x.strip() for x in out if x.strip()]
 
 
-def _env_splits(arg: str) -> bool:
-    """``env -S`` / ``--split-string`` hides its command in one argument.
+@dataclass(frozen=True)
+class _EnvRun:
+    ok: bool
+    split: bool
+    command: tuple[str, ...]
+    shell: str
+    determined: bool = True
+    source: str = ""
+    ate_option: bool = False
 
-    Short options are one cluster, as ``env`` reads them: ``-vS`` and ``-iS`` are
-    ``-S``, and ``-Sgit stash`` is ``-S`` with the command attached. ``-u`` and
-    ``-C`` take the rest of the cluster, so ``-uS`` is not ``-S``.
+
+def _env_long_name(name: str) -> tuple[str, str] | None:
+    """``(kind, canonical)`` when ``name`` is an unambiguous long option, else ``None``."""
+    matches = [row for row in _ENV_LONG if row[0].startswith(name)]
+    exact = [row for row in matches if row[0] == name]
+    chosen = exact[0] if exact else (matches[0] if len(matches) == 1 else None)
+    if chosen is None:
+        return None
+    return chosen[1], chosen[0]
+
+
+def _env_long_at(tokens: list[str], i: int) -> tuple[int, str, str | None] | None:
+    """One long option at ``tokens[i]``: ``(next index, canonical name, value)``, or ``None``."""
+    name, sep, attached = tokens[i][2:].partition("=")
+    matched = _env_long_name(name)
+    if matched is None:
+        return None
+    kind, canonical = matched
+    if kind == "no":
+        return None if sep else (i + 1, canonical, None)
+    if kind == "optional":
+        return i + 1, canonical, (attached if sep else None)
+    if sep:
+        return i + 1, canonical, attached
+    if i + 1 >= len(tokens):
+        return None
+    return i + 2, canonical, tokens[i + 1]
+
+
+def _env_short_at(tokens: list[str], i: int) -> tuple[int, list[tuple[str, str | None]]] | None:
+    """One short cluster: ``(next index, [(canonical name, value), ...])``, or ``None``."""
+    arg, j, taken = tokens[i], 1, []
+    while j < len(arg):
+        spec = _ENV_BY_SHORT.get(arg[j])
+        if spec is None:
+            return None
+        name, kind = spec
+        if kind != "required":
+            taken.append((name, None))
+            j += 1
+            continue
+        rest = arg[j + 1:]
+        if rest:
+            taken.append((name, rest))
+            return i + 1, taken
+        if i + 1 >= len(tokens):
+            return None
+        taken.append((name, tokens[i + 1]))
+        return i + 2, taken
+    return i + 1, taken
+
+
+# GNU coreutils 9.4 ``env -S``: unquoted whitespace separates words. These escapes insert a
+# character (they are not themselves separators — a following scan does not re-split them).
+_ENV_WS = frozenset(" \t\n\v\f\r")
+_ENV_ESC = {"\\": "\\", "'": "'", '"': '"', "t": "\t", "n": "\n", "r": "\r", "v": "\v", "f": "\f", "#": "#", "$": "$"}
+_ENV_SPLIT_OPAQUE = "env -S splits its argument into a command the guard cannot see; run the git command plainly"
+
+
+def _env_flush(cur: list[str], argv: list[str]) -> None:
+    if cur:
+        argv.append("".join(cur))
+        cur.clear()
+
+
+def _env_split_escape(value: str, i: int, dq: bool, cur: list[str], argv: list[str]) -> int | None:
+    """The index after one backslash escape, or ``None`` when env would reject it."""
+    if i + 1 >= len(value):
+        return None
+    nxt = value[i + 1]
+    if nxt == "c":
+        if dq:
+            return None
+        _env_flush(cur, argv)
+        return len(value)
+    if nxt == "_" and not dq:
+        _env_flush(cur, argv)
+        return i + 2
+    if nxt == "_":
+        cur.append(" ")
+        return i + 2
+    mapped = _ENV_ESC.get(nxt)
+    if mapped is None:
+        return None
+    cur.append(mapped)
+    return i + 2
+
+
+def _env_split_plain(value: str, i: int, dq: bool, cur: list[str], argv: list[str]) -> tuple[int, bool] | None:
+    """One unquoted or double-quoted character. ``None`` means ``$`` / ``${VAR}``."""
+    ch = value[i]
+    if ch == '"':
+        return i + 1, not dq
+    if not dq and ch in _ENV_WS:
+        _env_flush(cur, argv)
+        return i + 1, dq
+    if ch == "$":
+        return None
+    if not dq and ch == "#" and not cur:
+        _env_flush(cur, argv)
+        return len(value), dq
+    cur.append(ch)
+    return i + 1, dq
+
+
+def _env_split_argv(value: str) -> tuple[str, ...] | None:
+    """GNU coreutils 9.4 ``-S`` words, or ``None`` when an escape cannot be known.
+
+    ``None`` is an unknown escape, a trailing backslash, ``\\c`` inside double quotes,
+    or ``$`` / ``${VAR}`` outside single quotes: the command needs runtime state.
+    Single quotes keep every character except ``\\\\`` and ``\\'``.
     """
-    if arg in _ENV_SPLIT or arg.startswith("--split-string="):
-        return True
-    if len(arg) < 2 or not arg.startswith("-") or arg.startswith("--"):
-        return False
-    for letter in arg[1:]:
-        if letter == "S":
-            return True
-        if letter in _ENV_SHORT_WITH_ARG or letter not in _ENV_SHORT_NO_ARG:
-            return False
-    return False
+    argv, cur = [], []
+    i, sq, dq = 0, False, False
+    while i < len(value):
+        ch = value[i]
+        nxt = value[i + 1] if i + 1 < len(value) else ""
+        if sq:
+            if ch == "\\" and nxt in "\\'":
+                cur.append(nxt)
+                i += 2
+                continue
+            if ch == "'":
+                sq = False
+            else:
+                cur.append(ch)
+            i += 1
+            continue
+        if ch == "\\":
+            i = _env_split_escape(value, i, dq, cur, argv)
+            if i is None:
+                return None
+            continue
+        if ch == "'" and not dq:
+            sq = True
+            i += 1
+            continue
+        step = _env_split_plain(value, i, dq, cur, argv)
+        if step is None:
+            return None
+        i, dq = step
+    _env_flush(cur, argv)
+    return tuple(argv)
+
+
+def _env_from_split(value: str, trailing: list[str]) -> _EnvRun:
+    """Words ``-S`` builds, then parsed again as env options before the command.
+
+    ``--unset`` and ``--chdir`` inside the split string consume the next word, so
+    that word is not the command. ``ate_option`` is set when this rescan changes
+    the words. A nested split that cannot be known (a ``$`` / ``${VAR}`` or an
+    unknown escape) stays unknowable.
+    """
+    words = _env_split_argv(value)
+    extra = " ".join(shlex.quote(part) for part in trailing)
+    source = f"{value} {extra}" if extra else value
+    if words is None:
+        return _EnvRun(True, True, (), source, False, source)
+    parsed = _env_invocation(["env", *words, *trailing])
+    if not parsed.ok:
+        return _EnvRun(False, False, (), source)
+    if not parsed.determined:
+        return parsed
+    command = parsed.command
+    whole = (*words, *trailing)
+    removed = whole[:len(whole) - len(command)]
+    ate = any(word.startswith("-") for word in removed)
+    return _EnvRun(True, True, command, shlex.join(command), True, source, ate)
+
+
+def _env_invocation(tokens: list[str]) -> _EnvRun:
+    """What GNU coreutils 9.4 ``env`` runs for ``tokens`` that start with ``env``.
+
+    ``ok`` is false when env rejects the options. A split-string is decoded and its
+    words are parsed as options again. The command starts at the first non-option
+    and keeps every ``NAME=VALUE`` word, so a ``GIT_CONFIG*`` assignment is still
+    classified wherever it sits among env's arguments.
+    """
+    i, bad = 1, _EnvRun(False, False, (), "")
+    while i < len(tokens):
+        arg = tokens[i]
+        if arg in ("--", "-"):
+            i += 1
+            break
+        if arg.startswith("--"):
+            step = _env_long_at(tokens, i)
+            if step is None:
+                return bad
+            i, canonical, value = step
+            if canonical == "split-string":
+                return _env_from_split(value or "", tokens[i:])
+            continue
+        if arg.startswith("-"):
+            short = _env_short_at(tokens, i)
+            if short is None:
+                return bad
+            i, taken = short
+            split = next((val for name, val in taken if name == "split-string"), None)
+            if split is not None:
+                return _env_from_split(split, tokens[i:])
+            continue
+        break
+    return _EnvRun(True, False, tuple(tokens[i:]), "")
 
 
 def _is_opaque_subject(tokens: list[str], i: int) -> bool:
-    """``env -S`` or a ``GIT_CONFIG*`` assignment: the opaque checks judge it, so unwrapping stops."""
+    """``env``'s split-string, or a ``GIT_CONFIG*`` assignment: the opaque checks judge it."""
     token = tokens[i]
-    if token == "env" and any(_env_splits(a) for a in tokens[i + 1:]):
-        return True
+    if token == "env":
+        parsed = _env_invocation(tokens[i:])
+        return bool(parsed.ok and (parsed.split or shapes.env_config(tokens[i:])))
     return bool(shapes.env_config([token, "git"]))
+
+
+def _skip_wrapper(tokens: list[str], i: int, wrapped: bool) -> tuple[list[str], int, bool] | None:
+    """Advance past one wrapper word. ``env`` is replaced by the command it would run."""
+    t = tokens[i]
+    if t == "env":
+        parsed = _env_invocation(tokens[i:])
+        if parsed.ok:
+            return [*tokens[:i], *parsed.command], i, False
+    if t in _WRAPPERS:
+        return tokens, i + (2 if t in _WRAPPER_LEADING_ARG else 1), True
+    if wrapped and t.startswith("-"):
+        step = 2 if t in _WRAPPER_FLAG_ARG and "=" not in t else 1
+        return tokens, i + step, wrapped
+    return None
 
 
 def _unwrap(tokens: list[str], *, keep_signals: bool = False) -> list[str]:
     """Strip ``VAR=x``, ``command``/``env``/``sudo``-style wrappers, control-flow openers, and subshell parens.
 
     A ``(`` glued to the next word is peeled and that word is read, including when an opener
-    precedes it (``! (git stash)``). With ``keep_signals``, unwrapping stops at ``env -S`` or a
-    ``GIT_CONFIG*`` assignment so the opaque checks still see them.
+    precedes it (``! (git stash)``). ``env``'s options are read with getopt, so ``--unset`` and
+    ``--chdir`` consume their values. With ``keep_signals``, unwrapping stops at ``env``'s
+    split-string or a ``GIT_CONFIG*`` assignment so the opaque checks still see them.
     """
     i = 0
     wrapped = False
@@ -166,14 +394,10 @@ def _unwrap(tokens: list[str], *, keep_signals: bool = False) -> list[str]:
         if ("=" in t and not t.startswith("-")) or t in _OPENERS:
             i += 1
             continue
-        if t in _WRAPPERS:
-            wrapped = True
-            i += 2 if t in _WRAPPER_LEADING_ARG else 1
-            continue
-        if wrapped and t.startswith("-"):
-            i += 2 if t in _WRAPPER_FLAG_ARG and "=" not in t else 1  # a wrapper's flag, with its argument
-            continue
-        break
+        step = _skip_wrapper(tokens, i, wrapped)
+        if step is None:
+            break
+        tokens, i, wrapped = step
     out = tokens[i:]
     return [t.rstrip(")") if t.endswith(")") and t != ")" else t for t in out if t not in (")", "}")]
 
@@ -304,6 +528,42 @@ def classify_segment(segment: str) -> str | None:  # noqa: C901 — baseline 202
     return None
 
 
+def _embedded_space_reason(command: tuple[str, ...]) -> str | None:
+    """A word env built with an embedded tab or newline, read with those as spaces."""
+    for word in command:
+        if not any(ch in word for ch in "\t\n\v\f\r"):
+            continue
+        flat = "".join(" " if ch in "\t\n\v\f\r" else ch for ch in word)
+        reason = classify(flat)
+        if reason:
+            return reason
+    return None
+
+
+def _split_command_reason(seen: list[str]) -> str | None:
+    """The reason for the command an ``env`` split-string runs, else ``None``.
+
+    Options in the split string are parsed first. When one consumes a word, only
+    the remaining command is classified (``--unset git`` is not ``git``). A
+    ``NAME=VALUE`` word in that command is kept, so ``GIT_CONFIG*`` after an
+    option is still the env-config refusal. Otherwise
+    the split text is classified as the shell command it was written as. ``$`` and
+    ``${VAR}`` are not expanded. An unknown escape has no knowable argv: the shell
+    reason stands, or the opaque reason, and that case is never allowed.
+    """
+    if not seen or seen[0] != "env":
+        return None
+    parsed = _env_invocation(seen)
+    if not (parsed.ok and parsed.split):
+        return None
+    if not parsed.determined:
+        return classify(parsed.source) or _ENV_SPLIT_OPAQUE
+    command_reason = classify(parsed.shell) or _embedded_space_reason(parsed.command)
+    if parsed.ate_option:
+        return command_reason
+    return classify(parsed.source) or command_reason
+
+
 def _opaque(segment: str) -> str | None:
     """Shapes a token parser cannot follow: refused when they mention git, rather than waved through.
 
@@ -317,22 +577,21 @@ def _opaque(segment: str) -> str | None:
     if _FUNC_DEF.search(segment) and _GIT_WORD.search(segment):
         return "defines a shell function and mentions git; the guard cannot follow it — run the git command plainly"
     try:
-        head = _unwrap(shlex.split(segment, comments=True))
-    except ValueError:
-        return None
-    try:
         raw = shlex.split(segment, comments=True)
     except ValueError:
-        raw = []
+        return None
+    # The split string is the command, so the reason is that command's own reason.
+    seen = _unwrap(raw, keep_signals=True)
+    if shapes.env_config(seen):
+        return shapes.env_config(seen)
+    split_reason = _split_command_reason(seen)
+    if split_reason:
+        return split_reason
+    head = _unwrap(raw)
     if head and _EXPANSION.search(head[0]) and head[0] not in ("[", "[[") and _may_name_git(head[0]):
         return "the command name comes from a shell expansion; the guard cannot see it — run the command plainly"
     if any(_EXPANSION.search(t) and " " not in t and _EXPANSION_SYNTAX.sub("", t).startswith("git") for t in raw):
         return "a shell expansion could build `git` here; the guard cannot see it — run the git command plainly"
-    seen = _unwrap(raw, keep_signals=True)
-    if shapes.env_config(seen):
-        return shapes.env_config(seen)
-    if seen and seen[0] == "env" and any(_env_splits(a) for a in seen[1:]) and _GIT_WORD.search(segment):
-        return "env -S splits its argument into a command the guard cannot see; run the git command plainly"
     if raw and "xargs" in raw[:4] and head and head[0].rsplit("/", 1)[-1] == "git" and len(head) == 1:
         return "xargs feeds git its subcommand from stdin; the guard cannot see it — run the git command plainly"
     if head and head[0].rsplit("/", 1)[-1].rstrip("0123456789.") in _INTERPRETERS and _GIT_WORD.search(segment) \
