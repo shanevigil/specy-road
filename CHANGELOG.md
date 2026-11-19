@@ -1096,6 +1096,14 @@ are removed in the release after 0.3.1:
   (`env -vS "git stash"`, `env -iS "git stash"`, `env -S"git stash"`,
   `env -vS"git stash"`), including behind those openers, wrappers and
   assignments. The reason is the one the bare command already gets.
+  GNU coreutils 9.4 `env` options are read with `getopt_long`: a long option
+  matches by any unambiguous prefix, its value attached with `=` or taken from
+  the next argument, and short options cluster, so `env --split "git stash"`,
+  `env --s "git stash"`, `env --split="git stash"` and `env --spl="git stash"`
+  are the same split-string option as `env -S`. `--unset` and `--chdir`, and
+  their prefixes, consume their value, so that word is not the command. Every
+  destructive command and every ordinary command is checked through those
+  wrappers, including each spelling of the split-string option.
 
 ## [v0.3.1-rc2] - 2026-10-29
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import shlex
 from pathlib import Path
 
 import pytest
@@ -103,6 +104,13 @@ from specy_road.orchestration.workers import worker_state as ws
     ('FOO=1 env -vS"git stash"', "env -S splits"),
     ("(GIT_CONFIG_GLOBAL=/tmp/c git x)", "GIT_CONFIG*"),
     ("(git --config-env=alias.x=BODY x)", "--config-env=alias"),
+    ("env --u HOME git stash", "stash stack is shared"),
+    ("env --ch /tmp git stash", "stash stack is shared"),
+    ("env --unset=HOME git stash", "stash stack is shared"),
+    ("env --chdir=/tmp git switch dev", "switching branches"),
+    ("env --default-signal git stash", "stash stack is shared"),
+    ("env --default-signal=PIPE git stash", "stash stack is shared"),
+    ("env --debug git stash", "stash stack is shared"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
@@ -136,6 +144,11 @@ def test_destructive_commands_are_classified(command: str, fragment: str) -> Non
     "${PYTHON:-python} -m pytest",
     "env -i git status",
     "env -u HOME ls",
+    "env -uHOME ls",
+    "env --u=HOME ls",
+    "env --unset git stash",
+    "env --chdir git stash",
+    "env --ch git status",
 ])
 def test_ordinary_commands_pass(command: str) -> None:
     assert g.classify(command) is None, command
@@ -365,3 +378,92 @@ def test_staged_restore_of_a_path_is_fine() -> None:
 def test_malformed_hook_stdin_denies() -> None:
     with pytest.raises(ValueError):
         tg.read_payload("not json")
+
+
+# Long options of GNU coreutils 9.4 env. A prefix of split-string that matches one name is unambiguous.
+ENV_LONG_NAMES = (
+    "ignore-environment", "null", "unset", "chdir", "split-string", "block-signal",
+    "default-signal", "ignore-signal", "list-signal-handling", "debug", "help", "version",
+)
+
+
+def param_rows(fn: object) -> list:
+    marks = getattr(fn, "pytestmark", [])
+    if not isinstance(marks, list):
+        marks = [marks]
+    rows: list = []
+    for mark in marks:
+        if mark.name == "parametrize":
+            rows.extend(mark.args[1])
+    return rows
+
+
+def command_text(row: object) -> str:
+    return row[0] if isinstance(row, tuple) else str(row)
+
+
+def see_through_forms(command: str) -> list[str]:
+    """Opener, brace group, ``if``, subshell, assignment prefix, and sudo."""
+    return [
+        f"! {command}",
+        "{ " + command + "; }",
+        f"if true; then {command}; fi",
+        f"({command})",
+        f"FOO=1 {command}",
+        f"sudo {command}",
+    ]
+
+
+def split_string_prefixes() -> list[str]:
+    target = "split-string"
+    return [
+        target[:length] for length in range(1, len(target) + 1)
+        if sum(name.startswith(target[:length]) for name in ENV_LONG_NAMES) == 1
+    ]
+
+
+def env_split_forms(command: str) -> list[str]:
+    """``-S`` separate, clustered, attached, and every unambiguous ``--split-string`` prefix."""
+    quoted = shlex.quote(command)
+    forms = [f"env -S {quoted}", f"env -vS {quoted}", f"env -S{quoted}", f"env -vS{quoted}"]
+    for prefix in split_string_prefixes():
+        forms.append(f"env --{prefix} {quoted}")
+        forms.append(f"env --{prefix}={quoted}")
+    return forms
+
+
+def destructive_commands() -> list[str]:
+    tables = (
+        test_destructive_commands_are_classified,
+        test_opaque_shapes_and_bare_commits_are_refused,
+        test_more_wrapper_shapes_are_classified,
+        test_more_destructive_shapes_are_classified,
+    )
+    return [command_text(row) for table in tables for row in param_rows(table)]
+
+
+def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
+    """See-through wrappers keep the bare reason; env split-string spellings keep the bare verdict.
+
+    ``-S`` separate, clustered and attached, and every unambiguous prefix of ``--split-string``
+    (with ``=`` and with a separate value) agree with ``env -S``. Ordinary commands stay allowed.
+    """
+    canonical = g.classify('env -S "git stash"')
+    examples = (
+        'env --split "git stash"', 'env --s "git stash"',
+        'env --split="git stash"', 'env --spl="git stash"',
+    )
+    for example in examples:
+        assert g.classify(example) == canonical, example
+    for command in destructive_commands():
+        bare = g.classify(command)
+        assert bare, command
+        for wrapped in see_through_forms(command):
+            assert g.classify(wrapped) == bare, (wrapped, g.classify(wrapped), bare)
+        spellings = [g.classify(form) for form in env_split_forms(command)]
+        assert spellings[0] is not None and all(reason == spellings[0] for reason in spellings), command
+    ordinary = [command_text(row) for row in param_rows(test_ordinary_commands_pass)]
+    for command in ordinary:
+        assert g.classify(command) is None, command
+        for wrapped in (*see_through_forms(command), *env_split_forms(command)):
+            assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
