@@ -201,7 +201,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.73` Harness facts and captures refreshed from the delivered research `harness-facts-and-captures-refreshed` — task — **Not Started**
   - `M22.74` The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment `the-tool-call-guard-refuses-destructive-git-commands-hidden` — task — **Complete**
   - `M22.75` Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block `front-matter-round-trips-a-trailing-non-ascii-space-in-a-value` — task — **Complete**
-  - `M22.76` The tool-call guard reads env's clustered and attached -S like the separate flag `the-tool-call-guard-reads-env-s-clustered-and-attached-s-like` — task — **Not Started**
+  - `M22.76` The tool-call guard reads env's clustered and attached -S like the separate flag `the-tool-call-guard-reads-env-s-clustered-and-attached-s-like` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -361,7 +361,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.76` on `feature/rm-the-tool-call-guard-reads-env-s-clustered-and-attached-s-like` since 2026-11-18
 
 ## Quality by area
 
@@ -369,7 +368,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 18 | 0 | 2.94 | 78% | 19 | 0 |
+| `CHANGELOG.md` **flagged** | 19 | 0 | 2.84 | 74% | 19 | 0 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
 | `docs` **flagged** | 20 | 0 | 3.30 | 75% | 337 | 1 |
 | `gui` **flagged** | 7 | 0 | 2.71 | 57% | 1 | 0 |
@@ -381,10 +380,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 22 | 0 | 3.09 | 59% | 400 | 1 |
-| `specy_road` **flagged** | 40 | 0 | 2.38 | 52% | 89 | 0 |
+| `specy_road` **flagged** | 40 | 0 | 2.38 | 52% | 88 | 0 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 48 | 0 | 2.58 | 56% | 419 | 1 |
-| `constraints` | 23 | 0 | 2.65 | 43% | 368 | 1 |
+| `tests` **flagged** | 48 | 0 | 2.58 | 56% | 418 | 1 |
+| `constraints` | 22 | 0 | 2.73 | 45% | 367 | 1 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 
