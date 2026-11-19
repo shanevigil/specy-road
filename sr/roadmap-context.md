@@ -72,7 +72,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.6.9` Docs name the moved test files at their lane paths `docs-name-moved-test-files-at-lane-paths` — task — **Complete**
   - `M16.7` Test dedupe, public seams, properties and the smoke lane `test-dedupe-public-seams-properties-and-the-smoke-lane` — milestone — **Not Started**
     - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Complete**
-    - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Not Started**
+    - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Complete**
     - `M16.7.3` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Not Started**
     - `M16.7.4` Tests: apply the dedupe worklist for pickup and finish `tests-apply-the-dedupe-worklist-for-pickup-and-finish` — task — **Not Started**
     - `M16.7.5` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Not Started**
@@ -353,7 +353,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.7.2` on `feature/rm-tests-apply-the-dedupe-worklist-for-review-gate` since 2026-11-18
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
