@@ -469,7 +469,8 @@ def test_env_split_escapes_and_pre_leaf_refusals() -> None:
         assert g.classify(command) is None, (command, g.classify(command))
     unknown = ("env -S 'git\\x20stash'", "env -S '\\gitstash'")
     for command in unknown:
-        assert g.classify(command), command
+        reason = g.classify(command)
+        assert reason and "cannot see" in reason, (command, reason)
     refused_before = (
         'env -S "git stash"', '(env -S "git stash")', 'sudo env -S "git stash"',
         'FOO=1 env -S "git stash"', 'env -vS "git stash"', 'env -iS "git stash"',
@@ -486,8 +487,9 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
     """Every wrapper, including each env split-string spelling, keeps the bare reason.
 
     ``-S`` separate, clustered and attached, and every unambiguous prefix of ``--split-string``
-    (with ``=`` and with a separate value) match the bare command. Ordinary commands,
-    including ones with a variable reference, stay allowed through those forms.
+    (with ``=`` and with a separate value) match the bare command. Ordinary commands
+    stay allowed through those forms. A split string whose command needs runtime
+    state (``$HOME``, ``${DIR}``, or an unknown escape) is refused as opaque.
     """
     stash = g.classify("git stash")
     examples = (
@@ -501,11 +503,25 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
         assert bare, command
         for wrapped in (*see_through_forms(command), *env_split_forms(command)):
             assert g.classify(wrapped) == bare, (wrapped, g.classify(wrapped), bare)
+    needs_runtime = (
+        "echo $HOME",
+        "ls ${DIR}",
+        "$HOME/bin/pytest -q",
+        "${PYTHON:-python} -m pytest",
+    )
     ordinary = [command_text(row) for row in param_rows(test_ordinary_commands_pass)]
     for command in ordinary:
         assert g.classify(command) is None, command
-        for wrapped in (*see_through_forms(command), *env_split_forms(command)):
+        for wrapped in see_through_forms(command):
             assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
+        if command in needs_runtime:
+            continue
+        for wrapped in env_split_forms(command):
+            assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
+    for command in needs_runtime:
+        for wrapped in env_split_forms(command):
+            reason = g.classify(wrapped)
+            assert reason and "cannot see" in reason, (wrapped, reason)
 
 
 def test_split_string_options_are_parsed_before_the_command() -> None:

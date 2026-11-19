@@ -233,14 +233,16 @@ def _env_split_escape(value: str, i: int, dq: bool, cur: list[str], argv: list[s
     return i + 2
 
 
-def _env_split_plain(value: str, i: int, dq: bool, cur: list[str], argv: list[str]) -> tuple[int, bool]:
-    """One unquoted or double-quoted character. ``$`` and ``${VAR}`` stay in the word."""
+def _env_split_plain(value: str, i: int, dq: bool, cur: list[str], argv: list[str]) -> tuple[int, bool] | None:
+    """One unquoted or double-quoted character. ``None`` means ``$`` / ``${VAR}``."""
     ch = value[i]
     if ch == '"':
         return i + 1, not dq
     if not dq and ch in _ENV_WS:
         _env_flush(cur, argv)
         return i + 1, dq
+    if ch == "$":
+        return None
     if not dq and ch == "#" and not cur:
         _env_flush(cur, argv)
         return len(value), dq
@@ -251,10 +253,9 @@ def _env_split_plain(value: str, i: int, dq: bool, cur: list[str], argv: list[st
 def _env_split_argv(value: str) -> tuple[str, ...] | None:
     """GNU coreutils 9.4 ``-S`` words, or ``None`` when an escape cannot be known.
 
-    ``None`` is an unknown escape, a trailing backslash, or ``\\c`` inside double quotes.
-    ``$`` and ``${VAR}`` are left in the word: the guard classifies that text and does
-    not substitute the environment. Single quotes keep every character except ``\\\\``
-    and ``\\'``.
+    ``None`` is an unknown escape, a trailing backslash, ``\\c`` inside double quotes,
+    or ``$`` / ``${VAR}`` outside single quotes: the command needs runtime state.
+    Single quotes keep every character except ``\\\\`` and ``\\'``.
     """
     argv, cur = [], []
     i, sq, dq = 0, False, False
@@ -281,7 +282,10 @@ def _env_split_argv(value: str) -> tuple[str, ...] | None:
             sq = True
             i += 1
             continue
-        i, dq = _env_split_plain(value, i, dq, cur, argv)
+        step = _env_split_plain(value, i, dq, cur, argv)
+        if step is None:
+            return None
+        i, dq = step
     _env_flush(cur, argv)
     return tuple(argv)
 

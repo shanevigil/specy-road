@@ -1109,10 +1109,9 @@ are removed in the release after 0.3.1:
   embedded tab or newline is read as a space, so `env -S 'git\tstash'` is
   `git stash`. The words that split produces are parsed as env options before
   the command, so `env -S '--unset git stash'` unsets `git` and runs `stash`.
-  `$` and `${VAR}` are not expanded; the command text is classified as written,
-  so an ordinary command keeps its variable reference and stays allowed. An
-  unknown escape has no knowable command and is refused. The refusal is that
-  command's own reason when the command can be read.
+  A variable reference (`$HOME`, `${DIR}`) or an unknown escape cannot be known
+  without runtime state and is refused as opaque. The refusal is that command's
+  own reason when the command can be read.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
