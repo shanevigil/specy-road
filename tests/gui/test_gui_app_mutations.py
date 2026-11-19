@@ -221,24 +221,6 @@ def test_api_outline_reorder_rejects_incomplete_child_set(
     assert r.status_code == 400
 
 
-def test_api_outline_move_rejects_unknown_node_key(
-    api_client: TestClient,
-) -> None:
-    r = api_client.post(
-        "/api/outline/move",
-        headers={
-            **mutation_headers(api_client),
-            "Content-Type": "application/json",
-        },
-        json={
-            "node_key": "00000000-0000-0000-0000-000000000001",
-            "new_parent_id": None,
-            "new_index": 0,
-        },
-    )
-    assert r.status_code == 400
-
-
 def test_api_post_nodes_add_task(api_client: TestClient) -> None:
     r = api_client.post(
         "/api/nodes/add",

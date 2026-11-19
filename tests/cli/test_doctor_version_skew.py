@@ -99,17 +99,12 @@ def test_unreadable_agents_md_still_warns_from_the_manifest(tmp_path: Path) -> N
     assert proc.stderr.count("older install earlier on PATH") == 1
 
 
-def test_silent_when_running_matches_the_recorded_version(tmp_path: Path) -> None:
-    _write_manifest(tmp_path, __version__)
-
-    proc = _cli("validate", "--repo-root", str(tmp_path), "--help")
-
-    assert proc.returncode == 0
-    assert "older install earlier on PATH" not in proc.stderr
-
-
-def test_silent_when_running_is_newer_than_every_recorded_source(tmp_path: Path) -> None:
-    _write_manifest(tmp_path, "0.0.1")
+@pytest.mark.parametrize("recorded", [__version__, "0.0.1"])
+def test_silent_when_running_matches_the_recorded_version(
+    tmp_path: Path, recorded: str
+) -> None:
+    """A recorded version equal to or older than the running one stays silent."""
+    _write_manifest(tmp_path, recorded)
 
     proc = _cli("validate", "--repo-root", str(tmp_path), "--help")
 

@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from specy_road.bundled_scripts.grind_session_args import (
     parse_grind_session_args,
     pickup_args,
@@ -27,9 +29,21 @@ def _write_gw(root: Path, extra: str = "") -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_schema_accepts_baseline_cmd() -> None:
-    data = {"version": 1, "integration_branch": "main", "remote": "origin",
-            "baseline_cmd": "make test"}
+@pytest.mark.parametrize(
+    ("field", "command"),
+    [
+        ("baseline_cmd", "make test"),
+        ("verify_cmd", "python -m pytest -n 4 -p no:cacheprovider"),
+    ],
+)
+def test_schema_accepts_baseline_cmd(field: str, command: str) -> None:
+    """``baseline_cmd`` and ``verify_cmd`` are each one optional command."""
+    data = {
+        "version": 1,
+        "integration_branch": "main",
+        "remote": "origin",
+        field: command,
+    }
     assert validate_git_workflow_dict(data) is None
 
 

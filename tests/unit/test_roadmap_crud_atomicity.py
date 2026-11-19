@@ -101,13 +101,6 @@ def _run(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_rejected_edit_changes_nothing_on_disk(repo: Path) -> None:
-    before = _snapshot(repo)
-    with pytest.raises(ValueError, match="duplicate title"):
-        edit_node_set_pairs(repo, "M50.1", [("title", "Atomicity phase")])
-    assert _snapshot(repo) == before
-
-
 def test_rejected_edit_does_not_rename_the_planning_sheet(repo: Path) -> None:
     """A title change resyncs planning_dir; a rejected change must not move the file."""
     sheet = repo / "planning" / f"M50.1_atomicity-leaf_{NK_TASK}.md"

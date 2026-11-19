@@ -10,7 +10,6 @@ from tests.support.same.git_84c8ad8f55f9 import git
 from tests.support.profiles import make_profile_repo
 
 from specy_road.bundled_scripts import role_prompt
-from specy_road.git_workflow_config import validate_git_workflow_dict
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.checks_config import check_commands
 
@@ -30,11 +29,6 @@ def _reviewer_prompt(repo: Path) -> str:
     text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")
     assert err is None
     return text
-
-
-def test_schema_accepts_verify_cmd() -> None:
-    data = {"version": 1, "integration_branch": "main", "remote": "origin", "verify_cmd": CMD}
-    assert validate_git_workflow_dict(data) is None
 
 
 def test_unset_or_blank_verify_cmd_resolves_to_none(tmp_path: Path) -> None:

@@ -74,7 +74,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
     - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Complete**
     - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Complete**
     - `M16.7.3` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Complete**
-    - `M16.7.5` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Not Started**
+    - `M16.7.5` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Complete**
     - `M16.7.6` Tests: public seams replace private-name patches, and no test sleeps on the wall clock `tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` — task — **Not Started**
     - `M16.7.7` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Not Started**
     - `M16.7.8` Tests: a CLI smoke lane and in-process CLI tests, held to the effectiveness measures the maintainer chooses `tests-a-cli-smoke-lane-and-in-process-cli-tests-held-to-the` — task — **Not Started**
@@ -356,7 +356,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.7.5` on `feature/rm-tests-apply-the-dedupe-worklist-for-the-rest` since 2026-11-18
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
@@ -381,10 +380,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 22 | 0 | 3.09 | 59% | 400 | 1 |
-| `specy_road` **flagged** | 39 | 0 | 2.51 | 56% | 83 | 1 |
+| `specy_road` **flagged** | 38 | 0 | 2.47 | 55% | 80 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 48 | 0 | 2.69 | 60% | 416 | 2 |
-| `constraints` | 23 | 0 | 2.70 | 48% | 370 | 1 |
+| `tests` **flagged** | 48 | 0 | 2.67 | 60% | 423 | 2 |
+| `constraints` | 24 | 0 | 2.71 | 50% | 380 | 1 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

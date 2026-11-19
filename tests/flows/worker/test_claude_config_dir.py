@@ -31,14 +31,12 @@ def _account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return account
 
 
-def test_the_default_is_the_home_directory(tmp_path, monkeypatch) -> None:
+@pytest.mark.parametrize("config_dir", [None, ""])
+def test_the_default_is_the_home_directory(tmp_path, monkeypatch, config_dir) -> None:
+    """Unset and empty ``CLAUDE_CONFIG_DIR`` both use the home directory."""
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
-    assert claude_projects_dir() == tmp_path / ".claude" / "projects"
-
-
-def test_an_empty_variable_means_the_default(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", "")
+    if config_dir is not None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", config_dir)
     assert claude_projects_dir() == tmp_path / ".claude" / "projects"
 
 

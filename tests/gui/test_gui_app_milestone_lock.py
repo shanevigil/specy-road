@@ -109,42 +109,44 @@ def test_patch_node_outside_locked_subtree_still_works(
         assert "milestone subtree" not in r.json().get("detail", "")
 
 
+@pytest.mark.parametrize(
+    ("mutation", "remediation"),
+    [
+        ("move", "reconcile-milestone-status"),
+        ("indent", "reconcile-milestone-status"),
+        ("delete", "reconcile-milestone-status"),
+    ],
+)
 def test_outline_move_into_locked_subtree_returns_409(
     api_client_locked: TestClient,
     locked_dogfood: Path,
+    mutation: str,
+    remediation: str,
 ) -> None:
-    """Moving an unlocked node *into* the locked subtree is also blocked."""
-    moved_key = _node_key_for(locked_dogfood, "M1")  # unlocked source
+    """A locked subtree refuses a move in, an indent, and a delete.
+
+    Each row's detail contains that row's remediation substring.
+    """
     headers = mutation_headers(api_client_locked)
-    r = api_client_locked.post(
-        "/api/outline/move",
-        headers={**headers, "Content-Type": "application/json"},
-        json={
-            "node_key": moved_key,
-            "new_parent_id": "M0",  # locked target
-            "new_index": 0,
-        },
-    )
+    request = {
+        "move": lambda: api_client_locked.post(
+            "/api/outline/move",
+            headers={**headers, "Content-Type": "application/json"},
+            json={
+                "node_key": _node_key_for(locked_dogfood, "M1"),
+                "new_parent_id": "M0",
+                "new_index": 0,
+            },
+        ),
+        "indent": lambda: api_client_locked.post(
+            "/api/nodes/M0.1/indent",
+            headers=headers,
+        ),
+        "delete": lambda: api_client_locked.delete(
+            "/api/nodes/M0.3",
+            headers=headers,
+        ),
+    }[mutation]
+    r = request()
     assert r.status_code == 409, r.text
-    assert "milestone subtree" in r.json().get("detail", "")
-
-
-def test_indent_inside_locked_subtree_returns_409(
-    api_client_locked: TestClient,
-) -> None:
-    headers = mutation_headers(api_client_locked)
-    r = api_client_locked.post(
-        "/api/nodes/M0.1/indent",
-        headers=headers,
-    )
-    assert r.status_code == 409, r.text
-    assert "milestone subtree" in r.json().get("detail", "")
-
-
-def test_delete_inside_locked_subtree_returns_409(
-    api_client_locked: TestClient,
-) -> None:
-    headers = mutation_headers(api_client_locked)
-    r = api_client_locked.delete("/api/nodes/M0.3", headers=headers)
-    assert r.status_code == 409, r.text
-    assert "milestone subtree" in r.json().get("detail", "")
+    assert remediation in r.json().get("detail", "")
