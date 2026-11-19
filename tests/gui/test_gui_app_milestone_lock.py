@@ -109,15 +109,23 @@ def test_patch_node_outside_locked_subtree_still_works(
         assert "milestone subtree" not in r.json().get("detail", "")
 
 
-@pytest.mark.parametrize("mutation", ["move", "indent", "delete"])
+@pytest.mark.parametrize(
+    ("mutation", "remediation"),
+    [
+        ("move", "reconcile-milestone-status"),
+        ("indent", "reconcile-milestone-status"),
+        ("delete", "reconcile-milestone-status"),
+    ],
+)
 def test_outline_move_into_locked_subtree_returns_409(
     api_client_locked: TestClient,
     locked_dogfood: Path,
     mutation: str,
+    remediation: str,
 ) -> None:
     """A locked subtree refuses a move in, an indent, and a delete.
 
-    The detail names ``reconcile-milestone-status`` as the way to close the lock.
+    Each row's detail contains that row's remediation substring.
     """
     headers = mutation_headers(api_client_locked)
     request = {
@@ -141,4 +149,4 @@ def test_outline_move_into_locked_subtree_returns_409(
     }[mutation]
     r = request()
     assert r.status_code == 409, r.text
-    assert "reconcile-milestone-status" in r.json().get("detail", "")
+    assert remediation in r.json().get("detail", "")

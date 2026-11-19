@@ -31,20 +31,24 @@ def test_api_workspace_file_get_reads_shared_md(api_client: TestClient) -> None:
 
 
 @pytest.mark.parametrize(
-    "path",
-    ["planning/README.md", "work/note.md"],
+    ("path", "remediation"),
+    [
+        ("planning/README.md", "path must start with shared/"),
+        ("work/note.md", "path must start with shared/"),
+    ],
 )
 def test_api_workspace_file_get_rejects_non_shared(
     api_client: TestClient,
     path: str,
+    remediation: str,
 ) -> None:
-    """Paths outside ``shared/`` are refused, and the detail says to use that prefix."""
+    """Paths outside ``shared/`` are refused, and the detail contains that row's remediation."""
     r = api_client.get(
         "/api/workspace/file",
         params={"path": path},
     )
     assert r.status_code == 400
-    assert "path must start with shared/" in r.json().get("detail", "")
+    assert remediation in r.json().get("detail", "")
 
 
 def test_api_workspace_file_get_rejects_path_traversal(
