@@ -295,7 +295,8 @@ def _env_from_split(value: str, trailing: list[str]) -> _EnvRun:
 
     ``--unset`` and ``--chdir`` inside the split string consume the next word, so
     that word is not the command. ``ate_option`` is set when this rescan changes
-    the words. An unknown escape leaves the argv unknowable.
+    the words. A nested split that cannot be known (a ``$`` / ``${VAR}`` or an
+    unknown escape) stays unknowable.
     """
     words = _env_split_argv(value)
     extra = " ".join(shlex.quote(part) for part in trailing)
@@ -305,6 +306,8 @@ def _env_from_split(value: str, trailing: list[str]) -> _EnvRun:
     parsed = _env_invocation(["env", *words, *trailing])
     if not parsed.ok:
         return _EnvRun(False, False, (), source)
+    if not parsed.determined:
+        return parsed
     command = parsed.command
     whole = (*words, *trailing)
     removed = whole[:len(whole) - len(command)]

@@ -1110,8 +1110,9 @@ are removed in the release after 0.3.1:
   `git stash`. The words that split produces are parsed as env options before
   the command, so `env -S '--unset git stash'` unsets `git` and runs `stash`.
   A variable reference (`$HOME`, `${DIR}`) or an unknown escape cannot be known
-  without runtime state and is refused as opaque. The refusal is that command's
-  own reason when the command can be read.
+  without runtime state and is refused as opaque, including when it sits inside
+  a nested `-S`. The refusal is that command's own reason when the command can
+  be read.
 
 ## [v0.3.1-rc2] - 2026-10-29
 

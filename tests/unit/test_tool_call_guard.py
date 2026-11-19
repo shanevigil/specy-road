@@ -467,7 +467,14 @@ def test_env_split_escapes_and_pre_leaf_refusals() -> None:
     )
     for command in literal:
         assert g.classify(command) is None, (command, g.classify(command))
-    unknown = ("env -S 'git\\x20stash'", "env -S '\\gitstash'")
+    unknown = (
+        "env -S 'git\\x20stash'", "env -S '\\gitstash'",
+        "env -S -S '${CMD} stash'", "env -S --split '${CMD} stash'",
+        "env --split -S '${CMD} stash'", "env -vS -S '${DIR}'",
+        "env -S -S 'git\\x20stash'", "sudo env -S -S '${CMD} stash'",
+        "(env -S -S 'git\\x20stash')", "env -S -S -S '${CMD} stash'",
+        "env -i -S -S '${CMD} stash'",
+    )
     for command in unknown:
         reason = g.classify(command)
         assert reason and "cannot see" in reason, (command, reason)
