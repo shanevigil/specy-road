@@ -153,9 +153,7 @@
         "CHANGELOG.md [Unreleased] records the refresh; no version heading is written"
       ],
       "codename": "harness-facts-and-captures-refreshed",
-      "dependencies": [
-        "393ad414-3a5a-49b3-8873-b63d0e35d0ee"
-      ],
+      "dependencies": [],
       "execution_milestone": "Agentic-led",
       "id": "M22.73",
       "node_key": "d5103a37-a7d0-4b07-ba7f-72f05a7c4ba8",
