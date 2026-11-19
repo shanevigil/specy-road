@@ -281,7 +281,8 @@ def test_executor_blocked_outranks_a_reviewer_block_and_escalation(tmp_path: Pat
     repo = make_review_repo(tmp_path, orchestration=ONE_AI + "policy: {escalate_review_rounds: 1}\n")
     notes = repo.parent / "notes.md"
     text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", a1="fail")
-    notes.write_text(text.replace("notes\n", "round 1: the heading case still warns\n"))
+    front, _body = text.rsplit("---\n", 1)
+    notes.write_text(front + "---\n" + "round 1: the heading case still warns\n")
     assert run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
     _ready_blocked(repo)

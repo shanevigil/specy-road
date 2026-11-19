@@ -116,14 +116,34 @@ def split_segments(command: str) -> list[str]:
     return [x.strip() for x in out if x.strip()]
 
 
-def _unwrap(tokens: list[str]) -> list[str]:
-    """Strip ``VAR=x``, ``command``/``env``/``sudo``-style wrappers, control-flow openers, and subshell parens."""
+def _env_splits(arg: str) -> bool:
+    """``env -S`` / ``--split-string`` hides its command in one argument."""
+    return arg in _ENV_SPLIT or arg.startswith("--split-string=")
+
+
+def _is_opaque_subject(tokens: list[str], i: int) -> bool:
+    """``env -S`` or a ``GIT_CONFIG*`` assignment: the opaque checks judge it, so unwrapping stops."""
+    token = tokens[i]
+    if token == "env" and any(_env_splits(a) for a in tokens[i + 1:]):
+        return True
+    return bool(shapes.env_config([token, "git"]))
+
+
+def _unwrap(tokens: list[str], *, keep_signals: bool = False) -> list[str]:
+    """Strip ``VAR=x``, ``command``/``env``/``sudo``-style wrappers, control-flow openers, and subshell parens.
+
+    A ``(`` glued to the next word is peeled and that word is read, including when an opener
+    precedes it (``! (git stash)``). With ``keep_signals``, unwrapping stops at ``env -S`` or a
+    ``GIT_CONFIG*`` assignment so the opaque checks still see them.
+    """
     i = 0
     wrapped = False
     while i < len(tokens):
         t = tokens[i]
+        if keep_signals and _is_opaque_subject(tokens, i):
+            break
         if t.startswith("(") and len(t) > 1:
-            tokens = [t[1:], *tokens[i + 1:]]
+            tokens = [*tokens[:i], t[1:], *tokens[i + 1:]]  # re-read the word the parenthesis hid
             continue
         if ("=" in t and not t.startswith("-")) or t in _OPENERS:
             i += 1
@@ -273,6 +293,8 @@ def _opaque(segment: str) -> str | None:
     expansion that could be git (``$X``, ``git${IFS}stash``, ``{git,stash}``, ``gi?``), a later
     word that expansion could turn into ``git``, and an interpreter one-liner
     that mentions git all run git where the guard cannot see the arguments.
+    ``env -S`` and ``GIT_CONFIG*`` are judged after openers, subshell parentheses, wrappers
+    and ordinary assignments are removed.
     """
     if _FUNC_DEF.search(segment) and _GIT_WORD.search(segment):
         return "defines a shell function and mentions git; the guard cannot follow it — run the git command plainly"
@@ -288,10 +310,10 @@ def _opaque(segment: str) -> str | None:
         return "the command name comes from a shell expansion; the guard cannot see it — run the command plainly"
     if any(_EXPANSION.search(t) and " " not in t and _EXPANSION_SYNTAX.sub("", t).startswith("git") for t in raw):
         return "a shell expansion could build `git` here; the guard cannot see it — run the git command plainly"
-    if shapes.env_config(raw):
-        return shapes.env_config(raw)
-    if raw and raw[0] == "env" and any(a in _ENV_SPLIT or a.startswith("--split-string=") for a in raw[1:]) \
-            and _GIT_WORD.search(segment):
+    seen = _unwrap(raw, keep_signals=True)
+    if shapes.env_config(seen):
+        return shapes.env_config(seen)
+    if seen and seen[0] == "env" and any(_env_splits(a) for a in seen[1:]) and _GIT_WORD.search(segment):
         return "env -S splits its argument into a command the guard cannot see; run the git command plainly"
     if raw and "xargs" in raw[:4] and head and head[0].rsplit("/", 1)[-1] == "git" and len(head) == 1:
         return "xargs feeds git its subcommand from stdin; the guard cannot see it — run the git command plainly"
