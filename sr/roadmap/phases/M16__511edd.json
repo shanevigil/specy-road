@@ -367,7 +367,7 @@
       ],
       "planning_dir": "planning/M16.7.5_tests-apply-the-dedupe-worklist-for-the-rest_25cffd57-e38b-4ebf-a4c0-d2edea799baa.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: apply the dedupe worklist for the rest",
       "touch_zones": [
         "tests/",
