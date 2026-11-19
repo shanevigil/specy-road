@@ -20,6 +20,127 @@ _BROAD_PATHSPEC = re.compile(r"^(\.|\./.*|\.\.|\.\./.*|/.*|:.*|.*[*?\[].*)$")
 #: ``git commit`` / ``git add`` flags that take a value, so the value is not mistaken for a pathspec.
 _VALUE_FLAGS = {"-m", "-F", "-C", "-c", "-t", "--message", "--file", "--author", "--date", "--reuse-message",
                 "--reedit-message", "--template", "--trailer", "--fixup", "--squash"}
+# One option: long name (empty when the tool has only the short letter), ``no`` / ``required`` /
+# ``optional``, and the short letter (empty when it is long-only). An optional value is attached
+# (``--name=value`` or the rest of a short cluster), not taken from the next word. ``--`` is not
+# an option here: the guard's getopt scan ends a wrapper's options at ``--``.
+# ``command`` and ``exec`` are the bash builtins (``help command``, ``help exec``). ``sudo`` is
+# sudo(8) on this host. ``doas`` is OpenBSD doas(1); this host has no doas manual. ``nohup``,
+# ``time``, ``nice`` and ``timeout`` are GNU coreutils 9.4. ``ionice`` is util-linux 2.39.3.
+# ``xargs`` is GNU findutils. ``env`` keeps its table beside the split-string parser.
+WRAPPER_OPTIONS: dict[str, tuple[tuple[str, str, str], ...]] = {
+    "command": (
+        ("", "no", "p"),
+        ("", "no", "v"),
+        ("", "no", "V"),
+    ),
+    "sudo": (
+        ("askpass", "no", "A"),
+        ("bell", "no", "B"),
+        ("background", "no", "b"),
+        ("close-from", "required", "C"),
+        ("chdir", "required", "D"),
+        ("preserve-env", "optional", ""),
+        ("", "no", "E"),
+        ("edit", "no", "e"),
+        ("group", "required", "g"),
+        ("set-home", "no", "H"),
+        ("help", "no", ""),
+        ("host", "required", "h"),
+        ("login", "no", "i"),
+        ("remove-timestamp", "no", "K"),
+        ("reset-timestamp", "no", "k"),
+        ("list", "no", "l"),
+        ("no-update", "no", "N"),
+        ("non-interactive", "no", "n"),
+        ("preserve-groups", "no", "P"),
+        ("prompt", "required", "p"),
+        ("chroot", "required", "R"),
+        ("role", "required", "r"),
+        ("stdin", "no", "S"),
+        ("shell", "no", "s"),
+        ("type", "required", "t"),
+        ("command-timeout", "required", "T"),
+        ("other-user", "required", "U"),
+        ("user", "required", "u"),
+        ("version", "no", "V"),
+        ("validate", "no", "v"),
+    ),
+    "doas": (
+        ("", "required", "a"),
+        ("", "required", "C"),
+        ("", "no", "L"),
+        ("", "no", "n"),
+        ("", "no", "s"),
+        ("", "required", "u"),
+    ),
+    "nohup": (
+        ("help", "no", ""),
+        ("version", "no", ""),
+    ),
+    "exec": (
+        ("", "required", "a"),
+        ("", "no", "c"),
+        ("", "no", "l"),
+    ),
+    "time": (
+        ("append", "no", "a"),
+        ("format", "required", "f"),
+        ("output", "required", "o"),
+        ("portability", "no", "p"),
+        ("quiet", "no", "q"),
+        ("verbose", "no", "v"),
+        ("version", "no", "V"),
+        ("help", "no", ""),
+    ),
+    "nice": (
+        ("adjustment", "required", "n"),
+        ("help", "no", ""),
+        ("version", "no", ""),
+    ),
+    "ionice": (
+        ("class", "required", "c"),
+        ("classdata", "required", "n"),
+        ("pid", "required", "p"),
+        ("pgid", "required", "P"),
+        ("ignore", "no", "t"),
+        ("uid", "required", "u"),
+        ("help", "no", "h"),
+        ("version", "no", "V"),
+    ),
+    "xargs": (
+        ("null", "no", "0"),
+        ("arg-file", "required", "a"),
+        ("delimiter", "required", "d"),
+        ("", "required", "E"),
+        ("eof", "optional", "e"),
+        ("", "required", "I"),
+        ("replace", "optional", "i"),
+        ("", "required", "L"),
+        ("max-lines", "optional", "l"),
+        ("max-args", "required", "n"),
+        ("max-procs", "required", "P"),
+        ("open-tty", "no", "o"),
+        ("interactive", "no", "p"),
+        ("process-slot-var", "required", ""),
+        ("no-run-if-empty", "no", "r"),
+        ("max-chars", "required", "s"),
+        ("show-limits", "no", ""),
+        ("verbose", "no", "t"),
+        ("exit", "no", "x"),
+        ("help", "no", ""),
+        ("version", "no", ""),
+    ),
+    "timeout": (
+        ("preserve-status", "no", ""),
+        ("foreground", "no", ""),
+        ("kill-after", "required", "k"),
+        ("signal", "required", "s"),
+        ("verbose", "no", "v"),
+        ("help", "no", ""),
+        ("version", "no", ""),
+    ),
+}
 
 
 def env_config(tokens: list[str]) -> str | None:
