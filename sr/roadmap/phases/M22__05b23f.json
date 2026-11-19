@@ -267,7 +267,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.77_the-tool-call-guard-parses-env-s-options-the-way-gnu-getopt-does_23ba8a95-3926-453b-964a-b5a564c85c7c.md",
       "sibling_order": 77,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test",
       "touch_zones": [
         "specy_road/orchestration/guard/tool_call_guard.py",
