@@ -91,17 +91,18 @@ from specy_road.orchestration.workers import worker_state as ws
     ("! (git stash)", "stash stack is shared"),
     ("{ (git stash); }", "stash stack is shared"),
     ("if true; then (git stash); fi", "stash stack is shared"),
-    ('(env -S "git stash")', "env -S splits"),
-    ('sudo env -S "git stash"', "env -S splits"),
-    ('FOO=1 env -S "git stash"', "env -S splits"),
-    ('env -vS "git stash"', "env -S splits"),
-    ('env -iS "git stash"', "env -S splits"),
-    ('env -S"git stash"', "env -S splits"),
-    ('env -vS"git stash"', "env -S splits"),
-    ('(env -vS "git stash")', "env -S splits"),
-    ('sudo env -iS "git stash"', "env -S splits"),
-    ('FOO=1 env -S"git stash"', "env -S splits"),
-    ('FOO=1 env -vS"git stash"', "env -S splits"),
+    ('(env -S "git stash")', "stash stack is shared"),
+    ('sudo env -S "git stash"', "stash stack is shared"),
+    ('FOO=1 env -S "git stash"', "stash stack is shared"),
+    ('env -vS "git stash"', "stash stack is shared"),
+    ('env -iS "git stash"', "stash stack is shared"),
+    ('env -S"git stash"', "stash stack is shared"),
+    ('env -vS"git stash"', "stash stack is shared"),
+    ('(env -vS "git stash")', "stash stack is shared"),
+    ('sudo env -iS "git stash"', "stash stack is shared"),
+    ('FOO=1 env -S"git stash"', "stash stack is shared"),
+    ('FOO=1 env -vS"git stash"', "stash stack is shared"),
+    ("env -S 'git\\_stash'", "stash stack is shared"),
     ("(GIT_CONFIG_GLOBAL=/tmp/c git x)", "GIT_CONFIG*"),
     ("(git --config-env=alias.x=BODY x)", "--config-env=alias"),
     ("env --u HOME git stash", "stash stack is shared"),
@@ -443,25 +444,35 @@ def destructive_commands() -> list[str]:
 
 
 def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
-    """See-through wrappers keep the bare reason; env split-string spellings keep the bare verdict.
+    """Every wrapper, including each env split-string spelling, keeps the bare reason.
 
     ``-S`` separate, clustered and attached, and every unambiguous prefix of ``--split-string``
-    (with ``=`` and with a separate value) agree with ``env -S``. Ordinary commands stay allowed.
+    (with ``=`` and with a separate value) match the bare command. ``\\_`` in the split string
+    is the same break. Ordinary commands stay allowed.
     """
-    canonical = g.classify('env -S "git stash"')
+    stash = g.classify("git stash")
     examples = (
         'env --split "git stash"', 'env --s "git stash"',
         'env --split="git stash"', 'env --spl="git stash"',
+        "env -S 'git\\_stash'", "env -vS 'git\\_stash'", "env -S'git\\_stash'",
+        "env --split 'git\\_stash'", "env --s 'git\\_stash'", "env --spl='git\\_stash'",
     )
     for example in examples:
-        assert g.classify(example) == canonical, example
+        assert g.classify(example) == stash, (example, g.classify(example))
+    # \_ inside single quotes is literal; inside double quotes it is a space in that one
+    # word; a doubled backslash is not a break. None of those is the git stash command.
+    literal = (
+        "env -S \"git'\\_stash'\"",
+        "env -S '\"git\\_stash\"'",
+        "env -S 'git\\\\_stash'",
+    )
+    for command in literal:
+        assert g.classify(command) is None, (command, g.classify(command))
     for command in destructive_commands():
         bare = g.classify(command)
         assert bare, command
-        for wrapped in see_through_forms(command):
+        for wrapped in (*see_through_forms(command), *env_split_forms(command)):
             assert g.classify(wrapped) == bare, (wrapped, g.classify(wrapped), bare)
-        spellings = [g.classify(form) for form in env_split_forms(command)]
-        assert spellings[0] is not None and all(reason == spellings[0] for reason in spellings), command
     ordinary = [command_text(row) for row in param_rows(test_ordinary_commands_pass)]
     for command in ordinary:
         assert g.classify(command) is None, command

@@ -194,8 +194,45 @@ def _env_short_at(tokens: list[str], i: int) -> tuple[int, list[tuple[str, str |
     return i + 1, taken
 
 
+def _env_split_shell(value: str) -> str:
+    """Apply GNU env's ``\\_`` break to an ``-S`` value, leaving a shell command string.
+
+    Outside quotes, ``\\_`` is an argument break. Inside double quotes it is a space
+    in that argument. Inside single quotes, and after a doubled backslash, it is not
+    a break. Other ``-S`` escapes (``\\n``, ``\\t``, ``\\c``, ``#``, ``${VAR}``) are
+    left unchanged.
+    """
+    out: list[str] = []
+    i, sq, dq = 0, False, False
+    while i < len(value):
+        ch = value[i]
+        nxt = value[i + 1] if i + 1 < len(value) else ""
+        if ch == "'" and not dq:
+            sq = not sq
+            out.append(ch)
+        elif ch == '"' and not sq:
+            dq = not dq
+            out.append(ch)
+        elif ch == "\\" and nxt and not (sq and nxt not in "\\'"):
+            if nxt == "_" and not sq:
+                out.append(" ")
+            elif nxt == "\\":
+                out.append("\\")
+            elif nxt == "'" and sq:
+                out.append("'")
+            else:
+                out.append(ch)
+                out.append(nxt)
+            i += 1
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def _env_from_split(value: str, trailing: list[str]) -> _EnvRun:
     """The command ``-S`` builds: its value, then any arguments env appends after it."""
+    value = _env_split_shell(value)
     extra = " ".join(shlex.quote(part) for part in trailing)
     shell = f"{value} {extra}" if extra else value
     try:
@@ -250,6 +287,21 @@ def _is_opaque_subject(tokens: list[str], i: int) -> bool:
     return bool(shapes.env_config([token, "git"]))
 
 
+def _skip_wrapper(tokens: list[str], i: int, wrapped: bool) -> tuple[list[str], int, bool] | None:
+    """Advance past one wrapper word. ``env`` is replaced by the command it would run."""
+    t = tokens[i]
+    if t == "env":
+        parsed = _env_invocation(tokens[i:])
+        if parsed.ok:
+            return [*tokens[:i], *parsed.command], i, False
+    if t in _WRAPPERS:
+        return tokens, i + (2 if t in _WRAPPER_LEADING_ARG else 1), True
+    if wrapped and t.startswith("-"):
+        step = 2 if t in _WRAPPER_FLAG_ARG and "=" not in t else 1
+        return tokens, i + step, wrapped
+    return None
+
+
 def _unwrap(tokens: list[str], *, keep_signals: bool = False) -> list[str]:
     """Strip ``VAR=x``, ``command``/``env``/``sudo``-style wrappers, control-flow openers, and subshell parens.
 
@@ -270,20 +322,10 @@ def _unwrap(tokens: list[str], *, keep_signals: bool = False) -> list[str]:
         if ("=" in t and not t.startswith("-")) or t in _OPENERS:
             i += 1
             continue
-        if t == "env":
-            parsed = _env_invocation(tokens[i:])
-            if parsed.ok:
-                tokens = [*tokens[:i], *parsed.command]
-                wrapped = False
-                continue
-        if t in _WRAPPERS:
-            wrapped = True
-            i += 2 if t in _WRAPPER_LEADING_ARG else 1
-            continue
-        if wrapped and t.startswith("-"):
-            i += 2 if t in _WRAPPER_FLAG_ARG and "=" not in t else 1  # a wrapper's flag, with its argument
-            continue
-        break
+        step = _skip_wrapper(tokens, i, wrapped)
+        if step is None:
+            break
+        tokens, i, wrapped = step
     out = tokens[i:]
     return [t.rstrip(")") if t.endswith(")") and t != ")" else t for t in out if t not in (")", "}")]
 
@@ -414,6 +456,16 @@ def classify_segment(segment: str) -> str | None:  # noqa: C901 — baseline 202
     return None
 
 
+def _split_command_reason(seen: list[str]) -> str | None:
+    """The reason for the command an ``env`` split-string runs, else ``None``."""
+    if not seen or seen[0] != "env":
+        return None
+    parsed = _env_invocation(seen)
+    if not (parsed.ok and parsed.split):
+        return None
+    return classify(parsed.shell)
+
+
 def _opaque(segment: str) -> str | None:
     """Shapes a token parser cannot follow: refused when they mention git, rather than waved through.
 
@@ -430,15 +482,13 @@ def _opaque(segment: str) -> str | None:
         raw = shlex.split(segment, comments=True)
     except ValueError:
         return None
-    # Split-string is judged before unwrapping its value: the value can itself be an expansion,
-    # and every spelling of the option has to report the same reason.
+    # The split string is the command, so the reason is that command's own reason.
     seen = _unwrap(raw, keep_signals=True)
     if shapes.env_config(seen):
         return shapes.env_config(seen)
-    if seen and seen[0] == "env":
-        parsed = _env_invocation(seen)
-        if parsed.ok and parsed.split and classify(parsed.shell):
-            return "env -S splits its argument into a command the guard cannot see; run the git command plainly"
+    split_reason = _split_command_reason(seen)
+    if split_reason:
+        return split_reason
     head = _unwrap(raw)
     if head and _EXPANSION.search(head[0]) and head[0] not in ("[", "[[") and _may_name_git(head[0]):
         return "the command name comes from a shell expansion; the guard cannot see it — run the command plainly"

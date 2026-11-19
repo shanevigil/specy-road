@@ -1101,9 +1101,12 @@ are removed in the release after 0.3.1:
   the next argument, and short options cluster, so `env --split "git stash"`,
   `env --s "git stash"`, `env --split="git stash"` and `env --spl="git stash"`
   are the same split-string option as `env -S`. `--unset` and `--chdir`, and
-  their prefixes, consume their value, so that word is not the command. Every
-  destructive command and every ordinary command is checked through those
-  wrappers, including each spelling of the split-string option.
+  their prefixes, consume their value, so that word is not the command. In the
+  split string, `\_` is an argument break (a space inside double quotes, and
+  literal inside single quotes), so `env -S 'git\_stash'` is `git stash`. The
+  refusal is that command's own reason. Every destructive command and every
+  ordinary command is checked through those wrappers, including each spelling
+  of the split-string option.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
