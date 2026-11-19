@@ -33,7 +33,8 @@ from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.orchestration.workers.worker_cli_render import sync_event_lines
-from tests.support.bounded_wait import pause
+from specy_road.orchestration.workers.worker_process import group_members
+from tests.support.bounded_wait import pause, wait_until
 
 
 def test_delegate_returns_at_once_and_is_idempotent(tmp_path: Path, capsys) -> None:
@@ -219,10 +220,11 @@ def test_terminate_a_live_worker(tmp_path: Path) -> None:
             break
         pause(0.1)
     assert pid_alive(rec.pid)
+    wrapper_pid = rec.pid
     assert run_worker_cli("worker", "terminate", "w-0001", "--repo-root", str(repo)) == 0
     rec = ws.load_record(repo, "w-0001")
     assert rec.state == "terminated" and rec.pid is None
-    pause(0.5)
+    wait_until(lambda: not pid_alive(wrapper_pid), timeout=5, message="wrapper did not exit")
     assert ws.load_record(repo, "w-0001").state == "terminated"     # the wrapper's exit did not overwrite it
 
 
@@ -607,11 +609,9 @@ def test_terminate_reaches_the_harness_and_its_children(tmp_path: Path) -> None:
             break
         pause(0.1)
     assert marker.is_file()
+    pgid = ws.load_record(repo, rec.worker_id).pgid
     ops.terminate(repo, rec.worker_id)
-    pause(0.5)
-    size = marker.stat().st_size
-    pause(0.5)
-    assert marker.stat().st_size == size, "the harness's child kept writing after terminate"
+    wait_until(lambda: not group_members(pgid), timeout=5, message="the harness group did not exit")
     assert ws.load_record(repo, rec.worker_id).state == "terminated"
 
 

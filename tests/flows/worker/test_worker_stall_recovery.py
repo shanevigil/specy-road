@@ -27,7 +27,7 @@ from specy_road.orchestration.workers.worker_process import wrapper_alive
 import subprocess
 from specy_road.orchestration.workers import worker_reconcile as wrc
 from specy_road.orchestration.workers import worker_process as wp
-from tests.support.bounded_wait import pause
+from tests.support.bounded_wait import pause, wait_until
 
 OLD = "2026-01-01T00:00:00+00:00"   # long past policy.stall_after_seconds (default 600)
 
@@ -290,8 +290,8 @@ def test_a_dead_wrapper_with_a_live_harness_keeps_the_leaf_and_terminate_kills_t
     assert rec.pgid == rec.pid and rec.harness_pid and rec.harness_start and rec.wrapper_token
     assert wp.wrapper_alive(rec, repo) and wp.harness_alive(rec)
     os.kill(rec.pid, signal.SIGKILL)
-    pause(0.3)
-    assert not wp.wrapper_alive(rec, repo) and wp.harness_alive(rec)
+    wait_until(lambda: not wp.wrapper_alive(rec, repo), timeout=5, message="wrapper did not exit")
+    assert wp.harness_alive(rec)
     assert ops.wrapper_gone(repo, ws.load_record(repo, rec.worker_id)) is False
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.state == "running" and ws.FLAG_ORPHAN in rec.flags
@@ -307,7 +307,9 @@ def test_a_dead_wrapper_with_a_live_harness_keeps_the_leaf_and_terminate_kills_t
     pgid = rec.pgid
     ops.terminate(repo, rec.worker_id)
     assert ws.load_record(repo, rec.worker_id).state == "terminated"
-    assert not wp.group_members(pgid)
+    wait_until(
+        lambda: not wp.group_members(pgid), timeout=5, message="the harness group did not exit",
+    )
 
 
 

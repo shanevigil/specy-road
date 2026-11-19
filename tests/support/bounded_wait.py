@@ -1,9 +1,11 @@
 """Bounded waits for process and race tests.
 
-Logical timeouts use the injectable clock (``specy_road.clock`` or a function's
-``clock`` / ``now`` argument). A race wait returns only when the overlap is
-visible: an event, or a condition ``wait_until`` polls. ``pause`` is the poll
-interval inside that wait. A fixed delay does not establish an overlap.
+A wait returns only when the condition is visible: the other side has arrived,
+or the process under test is gone. ``pause`` is the poll interval inside that
+wait. A fixed delay does not establish either.
+
+Logical timeouts use the injectable clock. A child-process fixture that must
+block is allowlisted by its source line.
 """
 
 from __future__ import annotations
