@@ -24,7 +24,7 @@ from specy_road.bundled_scripts import review_cli
 from specy_road.orchestration.workers.worker_adapters import Launch
 from specy_road.orchestration.workers.worker_runner_ready import READY_ONLY_PROMPT
 from tests.support.extracted.folded_review_ops import idle_record
-from tests.support.bounded_wait import pause
+from tests.support.bounded_wait import counting_lock, pause, wait_until
 
 
 FAKE_SLOW = '''
@@ -167,10 +167,14 @@ def test_deliver_and_message_launch_one_turn(tmp_path: Path, monkeypatch) -> Non
 
     def fake_spawn(repo_root, r, launch, *, resumed=False):
         spawned.append(r.worker_id)
-        gate.wait(1)
+        gate.wait(5)
         ws.set_state(repo_root, r, "running", pid=os.getpid())
         return os.getpid()
 
+    arrived = threading.Event()
+    wrapped = counting_lock(ops.workers_lock, arrived)
+    monkeypatch.setattr(ops, "workers_lock", wrapped)
+    monkeypatch.setattr(wr, "workers_lock", wrapped)
     monkeypatch.setattr(ops, "spawn", fake_spawn)
     monkeypatch.setattr(ops, "process_alive", lambda r, repo_root=None: r.pid == os.getpid())
     monkeypatch.setattr(ops, "wrapper_gone", lambda repo_root, r: False)
@@ -191,10 +195,16 @@ def test_deliver_and_message_launch_one_turn(tmp_path: Path, monkeypatch) -> Non
     threads = [threading.Thread(target=deliver), threading.Thread(target=send)]
     for t in threads:
         t.start()
-    pause(0.2)
-    gate.set()
-    for t in threads:
-        t.join()
+    try:
+        wait_until(
+            lambda: arrived.is_set() and len(spawned) == 1,
+            timeout=5,
+            message="deliver and message did not overlap on the workers lock",
+        )
+    finally:
+        gate.set()
+        for t in threads:
+            t.join()
     assert len(spawned) == 1 and len(errors) == 0
     left = ws.load_record(repo, rec.worker_id).queued_message
     sent = next(p for p in (repo / "work").glob(f"prompt-{rec.worker_id}-message-*.md") if p.is_file()).read_text()
@@ -436,10 +446,13 @@ def test_concurrent_messages_launch_one_turn(tmp_path: Path, monkeypatch) -> Non
 
     def fake_spawn(repo_root, r, launch, *, resumed=False):
         spawned.append(r.worker_id)
-        gate.wait(1)
+        gate.wait(5)
         ws.set_state(repo_root, r, "running", pid=os.getpid())
         return os.getpid()
 
+    arrived = threading.Event()
+    wrapped = counting_lock(ops.workers_lock, arrived)
+    monkeypatch.setattr(ops, "workers_lock", wrapped)
     monkeypatch.setattr(ops, "spawn", fake_spawn)
     monkeypatch.setattr(ops, "process_alive", lambda r, repo_root=None: r.pid == os.getpid())
     monkeypatch.setattr(ops, "wrapper_gone", lambda repo_root, r: False)   # the fake spawn has no token to verify
@@ -454,10 +467,16 @@ def test_concurrent_messages_launch_one_turn(tmp_path: Path, monkeypatch) -> Non
     threads = [threading.Thread(target=go) for _ in range(2)]
     for t in threads:
         t.start()
-    pause(0.2)
-    gate.set()
-    for t in threads:
-        t.join()
+    try:
+        wait_until(
+            lambda: arrived.is_set() and len(spawned) == 1,
+            timeout=5,
+            message="the two messages did not overlap on the workers lock",
+        )
+    finally:
+        gate.set()
+        for t in threads:
+            t.join()
     assert len(spawned) == 1 and len(errors) == 0
     assert ws.load_record(repo, rec.worker_id).queued_message == "hi"
 

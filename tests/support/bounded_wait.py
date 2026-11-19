@@ -1,8 +1,9 @@
 """Bounded waits for process and race tests.
 
 Logical timeouts use the injectable clock (``specy_road.clock`` or a function's
-``clock`` / ``now`` argument). A wait here blocks the caller for at most the
-given seconds.
+``clock`` / ``now`` argument). A race wait returns only when the overlap is
+visible: an event, or a condition ``wait_until`` polls. ``pause`` is the poll
+interval inside that wait. A fixed delay does not establish an overlap.
 """
 
 from __future__ import annotations
@@ -32,3 +33,23 @@ def wait_until(
         if time.monotonic() >= deadline:
             raise AssertionError(message)
         pause(min(interval, max(0.0, deadline - time.monotonic())))
+
+
+def counting_lock(real: Callable, arrived: threading.Event, need: int = 2) -> Callable:
+    """A lock stand-in that sets ``arrived`` once ``need`` callers reach it.
+
+    The count is taken before the real lock, so a caller blocked behind a holder
+    still counts. The test waits for ``arrived`` before it releases that holder
+    or lets a gated body continue.
+    """
+    state = {"n": 0}
+    guard = threading.Lock()
+
+    def wrapped(repo_root):
+        with guard:
+            state["n"] += 1
+            if state["n"] >= need:
+                arrived.set()
+        return real(repo_root)
+
+    return wrapped
