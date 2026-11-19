@@ -90,8 +90,9 @@ def expected_planning_rel(n: dict) -> str:
 
 def split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     """
-    Parse a leading YAML frontmatter block (``---`` … ``---``).
+    Parse a leading YAML frontmatter block (``---`` … unindented ``---``).
 
+    The block ends at the first unindented ``---`` line, as the hand-off reader does.
     Returns ``({}, body)`` if no valid frontmatter.
     Identity for validation remains filename + roadmap JSON; frontmatter is optional and not checked.
     """
@@ -102,7 +103,7 @@ def split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
         return {}, text
     end = None
     for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
+        if lines[i].rstrip() == "---":
             end = i
             break
     if end is None:

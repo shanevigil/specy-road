@@ -11,6 +11,7 @@ from tests.review_delegate_helpers import fake_reviewer_run
 from tests.support.review import claude_code_reviewer_repo
 
 from specy_road import review_files as rf
+from specy_road.planning_artifacts import split_frontmatter
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.review_files import latest_ready, reviews_dir
 from specy_road.review_target import resolve_target
@@ -144,6 +145,15 @@ def test_render_front_matter_round_trips(tmp_path: Path) -> None:
     out = _put(tmp_path, "REVIEW-n.md", rf.render_front_matter(src.data, src.body))
     again = rf.load_review(out)
     assert again.ok and again.data == src.data
+
+
+def test_trailing_non_ascii_space_round_trips(tmp_path: Path) -> None:
+    data = {"0": "\xa0"}
+    text = rf.render_front_matter(data)
+    assert split_frontmatter(text)[0] == data
+    path = tmp_path / "READY-nbsp.md"
+    path.write_text(text, encoding="utf-8")
+    assert rf.load_ready(path).data == data
 
 
 @pytest.mark.parametrize("token, want", [

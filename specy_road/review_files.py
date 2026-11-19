@@ -483,5 +483,7 @@ def node_ids_with_reviews(repo_root: Path) -> list[str]:
 
 
 def render_front_matter(data: dict[str, Any], body: str = "") -> str:
-    head = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).rstrip()
+    # safe_dump always ends with its own newline. Strip that only: a value may
+    # end in whitespace (a trailing U+00A0 is a plain scalar), and rstrip() would delete it.
+    head = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).rstrip("\n")
     return f"---\n{head}\n---\n{body}"

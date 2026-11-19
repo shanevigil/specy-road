@@ -212,7 +212,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.75_front-matter-round-trips-a-trailing-non-ascii-space-in-a-value_8c9261ea-b755-4731-bd23-959b9bcdc579.md",
       "sibling_order": 75,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block",
       "touch_zones": [
         "specy_road/review_files.py",
