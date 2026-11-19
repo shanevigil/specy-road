@@ -319,8 +319,9 @@ def _env_invocation(tokens: list[str]) -> _EnvRun:
     """What GNU coreutils 9.4 ``env`` runs for ``tokens`` that start with ``env``.
 
     ``ok`` is false when env rejects the options. A split-string is decoded and its
-    words are parsed as options again; the command is the first non-option that is
-    not a ``NAME=VALUE`` assignment.
+    words are parsed as options again. The command starts at the first non-option
+    and keeps every ``NAME=VALUE`` word, so a ``GIT_CONFIG*`` assignment is still
+    classified wherever it sits among env's arguments.
     """
     i, bad = 1, _EnvRun(False, False, (), "")
     while i < len(tokens):
@@ -346,8 +347,6 @@ def _env_invocation(tokens: list[str]) -> _EnvRun:
                 return _env_from_split(split, tokens[i:])
             continue
         break
-    while i < len(tokens) and "=" in tokens[i]:
-        i += 1
     return _EnvRun(True, False, tuple(tokens[i:]), "")
 
 
@@ -545,7 +544,9 @@ def _split_command_reason(seen: list[str]) -> str | None:
     """The reason for the command an ``env`` split-string runs, else ``None``.
 
     Options in the split string are parsed first. When one consumes a word, only
-    the remaining command is classified (``--unset git`` is not ``git``). Otherwise
+    the remaining command is classified (``--unset git`` is not ``git``). A
+    ``NAME=VALUE`` word in that command is kept, so ``GIT_CONFIG*`` after an
+    option is still the env-config refusal. Otherwise
     the split text is classified as the shell command it was written as. ``$`` and
     ``${VAR}`` are not expanded. An unknown escape has no knowable argv: the shell
     reason stands, or the opaque reason, and that case is never allowed.

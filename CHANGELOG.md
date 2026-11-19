@@ -1111,8 +1111,10 @@ are removed in the release after 0.3.1:
   the command, so `env -S '--unset git stash'` unsets `git` and runs `stash`.
   A variable reference (`$HOME`, `${DIR}`) or an unknown escape cannot be known
   without runtime state and is refused as opaque, including when it sits inside
-  a nested `-S`. The refusal is that command's own reason when the command can
-  be read.
+  a nested `-S`. A `NAME=VALUE` word is kept in the command, so a `GIT_CONFIG*`
+  assignment after an env option is still refused (`env -i GIT_CONFIG_GLOBAL=/tmp/c git x`,
+  `env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'`). The refusal is that command's
+  own reason when the command can be read.
 
 ## [v0.3.1-rc2] - 2026-10-29
 

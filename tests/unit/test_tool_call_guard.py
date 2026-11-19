@@ -532,7 +532,11 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
 
 
 def test_split_string_options_are_parsed_before_the_command() -> None:
-    """An option inside ``-S`` consumes its value, so that word is not the command."""
+    """An option inside ``-S`` consumes its value, so that word is not the command.
+
+    A ``NAME=VALUE`` word after that option stays in the command, so ``GIT_CONFIG*``
+    keeps the env-config refusal, directly and inside the split string.
+    """
     stash = g.classify("git stash")
     consumed = (
         "env -S '--unset git stash'", "env -S '--chdir git stash'", "env -S '-u git stash'",
@@ -551,3 +555,30 @@ def test_split_string_options_are_parsed_before_the_command() -> None:
     )
     for command in runs:
         assert g.classify(command) == stash, (command, g.classify(command))
+    config = g.classify("GIT_CONFIG_GLOBAL=/tmp/c git x")
+    held = (
+        "env -i GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env -v GIT_CONFIG_PARAMETERS=x git status",
+        "env -- GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env -u HOME GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env --unset=HOME GIT_CONFIG_PARAMETERS=x git status",
+        "env -C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env -iv GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env --ignore-environment GIT_CONFIG_PARAMETERS=x git status",
+        "env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        'env -S "-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
+        "env -S '-v GIT_CONFIG_PARAMETERS=x git status'",
+        "env -S '-- GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -S '-u HOME GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -S '--unset=HOME GIT_CONFIG_PARAMETERS=x git status'",
+        "env -S '-C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -S '-iv GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -S '--ignore-environment GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -vS '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        'env --split-string="-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
+        "sudo env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "(env -S '-C /tmp GIT_CONFIG_PARAMETERS=x git status')",
+        "env -S -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    )
+    for command in held:
+        assert g.classify(command) == config, (command, g.classify(command))
