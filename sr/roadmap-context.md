@@ -198,7 +198,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.70` review-packet reads the implementation summary from the leaf's own worktree `packet-reads-leaf-worktree-summary` — task — **Complete**
   - `M22.71` Review channels report the model the harness actually ran, so every review record names it `review-channels-report-the-model-the-harness-ran` — task — **Complete**
   - `M22.72` Gate: current harness facts delivered as a dated research report `harness-facts-research-delivered` — gate — **Not Started**
-  - `M22.73` Harness facts and captures refreshed from the delivered research `harness-facts-and-captures-refreshed` — task — **Not Started**
+  - `M22.73` Harness facts, captures and the Fable 5.2, GPT-6.2 Sol and Astra profiles refreshed from the installed CLIs `harness-facts-and-captures-refreshed` — task — **Not Started**
   - `M22.74` The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment `the-tool-call-guard-refuses-destructive-git-commands-hidden` — task — **Complete**
   - `M22.75` Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block `front-matter-round-trips-a-trailing-non-ascii-space-in-a-value` — task — **Complete**
   - `M22.76` The tool-call guard reads env's clustered and attached -S like the separate flag `the-tool-call-guard-reads-env-s-clustered-and-attached-s-like` — task — **Complete**

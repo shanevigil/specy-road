@@ -147,9 +147,12 @@
     },
     {
       "acceptance": [
-        "The bundled harness facts and captures match the report M22.72 delivered: versions, flags, model ids (including profiles for claude-fable-5-2, gpt-6.2-sol and gpt-6.2-astra, each with its context window, default effort and supported effort levels; earlier models stay listed while their providers still offer them), Codex project-trust behaviour (reviewers stay untrusted; no --trust in any launch), and the replacement for the deprecated Codex multi_agent flag",
-        "docs/orchestration-workers.md notes for adopters: Codex project trust, and that Claude Code's opt-in Bash sandbox blocks git worktree lifecycle commands inside a session",
-        "The facts tests pass against the refreshed fixture; any check of installed binaries reports the versions it ran against",
+        "Captures: the claude-code and cursor captures are re-taken from the CLIs installed at pickup with `specy-road upgrade --only profiles --capture <harness> --accept` (the planner saw Claude Code 2.1.329 and Cursor agent 2026.11.17-f532c45 on 2026-11-19; READY names the versions captured), every new workflow identifier is classified under `relationships`, and harness-facts.yaml's version records and any fact the new help or inventory changes cite the new capture. The codex capture is kept: the installed codex-cli 0.166.0 equals the accepted one",
+        "Profiles claude-fable-5-2 (anthropic-claude/), gpt-6.2-sol and gpt-6.2-astra (openai-gpt/) are added, each with its context window, default effort and supported effort levels taken from a source on this host and cited: `codex debug models` (codex-cli 0.166.0) for the two GPT-6.2 models, the accepted Cursor `agent models` capture for Fable 5.2. The Fable 5.2 profile aliases every claude-fable-5-2 Cursor id, so test_shipped_profiles_alias_every_cursor_id_that_extends_their_api_id passes. A field no host source gives (price, output tokens, release date) is `unknown`, a role with no evidence is scored as not piloted, and each such gap is an Open question naming M22.72",
+        "The new profiles rank latest; claude-fable-5-1 and gpt-6.1-sol become previous and every earlier profile stays listed (maintainer 2026-11-16: a roster pin is a default or a selection, not a reason to retire). The model-profiles README roster table gains the three rows. No roster default and no launch argv changes: the orchestration.yaml template, the executor templates and the worker adapters are untouched",
+        "harness-facts.yaml's codex record and docs/orchestration-workers.md state the Codex project-trust rule as codex-cli 0.166.0 behaves: project .codex/ hooks load only when trusted, reviewers stay untrusted, and no specy-road Codex launch passes a project-trust flag",
+        "docs/orchestration-workers.md notes for adopters that Claude Code's opt-in Bash sandbox blocks git worktree lifecycle commands inside a session, naming the Claude Code version a throwaway-repository run on this host showed it on (recorded in READY)",
+        "`specy-road upgrade --only profiles --check` reports no drift (after `--render`), the harness-facts and profile tests and the full suite pass, and READY lists the installed CLI versions every check ran against",
         "CHANGELOG.md [Unreleased] records the refresh; no version heading is written"
       ],
       "codename": "harness-facts-and-captures-refreshed",
@@ -161,9 +164,14 @@
       "planning_dir": "planning/M22.73_harness-facts-and-captures-refreshed_d5103a37-a7d0-4b07-ba7f-72f05a7c4ba8.md",
       "sibling_order": 73,
       "status": "Not Started",
-      "title": "Harness facts and captures refreshed from the delivered research",
+      "title": "Harness facts, captures and the Fable 5.2, GPT-6.2 Sol and Astra profiles refreshed from the installed CLIs",
       "touch_zones": [
-        "specy_road/templates/project/model-profiles/",
+        "specy_road/templates/project/model-profiles/harness-facts.yaml",
+        "specy_road/templates/project/model-profiles/harness-captures/claude-code/",
+        "specy_road/templates/project/model-profiles/harness-captures/cursor/",
+        "specy_road/templates/project/model-profiles/anthropic-claude/",
+        "specy_road/templates/project/model-profiles/openai-gpt/",
+        "specy_road/templates/project/model-profiles/README.md",
         "docs/orchestration-workers.md",
         "CHANGELOG.md"
       ],
