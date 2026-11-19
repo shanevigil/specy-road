@@ -93,6 +93,14 @@ from specy_road.orchestration.workers import worker_state as ws
     ('(env -S "git stash")', "env -S splits"),
     ('sudo env -S "git stash"', "env -S splits"),
     ('FOO=1 env -S "git stash"', "env -S splits"),
+    ('env -vS "git stash"', "env -S splits"),
+    ('env -iS "git stash"', "env -S splits"),
+    ('env -S"git stash"', "env -S splits"),
+    ('env -vS"git stash"', "env -S splits"),
+    ('(env -vS "git stash")', "env -S splits"),
+    ('sudo env -iS "git stash"', "env -S splits"),
+    ('FOO=1 env -S"git stash"', "env -S splits"),
+    ('FOO=1 env -vS"git stash"', "env -S splits"),
     ("(GIT_CONFIG_GLOBAL=/tmp/c git x)", "GIT_CONFIG*"),
     ("(git --config-env=alias.x=BODY x)", "--config-env=alias"),
 ])
@@ -126,6 +134,8 @@ def test_destructive_commands_are_classified(command: str, fragment: str) -> Non
     "git commit -m 'git: bump $V' src/a.py",
     "$HOME/bin/pytest -q",
     "${PYTHON:-python} -m pytest",
+    "env -i git status",
+    "env -u HOME ls",
 ])
 def test_ordinary_commands_pass(command: str) -> None:
     assert g.classify(command) is None, command

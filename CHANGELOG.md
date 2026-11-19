@@ -1087,8 +1087,11 @@ are removed in the release after 0.3.1:
   `git --config-env=alias.*` when a subshell, a wrapper or an assignment sits in
   front (`(env -S "git stash")`, `sudo env -S "git stash"`,
   `FOO=1 env -S "git stash"`, `(GIT_CONFIG_GLOBAL=/tmp/c git x)`,
-  `(git --config-env=alias.x=BODY x)`). The reason is the one the bare command
-  already gets.
+  `(git --config-env=alias.x=BODY x)`). An `S` clustered with another short
+  option, or `-S` attached to its argument, is the same split-string option
+  (`env -vS "git stash"`, `env -iS "git stash"`, `env -S"git stash"`,
+  `env -vS"git stash"`), including behind those openers, wrappers and
+  assignments. The reason is the one the bare command already gets.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
