@@ -303,6 +303,34 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Each wrapper the guard unwraps (command, sudo, doas, nohup, exec, time, nice, ionice, xargs, timeout; env keeps its M22.77 table) has its own option table: which short and long options take a value, as that tool documents them. One shared flag list is no longer used. 'sudo -n git stash', 'command -p git stash', 'time -p git stash', 'doas -n git stash', 'xargs -r git stash', 'xargs -t git stash', 'ionice -t git stash', '/usr/bin/sudo -n git reset --hard' and '( sudo -n git stash )' (verified allowed on WIP 41d5be2e, 2026-11-19) are refused with the bare command's reason",
+        "Short options cluster and take attached or separate values per each tool's table ('sudo -nu bob git stash', 'sudo -ubob git stash', 'sudo --user=bob git stash'); '--' ends a wrapper's options",
+        "An option a wrapper's table does not list, before a word that could be git, makes the command opaque (refused with the opaque reason), never allowed",
+        "The enumerated wrapper test from M22.77 and M22.78 adds, for each wrapper, every option in its table (with a value where it takes one) before each destructive case, bare and path-qualified; each gets the bare form's verdict and reason, and the ordinary-commands table stays allowed through the same forms",
+        "CHANGELOG.md [Unreleased] extends the guard Security entry; no version heading is written"
+      ],
+      "codename": "the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag",
+      "dependencies": [
+        "f73d1ecb-3815-4f7c-b3a0-92e3e0d68af3"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.79",
+      "node_key": "522551fc-deb1-435a-b094-882b07922652",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.79_the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag_522551fc-deb1-435a-b094-882b07922652.md",
+      "sibling_order": 79,
+      "status": "Not Started",
+      "title": "The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command",
+      "touch_zones": [
+        "specy_road/orchestration/guard/tool_call_guard.py",
+        "specy_road/orchestration/guard/tool_call_guard_shapes.py",
+        "tests/unit/test_tool_call_guard.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
