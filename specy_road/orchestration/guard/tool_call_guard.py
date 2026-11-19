@@ -141,6 +141,8 @@ class _EnvRun:
     split: bool
     command: tuple[str, ...]
     shell: str
+    determined: bool = True
+    source: str = ""
 
 
 def _env_long_name(name: str) -> tuple[str, str] | None:
@@ -194,52 +196,108 @@ def _env_short_at(tokens: list[str], i: int) -> tuple[int, list[tuple[str, str |
     return i + 1, taken
 
 
-def _env_split_shell(value: str) -> str:
-    """Apply GNU env's ``\\_`` break to an ``-S`` value, leaving a shell command string.
+# GNU coreutils 9.4 ``env -S``: unquoted whitespace separates words. These escapes insert a
+# character (they are not themselves separators — a following scan does not re-split them).
+_ENV_WS = frozenset(" \t\n\v\f\r")
+_ENV_ESC = {"\\": "\\", "'": "'", '"': '"', "t": "\t", "n": "\n", "r": "\r", "v": "\v", "f": "\f", "#": "#", "$": "$"}
+_ENV_SPLIT_OPAQUE = "env -S splits its argument into a command the guard cannot see; run the git command plainly"
 
-    Outside quotes, ``\\_`` is an argument break. Inside double quotes it is a space
-    in that argument. Inside single quotes, and after a doubled backslash, it is not
-    a break. Other ``-S`` escapes (``\\n``, ``\\t``, ``\\c``, ``#``, ``${VAR}``) are
-    left unchanged.
+
+def _env_flush(cur: list[str], argv: list[str]) -> None:
+    if cur:
+        argv.append("".join(cur))
+        cur.clear()
+
+
+def _env_split_escape(value: str, i: int, dq: bool, cur: list[str], argv: list[str]) -> int | None:
+    """The index after one backslash escape, or ``None`` when env would reject it."""
+    if i + 1 >= len(value):
+        return None
+    nxt = value[i + 1]
+    if nxt == "c":
+        if dq:
+            return None
+        _env_flush(cur, argv)
+        return len(value)
+    if nxt == "_" and not dq:
+        _env_flush(cur, argv)
+        return i + 2
+    if nxt == "_":
+        cur.append(" ")
+        return i + 2
+    mapped = _ENV_ESC.get(nxt)
+    if mapped is None:
+        return None
+    cur.append(mapped)
+    return i + 2
+
+
+def _env_split_plain(value: str, i: int, dq: bool, cur: list[str], argv: list[str]) -> tuple[int, bool] | None:
+    """One unquoted or double-quoted character. ``None`` means ``$`` / ``${VAR}``."""
+    ch = value[i]
+    if ch == '"':
+        return i + 1, not dq
+    if not dq and ch in _ENV_WS:
+        _env_flush(cur, argv)
+        return i + 1, dq
+    if ch == "$":
+        return None
+    if not dq and ch == "#" and not cur:
+        _env_flush(cur, argv)
+        return len(value), dq
+    cur.append(ch)
+    return i + 1, dq
+
+
+def _env_split_argv(value: str) -> tuple[str, ...] | None:
+    """GNU coreutils 9.4 ``-S`` words, or ``None`` when the command cannot be known.
+
+    ``None`` is an unknown escape, a trailing backslash, ``\\c`` inside double quotes,
+    or ``$`` / ``${VAR}`` outside single quotes. Single quotes keep every character
+    except ``\\\\`` and ``\\'``.
     """
-    out: list[str] = []
+    argv, cur = [], []
     i, sq, dq = 0, False, False
     while i < len(value):
         ch = value[i]
         nxt = value[i + 1] if i + 1 < len(value) else ""
-        if ch == "'" and not dq:
-            sq = not sq
-            out.append(ch)
-        elif ch == '"' and not sq:
-            dq = not dq
-            out.append(ch)
-        elif ch == "\\" and nxt and not (sq and nxt not in "\\'"):
-            if nxt == "_" and not sq:
-                out.append(" ")
-            elif nxt == "\\":
-                out.append("\\")
-            elif nxt == "'" and sq:
-                out.append("'")
+        if sq:
+            if ch == "\\" and nxt in "\\'":
+                cur.append(nxt)
+                i += 2
+                continue
+            if ch == "'":
+                sq = False
             else:
-                out.append(ch)
-                out.append(nxt)
+                cur.append(ch)
             i += 1
-        else:
-            out.append(ch)
-        i += 1
-    return "".join(out)
+            continue
+        if ch == "\\":
+            i = _env_split_escape(value, i, dq, cur, argv)
+            if i is None:
+                return None
+            continue
+        if ch == "'" and not dq:
+            sq = True
+            i += 1
+            continue
+        step = _env_split_plain(value, i, dq, cur, argv)
+        if step is None:
+            return None
+        i, dq = step
+    _env_flush(cur, argv)
+    return tuple(argv)
 
 
 def _env_from_split(value: str, trailing: list[str]) -> _EnvRun:
     """The command ``-S`` builds: its value, then any arguments env appends after it."""
-    value = _env_split_shell(value)
+    words = _env_split_argv(value)
     extra = " ".join(shlex.quote(part) for part in trailing)
-    shell = f"{value} {extra}" if extra else value
-    try:
-        command = tuple(shlex.split(shell))
-    except ValueError:
-        command = (shell,)
-    return _EnvRun(True, True, command, shell)
+    source = f"{value} {extra}" if extra else value
+    if words is None:
+        return _EnvRun(True, True, (), source, False, source)
+    command = (*words, *trailing)
+    return _EnvRun(True, True, command, shlex.join(command), True, source)
 
 
 def _env_invocation(tokens: list[str]) -> _EnvRun:
@@ -456,14 +514,35 @@ def classify_segment(segment: str) -> str | None:  # noqa: C901 — baseline 202
     return None
 
 
+def _embedded_space_reason(command: tuple[str, ...]) -> str | None:
+    """A word env built with an embedded tab or newline, read with those as spaces."""
+    for word in command:
+        if not any(ch in word for ch in "\t\n\v\f\r"):
+            continue
+        flat = "".join(" " if ch in "\t\n\v\f\r" else ch for ch in word)
+        reason = classify(flat)
+        if reason:
+            return reason
+    return None
+
+
 def _split_command_reason(seen: list[str]) -> str | None:
-    """The reason for the command an ``env`` split-string runs, else ``None``."""
+    """The reason for the command an ``env`` split-string runs, else ``None``.
+
+    The split text is classified as the shell command it was, and as the words GNU
+    env would exec. A tab or newline env embeds in one word is classified with that
+    character read as a space. An unknown escape or ``$`` / ``${VAR}`` has no
+    knowable argv: the shell reason stands, or the opaque reason, and it is never allowed.
+    """
     if not seen or seen[0] != "env":
         return None
     parsed = _env_invocation(seen)
     if not (parsed.ok and parsed.split):
         return None
-    return classify(parsed.shell)
+    reason = classify(parsed.source)
+    if not parsed.determined:
+        return reason or _ENV_SPLIT_OPAQUE
+    return reason or classify(parsed.shell) or _embedded_space_reason(parsed.command)
 
 
 def _opaque(segment: str) -> str | None:

@@ -1102,11 +1102,14 @@ are removed in the release after 0.3.1:
   `env --s "git stash"`, `env --split="git stash"` and `env --spl="git stash"`
   are the same split-string option as `env -S`. `--unset` and `--chdir`, and
   their prefixes, consume their value, so that word is not the command. In the
-  split string, `\_` is an argument break (a space inside double quotes, and
-  literal inside single quotes), so `env -S 'git\_stash'` is `git stash`. The
-  refusal is that command's own reason. Every destructive command and every
-  ordinary command is checked through those wrappers, including each spelling
-  of the split-string option.
+  split string, GNU coreutils 9.4 escapes are decoded: `\_` is an argument
+  break (a space inside double quotes, and literal inside single quotes),
+  `\t` `\n` `\f` `\v` `\r` embed that character, `\\` and the quote escapes
+  insert themselves, `\c` ends the string, and `\#` is a literal hash. An
+  embedded tab or newline is read as a space, so `env -S 'git\tstash'` is
+  `git stash`. An unknown escape, or `$` / `${VAR}` outside single quotes,
+  has no knowable command and is refused. The refusal is that command's own
+  reason when the command can be read, including each spelling of the option.
 
 ## [v0.3.1-rc2] - 2026-10-29
 

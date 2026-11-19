@@ -443,38 +443,74 @@ def destructive_commands() -> list[str]:
     return [command_text(row) for table in tables for row in param_rows(table)]
 
 
+def test_env_split_escapes_and_pre_leaf_refusals() -> None:
+    """GNU ``-S`` escapes, and every pre-leaf ``env -S`` refusal, stay refused or match.
+
+    ``\\_`` and an embedded tab, newline, form feed, vertical tab or carriage return read
+    as ``git stash``. ``\\c`` ends the string and a leading ``#`` comments it out, so what
+    remains is classified. An unknown escape or ``$`` / ``${VAR}`` is refused. Forms the
+    pre-leaf guard refused are still refused.
+    """
+    stash = g.classify("git stash")
+    same = (
+        "env -S 'git\\_stash'", "env -vS 'git\\_stash'", "env -S'git\\_stash'",
+        "env --split 'git\\_stash'", "env --s 'git\\_stash'", "env --spl='git\\_stash'",
+        "env -S 'git\\tstash'", "env -S 'git\\nstash'", "env -S 'git\\fstash'",
+        "env -S 'git\\vstash'", "env -S 'git\\rstash'", "env -S 'git\tstash'",
+        "env -S 'git stash\\c --hard'",
+    )
+    for command in same:
+        assert g.classify(command) == stash, (command, g.classify(command))
+    literal = (
+        "env -S \"git'\\_stash'\"", "env -S '\"git\\_stash\"'", "env -S 'git\\\\_stash'",
+        "env -S 'gi\\ct stash'", "env -S '# git stash'",
+    )
+    for command in literal:
+        assert g.classify(command) is None, (command, g.classify(command))
+    unknown = ("env -S 'git\\x20stash'", "env -S '\\gitstash'", "env -S 'echo ${HOME}'", "env -S 'echo $HOME'")
+    for command in unknown:
+        assert g.classify(command), command
+    refused_before = (
+        'env -S "git stash"', '(env -S "git stash")', 'sudo env -S "git stash"',
+        'FOO=1 env -S "git stash"', 'env -vS "git stash"', 'env -iS "git stash"',
+        'env -S"git stash"', 'env -vS"git stash"', '(env -vS "git stash")',
+        'sudo env -iS "git stash"', 'FOO=1 env -S"git stash"', 'FOO=1 env -vS"git stash"',
+        "env -S 'git\\_stash'", "env -S 'git\\x20stash'", "env -S 'git\\tstash'",
+        "env -S 'git\\nstash'",
+    )
+    for command in refused_before:
+        assert g.classify(command), command
+
+
 def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
     """Every wrapper, including each env split-string spelling, keeps the bare reason.
 
     ``-S`` separate, clustered and attached, and every unambiguous prefix of ``--split-string``
-    (with ``=`` and with a separate value) match the bare command. ``\\_`` in the split string
-    is the same break. Ordinary commands stay allowed.
+    (with ``=`` and with a separate value) match the bare command. Ordinary commands stay
+    allowed, except an ``-S`` value whose ``$`` / ``${VAR}`` env cannot determine.
     """
     stash = g.classify("git stash")
     examples = (
         'env --split "git stash"', 'env --s "git stash"',
         'env --split="git stash"', 'env --spl="git stash"',
-        "env -S 'git\\_stash'", "env -vS 'git\\_stash'", "env -S'git\\_stash'",
-        "env --split 'git\\_stash'", "env --s 'git\\_stash'", "env --spl='git\\_stash'",
     )
     for example in examples:
         assert g.classify(example) == stash, (example, g.classify(example))
-    # \_ inside single quotes is literal; inside double quotes it is a space in that one
-    # word; a doubled backslash is not a break. None of those is the git stash command.
-    literal = (
-        "env -S \"git'\\_stash'\"",
-        "env -S '\"git\\_stash\"'",
-        "env -S 'git\\\\_stash'",
-    )
-    for command in literal:
-        assert g.classify(command) is None, (command, g.classify(command))
     for command in destructive_commands():
         bare = g.classify(command)
         assert bare, command
         for wrapped in (*see_through_forms(command), *env_split_forms(command)):
             assert g.classify(wrapped) == bare, (wrapped, g.classify(wrapped), bare)
+    # $ outside quotes: env rejects $NAME and expands ${VAR} from the environment.
+    undetermined = {"echo $HOME", "ls ${DIR}", "$HOME/bin/pytest -q", "${PYTHON:-python} -m pytest"}
     ordinary = [command_text(row) for row in param_rows(test_ordinary_commands_pass)]
     for command in ordinary:
         assert g.classify(command) is None, command
-        for wrapped in (*see_through_forms(command), *env_split_forms(command)):
+        for wrapped in see_through_forms(command):
             assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
+        for wrapped in env_split_forms(command):
+            reason = g.classify(wrapped)
+            if command in undetermined:
+                assert reason, (wrapped, reason)
+            else:
+                assert reason is None, (wrapped, reason)
