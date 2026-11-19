@@ -241,6 +241,10 @@ are removed in the release after 0.3.1:
 
 ### Fixed
 
+- A front-matter value's trailing non-ASCII space survives rendering: `render_front_matter` removes only the YAML
+  dump's trailing newline, so `{'0': '\xa0'}` reads back as that mapping. `split_frontmatter` ends the block only
+  at an unindented `---` line, so an indented `---` inside a value stays in the value.
+
 - Review records name the model a Codex reviewer ran: `codex exec --json` reports none, so `harness_model` is now
   read from the thread's rollout (`turn_context.model`, by the `thread.started` id) under the profile's
   `CODEX_HOME`, a `CODEX_HOME=VALUE` word in the entry's `channels.cli` or `cli_resume`, or the user's, for the

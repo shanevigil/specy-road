@@ -11,6 +11,7 @@ from specy_road.planning_artifacts import (
     normalize_planning_dir,
     split_frontmatter,
 )
+from specy_road.review_files import load_ready, render_front_matter
 from specy_road.bundled_scripts.roadmap_edit_fields import apply_set
 
 
@@ -38,6 +39,22 @@ def test_split_frontmatter() -> None:
     assert fm == {"a": 1}
     assert body.strip() == "Hello"
     assert split_frontmatter("no front")[0] == {}
+
+
+def test_trailing_non_ascii_space_round_trips(tmp_path: Path) -> None:
+    data = {"0": "\xa0"}
+    text = render_front_matter(data)
+    assert split_frontmatter(text)[0] == data
+    path = tmp_path / "READY-nbsp.md"
+    path.write_text(text, encoding="utf-8")
+    assert load_ready(path).data == data
+
+
+def test_indented_document_end_stays_inside_the_value() -> None:
+    data = {"a": "x\n---\ny"}
+    mapping, body = split_frontmatter(render_front_matter(data))
+    assert mapping == data
+    assert body == ""
 
 
 def test_collect_planning_errors_missing_file(tmp_path: Path) -> None:
