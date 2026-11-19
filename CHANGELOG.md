@@ -109,8 +109,9 @@ body. Keep section bodies focused; link to PRs for detail.
   models` and the Cursor `agent models` capture; prices, output limits and release dates are `unknown` and the
   role scores are not piloted. `claude-fable-5-1` and `gpt-6.1-sol` become previous; every earlier profile stays.
   The Codex record and `docs/orchestration-workers.md` state the project-trust rule: project `.codex/` hooks load
-  only when trusted, and no specy-road Codex launch passes a trust flag, so reviewers stay untrusted. No roster
-  default or launch command changes.
+  only when trusted, and no specy-road Codex launch passes a trust flag, so reviewers stay untrusted. The same page
+  notes that Claude Code's opt-in Bash sandbox blocks `git worktree add`, `remove` and `prune` inside a session
+  (2.1.329; `prune` still exits 0). No roster default or launch command changes.
 - A `human:` acceptance criterion is met only by a person's closed entry in `roadmap/decisions.yaml`: a `kind: human-action` entry with the new optional `criterion: A#`, `decided_by: operator` and `channel: terminal` (new value) or `pm-gui`, committed on the leaf or integration branch. Existing planning-sheet `A#:` lines stop counting: `finish-this-task` refuses with the undecided ids, says a sheet line no longer counts, and names `decisions add <NODE> --kind human-action --criterion A#` and the two ways a person closes it (`decisions close` at their own interactive terminal, with a `y/N` prompt and no `--yes`, or the PM GUI's answer). No migration copies sheet lines into the ledger: a copy would turn an agent-writable line into a person's record. `handoff status` lists the undecided criteria (`human_criteria_undecided` in `--json`); the review gate is unchanged. `decisions close` no longer needs a planning-sheet line for any other entry, and `grind-session --status` does not list a GUI answer on a criterion entry. Refresh copied schemas with `specy-road refresh-schemas`. See `docs/roadmap-authoring.md` (the `acceptance` row).
 
 - The managed `.gitignore` block now ignores all of `work/` (`work/*`, child directories included) in place of

@@ -53,7 +53,7 @@ harnesses:
       label: documented
       source: https://code.claude.com/docs/en/headless (bare mode lists skills, custom commands and subagents as discovered; --agents <json> adds subagents; subagent messages carry parent_tool_use_id); harness compatibility triage (2026-10-28); 2026-11-02 triage F3
     hooks:
-      value: PreToolUse hooks in .claude/settings.json fire under claude -p and block with exit 2; --bare skips every hook. Exit 1 (or any code but 0 and 2) does not block; a hook that times out does not block unless it sets onFailure "block" (2.1.295+); hookSpecificOutput.permissionDecision "deny" on exit 0 also blocks; -p runs a project's hooks with no trust prompt, even in a folder never trusted. --bare does not skip the hooks of an organization's managed plugins (2.1.329 help)
+      value: PreToolUse hooks in .claude/settings.json fire under claude -p and block with exit 2; --bare skips the hooks in settings files and installed plugins, but not those of an organization's managed plugins (2.1.329 help). Exit 1 (or any code but 0 and 2) does not block; a hook that times out does not block unless it sets onFailure "block" (2.1.295+); hookSpecificOutput.permissionDecision "deny" on exit 0 also blocks; -p runs a project's hooks with no trust prompt, even in a folder never trusted
       label: documented
       source: https://code.claude.com/docs/en/hooks; https://code.claude.com/docs/en/headless (bare mode); harness-captures/claude-code/help.txt (--bare, 2.1.329); https://github.com/shanevigil/specy-road/blob/main/docs/optional-ai-tooling-patterns.md (exit 2 observed in the sandbox run 2026-10-28); 2026-11-02 triage F4
     git_actions:
