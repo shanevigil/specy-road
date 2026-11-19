@@ -122,18 +122,14 @@ def test_a_version_bump_discards_the_cache(repo: Path) -> None:
     assert not any(e["kind"] == "bogus" for e in index(repo)["events"])
 
 
-def test_a_corrupt_cache_rebuilds_without_raising(repo: Path) -> None:
+@pytest.mark.parametrize(
+    "document",
+    ["{not json at all", '{"cache_version": 1}'],
+)
+def test_a_corrupt_cache_rebuilds_without_raising(repo: Path, document: str) -> None:
+    """Non-JSON text and a truncated document are both discarded and rebuilt."""
     index(repo)
-    cache_path(repo).write_text("{not json at all", encoding="utf-8")
-    clear_memo()
-
-    assert load_cache(repo) is None
-    assert index(repo)["events"]
-
-
-def test_a_truncated_cache_document_rebuilds(repo: Path) -> None:
-    index(repo)
-    cache_path(repo).write_text('{"cache_version": 1}', encoding="utf-8")
+    cache_path(repo).write_text(document, encoding="utf-8")
     clear_memo()
 
     assert load_cache(repo) is None

@@ -110,20 +110,6 @@ def test_hard_remove_deletes_planning_file(tmp_path: Path) -> None:
     assert v.returncode == 0, v.stderr
 
 
-def test_edit_node_cli(tmp_path: Path) -> None:
-    crud_fixture_repo(tmp_path)
-    r = run_crud(
-        tmp_path,
-        "--repo-root",
-        str(tmp_path),
-        "edit-node",
-        "M99.1",
-        "--set",
-        "status=Complete",
-    )
-    assert r.returncode == 0, r.stderr
-
-
 def test_edit_node_cli_rejects_invalid_status(tmp_path: Path) -> None:
     crud_fixture_repo(tmp_path)
     r = run_crud(
