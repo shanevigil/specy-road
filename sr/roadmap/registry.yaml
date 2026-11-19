@@ -91,16 +91,3 @@ entries:
     started: '2026-11-18'
     owner: savigil
     implementation_review: pending
-  - codename: the-tool-call-guard-refuses-destructive-git-commands-hidden
-    node_id: M22.74
-    branch: feature/rm-the-tool-call-guard-refuses-destructive-git-commands-hidden
-    touch_zones:
-      - specy_road/orchestration/guard/tool_call_guard.py
-      - specy_road/orchestration/guard/tool_call_guard_shapes.py
-      - tests/unit/test_tool_call_guard.py
-      - tests/cli/test_session_guard.py
-      - CHANGELOG.md
-    started: '2026-11-18'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-19T03:37:51+00:00'

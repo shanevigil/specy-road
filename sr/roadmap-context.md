@@ -199,7 +199,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.71` Review channels report the model the harness actually ran, so every review record names it `review-channels-report-the-model-the-harness-ran` — task — **Complete**
   - `M22.72` Gate: current harness facts delivered as a dated research report `harness-facts-research-delivered` — gate — **Not Started**
   - `M22.73` Harness facts and captures refreshed from the delivered research `harness-facts-and-captures-refreshed` — task — **Not Started**
-  - `M22.74` The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment `the-tool-call-guard-refuses-destructive-git-commands-hidden` — task — **Not Started**
+  - `M22.74` The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment `the-tool-call-guard-refuses-destructive-git-commands-hidden` — task — **Complete**
   - `M22.75` Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block `front-matter-round-trips-a-trailing-non-ascii-space-in-a-value` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
@@ -300,6 +300,8 @@ Work behind these is deliberately held back until they clear.
 
 Someone deliberately dropped these. Check why before re-adding one.
 
+- 2026-11-18 `M16.7.7` stopped depending on `086cd41a-9d4b-4377-8ebd-ee563a0d20df` (no longer live)
+- 2026-11-18 `M16.7.6` stopped depending on `086cd41a-9d4b-4377-8ebd-ee563a0d20df` (no longer live)
 - 2026-11-14 `M17.8` stopped depending on `M16.6.1 Docs by topic: design notes out of docs/, one workers doc, folded small docs, no pinned release candidate, one GUI extra`
 - 2026-11-14 `M16.6.1` stopped depending on `M16.5.13 The review packet fragments fold into review_packet`
 - 2026-11-14 `M16.5.11` stopped depending on `M16.5.10 Chore, decision and lesson records share internal adapters and keep their files byte for byte`
@@ -323,9 +325,7 @@ Someone deliberately dropped these. Check why before re-adding one.
 - 2026-11-09 `M16.5.1` stopped depending on `M23.4 checks: entries scoped to touch zones block a merge when they fail (held M15.23's purpose)`
 - 2026-11-09 `M16.5.9` stopped depending on `M23.8 The guard classifier becomes three rule tables with every verdict unchanged`
 - 2026-11-08 `M16.8.8` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
-- 2026-11-08 `M16.8.4` stopped depending on `M23.3 After the alias window: delete the deprecated command aliases, config-form fallbacks and re-export shims`
-- 2026-11-08 `M19.8` stopped depending on `M19.7 Notices for how the agent files fit together: missing CLAUDE.md import, two load orders, floor read twice`
-- _…and 81 earlier — `specy-road history --json`_
+- _…and 83 earlier — `specy-road history --json`_
 
 ## Archived (not in the live roadmap)
 
@@ -361,7 +361,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.74` on `feature/rm-the-tool-call-guard-refuses-destructive-git-commands-hidden` since 2026-11-18
 
 ## Quality by area
 

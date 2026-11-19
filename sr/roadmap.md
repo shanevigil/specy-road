@@ -269,7 +269,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.71` | Review channels report the model the harness actually ran, so every review record names it | task | Agentic-led | Complete |
 | `M22.72` | Gate: current harness facts delivered as a dated research report | gate | Human-led | Not Started |
 | `M22.73` | Harness facts and captures refreshed from the delivered research | task | Agentic-led | Not Started |
-| `M22.74` | The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment | task | Agentic-led | Not Started |
+| `M22.74` | The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment | task | Agentic-led | Complete |
 | `M22.75` | Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
