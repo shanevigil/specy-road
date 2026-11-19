@@ -100,13 +100,16 @@
       "dependencies": [
         "05b23f6c-3e4d-4ac9-b0a0-022b4fe7f7f1",
         "4193dccc-c9b5-46a4-a5dc-3a9705587c14",
+        "5677fff1-eaf2-4dee-9714-792ba66ea7c2",
         "8670a5b8-b6f6-4b91-b5c8-cfd5e890a50e",
+        "8c9261ea-b755-4731-bd23-959b9bcdc579",
         "9c3e6e09-f3d1-4da1-a719-af19db35fe12",
         "a4905618-b868-46fa-a23b-d9e1b2846cd2",
         "d3fb22ae-b63e-47ea-b422-231f6a3f8258",
         "d4c206ce-2708-4dd7-9e33-6b5658f16759",
         "d5103a37-a7d0-4b07-ba7f-72f05a7c4ba8",
         "dac9d0ff-b463-4508-8218-41532f1c20f4",
+        "ebc6d262-abe1-43ce-b65b-f449713ea455",
         "ed19381c-5265-4909-a70c-f9c5a9cf1853"
       ],
       "execution_milestone": "Agentic-led",

@@ -18,8 +18,9 @@ def block_round(repo: Path, n: int, a1: str = "fail") -> None:
     """One more commit, blocked by opus."""
     commit_file(repo, f"src/r{n}.py", f"r = {n}\n", f"fix {n}")
     notes = repo.parent / "notes.md"
-    notes.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", a1=a1)
-                     .replace("notes\n", f"round {n}: the heading case still warns\n"))
+    text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", a1=a1)
+    front, _body = text.rsplit("---\n", 1)
+    notes.write_text(front + "---\n" + f"round {n}: the heading case still warns\n")
     assert run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
 

@@ -244,13 +244,15 @@ def review_text(commit: str, *, model: str = "human", verdict: str = "approve",
         "fresh_session": fresh, "authored_fix": False, "is_coordinator": False,
         **extra,
     }
-    return "---\n" + yaml.safe_dump(data, sort_keys=False) + "---\nnotes\n"
+    # One body per model: review record refuses two models filing the same notes at one commit.
+    return "---\n" + yaml.safe_dump(data, sort_keys=False) + f"---\n# {model} notes\n"
 
 
 def review_output(commit: str, *, model: str, verdict: str = "approve", a1: str = "pass") -> dict:
     """A reviewer's final JSON (``review_record_write.output_schema``): the record fields plus ``notes``."""
     data = yaml.safe_load(review_text(commit, model=model, verdict=verdict, a1=a1).split("---\n")[1])
-    return {**data, "commands_rerun": ["pytest -q"], "notes": "## Findings\n\nnone"}
+    notes = f"## Findings\n\n# {model} notes\n"
+    return {**data, "commands_rerun": ["pytest -q"], "notes": notes}
 
 
 def shipped_anthropic_opus_cli_yaml_line() -> str:

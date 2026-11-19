@@ -70,17 +70,6 @@ entries:
     started: '2026-11-05'
     owner: savigil
     implementation_review: pending
-  - codename: tests-apply-the-dedupe-worklist-for-review-gate
-    node_id: M16.7.2
-    branch: feature/rm-tests-apply-the-dedupe-worklist-for-review-gate
-    touch_zones:
-      - tests/
-      - tests/review_repo_helpers.py
-      - tests/support/dedupe/review-gate.csv
-      - constraints/test-private-imports-baseline.txt
-    started: '2026-11-18'
-    owner: savigil
-    implementation_review: pending
   - codename: tests-apply-the-dedupe-worklist-for-worker
     node_id: M16.7.3
     branch: feature/rm-tests-apply-the-dedupe-worklist-for-worker
@@ -88,6 +77,17 @@ entries:
       - tests/
       - tests/support/dedupe/worker.csv
       - constraints/test-private-imports-baseline.txt
+    started: '2026-11-18'
+    owner: savigil
+    implementation_review: pending
+  - codename: the-tool-call-guard-reads-env-s-clustered-and-attached-s-like
+    node_id: M22.76
+    branch: feature/rm-the-tool-call-guard-reads-env-s-clustered-and-attached-s-like
+    touch_zones:
+      - specy_road/orchestration/guard/tool_call_guard.py
+      - specy_road/orchestration/guard/tool_call_guard_shapes.py
+      - tests/unit/test_tool_call_guard.py
+      - CHANGELOG.md
     started: '2026-11-18'
     owner: savigil
     implementation_review: pending

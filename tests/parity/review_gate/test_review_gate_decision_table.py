@@ -40,7 +40,7 @@ FILING = yaml.safe_load((HERE / "cases" / "filing_rows.yaml").read_text(encoding
 KEYS = yaml.safe_load((HERE / "cases" / "policy_keys.yaml").read_text(encoding="utf-8"))
 MANIFEST = yaml.safe_load((HERE / "records" / "MANIFEST.yaml").read_text(encoding="utf-8"))
 SCHEMA = HERE.parents[2] / "specy_road" / "templates" / "project" / "schemas" / "orchestration.schema.json"
-NODE_ID, BODY = "M1.1", "notes\n"
+NODE_ID = "M1.1"
 
 
 def orchestration(row: dict[str, Any]) -> str | None:
@@ -119,11 +119,12 @@ class Leaf:
 
     def review(self, model: str, history: bool = False, sign_with: str | None = None, **kw: Any) -> None:
         data = self.record_data(model, **kw)
+        body = f"# {model} notes\n"
         if sign_with:
             self.public_key(sign_with)
-            data["notes_sha256"] = notes_digest(BODY)
+            data["notes_sha256"] = notes_digest(body)
             data["signature"] = sign(data, self.keys[sign_with])
-        text = render_front_matter(data, BODY)
+        text = render_front_matter(data, body)
         (self.reviews() / f"REVIEW-{model}.md").write_text(text, encoding="utf-8")
         if history:
             archive_review(self.repo, NODE_ID, model, text)
@@ -132,7 +133,7 @@ class Leaf:
         data = self.record_data(model, verdict, a1=a1)
         data["findings"]["boundary"] = boundary or []
         notes = self.repo.parent / f"notes-{model}.md"
-        notes.write_text(render_front_matter(data, BODY), encoding="utf-8")
+        notes.write_text(render_front_matter(data, f"# {model} notes\n"), encoding="utf-8")
         with pytest.raises(SystemExit) as e:
             review_cli.main(["review", "record", NODE_ID, "--model", model, "--verdict", verdict,
                              "--file", str(notes), "--repo-root", str(self.repo)])
