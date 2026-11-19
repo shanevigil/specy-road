@@ -170,6 +170,58 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "classify refuses, with the same reason it gives the bare command, each of these forms (found by the M16.7.7 planner, verified by the coordinator on 2026-11-18): '! (git stash)', '{ (git stash); }', 'if true; then (git stash); fi', '(env -S \"git stash\")', 'sudo env -S \"git stash\"', 'FOO=1 env -S \"git stash\"', '(GIT_CONFIG_GLOBAL=/tmp/c git x)' and '(git --config-env=alias.x=BODY x)'; the cause is fixed where it lies: the opaque-shell and env_config checks see the command after openers, subshell parentheses, wrappers and assignments are removed, and an opener followed by '(' is stripped",
+        "Each form above is a row of the existing destructive-command tables in tests/unit/test_tool_call_guard.py, asserting the reason fragment; every row the tables have today still passes unchanged",
+        "Commands the guard allows today and that are not destructive stay allowed: the ordinary-commands and opaque-shapes-without-git tables pass unchanged",
+        "CHANGELOG.md [Unreleased] records the fix under Security; no version heading is written"
+      ],
+      "codename": "the-tool-call-guard-refuses-destructive-git-commands-hidden",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.74",
+      "node_key": "5677fff1-eaf2-4dee-9714-792ba66ea7c2",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.74_the-tool-call-guard-refuses-destructive-git-commands-hidden_5677fff1-eaf2-4dee-9714-792ba66ea7c2.md",
+      "sibling_order": 74,
+      "status": "Not Started",
+      "title": "The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment",
+      "touch_zones": [
+        "specy_road/orchestration/guard/tool_call_guard.py",
+        "specy_road/orchestration/guard/tool_call_guard_shapes.py",
+        "tests/unit/test_tool_call_guard.py",
+        "tests/cli/test_session_guard.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "render_front_matter no longer deletes data: rendering {'0': '\\xa0'} and reading it back (load_ready and split_frontmatter) returns {'0': '\\xa0'}; only the YAML dump's own trailing newline is removed, never trailing whitespace inside a value",
+        "split_frontmatter ends the block only at an unindented '---' line, as load_ready does: {'a': 'x\\n---\\ny'} rendered and split returns that mapping and the body",
+        "One test per behaviour above, through the public functions, in the existing test module for each function; existing front-matter tests pass unchanged",
+        "CHANGELOG.md [Unreleased] records the fix under Fixed; no version heading is written"
+      ],
+      "codename": "front-matter-round-trips-a-trailing-non-ascii-space-in-a-value",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.75",
+      "node_key": "8c9261ea-b755-4731-bd23-959b9bcdc579",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.75_front-matter-round-trips-a-trailing-non-ascii-space-in-a-value_8c9261ea-b755-4731-bd23-959b9bcdc579.md",
+      "sibling_order": 75,
+      "status": "Not Started",
+      "title": "Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block",
+      "touch_zones": [
+        "specy_road/review_files.py",
+        "specy_road/planning_artifacts.py",
+        "tests/unit/test_planning_artifacts.py",
+        "tests/unit/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
