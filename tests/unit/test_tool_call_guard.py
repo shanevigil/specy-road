@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import shlex
 from pathlib import Path
 
 import pytest
@@ -90,19 +91,27 @@ from specy_road.orchestration.workers import worker_state as ws
     ("! (git stash)", "stash stack is shared"),
     ("{ (git stash); }", "stash stack is shared"),
     ("if true; then (git stash); fi", "stash stack is shared"),
-    ('(env -S "git stash")', "env -S splits"),
-    ('sudo env -S "git stash"', "env -S splits"),
-    ('FOO=1 env -S "git stash"', "env -S splits"),
-    ('env -vS "git stash"', "env -S splits"),
-    ('env -iS "git stash"', "env -S splits"),
-    ('env -S"git stash"', "env -S splits"),
-    ('env -vS"git stash"', "env -S splits"),
-    ('(env -vS "git stash")', "env -S splits"),
-    ('sudo env -iS "git stash"', "env -S splits"),
-    ('FOO=1 env -S"git stash"', "env -S splits"),
-    ('FOO=1 env -vS"git stash"', "env -S splits"),
+    ('(env -S "git stash")', "stash stack is shared"),
+    ('sudo env -S "git stash"', "stash stack is shared"),
+    ('FOO=1 env -S "git stash"', "stash stack is shared"),
+    ('env -vS "git stash"', "stash stack is shared"),
+    ('env -iS "git stash"', "stash stack is shared"),
+    ('env -S"git stash"', "stash stack is shared"),
+    ('env -vS"git stash"', "stash stack is shared"),
+    ('(env -vS "git stash")', "stash stack is shared"),
+    ('sudo env -iS "git stash"', "stash stack is shared"),
+    ('FOO=1 env -S"git stash"', "stash stack is shared"),
+    ('FOO=1 env -vS"git stash"', "stash stack is shared"),
+    ("env -S 'git\\_stash'", "stash stack is shared"),
     ("(GIT_CONFIG_GLOBAL=/tmp/c git x)", "GIT_CONFIG*"),
     ("(git --config-env=alias.x=BODY x)", "--config-env=alias"),
+    ("env --u HOME git stash", "stash stack is shared"),
+    ("env --ch /tmp git stash", "stash stack is shared"),
+    ("env --unset=HOME git stash", "stash stack is shared"),
+    ("env --chdir=/tmp git switch dev", "switching branches"),
+    ("env --default-signal git stash", "stash stack is shared"),
+    ("env --default-signal=PIPE git stash", "stash stack is shared"),
+    ("env --debug git stash", "stash stack is shared"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
@@ -136,6 +145,11 @@ def test_destructive_commands_are_classified(command: str, fragment: str) -> Non
     "${PYTHON:-python} -m pytest",
     "env -i git status",
     "env -u HOME ls",
+    "env -uHOME ls",
+    "env --u=HOME ls",
+    "env --unset git stash",
+    "env --chdir git stash",
+    "env --ch git status",
 ])
 def test_ordinary_commands_pass(command: str) -> None:
     assert g.classify(command) is None, command
@@ -365,3 +379,219 @@ def test_staged_restore_of_a_path_is_fine() -> None:
 def test_malformed_hook_stdin_denies() -> None:
     with pytest.raises(ValueError):
         tg.read_payload("not json")
+
+
+# Long options of GNU coreutils 9.4 env. A prefix of split-string that matches one name is unambiguous.
+ENV_LONG_NAMES = (
+    "ignore-environment", "null", "unset", "chdir", "split-string", "block-signal",
+    "default-signal", "ignore-signal", "list-signal-handling", "debug", "help", "version",
+)
+
+
+def param_rows(fn: object) -> list:
+    marks = getattr(fn, "pytestmark", [])
+    if not isinstance(marks, list):
+        marks = [marks]
+    rows: list = []
+    for mark in marks:
+        if mark.name == "parametrize":
+            rows.extend(mark.args[1])
+    return rows
+
+
+def command_text(row: object) -> str:
+    return row[0] if isinstance(row, tuple) else str(row)
+
+
+def see_through_forms(command: str) -> list[str]:
+    """Opener, brace group, ``if``, subshell, assignment prefix, and sudo."""
+    return [
+        f"! {command}",
+        "{ " + command + "; }",
+        f"if true; then {command}; fi",
+        f"({command})",
+        f"FOO=1 {command}",
+        f"sudo {command}",
+    ]
+
+
+def split_string_prefixes() -> list[str]:
+    target = "split-string"
+    return [
+        target[:length] for length in range(1, len(target) + 1)
+        if sum(name.startswith(target[:length]) for name in ENV_LONG_NAMES) == 1
+    ]
+
+
+def env_split_forms(command: str) -> list[str]:
+    """``-S`` separate, clustered, attached, and every unambiguous ``--split-string`` prefix.
+
+    A ``GIT_CONFIG*`` command is also run as ``env -S '-i <row>'`` (and ``-v``, ``--``,
+    ``-u HOME``, with and without ``sudo``). An option in front of other rows is a
+    different class: the split is re-tokenized, so shell syntax such as ``if`` does
+    not keep its bare reason.
+    """
+    quoted = shlex.quote(command)
+    forms = [f"env -S {quoted}", f"env -vS {quoted}", f"env -S{quoted}", f"env -vS{quoted}"]
+    for prefix in split_string_prefixes():
+        forms.append(f"env --{prefix} {quoted}")
+        forms.append(f"env --{prefix}={quoted}")
+    if "GIT_CONFIG" in command:
+        for opt in ("-i ", "-v ", "-- ", "-u HOME "):
+            inner = shlex.quote(opt + command)
+            forms.append(f"env -S {inner}")
+            forms.append(f"sudo env -S {inner}")
+    return forms
+
+
+def destructive_commands() -> list[str]:
+    tables = (
+        test_destructive_commands_are_classified,
+        test_opaque_shapes_and_bare_commits_are_refused,
+        test_more_wrapper_shapes_are_classified,
+        test_more_destructive_shapes_are_classified,
+    )
+    return [command_text(row) for table in tables for row in param_rows(table)]
+
+
+def test_env_split_escapes_and_pre_leaf_refusals() -> None:
+    """GNU ``-S`` escapes, and every pre-leaf ``env -S`` refusal, stay refused or match.
+
+    ``\\_`` and an embedded tab, newline, form feed, vertical tab or carriage return read
+    as ``git stash``. ``\\c`` ends the string and a leading ``#`` comments it out, so what
+    remains is classified. An unknown escape is refused. Forms the pre-leaf guard
+    refused are still refused.
+    """
+    stash = g.classify("git stash")
+    same = (
+        "env -S 'git\\_stash'", "env -vS 'git\\_stash'", "env -S'git\\_stash'",
+        "env --split 'git\\_stash'", "env --s 'git\\_stash'", "env --spl='git\\_stash'",
+        "env -S 'git\\tstash'", "env -S 'git\\nstash'", "env -S 'git\\fstash'",
+        "env -S 'git\\vstash'", "env -S 'git\\rstash'", "env -S 'git\tstash'",
+        "env -S 'git stash\\c --hard'",
+    )
+    for command in same:
+        assert g.classify(command) == stash, (command, g.classify(command))
+    literal = (
+        "env -S \"git'\\_stash'\"", "env -S '\"git\\_stash\"'", "env -S 'git\\\\_stash'",
+        "env -S 'gi\\ct stash'", "env -S '# git stash'",
+    )
+    for command in literal:
+        assert g.classify(command) is None, (command, g.classify(command))
+    unknown = (
+        "env -S 'git\\x20stash'", "env -S '\\gitstash'",
+        "env -S -S '${CMD} stash'", "env -S --split '${CMD} stash'",
+        "env --split -S '${CMD} stash'", "env -vS -S '${DIR}'",
+        "env -S -S 'git\\x20stash'", "sudo env -S -S '${CMD} stash'",
+        "(env -S -S 'git\\x20stash')", "env -S -S -S '${CMD} stash'",
+        "env -i -S -S '${CMD} stash'",
+    )
+    for command in unknown:
+        reason = g.classify(command)
+        assert reason and "cannot see" in reason, (command, reason)
+    refused_before = (
+        'env -S "git stash"', '(env -S "git stash")', 'sudo env -S "git stash"',
+        'FOO=1 env -S "git stash"', 'env -vS "git stash"', 'env -iS "git stash"',
+        'env -S"git stash"', 'env -vS"git stash"', '(env -vS "git stash")',
+        'sudo env -iS "git stash"', 'FOO=1 env -S"git stash"', 'FOO=1 env -vS"git stash"',
+        "env -S 'git\\_stash'", "env -S 'git\\x20stash'", "env -S 'git\\tstash'",
+        "env -S 'git\\nstash'",
+    )
+    for command in refused_before:
+        assert g.classify(command), command
+
+
+def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
+    """Every wrapper, including each env split-string spelling, keeps the bare reason.
+
+    ``-S`` separate, clustered and attached, and every unambiguous prefix of ``--split-string``
+    (with ``=`` and with a separate value) match the bare command. A ``GIT_CONFIG*`` row
+    also matches through ``env -S '-i <row>'`` and the same option with ``-v``, ``--``,
+    ``-u HOME``, and ``sudo``. Ordinary commands
+    stay allowed through those forms. A split string whose command needs runtime
+    state (``$HOME``, ``${DIR}``, or an unknown escape) is refused as opaque.
+    """
+    stash = g.classify("git stash")
+    examples = (
+        'env --split "git stash"', 'env --s "git stash"',
+        'env --split="git stash"', 'env --spl="git stash"',
+    )
+    for example in examples:
+        assert g.classify(example) == stash, (example, g.classify(example))
+    for command in destructive_commands():
+        bare = g.classify(command)
+        assert bare, command
+        for wrapped in (*see_through_forms(command), *env_split_forms(command)):
+            assert g.classify(wrapped) == bare, (wrapped, g.classify(wrapped), bare)
+    needs_runtime = (
+        "echo $HOME",
+        "ls ${DIR}",
+        "$HOME/bin/pytest -q",
+        "${PYTHON:-python} -m pytest",
+    )
+    ordinary = [command_text(row) for row in param_rows(test_ordinary_commands_pass)]
+    for command in ordinary:
+        assert g.classify(command) is None, command
+        for wrapped in see_through_forms(command):
+            assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
+        if command in needs_runtime:
+            continue
+        for wrapped in env_split_forms(command):
+            assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
+    for command in needs_runtime:
+        for wrapped in env_split_forms(command):
+            reason = g.classify(wrapped)
+            assert reason and "cannot see" in reason, (wrapped, reason)
+
+
+def test_split_string_options_are_parsed_before_the_command() -> None:
+    """An option inside ``-S`` consumes its value, so that word is not the command.
+
+    A ``NAME=VALUE`` word after that option stays in the command, so ``GIT_CONFIG*``
+    keeps the env-config refusal, directly and inside the split string.
+    """
+    stash = g.classify("git stash")
+    consumed = (
+        "env -S '--unset git stash'", "env -S '--chdir git stash'", "env -S '-u git stash'",
+        "env -S '--un git stash'", "env -S '--ch git stash'", "env -S '-C git status'",
+        "sudo env -S '--unset git stash'", "(env -S '--chdir git stash')",
+        "FOO=1 env -S '-u git stash'", "env --split '--unset git stash'",
+        "env -S --unset git stash",
+    )
+    for command in consumed:
+        assert g.classify(command) is None, (command, g.classify(command))
+    runs = (
+        "env -S '-u HOME git stash'", "env -S '--unset=HOME git stash'",
+        "env -S '--debug git stash'", "env -S '--default-signal git stash'",
+        "env -S '-- git stash'", "env -S '--ch /tmp git stash'",
+        "env -S '-uHOME git stash'", "env -S 'FOO=1 git stash'",
+    )
+    for command in runs:
+        assert g.classify(command) == stash, (command, g.classify(command))
+    config = g.classify("GIT_CONFIG_GLOBAL=/tmp/c git x")
+    held = (
+        "env -i GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env -v GIT_CONFIG_PARAMETERS=x git status",
+        "env -- GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env -u HOME GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env --unset=HOME GIT_CONFIG_PARAMETERS=x git status",
+        "env -C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env -iv GIT_CONFIG_GLOBAL=/tmp/c git x",
+        "env --ignore-environment GIT_CONFIG_PARAMETERS=x git status",
+        "env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        'env -S "-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
+        "env -S '-v GIT_CONFIG_PARAMETERS=x git status'",
+        "env -S '-- GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -S '-u HOME GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -S '--unset=HOME GIT_CONFIG_PARAMETERS=x git status'",
+        "env -S '-C /tmp GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -S '-iv GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -S '--ignore-environment GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "env -vS '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        'env --split-string="-i GIT_CONFIG_GLOBAL=/tmp/c git x"',
+        "sudo env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+        "(env -S '-C /tmp GIT_CONFIG_PARAMETERS=x git status')",
+        "env -S -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'",
+    )
+    for command in held:
+        assert g.classify(command) == config, (command, g.classify(command))
