@@ -199,25 +199,23 @@ def test_sync_keeps_a_lease_created_after_its_first_read(tmp_path: Path, monkeyp
     assert remote_leases(remote) == [f"{cid}/{late[0].worker_id}"]
 
 
-def test_a_missing_checkout_id_is_created_and_the_count_still_holds(tmp_path: Path, capsys) -> None:
+@pytest.mark.parametrize("content", ["", "\n", "half-writ", None])
+def test_an_empty_or_unusable_checkout_id_is_rewritten_and_the_limit_holds(
+    tmp_path: Path, capsys, content: str | None,
+) -> None:
+    """An id file with no uuid in it, or no file at all, is uninitialized.
+
+    It is never "no id, so no leases": a new id is written and counted.
+    ``content`` None means the checkout-id file is absent.
+    """
     repo, _ = make_worker_repo(tmp_path, max_workers=1)
     _, clone = remote_and_clone(tmp_path, repo)
     _foreign_worker(clone)
-    checkout_id_file(repo).unlink(missing_ok=True)
-    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
-    assert "0 workers active (and 1 leased by other checkouts" in capsys.readouterr().err
-    assert re.fullmatch(r"[0-9a-f]{32}", checkout_id_file(repo).read_text(encoding="utf-8").strip())
-    assert ws.list_records(repo) == []
-
-
-@pytest.mark.parametrize("content", ["", "\n", "half-writ"])
-def test_an_empty_or_unusable_checkout_id_is_rewritten_and_the_limit_holds(tmp_path: Path, capsys,
-                                                                           content: str) -> None:
-    """An id file with no uuid in it is uninitialized, never "no id, so no leases": a new id is written and counted."""
-    repo, _ = make_worker_repo(tmp_path, max_workers=1)
-    _, clone = remote_and_clone(tmp_path, repo)
-    _foreign_worker(clone)
-    checkout_id_file(repo).write_text(content, encoding="utf-8")
+    path = checkout_id_file(repo)
+    if content is None:
+        path.unlink(missing_ok=True)
+    else:
+        path.write_text(content, encoding="utf-8")
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
     assert "0 workers active (and 1 leased by other checkouts" in capsys.readouterr().err
     assert re.fullmatch(r"[0-9a-f]{32}", checkout_id_file(repo).read_text(encoding="utf-8").strip())

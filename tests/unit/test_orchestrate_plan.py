@@ -43,14 +43,6 @@ def test_senior_eligibility_picks_the_tagged_class(tmp_path: Path) -> None:
     assert "opus" not in a.reviewers and set(a.reviewers) == {"sol", "human"}
 
 
-@pytest.mark.slow
-def test_unavailable_model_is_skipped_until_its_date(tmp_path: Path) -> None:
-    roster = ROSTER.replace("    may_process: [public, internal]\n", "    may_process: [public, internal]\n    unavailable_until: 2026-11-10\n", 1)
-    repo = plan_repo(tmp_path, roster=roster)
-    assert only_assignment(op.build_orchestration_plan(repo, today=date(2026, 11, 5))[0]).executor == "sol"
-    assert only_assignment(op.build_orchestration_plan(repo, today=date(2026, 11, 11))[0]).executor == "flash"
-
-
 def test_substitute_counts_as_a_reviewer(tmp_path: Path) -> None:
     roster = ROSTER.replace("  - id: sol\n    family: openai\n    profile: model-profiles/openai-gpt/gpt-6.1-sol.md\n    roles: [executor, reviewer]\n",
                             "  - id: sol\n    family: openai\n    profile: model-profiles/openai-gpt/gpt-6.1-sol.md\n    roles: [executor]\n")

@@ -37,9 +37,23 @@ def test_available_false_skips_planning_and_refuses_delegate(tmp_path: Path) -> 
         ops.delegate(repo2, "M1.1", "opus", offline=True)
 
 
-def test_paused_until_date_in_future_and_past(tmp_path: Path) -> None:
-    roster = ROSTER.replace("    may_process: [public, internal]\n",
-                            "    may_process: [public, internal]\n    paused_until: 2026-11-10\n", 1)
+@pytest.mark.parametrize(
+    "field",
+    [
+        "paused_until",
+        pytest.param("unavailable_until", marks=pytest.mark.slow),
+    ],
+)
+def test_paused_until_date_in_future_and_past(tmp_path: Path, field: str) -> None:
+    """A roster date in the future skips that model; a date in the past does not.
+
+    ``paused_until`` and ``unavailable_until`` are the same gate.
+    """
+    roster = ROSTER.replace(
+        "    may_process: [public, internal]\n",
+        f"    may_process: [public, internal]\n    {field}: 2026-11-10\n",
+        1,
+    )
     repo = plan_repo(tmp_path, roster=roster)
     assert only_assignment(op.build_orchestration_plan(repo, today=date(2026, 11, 5))[0]).executor == "sol"
     assert only_assignment(op.build_orchestration_plan(repo, today=date(2026, 11, 11))[0]).executor == "flash"
