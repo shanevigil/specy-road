@@ -22,6 +22,7 @@ from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_ops as ops
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
+from tests.support.bounded_wait import pause, wait_until
 
 KILLED = '''
 import json, os, signal
@@ -54,15 +55,14 @@ def test_a_killed_harness_leaves_the_worker_failed(tmp_path: Path) -> None:
 
 
 PACED_LINES = '''
-import sys, time
-for i, pause in enumerate(float(x) for x in sys.argv[1:]):
-    time.sleep(pause)
+import sys
+for i in range(len(sys.argv[1:])):
     print(f"line {i}", flush=True)
 '''
 
 
 def _paced(tmp_path: Path, *pauses: float) -> wa.Launch:
-    """A harness that prints one line after each pause (seconds, real time)."""
+    """A harness that prints one line per argument. Spacing is the runner's clock, not a wait."""
     script = tmp_path / "paced.py"
     script.write_text(PACED_LINES)
     return wa.Launch([sys.executable, str(script), *(str(x) for x in pauses)])
@@ -82,16 +82,41 @@ def _stall_repo(tmp_path: Path, seconds: int) -> Path:
     return make_review_repo(tmp_path, orchestration=roster)
 
 
-@pytest.mark.slow
-def test_last_output_at_is_written_at_most_every_five_seconds(tmp_path: Path) -> None:
+_CLOCK_BASE = datetime(2026, 11, 1, tzinfo=timezone.utc)
+
+
+def _clock_tied_to(readings: list[float], monkeypatch: pytest.MonkeyPatch, start: float = 0.0):
+    """Monotonic readings, and ISO stamps that follow them, so a window test does not wait.
+
+    ``start`` is the stamp used before the first reading, which is what a launch records.
+    """
+    stamp = {"s": start}
+    pending = iter(readings)
+    base = _CLOCK_BASE
+
+    def clock() -> float:
+        stamp["s"] = next(pending)
+        return stamp["s"]
+
+    def iso() -> str:
+        return (base + timedelta(seconds=stamp["s"])).isoformat()
+
+    monkeypatch.setattr(wr, "utc_now_iso", iso)
+    monkeypatch.setattr(ws, "utc_now_iso", iso)
+    return clock
+
+
+def test_last_output_at_is_written_at_most_every_five_seconds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
     repo, _ = make_worker_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
-    launch = _paced(tmp_path, 0, 2.2)   # two lines about 2.2 s apart
-    # Clock readings 0 and 1: the second line is inside the window, so the first line's time stays.
-    wr.run(repo, rec.worker_id, launch, clock=iter([0.0, 1.0]).__next__)
+    launch = _paced(tmp_path, 0, 1)   # two lines; the clock spaces them
+    # Readings 0 and 1: the second line is inside the window, so the first line's time stays.
+    wr.run(repo, rec.worker_id, launch, clock=_clock_tied_to([0.0, 1.0], monkeypatch))
     assert _since_launch(repo, rec.worker_id) <= 1
     # Readings 0 and 6: the second line is past the window, and its time is written.
-    wr.run(repo, rec.worker_id, launch, clock=iter([0.0, 6.0]).__next__)
+    wr.run(repo, rec.worker_id, launch, clock=_clock_tied_to([0.0, 6.0], monkeypatch))
     assert _since_launch(repo, rec.worker_id) >= 2
 
 
@@ -131,35 +156,74 @@ def test_a_silent_running_worker_is_flagged_once_per_silence(tmp_path: Path) -> 
         assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags, state
 
 
-@pytest.mark.slow
-def test_output_clears_a_stall_shorter_than_the_write_window(tmp_path: Path) -> None:
-    """stall_after_seconds 1: a sweep flags each 3 s silence, and the line after it clears the flag,
-    although that line falls inside the five-second last_output_at window."""
+def test_output_clears_a_stall_shorter_than_the_write_window(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """stall_after_seconds 1: a sweep flags each silence, and the next line clears the flag,
+    although that line falls inside the five-second last_output_at window.
+
+    The child blocks on a gate file between lines. Silence is the injected ``now``,
+    and the write window is the runner's clock, so the test does not wait the stall out.
+    """
     import threading
-    import time
 
     repo = _stall_repo(tmp_path, 1)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    gate = tmp_path / "gate"
+    gate.mkdir()
+    script = tmp_path / "gated.py"
+    script.write_text(
+        "import sys, threading\n"
+        "from pathlib import Path\n"
+        "gate = Path(sys.argv[1])\n"
+        "for i in range(3):\n"
+        "    print(f'line {i}', flush=True)\n"
+        "    while not (gate / str(i)).exists():\n"
+        "        threading.Event().wait(0.01)\n"
+    )
     raw = wr.log_path(repo, rec.worker_id)
-    newly_flagged: list[bool] = []
     errors: list[BaseException] = []
+    # Launch is stamped before any reading. Line 0 then writes t0, line 1 writes t0+1s
+    # only because the flag is set (the gap is inside the five-second window).
+    clock = _clock_tied_to([0.0, 1.0, 2.0], monkeypatch, start=-100.0)
+    t0 = _CLOCK_BASE
 
-    def sweeper() -> None:
+    def run() -> None:
         try:
-            for n in (1, 2):   # 1.5 s into the silence after line n
-                deadline = time.monotonic() + 10
-                while (raw.read_text().count("line ") if raw.is_file() else 0) < n:
-                    assert time.monotonic() < deadline, f"line {n} never reached the log"
-                    time.sleep(0.05)
-                time.sleep(1.5)
-                newly_flagged.append(bool(ops.sweep_stalled(repo)))
-        except BaseException as e:  # noqa: BLE001 — reported by the test thread
+            launch = wa.Launch([sys.executable, str(script), str(gate)])
+            wr.run(repo, rec.worker_id, launch, clock=clock)
+        except BaseException as e:  # noqa: BLE001 — reported after the thread joins
             errors.append(e)
 
-    t = threading.Thread(target=sweeper)
+    def output_at() -> datetime:
+        return datetime.fromisoformat(ws.load_record(repo, rec.worker_id).last_output_at)
+
+    def lines() -> int:
+        return raw.read_text().count("line ") if raw.is_file() else 0
+
+    t = threading.Thread(target=run)
     t.start()
-    wr.run(repo, rec.worker_id, _paced(tmp_path, 0, 3, 3))
-    t.join()
+    newly_flagged: list[bool] = []
+    try:
+        wait_until(lambda: lines() >= 1 and output_at() == t0, timeout=10,
+                   message="line 0 was not recorded")
+        # 1.5s after line 0: over the 1s stall, and line 1 has not written yet.
+        newly_flagged.append(bool(ops.sweep_stalled(repo, now=t0 + timedelta(seconds=1.5))))
+        (gate / "0").write_text("go")
+        wait_until(lambda: lines() >= 2 and output_at() == t0 + timedelta(seconds=1),
+                   timeout=10, message="line 1 did not write its time")
+        # 3.5s after line 0 is under 3s after line 1, and at least 3s if line 1 wrote nothing.
+        newly_flagged.append(bool(ops.sweep_stalled(repo, now=t0 + timedelta(seconds=3.5))))
+        (gate / "1").write_text("go")
+        def line_two_cleared() -> bool:
+            rec_now = ws.load_record(repo, rec.worker_id)
+            return lines() >= 3 and ws.FLAG_STALLED not in rec_now.flags
+
+        wait_until(line_two_cleared, timeout=10, message="line 2 did not clear the stall")
+        (gate / "2").write_text("go")
+    finally:
+        t.join(10)
+    assert not t.is_alive()
     assert not errors, errors
     # The second sweep flags afresh only because line 1 cleared the first flag.
     assert newly_flagged == [True, True] and len(_stalled(repo, rec.worker_id)) == 2
@@ -171,7 +235,6 @@ def test_output_clears_a_stall_shorter_than_the_write_window(tmp_path: Path) -> 
 
 def test_list_and_sync_flag_a_live_silent_worker(tmp_path: Path, capsys) -> None:
     import json
-    import time
 
     from tests.support.cli import run_worker_cli
 
@@ -184,7 +247,7 @@ def test_list_and_sync_flag_a_live_silent_worker(tmp_path: Path, capsys) -> None
         for _ in range(50):
             if ws.load_record(repo, rec.worker_id).provider_session_id:
                 break
-            time.sleep(0.1)
+            pause(0.1)
         old = "2026-01-01T00:00:00+00:00"   # long past policy.stall_after_seconds (default 600)
         ws.mutate(repo, rec, lambda r: setattr(r, "last_output_at", old))
         assert run_worker_cli("worker", "list", "--repo-root", str(repo)) == 0

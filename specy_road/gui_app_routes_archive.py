@@ -46,7 +46,7 @@ def _record_or_404(root: Path, archive_id: str) -> dict[str, Any]:
     return rec
 
 
-def _eligible(root: Path) -> list[dict[str, Any]]:
+def eligible(root: Path) -> list[dict[str, Any]]:
     """Nodes the PM GUI may offer an Archive action on.
 
     Mirrors ``plan_archive``'s gate rather than re-deriving it, so the button
@@ -105,7 +105,7 @@ def _ids_with_claimed_descendant(root: Path, nodes: list[dict[str, Any]]) -> set
     return blocked
 
 
-def _auto_settings(root: Path) -> tuple[bool, int]:
+def auto_settings(root: Path) -> tuple[bool, int]:
     """``(enabled, older_than_days)`` from the saved ``pm_gui`` preferences."""
     try:
         from specy_road.roadmap_gui_lib import load_settings
@@ -123,7 +123,7 @@ def _auto_settings(root: Path) -> tuple[bool, int]:
 
 def _api_archives_list() -> dict[str, Any]:
     root = get_repo_root()
-    enabled, days = _auto_settings(root)
+    enabled, days = auto_settings(root)
     # Surfaced, never acted on automatically: archiving moves files, so the
     # preference decides what the drawer OFFERS, and the operator still clicks.
     # The scan walks git history, so it is the most failure-prone part of this
@@ -139,7 +139,7 @@ def _api_archives_list() -> dict[str, Any]:
             suggestions = []
     return {
         "records": index_records(load_archive_index(root)),
-        "eligible": _eligible(root),
+        "eligible": eligible(root),
         "auto": {
             "enabled": enabled,
             "older_than_days": days,

@@ -91,7 +91,8 @@ def _checkout_base(root: Path, base: str) -> None:
     _git_keeping_untracked(root, f"check out '{base}'", "checkout", base)
 
 
-def _count_commits_ahead_of_remote_base(root: Path, remote: str, base: str) -> int:
+def count_commits_ahead_of_remote_base(root: Path, remote: str, base: str) -> int:
+    """How many commits HEAD is ahead of the remote integration branch."""
     upstream = f"{remote}/{base}"
     out = git_capture(root, "rev-list", "--count", f"{upstream}..HEAD").strip()
     return int(out) if out else 0
@@ -109,7 +110,8 @@ def _log_commits_ahead_of_remote_base(root: Path, remote: str, base: str) -> str
     return (r.stdout or "").strip()
 
 
-def _sync_integration_branch_ff(root: Path, remote: str, base: str) -> None:
+def sync_integration_branch_ff(root: Path, remote: str, base: str) -> None:
+    """Check out the integration branch and fast-forward it to the remote."""
     _checkout_base(root, base)
     try:
         git_run(root, "merge", "--ff-only", f"{remote}/{base}")
@@ -125,7 +127,8 @@ def _sync_integration_branch_ff(root: Path, remote: str, base: str) -> None:
         raise SystemExit(1) from None
 
 
-def _delete_feature_branch(root: Path, branch: str, *, force: bool) -> None:
+def delete_feature_branch(root: Path, branch: str, *, force: bool) -> None:
+    """Delete the feature branch, forced when abort is forced."""
     if force:
         git_run(root, "branch", "-D", branch)
         return
@@ -145,7 +148,8 @@ def _delete_feature_branch(root: Path, branch: str, *, force: bool) -> None:
     print(f"  Remove it manually: git branch -D {branch}", file=sys.stderr)
 
 
-def _remove_pickup_work_files(root: Path, node_id: str, *, force: bool) -> None:
+def remove_pickup_work_files(root: Path, node_id: str, *, force: bool) -> None:
+    """Remove the pickup brief, prompt and on-complete session for this leaf."""
     work_dir = root / "work"
     for name in (
         f"brief-{node_id}.md",
@@ -379,13 +383,13 @@ def _abort_locked(root: Path, args) -> None:
     if local_claim:
         _drop_local_registration(root, remote, base, branch)
     else:
-        ahead = _count_commits_ahead_of_remote_base(root, remote, base)
+        ahead = count_commits_ahead_of_remote_base(root, remote, base)
         _exit_if_unpushed_commits_without_force(root, remote, base, ahead, args.force)
-        _sync_integration_branch_ff(root, remote, base)
+        sync_integration_branch_ff(root, remote, base)
         _remove_registry_row_and_push(root, remote, base, codename)
 
-    _delete_feature_branch(root, branch, force=args.force or local_claim)
-    _remove_pickup_work_files(root, node_id, force=args.force)
+    delete_feature_branch(root, branch, force=args.force or local_claim)
+    remove_pickup_work_files(root, node_id, force=args.force)
 
     print(f"\n[ok] pickup aborted; on branch {current_branch(root)}")
 

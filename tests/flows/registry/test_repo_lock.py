@@ -12,6 +12,7 @@ import pytest
 
 from specy_road.repo_lock import RepoLockTimeout, new_ticket, ticket_pid, lock_root, pickup_finish_lock
 from specy_road.orchestration.workers.worker_process import start_token
+from tests.support.bounded_wait import pause
 
 
 def _git_repo(tmp_path: Path) -> Path:
@@ -30,7 +31,7 @@ def _counter_worker(repo: Path, shared: mp.Value, lock: mp.Lock) -> None:
     with pickup_finish_lock(repo, operation="test-worker"):
         with lock:
             cur = shared.value
-        time.sleep(0.15)
+        pause(0.15)
         with lock:
             shared.value = cur + 1
 

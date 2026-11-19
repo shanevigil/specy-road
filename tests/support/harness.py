@@ -17,6 +17,7 @@ from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.orchestration.workers.worker_adapters import Launch
 from specy_road.orchestration.workers.worker_lock import workers_lock
+from tests.support.bounded_wait import pause
 FAKE = '''
 import json, sys, time
 spec = json.loads(open(sys.argv[1]).read()) if sys.argv[1].endswith(".json") else {"lines": [
@@ -77,5 +78,5 @@ def wait_for_worker(repo: Path, wid: str, timeout: float = 10) -> ws.WorkerRecor
             rec = ws.load_record(repo, wid)
         if rec.pid is None:
             return rec
-        time.sleep(0.1)
+        pause(0.1)
     raise AssertionError("worker did not finish")

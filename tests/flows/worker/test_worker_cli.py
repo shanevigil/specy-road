@@ -33,6 +33,7 @@ from specy_road.orchestration.workers import worker_adapters as wa
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.orchestration.workers.worker_cli_render import sync_event_lines
+from tests.support.bounded_wait import pause
 
 
 def test_delegate_returns_at_once_and_is_idempotent(tmp_path: Path, capsys) -> None:
@@ -216,12 +217,12 @@ def test_terminate_a_live_worker(tmp_path: Path) -> None:
     for _ in range(50):
         if ws.load_record(repo, "w-0001").provider_session_id:
             break
-        time.sleep(0.1)
+        pause(0.1)
     assert pid_alive(rec.pid)
     assert run_worker_cli("worker", "terminate", "w-0001", "--repo-root", str(repo)) == 0
     rec = ws.load_record(repo, "w-0001")
     assert rec.state == "terminated" and rec.pid is None
-    time.sleep(0.5)
+    pause(0.5)
     assert ws.load_record(repo, "w-0001").state == "terminated"     # the wrapper's exit did not overwrite it
 
 
@@ -387,9 +388,9 @@ def test_a_stale_worktree_directory_is_refused(tmp_path: Path) -> None:
     stale = reviews_root(repo).parent / ".worktrees" / "thing"
     stale.mkdir(parents=True)
     with pytest.raises(ws.WorkerError, match="not a git worktree"):
-        ops._worktree_for(repo, "feature/rm-thing", "thing", None)
+        ops.worktree_for(repo, "feature/rm-thing", "thing", None)
     with pytest.raises(ws.WorkerError, match="checked out, not the claim's branch"):
-        ops._worktree_for(repo, "feature/rm-thing", "thing", repo)
+        ops.worktree_for(repo, "feature/rm-thing", "thing", repo)
 
 
 
@@ -428,7 +429,7 @@ def test_delegate_runs_preflight_outside_the_workers_lock(tmp_path: Path, monkey
         t.start()
         t.join(2)
         seen["other_thread"] = bool(got and got[0])
-    monkeypatch.setattr(ops, "_preflight", probe)
+    monkeypatch.setattr(ops, "preflight", probe)
     rec, created = ops.delegate(repo, "M1.1", "opus")
     assert created and seen == {"free": True, "other_thread": True}
     wait_for_worker(repo, rec.worker_id)
@@ -604,12 +605,12 @@ def test_terminate_reaches_the_harness_and_its_children(tmp_path: Path) -> None:
     for _ in range(50):
         if marker.is_file() and ws.load_record(repo, rec.worker_id).provider_session_id:
             break
-        time.sleep(0.1)
+        pause(0.1)
     assert marker.is_file()
     ops.terminate(repo, rec.worker_id)
-    time.sleep(0.5)
+    pause(0.5)
     size = marker.stat().st_size
-    time.sleep(0.5)
+    pause(0.5)
     assert marker.stat().st_size == size, "the harness's child kept writing after terminate"
     assert ws.load_record(repo, rec.worker_id).state == "terminated"
 

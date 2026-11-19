@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.roadmap_gui_settings_scope import (
-    blank_llm_base as _blank_llm_base,
+    blank_llm_base,
     git_effective as _git_effective,
     read_settings_file_struct_with_git_migration as _read_settings_file_struct_with_git_migration,
 )
@@ -193,7 +193,8 @@ def _migrate_raw_to_v2(raw: dict[str, Any]) -> dict[str, Any]:
         "projects": {},
     }
 
-def _read_settings_file_struct() -> dict[str, Any]:
+def read_settings_file_struct() -> dict[str, Any]:
+    """The on-disk GUI settings file as a dict, or the empty structure."""
     if not SETTINGS_PATH.is_file():
         return _empty_settings_file_struct()
     try:
@@ -273,7 +274,7 @@ def _effective_from_struct(struct: dict[str, Any], repo_id: str) -> dict[str, An
     if proj["inherit_llm"]:
         out_llm = g_llm
     else:
-        blank = _blank_llm_base()
+        blank = blank_llm_base()
         out_llm = {**blank, **pl}
     # Git remote: always this checkout only (never global or cross-project).
     out_git = _git_effective(d["git_remote"], pg)
@@ -367,7 +368,7 @@ def save_settings_for_repo(
         struct["global"]["research"] = {**d["research"], **research}
 
     g_base_pm = {**d["pm_gui"], **(struct["global"].get("pm_gui") or {})}
-    blank_llm = _blank_llm_base()
+    blank_llm = blank_llm_base()
     pm_in = pm_gui if isinstance(pm_gui, dict) else {}
 
     entry = struct["projects"].get(rid)
@@ -410,7 +411,7 @@ def save_settings_for_repo(
 def load_settings(repo_root: Path | None = None) -> dict[str, Any]:
     if repo_root is not None:
         return effective_settings_for_repo(repo_root)
-    struct = _read_settings_file_struct()
+    struct = read_settings_file_struct()
     d = default_settings()
     g = struct.get("global") or {}
     gl = g.get("llm") if isinstance(g.get("llm"), dict) else {}
@@ -424,7 +425,7 @@ def load_settings(repo_root: Path | None = None) -> dict[str, Any]:
     return base
 
 def save_settings(data: dict[str, Any]) -> None:
-    struct = _read_settings_file_struct()
+    struct = read_settings_file_struct()
     if "global" not in struct or not isinstance(struct["global"], dict):
         struct["global"] = {"llm": {}, "git_remote": {}, "pm_gui": {}}
     d = default_settings()

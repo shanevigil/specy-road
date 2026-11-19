@@ -63,7 +63,7 @@ def _ref_exists_local(repo: Path, ref: str) -> bool:
     return code == 0
 
 
-def _integration_branch_present(
+def integration_branch_present(
     repo: Path, remote: str, integration_branch: str
 ) -> tuple[bool, str]:
     """Return (ok, where) — either ``refs/heads/<branch>`` or remote-tracking ref."""
@@ -428,7 +428,7 @@ def land_merge_feature_into_integration(
     # BEFORE doing anything destructive. If the user's git-workflow.yaml
     # points at a branch name that doesn't exist (e.g. 'main' on a 'master'
     # repo), bail with a clear error rather than confusing checkout output.
-    ok, _ref = _integration_branch_present(repo, remote, integration_branch)
+    ok, _ref = integration_branch_present(repo, remote, integration_branch)
     if not ok:
         return (
             False,

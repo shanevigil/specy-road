@@ -36,7 +36,7 @@ import socket
 import ssl
 from urllib.parse import urljoin, urlunsplit, urlsplit
 
-from specy_road.brainstorm_research import _is_off_host  # noqa: PLC2701 — same guard as the GUI
+from specy_road.brainstorm_research import is_off_host  # noqa: PLC2701 — same guard as the GUI
 from specy_road.bundled_scripts.brainstorm_fields import REPO, is_no_result
 from specy_road.brainstorm_session import BrainstormError, BrainstormSession, Idea
 from specy_road.git_subprocess import git_ok, git_root, git_stdout, git_text, head_sha
@@ -95,7 +95,7 @@ def _on_page(quote: str, page: str) -> bool:
 MAX_REDIRECTS = 5
 
 
-def _public_address(host: str) -> str | None:
+def public_address(host: str) -> str | None:
     """One public address ``host`` resolves to, or ``None`` when any answer is off-host.
 
     The address returned is the one the connection is made to: the name is
@@ -118,7 +118,7 @@ def _public_address(host: str) -> str | None:
     return addrs[0] if addrs else None
 
 
-class _PinnedHTTPS(http.client.HTTPSConnection):
+class PinnedHTTPS(http.client.HTTPSConnection):
     """TLS to a chosen address, with the hostname kept for SNI and certificate checking."""
 
     def __init__(self, host: str, address: str, port: int) -> None:
@@ -126,18 +126,19 @@ class _PinnedHTTPS(http.client.HTTPSConnection):
         self._pinned = address
 
     def connect(self) -> None:
+        """Open TLS to the pinned address, with the hostname kept for certificate checking."""
         sock = socket.create_connection((self._pinned, self.port), self.timeout)
         self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
 
 
-def _fetch_once(url: str) -> tuple[int, str | None, bytes]:
+def fetch_once(url: str) -> tuple[int, str | None, bytes]:
     """``(status, redirect location, body)`` for one request to the address the host was checked at."""
     parts = urlsplit(url)
     host = parts.hostname or ""
-    address = _public_address(host)
+    address = public_address(host)
     if address is None:
         raise ValueError(f"refusing {url}: not a public host")
-    conn = _PinnedHTTPS(host, address, parts.port or 443)
+    conn = PinnedHTTPS(host, address, parts.port or 443)
     try:
         path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
         conn.request("GET", path, headers={"User-Agent": "specy-road brainstorm verify", "Host": host})
@@ -166,7 +167,7 @@ def default_fetch(url: str) -> tuple[int, str]:
     for _hop in range(MAX_REDIRECTS + 1):
         if _allowed(url):
             raise ValueError(f"refusing {url}: {_allowed(url)}")
-        status, location, body = _fetch_once(url)
+        status, location, body = fetch_once(url)
         if status in (301, 302, 303, 307, 308):
             if not location:
                 return status, ""
@@ -180,7 +181,7 @@ def _allowed(url: str) -> str | None:
     parts = urlsplit(url)
     if parts.scheme != "https":
         return "not https"
-    if not parts.hostname or _is_off_host(parts.hostname):
+    if not parts.hostname or is_off_host(parts.hostname):
         return "not a public host"
     return None
 

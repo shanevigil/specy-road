@@ -70,7 +70,7 @@ def migrate_global_git_into_project_if_needed(
 def read_settings_file_struct_with_git_migration(repo_root: Path) -> dict[str, Any]:
     from specy_road import roadmap_gui_settings as m
 
-    struct = m._read_settings_file_struct()
+    struct = m.read_settings_file_struct()
     rid = m.repo_settings_id(repo_root)
     if migrate_global_git_into_project_if_needed(struct, rid):
         m._write_settings_file_struct(struct)

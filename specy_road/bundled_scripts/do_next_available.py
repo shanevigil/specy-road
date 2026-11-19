@@ -94,7 +94,7 @@ def _claimed_node_ids(reg: dict) -> set[str]:
     return {e["node_id"] for e in reg.get("entries", []) if "node_id" in e}
 
 
-def _statuses_by_node_key(
+def statuses_by_node_key(
     nodes: list[dict],
     status_overrides: dict[str, str] | None = None,
 ) -> dict[str, str]:
@@ -177,7 +177,7 @@ def _sort_by_outline(
     return sorted(items, key=key)
 
 
-def _load_branch_enrichment(root: Path) -> dict[str, dict[str, Any]]:
+def load_branch_enrichment(root: Path) -> dict[str, dict[str, Any]]:
     """Same enrichment as the PM GUI when settings/registry load; `{}` on any failure (offline-safe)."""
     try:
         reg = read_registry(registry_path(root))
@@ -273,7 +273,7 @@ def _collect_do_next_tiers(  # noqa: C901 — baseline 2026-10-28; simplify, the
     return blocked, mr_rejected, rest
 
 
-def _available(
+def available_nodes(
     nodes: list[dict],
     reg: dict,
     enrich: dict[str, dict[str, Any]] | None = None,

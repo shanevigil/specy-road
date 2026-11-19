@@ -69,9 +69,9 @@ def test_status_overrides_unblock_dependent_leaf() -> None:
     # Without the status override, M1.1 is blocked on M1.0. Post-F-007
     # the human-led dep is itself eligible (all leaves are agentic), but
     # M1.1 must still not appear until M1.0 is complete.
-    before = [n["id"] for n in dnt._available([dep, leaf], reg, {})]
+    before = [n["id"] for n in dnt.available_nodes([dep, leaf], reg, {})]
     assert "M1.1" not in before
-    out = dnt._available(
+    out = dnt.available_nodes(
         [dep, leaf],
         reg,
         {},
@@ -131,7 +131,7 @@ def test_virtual_complete_keys_order_dependent_before_outline_peer() -> None:
     }
     nodes = [parent, prereq, leaf_peer, leaf_dep]
     reg = {"version": 1, "entries": []}
-    result = dnt._available(
+    result = dnt.available_nodes(
         nodes,
         reg,
         {},
@@ -166,8 +166,8 @@ def test_interactive_deps_blocked_entries_excludes_ready() -> None:
         "touch_zones": ["x"],
     }
     reg = {"version": 1, "entries": []}
-    integration = dna._statuses_by_node_key([dep, leaf])
-    ready = dnt._available([dep, leaf], reg, {}, status_overrides={_NK_PREREQ: "complete"})
+    integration = dna.statuses_by_node_key([dep, leaf])
+    ready = dnt.available_nodes([dep, leaf], reg, {}, status_overrides={_NK_PREREQ: "complete"})
     blocked = dna.interactive_deps_blocked_entries(
         [dep, leaf],
         reg,
@@ -198,8 +198,8 @@ def test_interactive_deps_blocked_entries_lists_integration_blocked() -> None:
         "touch_zones": ["x"],
     }
     reg = {"version": 1, "entries": []}
-    integration = dna._statuses_by_node_key([dep, leaf])
-    ready = dnt._available([dep, leaf], reg, {})
+    integration = dna.statuses_by_node_key([dep, leaf])
+    ready = dnt.available_nodes([dep, leaf], reg, {})
     ready_ids = {n["id"] for n in ready}
     # M1.1 is blocked by unmet dep M1.0 (not Complete on integration).
     assert "M1.1" not in ready_ids
@@ -358,7 +358,7 @@ def test_virtual_complete_from_registry_and_pickup_prefers_dependent_leaf(
 
     repo, reg = _repo_registry_virtual_complete_pickup(tmp_path)
 
-    keys, logs = dnt._virtual_complete_from_registry(
+    keys, logs = dnt.virtual_complete_from_registry(
         reg,
         repo_root=repo,
         remote="origin",
@@ -367,8 +367,8 @@ def test_virtual_complete_from_registry_and_pickup_prefers_dependent_leaf(
     assert any("N1" in ln for ln in logs)
 
     nodes_list = rl.load_roadmap(repo)["nodes"]
-    enrich = dna._load_branch_enrichment(repo)
-    avail = dnt._available(
+    enrich = dna.load_branch_enrichment(repo)
+    avail = dnt.available_nodes(
         nodes_list,
         reg,
         enrich,

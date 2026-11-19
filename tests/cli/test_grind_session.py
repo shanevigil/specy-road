@@ -135,7 +135,7 @@ def test_pre_finish_failure_exits_4_and_skips_finish(monkeypatch, capsys):
         h.shell_calls.append(cmd)
         return 2 if cmd == "make test" else 0  # only the pre-finish hook fails
 
-    monkeypatch.setattr(gs, "_run_shell", failing_shell)
+    monkeypatch.setattr(gs, "run_shell", failing_shell)
     code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--pre-finish-cmd", "make test", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_PRE_FINISH_FAILED
@@ -162,7 +162,7 @@ def test_implement_hook_failure_exits_1(monkeypatch, capsys):
     def failing_shell(cmd, env, repo_root):
         return 3  # implement-cmd fails
 
-    monkeypatch.setattr(gs, "_run_shell", failing_shell)
+    monkeypatch.setattr(gs, "run_shell", failing_shell)
     code = run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "false",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_GENERIC

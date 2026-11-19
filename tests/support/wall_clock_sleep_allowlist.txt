@@ -1,0 +1,23 @@
+# Child-process fixtures that block with a wall-clock sleep.
+# tests/unit/test_clock_and_atomic_write.py fails on any other tests/ line.
+tests/flows/review/test_review_concurrent_writers.py:36
+tests/flows/review/test_review_concurrent_writers.py:104
+tests/flows/worker/test_worker_cli.py:597
+tests/flows/worker/test_worker_cli.py:602
+tests/flows/worker/test_worker_cli_fixes.py:296
+tests/flows/worker/test_worker_max_workers_global.py:354
+tests/flows/worker/test_worker_queue_message.py:41
+tests/flows/worker/test_worker_queue_message.py:218
+tests/flows/worker/test_worker_queue_message.py:377
+tests/flows/worker/test_worker_stall_recovery.py:366
+tests/flows/worker/test_worker_stall_recovery.py:388
+tests/flows/worker/test_worker_turn_check.py:56
+tests/sandbox/pm_gui_orchestration/sandbox_setup.py:37
+tests/support/harness.py:30
+tests/unit/test_prerelease_workers.py:31
+tests/unit/test_worker_terminate_descendants.py:44
+tests/unit/test_worker_terminate_descendants.py:48
+tests/unit/test_worker_terminate_descendants.py:150
+tests/unit/test_worker_terminate_descendants.py:261
+tests/unit/test_worker_terminate_descendants.py:267
+tests/unit/test_worker_terminate_descendants.py:271

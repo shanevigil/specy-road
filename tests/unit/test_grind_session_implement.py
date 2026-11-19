@@ -65,7 +65,7 @@ def test_a_generic_hook_runs_exactly_once_through_the_old_runner(monkeypatch) ->
         calls.append((cmd, repo_root))
         return 1
 
-    monkeypatch.setattr(gsi, "_run_capturing", lambda *_a: pytest.fail("captured"))
+    monkeypatch.setattr(gsi, "run_capturing", lambda *_a: pytest.fail("captured"))
 
     rc = gsi.run_implement_hook(
         "my-agent --prompt x", {}, Path("/repo"), run_shell=run_shell
@@ -242,7 +242,7 @@ def test_the_banner_is_valid_applescript(monkeypatch) -> None:
     seen: list[list[str]] = []
     monkeypatch.setattr(gsi.subprocess, "run", lambda args, **_k: seen.append(args))
 
-    gsi._notify('Limit "hit"', "resets 3:45pm \\ ok")
+    gsi.notify('Limit "hit"', "resets 3:45pm \\ ok")
 
     script = seen[0][2]
     assert script == 'display notification "resets 3:45pm \\\\ ok" with title "Limit \\"hit\\""'
@@ -262,7 +262,7 @@ def test_hook_output_streams_while_the_hook_runs(monkeypatch, tmp_path) -> None:
             return len(text)
 
     monkeypatch.setattr(gsi.sys, "stderr", Recorder())
-    code, output = gsi._run_capturing("echo first; sleep 0.6; echo second", {}, tmp_path)
+    code, output = gsi.run_capturing("echo first; sleep 0.6; echo second", {}, tmp_path)
 
     assert code == 0 and output == "first\nsecond\n"
     first = next(t for t, s in stamps if "first" in s)

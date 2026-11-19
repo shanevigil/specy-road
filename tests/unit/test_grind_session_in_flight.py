@@ -114,7 +114,7 @@ def test_in_flight_emits_branch_complete_when_tip_is_done(monkeypatch, capsys, t
 
 
 def test_human_in_flight_branch_complete_mentions_merge_not_abort():
-    text = gse._human_in_flight(
+    text = gse.human_in_flight(
         "[grind-session] in_flight",
         "M17.1",
         {"branch": "feature/rm-x", "branch_complete": True, "others": []},
@@ -266,8 +266,8 @@ def test_loop_resumes_instead_of_exiting_six(monkeypatch, capsys, tmp_path):
         return 0
 
     monkeypatch.setattr(gs, "gather_plan", fake_gather)
-    monkeypatch.setattr(gs, "_run_cli", fake_run_cli)
-    monkeypatch.setattr(gs, "_run_shell", lambda *_a, **_k: 0)
+    monkeypatch.setattr(gs, "run_cli", fake_run_cli)
+    monkeypatch.setattr(gs, "run_shell", lambda *_a, **_k: 0)
 
     args = parse_grind_session_args([
         "--on-complete", "merge", "--implement-mode", "hook",
@@ -296,7 +296,7 @@ def test_loop_without_the_flag_stops_with_exit_six(monkeypatch, capsys, tmp_path
                         reg_fn(entry("M1.1", "cn")),
                         plan_fn(active=["M1.1"])),
     )
-    monkeypatch.setattr(gs, "_run_cli", lambda *_a, **_k: 0)
+    monkeypatch.setattr(gs, "run_cli", lambda *_a, **_k: 0)
 
     args = parse_grind_session_args([
         "--on-complete", "merge", "--implement-mode", "hook",

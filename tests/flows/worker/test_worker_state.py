@@ -32,6 +32,7 @@ from specy_road.orchestration.workers import worker_sessions as wsess
 from specy_road.orchestration.workers import worker_lease as ww
 from tests.support.extracted.folded_review_ops import idle_record
 from specy_road.orchestration.workers import worker_ops as ops
+from tests.support.bounded_wait import pause
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -376,10 +377,10 @@ def test_terminate_refuses_a_pid_it_cannot_verify(tmp_path: Path, monkeypatch) -
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "running", pid=os.getpid())
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: None)              # ps unavailable: alive, unverified
+    monkeypatch.setattr(wp, "cmdline", lambda pid: None)              # ps unavailable: alive, unverified
     with pytest.raises(ws.WorkerError, match="cannot be verified"):
         ops.terminate(repo, rec.worker_id)
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0002 {}")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0002 {}")
     out = ops.terminate(repo, rec.worker_id)        # another worker's wrapper: not ours to signal; the record closes
     assert out.state == "terminated"
 
@@ -626,7 +627,7 @@ def test_sync_ack_runs_under_the_workers_lock(tmp_path: Path) -> None:
     taken.wait(5)
     t = threading.Thread(target=lambda: (wrc.sync(repo, ack=True), done.append(time.monotonic())))
     t.start()
-    time.sleep(0.5)
+    pause(0.5)
     assert not done                                   # blocked behind the other writer
     t0 = time.monotonic()
     before = datetime.now(timezone.utc).replace(microsecond=0)
@@ -660,7 +661,7 @@ def test_a_flag_set_while_the_wrapper_streams_survives(tmp_path: Path) -> None:
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {_script} {{prompt}}")
     wr.spawn(repo, rec, launch)
-    time.sleep(0.8)
+    pause(0.8)
     ws.add_flag(repo, rec, ws.FLAG_RECONCILE)           # another process writes while it runs
     ws.append_event(repo, rec, "reconcile", source="orchestrator", summary="mid-run")
     wait_for_worker(repo, rec.worker_id)

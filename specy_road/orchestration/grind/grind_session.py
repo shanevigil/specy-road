@@ -100,11 +100,13 @@ def _spawn(cmd, *, cwd: Path, env: dict | None = None, shell: bool = False) -> i
     return subprocess.run(cmd, cwd=cwd, env=env, shell=shell, stdout=fd).returncode
 
 
-def _run_cli(repo_root: Path, cli_args: list[str]) -> int:
+def run_cli(repo_root: Path, cli_args: list[str]) -> int:
+    """Run the specy-road CLI in this repo. Tests replace this runner."""
     return _spawn([sys.executable, "-m", "specy_road.cli", *cli_args], cwd=repo_root)
 
 
-def _run_shell(cmd: str, env: dict, repo_root: Path) -> int:
+def run_shell(cmd: str, env: dict, repo_root: Path) -> int:
+    """Run a shell command in this repo. Tests replace this runner."""
     return _spawn(cmd, cwd=repo_root, env=env, shell=True)
 
 
@@ -130,7 +132,7 @@ def _recover_stalled(repo_root: Path, emitter: EventEmitter | None = None) -> No
         emitter.emit(event, node_id=r["node_id"], worker_id=r["worker_id"], detail=r["detail"])
 
 
-def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
+def wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
     """manual mode: block until the ready-signal file appears (or Enter on a TTY)."""
     path = repo_root / rel
     if path.exists():
@@ -178,7 +180,7 @@ def _hook_env(repo_root: Path, node_id: str, branch: str, brief: str, prompt: st
     return env
 
 
-def _resolve_picked(repo_root: Path, branch: str, fallback_id: str) -> str:
+def resolve_picked(repo_root: Path, branch: str, fallback_id: str) -> str:
     """Map the post-pickup feature branch back to its claimed node id."""
     if not branch.startswith("feature/rm-"):
         return fallback_id
@@ -267,7 +269,7 @@ def _implement(args, repo_root: Path, emitter: EventEmitter, ctx: dict) -> int:
             repo_root,
             emitter=emitter,
             node_id=ctx["node_id"],
-            run_shell=_run_shell,
+            run_shell=run_shell,
             limits=resolve_implement_limits(
                 repo_root,
                 max_limit_waits=args.max_limit_waits,
@@ -276,19 +278,19 @@ def _implement(args, repo_root: Path, emitter: EventEmitter, ctx: dict) -> int:
                 max_empty_retries=args.max_empty_retries,
             ),
         )
-    return 0 if _wait_for_signal(repo_root, args.ready_signal, args.signal_timeout) else 1
+    return 0 if wait_for_signal(repo_root, args.ready_signal, args.signal_timeout) else 1
 
 
 def _do_cycle(args, repo_root: Path, emitter: EventEmitter, nodes: list[dict],
               target_id: str) -> tuple[str | None, str | None, int | None]:
     by_id = {n["id"]: n for n in nodes}
     codename = (by_id.get(target_id, {}) or {}).get("codename") or ""
-    rc = _run_cli(repo_root, _pickup_args(args, repo_root))
+    rc = run_cli(repo_root, _pickup_args(args, repo_root))
     if rc != 0:
         emitter.emit("hook_failed", phase="pickup", node_id=target_id, rc=rc)
         return None, None, EXIT_PICKUP_FAILED
     branch = current_branch(repo_root) or f"feature/rm-{codename}"
-    node_id = _resolve_picked(repo_root, branch, target_id)
+    node_id = resolve_picked(repo_root, branch, target_id)
     return _implement_and_finish(
         args, repo_root, emitter, node_id, branch, event="picked"
     )
@@ -343,11 +345,11 @@ def _finish_phase(args, repo_root: Path, emitter: EventEmitter, ctx: dict) -> in
     node_id = ctx["node_id"]
     if args.pre_finish_cmd:
         emitter.emit("pre_finish", node_id=node_id)
-        rc = _run_shell(args.pre_finish_cmd, _hook_env(repo_root, **ctx), repo_root)
+        rc = run_shell(args.pre_finish_cmd, _hook_env(repo_root, **ctx), repo_root)
         if rc != 0:
             emitter.emit("hook_failed", phase="pre_finish", node_id=node_id, rc=rc)
             return EXIT_PRE_FINISH_FAILED
-    rc = _run_cli(repo_root, _finish_args(args, repo_root))
+    rc = run_cli(repo_root, _finish_args(args, repo_root))
     if rc != 0:
         emitter.emit("hook_failed", phase="finish", node_id=node_id, rc=rc)
         return EXIT_GENERIC
@@ -528,12 +530,12 @@ def _step_pickup(args, repo_root: Path, emitter: EventEmitter) -> int:
     codename = next(
         (n.get("codename") for n in nodes if n.get("id") == target), None
     ) or ""
-    rc = _run_cli(repo_root, _pickup_args(args, repo_root))
+    rc = run_cli(repo_root, _pickup_args(args, repo_root))
     if rc != 0:
         emitter.emit("hook_failed", phase="pickup", node_id=target, rc=rc)
         return EXIT_PICKUP_FAILED
     branch = current_branch(repo_root) or f"feature/rm-{codename}"
-    node_id = _resolve_picked(repo_root, branch, target)
+    node_id = resolve_picked(repo_root, branch, target)
     emitter.emit("picked", **_ctx(node_id, branch))
     return EXIT_OK
 
@@ -546,7 +548,7 @@ def _step_finish(args, repo_root: Path, emitter: EventEmitter) -> int:
     """
     branch = current_branch(repo_root) or ""
     node_id = (
-        _resolve_picked(repo_root, branch, "")
+        resolve_picked(repo_root, branch, "")
         if branch.startswith("feature/rm-")
         else ""
     )

@@ -55,6 +55,16 @@ _LAST_INTEGRATION_FF_MONO: dict[str, float] = {}
 _LOG = logging.getLogger(__name__)
 
 
+def clear_fetch_cooldown() -> None:
+    """Forget the registry-fetch cooldown so the next overlay fetch is not skipped."""
+    _LAST_FETCH_MONO.clear()
+
+
+def clear_integration_ff_cooldown() -> None:
+    """Forget the integration fast-forward cooldown so the next auto-ff is not skipped."""
+    _LAST_INTEGRATION_FF_MONO.clear()
+
+
 def _sync_status_key(repo_root: Path) -> str:
     return str(repo_root.resolve())
 

@@ -132,11 +132,11 @@ def test_finish_refuses_work_committed_after_approval(tmp_path: Path, monkeypatc
     _record(repo, "human")
     assert _run(repo, "--yes") == 0
     entry = {"implementation_review": "approved"}
-    ft._impl_review_or_exit(repo, entry, NODE)  # the gate commit alone does not count as new work
+    ft.impl_review_or_exit(repo, entry, NODE)  # the gate commit alone does not count as new work
 
     commit_file(repo, "src/late.py", "x\n", "late change")
     with pytest.raises(SystemExit) as e:
-        ft._impl_review_or_exit(repo, entry, NODE)
+        ft.impl_review_or_exit(repo, entry, NODE)
     assert e.value.code == 1
     assert "no longer holds at this commit" in capsys.readouterr().err
 
@@ -182,7 +182,7 @@ def test_finish_refuses_a_failing_ready_verifier(tmp_path: Path, monkeypatch, ca
     _record(repo, "human")
     _failing_ready(repo)
     with pytest.raises(SystemExit) as e:
-        ft._impl_review_or_exit(repo, {"implementation_review": "approved"}, NODE)
+        ft.impl_review_or_exit(repo, {"implementation_review": "approved"}, NODE)
     assert e.value.code == 1
     err = capsys.readouterr().err
     assert "no longer holds at this commit" in err
