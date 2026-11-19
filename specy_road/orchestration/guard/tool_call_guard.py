@@ -44,6 +44,7 @@ _WRAPPER_FLAG_ARG = {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-n",
                      "--max-procs", "--delimiter", "--arg-file", "--replace", "--signal", "--kill-after"}
 _GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
 #: Words that merely wrap the real command: ``command git …``, ``env X=1 git …``.
+#: Matched by basename, as ``git`` is: ``/usr/bin/sudo`` is ``sudo``.
 _WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs", "timeout", "doas", "ionice"}
 #: Wrappers whose first positional is not the command (``timeout 10 git …``).
 _WRAPPER_LEADING_ARG = {"timeout"}
@@ -351,23 +352,30 @@ def _env_invocation(tokens: list[str]) -> _EnvRun:
 
 
 def _is_opaque_subject(tokens: list[str], i: int) -> bool:
-    """``env``'s split-string, or a ``GIT_CONFIG*`` assignment: the opaque checks judge it."""
+    """``env``'s split-string, or a ``GIT_CONFIG*`` assignment: the opaque checks judge it.
+
+    ``env`` is the basename, so ``/usr/bin/env`` is the same subject as ``env``.
+    """
     token = tokens[i]
-    if token == "env":
+    if token.rsplit("/", 1)[-1] == "env":
         parsed = _env_invocation(tokens[i:])
         return bool(parsed.ok and (parsed.split or shapes.env_config(tokens[i:])))
     return bool(shapes.env_config([token, "git"]))
 
 
 def _skip_wrapper(tokens: list[str], i: int, wrapped: bool) -> tuple[list[str], int, bool] | None:
-    """Advance past one wrapper word. ``env`` is replaced by the command it would run."""
+    """Advance past one wrapper word. ``env`` is replaced by the command it would run.
+
+    The word's basename is the wrapper, as ``git`` already is: ``/usr/bin/env`` is ``env``.
+    """
     t = tokens[i]
-    if t == "env":
+    name = t.rsplit("/", 1)[-1]
+    if name == "env":
         parsed = _env_invocation(tokens[i:])
         if parsed.ok:
             return [*tokens[:i], *parsed.command], i, False
-    if t in _WRAPPERS:
-        return tokens, i + (2 if t in _WRAPPER_LEADING_ARG else 1), True
+    if name in _WRAPPERS:
+        return tokens, i + (2 if name in _WRAPPER_LEADING_ARG else 1), True
     if wrapped and t.startswith("-"):
         step = 2 if t in _WRAPPER_FLAG_ARG and "=" not in t else 1
         return tokens, i + step, wrapped
@@ -543,6 +551,8 @@ def _embedded_space_reason(command: tuple[str, ...]) -> str | None:
 def _split_command_reason(seen: list[str]) -> str | None:
     """The reason for the command an ``env`` split-string runs, else ``None``.
 
+    The first word is ``env`` by basename, so ``/usr/bin/env`` is the same subject.
+
     Options in the split string are parsed first. When one consumes a word, only
     the remaining command is classified (``--unset git`` is not ``git``). A
     ``NAME=VALUE`` word in that command is kept, so ``GIT_CONFIG*`` after an
@@ -551,7 +561,7 @@ def _split_command_reason(seen: list[str]) -> str | None:
     ``${VAR}`` are not expanded. An unknown escape has no knowable argv: the shell
     reason stands, or the opaque reason, and that case is never allowed.
     """
-    if not seen or seen[0] != "env":
+    if not seen or seen[0].rsplit("/", 1)[-1] != "env":
         return None
     parsed = _env_invocation(seen)
     if not (parsed.ok and parsed.split):
@@ -592,7 +602,8 @@ def _opaque(segment: str) -> str | None:
         return "the command name comes from a shell expansion; the guard cannot see it — run the command plainly"
     if any(_EXPANSION.search(t) and " " not in t and _EXPANSION_SYNTAX.sub("", t).startswith("git") for t in raw):
         return "a shell expansion could build `git` here; the guard cannot see it — run the git command plainly"
-    if raw and "xargs" in raw[:4] and head and head[0].rsplit("/", 1)[-1] == "git" and len(head) == 1:
+    xargs = any(word.rsplit("/", 1)[-1] == "xargs" for word in raw[:4])
+    if xargs and head and head[0].rsplit("/", 1)[-1] == "git" and len(head) == 1:
         return "xargs feeds git its subcommand from stdin; the guard cannot see it — run the git command plainly"
     if head and head[0].rsplit("/", 1)[-1].rstrip("0123456789.") in _INTERPRETERS and _GIT_WORD.search(segment) \
             and any(a in ("-c", "-e") for a in head[1:3]):
