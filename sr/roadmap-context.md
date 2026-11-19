@@ -203,7 +203,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.75` Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block `front-matter-round-trips-a-trailing-non-ascii-space-in-a-value` — task — **Complete**
   - `M22.76` The tool-call guard reads env's clustered and attached -S like the separate flag `the-tool-call-guard-reads-env-s-clustered-and-attached-s-like` — task — **Complete**
   - `M22.77` The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test `the-tool-call-guard-parses-env-s-options-the-way-gnu-getopt-does` — task — **Complete**
-  - `M22.78` The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word `the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a` — task — **Not Started**
+  - `M22.78` The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word `the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a` — task — **Complete**
+  - `M22.79` The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command `the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -358,12 +359,13 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 Do not pick these up.
 
 - `M16.7.6` on `feature/rm-tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` since 2026-11-19
+- `M16.7.7` on `feature/rm-tests-five-named-properties-replace-the-single-input-tests-they-cover` since 2026-11-19
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.78` on `feature/rm-the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a` since 2026-11-19
+- `M22.79` on `feature/rm-the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` since 2026-11-19
 
 ## Quality by area
 
@@ -371,10 +373,9 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 20 | 0 | 2.95 | 75% | 19 | 1 |
+| `CHANGELOG.md` **flagged** | 20 | 0 | 2.85 | 70% | 18 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 20 | 0 | 3.30 | 75% | 337 | 1 |
-| `gui` **flagged** | 7 | 0 | 2.71 | 57% | 1 | 0 |
+| `docs` **flagged** | 19 | 0 | 3.32 | 74% | 336 | 1 |
 | `planning` **flagged** | 2 | 0 | 4.50 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
@@ -383,10 +384,11 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 22 | 0 | 3.09 | 59% | 400 | 1 |
-| `specy_road` **flagged** | 38 | 0 | 2.47 | 55% | 80 | 1 |
+| `specy_road` **flagged** | 38 | 0 | 2.42 | 53% | 79 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 48 | 0 | 2.67 | 60% | 423 | 2 |
+| `tests` **flagged** | 48 | 0 | 2.62 | 58% | 422 | 2 |
 | `constraints` | 24 | 0 | 2.71 | 50% | 380 | 1 |
+| `gui` | 6 | 0 | 2.67 | 50% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

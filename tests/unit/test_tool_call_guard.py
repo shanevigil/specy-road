@@ -444,6 +444,44 @@ def env_split_forms(command: str) -> list[str]:
     return forms
 
 
+_PATH_PREFIXES = ("/usr/bin/", "/bin/", "./")
+# ``timeout``'s first positional is a duration, so the guarded command stays the next word.
+_PATH_WRAPPERS = (
+    ("command", ""),
+    ("env", ""),
+    ("sudo", ""),
+    ("nohup", ""),
+    ("exec", ""),
+    ("time", ""),
+    ("nice", ""),
+    ("xargs", ""),
+    ("timeout", "10 "),
+    ("doas", ""),
+    ("ionice", ""),
+)
+
+
+def path_qualified_forms(command: str) -> list[str]:
+    """``/usr/bin/<w>``, ``/bin/<w>`` and ``./<w>`` around ``command`` for each wrapper."""
+    return [
+        f"{prefix}{name} {gap}{command}"
+        for name, gap in _PATH_WRAPPERS
+        for prefix in _PATH_PREFIXES
+    ]
+
+
+def path_qualified_env_forms(command: str) -> list[str]:
+    """Each split-string spelling with a path-qualified ``env`` or ``sudo``, and a subshell around ``env``."""
+    forms = []
+    for form in env_split_forms(command):
+        for prefix in _PATH_PREFIXES:
+            spelled = f"{prefix}{form}"
+            forms.append(spelled)
+            if form.startswith("env"):
+                forms.append(f"({spelled})")
+    return forms
+
+
 def destructive_commands() -> list[str]:
     tables = (
         test_destructive_commands_are_classified,
@@ -505,23 +543,33 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
     """Every wrapper, including each env split-string spelling, keeps the bare reason.
 
     ``-S`` separate, clustered and attached, and every unambiguous prefix of ``--split-string``
-    (with ``=`` and with a separate value) match the bare command. A ``GIT_CONFIG*`` row
-    also matches through ``env -S '-i <row>'`` and the same option with ``-v``, ``--``,
-    ``-u HOME``, and ``sudo``. Ordinary commands
-    stay allowed through those forms. A split string whose command needs runtime
-    state (``$HOME``, ``${DIR}``, or an unknown escape) is refused as opaque.
+    (with ``=`` and with a separate value) match the bare command. A path-qualified wrapper
+    (``/usr/bin/<w>``, ``/bin/<w>``, ``./<w>``) matches that same bare reason, including
+    ``/usr/bin/env -S``, a subshell around it, ``/bin/env --split=`` and ``/usr/bin/sudo``.
+    A ``GIT_CONFIG*`` row also matches through ``env -S '-i <row>'`` and the same option
+    with ``-v``, ``--``, ``-u HOME``, and ``sudo``. Ordinary commands stay allowed through
+    those forms. A split string whose command needs runtime state (``$HOME``, ``${DIR}``,
+    or an unknown escape) is refused as opaque.
     """
     stash = g.classify("git stash")
     examples = (
         'env --split "git stash"', 'env --s "git stash"',
         'env --split="git stash"', 'env --spl="git stash"',
+        '/usr/bin/env -S "git stash"', '(/usr/bin/env -S "git stash")',
+        '/bin/env --split="git stash"', '/usr/bin/sudo env -S "git stash"',
     )
     for example in examples:
         assert g.classify(example) == stash, (example, g.classify(example))
     for command in destructive_commands():
         bare = g.classify(command)
         assert bare, command
-        for wrapped in (*see_through_forms(command), *env_split_forms(command)):
+        wrapped_forms = (
+            *see_through_forms(command),
+            *env_split_forms(command),
+            *path_qualified_forms(command),
+            *path_qualified_env_forms(command),
+        )
+        for wrapped in wrapped_forms:
             assert g.classify(wrapped) == bare, (wrapped, g.classify(wrapped), bare)
     needs_runtime = (
         "echo $HOME",
@@ -532,14 +580,14 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
     ordinary = [command_text(row) for row in param_rows(test_ordinary_commands_pass)]
     for command in ordinary:
         assert g.classify(command) is None, command
-        for wrapped in see_through_forms(command):
+        for wrapped in (*see_through_forms(command), *path_qualified_forms(command)):
             assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
         if command in needs_runtime:
             continue
-        for wrapped in env_split_forms(command):
+        for wrapped in (*env_split_forms(command), *path_qualified_env_forms(command)):
             assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
     for command in needs_runtime:
-        for wrapped in env_split_forms(command):
+        for wrapped in (*env_split_forms(command), *path_qualified_env_forms(command)):
             reason = g.classify(wrapped)
             assert reason and "cannot see" in reason, (wrapped, reason)
 

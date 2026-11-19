@@ -83,9 +83,21 @@ entries:
     started: '2026-11-19'
     owner: savigil
     implementation_review: pending
-  - codename: the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a
-    node_id: M22.78
-    branch: feature/rm-the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a
+  - codename: tests-five-named-properties-replace-the-single-input-tests-they-cover
+    node_id: M16.7.7
+    branch: feature/rm-tests-five-named-properties-replace-the-single-input-tests-they-cover
+    touch_zones:
+      - tests/property/
+      - pyproject.toml
+      - tests/
+      - requirements-ci.in
+      - requirements-ci.txt
+    started: '2026-11-19'
+    owner: savigil
+    implementation_review: pending
+  - codename: the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag
+    node_id: M22.79
+    branch: feature/rm-the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag
     touch_zones:
       - specy_road/orchestration/guard/tool_call_guard.py
       - specy_road/orchestration/guard/tool_call_guard_shapes.py

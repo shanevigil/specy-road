@@ -273,7 +273,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M22.75` | Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block | task | Agentic-led | Complete |
 | `M22.76` | The tool-call guard reads env's clustered and attached -S like the separate flag | task | Agentic-led | Complete |
 | `M22.77` | The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test | task | Agentic-led | Complete |
-| `M22.78` | The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word | task | Agentic-led | Not Started |
+| `M22.78` | The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word | task | Agentic-led | Complete |
+| `M22.79` | The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command | task | Agentic-led | Not Started |
 | `M23` | Post-0.3.1 field feedback | phase | — | Not Started |
 | `M23.1` | Sibling heads come from the reviewed checkout and only the leaf's repositories can stale a review | task | — | Not Started |
 | `M23.2` | Gate: the release that shipped the M16 aliases is out and the maintainer closes the alias window | gate | Human-led | Not Started |

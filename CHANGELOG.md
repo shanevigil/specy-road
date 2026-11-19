@@ -1114,7 +1114,12 @@ are removed in the release after 0.3.1:
   a nested `-S`. A `NAME=VALUE` word is kept in the command, so a `GIT_CONFIG*`
   assignment after an env option is still refused (`env -i GIT_CONFIG_GLOBAL=/tmp/c git x`,
   `env -S '-i GIT_CONFIG_GLOBAL=/tmp/c git x'`). The refusal is that command's
-  own reason when the command can be read.
+  own reason when the command can be read. A wrapper is read by the basename of
+  its word, the way `git` already is, so `/usr/bin/env`, `/bin/env`, `./env` and
+  the same three spellings of `sudo`, `command`, `nohup`, `exec`, `time`, `nice`,
+  `xargs`, `timeout`, `doas` and `ionice` are that wrapper. `/usr/bin/env -S "git stash"`,
+  `(/usr/bin/env -S "git stash")`, `/bin/env --split="git stash"` and
+  `/usr/bin/sudo env -S "git stash"` get the bare command's reason.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
