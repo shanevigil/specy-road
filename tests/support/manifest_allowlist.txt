@@ -34,7 +34,7 @@ tests/gui/test_gui_app_routes_nodes_errors.py:129: malformed or empty manifest l
 tests/cli/test_init_project.py:59: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
 tests/flows/init/test_init_project_reports.py:183: malformed or empty manifest left as raw bytes
 tests/flows/roadmap/test_validate_roadmap.py:466: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
-tests/flows/worker/test_worker_adapters.py:736: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
+tests/flows/worker/test_worker_adapters.py:737: raw roadmap manifest bytes; the builder would rewrite the sheet, the chunk encoding, or the trailing newline
 tests/flows/init/test_refresh_stubs.py:361: project manifest (.specyrd), not a roadmap the builder writes
 tests/flows/init/test_refresh_stubs.py:383: project manifest (.specyrd), not a roadmap the builder writes
 tests/flows/init/test_refresh_stubs.py:430: project manifest (.specyrd), not a roadmap the builder writes
