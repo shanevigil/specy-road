@@ -304,13 +304,16 @@ def test_a_signed_record_binds_its_notes(tmp_path: Path) -> None:
     head = git(repo, "rev-parse", "HEAD")
     notes = tmp_path / "notes.md"
     # M11.75: an approve's observation lines carry a same-line 'not a defect because' reason
-    notes.write_text(review_text(head, model="opus") + "Looked at src/a.py; not a defect because it is unchanged.\n")
+    extra = "Looked at src/a.py; not a defect because it is unchanged.\n"
+    filed = review_text(head, model="opus") + extra
+    notes.write_text(filed)
     with pytest.raises(SystemExit) as e:
         review_cli.main(["review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                          "--file", str(notes), "--sign-key", str(key), "--repo-root", str(repo)])
     assert (e.value.code or 0) == 0
     rec = load_review(review_path(repo, "M1.1", "opus"))
-    assert rec.data["notes_sha256"] == rs.notes_digest("notes\nLooked at src/a.py; not a defect because it is unchanged.\n")
+    assert rec.data["notes_sha256"] == rs.notes_digest(
+        "# opus notes\nLooked at src/a.py; not a defect because it is unchanged.\n")
     assert evaluate_gate(repo, NODE, head).passed
     # The body is replaced, front matter untouched: no longer counts.
     _write(repo, rec.data, "Something else entirely.\n")

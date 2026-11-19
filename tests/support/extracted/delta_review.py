@@ -32,7 +32,8 @@ def file(repo: Path, model: str, commit: str, verdict: str = "approve", delta_fr
     found = {"correctness": [], "regression": [], "boundary": [], "test_integrity": [], **(findings or {})}
     text = review_text(commit, model=model, verdict=verdict, a1="pass" if verdict == "approve" else "fail",
                        findings=found)
-    text = text.replace("notes\n", f"{model} notes on {commit[:7]}\n")
+    front, _body = text.rsplit("---\n", 1)
+    text = front + "---\n" + f"{model} notes on {commit[:7]}\n"
     if drop:
         text = text.replace(f"  {drop}: pass\n", "")
     if delta_from:

@@ -36,7 +36,8 @@ def _repo(tmp_path: Path, policy: str = "") -> tuple[Path, str]:
 def _file(repo: Path, model: str, commit: str, *, fresh: bool = True, delta_from: str | None = None,
           verdict: str = "approve") -> None:
     text = review_text(commit, model=model, fresh=fresh, verdict=verdict)
-    text = text.replace("notes\n", f"{model} notes on {commit[:7]}\n")
+    front, _body = text.rsplit("---\n", 1)
+    text = front + "---\n" + f"{model} notes on {commit[:7]}\n"
     if delta_from:
         text = text.replace("---\n", f"---\ndelta_from: '{delta_from}'\n", 1)
     d = reviews_dir(repo, "M1.1")

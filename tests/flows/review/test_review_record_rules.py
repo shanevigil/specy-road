@@ -426,7 +426,9 @@ def test_a_not_run_test_does_not_meet_the_rerun_policy(tmp_path: Path, rerun: li
 
 def _record_folded(repo: Path, notes: str) -> int:
     p = repo.parent / "notes-opus.md"
-    p.write_text(review_text(git(repo, "rev-parse", "HEAD"), model="opus").replace("---\nnotes\n", "---\n" + notes))
+    text = review_text(git(repo, "rev-parse", "HEAD"), model="opus")
+    front, _body = text.rsplit("---\n", 1)
+    p.write_text(front + "---\n" + notes)
     return run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve", "--file", str(p),
                 "--repo-root", str(repo))
 
