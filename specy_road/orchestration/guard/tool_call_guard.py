@@ -51,6 +51,10 @@ _WRAPPER_LEADING_ARG = {"timeout"}
 _OPENERS = {"(", "{", "if", "then", "elif", "else", "while", "until", "do", "!"}
 #: ``env -S "git stash"`` splits its argument into a command: opaque to a token parser.
 _ENV_SPLIT = {"-S", "--split-string"}
+#: GNU ``env`` short options that take an argument, so the rest of a cluster belongs to them.
+_ENV_SHORT_WITH_ARG = set("Cu")
+#: GNU ``env`` short options with no argument; a later ``S`` in the same cluster is ``-S``.
+_ENV_SHORT_NO_ARG = set("0iv")
 #: Reasons about the working tree only; other worktrees' sessions are not at risk.
 _TREE_SCOPED = ("git switch", "git checkout", "git restore", "git clean", "git commit", "git add", "git reset")
 #: ``git -C <dir>`` / ``--work-tree`` act on another tree: never scope those to the caller's.
@@ -117,8 +121,22 @@ def split_segments(command: str) -> list[str]:
 
 
 def _env_splits(arg: str) -> bool:
-    """``env -S`` / ``--split-string`` hides its command in one argument."""
-    return arg in _ENV_SPLIT or arg.startswith("--split-string=")
+    """``env -S`` / ``--split-string`` hides its command in one argument.
+
+    Short options are one cluster, as ``env`` reads them: ``-vS`` and ``-iS`` are
+    ``-S``, and ``-Sgit stash`` is ``-S`` with the command attached. ``-u`` and
+    ``-C`` take the rest of the cluster, so ``-uS`` is not ``-S``.
+    """
+    if arg in _ENV_SPLIT or arg.startswith("--split-string="):
+        return True
+    if len(arg) < 2 or not arg.startswith("-") or arg.startswith("--"):
+        return False
+    for letter in arg[1:]:
+        if letter == "S":
+            return True
+        if letter in _ENV_SHORT_WITH_ARG or letter not in _ENV_SHORT_NO_ARG:
+            return False
+    return False
 
 
 def _is_opaque_subject(tokens: list[str], i: int) -> bool:

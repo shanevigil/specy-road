@@ -240,8 +240,35 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.76_the-tool-call-guard-reads-env-s-clustered-and-attached-s-like_ebc6d262-abe1-43ce-b65b-f449713ea455.md",
       "sibling_order": 76,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The tool-call guard reads env's clustered and attached -S like the separate flag",
+      "touch_zones": [
+        "specy_road/orchestration/guard/tool_call_guard.py",
+        "specy_road/orchestration/guard/tool_call_guard_shapes.py",
+        "tests/unit/test_tool_call_guard.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The guard reads env's arguments with GNU getopt_long rules for the option set of GNU coreutils env (the version is named in a comment): a long option matches by any unambiguous prefix, with its value either attached with '=' or in the next argument; short options cluster, and an option that takes a value takes the rest of the cluster or the next argument. So 'env --split \"git stash\"', 'env --s \"git stash\"', 'env --split=\"git stash\"' and 'env --spl=\"git stash\"' (verified allowed on WIP 42fabcea, 2026-11-18) are refused with the same reason as 'env -S \"git stash\"'. Options that take a value but no command (for example --unset, --chdir) consume their value and are not read as the command",
+        "One enumerated test, with no new dependency, runs every case of the existing destructive-command tables through every wrapper form the guard handles: an opener ('!', '{ …; }', 'if true; then …; fi'), a subshell, an assignment prefix, sudo, and env with each spelling of the split-string option (-S separate, clustered and attached, and every unambiguous prefix of --split-string with '=' and with a separate value). Each wrapped form gets the same verdict and reason as the bare case. The ordinary-commands table, run through the same forms, stays allowed",
+        "Every existing guard table row passes unchanged; the forms M22.74 and M22.76 fixed stay refused",
+        "CHANGELOG.md [Unreleased] extends the guard Security entry; no version heading is written"
+      ],
+      "codename": "the-tool-call-guard-parses-env-s-options-the-way-gnu-getopt-does",
+      "dependencies": [
+        "ebc6d262-abe1-43ce-b65b-f449713ea455"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.77",
+      "node_key": "23ba8a95-3926-453b-964a-b5a564c85c7c",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.77_the-tool-call-guard-parses-env-s-options-the-way-gnu-getopt-does_23ba8a95-3926-453b-964a-b5a564c85c7c.md",
+      "sibling_order": 77,
+      "status": "Not Started",
+      "title": "The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test",
       "touch_zones": [
         "specy_road/orchestration/guard/tool_call_guard.py",
         "specy_road/orchestration/guard/tool_call_guard_shapes.py",
