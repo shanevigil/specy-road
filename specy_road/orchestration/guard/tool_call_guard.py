@@ -143,6 +143,7 @@ class _EnvRun:
     shell: str
     determined: bool = True
     source: str = ""
+    ate_option: bool = False
 
 
 def _env_long_name(name: str) -> tuple[str, str] | None:
@@ -232,16 +233,14 @@ def _env_split_escape(value: str, i: int, dq: bool, cur: list[str], argv: list[s
     return i + 2
 
 
-def _env_split_plain(value: str, i: int, dq: bool, cur: list[str], argv: list[str]) -> tuple[int, bool] | None:
-    """One unquoted or double-quoted character. ``None`` means ``$`` / ``${VAR}``."""
+def _env_split_plain(value: str, i: int, dq: bool, cur: list[str], argv: list[str]) -> tuple[int, bool]:
+    """One unquoted or double-quoted character. ``$`` and ``${VAR}`` stay in the word."""
     ch = value[i]
     if ch == '"':
         return i + 1, not dq
     if not dq and ch in _ENV_WS:
         _env_flush(cur, argv)
         return i + 1, dq
-    if ch == "$":
-        return None
     if not dq and ch == "#" and not cur:
         _env_flush(cur, argv)
         return len(value), dq
@@ -250,11 +249,12 @@ def _env_split_plain(value: str, i: int, dq: bool, cur: list[str], argv: list[st
 
 
 def _env_split_argv(value: str) -> tuple[str, ...] | None:
-    """GNU coreutils 9.4 ``-S`` words, or ``None`` when the command cannot be known.
+    """GNU coreutils 9.4 ``-S`` words, or ``None`` when an escape cannot be known.
 
-    ``None`` is an unknown escape, a trailing backslash, ``\\c`` inside double quotes,
-    or ``$`` / ``${VAR}`` outside single quotes. Single quotes keep every character
-    except ``\\\\`` and ``\\'``.
+    ``None`` is an unknown escape, a trailing backslash, or ``\\c`` inside double quotes.
+    ``$`` and ``${VAR}`` are left in the word: the guard classifies that text and does
+    not substitute the environment. Single quotes keep every character except ``\\\\``
+    and ``\\'``.
     """
     argv, cur = [], []
     i, sq, dq = 0, False, False
@@ -281,31 +281,39 @@ def _env_split_argv(value: str) -> tuple[str, ...] | None:
             sq = True
             i += 1
             continue
-        step = _env_split_plain(value, i, dq, cur, argv)
-        if step is None:
-            return None
-        i, dq = step
+        i, dq = _env_split_plain(value, i, dq, cur, argv)
     _env_flush(cur, argv)
     return tuple(argv)
 
 
 def _env_from_split(value: str, trailing: list[str]) -> _EnvRun:
-    """The command ``-S`` builds: its value, then any arguments env appends after it."""
+    """Words ``-S`` builds, then parsed again as env options before the command.
+
+    ``--unset`` and ``--chdir`` inside the split string consume the next word, so
+    that word is not the command. ``ate_option`` is set when this rescan changes
+    the words. An unknown escape leaves the argv unknowable.
+    """
     words = _env_split_argv(value)
     extra = " ".join(shlex.quote(part) for part in trailing)
     source = f"{value} {extra}" if extra else value
     if words is None:
         return _EnvRun(True, True, (), source, False, source)
-    command = (*words, *trailing)
-    return _EnvRun(True, True, command, shlex.join(command), True, source)
+    parsed = _env_invocation(["env", *words, *trailing])
+    if not parsed.ok:
+        return _EnvRun(False, False, (), source)
+    command = parsed.command
+    whole = (*words, *trailing)
+    removed = whole[:len(whole) - len(command)]
+    ate = any(word.startswith("-") for word in removed)
+    return _EnvRun(True, True, command, shlex.join(command), True, source, ate)
 
 
 def _env_invocation(tokens: list[str]) -> _EnvRun:
     """What GNU coreutils 9.4 ``env`` runs for ``tokens`` that start with ``env``.
 
-    ``ok`` is false when env rejects the options. A split-string value is the command,
-    with later arguments appended; otherwise the command is the first non-option that
-    is not a ``NAME=VALUE`` assignment.
+    ``ok`` is false when env rejects the options. A split-string is decoded and its
+    words are parsed as options again; the command is the first non-option that is
+    not a ``NAME=VALUE`` assignment.
     """
     i, bad = 1, _EnvRun(False, False, (), "")
     while i < len(tokens):
@@ -529,20 +537,23 @@ def _embedded_space_reason(command: tuple[str, ...]) -> str | None:
 def _split_command_reason(seen: list[str]) -> str | None:
     """The reason for the command an ``env`` split-string runs, else ``None``.
 
-    The split text is classified as the shell command it was, and as the words GNU
-    env would exec. A tab or newline env embeds in one word is classified with that
-    character read as a space. An unknown escape or ``$`` / ``${VAR}`` has no
-    knowable argv: the shell reason stands, or the opaque reason, and it is never allowed.
+    Options in the split string are parsed first. When one consumes a word, only
+    the remaining command is classified (``--unset git`` is not ``git``). Otherwise
+    the split text is classified as the shell command it was written as. ``$`` and
+    ``${VAR}`` are not expanded. An unknown escape has no knowable argv: the shell
+    reason stands, or the opaque reason, and that case is never allowed.
     """
     if not seen or seen[0] != "env":
         return None
     parsed = _env_invocation(seen)
     if not (parsed.ok and parsed.split):
         return None
-    reason = classify(parsed.source)
     if not parsed.determined:
-        return reason or _ENV_SPLIT_OPAQUE
-    return reason or classify(parsed.shell) or _embedded_space_reason(parsed.command)
+        return classify(parsed.source) or _ENV_SPLIT_OPAQUE
+    command_reason = classify(parsed.shell) or _embedded_space_reason(parsed.command)
+    if parsed.ate_option:
+        return command_reason
+    return classify(parsed.source) or command_reason
 
 
 def _opaque(segment: str) -> str | None:

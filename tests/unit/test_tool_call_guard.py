@@ -448,8 +448,8 @@ def test_env_split_escapes_and_pre_leaf_refusals() -> None:
 
     ``\\_`` and an embedded tab, newline, form feed, vertical tab or carriage return read
     as ``git stash``. ``\\c`` ends the string and a leading ``#`` comments it out, so what
-    remains is classified. An unknown escape or ``$`` / ``${VAR}`` is refused. Forms the
-    pre-leaf guard refused are still refused.
+    remains is classified. An unknown escape is refused. Forms the pre-leaf guard
+    refused are still refused.
     """
     stash = g.classify("git stash")
     same = (
@@ -467,7 +467,7 @@ def test_env_split_escapes_and_pre_leaf_refusals() -> None:
     )
     for command in literal:
         assert g.classify(command) is None, (command, g.classify(command))
-    unknown = ("env -S 'git\\x20stash'", "env -S '\\gitstash'", "env -S 'echo ${HOME}'", "env -S 'echo $HOME'")
+    unknown = ("env -S 'git\\x20stash'", "env -S '\\gitstash'")
     for command in unknown:
         assert g.classify(command), command
     refused_before = (
@@ -486,8 +486,8 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
     """Every wrapper, including each env split-string spelling, keeps the bare reason.
 
     ``-S`` separate, clustered and attached, and every unambiguous prefix of ``--split-string``
-    (with ``=`` and with a separate value) match the bare command. Ordinary commands stay
-    allowed, except an ``-S`` value whose ``$`` / ``${VAR}`` env cannot determine.
+    (with ``=`` and with a separate value) match the bare command. Ordinary commands,
+    including ones with a variable reference, stay allowed through those forms.
     """
     stash = g.classify("git stash")
     examples = (
@@ -501,16 +501,30 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
         assert bare, command
         for wrapped in (*see_through_forms(command), *env_split_forms(command)):
             assert g.classify(wrapped) == bare, (wrapped, g.classify(wrapped), bare)
-    # $ outside quotes: env rejects $NAME and expands ${VAR} from the environment.
-    undetermined = {"echo $HOME", "ls ${DIR}", "$HOME/bin/pytest -q", "${PYTHON:-python} -m pytest"}
     ordinary = [command_text(row) for row in param_rows(test_ordinary_commands_pass)]
     for command in ordinary:
         assert g.classify(command) is None, command
-        for wrapped in see_through_forms(command):
+        for wrapped in (*see_through_forms(command), *env_split_forms(command)):
             assert g.classify(wrapped) is None, (wrapped, g.classify(wrapped))
-        for wrapped in env_split_forms(command):
-            reason = g.classify(wrapped)
-            if command in undetermined:
-                assert reason, (wrapped, reason)
-            else:
-                assert reason is None, (wrapped, reason)
+
+
+def test_split_string_options_are_parsed_before_the_command() -> None:
+    """An option inside ``-S`` consumes its value, so that word is not the command."""
+    stash = g.classify("git stash")
+    consumed = (
+        "env -S '--unset git stash'", "env -S '--chdir git stash'", "env -S '-u git stash'",
+        "env -S '--un git stash'", "env -S '--ch git stash'", "env -S '-C git status'",
+        "sudo env -S '--unset git stash'", "(env -S '--chdir git stash')",
+        "FOO=1 env -S '-u git stash'", "env --split '--unset git stash'",
+        "env -S --unset git stash",
+    )
+    for command in consumed:
+        assert g.classify(command) is None, (command, g.classify(command))
+    runs = (
+        "env -S '-u HOME git stash'", "env -S '--unset=HOME git stash'",
+        "env -S '--debug git stash'", "env -S '--default-signal git stash'",
+        "env -S '-- git stash'", "env -S '--ch /tmp git stash'",
+        "env -S '-uHOME git stash'", "env -S 'FOO=1 git stash'",
+    )
+    for command in runs:
+        assert g.classify(command) == stash, (command, g.classify(command))
