@@ -156,6 +156,12 @@ def test_a_silent_running_worker_is_flagged_once_per_silence(tmp_path: Path) -> 
         assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags, state
 
 
+def _open_gates(gate: Path, count: int = 3) -> None:
+    """Open every gate a stall child waits on, so it can exit."""
+    for i in range(count):
+        (gate / str(i)).write_text("go")
+
+
 def test_output_clears_a_stall_shorter_than_the_write_window(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -164,6 +170,8 @@ def test_output_clears_a_stall_shorter_than_the_write_window(
 
     The child blocks on a gate file between lines. Silence is the injected ``now``,
     and the write window is the runner's clock, so the test does not wait the stall out.
+    Every gate is opened before the runner thread is joined, including when a wait
+    fails, so the child cannot keep that thread alive after the test returns.
     """
     import threading
 
@@ -220,10 +228,9 @@ def test_output_clears_a_stall_shorter_than_the_write_window(
             return lines() >= 3 and ws.FLAG_STALLED not in rec_now.flags
 
         wait_until(line_two_cleared, timeout=10, message="line 2 did not clear the stall")
-        (gate / "2").write_text("go")
     finally:
-        t.join(10)
-    assert not t.is_alive()
+        _open_gates(gate)
+        t.join()
     assert not errors, errors
     # The second sweep flags afresh only because line 1 cleared the first flag.
     assert newly_flagged == [True, True] and len(_stalled(repo, rec.worker_id)) == 2
@@ -231,6 +238,18 @@ def test_output_clears_a_stall_shorter_than_the_write_window(
     assert _stalled(repo, rec.worker_id)[1].detail["silent_seconds"] < 3
     # Line 2 cleared the second flag (the turn's end does not touch flags).
     assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags
+
+
+def test_a_failed_wait_releases_the_gated_stall_child(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A wait that fails still opens the gates and joins the runner thread."""
+    def fail_wait(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("forced")
+
+    monkeypatch.setattr("tests.unit.test_worker_faults.wait_until", fail_wait)
+    with pytest.raises(AssertionError, match="forced"):
+        test_output_clears_a_stall_shorter_than_the_write_window(tmp_path, monkeypatch)
 
 
 def test_list_and_sync_flag_a_live_silent_worker(tmp_path: Path, capsys) -> None:
