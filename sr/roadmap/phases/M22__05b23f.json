@@ -219,7 +219,8 @@
         "specy_road/planning_artifacts.py",
         "tests/unit/test_planning_artifacts.py",
         "tests/unit/",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "tests/flows/review/test_review_files.py"
       ],
       "type": "task"
     }
