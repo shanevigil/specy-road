@@ -294,7 +294,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.78_the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a_f73d1ecb-3815-4f7c-b3a0-92e3e0d68af3.md",
       "sibling_order": 78,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word",
       "touch_zones": [
         "specy_road/orchestration/guard/tool_call_guard.py",

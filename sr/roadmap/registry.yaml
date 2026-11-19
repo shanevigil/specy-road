@@ -83,14 +83,3 @@ entries:
     started: '2026-11-19'
     owner: savigil
     implementation_review: pending
-  - codename: the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a
-    node_id: M22.78
-    branch: feature/rm-the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a
-    touch_zones:
-      - specy_road/orchestration/guard/tool_call_guard.py
-      - specy_road/orchestration/guard/tool_call_guard_shapes.py
-      - tests/unit/test_tool_call_guard.py
-      - CHANGELOG.md
-    started: '2026-11-19'
-    owner: savigil
-    implementation_review: pending
