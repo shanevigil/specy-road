@@ -223,6 +223,32 @@
         "tests/flows/review/test_review_files.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "classify refuses, with the same reason it gives 'env -S \"git stash\"', each of 'env -vS \"git stash\"', 'env -iS \"git stash\"', 'env -S\"git stash\"' and 'env -vS\"git stash\"' (verified allowed on WIP 2026-11-18 after M22.74): env's short options are read as a cluster, so an S inside a cluster, or -S with its argument attached, is the split-string option; the same holds behind the openers, subshells, wrappers and assignments M22.74 handles",
+        "Each form above is a row of the existing destructive-command tables in tests/unit/test_tool_call_guard.py; every existing row passes unchanged, and env clusters without S (for example 'env -i git status', 'env -u HOME ls') keep their current result",
+        "CHANGELOG.md [Unreleased] adds the case to the M22.74 Security entry; no version heading is written"
+      ],
+      "codename": "the-tool-call-guard-reads-env-s-clustered-and-attached-s-like",
+      "dependencies": [
+        "5677fff1-eaf2-4dee-9714-792ba66ea7c2"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.76",
+      "node_key": "ebc6d262-abe1-43ce-b65b-f449713ea455",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.76_the-tool-call-guard-reads-env-s-clustered-and-attached-s-like_ebc6d262-abe1-43ce-b65b-f449713ea455.md",
+      "sibling_order": 76,
+      "status": "Not Started",
+      "title": "The tool-call guard reads env's clustered and attached -S like the separate flag",
+      "touch_zones": [
+        "specy_road/orchestration/guard/tool_call_guard.py",
+        "specy_road/orchestration/guard/tool_call_guard_shapes.py",
+        "tests/unit/test_tool_call_guard.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

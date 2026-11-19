@@ -201,6 +201,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.73` Harness facts and captures refreshed from the delivered research `harness-facts-and-captures-refreshed` — task — **Not Started**
   - `M22.74` The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment `the-tool-call-guard-refuses-destructive-git-commands-hidden` — task — **Complete**
   - `M22.75` Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block `front-matter-round-trips-a-trailing-non-ascii-space-in-a-value` — task — **Not Started**
+  - `M22.76` The tool-call guard reads env's clustered and attached -S like the separate flag `the-tool-call-guard-reads-env-s-clustered-and-attached-s-like` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
