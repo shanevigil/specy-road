@@ -240,7 +240,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.76_the-tool-call-guard-reads-env-s-clustered-and-attached-s-like_ebc6d262-abe1-43ce-b65b-f449713ea455.md",
       "sibling_order": 76,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The tool-call guard reads env's clustered and attached -S like the separate flag",
       "touch_zones": [
         "specy_road/orchestration/guard/tool_call_guard.py",
