@@ -186,7 +186,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.74_the-tool-call-guard-refuses-destructive-git-commands-hidden_5677fff1-eaf2-4dee-9714-792ba66ea7c2.md",
       "sibling_order": 74,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment",
       "touch_zones": [
         "specy_road/orchestration/guard/tool_call_guard.py",

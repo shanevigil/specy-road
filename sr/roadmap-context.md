@@ -199,7 +199,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.71` Review channels report the model the harness actually ran, so every review record names it `review-channels-report-the-model-the-harness-ran` — task — **Complete**
   - `M22.72` Gate: current harness facts delivered as a dated research report `harness-facts-research-delivered` — gate — **Not Started**
   - `M22.73` Harness facts and captures refreshed from the delivered research `harness-facts-and-captures-refreshed` — task — **Not Started**
-  - `M22.74` The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment `the-tool-call-guard-refuses-destructive-git-commands-hidden` — task — **Not Started**
+  - `M22.74` The tool-call guard refuses destructive git commands hidden behind an opener, a subshell, a wrapper or an assignment `the-tool-call-guard-refuses-destructive-git-commands-hidden` — task — **Complete**
   - `M22.75` Front matter round-trips: a trailing non-ASCII space in a value survives rendering, and an indented --- inside a value does not end the block `front-matter-round-trips-a-trailing-non-ascii-space-in-a-value` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
@@ -361,7 +361,6 @@ Do not pick these up.
 - `M19.10` on `feature/rm-file-limits-baseline-and-upgrade-report` since 2026-11-05
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
-- `M22.74` on `feature/rm-the-tool-call-guard-refuses-destructive-git-commands-hidden` since 2026-11-18
 - `M22.75` on `feature/rm-front-matter-round-trips-a-trailing-non-ascii-space-in-a-value` since 2026-11-18
 
 ## Quality by area
@@ -370,7 +369,7 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 18 | 0 | 3.00 | 83% | 19 | 0 |
+| `CHANGELOG.md` **flagged** | 19 | 0 | 2.89 | 79% | 19 | 0 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
 | `docs` **flagged** | 22 | 0 | 3.18 | 77% | 337 | 1 |
 | `gui` **flagged** | 8 | 0 | 2.62 | 62% | 1 | 0 |
@@ -382,10 +381,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 22 | 0 | 3.09 | 59% | 400 | 1 |
-| `specy_road` **flagged** | 41 | 0 | 2.39 | 56% | 91 | 0 |
+| `specy_road` **flagged** | 41 | 0 | 2.37 | 54% | 89 | 0 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 48 | 0 | 2.62 | 60% | 420 | 1 |
-| `constraints` | 23 | 0 | 2.70 | 48% | 369 | 1 |
+| `tests` **flagged** | 48 | 0 | 2.60 | 58% | 418 | 1 |
+| `constraints` | 22 | 0 | 2.73 | 45% | 367 | 1 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

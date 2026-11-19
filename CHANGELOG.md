@@ -1079,6 +1079,17 @@ are removed in the release after 0.3.1:
   footer until the field saves. The server refuses a second concurrent PATCH
   for the same node with 409 instead of running both.
 
+### Security
+
+- The shared-checkout tool-call guard refuses a destructive git command hidden
+  behind an opener and a subshell (`! (git stash)`, `{ (git stash); }`,
+  `if true; then (git stash); fi`), and refuses `env -S` and `GIT_CONFIG*` /
+  `git --config-env=alias.*` when a subshell, a wrapper or an assignment sits in
+  front (`(env -S "git stash")`, `sudo env -S "git stash"`,
+  `FOO=1 env -S "git stash"`, `(GIT_CONFIG_GLOBAL=/tmp/c git x)`,
+  `(git --config-env=alias.x=BODY x)`). The reason is the one the bare command
+  already gets.
+
 ## [v0.3.1-rc2] - 2026-10-29
 
 Second prerelease for v0.3.1 (TestPyPI). Builds on rc1 with upgrade-path

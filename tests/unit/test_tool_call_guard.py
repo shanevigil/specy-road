@@ -87,6 +87,14 @@ from specy_road.orchestration.workers import worker_state as ws
     ("g{i,}t stash", "shell expansion"),
     ("G=git; case x in x) ${G} stash;; esac", "stash stack is shared"),
     ("X=i; g${X}t stash", "shell expansion"),
+    ("! (git stash)", "stash stack is shared"),
+    ("{ (git stash); }", "stash stack is shared"),
+    ("if true; then (git stash); fi", "stash stack is shared"),
+    ('(env -S "git stash")', "env -S splits"),
+    ('sudo env -S "git stash"', "env -S splits"),
+    ('FOO=1 env -S "git stash"', "env -S splits"),
+    ("(GIT_CONFIG_GLOBAL=/tmp/c git x)", "GIT_CONFIG*"),
+    ("(git --config-env=alias.x=BODY x)", "--config-env=alias"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
