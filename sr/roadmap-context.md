@@ -73,7 +73,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M16.7` Test dedupe, public seams, properties and the smoke lane `test-dedupe-public-seams-properties-and-the-smoke-lane` — milestone — **Not Started**
     - `M16.7.1` Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it `tests-a-committed-dedupe-worklist-per-subsystem-names-each-removal-and-the-assertion-that-covers-it` — task — **Complete**
     - `M16.7.2` Tests: apply the dedupe worklist for review gate `tests-apply-the-dedupe-worklist-for-review-gate` — task — **Complete**
-    - `M16.7.3` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Not Started**
+    - `M16.7.3` Tests: apply the dedupe worklist for worker `tests-apply-the-dedupe-worklist-for-worker` — task — **Complete**
     - `M16.7.5` Tests: apply the dedupe worklist for the rest `tests-apply-the-dedupe-worklist-for-the-rest` — task — **Not Started**
     - `M16.7.6` Tests: public seams replace private-name patches, and no test sleeps on the wall clock `tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock` — task — **Not Started**
     - `M16.7.7` Tests: five named properties replace the single-input tests they cover `tests-five-named-properties-replace-the-single-input-tests-they-cover` — task — **Not Started**
@@ -356,7 +356,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M16.7.3` on `feature/rm-tests-apply-the-dedupe-worklist-for-worker` since 2026-11-18
 - `M16.7.5` on `feature/rm-tests-apply-the-dedupe-worklist-for-the-rest` since 2026-11-18
 - `M18.13` on `feature/rm-zones-missing-what-acceptance-needs-flagged` since 2026-11-04
 - `M18.14` on `feature/rm-stash-changes-attributed-to-the-owning-branch` since 2026-11-05
@@ -371,10 +370,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 
 | Area | Leaves | No tally | Mean rounds | Block rate | Integrity findings | RCA escalations |
 | --- | --- | --- | --- | --- | --- | --- |
-| `CHANGELOG.md` **flagged** | 19 | 0 | 2.84 | 74% | 19 | 0 |
+| `CHANGELOG.md` **flagged** | 18 | 0 | 3.00 | 83% | 19 | 0 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `docs` **flagged** | 20 | 0 | 3.30 | 75% | 337 | 1 |
-| `gui` **flagged** | 7 | 0 | 2.71 | 57% | 1 | 0 |
+| `docs` **flagged** | 22 | 0 | 3.18 | 77% | 337 | 1 |
+| `gui` **flagged** | 8 | 0 | 2.62 | 62% | 1 | 0 |
 | `planning` **flagged** | 3 | 0 | 3.33 | 67% | 5 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
@@ -383,10 +382,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 22 | 0 | 3.09 | 59% | 400 | 1 |
-| `specy_road` **flagged** | 40 | 0 | 2.38 | 52% | 88 | 0 |
+| `specy_road` **flagged** | 41 | 0 | 2.39 | 56% | 91 | 0 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 48 | 0 | 2.58 | 56% | 418 | 1 |
-| `constraints` | 22 | 0 | 2.73 | 45% | 367 | 1 |
+| `tests` **flagged** | 48 | 0 | 2.62 | 60% | 420 | 1 |
+| `constraints` | 23 | 0 | 2.70 | 48% | 369 | 1 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.
 

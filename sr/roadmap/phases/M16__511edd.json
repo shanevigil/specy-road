@@ -328,7 +328,7 @@
       ],
       "planning_dir": "planning/M16.7.3_tests-apply-the-dedupe-worklist-for-worker_21cc96e6-1e15-425e-a4b0-9c821fe30c55.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: apply the dedupe worklist for worker",
       "touch_zones": [
         "tests/",
