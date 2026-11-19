@@ -80,17 +80,3 @@ entries:
     started: '2026-11-18'
     owner: savigil
     implementation_review: pending
-  - codename: front-matter-round-trips-a-trailing-non-ascii-space-in-a-value
-    node_id: M22.75
-    branch: feature/rm-front-matter-round-trips-a-trailing-non-ascii-space-in-a-value
-    touch_zones:
-      - specy_road/review_files.py
-      - specy_road/planning_artifacts.py
-      - tests/unit/test_planning_artifacts.py
-      - tests/unit/
-      - CHANGELOG.md
-      - tests/flows/review/test_review_files.py
-    started: '2026-11-18'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-19T05:05:29+00:00'
