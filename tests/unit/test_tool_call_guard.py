@@ -424,12 +424,23 @@ def split_string_prefixes() -> list[str]:
 
 
 def env_split_forms(command: str) -> list[str]:
-    """``-S`` separate, clustered, attached, and every unambiguous ``--split-string`` prefix."""
+    """``-S`` separate, clustered, attached, and every unambiguous ``--split-string`` prefix.
+
+    A ``GIT_CONFIG*`` command is also run as ``env -S '-i <row>'`` (and ``-v``, ``--``,
+    ``-u HOME``, with and without ``sudo``). An option in front of other rows is a
+    different class: the split is re-tokenized, so shell syntax such as ``if`` does
+    not keep its bare reason.
+    """
     quoted = shlex.quote(command)
     forms = [f"env -S {quoted}", f"env -vS {quoted}", f"env -S{quoted}", f"env -vS{quoted}"]
     for prefix in split_string_prefixes():
         forms.append(f"env --{prefix} {quoted}")
         forms.append(f"env --{prefix}={quoted}")
+    if "GIT_CONFIG" in command:
+        for opt in ("-i ", "-v ", "-- ", "-u HOME "):
+            inner = shlex.quote(opt + command)
+            forms.append(f"env -S {inner}")
+            forms.append(f"sudo env -S {inner}")
     return forms
 
 
@@ -494,7 +505,9 @@ def test_wrappers_keep_the_bare_verdict_and_reason() -> None:
     """Every wrapper, including each env split-string spelling, keeps the bare reason.
 
     ``-S`` separate, clustered and attached, and every unambiguous prefix of ``--split-string``
-    (with ``=`` and with a separate value) match the bare command. Ordinary commands
+    (with ``=`` and with a separate value) match the bare command. A ``GIT_CONFIG*`` row
+    also matches through ``env -S '-i <row>'`` and the same option with ``-v``, ``--``,
+    ``-u HOME``, and ``sudo``. Ordinary commands
     stay allowed through those forms. A split string whose command needs runtime
     state (``$HOME``, ``${DIR}``, or an unknown escape) is refused as opaque.
     """
