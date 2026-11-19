@@ -12,7 +12,7 @@ import pytest
 
 from specy_road.repo_lock import RepoLockTimeout, new_ticket, ticket_pid, lock_root, pickup_finish_lock
 from specy_road.orchestration.workers.worker_process import start_token
-from tests.support.bounded_wait import pause
+from tests.support.bounded_wait import wait_until
 
 
 def _git_repo(tmp_path: Path) -> Path:
@@ -27,21 +27,30 @@ def _git_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def _counter_worker(repo: Path, shared: mp.Value, lock: mp.Lock) -> None:
+def _counter_worker(repo: Path, shared: mp.Value, gate: mp.Lock, seen: mp.Value) -> None:
+    """Read, wait until the other caller is at the lock, then store ``cur + 1``."""
     with pickup_finish_lock(repo, operation="test-worker"):
-        with lock:
+        with gate:
             cur = shared.value
-        pause(0.15)
-        with lock:
+            seen.value += 1
+
+        def other_reached() -> bool:
+            queued = [p for p in (lock_root(repo) / "queue").iterdir() if p.is_file()]
+            with gate:
+                return len(queued) >= 2 or seen.value >= 2
+
+        wait_until(other_reached, timeout=5, message="the other caller never reached the lock")
+        with gate:
             shared.value = cur + 1
 
 
 def test_two_concurrent_callers_serialize(tmp_path: Path) -> None:
     repo = _git_repo(tmp_path)
     shared = mp.Value("i", 0)
-    lock = mp.Lock()
-    p1 = mp.Process(target=_counter_worker, args=(repo, shared, lock))
-    p2 = mp.Process(target=_counter_worker, args=(repo, shared, lock))
+    seen = mp.Value("i", 0)
+    gate = mp.Lock()
+    p1 = mp.Process(target=_counter_worker, args=(repo, shared, gate, seen))
+    p2 = mp.Process(target=_counter_worker, args=(repo, shared, gate, seen))
     p1.start()
     p2.start()
     p1.join(timeout=30)

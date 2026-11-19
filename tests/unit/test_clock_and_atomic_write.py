@@ -385,18 +385,22 @@ def test_os_replace_is_only_in_fs_atomic_and_the_allowlist() -> None:
 
 @pytest.mark.repo
 def test_tests_do_not_sleep_on_the_wall_clock() -> None:
-    """Child-process fixtures may block; every other tests/ line must not."""
+    """Child-process fixtures may block; every other tests/ line must not.
+
+    An allowlist entry is ``path: <source line>``, once per occurrence. Moving
+    a fixture keeps the entry. A new sleep, or an edited one, does not.
+    """
     needle = "time" + ".sleep"
     allow_path = REPO / "tests" / "support" / "wall_clock_sleep_allowlist.txt"
-    allowed = {
+    allowed = sorted(
         line.strip()
         for line in allow_path.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.startswith("#")
-    }
-    found = [
-        f"{path.relative_to(REPO).as_posix()}:{number}"
+    )
+    found = sorted(
+        f"{path.relative_to(REPO).as_posix()}: {line.strip()}"
         for path in sorted((REPO / "tests").rglob("*.py"))
-        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
-        if needle in line and f"{path.relative_to(REPO).as_posix()}:{number}" not in allowed
-    ]
-    assert found == []
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if needle in line
+    )
+    assert found == allowed
