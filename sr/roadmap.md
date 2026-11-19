@@ -73,7 +73,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M16.7` | Test dedupe, public seams, properties and the smoke lane | milestone | — | Not Started |
 | `M16.7.1` | Tests: a committed dedupe worklist per subsystem names each removal and the assertion that covers it | task | Agentic-led | Complete |
 | `M16.7.2` | Tests: apply the dedupe worklist for review gate | task | Agentic-led | Complete |
-| `M16.7.3` | Tests: apply the dedupe worklist for worker | task | Agentic-led | Not Started |
+| `M16.7.3` | Tests: apply the dedupe worklist for worker | task | Agentic-led | Complete |
 | `M16.7.5` | Tests: apply the dedupe worklist for the rest | task | Agentic-led | Not Started |
 | `M16.7.6` | Tests: public seams replace private-name patches, and no test sleeps on the wall clock | task | Agentic-led | Not Started |
 | `M16.7.7` | Tests: five named properties replace the single-input tests they cover | task | Agentic-led | Not Started |

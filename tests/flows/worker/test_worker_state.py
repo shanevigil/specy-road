@@ -395,19 +395,6 @@ def test_terminate_closes_an_adopted_record_without_signalling(tmp_path: Path) -
 
 
 
-def test_reclaim_keeps_the_prompt_verbatim(tmp_path: Path) -> None:
-    repo = make_review_repo(tmp_path)
-    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
-    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
-    ws.set_state(repo, rec, "idle", pid=None)
-    ops.handoff(repo, rec.worker_id)
-    long = "x" * 600
-    wl.record_hook_prompt(repo, "sid-1", long)
-    _rec, detail = ops.reclaim(repo, rec.worker_id)
-    assert detail["prompts"] == [long]
-
-
-
 # --- Gemini F2 ----------------------------------------------------------------
 
 # One test per finding: reconcile judges the worker's whole lifetime; READY must be at the
@@ -481,13 +468,15 @@ def test_adopt_is_one_transaction(tmp_path: Path) -> None:
 
 # --- Sol B7 ----------------------------------------------------------------------
 
-def test_hook_prompts_are_stored_whole(tmp_path: Path) -> None:
+@pytest.mark.parametrize(("length", "char"), [(2501, "y"), (600, "x")])
+def test_hook_prompts_are_stored_whole(tmp_path: Path, length: int, char: str) -> None:
+    """A stored hook prompt is reclaimed whole, at 2501 characters and at 600."""
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "idle", pid=None)
     ops.handoff(repo, rec.worker_id)
-    long = "y" * 2501
+    long = char * length
     wl.record_hook_prompt(repo, "sid-1", long)
     _rec, detail = ops.reclaim(repo, rec.worker_id)
     assert detail["prompts"] == [long]
