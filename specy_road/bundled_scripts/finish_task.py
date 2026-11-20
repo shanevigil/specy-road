@@ -216,7 +216,7 @@ def parse_finish_args(argv: list[str] | None) -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_context(
+def resolve_context(
     root: Path,
     branch: str,
     on_complete: str | None = None,
@@ -232,7 +232,7 @@ def _resolve_context(
     )
 
 
-def _update_chunk_status(root: Path, node_id: str) -> list[str]:
+def update_chunk_status(root: Path, node_id: str) -> list[str]:
     """Patch status in JSON chunk file; return list of changed file paths."""
     chunk = find_chunk_path(root, node_id)
     if not chunk:
@@ -255,7 +255,7 @@ def _update_chunk_status(root: Path, node_id: str) -> list[str]:
     return []
 
 
-def _validate_export_digest(root: Path) -> None:
+def validate_export_digest(root: Path) -> None:
     """validate, export, digest — every generated-and-committed file refreshed.
 
     digest belongs here for the same reason export does: ``digest --check`` is
@@ -344,7 +344,8 @@ def human_acceptance_or_exit(root: Path, node: dict, integration_ref: str | None
     raise SystemExit(1)
 
 
-def _impl_review_or_exit(root: Path, entry: dict, node: dict) -> None:
+def impl_review_or_exit(root: Path, entry: dict, node: dict) -> None:
+    """Refuse finish when implementation review is required and not approved."""
     node_id = node["id"]
     # Before the switch: turning it off after the claim is a policy change too.
     pin_holds_or_exit(root, node)
@@ -368,7 +369,7 @@ def _impl_review_or_exit(root: Path, entry: dict, node: dict) -> None:
 
 def _resolve_main_context(root: Path, args: argparse.Namespace, branch: str) -> dict:
     """Resolve all main-time context in one call (keeps main() under cap)."""
-    codename, reg, entry, nodes = _resolve_context(
+    codename, reg, entry, nodes = resolve_context(
         root, branch, args.on_complete, delete_branch=args.delete_branch,
         no_milestone_rollup=args.no_milestone_rollup, land_check_cmd=args.land_check_cmd,
     )
@@ -395,7 +396,7 @@ def _resolve_main_context(root: Path, args: argparse.Namespace, branch: str) -> 
         root, explicit_base=None, explicit_remote=None,
     )
     human_acceptance_or_exit(root, node, base_ref(root, gw_remote, ib))
-    _impl_review_or_exit(root, entry, node)
+    impl_review_or_exit(root, entry, node)
     zones_or_exit(   # the implementation check, then the steering files
         root, node=node, entry=entry, node_id=node_id,
         remote=gw_remote, integration_branch=ib,
@@ -460,7 +461,7 @@ def _stageable_generated_files(root: Path) -> list[str]:
     return [name for name in GENERATED_COMMITTED if name not in refused]
 
 
-def _bookkeeping_commit_phase(
+def bookkeeping_commit_phase(
     root: Path,
     args: argparse.Namespace,
     codename: str,
@@ -479,7 +480,7 @@ def _bookkeeping_commit_phase(
     merged in when only bookkeeping conflicts, and finish exits 1 when
     anything else does, so the PR never opens conflicted.
     """
-    changed_files = _update_chunk_status(root, node_id)
+    changed_files = update_chunk_status(root, node_id)
     for rel in complete_rolled_up_ancestors(root, node_id):
         if rel not in changed_files:
             changed_files.append(rel)
@@ -490,7 +491,7 @@ def _bookkeeping_commit_phase(
     print("-> specy-road validate")
     print("-> specy-road export")
     print("-> specy-road digest")
-    _validate_export_digest(root)
+    validate_export_digest(root)
     if pr_body_path is not None:
         # Print AFTER export so the dev sees a clean post-commit pointer.
         rel = pr_body_path.relative_to(root)
@@ -577,7 +578,7 @@ def _finish_locked(root: Path, args) -> None:
         )
 
         undo = merge_undo_snapshot(root, branch, ctx)   # a failed merge landing restores this
-        _bookkeeping_commit_phase(
+        bookkeeping_commit_phase(
             root, args, codename, node_id, branch, reg,
             pr_body_path=pr_body_path, sess_path=sess_path,
             pr_integration=(ib, gw_remote) if on_mode == "pr" and not ctx["rollup"] else None,

@@ -27,6 +27,7 @@ from specy_road.orchestration.workers.worker_process import wrapper_alive
 import subprocess
 from specy_road.orchestration.workers import worker_reconcile as wrc
 from specy_road.orchestration.workers import worker_process as wp
+from tests.support.bounded_wait import pause, wait_until
 
 OLD = "2026-01-01T00:00:00+00:00"   # long past policy.stall_after_seconds (default 600)
 
@@ -45,7 +46,9 @@ def _repo(tmp_path: Path, policy: str) -> Path:
 
 
 @pytest.mark.slow
-def test_a_worker_that_never_wrote_output_is_flagged_from_its_launch(tmp_path: Path, capsys) -> None:
+def test_a_worker_that_never_wrote_output_is_flagged_from_its_launch(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch,
+) -> None:
     repo = _repo(tmp_path, "stall_after_seconds: 1")
     rec = _running(repo)   # last_output_at never written: the harness has not started
     launched = datetime.fromisoformat(ws.events_since(repo, rec.worker_id)[0].at)
@@ -59,8 +62,9 @@ def test_a_worker_that_never_wrote_output_is_flagged_from_its_launch(tmp_path: P
     turn = datetime.fromisoformat(ws.events_since(repo, rec.worker_id)[-1].at)
     assert slots.stalled_workers(repo, now=turn) == [] and ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags
     assert slots.stalled_workers(repo, now=turn + timedelta(seconds=5))[0]["silent_seconds"] == 5
-    # list and doctor name it with how long it has been silent, measured now (sync: a live worker, below).
-    time.sleep(1.1)
+    # list and doctor name it with how long it has been silent. The clock is past the
+    # stall window; the test does not wait that out.
+    monkeypatch.setattr(ops, "utc_now", lambda: turn + timedelta(seconds=2))
     assert run_worker_cli("worker", "list", "--repo-root", str(repo)) == 0
     assert f"stalled: {rec.worker_id} (M1.1) silent " in capsys.readouterr().out
     with pytest.raises(SystemExit):
@@ -79,7 +83,7 @@ def _silent_worker(tmp_path: Path) -> tuple[Path, ws.WorkerRecord]:
     for _ in range(100):
         if ws.load_record(repo, rec.worker_id).provider_session_id:
             break
-        time.sleep(0.1)
+        pause(0.1)
     return repo, ws.load_record(repo, rec.worker_id)
 
 
@@ -282,18 +286,18 @@ def test_a_dead_wrapper_with_a_live_harness_keeps_the_leaf_and_terminate_kills_t
         rec = ws.load_record(repo, rec.worker_id)
         if rec.provider_session_id and rec.harness_pid:
             break
-        time.sleep(0.1)
+        pause(0.1)
     assert rec.pgid == rec.pid and rec.harness_pid and rec.harness_start and rec.wrapper_token
     assert wp.wrapper_alive(rec, repo) and wp.harness_alive(rec)
     os.kill(rec.pid, signal.SIGKILL)
-    time.sleep(0.3)
-    assert not wp.wrapper_alive(rec, repo) and wp.harness_alive(rec)
-    assert ops._wrapper_gone(repo, ws.load_record(repo, rec.worker_id)) is False
+    wait_until(lambda: not wp.wrapper_alive(rec, repo), timeout=5, message="wrapper did not exit")
+    assert wp.harness_alive(rec)
+    assert ops.wrapper_gone(repo, ws.load_record(repo, rec.worker_id)) is False
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.state == "running" and ws.FLAG_ORPHAN in rec.flags
     evs = ws.events_since(repo, rec.worker_id)
     assert "harness pid" in evs[-1].summary and "still alive" in evs[-1].summary
-    assert ops._wrapper_gone(repo, rec) is False and len(ws.events_since(repo, rec.worker_id)) == len(evs)  # said once
+    assert ops.wrapper_gone(repo, rec) is False and len(ws.events_since(repo, rec.worker_id)) == len(evs)  # said once
     with pytest.raises(ws.WorkerError, match="still running"):
         ops.resume(repo, rec.worker_id)
     with pytest.raises(ws.WorkerError, match="running"):
@@ -303,7 +307,9 @@ def test_a_dead_wrapper_with_a_live_harness_keeps_the_leaf_and_terminate_kills_t
     pgid = rec.pgid
     ops.terminate(repo, rec.worker_id)
     assert ws.load_record(repo, rec.worker_id).state == "terminated"
-    assert not wp._group_members(pgid)
+    wait_until(
+        lambda: not wp.group_members(pgid), timeout=5, message="the harness group did not exit",
+    )
 
 
 
@@ -312,7 +318,7 @@ def test_once_the_whole_group_is_gone_the_record_is_failed(tmp_path: Path) -> No
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.mutate(repo, rec, lambda r: (setattr(r, "state", "running"), setattr(r, "pid", 999999),
                                     setattr(r, "pgid", 999999), setattr(r, "harness_pid", 999998)))
-    assert ops._wrapper_gone(repo, ws.load_record(repo, rec.worker_id)) is True
+    assert ops.wrapper_gone(repo, ws.load_record(repo, rec.worker_id)) is True
     assert ws.load_record(repo, rec.worker_id).state == "failed"
 
 
@@ -321,13 +327,13 @@ def test_once_the_whole_group_is_gone_the_record_is_failed(tmp_path: Path) -> No
 
 def test_pid_verification_needs_repo_root_worker_id_and_token_as_whole_args(monkeypatch) -> None:
     me = os.getpid()
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /other/repository w-0001 tok1 /p")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: "python -m specy_road.worker_runner /other/repository w-0001 tok1 /p")
     assert not wp.pid_alive(me, "w-0001", repo_root=Path("/r"), token="tok1")
     assert not wp.pid_verified(me, "w-0001", repo_root=Path("/r"), token="tok1")
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001 tok2 /p")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001 tok2 /p")
     assert not wp.pid_alive(me, "w-0001", repo_root=Path("/r"), token="tok1")     # same repo, a later spawn's token
     assert not wp.pid_alive(me, "w-00011", repo_root=Path("/r"), token="tok2")    # a prefix is not the id
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001 tok1 /p")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001 tok1 /p")
     assert wp.pid_alive(me, "w-0001", repo_root=Path("/r"), token="tok1")
     assert wp.pid_verified(me, "w-0001", repo_root=Path("/r"), token="tok1")
     rec = ws.WorkerRecord("w-0001", "M1.1", "claude-code", "opus", "/r", "running", {"holder": "broker", "since": "t"},
@@ -340,12 +346,12 @@ def test_a_pid_our_user_cannot_signal_is_not_our_wrapper(monkeypatch) -> None:
     def denied(pid, sig):
         raise PermissionError(pid)
     monkeypatch.setattr(wp.os, "kill", denied)
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: "some other user's process")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: "some other user's process")
     assert not wp.pid_alive(4242, "w-0001")
     assert not wp.pid_verified(4242, "w-0001")
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: None)                       # ps cannot say either
+    monkeypatch.setattr(wp, "cmdline", lambda pid: None)                       # ps cannot say either
     assert not wp.pid_alive(4242, "w-0001")
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001 tok /p")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001 tok /p")
     assert wp.pid_alive(4242, "w-0001", repo_root=Path("/r"), token="tok")      # only the command line can confirm it
 
 
@@ -363,9 +369,9 @@ def test_a_wrapper_with_a_long_command_line_is_still_recognised(tmp_path: Path) 
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _ in range(50):
-            if "w-0042" in (wp._cmdline(p.pid) or ""):
+            if "w-0042" in (wp.cmdline(p.pid) or ""):
                 break
-            time.sleep(0.1)
+            pause(0.1)
         assert wp.pid_alive(p.pid, "w-0042") and wp.pid_verified(p.pid, "w-0042")
     finally:
         p.kill()
@@ -389,7 +395,7 @@ def test_a_wrapper_launched_under_either_module_name_is_live(tmp_path: Path, mod
     try:
         deadline = time.monotonic() + 5
         while not wp.wrapper_verified(rec, repo) and time.monotonic() < deadline:   # ps may lag
-            time.sleep(0.1)
+            pause(0.1)
         assert wp.wrapper_verified(rec, repo) and wp.wrapper_alive(rec, repo)
     finally:
         p.kill()
@@ -400,7 +406,7 @@ def test_a_wrapper_launched_under_either_module_name_is_live(tmp_path: Path, mod
 def test_pid_alive_ignores_a_reused_pid(monkeypatch) -> None:
     me = os.getpid()                       # alive, but not a wrapper
     assert not wr.pid_alive(me)
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001")
     assert wr.pid_alive(me)
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: None)   # ps unavailable: fall back to liveness
+    monkeypatch.setattr(wp, "cmdline", lambda pid: None)   # ps unavailable: fall back to liveness
     assert wr.pid_alive(me)

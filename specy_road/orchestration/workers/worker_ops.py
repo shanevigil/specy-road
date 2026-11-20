@@ -145,7 +145,8 @@ def _check_tree(wt: Path, branch: str) -> Path:
     return wt
 
 
-def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | None) -> Path:
+def worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | None) -> Path:
+    """The checkout the worker runs in: an explicit path, this repo, or a new worktree."""
     if explicit:
         return _check_tree(Path(explicit), branch)
     if current_branch_name(repo_root) == branch:
@@ -207,7 +208,7 @@ def _report_cli(entry: dict[str, Any], harness: str, cli: str | None) -> None:
         print(note, file=sys.stderr)
 
 
-def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
+def preflight(entry: dict[str, Any], repo_root: Path) -> None:
     """The roster entry's ``preflight`` command, as ``prompt --channel cli`` runs it, before any
     launch."""
     cmd = entry.get("preflight")
@@ -281,7 +282,7 @@ def _launch_checks(repo_root: Path, entry: dict[str, Any], harness: str, node: d
     if prof is not None and not prof.ok:
         raise WorkerError(f"profile for {entry.get('id')!r}: " + "; ".join(prof.errors))
     _auth_preflight(repo_root, entry, harness, resuming=resuming)
-    _preflight(entry, repo_root)
+    preflight(entry, repo_root)
     _warn(warning)   # once per launch, after every refusal
 
 
@@ -410,7 +411,7 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     default = reviews_root(repo_root).parent / ".worktrees" / codename
     # _worktree_for creates it there unless the claim's branch is checked out here
     fresh = not default.exists()
-    wt = _worktree_for(repo_root, branch, codename, worktree)
+    wt = worktree_for(repo_root, branch, codename, worktree)
     fresh = fresh and wt == default.resolve()
     prefix = project_prefix(repo_root)
     # nested_repos: a leaf worktree gets its own worktrees of them; this checkout switches its own
@@ -951,7 +952,7 @@ def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
                               f"{existing.state})")
         if any(r.provider_session_id == session_id and r.active for r in list_records(repo_root)):
             raise WorkerError(f"session {session_id} is already a worker")
-        wt = _worktree_for(repo_root, str(t.entry["branch"]),
+        wt = worktree_for(repo_root, str(t.entry["branch"]),
                            str(t.node.get("codename") or node_id), worktree)
         rec = create_record(repo_root, node_id, harness, model, wt, branch=str(t.entry["branch"]),
                             lease="native")

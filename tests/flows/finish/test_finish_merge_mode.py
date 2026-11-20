@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from specy_road.finish_land_integration import (
-    _integration_branch_present,
+    integration_branch_present,
     land_merge_feature_into_integration,
     print_merge_push_notice,
 )
@@ -59,10 +59,10 @@ def test_land_merge_returns_clear_error_when_integration_branch_missing(
 
 def test_integration_branch_present_finds_local_branch(tmp_path: Path) -> None:
     repo, _bare = bootstrap(tmp_path)
-    ok, where = _integration_branch_present(repo, "origin", "master")
+    ok, where = integration_branch_present(repo, "origin", "master")
     assert ok
     assert where == "refs/heads/master"
-    ok2, _ = _integration_branch_present(repo, "origin", "main")
+    ok2, _ = integration_branch_present(repo, "origin", "main")
     assert ok2 is False
 
 

@@ -13,7 +13,7 @@ from specy_road.cli_entry import integration_defaults
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.repo_ops import sync_integration_branch
 
-def _validate_export_digest(root: Path) -> None:
+def validate_export_digest(root: Path) -> None:
     """validate, export, digest — leave no generated-and-committed file stale."""
     rr = ["--repo-root", str(root)]
     for command in ("validate", "export", "digest"):
@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> None:
     print("-> specy-road validate")
     print("-> specy-road export")
     print("-> specy-road digest")
-    _validate_export_digest(root)
+    validate_export_digest(root)
     print(
         "\n[ok] roadmap validated; roadmap.md and roadmap-context.md refreshed."
     )

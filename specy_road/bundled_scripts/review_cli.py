@@ -320,7 +320,8 @@ def review_state(root: Path, node_id: str, ref: str | None = None) -> ReviewStat
     return ReviewState(t, gate, files, ready, loop, escalated, budget, blocked_lines, state, hints)
 
 
-def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, Any]:
+def node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, Any]:
+    """The review-status fields for one node: state, files, gate and merge."""
     rs = review_state(root, node_id, ref)
     t, gate, files, ready, loop, budget = rs.target, rs.gate, rs.files, rs.ready, rs.loop, rs.budget
     state, hints, escalated, blocked_lines = rs.state, rs.hints, rs.escalated, rs.executor_blocked
@@ -456,7 +457,7 @@ def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
 
 def _status_or_error(root: Path, nid: str, ref: str | None = None) -> dict[str, Any]:
     try:
-        return _node_status(root, nid, ref)
+        return node_status(root, nid, ref)
     except ReviewTargetError as e:
         msg = str(e)
         if msg.startswith("no registry claim"):

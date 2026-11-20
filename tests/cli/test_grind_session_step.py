@@ -36,7 +36,7 @@ def _verbs(h: Harness) -> list[str]:
 def _on_claim(monkeypatch, branch="feature/rm-cn", node_id="M1.1"):
     """Check out ``branch`` and make it resolve to ``node_id`` (or nothing)."""
     monkeypatch.setattr(gs, "current_branch", lambda _root: branch)
-    monkeypatch.setattr(gs, "_resolve_picked", lambda _r, _b, fallback: node_id or fallback)
+    monkeypatch.setattr(gs, "resolve_picked", lambda _r, _b, fallback: node_id or fallback)
 
 
 def _own_claim(monkeypatch, h: Harness, *, ready=()):
@@ -209,7 +209,7 @@ def test_finish_without_until_match_does_not_stop(monkeypatch, capsys):
 def test_finish_pre_finish_failure_exits_4(monkeypatch, capsys):
     h = Harness(monkeypatch, [plan()])
     _on_claim(monkeypatch)
-    monkeypatch.setattr(gs, "_run_shell", lambda *_a: 3)
+    monkeypatch.setattr(gs, "run_shell", lambda *_a: 3)
     code = run(["--step", "finish", "--pre-finish-cmd", "make test", *MERGE])
     assert code == EXIT_PRE_FINISH_FAILED
     assert h.cli_calls == []

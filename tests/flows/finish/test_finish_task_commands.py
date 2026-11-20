@@ -46,7 +46,7 @@ def test_resolve_context_rejects_registry_branch_mismatch(
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
     with pytest.raises(SystemExit):
-        ft._resolve_context(tmp_path, "feature/rm-example")
+        ft.resolve_context(tmp_path, "feature/rm-example")
 
 
 def test_resolve_context_rejects_missing_branch_field(
@@ -70,7 +70,7 @@ def test_resolve_context_rejects_missing_branch_field(
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
     with pytest.raises(SystemExit):
-        ft._resolve_context(tmp_path, "feature/rm-example")
+        ft.resolve_context(tmp_path, "feature/rm-example")
 
 
 def test_resolve_context_rejects_non_leaf_registry_claim(
@@ -96,7 +96,7 @@ def test_resolve_context_rejects_non_leaf_registry_claim(
     _write_registry(tmp_path, reg)
     monkeypatch.setattr(frm, "load_roadmap", lambda _p: {"nodes": nodes})
     with pytest.raises(SystemExit):
-        ft._resolve_context(tmp_path, "feature/rm-example")
+        ft.resolve_context(tmp_path, "feature/rm-example")
     err = capsys.readouterr().err.lower()
     assert "leaf" in err
     assert "registry" in err
@@ -114,14 +114,14 @@ def test_extract_walkthrough_parses_markdown_section() -> None:
 ## Other
 noop
 """
-    body = mir._extract_walkthrough(text)
+    body = mir.extract_walkthrough(text)
     assert body is not None
     assert "1. First" in body
     assert "noop" not in body
 
 
 def test_extract_walkthrough_none_when_missing() -> None:
-    assert mir._extract_walkthrough("# Only\n\nno walk") is None
+    assert mir.extract_walkthrough("# Only\n\nno walk") is None
 
 
 def test_finish_blocks_when_implementation_review_pending(
@@ -149,8 +149,8 @@ def test_finish_blocks_when_implementation_review_pending(
     )
     monkeypatch.setattr(ft, "review_required", lambda _r: True)
     monkeypatch.setattr(ft, "current_branch", lambda _root: "feature/rm-example")
-    monkeypatch.setattr(ft, "_update_chunk_status", lambda _nid: [])
-    monkeypatch.setattr(ft, "_validate_export_digest", lambda: None)
+    monkeypatch.setattr(ft, "update_chunk_status", lambda _nid: [])
+    monkeypatch.setattr(ft, "validate_export_digest", lambda: None)
     monkeypatch.setattr(ft, "git_run", lambda *_a, **_k: None)
     with pytest.raises(SystemExit) as ei:
         ft.main(["--repo-root", str(tmp_path)])
@@ -181,7 +181,7 @@ def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None
         json.dumps({"nodes": nodes}, indent=2) + "\n",
         encoding="utf-8",
     )
-    changed = ft._update_chunk_status(tmp_path, "M1.1")
+    changed = ft.update_chunk_status(tmp_path, "M1.1")
     assert changed == ["roadmap/phases/x.json"]
     out = load_json_chunk(tmp_path / "roadmap" / "phases" / "x.json")
     assert out[0]["status"] == "Complete"
@@ -194,7 +194,7 @@ def test_validate_export_digest_runs_all_three_in_order(tmp_path, monkeypatch) -
         ft.subprocess, "check_call", lambda argv, **_k: calls.append(list(argv))
     )
 
-    ft._validate_export_digest(tmp_path)
+    ft.validate_export_digest(tmp_path)
 
     assert [c[3] for c in calls] == ["validate", "export", "digest"]
     assert all(c[1:3] == ["-m", "specy_road.cli"] for c in calls)
@@ -227,7 +227,7 @@ def test_finish_already_done_on_branch_when_complete_and_deregistered(
         },
     )
     with pytest.raises(SystemExit) as exc:
-        ft._resolve_context(tmp_path, "feature/rm-manuscript-privacy-guard")
+        ft.resolve_context(tmp_path, "feature/rm-manuscript-privacy-guard")
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "already Complete" in out

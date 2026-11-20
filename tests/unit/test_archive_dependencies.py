@@ -153,7 +153,7 @@ def test_do_next_still_offers_a_leaf_whose_dependency_was_archived(
 
     archive_node(repo, "M0.3")
     nodes = _live_nodes(repo)
-    available = dna._available(nodes, {"version": 1, "entries": []})
+    available = dna.available_nodes(nodes, {"version": 1, "entries": []})
 
     assert "M0.2" in {n["id"] for n in available}
 

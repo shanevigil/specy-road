@@ -22,7 +22,7 @@ def git_remote_identity(gr: dict[str, Any]) -> tuple[str, str, str, str]:
 def get_git_remote_tested_ok(repo_root) -> bool:
     from specy_road import roadmap_gui_settings as m
 
-    struct = m._read_settings_file_struct()
+    struct = m.read_settings_file_struct()
     rid = m.repo_settings_id(repo_root)
     p = (struct.get("projects") or {}).get(rid)
     if not isinstance(p, dict):
@@ -33,7 +33,7 @@ def get_git_remote_tested_ok(repo_root) -> bool:
 def set_git_remote_tested_ok(repo_root, ok: bool) -> None:
     from specy_road import roadmap_gui_settings as m
 
-    struct = m._read_settings_file_struct()
+    struct = m.read_settings_file_struct()
     rid = m.repo_settings_id(repo_root)
     if "projects" not in struct or not isinstance(struct["projects"], dict):
         struct["projects"] = {}

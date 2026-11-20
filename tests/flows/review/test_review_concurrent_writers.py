@@ -24,6 +24,7 @@ from specy_road.review_delegate import load_run
 from specy_road.review_files import review_path, reviews_dir
 from specy_road.review_lock import ReviewRunBusy, review_run_lock
 from tests.support.same.snapshot_3fe0117d744f import snapshot
+from tests.support.bounded_wait import pause
 
 # The reviewer harness: say it started, wait for the test to release it, then run the usual fake.
 GATE = '''
@@ -43,7 +44,7 @@ def _wait_for(path: Path, timeout: float = 60) -> None:
     deadline = time.monotonic() + timeout
     while not path.exists():
         assert time.monotonic() < deadline, f"{path} never appeared"
-        time.sleep(0.05)
+        pause(0.05)
 
 
 

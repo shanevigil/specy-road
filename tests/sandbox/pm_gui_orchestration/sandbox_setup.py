@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
+from tests.support.bounded_wait import pause
 
 HERE = Path(__file__).resolve().parent
 DOGFOOD = HERE.parents[1] / "fixtures" / "specy_road_dogfood"
@@ -218,7 +219,7 @@ class Server:
                         return
             except OSError:
                 pass
-            time.sleep(0.2)
+            pause(0.2)
         raise RuntimeError(f"server not ready in {timeout:.0f} s; see {self._log}")
 
     def get_json(self, path: str) -> Any:

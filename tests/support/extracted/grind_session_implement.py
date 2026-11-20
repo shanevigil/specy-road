@@ -40,8 +40,8 @@ def runs(monkeypatch, results):
         seen.append(cmd)
         return queue.pop(0) if queue else (0, "")
 
-    monkeypatch.setattr(gsi, "_run_capturing", fake)
-    monkeypatch.setattr(gsi, "_notify", lambda *_a: None)
+    monkeypatch.setattr(gsi, "run_capturing", fake)
+    monkeypatch.setattr(gsi, "notify", lambda *_a: None)
     return seen
 
 @pytest.fixture(autouse=True)

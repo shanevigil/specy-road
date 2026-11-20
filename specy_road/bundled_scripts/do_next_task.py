@@ -15,10 +15,10 @@ from pathlib import Path
 
 from specy_road.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.do_next_available import (
-    _available,
+    available_nodes,
     _leaf_diagnostics,
-    _load_branch_enrichment,
-    _statuses_by_node_key,
+    load_branch_enrichment,
+    statuses_by_node_key,
     interactive_deps_blocked_entries,
     run_baseline_gate,
 )
@@ -54,7 +54,7 @@ from specy_road.orchestration import (
 )
 from specy_road.cli_entry import integration_defaults, run_reporting
 from specy_road.do_next_milestone_pickup import (
-    exit_no_leaves_under_parent as _exit_no_leaves_under_parent,
+    exit_no_leaves_under_parent,
     print_integration_branch_hint,
     resolve_milestone_parent_filter as _resolve_milestone_parent_filter,
 )
@@ -86,7 +86,7 @@ from specy_road.validate_roadmap_runner import validate_at
 # ---------------------------------------------------------------------------
 
 
-def _virtual_complete_from_registry(
+def virtual_complete_from_registry(
     reg: dict,
     *,
     repo_root: Path,
@@ -127,7 +127,7 @@ def _virtual_complete_from_registry(
     return virtual, log_lines
 
 
-def _virtual_keys_for_mode(root: Path, reg: dict, remote: str) -> tuple[set[str], list[str]]:
+def virtual_keys_for_mode(root: Path, reg: dict, remote: str) -> tuple[set[str], list[str]]:
     """Apply F-007 PR-gating to the virtual-complete computation."""
     on_complete_mode = on_complete_from_git_workflow(root)
     if on_complete_mode == "pr":
@@ -138,10 +138,10 @@ def _virtual_keys_for_mode(root: Path, reg: dict, remote: str) -> tuple[set[str]
                 "upstream PRs merge (per F-007 PR-gating)."
             )
         return set(), logs
-    return _virtual_complete_from_registry(reg, repo_root=root, remote=remote)
+    return virtual_complete_from_registry(reg, repo_root=root, remote=remote)
 
 
-def _drop_finished_unmerged(
+def drop_finished_unmerged(
     root: Path, available: list[dict], base: str, remote: str
 ) -> list[dict]:
     """Remove leaves a feature branch already finished but ``base`` has not merged.
@@ -223,10 +223,11 @@ def drop_unauthored(
     return kept
 
 
-def _exit_no_actionable_leaves(
+def exit_no_actionable_leaves(
     nodes: list[dict], reg: dict, *, after_sync: bool,
     integration_branch: str | None = None,
 ) -> None:
+    """Print why the queue is empty and exit."""
     diag = _leaf_diagnostics(nodes, reg)
     phase = "after sync" if after_sync else "before sync"
     print(f"No actionable leaf tasks available ({phase}).", file=sys.stderr)
@@ -314,19 +315,19 @@ def _resync_and_select(
         )
     reg = read_registry(registry_path(root))
     nodes = load_roadmap(root)["nodes"]
-    enrich = _load_branch_enrichment(root)
-    integration_statuses = _statuses_by_node_key(nodes)
-    virtual_keys, virtual_logs = _virtual_keys_for_mode(root, reg, remote)
+    enrich = load_branch_enrichment(root)
+    integration_statuses = statuses_by_node_key(nodes)
+    virtual_keys, virtual_logs = virtual_keys_for_mode(root, reg, remote)
     for line in virtual_logs:
         print(line)
     status_overrides = {nk: "complete" for nk in virtual_keys}
-    available = _available(
+    available = available_nodes(
         nodes, reg, enrich,
         status_overrides=status_overrides or None,
         virtual_complete_keys=virtual_keys or None,
         prefer_agentic=resolve_prefer_agentic(root, cli=prefer_agentic_cli),
     )
-    available = _drop_finished_unmerged(root, available, base, remote)
+    available = drop_finished_unmerged(root, available, base, remote)
     if parent_filter:
         available = filter_available_under_parent(available, parent_filter, nodes)
     available = drop_unauthored(
@@ -337,12 +338,13 @@ def _resync_and_select(
     )
     if not available:
         if parent_filter:
-            _exit_no_leaves_under_parent(parent_filter, after_sync=True, integration_branch=base)
-        _exit_no_actionable_leaves(nodes, reg, after_sync=True, integration_branch=base)
+            exit_no_leaves_under_parent(parent_filter, after_sync=True, integration_branch=base)
+        exit_no_actionable_leaves(nodes, reg, after_sync=True, integration_branch=base)
     return nodes, reg, available, integration_statuses
 
 
-def _assert_current_branch_equals(root: Path, base: str) -> None:
+def assert_current_branch_equals(root: Path, base: str) -> None:
+    """Exit unless HEAD is the integration branch, not detached."""
     cur = current_branch(root)
     if cur == "HEAD":
         print(
@@ -360,11 +362,13 @@ def _assert_current_branch_equals(root: Path, base: str) -> None:
         raise SystemExit(1)
 
 
-def _push_integration_branch(root: Path, remote: str, base: str) -> None:
+def push_integration_branch(root: Path, remote: str, base: str) -> None:
+    """Push the integration branch to its remote."""
     git_run(root, "push", remote, base)
 
 
-def _write_brief(root: Path, node: dict, nodes: list[dict]) -> Path:
+def write_brief(root: Path, node: dict, nodes: list[dict]) -> Path:
+    """Write the leaf's brief under work/ and return its path."""
     return _do_write_brief(root / "work", node, nodes)
 
 
@@ -374,7 +378,7 @@ def _push_and_branch_with_self_heal(root: Path, worktree: Path | None, base: str
         repo_root=root,
         registry_path=registry_path(root),
         git_runner=lambda *a: git_run(root, *a),
-        push_integration_branch_fn=partial(_push_integration_branch, root),
+        push_integration_branch_fn=partial(push_integration_branch, root),
         checkout_new_branch_fn=create,
         checkout_existing_branch_fn=adopt,
         base=base,
@@ -407,7 +411,7 @@ def _finalize_pickup(
     codename = node["codename"]
     print_pickup_header(node, branch, root)
 
-    brief_path = _write_brief(root, node, nodes)
+    brief_path = write_brief(root, node, nodes)
     reg = read_registry(registry_path(root))
     # The review policy is pinned at claim, in the registration commit's trailer.
     commit_msg = pinned_message(root, registration_commit_message(
@@ -553,14 +557,14 @@ def _check_pre_sync_availability(root: Path, base: str, remote: str, parent_filt
     reg = read_registry(registry_path(root))
     # F-014: surface stale registry claims to the next user immediately.
     _warn_about_stale_claims_before_pickup(repo_root=root, reg=reg, remote=remote)
-    enrich = _load_branch_enrichment(root)
-    available = _available(nodes, reg, enrich)
+    enrich = load_branch_enrichment(root)
+    available = available_nodes(nodes, reg, enrich)
     if parent_filter:
         available = filter_available_under_parent(available, parent_filter, nodes)
     if not available:
         if parent_filter:
-            _exit_no_leaves_under_parent(parent_filter, after_sync=False, integration_branch=base)
-        _exit_no_actionable_leaves(nodes, reg, after_sync=False, integration_branch=base)
+            exit_no_leaves_under_parent(parent_filter, after_sync=False, integration_branch=base)
+        exit_no_actionable_leaves(nodes, reg, after_sync=False, integration_branch=base)
 
 
 def _pick_node(root: Path, args, nodes, reg, available, integration_statuses) -> dict:
@@ -614,7 +618,7 @@ def _run_pickup(root: Path, args, *, include_ci_skip: bool) -> None:
         allow_scaffold_planning=args.allow_scaffold_planning,
         prefer_agentic_cli=args.prefer_agentic,
     )
-    _assert_current_branch_equals(root, base)
+    assert_current_branch_equals(root, base)
     run_baseline_gate(root, base, cli=args.baseline_cmd, warn_only=args.baseline_warn)
     node = _pick_node(root, args, nodes, reg, available, integration_statuses)
     branch = f"feature/rm-{node['codename']}"

@@ -661,7 +661,7 @@ def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = 
     return others
 
 
-def _expand_config_aliases(repo_root: Path, command: str) -> str:
+def expand_config_aliases(repo_root: Path, command: str) -> str:
     """``git s`` with ``alias.s = stash`` in the repo's git config is ``git stash`` to the guard."""
     out = []
     for seg in split_segments(command.strip()):
@@ -682,7 +682,7 @@ def _expand_config_aliases(repo_root: Path, command: str) -> str:
 
 
 def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = False) -> Verdict:
-    expanded = _expand_config_aliases(repo_root, command)
+    expanded = expand_config_aliases(repo_root, command)
     reason = classify(expanded)
     if not reason:
         return Verdict(ALLOW, "", command)

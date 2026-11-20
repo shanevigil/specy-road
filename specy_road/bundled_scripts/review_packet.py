@@ -209,7 +209,7 @@ def _missing_summary(root: Path, t: ReviewTarget, rel: str) -> str:
     return f"_(missing: {', '.join(paths)})_"
 
 
-def _summary(root: Path, t: ReviewTarget) -> list[str]:
+def summary(root: Path, t: ReviewTarget) -> list[str]:
     """Committed summary, else the leaf worktree's, else this checkout's; each labelled."""
     rel = f"work/implementation-summary-{t.node_id}.md"
     out = ["## Implementation summary", ""]
@@ -873,7 +873,7 @@ def build_packet(
         _header(root, t, integration_ref)
         + (_delta_section(root, prior) if prior else [FULL_MARK, ""] if full else []),
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
-        _summary(root, t),
+        summary(root, t),
         uncommitted_refs_section(root, t, brief, t.node, by_id, _computed(t)),
         changed,
         integrity_sections(root, t),

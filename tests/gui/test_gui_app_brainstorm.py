@@ -19,7 +19,7 @@ from starlette.testclient import TestClient
 from tests.helpers import DOGFOOD, script_subprocess_env, use_fake_llm
 from tests.support.extracted.brainstorm_chat import REPLY_WITH_IDEAS
 from specy_road.gui_app_models import BrainstormTriageBody
-from specy_road.gui_app_routes_brainstorm import _apply_triage, _payload
+from specy_road.gui_app_routes_brainstorm import apply_triage, session_payload
 from specy_road.brainstorm_session import BrainstormSession, add_idea
 from tests.support.extracted.folded_review_brainstorm import ROOT
 
@@ -402,11 +402,11 @@ def test_the_gui_payload_carries_the_v2_session_and_rejects_need_a_reason() -> N
     session = BrainstormSession(slug="s", topic="t", round=2, profile="technical", panel=3,
                                 frame={"outcome": "x"}, allocation="grid")
     add_idea(session, title="One")
-    out = _payload(session)
+    out = session_payload(session)
     assert (out["round"], out["profile"], out["panel"], out["frame"], out["allocation"]) == (2, "technical", 3, {"outcome": "x"}, "grid")
     with pytest.raises(Exception, match="needs a reason"):
-        _apply_triage(session, BrainstormTriageBody(slug="s", idea_id="B1", status="rejected"))
-    _apply_triage(session, BrainstormTriageBody(slug="s", idea_id="B1", status="rejected", reason="not now"))
+        apply_triage(session, BrainstormTriageBody(slug="s", idea_id="B1", status="rejected"))
+    apply_triage(session, BrainstormTriageBody(slug="s", idea_id="B1", status="rejected", reason="not now"))
     assert session.by_id("B1").decision["reason"] == "not now"
 
 
@@ -422,7 +422,7 @@ def test_the_gui_payload_carries_the_v2_session_and_rejects_need_a_reason() -> N
 # corrupting the session or raising `KeyError`; the parser help no longer says `start` researches.
 
 def test_gui_payload_carries_the_planned_round_count() -> None:
-    payload = _payload(BrainstormSession(slug="x", topic="t", round=2, rounds=7))
+    payload = session_payload(BrainstormSession(slug="x", topic="t", round=2, rounds=7))
     assert payload["round"] == 2
     assert payload["rounds"] == 7
 

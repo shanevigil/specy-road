@@ -119,7 +119,7 @@ def test_refused_checkout_of_the_base_exits_with_a_message(
     git_init(tmp_path)
     _claimed(monkeypatch)
     monkeypatch.setattr(atp, "git_capture", lambda *_a, **_k: "")
-    monkeypatch.setattr(atp, "_count_commits_ahead_of_remote_base", lambda *_a, **_k: 0)
+    monkeypatch.setattr(atp, "count_commits_ahead_of_remote_base", lambda *_a, **_k: 0)
 
     def git(_root, *args: str) -> None:
         if args[0] == "checkout":
@@ -167,7 +167,7 @@ def test_abort_refuses_ahead_of_remote_without_force(
         ),
     )
     monkeypatch.setattr(atp, "git_run", lambda *_a, **_k: None)
-    monkeypatch.setattr(atp, "_count_commits_ahead_of_remote_base", lambda *_a, **_k: 2)
+    monkeypatch.setattr(atp, "count_commits_ahead_of_remote_base", lambda *_a, **_k: 2)
     with pytest.raises(SystemExit):
         atp.main(["--repo-root", str(tmp_path)])
 
@@ -214,11 +214,11 @@ def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> No
         "resolve_feature_rm_registry_context",
         lambda *_a, **_k: ("ab", reg_doc, {"node_id": "M9.1"}, []),
     )
-    monkeypatch.setattr(atp, "_count_commits_ahead_of_remote_base", lambda *_a, **_k: 0)
-    monkeypatch.setattr(atp, "_sync_integration_branch_ff", lambda *_a, **_k: None)
+    monkeypatch.setattr(atp, "count_commits_ahead_of_remote_base", lambda *_a, **_k: 0)
+    monkeypatch.setattr(atp, "sync_integration_branch_ff", lambda *_a, **_k: None)
     monkeypatch.setattr(atp, "git_run", fake_git)
-    monkeypatch.setattr(atp, "_delete_feature_branch", lambda *_a, **_k: None)
-    monkeypatch.setattr(atp, "_remove_pickup_work_files", lambda *_a, **_k: None)
+    monkeypatch.setattr(atp, "delete_feature_branch", lambda *_a, **_k: None)
+    monkeypatch.setattr(atp, "remove_pickup_work_files", lambda *_a, **_k: None)
 
     atp.main(["--repo-root", str(tmp_path)])
 
@@ -276,11 +276,11 @@ def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path
             [],
         ),
     )
-    monkeypatch.setattr(atp, "_count_commits_ahead_of_remote_base", lambda *_a, **_k: 3)
-    monkeypatch.setattr(atp, "_sync_integration_branch_ff", lambda *_a, **_k: None)
+    monkeypatch.setattr(atp, "count_commits_ahead_of_remote_base", lambda *_a, **_k: 3)
+    monkeypatch.setattr(atp, "sync_integration_branch_ff", lambda *_a, **_k: None)
     monkeypatch.setattr(atp, "git_run", fake_git)
-    monkeypatch.setattr(atp, "_delete_feature_branch", lambda *_a, **_k: None)
-    monkeypatch.setattr(atp, "_remove_pickup_work_files", lambda *_a, **_k: None)
+    monkeypatch.setattr(atp, "delete_feature_branch", lambda *_a, **_k: None)
+    monkeypatch.setattr(atp, "remove_pickup_work_files", lambda *_a, **_k: None)
 
     atp.main(["--repo-root", str(tmp_path), "--force"])
 

@@ -86,7 +86,7 @@ def is_claude_cli(implement_cmd: str) -> bool:
     return bool(parts) and os.path.basename(parts[0].strip()) == "claude"
 
 
-def _run_capturing(cmd: str, env: dict, repo_root: Path) -> tuple[int, str]:
+def run_capturing(cmd: str, env: dict, repo_root: Path) -> tuple[int, str]:
     """Run the hook, echo its output to stderr, and keep a copy to classify.
 
     stderr, never stdout: in ``--json`` mode stdout is the event stream, and the
@@ -115,7 +115,7 @@ def _run_capturing(cmd: str, env: dict, repo_root: Path) -> tuple[int, str]:
 _FIRST_TOKEN = re.compile(r"""\s*(?:'[^']*'|"(?:\\.|[^"\\])*"|\\.|[^\s'"\\])+""")
 
 
-def _resume_command(implement_cmd: str, session_id: str) -> str:
+def resume_command(implement_cmd: str, session_id: str) -> str:
     """The same command again, continuing the session Claude already opened.
 
     Everything after the executable is spliced, not rebuilt. ``shlex.split``
@@ -208,7 +208,7 @@ def _applescript_str(text: str) -> str:
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _notify(title: str, message: str) -> None:
+def notify(title: str, message: str) -> None:
     """Best-effort macOS banner. A missing osascript is not an error.
 
     The strings used to be built with ``!r``, which single-quotes them;
@@ -321,7 +321,7 @@ def _wait_out_limit(
         wait_seconds=int(delay),
         attempt=waits,
     )
-    _notify(
+    notify(
         "specy-road grind-session",
         f"Claude limit hit on {node_id or 'this leaf'}; resuming in "
         f"{int(delay // 60)} min.",
@@ -361,7 +361,7 @@ def run_implement_hook(
     command = implement_cmd
     waits = vanishings = 0
     while True:  # both counters only rise, and both are bounded
-        code, output = _run_capturing(command, env, repo_root)
+        code, output = run_capturing(command, env, repo_root)
         if code == 0:
             return 0
         if _vanished_without_output(code, output):
@@ -385,4 +385,4 @@ def run_implement_hook(
         )
         if stop is not None:
             return stop
-        command = _resume_command(implement_cmd, session_id)
+        command = resume_command(implement_cmd, session_id)

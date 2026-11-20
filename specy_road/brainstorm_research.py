@@ -122,7 +122,7 @@ def _require(settings: dict[str, Any] | None) -> tuple[Provider, str, str, int]:
     return provider, endpoint, key, _max_results(settings)
 
 
-def _is_off_host(host: str) -> bool:
+def is_off_host(host: str) -> bool:
     """True when ``host`` resolves to this machine or its own network."""
     try:
         infos = socket.getaddrinfo(host, None)
@@ -164,7 +164,7 @@ def validate_endpoint(endpoint: str, *, allow_private: bool = False) -> str:
         )
     if not parts.hostname:
         raise ResearchError("search endpoint has no host")
-    if not allow_private and _is_off_host(parts.hostname):
+    if not allow_private and is_off_host(parts.hostname):
         raise ResearchError(
             f"search endpoint host {parts.hostname!r} is not a public "
             f"address{_OPT_IN_HINT}"

@@ -30,7 +30,7 @@ CLAUDE_SUBST = (
 
 
 def test_the_splice_keeps_a_command_substitution_intact() -> None:
-    resumed = gsi._resume_command(CLAUDE_SUBST, SESSION)
+    resumed = gsi.resume_command(CLAUDE_SUBST, SESSION)
     assert resumed == (
         f"claude --resume {SESSION} -p --permission-mode acceptEdits "
         '"$(cat "$SPECY_ROAD_PROMPT")"'
@@ -52,12 +52,12 @@ def test_the_splice_keeps_a_command_substitution_intact() -> None:
     ],
 )
 def test_the_splice_handles_odd_executables(command: str, expected: str) -> None:
-    assert gsi._resume_command(command, "ID") == expected
+    assert gsi.resume_command(command, "ID") == expected
 
 
 def test_the_resume_flag_precedes_the_users_own_flags() -> None:
     """Pins the position asserted by the existing loop-level resume test."""
-    resumed = gsi._resume_command(CLAUDE_SUBST, SESSION)
+    resumed = gsi.resume_command(CLAUDE_SUBST, SESSION)
     assert resumed.index("--resume") < resumed.index("-p")
 
 
@@ -90,7 +90,7 @@ def test_the_resumed_command_really_expands_the_prompt_file(
     )
     fake.chmod(fake.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
-    monkeypatch.setattr(gsi, "_notify", lambda *_a, **_k: None)
+    monkeypatch.setattr(gsi, "notify", lambda *_a, **_k: None)
     env = {
         "PATH": os.environ["PATH"],
         "SPECY_ROAD_PROMPT": str(prompt),

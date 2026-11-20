@@ -35,7 +35,7 @@ from specy_road.repo_lock import pickup_finish_lock
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
-def _report(root: Path, reg: dict, remote: str, base: str) -> int:
+def report(root: Path, reg: dict, remote: str, base: str) -> int:
     """List rows whose branch this clone cannot see. Exit 1 when any exist."""
     stale = detect_stale_claims(repo_root=root, reg=reg, remote=remote)
     total = len(reg.get("entries") or [])
@@ -67,7 +67,7 @@ def _report(root: Path, reg: dict, remote: str, base: str) -> int:
     return 1
 
 
-def _resolve_removals(root: Path, reg: dict, codenames: list[str]) -> list[dict]:
+def resolve_removals(root: Path, reg: dict, codenames: list[str]) -> list[dict]:
     """The rows to drop, or exit with the reason a named codename cannot go."""
     by_codename = {
         e.get("codename"): e for e in reg.get("entries") or [] if isinstance(e, dict)
@@ -96,7 +96,7 @@ def _resolve_removals(root: Path, reg: dict, codenames: list[str]) -> list[dict]
     return rows
 
 
-def _remove_and_push(
+def remove_and_push(
     root: Path, reg: dict, rows: list[dict], remote: str, base: str
 ) -> int:
     """Drop the rows, commit on the integration branch, push. Never silent."""
@@ -163,7 +163,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if not args.remove:
         # Report against local state: read-only, and useful with no network.
-        raise SystemExit(_report(root, read_registry(registry_path(root)), remote, base))
+        raise SystemExit(report(root, read_registry(registry_path(root)), remote, base))
 
     # It checks out and commits on the integration branch: not while a pickup, finish or abort does too.
     with pickup_finish_lock(root, operation="registry-prune"):
@@ -177,8 +177,8 @@ def main(argv: list[str] | None = None) -> None:
             ),
         )
         reg = read_registry(registry_path(root))
-        rows = _resolve_removals(root, reg, args.remove)
-        code = _remove_and_push(root, reg, rows, remote, base)
+        rows = resolve_removals(root, reg, args.remove)
+        code = remove_and_push(root, reg, rows, remote, base)
     raise SystemExit(code)
 
 

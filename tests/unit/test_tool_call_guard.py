@@ -168,7 +168,7 @@ def test_guard_sees_a_worker_running_in_this_checkout(tmp_path: Path, monkeypatc
 
     repo = make_review_repo(tmp_path)
     # The guard matches the wrapper's resolved repo root as a whole argument (review round 6, B11).
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: f"python -m specy_road.worker_runner {repo.resolve()} w-0001")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: f"python -m specy_road.worker_runner {repo.resolve()} w-0001")
     assert g.decide(repo, "git checkout dev", agent="me").allowed
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "running", pid=os.getpid())
@@ -320,7 +320,7 @@ def test_attached_dash_c_git_dir_and_config_aliases_reach_the_right_tree(tmp_pat
     assert not tg.decide(repo, f"git -C{wt} reset --hard", agent="bob").allowed
     assert not tg.decide(repo, f"git --git-dir={wt}/.git commit -m x", agent="bob").allowed
     assert not tg.decide(repo, "git s", agent="bob").allowed
-    assert "reset --hard" in (tg.classify(tg._expand_config_aliases(repo, "git boom")) or "")   # bang alias expanded
+    assert "reset --hard" in (tg.classify(tg.expand_config_aliases(repo, "git boom")) or "")   # bang alias expanded
     assert not tg.decide(repo, "git boom", agent="bob", always=True).allowed
     assert tg.decide(repo, "git -C . status", agent="bob").allowed
 
@@ -350,7 +350,7 @@ def test_tree_only_commands_ignore_sessions_in_other_worktrees(tmp_path: Path) -
 def test_a_worker_does_not_count_itself(tmp_path: Path, monkeypatch) -> None:
     repo = make_review_repo(tmp_path)
     # The guard matches the wrapper's resolved repo root as a whole argument (review round 6, B11).
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: f"python -m specy_road.worker_runner {repo.resolve()} w-0001")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: f"python -m specy_road.worker_runner {repo.resolve()} w-0001")
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "running", pid=os.getpid())
     assert not tg.decide(repo, "git checkout dev", agent="me").allowed

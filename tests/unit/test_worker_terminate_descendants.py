@@ -27,6 +27,7 @@ from specy_road.orchestration.workers.worker_state import WorkerError
 
 from tests.support.cli import run_worker_cli
 from tests.support.harness import make_worker_repo
+from tests.support.bounded_wait import pause
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups and sessions")
 
@@ -58,7 +59,7 @@ def _gone(pid: int, wait: float = 5.0) -> bool:
         stat = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
         if not stat or stat.startswith("Z"):
             return True
-        time.sleep(0.1)
+        pause(0.1)
     return False
 
 
@@ -116,7 +117,7 @@ def test_terminate_ends_a_grandchild_in_its_own_session(tmp_path: Path, child_mo
         for _ in range(100):
             if ready.is_file() and ws.load_record(repo, rec.worker_id).harness_pid:
                 break
-            time.sleep(0.1)
+            pause(0.1)
         grandchild = int(ready.read_text())
         pgid = ws.load_record(repo, rec.worker_id).pgid
         assert os.getpgid(grandchild) != pgid   # it left the group, so killpg alone misses it
@@ -153,7 +154,7 @@ def leader(tmp_path: Path):
         for _ in range(50):
             if start := start_token(pid):
                 break
-            time.sleep(0.1)
+            pause(0.1)
         yield pid, ws.WorkerRecord(
             worker_id="w-0009", node_id="M1.1", harness="cursor", model="m", worktree=str(tmp_path), state="running",
             lease={}, instruction_epoch=0, attempt=0, last_event_seq=0, created="", updated="",
@@ -285,7 +286,7 @@ def test_an_escaped_child_gets_sigterm_with_the_group_not_after_its_grace(tmp_pa
         for _ in range(100):
             if ready.is_file() and ws.load_record(repo, rec.worker_id).harness_pid:
                 break
-            time.sleep(0.1)
+            pause(0.1)
         escaped = int(ready.read_text())
         assert os.getpgid(escaped) != ws.load_record(repo, rec.worker_id).pgid
         assert not fork_file.exists()   # nothing forked before the snapshot
@@ -294,7 +295,7 @@ def test_an_escaped_child_gets_sigterm_with_the_group_not_after_its_grace(tmp_pa
         for _ in range(50):
             if fork_file.is_file() and fork_file.read_text():
                 break
-            time.sleep(0.1)
+            pause(0.1)
         forked = int(fork_file.read_text())
         assert float(term_at.read_text()) - began < 2.0   # with the group's SIGTERM, inside its 3 s grace
         assert forked != escaped and _gone(escaped)

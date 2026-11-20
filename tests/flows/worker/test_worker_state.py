@@ -32,6 +32,7 @@ from specy_road.orchestration.workers import worker_sessions as wsess
 from specy_road.orchestration.workers import worker_lease as ww
 from tests.support.extracted.folded_review_ops import idle_record
 from specy_road.orchestration.workers import worker_ops as ops
+from tests.support.bounded_wait import counting_lock, wait_until
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -376,10 +377,10 @@ def test_terminate_refuses_a_pid_it_cannot_verify(tmp_path: Path, monkeypatch) -
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "running", pid=os.getpid())
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: None)              # ps unavailable: alive, unverified
+    monkeypatch.setattr(wp, "cmdline", lambda pid: None)              # ps unavailable: alive, unverified
     with pytest.raises(ws.WorkerError, match="cannot be verified"):
         ops.terminate(repo, rec.worker_id)
-    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0002 {}")
+    monkeypatch.setattr(wp, "cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0002 {}")
     out = ops.terminate(repo, rec.worker_id)        # another worker's wrapper: not ours to signal; the record closes
     assert out.state == "terminated"
 
@@ -611,27 +612,34 @@ def test_handoff_and_reclaim_move_the_record_in_one_write(tmp_path: Path) -> Non
 
 # --- F11 (d) ---------------------------------------------------------------------
 
-def test_sync_ack_runs_under_the_workers_lock(tmp_path: Path) -> None:
+def test_sync_ack_runs_under_the_workers_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     release = threading.Event()
     taken = threading.Event()
+    waiting = threading.Event()
     done: list[float] = []
+    monkeypatch.setattr(wrc, "workers_lock", counting_lock(wrc.workers_lock, waiting, need=1))
 
     def hold() -> None:
         with ws.workers_lock(repo):
             taken.set()
             release.wait(10)
     threading.Thread(target=hold, daemon=True).start()
-    taken.wait(5)
+    wait_until(taken.is_set, timeout=5, message="holder did not take the workers lock")
     t = threading.Thread(target=lambda: (wrc.sync(repo, ack=True), done.append(time.monotonic())))
     t.start()
-    time.sleep(0.5)
-    assert not done                                   # blocked behind the other writer
-    t0 = time.monotonic()
-    before = datetime.now(timezone.utc).replace(microsecond=0)
-    release.set()
-    t.join(5)
+    try:
+        wait_until(waiting.is_set, timeout=5, message="sync did not reach the workers lock")
+        assert not done                                   # blocked behind the holder
+        t0 = time.monotonic()
+        before = datetime.now(timezone.utc).replace(microsecond=0)
+        release.set()
+        t.join(5)
+    finally:
+        release.set()
     assert done and done[0] >= t0
     marks = yaml.safe_load((ws.workers_dir(repo) / "sync.yaml").read_text())
     last = ws.load_record(repo, rec.worker_id).last_event_seq
@@ -660,7 +668,12 @@ def test_a_flag_set_while_the_wrapper_streams_survives(tmp_path: Path) -> None:
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {_script} {{prompt}}")
     wr.spawn(repo, rec, launch)
-    time.sleep(0.8)
+
+    def streaming() -> bool:
+        current = ws.load_record(repo, rec.worker_id)
+        return bool(current.provider_session_id) and current.state == "running"
+
+    wait_until(streaming, timeout=10, message="wrapper did not start streaming")
     ws.add_flag(repo, rec, ws.FLAG_RECONCILE)           # another process writes while it runs
     ws.append_event(repo, rec, "reconcile", source="orchestrator", summary="mid-run")
     wait_for_worker(repo, rec.worker_id)

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import subprocess
 import threading
-import time
 from pathlib import Path
 
 import pytest
@@ -21,6 +20,7 @@ from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import do_next_task as dnt
 from specy_road.bundled_scripts.do_next_task_pickup_helpers import register_and_commit
 from specy_road.repo_ops import working_tree_clean
+from tests.support.bounded_wait import wait_until
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -101,7 +101,16 @@ def test_pickup_leaves_worker_events_and_stash_alone_while_the_log_grows(
     def git_run(root, *args: str) -> None:
         if args[:1] == ("commit",):
             during_commit.set()
-            time.sleep(0.15)
+
+            def writer_appended() -> bool:
+                with lock:
+                    return len(appended) >= 8
+
+            wait_until(
+                writer_appended,
+                timeout=5,
+                message="the worker did not append during the commit",
+            )
         real_git_run(root, *args)
 
     def append_while_pickup_runs() -> None:

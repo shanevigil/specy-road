@@ -77,7 +77,7 @@ def test_natural_id_sort_key_fallback_lexical(
 
     from specy_road import roadmap_layout as rl
 
-    monkeypatch.setattr(rl, "_digit_run_to_int", boom)
+    monkeypatch.setattr(rl, "digit_run_to_int", boom)
     nid = "M99"
     assert rl.natural_id_sort_key(nid) == ((1, nid),)
 

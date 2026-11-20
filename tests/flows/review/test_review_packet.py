@@ -576,12 +576,12 @@ def test_packet_labels_committed_working_tree_and_missing_summaries(tmp_path: Pa
     repo = make_review_repo(tmp_path)
     rel = "work/implementation-summary-M1.1.md"
     t = resolve_target(repo, "M1.1")
-    text = "\n".join(rp._summary(repo, t))
+    text = "\n".join(rp.summary(repo, t))
     assert rp.SUMMARY_MISSING in text and rp.ASSERTED not in text and rp.ASSERTED_WORKING_TREE not in text
     (repo / "work").mkdir()
     (repo / rel).write_text("From the tree.\n")
-    text = "\n".join(rp._summary(repo, t))
+    text = "\n".join(rp.summary(repo, t))
     assert rp.ASSERTED_WORKING_TREE in text and "From the tree." in text and rp.ASSERTED not in text
     commit_file(repo, rel, "Committed.\n", "summary")
-    text = "\n".join(rp._summary(repo, resolve_target(repo, "M1.1")))
+    text = "\n".join(rp.summary(repo, resolve_target(repo, "M1.1")))
     assert rp.ASSERTED in text and "Committed." in text and rp.ASSERTED_WORKING_TREE not in text

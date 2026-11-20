@@ -123,7 +123,7 @@ def test_v1_flat_file_migrates_to_v2(
         "git_remote": {"repo": "o/r", "provider": "github"},
     }
     gui.write_text(json.dumps(old), encoding="utf-8")
-    struct = st._read_settings_file_struct()
+    struct = st.read_settings_file_struct()
     assert struct["version"] == st.SETTINGS_FILE_VERSION
     assert struct["global"]["llm"]["openai_api_key"] == "from-v1"
     assert struct["global"]["git_remote"]["repo"] == "o/r"
@@ -145,7 +145,7 @@ def test_llm_inherit_off_is_blank_without_project_overlay(
     )
     repo = tmp_path / "proj"
     repo.mkdir()
-    blank = st._blank_llm_base()
+    blank = st.blank_llm_base()
     m.save_settings_for_repo(
         repo,
         inherit_llm=False,

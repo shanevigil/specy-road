@@ -337,7 +337,7 @@
       "parent_id": "M16.7",
       "planning_dir": "planning/M16.7.6_tests-public-seams-replace-private-name-patches-and-no-test-sleeps-on-the-wall-clock_2f89d103-fb28-4584-a17e-3364cc5b1a99.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Tests: public seams replace private-name patches, and no test sleeps on the wall clock",
       "touch_zones": [
         "tests/",
