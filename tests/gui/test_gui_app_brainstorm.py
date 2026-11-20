@@ -9,13 +9,14 @@ degrades rather than failing when research is unconfigured.
 from __future__ import annotations
 
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD, script_subprocess_env, use_fake_llm
-from tests.support.cli import run_cli
 from tests.support.extracted.brainstorm_chat import REPLY_WITH_IDEAS
 from specy_road.gui_app_models import BrainstormTriageBody
 from specy_road.gui_app_routes_brainstorm import apply_triage, session_payload
@@ -372,8 +373,8 @@ def test_a_chat_turn_keeps_ideas_written_while_the_model_was_thinking(
     slug = _session(api_client)["slug"]
 
     def reply(*_a, **_k) -> str:
-        argv = ["brainstorm", "add-idea", "--slug", slug, "--title", "From a panel shard"]
-        run_cli(argv, env=script_subprocess_env()).check_returncode()
+        subprocess.run([sys.executable, "-m", "specy_road.cli", "brainstorm", "add-idea", "--slug", slug,
+                        "--title", "From a panel shard"], env=script_subprocess_env(), check=True, capture_output=True)
         return "IDEA: From the chat"
 
     use_fake_llm(monkeypatch, reply)
