@@ -211,7 +211,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Complete**
   - `M22.84` Bundled harness facts and profiles take in the dated harness-facts report `bundled-harness-facts-and-profiles-take-in-the-dated-harness` — task — **Complete**
   - `M22.85` The round-trip and rewrite paths the audit lists keep line endings and line-break characters exactly `the-round-trip-and-rewrite-paths-the-audit-lists-keep-line` — task — **Not Started**
-  - `M22.86` The tool-call guard keeps the unlisted-option refusal when a subshell's closing paren touches the next word `the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a` — task — **Not Started**
+  - `M22.86` The tool-call guard keeps the unlisted-option refusal when a subshell's closing paren touches the next word `the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -375,7 +375,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.82` on `feature/rm-audit-every-path-that-writes-and-reads-back-text-or-rewrites-a` since 2026-11-20
-- `M22.86` on `feature/rm-the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a` since 2026-11-20
 
 ## Quality by area
 

@@ -18,7 +18,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.86_the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a_f14430f5-d6f1-408e-ad13-00e8b503b786.md",
       "sibling_order": 86,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The tool-call guard keeps the unlisted-option refusal when a subshell's closing paren touches the next word",
       "touch_zones": [
         "specy_road/orchestration/guard/tool_call_guard.py",
