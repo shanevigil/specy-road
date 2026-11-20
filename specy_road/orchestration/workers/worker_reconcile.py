@@ -59,7 +59,7 @@ def _target(repo_root: Path, rec: WorkerRecord) -> ReviewTarget:
         return ReviewTarget(node, nodes, None, rec.branch or "HEAD", None, None, None)
 
 
-def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
+def changed_since(worktree: Path, since_sha: str | None) -> list[str]:
     """What the worker's commits and uncommitted edits to tracked files changed since ``since_sha``."""
     if not since_sha:
         return []
@@ -146,7 +146,7 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     t = _target(repo_root, rec)
     since = (rec.checkpoint or {}).get("git_head") or t.base or rec.started_head
     wt = Path(rec.worktree)
-    changed, untracked = _changed_since(wt, since), (_untracked(wt) if since else [])
+    changed, untracked = changed_since(wt, since), (_untracked(wt) if since else [])
     prefix = project_prefix(repo_root)
     # nested_repos: each nested repository is diffed in its own worktree, since
     # its branch point; its directory is not an untracked file of this one.
@@ -160,7 +160,7 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     # last checkpoint: a hand-off moves the checkpoint past earlier commits,
     # and what they touched is still on the branch.
     origin = rec.started_head or since
-    on_branch = _changed_since(wt, origin) if origin != since else changed
+    on_branch = changed_since(wt, origin) if origin != since else changed
     # Toolkit bookkeeping is never a breach: the leaf's brief, summary and
     # review files, and the registry row the claim lives in. Paths are named
     # from the git root; zones are matched as the review packet matches them,

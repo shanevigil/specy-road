@@ -21,6 +21,7 @@ from specy_road.orchestration.workers import worker_reconcile as wrc
 from specy_road.orchestration.workers import worker_runner as wr
 from specy_road.orchestration.workers import worker_state as ws
 from specy_road.bundled_scripts import role_prompt
+from tests.support.bounded_wait import pause
 from tests.support.extracted.worker_adapters import (
     CLAUDE_RESULT,
     CODEX_TURN,
@@ -239,7 +240,7 @@ def test_spawn_returns_before_the_worker_ends_and_the_record_catches_up(tmp_path
     for _ in range(100):
         if not ws.load_record(repo, rec.worker_id).active or ws.load_record(repo, rec.worker_id).state == "idle":
             break
-        time.sleep(0.1)
+        pause(0.1)
     final = ws.load_record(repo, rec.worker_id)
     assert final.state == "idle" and final.provider_session_id == "c-1" and not wr.pid_alive(final.pid)
 
@@ -475,7 +476,7 @@ def test_a_ready_on_another_branch_does_not_complete(tmp_path: Path) -> None:
     spec = tmp_path / "ok.json"
     spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]}))
     launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")
-    time.sleep(0.05)
+    pause(0.05)
     os.utime(d / "READY-x.md", None)
     assert wr.run(repo, rec.worker_id, launch) == 0
     assert ws.load_record(repo, rec.worker_id).state == "idle"
@@ -512,7 +513,7 @@ def test_a_ready_for_an_older_commit_does_not_complete(tmp_path: Path) -> None:
     spec = tmp_path / "ok.json"
     spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]}))
     launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")
-    time.sleep(0.05)
+    pause(0.05)
     os.utime(ready, None)
     assert wr.run(repo, rec.worker_id, launch) == 0
     assert ws.load_record(repo, rec.worker_id).state == "idle"

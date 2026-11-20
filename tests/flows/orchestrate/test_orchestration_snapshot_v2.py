@@ -21,6 +21,7 @@ from specy_road.git_subprocess import run as git_run
 from specy_road.orchestration import snapshot
 from specy_road.review_files import reviews_dir
 from specy_road.orchestration.workers.worker_sandbox import state_home
+from tests.support.bounded_wait import pause
 from specy_road.orchestration.workers.worker_state import (
     create_record,
     events_since,
@@ -374,7 +375,7 @@ def test_another_thread_keeps_its_own_hooks_path(tmp_path: Path, monkeypatch: py
             if time.monotonic() > deadline:
                 seen["text"] = None
                 return
-            time.sleep(0.01)
+            pause(0.01)
         seen["text"] = git_run(["config", "--get", "core.hooksPath"], repo).text
         release.write_text("go\n", encoding="utf-8")
 

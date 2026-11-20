@@ -242,12 +242,13 @@ def _leaf_execution_contract_lines(
     ]
 
 
-def _finish_instruction_lines(
+def finish_instruction_lines(
     node_id: str,
     repo_root: Path,
     *,
     on_complete: str,
 ) -> list[str]:
+    """The numbered finish instructions the pickup prompt gives the agent."""
     base = [
         (
             "1. Read governance docs and planning sheets above, "
@@ -326,7 +327,7 @@ def write_agent_prompt(
     lines.extend(_planned_test_changes_lines(node))
     lines.extend(_tests_at_risk_lines(node, repo_root))
     lines += ["", "## Instructions", ""]
-    lines += _finish_instruction_lines(
+    lines += finish_instruction_lines(
         node_id,
         repo_root,
         on_complete=on_complete,

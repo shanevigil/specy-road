@@ -170,7 +170,7 @@ def test_auto_suggestions_appear_when_the_preference_is_on(
     client: TestClient, repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        "specy_road.gui_app_routes_archive._auto_settings", lambda root: (True, 0)
+        "specy_road.gui_app_routes_archive.auto_settings", lambda root: (True, 0)
     )
     body = client.get("/api/archives").json()
 
@@ -184,7 +184,7 @@ def test_listing_survives_a_failing_candidate_scan(
     """Suggestions are a convenience; they must not take down the archive list."""
     import specy_road.gui_app_routes_archive as mod
 
-    monkeypatch.setattr(mod, "_auto_settings", lambda root: (True, 0))
+    monkeypatch.setattr(mod, "auto_settings", lambda root: (True, 0))
 
     def boom(root, **kwargs):
         raise RuntimeError("scan exploded")
@@ -207,14 +207,14 @@ def test_eligible_withholds_a_subtree_with_an_open_claim(tmp_path: Path) -> None
 
     import yaml
 
-    from specy_road.gui_app_routes_archive import _eligible
+    from specy_road.gui_app_routes_archive import eligible
     from tests.helpers import DOGFOOD
 
     root = tmp_path / "repo"
     shutil.copytree(DOGFOOD, root)
     reg_path = root / "roadmap" / "registry.yaml"
 
-    before = {e["node_id"] for e in _eligible(root)}
+    before = {e["node_id"] for e in eligible(root)}
     assert "M0.1" in before
 
     reg = yaml.safe_load(reg_path.read_text(encoding="utf-8")) or {"version": 1, "entries": []}
@@ -227,6 +227,6 @@ def test_eligible_withholds_a_subtree_with_an_open_claim(tmp_path: Path) -> None
     )
     reg_path.write_text(yaml.safe_dump(reg, sort_keys=False), encoding="utf-8")
 
-    after = {e["node_id"] for e in _eligible(root)}
+    after = {e["node_id"] for e in eligible(root)}
     assert "M0.1" not in after
     assert "M0.3" in after, "unclaimed siblings must still be offered"

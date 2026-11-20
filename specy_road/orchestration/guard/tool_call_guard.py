@@ -38,16 +38,12 @@ ALLOW = "allow"
 DENY = "deny"
 
 _SEPARATORS = ("&&", "||", ";", "|", "&", "\n")
-#: Wrapper flags that take an argument (``sudo -u bob``, ``env -u VAR``).
-_WRAPPER_FLAG_ARG = {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-n", "--user", "--group", "--unset",
-                     "--chdir", "--adjustment", "--host", "--prompt", "--role", "--type", "--other-user", "--max-args",
-                     "--max-procs", "--delimiter", "--arg-file", "--replace", "--signal", "--kill-after"}
 _GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
-#: Words that merely wrap the real command: ``command git …``, ``env X=1 git …``.
-#: Matched by basename, as ``git`` is: ``/usr/bin/sudo`` is ``sudo``.
-_WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs", "timeout", "doas", "ionice"}
-#: Wrappers whose first positional is not the command (``timeout 10 git …``).
-_WRAPPER_LEADING_ARG = {"timeout"}
+#: Words that merely wrap the real command. Matched by basename, as ``git`` is.
+#: Each name except ``env`` has its own option table in ``shapes.WRAPPER_OPTIONS``;
+#: ``env`` keeps ``_ENV_LONG``. ``timeout``'s first positional is a duration.
+_WRAPPERS = {"env", *shapes.WRAPPER_OPTIONS}
+_WRAPPER_LEADING_ARG = frozenset({"timeout"})
 #: Shell words that open a command without being one: ``(``, ``{``, ``if``/``then``/``do``…, ``!``.
 _OPENERS = {"(", "{", "if", "then", "elif", "else", "while", "until", "do", "!"}
 # GNU coreutils 9.4 ``env``: ``getopt_long`` shortopts ``+C:iS:u:v0``.
@@ -147,9 +143,9 @@ class _EnvRun:
     ate_option: bool = False
 
 
-def _env_long_name(name: str) -> tuple[str, str] | None:
+def _long_name(table: tuple[tuple[str, str, str], ...], name: str) -> tuple[str, str] | None:
     """``(kind, canonical)`` when ``name`` is an unambiguous long option, else ``None``."""
-    matches = [row for row in _ENV_LONG if row[0].startswith(name)]
+    matches = [row for row in table if row[0] and row[0].startswith(name)]
     exact = [row for row in matches if row[0] == name]
     chosen = exact[0] if exact else (matches[0] if len(matches) == 1 else None)
     if chosen is None:
@@ -157,10 +153,12 @@ def _env_long_name(name: str) -> tuple[str, str] | None:
     return chosen[1], chosen[0]
 
 
-def _env_long_at(tokens: list[str], i: int) -> tuple[int, str, str | None] | None:
+def _long_at(
+    table: tuple[tuple[str, str, str], ...], tokens: list[str], i: int,
+) -> tuple[int, str, str | None] | None:
     """One long option at ``tokens[i]``: ``(next index, canonical name, value)``, or ``None``."""
     name, sep, attached = tokens[i][2:].partition("=")
-    matched = _env_long_name(name)
+    matched = _long_name(table, name)
     if matched is None:
         return None
     kind, canonical = matched
@@ -175,14 +173,24 @@ def _env_long_at(tokens: list[str], i: int) -> tuple[int, str, str | None] | Non
     return i + 2, canonical, tokens[i + 1]
 
 
-def _env_short_at(tokens: list[str], i: int) -> tuple[int, list[tuple[str, str | None]]] | None:
-    """One short cluster: ``(next index, [(canonical name, value), ...])``, or ``None``."""
+def _short_at(
+    by_short: dict[str, tuple[str, str]], tokens: list[str], i: int,
+) -> tuple[int, list[tuple[str, str | None]]] | None:
+    """One short cluster: ``(next index, [(canonical name, value), ...])``, or ``None``.
+
+    A required value is the rest of the cluster or the next argument. An optional
+    value is only the rest of the cluster. A flag takes none.
+    """
     arg, j, taken = tokens[i], 1, []
     while j < len(arg):
-        spec = _ENV_BY_SHORT.get(arg[j])
+        spec = by_short.get(arg[j])
         if spec is None:
             return None
         name, kind = spec
+        if kind == "optional":
+            rest = arg[j + 1:]
+            taken.append((name, rest or None))
+            return i + 1, taken
         if kind != "required":
             taken.append((name, None))
             j += 1
@@ -203,6 +211,10 @@ def _env_short_at(tokens: list[str], i: int) -> tuple[int, list[tuple[str, str |
 _ENV_WS = frozenset(" \t\n\v\f\r")
 _ENV_ESC = {"\\": "\\", "'": "'", '"': '"', "t": "\t", "n": "\n", "r": "\r", "v": "\v", "f": "\f", "#": "#", "$": "$"}
 _ENV_SPLIT_OPAQUE = "env -S splits its argument into a command the guard cannot see; run the git command plainly"
+_UNLISTED_OPTION = (
+    "an option this wrapper does not list hides the command; "
+    "the guard cannot see it — run the git command plainly"
+)
 
 
 def _env_flush(cur: list[str], argv: list[str]) -> None:
@@ -331,7 +343,7 @@ def _env_invocation(tokens: list[str]) -> _EnvRun:
             i += 1
             break
         if arg.startswith("--"):
-            step = _env_long_at(tokens, i)
+            step = _long_at(_ENV_LONG, tokens, i)
             if step is None:
                 return bad
             i, canonical, value = step
@@ -339,7 +351,7 @@ def _env_invocation(tokens: list[str]) -> _EnvRun:
                 return _env_from_split(value or "", tokens[i:])
             continue
         if arg.startswith("-"):
-            short = _env_short_at(tokens, i)
+            short = _short_at(_ENV_BY_SHORT, tokens, i)
             if short is None:
                 return bad
             i, taken = short
@@ -363,35 +375,74 @@ def _is_opaque_subject(tokens: list[str], i: int) -> bool:
     return bool(shapes.env_config([token, "git"]))
 
 
-def _skip_wrapper(tokens: list[str], i: int, wrapped: bool) -> tuple[list[str], int, bool] | None:
-    """Advance past one wrapper word. ``env`` is replaced by the command it would run.
+def _scan_options(
+    table: tuple[tuple[str, str, str], ...], tokens: list[str], i: int,
+) -> tuple[int, bool]:
+    """Index of the first word after this table's options, and whether every option is listed.
 
-    The word's basename is the wrapper, as ``git`` already is: ``/usr/bin/env`` is ``env``.
+    ``--`` ends the options and is consumed. A lone ``-`` is a word, not an option.
+    False means an unlisted option, an ambiguous prefix, or a missing required value.
     """
-    t = tokens[i]
-    name = t.rsplit("/", 1)[-1]
+    shorts = {short: (name, kind) for name, kind, short in table if short}
+    while i < len(tokens):
+        arg = tokens[i]
+        if arg == "--":
+            return i + 1, True
+        if arg == "-" or not arg.startswith("-"):
+            return i, True
+        if arg.startswith("--"):
+            step = _long_at(table, tokens, i)
+            if step is None:
+                return i, False
+            i = step[0]
+            continue
+        short = _short_at(shorts, tokens, i)
+        if short is None:
+            return i, False
+        i = short[0]
+    return i, True
+
+
+def _wrapper_command_at(name: str, tokens: list[str], i: int) -> tuple[int, bool] | None:
+    """``(index of the wrapped command, options were listed)`` for a non-env wrapper at ``i``."""
+    if name not in _WRAPPERS or name == "env":
+        return None
+    nxt, ok = _scan_options(shapes.WRAPPER_OPTIONS[name], tokens, i + 1)
+    if ok and name in _WRAPPER_LEADING_ARG and nxt < len(tokens):
+        nxt += 1
+    return nxt, ok
+
+
+def _skip_wrapper(tokens: list[str], i: int) -> tuple[list[str], int] | None:
+    """Advance past one wrapper and the options its own table documents.
+
+    ``env`` is replaced by the command it would run. Any other wrapper is skipped
+    along with its options; ``timeout`` then skips the duration. An option the
+    table does not list stops unwrapping so the opaque check still sees it.
+    The word's basename is the wrapper, as ``git`` already is.
+    """
+    name = tokens[i].rsplit("/", 1)[-1]
     if name == "env":
         parsed = _env_invocation(tokens[i:])
         if parsed.ok:
-            return [*tokens[:i], *parsed.command], i, False
-    if name in _WRAPPERS:
-        return tokens, i + (2 if name in _WRAPPER_LEADING_ARG else 1), True
-    if wrapped and t.startswith("-"):
-        step = 2 if t in _WRAPPER_FLAG_ARG and "=" not in t else 1
-        return tokens, i + step, wrapped
-    return None
+            return [*tokens[:i], *parsed.command], i
+        return None
+    found = _wrapper_command_at(name, tokens, i)
+    if found is None or not found[1]:
+        return None
+    return tokens, found[0]
 
 
 def _unwrap(tokens: list[str], *, keep_signals: bool = False) -> list[str]:
-    """Strip ``VAR=x``, ``command``/``env``/``sudo``-style wrappers, control-flow openers, and subshell parens.
+    """Strip ``VAR=x``, wrappers, control-flow openers, and subshell parens.
 
     A ``(`` glued to the next word is peeled and that word is read, including when an opener
     precedes it (``! (git stash)``). ``env``'s options are read with getopt, so ``--unset`` and
-    ``--chdir`` consume their values. With ``keep_signals``, unwrapping stops at ``env``'s
-    split-string or a ``GIT_CONFIG*`` assignment so the opaque checks still see them.
+    ``--chdir`` consume their values. Every other wrapper uses its own option table the same way.
+    With ``keep_signals``, unwrapping stops at ``env``'s split-string or a ``GIT_CONFIG*``
+    assignment so the opaque checks still see them.
     """
     i = 0
-    wrapped = False
     while i < len(tokens):
         t = tokens[i]
         if keep_signals and _is_opaque_subject(tokens, i):
@@ -402,10 +453,10 @@ def _unwrap(tokens: list[str], *, keep_signals: bool = False) -> list[str]:
         if ("=" in t and not t.startswith("-")) or t in _OPENERS:
             i += 1
             continue
-        step = _skip_wrapper(tokens, i, wrapped)
+        step = _skip_wrapper(tokens, i)
         if step is None:
             break
-        tokens, i, wrapped = step
+        tokens, i = step
     out = tokens[i:]
     return [t.rstrip(")") if t.endswith(")") and t != ")" else t for t in out if t not in (")", "}")]
 
@@ -582,7 +633,8 @@ def _opaque(segment: str) -> str | None:
     word that expansion could turn into ``git``, and an interpreter one-liner
     that mentions git all run git where the guard cannot see the arguments.
     ``env -S`` and ``GIT_CONFIG*`` are judged after openers, subshell parentheses, wrappers
-    and ordinary assignments are removed.
+    and ordinary assignments are removed. An option a wrapper's table does not list, before
+    a word that could be git, is refused the same way: the command is not knowable.
     """
     if _FUNC_DEF.search(segment) and _GIT_WORD.search(segment):
         return "defines a shell function and mentions git; the guard cannot follow it — run the git command plainly"
@@ -597,6 +649,9 @@ def _opaque(segment: str) -> str | None:
     split_reason = _split_command_reason(seen)
     if split_reason:
         return split_reason
+    unlisted = _unlisted_wrapper_option(raw)
+    if unlisted:
+        return unlisted
     head = _unwrap(raw)
     if head and _EXPANSION.search(head[0]) and head[0] not in ("[", "[[") and _may_name_git(head[0]):
         return "the command name comes from a shell expansion; the guard cannot see it — run the command plainly"
@@ -608,6 +663,56 @@ def _opaque(segment: str) -> str | None:
     if head and head[0].rsplit("/", 1)[-1].rstrip("0123456789.") in _INTERPRETERS and _GIT_WORD.search(segment) \
             and any(a in ("-c", "-e") for a in head[1:3]):
         return f"{head[0]} one-liner mentions git; the guard cannot follow it — run the git command plainly"
+    return None
+
+
+def _hides_git(tokens: list[str], at: int) -> str | None:
+    """The opaque reason when a word at or after ``at`` could be git."""
+    if any(_may_name_git(word) for word in tokens[at:]):
+        return _UNLISTED_OPTION
+    return None
+
+
+def _env_unlisted(tokens: list[str], i: int) -> str | None | list[str]:
+    """The opaque reason, the command ``env`` would run, or ``None`` to stop."""
+    parsed = _env_invocation(tokens[i:])
+    if not parsed.ok:
+        failed_at, scan_ok = _scan_options(_ENV_LONG, tokens, i + 1)
+        return _hides_git(tokens, failed_at + 1 if not scan_ok else i + 1)
+    if not parsed.determined:
+        return None
+    return [*tokens[:i], *parsed.command]
+
+
+def _unlisted_wrapper_option(tokens: list[str]) -> str | None:
+    """An option a wrapper's table does not list, when a later word could be git.
+
+    The option might take a value, so the command is not knowable. That is the
+    opaque reason, and it is never allowed.
+    """
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t.startswith("(") and len(t) > 1:
+            tokens = [*tokens[:i], t[1:], *tokens[i + 1:]]
+            continue
+        if ("=" in t and not t.startswith("-")) or t in _OPENERS:
+            i += 1
+            continue
+        name = t.rsplit("/", 1)[-1]
+        if name == "env":
+            step = _env_unlisted(tokens, i)
+            if not isinstance(step, list):
+                return step
+            tokens = step
+            continue
+        found = _wrapper_command_at(name, tokens, i)
+        if found is None:
+            break
+        nxt, ok = found
+        if not ok:
+            return _hides_git(tokens, nxt + 1)
+        i = nxt
     return None
 
 
@@ -661,7 +766,7 @@ def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = 
     return others
 
 
-def _expand_config_aliases(repo_root: Path, command: str) -> str:
+def expand_config_aliases(repo_root: Path, command: str) -> str:
     """``git s`` with ``alias.s = stash`` in the repo's git config is ``git stash`` to the guard."""
     out = []
     for seg in split_segments(command.strip()):
@@ -682,7 +787,7 @@ def _expand_config_aliases(repo_root: Path, command: str) -> str:
 
 
 def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = False) -> Verdict:
-    expanded = _expand_config_aliases(repo_root, command)
+    expanded = expand_config_aliases(repo_root, command)
     reason = classify(expanded)
     if not reason:
         return Verdict(ALLOW, "", command)

@@ -206,7 +206,7 @@ def test_committed_rename_into_the_zone_is_reported_on_both_sides(tmp_path: Path
     paths, lines = rp.changed_paths_section(repo, t)
     assert "docs/old name.md" in paths and "src/old name.md" in paths
     assert any("docs/old name.md" in ln and "outside touch zones" in ln for ln in lines)
-    assert "docs/old name.md" in wr._changed_since(repo, t.base)
+    assert "docs/old name.md" in wr.changed_since(repo, t.base)
     assert "docs/old name.md" in changed_paths(repo, "refs/heads/dev")
 
 
@@ -224,10 +224,10 @@ def test_rename_out_of_the_zone_keeps_the_source_inside_it(tmp_path: Path) -> No
 def test_uncommitted_rename_is_seen_by_reconcile(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     git(repo, "mv", "src/a.py", "docs/a.py")                      # staged
-    assert wr._changed_since(repo, "HEAD") == ["docs/a.py", "src/a.py"]
+    assert wr.changed_since(repo, "HEAD") == ["docs/a.py", "src/a.py"]
     git(repo, "mv", "docs/a.py", "src/a.py")
     (repo / "src" / "a.py").rename(repo / "docs" / "a moved.py")   # unstaged delete + untracked file
-    assert wr._changed_since(repo, "HEAD") == ["src/a.py"]   # the untracked side is reported on its own (M11.40)
+    assert wr.changed_since(repo, "HEAD") == ["src/a.py"]   # the untracked side is reported on its own (M11.40)
 
 
 

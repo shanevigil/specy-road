@@ -328,7 +328,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.79_the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag_522551fc-deb1-435a-b094-882b07922652.md",
       "sibling_order": 79,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command",
       "touch_zones": [
         "specy_road/orchestration/guard/tool_call_guard.py",

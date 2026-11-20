@@ -139,9 +139,10 @@ def _plan_open_state(
     return out
 
 
-def _plan_for_node(
+def plan_for_node(
     root: Path, n: dict, *, default_remote: str, args: argparse.Namespace
 ) -> list[str]:
+    """The reconcile actions for one milestone node, open or closed."""
     parsed = _node_milestone_fields(n, default_remote)
     if parsed is None:
         return []
@@ -201,7 +202,7 @@ def main(argv: list[str] | None = None) -> None:
     for n in nodes:
         try:
             planned.extend(
-                _plan_for_node(root, n, default_remote=default_remote, args=args)
+                plan_for_node(root, n, default_remote=default_remote, args=args)
             )
         except Exception as exc:  # noqa: BLE001 — per-node isolation is the point
             failures += 1

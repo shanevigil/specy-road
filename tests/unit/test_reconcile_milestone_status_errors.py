@@ -77,14 +77,14 @@ def test_reconcile_isolates_per_node_failures_dryrun(
     _attach_active_milestone_executions(repo, ids=["M0", "M1"])
 
     rms = _import_reconcile()
-    real = rms._plan_for_node
+    real = rms.plan_for_node
 
     def boom_on_M0(root, n, *, default_remote, args):
         if isinstance(n, dict) and n.get("id") == "M0":
             raise RuntimeError("forced failure for M0")
         return real(root, n, default_remote=default_remote, args=args)
 
-    monkeypatch.setattr(rms, "_plan_for_node", boom_on_M0)
+    monkeypatch.setattr(rms, "plan_for_node", boom_on_M0)
 
     rms.main(["--repo-root", str(repo)])  # dry-run; must not raise SystemExit
     out = capsys.readouterr()
@@ -105,14 +105,14 @@ def test_reconcile_isolates_per_node_failures_apply_exits_nonzero(
     _attach_active_milestone_executions(repo, ids=["M0", "M1"])
 
     rms = _import_reconcile()
-    real = rms._plan_for_node
+    real = rms.plan_for_node
 
     def boom_on_M0(root, n, *, default_remote, args):
         if isinstance(n, dict) and n.get("id") == "M0":
             raise RuntimeError("forced failure for M0")
         return real(root, n, default_remote=default_remote, args=args)
 
-    monkeypatch.setattr(rms, "_plan_for_node", boom_on_M0)
+    monkeypatch.setattr(rms, "plan_for_node", boom_on_M0)
 
     with pytest.raises(SystemExit) as exc:
         rms.main(["--repo-root", str(repo), "--apply"])

@@ -149,7 +149,7 @@ def test_maybe_auto_integration_ff_runs_fetch_and_merge(
 ) -> None:
     monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
     repo = _init_integration_ff_repo(tmp_path)
-    _registry_overlay._LAST_INTEGRATION_FF_MONO.clear()
+    _registry_overlay.clear_integration_ff_cooldown()
     calls = _patch_subprocess_run_track_fetch_merge(monkeypatch)
     maybe_auto_integration_ff(repo)
     assert calls[0] == ["git", "fetch", "--quiet", "origin"]
@@ -169,7 +169,7 @@ def test_maybe_auto_integration_ff_respects_throttle(
     monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
     monkeypatch.setenv("SPECY_ROAD_GUI_INTEGRATION_FF_INTERVAL_S", "3600")
     repo = _init_integration_ff_repo(tmp_path)
-    _registry_overlay._LAST_INTEGRATION_FF_MONO.clear()
+    _registry_overlay.clear_integration_ff_cooldown()
     calls = _patch_subprocess_run_track_fetch_merge(monkeypatch)
     maybe_auto_integration_ff(repo)
     assert len(calls) == 2
@@ -196,7 +196,7 @@ def test_describe_integration_branch_auto_ff_overlay_export_matches_pm_module(
         check=True,
         capture_output=True,
     )
-    _registry_overlay._LAST_INTEGRATION_FF_MONO.clear()
+    _registry_overlay.clear_integration_ff_cooldown()
     maybe_auto_integration_ff(repo)
     via_overlay = describe_integration_branch_auto_ff_overlay(repo)
     via_pm = describe_integration_branch_auto_ff_pm(repo)
@@ -227,7 +227,7 @@ def test_maybe_auto_git_fetch_records_nonzero_exit_status(
             return subprocess.CompletedProcess(a, 1, "", "fatal: auth failed")
         return real_run(args, **kwargs)  # type: ignore[arg-type]
 
-    _registry_overlay._LAST_FETCH_MONO.clear()
+    _registry_overlay.clear_fetch_cooldown()
     monkeypatch.setattr(subprocess, "run", _fail_fetch)
     maybe_auto_git_fetch(repo, "origin")
     st = last_registry_auto_fetch_status(repo)
@@ -257,7 +257,7 @@ def test_maybe_auto_git_fetch_records_timeout_status(
             raise subprocess.TimeoutExpired(cmd=["git", "fetch"], timeout=0.1)
         return real_run(args, **kwargs)  # type: ignore[arg-type]
 
-    _registry_overlay._LAST_FETCH_MONO.clear()
+    _registry_overlay.clear_fetch_cooldown()
     monkeypatch.setattr(subprocess, "run", _timeout_fetch)
     maybe_auto_git_fetch(repo, "origin")
     st = last_registry_auto_fetch_status(repo)
@@ -286,7 +286,7 @@ def test_maybe_auto_integration_ff_records_merge_nonzero_exit_status(
             return subprocess.CompletedProcess(a, 1, "", "fatal: not possible")
         return real_run(args, **kwargs)  # type: ignore[arg-type]
 
-    _registry_overlay._LAST_INTEGRATION_FF_MONO.clear()
+    _registry_overlay.clear_integration_ff_cooldown()
     monkeypatch.setattr(subprocess, "run", _fail_merge)
     maybe_auto_integration_ff(repo)
     st = last_integration_auto_ff_status(repo)

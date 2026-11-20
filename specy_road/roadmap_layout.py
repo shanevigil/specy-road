@@ -12,7 +12,7 @@ def _index(nodes: list[dict]):
     return RoadmapIndex(nodes)
 
 
-def _digit_run_to_int(run: str) -> int:
+def digit_run_to_int(run: str) -> int:
     """Parse an ASCII digit run for natural id ordering (hook for tests / rare bases)."""
     return int(run, 10)
 
@@ -34,7 +34,7 @@ def natural_id_sort_key(nid: str) -> tuple[tuple[int, int | str], ...]:
     for p in parts:
         if p.isdigit():
             try:
-                out.append((0, _digit_run_to_int(p)))
+                out.append((0, digit_run_to_int(p)))
             except ValueError:
                 return ((1, nid),)
         else:

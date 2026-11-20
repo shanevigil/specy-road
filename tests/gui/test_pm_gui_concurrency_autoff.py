@@ -45,8 +45,8 @@ def _enable_overlay_and_autoff(
     monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
     from specy_road import registry_remote_overlay as rro
 
-    rro._LAST_FETCH_MONO.clear()
-    rro._LAST_INTEGRATION_FF_MONO.clear()
+    rro.clear_fetch_cooldown()
+    rro.clear_integration_ff_cooldown()
 
 
 
@@ -74,8 +74,8 @@ def _force_local_head_drift(work: Path) -> None:
     git(["merge", "-q", "--ff-only", "origin/master"], work)
     from specy_road import registry_remote_overlay as rro
 
-    rro._LAST_FETCH_MONO.clear()
-    rro._LAST_INTEGRATION_FF_MONO.clear()
+    rro.clear_fetch_cooldown()
+    rro.clear_integration_ff_cooldown()
 
 
 def _touch_planning(work: Path) -> None:

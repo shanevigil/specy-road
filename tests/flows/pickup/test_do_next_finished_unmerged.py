@@ -163,7 +163,7 @@ def test_remote_only_branch_is_still_seen(repo: Path) -> None:
 def test_drop_finished_unmerged_filters_and_reports(repo, monkeypatch, capsys) -> None:
     """The pickup queue loses the finished leaf and says why."""
     keep = {"id": "M1.2", "codename": "other"}
-    out = dnt._drop_finished_unmerged(repo, [*CANDIDATE, keep], "dev", "origin")
+    out = dnt.drop_finished_unmerged(repo, [*CANDIDATE, keep], "dev", "origin")
     assert out == [keep]
     assert "skipping M1.1" in capsys.readouterr().out
 
@@ -172,7 +172,7 @@ def test_drop_finished_unmerged_is_a_no_op_when_nothing_finished(
     repo, monkeypatch, capsys
 ) -> None:
     queue = [{"id": "M1.2", "codename": "other"}]
-    assert dnt._drop_finished_unmerged(repo, queue, "dev", "origin") is queue
+    assert dnt.drop_finished_unmerged(repo, queue, "dev", "origin") is queue
     assert capsys.readouterr().out == ""
 
 

@@ -50,7 +50,8 @@ from specy_road.gui_app_models import (
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 
 
-def _payload(session: BrainstormSession) -> dict[str, Any]:
+def session_payload(session: BrainstormSession) -> dict[str, Any]:
+    """The brainstorm session as the GUI route's JSON object."""
     return {
         "slug": session.slug,
         "topic": session.topic,
@@ -76,7 +77,7 @@ def _load(root: Path, slug: str) -> BrainstormSession:
 
 def _saved(root: Path, session: BrainstormSession) -> dict[str, Any]:
     write_session(root, session)
-    return _payload(session)
+    return session_payload(session)
 
 
 def _locked(route):
@@ -97,7 +98,7 @@ def _api_sessions() -> dict[str, Any]:
 
 
 def _api_session_get(slug: str = Query(...)) -> dict[str, Any]:
-    return _payload(_load(get_repo_root(), slug))
+    return session_payload(_load(get_repo_root(), slug))
 
 
 @_locked
@@ -163,7 +164,7 @@ def _record_ideas(
     block would be worse than losing the block.
     """
     if not ideas:
-        return _payload(session)
+        return session_payload(session)
     with session_lock(root):
         # Reloaded under the lock: the chat turn ran without it, and panel shards
         # or another tab may have added ideas in the meantime.
@@ -205,7 +206,7 @@ def _api_idea(body: BrainstormIdeaBody) -> dict[str, Any]:
     return _saved(root, session)
 
 
-def _apply_triage(session: BrainstormSession, body: BrainstormTriageBody) -> None:
+def apply_triage(session: BrainstormSession, body: BrainstormTriageBody) -> None:
     """A status change, a content edit, or a recommendation — possibly all three.
 
     A recommendation is the model's advice, so recording it must not consume
@@ -240,7 +241,7 @@ def _api_triage(body: BrainstormTriageBody) -> dict[str, Any]:
     root = get_repo_root()
     session = _load(root, body.slug)
     try:
-        _apply_triage(session, body)
+        apply_triage(session, body)
     except BrainstormError as e:
         raise _bad_request(e) from e
     return _saved(root, session)
@@ -274,7 +275,7 @@ def _api_promote(body: BrainstormPromoteBody) -> dict[str, Any]:
             for r in results
         ],
         "dry_run": body.dry_run,
-        "session": _payload(session),
+        "session": session_payload(session),
     }
 
 

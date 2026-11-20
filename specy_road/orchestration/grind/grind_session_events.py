@@ -68,7 +68,7 @@ class EventEmitter:
                 "Human action required."
             )
         if event == "in_flight":
-            return _human_in_flight(prefix, node, fields)
+            return human_in_flight(prefix, node, fields)
         if event == "resumed":
             return f"{prefix}: {node} -> {fields.get('branch')}"
         if event == "hook_failed":
@@ -105,7 +105,7 @@ def _human_hook_failed(prefix: str, node, fields: dict) -> str:
     return line
 
 
-def _human_in_flight(prefix: str, node, fields: dict) -> str:
+def human_in_flight(prefix: str, node, fields: dict) -> str:
     """Why the loop stopped, when the answer is "you already hold a claim".
 
     Names the node and its branch, because the whole complaint this replaces

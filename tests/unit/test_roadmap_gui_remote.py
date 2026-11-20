@@ -50,7 +50,7 @@ def test_github_pr_detail_open_pr(monkeypatch: pytest.MonkeyPatch) -> None:
     resp.json.return_value = [open_pr]
 
     with patch("specy_road.roadmap_gui_remote.requests.get", return_value=resp) as g:
-        out = rgr._github_pr_detail("o/r", "feature/x", "tok")
+        out = rgr.github_pr_detail("o/r", "feature/x", "tok")
 
     assert out is not None
     assert out["kind"] == "github_pr"
@@ -70,7 +70,7 @@ def test_github_pr_detail_merged_from_state_all(monkeypatch: pytest.MonkeyPatch)
     all_resp.json.return_value = [merged]
 
     with patch("specy_road.roadmap_gui_remote.requests.get", side_effect=[empty, all_resp]):
-        out = rgr._github_pr_detail("o/r", "feature/x", "tok")
+        out = rgr.github_pr_detail("o/r", "feature/x", "tok")
 
     assert out is not None
     assert out["pr_state"] == "merged"
@@ -88,7 +88,7 @@ def test_github_pr_detail_rejected_closed_unmerged(monkeypatch: pytest.MonkeyPat
     all_resp.json.return_value = [rej]
 
     with patch("specy_road.roadmap_gui_remote.requests.get", side_effect=[empty, all_resp]):
-        out = rgr._github_pr_detail("o/r", "feature/x", "tok")
+        out = rgr.github_pr_detail("o/r", "feature/x", "tok")
 
     assert out is not None
     assert out["pr_state"] == "rejected"
@@ -109,7 +109,7 @@ def test_github_pr_detail_open_not_list_falls_through_to_all(
     all_resp.json.return_value = [merged]
 
     with patch("specy_road.roadmap_gui_remote.requests.get", side_effect=[bad_open, all_resp]):
-        out = rgr._github_pr_detail("o/r", "feature/x", "tok")
+        out = rgr.github_pr_detail("o/r", "feature/x", "tok")
 
     assert out is not None
     assert out["pr_state"] == "merged"
@@ -129,7 +129,7 @@ def test_gitlab_mr_detail_opened_mr(monkeypatch: pytest.MonkeyPatch) -> None:
 
     gr = {"provider": "gitlab", "repo": "g/p", "token": "t", "base_url": ""}
     with patch("specy_road.roadmap_gui_remote.requests.get", return_value=resp) as g:
-        out = rgr._gitlab_mr_detail(gr, "g/p", "feature/y", "tok")
+        out = rgr.gitlab_mr_detail(gr, "g/p", "feature/y", "tok")
 
     assert out is not None
     assert out["kind"] == "gitlab_mr"
@@ -156,7 +156,7 @@ def test_gitlab_mr_detail_merged_after_empty_opened(monkeypatch: pytest.MonkeyPa
 
     gr = {"provider": "gitlab", "repo": "g/p", "token": "t", "base_url": ""}
     with patch("specy_road.roadmap_gui_remote.requests.get", side_effect=[empty, merged_resp]):
-        out = rgr._gitlab_mr_detail(gr, "g/p", "feature/y", "tok")
+        out = rgr.gitlab_mr_detail(gr, "g/p", "feature/y", "tok")
 
     assert out is not None
     assert out["pr_state"] == "merged"
@@ -186,7 +186,7 @@ def test_gitlab_mr_detail_rejected_closed_without_merge_commit(
 
     gr = {"provider": "gitlab", "repo": "g/p", "token": "t", "base_url": ""}
     with patch("specy_road.roadmap_gui_remote.requests.get", side_effect=[e1, e2, e3]):
-        out = rgr._gitlab_mr_detail(gr, "g/p", "feature/y", "tok")
+        out = rgr.gitlab_mr_detail(gr, "g/p", "feature/y", "tok")
 
     assert out is not None
     assert out["pr_state"] == "rejected"
