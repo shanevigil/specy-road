@@ -102,6 +102,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- Shipped Codex guidance leaves `multi_agent` on. `harness-facts.yaml` classifies it as `use` (the 2026-11-02
+  F15 `avoid` is superseded by the operator decision of 2026-11-19). The Codex executor template, the rendered
+  model-profiles README and every OpenAI GPT profile `access.cli` no longer pass `--disable multi_agent`;
+  memories and goals stay disabled. The worker adapter and its launch argv are unchanged.
 - Bundled model profiles and harness facts follow the CLIs installed on the orchestration host (2026-11-19): the
   Claude Code (2.1.329) and Cursor agent (2026.11.17-f532c45) captures are re-taken, with their versions and the
   `--bare` hook fact in `harness-facts.yaml`; the codex-cli 0.166.0 capture stays. New profiles
