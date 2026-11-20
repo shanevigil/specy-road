@@ -26,6 +26,32 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A command in a case arm gets the verdict and reason of the same command alone. Verified allowed on WIP 23190bd5 (2026-11-20) and refused after this leaf: 'case a in a) $X;; esac' and 'case a in a) sudo $X;; esac' (alone, '$X' and 'sudo $X' are refused because the command name comes from a shell expansion). 'case a in a) git stash;; esac' stays refused and 'case a in a) ls;; esac' stays allowed",
+        "The planner's sheet names, before pickup, the function that stops unwrapping at case and the arm forms the tests draw: several patterns (a|b), the terminators ;; ;& and ;;&, more than one arm, and a nested case; each form is a row of an existing guard test, with an allowed row beside each refused one",
+        "No command allowed on WIP 23190bd5 becomes refused except one whose case arm holds a command that is refused alone",
+        "CHANGELOG.md [Unreleased] extends the guard Security entry; no version heading is written"
+      ],
+      "codename": "the-tool-call-guard-classifies-the-command-in-a-case-arm",
+      "dependencies": [
+        "f14430f5-d6f1-408e-ad13-00e8b503b786"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.87",
+      "node_key": "43f99751-202a-49e0-843b-536d71419d65",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.87_the-tool-call-guard-classifies-the-command-in-a-case-arm_43f99751-202a-49e0-843b-536d71419d65.md",
+      "sibling_order": 87,
+      "status": "Not Started",
+      "title": "The tool-call guard classifies the command in a case arm",
+      "touch_zones": [
+        "specy_road/orchestration/guard/tool_call_guard.py",
+        "tests/unit/test_tool_call_guard.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }
