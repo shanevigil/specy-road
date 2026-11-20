@@ -1,0 +1,31 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "A wrapper option its table does not list, followed by a word that could be git once a trailing ')' is removed, is refused with the unlisted-option reason inside a ( ) subshell whose closing paren touches that word, exactly as the bare command is. Verified allowed on WIP 1b2fcbd1 (2026-11-20) and refused after this leaf: '(sudo -Q $X)', '( sudo -Q $X)', '(sudo -Q \"$X\")', '(sudo -Q ${X})', '(sudo -Q g$X)', '(env -Q $X)', '(nohup -x $X)', '(doas -Q $CMD)', '(nice -5 $X)', 'x=1; (sudo -Q $X)', '(sudo -Q $X); ls', '! (sudo -Q $X)' and '{ (sudo -Q $X); }'",
+        "The trailing-paren strip that _unwrap applies to each word is one helper used by both _unwrap and the could-be-git check behind the unlisted-option refusal; no second copy of the rule exists",
+        "No command allowed on WIP 1b2fcbd1 becomes refused except one in the class above: '(sudo -Q ls)', '(sudo -Q ls )', 'sudo --not-a-sudo-option ls /tmp' and the ordinary-commands table stay allowed. Accepted and stated in the CHANGELOG entry: a quoted or escaped literal ')' ending a could-be-git word after an unlisted option is now refused",
+        "tests/unit/test_tool_call_guard.py::test_unlisted_wrapper_option_is_opaque gains the refused commands of the first criterion as hidden rows and '(sudo -Q ls)' and '(sudo -Q ls )' as allowed rows; no test is added, removed or renamed",
+        "CHANGELOG.md [Unreleased] extends the guard Security entry; no version heading is written"
+      ],
+      "codename": "the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a",
+      "dependencies": [
+        "522551fc-deb1-435a-b094-882b07922652"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.86",
+      "node_key": "f14430f5-d6f1-408e-ad13-00e8b503b786",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.86_the-tool-call-guard-keeps-the-unlisted-option-refusal-when-a_f14430f5-d6f1-408e-ad13-00e8b503b786.md",
+      "sibling_order": 86,
+      "status": "Not Started",
+      "title": "The tool-call guard keeps the unlisted-option refusal when a subshell's closing paren touches the next word",
+      "touch_zones": [
+        "specy_road/orchestration/guard/tool_call_guard.py",
+        "tests/unit/test_tool_call_guard.py",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    }
+  ]
+}
