@@ -204,7 +204,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.76` The tool-call guard reads env's clustered and attached -S like the separate flag `the-tool-call-guard-reads-env-s-clustered-and-attached-s-like` — task — **Complete**
   - `M22.77` The tool-call guard parses env's options the way GNU getopt does, checked by an enumerated wrapper test `the-tool-call-guard-parses-env-s-options-the-way-gnu-getopt-does` — task — **Complete**
   - `M22.78` The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word `the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a` — task — **Complete**
-  - `M22.79` The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command `the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` — task — **Not Started**
+  - `M22.79` The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command `the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -365,7 +365,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.73` on `feature/rm-harness-facts-and-captures-refreshed` since 2026-11-19
-- `M22.79` on `feature/rm-the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` since 2026-11-19
 
 ## Quality by area
 
@@ -375,9 +374,8 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | --- | --- | --- | --- | --- | --- | --- |
 | `CHANGELOG.md` **flagged** | 20 | 0 | 2.85 | 70% | 18 | 1 |
 | `README.md` **flagged** | 2 | 0 | 4.00 | 100% | 0 | 0 |
-| `constraints` **flagged** | 25 | 0 | 2.84 | 52% | 387 | 1 |
 | `docs` **flagged** | 19 | 0 | 3.32 | 74% | 336 | 1 |
-| `planning` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
+| `planning` **flagged** | 2 | 0 | 4.50 | 100% | 0 | 0 |
 | `playground` **flagged** | 2 | 0 | 3.00 | 100% | 0 | 0 |
 | `pyproject.toml` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `roadmap` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
@@ -385,9 +383,10 @@ Review cost of the last 50 completed leaves, per touch-zone area, from the `Revi
 | `roadmap.md` **flagged** | 1 | 0 | 6.00 | 100% | 0 | 0 |
 | `schemas` **flagged** | 1 | 0 | 2.00 | 100% | 3 | 0 |
 | `scripts` **flagged** | 22 | 0 | 3.09 | 59% | 400 | 1 |
-| `specy_road` **flagged** | 38 | 0 | 2.50 | 53% | 86 | 1 |
+| `specy_road` **flagged** | 38 | 0 | 2.42 | 53% | 79 | 1 |
 | `suggested_prompts` **flagged** | 7 | 0 | 3.43 | 100% | 6 | 0 |
-| `tests` **flagged** | 48 | 0 | 2.69 | 58% | 429 | 2 |
+| `tests` **flagged** | 48 | 0 | 2.62 | 58% | 422 | 2 |
+| `constraints` | 24 | 0 | 2.71 | 50% | 380 | 1 |
 | `gui` | 6 | 0 | 2.67 | 50% | 0 | 0 |
 
 Leaves with no tally landed before tallies were recorded; they are left out of the rates.

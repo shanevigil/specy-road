@@ -82,18 +82,6 @@ entries:
     started: '2026-11-19'
     owner: savigil
     implementation_review: pending
-  - codename: the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag
-    node_id: M22.79
-    branch: feature/rm-the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag
-    touch_zones:
-      - specy_road/orchestration/guard/tool_call_guard.py
-      - specy_road/orchestration/guard/tool_call_guard_shapes.py
-      - tests/unit/test_tool_call_guard.py
-      - CHANGELOG.md
-    started: '2026-11-19'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-20T00:51:54+00:00'
   - codename: harness-facts-and-captures-refreshed
     node_id: M22.73
     branch: feature/rm-harness-facts-and-captures-refreshed
