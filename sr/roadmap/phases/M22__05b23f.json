@@ -140,7 +140,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.72_harness-facts-research-delivered_393ad414-3a5a-49b3-8873-b63d0e35d0ee.md",
       "sibling_order": 72,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Gate: current harness facts delivered as a dated research report",
       "touch_zones": [],
       "type": "gate"
@@ -441,6 +441,33 @@
         "specy_road/templates/project/model-profiles/harness-facts.yaml",
         "specy_road/templates/project/model-profiles/openai-gpt/",
         "specy_road/templates/project/model-profiles/README.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Every `unknown` field and Open question M22.73 left for M22.72 (prices, output-token limits, release dates for claude-fable-5-2, gpt-6.2-sol and gpt-6.2-astra; Codex project trust; the multi_agent flag replacement) is filled from sr/docs/research/harness-facts-2026-11-19/report.md where that report marks the row checked, citing the row id; a row marked not checked stays unknown with its reason",
+        "harness-facts.yaml records the Codex 0.168.0 deprecation of multi_agent in favour of agents.enabled and the 0.169.0 trust behaviour (CX-FLAG-MULTI, CX-TRUST), each with the version it holds for; specy-road's launch argv is unchanged, and any change the report implies for it is listed in the summary as a follow-up, not made here",
+        "`specy-road upgrade --only profiles --render` then `--check` reports no drift; the harness-facts and profile tests pass; CHANGELOG.md [Unreleased] records the refresh; no version heading is written"
+      ],
+      "codename": "bundled-harness-facts-and-profiles-take-in-the-dated-harness",
+      "dependencies": [
+        "393ad414-3a5a-49b3-8873-b63d0e35d0ee",
+        "dbc090c2-2266-4ce1-8b11-a5ce57bcc8bd"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.84",
+      "node_key": "c2c7046a-450a-4d76-8076-d6a3b7e545cb",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.84_bundled-harness-facts-and-profiles-take-in-the-dated-harness_c2c7046a-450a-4d76-8076-d6a3b7e545cb.md",
+      "sibling_order": 84,
+      "status": "Not Started",
+      "title": "Bundled harness facts and profiles take in the dated harness-facts report",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/",
+        "docs/orchestration-workers.md",
         "tests/",
         "CHANGELOG.md"
       ],
