@@ -435,7 +435,7 @@
       "parent_id": "M22",
       "planning_dir": "planning/M22.83_codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles_dbc090c2-2266-4ce1-8b11-a5ce57bcc8bd.md",
       "sibling_order": 83,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it",
       "touch_zones": [
         "specy_road/templates/project/model-profiles/harness-facts.yaml",

@@ -96,15 +96,3 @@ entries:
     started: '2026-11-20'
     owner: savigil
     implementation_review: pending
-  - codename: codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles
-    node_id: M22.83
-    branch: feature/rm-codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles
-    touch_zones:
-      - specy_road/templates/project/model-profiles/harness-facts.yaml
-      - specy_road/templates/project/model-profiles/openai-gpt/
-      - specy_road/templates/project/model-profiles/README.md
-      - tests/
-      - CHANGELOG.md
-    started: '2026-11-20'
-    owner: savigil
-    implementation_review: pending

@@ -102,6 +102,11 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- Shipped Codex guidance leaves `goals` on. `harness-facts.yaml` classifies it as `use` (the 2026-11-02
+  F15 `avoid` is superseded by the operator decision of 2026-11-20, "goals same as multi_agent"). The Codex
+  executor template, the rendered model-profiles README and every OpenAI GPT profile `access.cli` no longer
+  pass `--disable goals`; memories stay disabled and `multi_agent` stays on. The worker adapter and its
+  launch argv are unchanged.
 - Shipped Codex guidance leaves `multi_agent` on. `harness-facts.yaml` classifies it as `use` (the 2026-11-02
   F15 `avoid` is superseded by the operator decision of 2026-11-19). The Codex executor template, the rendered
   model-profiles README and every OpenAI GPT profile `access.cli` no longer pass `--disable multi_agent`;
