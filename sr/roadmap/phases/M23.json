@@ -62,30 +62,6 @@
     },
     {
       "acceptance": [
-        "dump_registry_text and render_front_matter write a value containing U+0085 so that yaml.safe_load reads it back unchanged (PyYAML writes NEL raw and the loader reads it as a line break): a registry entry and a front-matter value with '\\x85' round-trip",
-        "M16.7.7's registry and front-matter properties drop their U+0085 domain exclusion and pass",
-        "One test per writer through its public function; CHANGELOG.md [Unreleased] records the fix; no version heading is written"
-      ],
-      "codename": "registry-and-front-matter-yaml-round-trip-a-value-containing-u",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M23.12",
-      "node_key": "903b6c71-c1d8-43f5-949b-72fb1f92736d",
-      "parent_id": "M23",
-      "planning_dir": "planning/M23.12_registry-and-front-matter-yaml-round-trip-a-value-containing-u_903b6c71-c1d8-43f5-949b-72fb1f92736d.md",
-      "sibling_order": 11,
-      "status": "Not Started",
-      "title": "Registry and front-matter YAML round-trip a value containing U+0085 (NEL)",
-      "touch_zones": [
-        "specy_road/registry_yaml.py",
-        "specy_road/review_files.py",
-        "tests/",
-        "CHANGELOG.md"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "When the commit under review has unplanned removal findings against its merge base, a reviewer's delta packet no longer states 'no integrity findings'; either the packet keeps the 'Required check: unplanned test removal' entries and the reviewer answers them, or review record carries them over from that reviewer's approve of the prior commit when the delta changes none of the listed tests. Seen 2026-11-19: four refused approves in a row at one commit until a full packet was built",
         "A test reproduces the loop (approve at commit A with unplanned removals, one-line delta to B, delta approve at B) and shows the record is accepted",
         "CHANGELOG.md [Unreleased] records the fix; no version heading is written"
@@ -125,29 +101,6 @@
       "title": "Remove the stale vulture whitelist entry left by the private-to-public renames",
       "touch_zones": [
         "scripts/vulture_whitelist.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "apply_managed_block on a CRLF file keeps every line ending outside the block as it was (CRLF stays CRLF), text after the block that is whitespace only is kept byte-identical, and a second apply is UNCHANGED when a block line contains \\r (found by M16.7.7's managed-block property, 2026-11-19)",
-        "M16.7.7's managed-block property drops its \\r and whitespace-only-tail domain exclusions and passes",
-        "One test per behaviour through apply_managed_block; CHANGELOG.md [Unreleased] records the fix; no version heading is written"
-      ],
-      "codename": "managed-block-replace-keeps-line-endings-and-a-whitespace-only",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M23.15",
-      "node_key": "95936891-4d98-4c91-b6c5-db9805c6837b",
-      "parent_id": "M23",
-      "planning_dir": "planning/M23.15_managed-block-replace-keeps-line-endings-and-a-whitespace-only_95936891-4d98-4c91-b6c5-db9805c6837b.md",
-      "sibling_order": 14,
-      "status": "Not Started",
-      "title": "Managed-block replace keeps line endings and a whitespace-only tail, and is idempotent with a carriage return in a block line",
-      "touch_zones": [
-        "specy_road/managed_block.py",
-        "tests/",
-        "CHANGELOG.md"
       ],
       "type": "task"
     }

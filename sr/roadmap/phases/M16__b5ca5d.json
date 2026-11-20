@@ -271,6 +271,49 @@
       "title": "Gate: the maintainer has tried the release candidate in their dependent projects",
       "touch_zones": [],
       "type": "gate"
+    },
+    {
+      "acceptance": [
+        "Hypothesis is a test-only dev dependency (approved by the maintainer, 2026-11-05): added to the `dev` extra in pyproject.toml with an exact pin (`hypothesis==X.Y.Z`, the latest release at pickup that is at least two weeks old, named in READY; the planner trialled 6.170.15) and a comment saying why it is pinned, requirements-ci.txt regenerated with `pip-compile requirements-ci.in -o requirements-ci.txt` under Python 3.12 (its new transitive pins, for example sortedcontainers, come only from that regeneration), and `pip-audit -r requirements-ci.txt` clean apart from the vulnerabilities CI already ignores, as docs/supply-chain-security.md requires; it is never in project.dependencies. tests/property/conftest.py registers and loads one Hypothesis settings profile with derandomize=True, database=None and deadline=None, and no .hypothesis directory is left in the checkout. derandomize removes the random seed, but Hypothesis 6.170 also draws constants from the source of project modules already loaded, so the examples can differ between runs; each property must hold for any draw (coordinator 2026-11-19 under the operator's authorization, after the worker showed this)",
+        "One Hypothesis property per subject and no others, all under tests/property/: outline indent then outdent restores parent and sibling order; managed-block replace is idempotent and leaves text outside the block byte-identical; registry YAML load then dump round-trips; planning-sheet and READY front matter parse then render round-trips; each allow and deny case in the existing guard tests keeps its verdict when the command is wrapped in each wrapper the classifier already unwraps",
+        "Guard property: test_wrappers_keep_the_bare_verdict_and_reason (M22.77, M22.78) stays unchanged as the exhaustive one-wrapper check, and every guard table row stays. The property adds composition: over every classify-only case of tests/unit/test_tool_call_guard.py and tests/cli/test_session_guard.py (the case tables move to tests/support/guard_cases.py with their test ids unchanged, because the support boundary forbids importing a test module), it draws 0 to 2 prefix wrappers, each the bare or path-qualified (/usr/bin/, /bin/, ./) name of every wrapper the classifier unwraps, with a flag argument or a NAME=value assignment, then 0 to 2 enclosing forms ('( )', '!', '{ ; }', 'if true; then ; fi'), and asserts the wrapped command gets the same classify result (verdict and reason) as the bare one. Stated domain limits, not counterexamples: no prefix wrapper before a case that starts with '(' (a bash syntax error), no enclosing form around a case whose bare reason is an unparseable or unbalanced shape (wrapping changes the parse), and env split-string spellings stay with the enumerated test (a split string re-tokenizes shell syntax by design)",
+        "These domain exclusions are stated in each property's docstring and are the only ones: a front-matter body that ends in a newline or contains a line-break character other than \\n (M22.75 sheet). The earlier U+0085 and managed-block exclusions are withdrawn: M22.81 fixes those cases before this leaf finishes, so the front-matter, registry and managed-block properties draw U+0085, U+2028, U+2029, \\r and whitespace-only or multi-blank-line tails (operator 2026-11-20: \"C1 behaviorial\", \"go\"). Any other counterexample stops the leaf under the sheet's If this fails",
+        "A single-input test that a property covers is removed only when it is in this leaf's planned_test_changes, and each removed test's input is an explicit @example on its property",
+        "No parametrized row disappears: the test ids that `pytest --collect-only -q` lists at the merge base and not at the reviewed commit are exactly the function ids in planned_test_changes (no parametrized `[...]` id is removed or renamed, including the guard tables moved to tests/support/guard_cases.py); READY carries both collection counts and the difference (coordinator 2026-11-19, planner protocol)",
+        "Compare the reviewed commit with its merge base on WIP/improvements-0-3-1 (named in READY). Run the full pytest suite and `python scripts/lean_metrics.py --contexts` once in a clean worktree (or a `git clone --shared` copy where worktrees cannot be added) at each commit, using the same Python and the reviewed commit's pinned dev and review dependencies installed for both runs, the same object at `refs/remotes/origin/dev`, and with `sr/.specyrd/cache/roadmap-history.json` absent before each run; both pytest runs must exit 0. \"Covered-arc set kept\" means that, for every module under specy_road/ whose blob is byte-identical at the two commits (this leaf changes no package module), the only-before difference between the full-suite unions of covered branch arcs is empty; READY lists the only-after arcs per module, which a property may add and which are not a failure; a module with a different blob is out of scope. \"Total coverage at or above fail_under\" means the TOTAL of the reviewed-commit run's coverage report is at least `[tool.coverage.report] fail_under` in pyproject.toml at the reviewed commit. \"Removed and renamed test ids equal planned_test_changes\" means the removed-test, removed-test-file, new-skip and assert-loss findings of `specy-road integrity` from the merge base to the reviewed commit are exactly the node's planned_test_changes (coordinator 2026-11-19, planner protocol)",
+        "Each property fails on a scratch break of its subject under the committed profile (derandomize=True, the committed max_examples): the guard classifier without one wrapper name (for example nohup); managed-block replace that keeps the text after the block out of the result; a registry dump that drops the last entry; render_front_matter with the plain .rstrip() that M22.75 replaced, restored (removing the strip entirely cannot fail a round-trip property); outdent that appends the node at the end of its new parent's children. Each break is made in a throwaway worktree, never committed, and READY records the break and the failing example",
+        "Estimated net line change (informational, not a gate): tests about +170 (planner 2026-11-19)"
+      ],
+      "codename": "tests-five-named-properties-replace-the-single-input-tests-they-cover",
+      "dependencies": [
+        "21cc96e6-1e15-425e-a4b0-9c821fe30c55",
+        "25cffd57-e38b-4ebf-a4c0-d2edea799baa",
+        "522551fc-deb1-435a-b094-882b07922652",
+        "e4706b28-6e79-40f8-9042-cb4e6cfff1e9",
+        "fa400b72-a46c-4deb-b21e-4d5027146680"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M16.7.7",
+      "node_key": "e99367d9-1efa-4aec-850b-bd88121d9757",
+      "parent_id": "M16.7",
+      "planned_test_changes": [
+        "removed-test: tests/unit/test_managed_block.py::test_a_changed_recommendation_replaces_the_old_one",
+        "removed-test: tests/unit/test_managed_block.py::test_content_after_the_block_survives_a_rewrite",
+        "removed-test: tests/unit/test_managed_block.py::test_content_before_and_after_both_survive",
+        "removed-test: tests/unit/test_registry_yaml.py::test_round_trips_to_same_doc"
+      ],
+      "planning_dir": "planning/M16.7.7_tests-five-named-properties-replace-the-single-input-tests-they-cover_e99367d9-1efa-4aec-850b-bd88121d9757.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Tests: five named properties replace the single-input tests they cover",
+      "touch_zones": [
+        "tests/property/",
+        "pyproject.toml",
+        "tests/",
+        "requirements-ci.in",
+        "requirements-ci.txt"
+      ],
+      "type": "task"
     }
   ]
 }

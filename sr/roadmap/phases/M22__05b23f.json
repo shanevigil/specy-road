@@ -364,6 +364,87 @@
         "CHANGELOG.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "One shared helper beside atomic_write_text in specy_road/fs_atomic.py reads a file keeping its line endings exactly (no newline translation) and splits text on \\n only; the four subjects below use it instead of read_text() newline translation and str.splitlines()",
+        "Front matter: render_front_matter escapes U+0085, U+2028 and U+2029 in keys and values, and load_ready and split_frontmatter read back the same mapping and body ({'\\x85': None}, {'k': 'a\\u2028b'} and {'\\u2029': 'v'} round-trip; seen 2026-11-19 reading back as a space). Files written by earlier versions, which use \\n only, parse as before",
+        "Registry: dump_registry_text writes U+0085 so that yaml.safe_load and read_registry return the original document (U+2028 and U+2029 already round-trip there, checked 2026-11-20)",
+        "Managed block: apply_managed_block keeps every byte outside the block as it was: CRLF line endings stay CRLF, a whitespace-only tail is kept, the blank lines between the end marker and the following text keep their number, and a second apply is UNCHANGED when a block line contains \\r",
+        "M16.7.7's front-matter, registry and managed-block properties pass with their character and whitespace exclusions removed (the M22.75 body exclusions stay); other non-ASCII text keeps its current rendering, and every existing test passes unchanged",
+        "One test per subject through its public function; CHANGELOG.md [Unreleased] records the fix under Fixed; no version heading is written"
+      ],
+      "codename": "text-round-trips-exactly-where-specy-road-writes-and-reads-back",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.81",
+      "node_key": "fa400b72-a46c-4deb-b21e-4d5027146680",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.81_text-round-trips-exactly-where-specy-road-writes-and-reads-back_fa400b72-a46c-4deb-b21e-4d5027146680.md",
+      "sibling_order": 81,
+      "status": "Not Started",
+      "title": "Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks",
+      "touch_zones": [
+        "specy_road/fs_atomic.py",
+        "specy_road/review_files.py",
+        "specy_road/planning_artifacts.py",
+        "specy_road/registry_yaml.py",
+        "specy_road/managed_block.py",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "An audit lists every package call site of read_text, write_text and str.splitlines that rewrites a file a user owns or writes data that specy-road later reads back, and classifies each as read-only (no change), round-trip or rewrite; the list is in the summary with file:line for each",
+        "Each round-trip and rewrite site uses the M22.81 helper, or the summary states why its input can only be \\n-only text specy-road wrote itself",
+        "Each changed site has one test that round-trips CRLF, a lone \\r, U+0085, U+2028 and U+2029 through its public interface; existing tests pass unchanged",
+        "CHANGELOG.md [Unreleased] extends the M22.81 entry; no version heading is written"
+      ],
+      "codename": "every-other-path-that-writes-and-reads-back-text-or-rewrites-a",
+      "dependencies": [
+        "fa400b72-a46c-4deb-b21e-4d5027146680"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.82",
+      "node_key": "15d16b14-845d-4b26-851c-6936755eb35b",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.82_every-other-path-that-writes-and-reads-back-text-or-rewrites-a_15d16b14-845d-4b26-851c-6936755eb35b.md",
+      "sibling_order": 82,
+      "status": "Not Started",
+      "title": "Every other path that writes and reads back text, or rewrites a user's file, keeps line endings and line-break characters exactly",
+      "touch_zones": [
+        "specy_road/",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Operator 2026-11-20: \"goals same as multi_agent\". harness-facts.yaml classifies goals as use (the F15 'avoid' is superseded, with the operator's date), and no shipped Codex executor or reviewer template or profile cli line passes `--disable goals`; the specy-road worker adapter and launch argv are unchanged (they already leave goals on)",
+        "`specy-road upgrade --only profiles --render` then `--check` reports no drift; the harness-facts and profile tests pass",
+        "CHANGELOG.md [Unreleased] records the change; no version heading is written"
+      ],
+      "codename": "codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M22.83",
+      "node_key": "dbc090c2-2266-4ce1-8b11-a5ce57bcc8bd",
+      "parent_id": "M22",
+      "planning_dir": "planning/M22.83_codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles_dbc090c2-2266-4ce1-8b11-a5ce57bcc8bd.md",
+      "sibling_order": 83,
+      "status": "Not Started",
+      "title": "Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/harness-facts.yaml",
+        "specy_road/templates/project/model-profiles/openai-gpt/",
+        "specy_road/templates/project/model-profiles/README.md",
+        "tests/",
+        "CHANGELOG.md"
+      ],
+      "type": "task"
     }
   ]
 }

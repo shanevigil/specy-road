@@ -206,6 +206,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.78` The tool-call guard recognises a wrapper by its basename, so a path-qualified env, sudo or command is read like the bare word `the-tool-call-guard-recognises-a-wrapper-by-its-basename-so-a` — task — **Complete**
   - `M22.79` The tool-call guard reads each wrapper's own options, so a flag such as sudo -n does not hide the command `the-tool-call-guard-reads-each-wrapper-s-own-options-so-a-flag` — task — **Complete**
   - `M22.80` Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-multi-agent-on-the-harness-facts-and-shipped` — task — **Complete**
+  - `M22.81` Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks `text-round-trips-exactly-where-specy-road-writes-and-reads-back` — task — **Not Started**
+  - `M22.82` Every other path that writes and reads back text, or rewrites a user's file, keeps line endings and line-break characters exactly `every-other-path-that-writes-and-reads-back-text-or-rewrites-a` — task — **Not Started**
+  - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Not Started**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -288,10 +291,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M23.9` The toolkit roadmap sr/ moves to a private, separately cloned repository mounted at sr/; roadmap, grind and worker commands keep working `sr-private-mount` — task — **Not Started**
   - `M23.10` Run the multi-operator brainstorm for 0.3.2 (two or more operators on several machines, plus a PM in the PM GUI) `multi-operator-brainstorm` — task — **Not Started**
   - `M23.11` The post-run zone check counts only the leaf's own commits, not integration commits a merge brings in `the-post-run-zone-check-counts-only-the-leaf-s-own-commits-not` — task — **Not Started**
-  - `M23.12` Registry and front-matter YAML round-trip a value containing U+0085 (NEL) `registry-and-front-matter-yaml-round-trip-a-value-containing-u` — task — **Not Started**
   - `M23.13` A delta review packet carries the required test-removal check, so a delta approve is not refused `a-delta-review-packet-carries-the-required-test-removal-check-so` — task — **Not Started**
   - `M23.14` Remove the stale vulture whitelist entry left by the private-to-public renames `remove-the-stale-vulture-whitelist-entry-left-by-the-private-to` — task — **Not Started**
-  - `M23.15` Managed-block replace keeps line endings and a whitespace-only tail, and is idempotent with a carriage return in a block line `managed-block-replace-keeps-line-endings-and-a-whitespace-only` — task — **Not Started**
 
 ## Open gates
 
