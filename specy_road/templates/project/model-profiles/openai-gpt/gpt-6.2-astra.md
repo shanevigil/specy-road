@@ -10,7 +10,7 @@ version_rank: latest
 release_date: unknown
 researched: 2026-11-19
 researcher: field
-supersedes: none
+supersedes: gpt-6-astra
 access:
   context_tokens: 272000
   output_tokens: unknown
@@ -52,13 +52,14 @@ Under the default codex launch (`sandbox_mode=workspace-write`) an executor cann
 ## Prompting rules
 - Set effort explicitly; the Codex catalog default is low [S1]
 - Do not send ultra to an executor: the catalog describes it as reasoning with automatic task delegation, and the default codex worker launch leaves multi_agent on [S1]
-- Set sandbox and approval policy in the harness, and in a linked worktree give it write access to the git metadata, or it cannot commit
+- Set sandbox and approval policy in the harness, and in a linked worktree give it write access to the git metadata, or it cannot commit (docs/orchestration-workers.md, "Known limitation", checked on codex-cli 0.165.0)
 - Require a prior-art search before any new helper and a named reuse in the summary, and fix the output format; this family writes the most code per task but its merged work holds up [S2, S4]
 ## Open questions
 - Price per token, output-token limit and release date are unknown here: no source on this host gives them; M22.72's dated report is to supply them
 - Not piloted in any role; the role scores are the not-piloted default until a pilot or M22.72's report gives evidence
 - The vendor's documented default effort is not known here; the Codex catalog default is low [S1]; M22.72 to confirm
 - The API context limit may differ from the Codex catalog window (272000, max 872000) [S1]; M22.72 to confirm
+- `supersedes: gpt-6-astra` rests on the Codex catalog calling gpt-6-astra "Previous generation model for complex coding and professional work." [S1]; no gpt-6-astra profile ships
 - Not offered in Cursor's agent inventory as of 2026.11.17-f532c45 (harness-captures/cursor/inventory-models.txt)
 ## Sources
 - S1: Codex model catalog (`codex debug models`), codex-cli 0.166.0, captured 2026-11-19, runtime

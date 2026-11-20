@@ -30,9 +30,9 @@ access:
   subagents: 'unknown No host source describes its delegation behaviour [S1]'
   effort_controls: 'levels low, medium, high, xhigh, max, each with a -fast variant, in Cursor''s ids; the inventory marks no Fable 5.2 id as default (only auto) and names no default effort [S1]'
   effort_map: { minimal: unknown, low: low, medium: medium, high: high, max: max }
-  launch_mode: full   # bare (--bare) drops settings and plugin hooks (not managed-plugin hooks), skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
+  launch_mode: full   # bare (--bare) skips settings and installed-plugin hooks (not managed-plugin hooks), auto memory and CLAUDE.md auto-discovery, and authenticates only with ANTHROPIC_API_KEY or an apiKeyHelper (2.1.329 help)
 cost_usd_per_mtok: { input: unknown, output: unknown, cached_input: unknown, fast_input: unknown, fast_output: unknown }
-data_handling: 'Cursor''s display name for every Claude Fable 5.2 id ends "(NO ZDR)" [S1]. Retention, training use and residency elsewhere were not researched for this model. No local deployment.'
+data_handling: 'Cursor''s display name for every Claude Fable 5.2 id ends "(NO ZDR)" [S1]. Retention, training use, residency and deployment options elsewhere were not researched for this model.'
 role_fit:
   coordinator: { score: 3, reason: 'Not piloted as a coordinator; no evidence either way', sources: [] }
   executor:    { score: 3, reason: 'Not piloted as an executor; no evidence either way', sources: [] }
