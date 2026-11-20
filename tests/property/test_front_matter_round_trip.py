@@ -4,10 +4,9 @@ Both readers are checked: the planning-sheet reader (``split_frontmatter``) and 
 reader (``load_ready``, whose parsed data and body are returned whether or not the schema
 accepts them).
 
-Domain exclusions (stated, not counterexamples): no U+0085 (NEL) in front-matter values,
-because PyYAML reads a raw NEL as a line break and the fix comes after the release candidate;
-and no body that ends in a newline or contains a line-break character other than ``\\n``
-(M22.75), because both readers split the file into lines.
+Keys and values include U+0085 (NEL), U+2028 and U+2029. The only domain exclusion (stated, not
+a counterexample): no body that ends in a newline or contains a line-break character other than
+``\\n`` (M22.75), because both readers split the file into lines.
 """
 
 from __future__ import annotations
@@ -18,13 +17,13 @@ from hypothesis import strategies as st
 from specy_road.planning_artifacts import split_frontmatter
 from specy_road.review_files import load_ready, render_front_matter
 
-text = st.text(st.characters(codec="utf-8", exclude_characters="\x85"))
+text = st.text()
 scalars = st.one_of(text, st.integers(), st.booleans(), st.none())
 values = st.recursive(
     scalars, lambda inner: st.lists(inner) | st.dictionaries(text, inner), max_leaves=6
 )
 #: Line breaks ``str.splitlines`` honours besides ``\n``.
-OTHER_BREAKS = "\r\x0b\x0c\x1c\x1d\x1e\x85  "
+OTHER_BREAKS = "\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029"
 bodies = st.text(st.characters(codec="utf-8", exclude_characters=OTHER_BREAKS)).filter(
     lambda b: not b.endswith("\n")
 )

@@ -1,7 +1,6 @@
 """A registry document dumped to YAML loads back equal, and dumping that load gives the same text.
 
-Domain exclusion (stated, not a counterexample): no U+0085 (NEL) in generated registry text,
-because PyYAML reads a raw NEL as a line break; the fix comes after the release candidate.
+Generated text includes U+0085 (NEL), U+2028 and U+2029. No domain exclusions.
 """
 
 from __future__ import annotations
@@ -11,7 +10,7 @@ from hypothesis import strategies as st
 
 from specy_road.registry_yaml import dump_registry_text, read_registry
 
-text = st.text(st.characters(codec="utf-8", exclude_characters="\x85"))
+text = st.text()
 values = st.one_of(text, st.lists(text), st.integers(), st.booleans(), st.none())
 entries = st.lists(st.dictionaries(text, values))
 

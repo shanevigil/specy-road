@@ -1,14 +1,10 @@
 """Replacing a managed block is idempotent and leaves the text outside the block byte-identical.
 
 For either marker style, a file of user text, a block and more user text is rewritten with new
-lines: the text before the block is unchanged byte for byte, the text after it is unchanged once
-the newlines separating it from the block are set aside (the block owns that separator), and
-applying the same lines again changes nothing.
-
-Domain exclusions (stated, not counterexamples; the fix is M23.15, after the release candidate):
-files or block lines containing ``\\r``, and text after the block that is whitespace only (an
-empty tail is kept), because today the replace rewrites CRLF as LF, drops a whitespace-only tail
-and is not idempotent with ``\\r`` in a block line.
+lines: every byte before the block and every byte after its end marker (the newline after the
+marker included) is unchanged, and applying the same lines again changes nothing. Text and block
+lines include ``\\r``, CRLF, whitespace-only tails and any number of blank lines. No domain
+exclusions.
 """
 
 from __future__ import annotations
@@ -27,12 +23,12 @@ from specy_road.managed_block import (
 
 USER_CONTENT = "# my own rules\nnode_modules/\n.env\n"
 
-text = st.text(st.characters(codec="utf-8", exclude_characters="\r"))
+text = st.text()
 
 
 @given(
     before=text,
-    after=text.filter(lambda tail: not tail or tail.strip()),
+    after=text,
     lines=st.tuples(st.lists(text), st.lists(text)),
     style=st.sampled_from((HASH, HTML_COMMENT)),
 )
@@ -55,8 +51,6 @@ def test_replace_is_idempotent_and_keeps_outside_text(
     apply_managed_block(path, new, style=style)
     first = path.read_bytes().decode("utf-8")
 
-    block = render_block(new, style=style)
-    assert first.startswith(before + block)
-    assert first[len(before + block):].lstrip("\n") == after.lstrip("\n")
+    assert first == before + render_block(new, style=style) + after
     assert apply_managed_block(path, new, style=style) == UNCHANGED
     assert path.read_bytes().decode("utf-8") == first
