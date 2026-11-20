@@ -1,10 +1,11 @@
 """The one Hypothesis settings profile every property under ``tests/property/`` runs with.
 
-``derandomize`` makes every run draw from the same seed, ``database=None`` keeps Hypothesis
-from saving failing examples, and ``deadline=None`` keeps a slow machine from failing an example
-on time alone. Hypothesis also caches Unicode tables and source constants on disk whatever the
-database says, so its home directory is moved out of the checkout into the system temporary
-directory: a run writes no ``.hypothesis`` directory.
+``derandomize`` removes the random seed, ``database=None`` keeps Hypothesis from saving failing
+examples, and ``deadline=None`` keeps a slow machine from failing an example on time alone.
+Hypothesis also draws constants from the source of project modules already loaded, so the
+examples can still differ between runs: each property must hold for any draw. It caches Unicode
+tables and those constants on disk whatever the database says, so its home directory is moved out
+of the checkout into the system temporary directory: a run leaves no ``.hypothesis`` directory.
 """
 
 from __future__ import annotations

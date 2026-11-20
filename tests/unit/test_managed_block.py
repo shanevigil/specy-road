@@ -85,45 +85,6 @@ def test_replacing_a_block_twice_gives_the_same_file_and_keeps_the_rest(
     assert "stale/" not in first
 
 
-def test_a_changed_recommendation_replaces_the_old_one(tmp_path: Path) -> None:
-    """Rewriting in place is why a dropped entry actually disappears."""
-    path = tmp_path / ".gitignore"
-    apply_managed_block(path, ["old-rule/"])
-
-    assert apply_managed_block(path, ["new-rule/"]) == UPDATED
-    text = path.read_text(encoding="utf-8")
-
-    assert "new-rule/" in text and "old-rule/" not in text
-
-
-def test_content_after_the_block_survives_a_rewrite(tmp_path: Path) -> None:
-    path = tmp_path / ".gitignore"
-    apply_managed_block(path, ["a/"])
-    path.write_text(
-        path.read_text(encoding="utf-8") + "\n# added later by a human\ndist/\n",
-        encoding="utf-8",
-    )
-
-    apply_managed_block(path, ["b/"])
-    text = path.read_text(encoding="utf-8")
-
-    assert "# added later by a human" in text and "dist/" in text
-    assert "b/" in text and "a/" not in text
-
-
-def test_content_before_and_after_both_survive(tmp_path: Path) -> None:
-    path = tmp_path / ".gitignore"
-    path.write_text(USER_CONTENT, encoding="utf-8")
-    apply_managed_block(path, ["a/"])
-    path.write_text(path.read_text(encoding="utf-8") + "trailing/\n", encoding="utf-8")
-
-    apply_managed_block(path, ["b/"])
-    text = path.read_text(encoding="utf-8")
-
-    assert text.startswith(USER_CONTENT)
-    assert "trailing/" in text
-
-
 def test_a_truncated_block_is_repaired(tmp_path: Path) -> None:
     """A half-edited file must not accumulate a second broken block."""
     path = tmp_path / ".gitignore"
