@@ -37,7 +37,8 @@ WORKER_MODULES = frozenset(
 _BUNDLED_SCRIPT = re.compile(r"(?:^|[\\/])specy_road[\\/]bundled_scripts[\\/][^\\/]+\.py$")
 _THIS_FILE = Path(__file__).resolve()
 
-#: The starts recorded for the running item, last; :func:`recorded_starts` pushes another list.
+#: The running item's starts first, then one list per open :func:`recorded_starts` block; a start
+#: is added to every list.
 _recording: list[list[list[str]]] = [[]]
 _lock = threading.Lock()
 
@@ -101,7 +102,8 @@ def _counting_init(self: subprocess.Popen, args: object, *a: object, **kw: objec
     argv = _argv(args)
     if starts_cli(argv) and _started_by_tests():
         with _lock:
-            _recording[-1].append(argv)
+            for record in _recording:
+                record.append(argv)
     _original_init(self, args, *a, **kw)
 
 
@@ -112,7 +114,7 @@ def install() -> None:
 
 @contextmanager
 def recorded_starts() -> Iterator[list[list[str]]]:
-    """The CLI starts made inside the block, kept apart from the running item's own count."""
+    """The CLI starts made inside the block. They count for the running item too, like any other."""
     _recording.append([])
     try:
         yield _recording[-1]
@@ -165,9 +167,9 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_protocol(item: pytest.Item) -> Iterator[None]:
     """Count the item's starts from its first setup to its last teardown."""
-    _recording[-1].clear()
+    _recording[0].clear()
     yield
-    _recording[-1].clear()
+    _recording[0].clear()
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -182,7 +184,7 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) ->
         report.outcome = "failed"
         report.longrepr = f"tests/support/{LANE_FILE.name} {_lane_errors[item.nodeid]}"
         return
-    starts = _recording[-1]
+    starts = _recording[0]
     if not starts or item.nodeid in _lane():
         return
     report.outcome = "failed"
