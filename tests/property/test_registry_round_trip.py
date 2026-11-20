@@ -34,8 +34,10 @@ SAMPLE_ENTRIES = [
 
 
 @given(entries=entries)
-# The input of the single-input test this property replaces.
+# The inputs of the test this property replaces: the sample document, and the one with U+0085,
+# U+2028 and U+2029 in a key, a value and list items.
 @example(entries=SAMPLE_ENTRIES)
+@example(entries=[{"\x85": "a\x85b", "notes": ["c\x85", "d\u2028e\u2029"]}])
 def test_registry_dump_then_load_round_trips(tmp_path_factory, entries: list[dict]) -> None:
     """The loaded document equals the dumped one, and dumping it again gives the same text."""
     doc = {"version": 1, "entries": entries}

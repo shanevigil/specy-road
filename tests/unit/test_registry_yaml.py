@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import re
 
-import pytest
 import yaml
 
-from specy_road.registry_yaml import dump_registry_text, read_registry, write_registry
+from specy_road.registry_yaml import dump_registry_text, write_registry
 
 
 def _sample_doc() -> dict:
@@ -31,19 +30,6 @@ def _sample_doc() -> dict:
             },
         ],
     }
-
-
-@pytest.mark.parametrize("doc", [
-    _sample_doc(),
-    # U+0085 is written escaped (a raw one loads as a line break); U+2028 and U+2029 already round-trip.
-    {"version": 1, "entries": [{"\x85": "a\x85b", "notes": ["c\x85", "d\u2028e\u2029"]}]},
-], ids=["sample", "unicode-breaks"])
-def test_round_trips_to_same_doc(tmp_path, doc: dict) -> None:
-    text = dump_registry_text(doc)
-    assert yaml.safe_load(text) == doc
-    path = tmp_path / "registry.yaml"
-    path.write_text(text, encoding="utf-8")
-    assert read_registry(path) == doc
 
 
 def test_block_sequences_are_indented() -> None:
