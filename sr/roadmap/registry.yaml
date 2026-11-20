@@ -92,3 +92,11 @@ entries:
     started: '2026-11-20'
     owner: savigil
     implementation_review: pending
+  - codename: audit-every-path-that-writes-and-reads-back-text-or-rewrites-a
+    node_id: M22.82
+    branch: feature/rm-audit-every-path-that-writes-and-reads-back-text-or-rewrites-a
+    touch_zones:
+      - sr/docs/research/
+    started: '2026-11-20'
+    owner: savigil
+    implementation_review: pending
