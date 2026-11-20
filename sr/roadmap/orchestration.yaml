@@ -105,6 +105,15 @@ roster:
     # same Codex wrapper as gpt-6.1-sol until M8.3 lands.
     channels:
       cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-6.1-terra {prompt}'
+  - id: gpt-6.2-astra
+    family: openai
+    roles: [reviewer]
+    profile: model-profiles/openai-gpt/gpt-6.2-astra.md
+    harness: codex
+    harness_model: gpt-6.2-astra
+    # Decide analyst and alignment reviewer on complex leaves, 2026-11-20 only (maintainer); same Codex wrapper as Terra.
+    channels:
+      cli: '"${SPECY_ROAD_TOOLS:-$(git rev-parse --git-common-dir)/../sr/tools}/codex-review.sh" gpt-6.2-astra {prompt}'
   - id: gpt-6.1-terra-low
     family: openai
     roles: [reviewer]
