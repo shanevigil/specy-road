@@ -208,7 +208,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M22.80` Codex runs with multi_agent on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-multi-agent-on-the-harness-facts-and-shipped` — task — **Complete**
   - `M22.81` Text round-trips exactly where specy-road writes and reads back or rewrites a user's file: front matter, registry and managed blocks `text-round-trips-exactly-where-specy-road-writes-and-reads-back` — task — **Not Started**
   - `M22.82` Every other path that writes and reads back text, or rewrites a user's file, keeps line endings and line-break characters exactly `every-other-path-that-writes-and-reads-back-text-or-rewrites-a` — task — **Not Started**
-  - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Not Started**
+  - `M22.83` Codex runs with goals on: the harness facts and shipped profiles stop telling adopters to disable it `codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` — task — **Complete**
 - `M17` 0.3.1: PM GUI shows orchestration and worktree state, built in parallel with M16 `pm-gui-orchestration-view` — phase — **In Progress**
   - `M17.1` Gate: maintainer signs off the orchestration panels' information design and the read-only scope for 0.3.1 `pm-gui-orchestration-plan` — gate — **Complete**
   - `M17.2` PM GUI: orchestration snapshot types, a mock snapshot and a pure view model, tested against the mock `gui-orch-view-model` — task — **Complete**
@@ -371,7 +371,6 @@ Do not pick these up.
 - `M19.6` on `feature/rm-the-orchestrator-cleans-up-landed-leaves-and-stale-worktrees-automatically-saving-hand-off-files-first` since 2026-11-05
 - `M19.7` on `feature/rm-notices-for-how-the-agent-files-fit-together-missing-claude-md-import-two-load-orders-floor-read-twice` since 2026-11-05
 - `M22.81` on `feature/rm-text-round-trips-exactly-where-specy-road-writes-and-reads-back` since 2026-11-20
-- `M22.83` on `feature/rm-codex-runs-with-goals-on-the-harness-facts-and-shipped-profiles` since 2026-11-20
 
 ## Quality by area
 
