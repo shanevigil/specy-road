@@ -28,11 +28,11 @@ access:
   cli: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude -p "<prompt>"
   cli_verified_from: 'not run with this model; the claude-code executor template (harness-facts.yaml) with the api_id the Cursor inventory names [S1]'
   subagents: 'unknown No host source describes its delegation behaviour [S1]'
-  effort_controls: 'levels low, medium, high, xhigh, max, each with a -fast variant, in Cursor; the unsuffixed display name is high, so Cursor''s default is high [S1]'
+  effort_controls: 'levels low, medium, high, xhigh, max, each with a -fast variant, in Cursor''s ids; the inventory marks no Fable 5.2 id as default (only auto) and names no default effort [S1]'
   effort_map: { minimal: unknown, low: low, medium: medium, high: high, max: max }
   launch_mode: full   # bare (--bare) drops settings and plugin hooks (not managed-plugin hooks), skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
 cost_usd_per_mtok: { input: unknown, output: unknown, cached_input: unknown, fast_input: unknown, fast_output: unknown }
-data_handling: 'Cursor marks every Claude Fable 5.2 id "(NO ZDR)": no zero data retention through Cursor [S1]. Retention, training use and residency elsewhere were not researched for this model. No local deployment.'
+data_handling: 'Cursor''s display name for every Claude Fable 5.2 id ends "(NO ZDR)" [S1]. Retention, training use and residency elsewhere were not researched for this model. No local deployment.'
 role_fit:
   coordinator: { score: 3, reason: 'Not piloted as a coordinator; no evidence either way', sources: [] }
   executor:    { score: 3, reason: 'Not piloted as an executor; no evidence either way', sources: [] }
@@ -50,7 +50,7 @@ When this model runs as a roster **executor** on `claude-code`, `worker delegate
 Orchestration guard hooks (optional, `specyrd init --install-orchestration-hooks`) deny executors `git push`, `gh pr`, worktree and cloud commands; reviewers also deny `git commit`.
 
 ## Strengths
-- Cursor lists a 1M-token context for every Claude Fable 5.2 id [S1] (confidence: medium)
+- Every Claude Fable 5.2 display name in Cursor's inventory says 1M [S1] (confidence: medium)
 ## Failure modes
 - No failure modes observed; not piloted [S1]
 ## Code and test tendencies
@@ -59,12 +59,12 @@ Orchestration guard hooks (optional, `specyrd init --install-orchestration-hooks
 - Claude Code PRs measured largest and deepest in the field: median 495 changed lines vs 52 human, nesting depth 4 vs 3, highest branch density; n=459, task mix confounded (Kraishan, 2026-09-12; researched 2026-10-27 from the lean-code reports, not human-verified) [S3]
 - Strong test oracles: Claude Code is among the agents with the strongest assertion signals in field PRs (Banik et al., 2026-06; researched 2026-10-27 from the lean-code reports, not human-verified) [S4]
 ## Prompting rules
-- Set effort explicitly; Cursor's unsuffixed id runs at high [S1]
+- Set effort explicitly; no host source names a default effort for this model [S1]
 - Name the smallest behaviour-complete change and forbid extra files, abstractions, fallbacks and validation inside boundaries; the family's measured risk is diff size and depth, not weak tests [S2, S3]
 ## Open questions
 - Price per token, output-token limit and release date are unknown here: no source on this host gives them; M22.72's dated report is to supply them
 - Not piloted in any role; the role scores are the not-piloted default until a pilot or M22.72's report gives evidence
-- The vendor's documented default effort and the levels Claude Code's --effort accepts for this model are not known here; Cursor's ids give low to max with high unsuffixed [S1]; M22.72 to confirm
+- The vendor's documented default effort and the levels Claude Code's --effort accepts for this model are not known here; Cursor's ids give levels low to max and mark no default [S1]; M22.72 to confirm
 - Cursor no longer lists -thinking ids for Fable 5.2 (Fable 5.1 had them); whether thinking is always on is not known here [S1]
 ## Sources
 - S1: Cursor agent model inventory (`agent models`), agent 2026.11.17-f532c45, harness-captures/cursor/inventory-models.txt, captured 2026-11-19, runtime
